@@ -1,0 +1,10 @@
+{
+  "name": "reisekasse",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reisekostenrechner: Reisen planen, pro Person, pro Haushalt und gesamt.",
+  "scripts": {
+    "start": "npx --yes http-server public -p 8080 -c-1",
+    "dev": "npx --yes http-server public -p 8080 -c-1 -o"
+  }
+}
