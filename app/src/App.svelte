@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { access, app, calc, addItem, resetSample, setDetailed } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, resetSample, setDetailed } from "./lib/store.svelte";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
   import { cloud } from "./lib/cloud/cloud.svelte";
@@ -54,6 +54,7 @@
       {@const det = isDetailed(app.trip, ch.k)}
       <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn && det ? `${nn} Nächte` : ch.sub}
         onadd={access.readonly || !det ? undefined : () => addItem(ch.k)}
+        onreset={items.length ? () => { if (confirm(`Alle ${items.length} Posten bei „${ch.label}“ löschen?`)) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on)}>
         {#if !det}
           <SimpleCard cat={ch.k} label={ch.label} />
@@ -68,7 +69,7 @@
       </Chapter>
     {/each}
 
-    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.total)} sub="{households} {households === 1 ? 'Haushalt' : 'Haushalte'}">
+    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.total)} sub="{households} {households === 1 ? 'Familie' : 'Familien'}">
       <Split />
     </Chapter>
   </main>

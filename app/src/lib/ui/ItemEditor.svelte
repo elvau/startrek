@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Bearbeiten eines Postens im Fokusmodus: Status, Angebote, Preis, Beteiligte */
-  import { uid, type FlightLeg, type Item, type Status } from "../model";
+  import { isActive, uid, type FlightLeg, type Item, type Status } from "../model";
   import { app, removeItem } from "../store.svelte";
   import { activeOption } from "../calc";
 
@@ -21,10 +21,12 @@
     item.options = item.options.filter(o => o.id !== opt.id);
     item.chosen = item.options[0].id;
   }
+  // nur wer bei der Reise dabei ist
+  const people = $derived(app.trip.travelers.filter(isActive));
   function togglePerson(id: string) {
-    const cur = item.participants ?? app.trip.travelers.map(t => t.id);
+    const cur = item.participants ?? people.map(t => t.id);
     const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
-    item.participants = next.length === app.trip.travelers.length ? undefined : next;
+    item.participants = people.every(t => next.includes(t.id)) ? undefined : next;
   }
   const isStay = $derived(item.cat === "stay");
   const isFlight = $derived(item.cat === "flights");
@@ -102,7 +104,7 @@
           <label class="f">Umstiege<input class="n sm" type="number" min="0" max="4" value={L?.stops ?? 0} oninput={e => setLeg(dir as "out", "stops", e.currentTarget.value)} /></label>
         </div>
       {/each}
-      <label class="check"><input type="checkbox" checked={item.access !== false} onchange={e => (item.access = e.currentTarget.checked ? undefined : false)} /> Anreise zum Abflughafen einrechnen (Auto mit Parken oder Bahn, je Haushalt)</label>
+      <label class="check"><input type="checkbox" checked={item.access !== false} onchange={e => (item.access = e.currentTarget.checked ? undefined : false)} /> Anreise zum Abflughafen einrechnen (Auto mit Parken oder Bahn, je Familie)</label>
     </div>
   {/if}
 
@@ -153,7 +155,7 @@
     <span class="dlabel">Wer ist dabei</span>
     <div class="chips">
       <button class="chip" class:on={all} onclick={() => (item.participants = undefined)}>Alle</button>
-      {#each app.trip.travelers as t (t.id)}
+      {#each people as t (t.id)}
         <button class="chip" class:on={all || item.participants?.includes(t.id)} onclick={() => togglePerson(t.id)}>{t.name || "Ohne Namen"}</button>
       {/each}
     </div>

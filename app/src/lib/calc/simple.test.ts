@@ -51,7 +51,7 @@ describe("Einfacher Modus", () => {
   it("Abrechnung pro Familie zeigt einfache Beträge als eigene Zeile", () => {
     const [klein] = householdShares(trip());
     expect(klein.total).toBeCloseTo(1100);
-    expect(klein.cats.find(c => c.cat === "flights")!.lines[0]).toMatchObject({ label: "Pauschal, gleich verteilt", v: 400, who: 2 });
+    expect(klein.cats.find(c => c.cat === "flights")!.lines[0]).toMatchObject({ label: "Gesamtbetrag, gleich verteilt", v: 400, who: 2 });
   });
   it("ohne Aktive wird nichts verteilt", () => {
     const t = trip();

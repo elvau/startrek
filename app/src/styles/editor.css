@@ -258,3 +258,4 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .plist li{display:grid;grid-template-columns:1fr 1fr 80px 34px;gap:6px;align-items:center}
 .plist .inp{width:100%}
 .grp-chip{font-weight:700}
+.add-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}

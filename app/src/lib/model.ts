@@ -13,9 +13,9 @@ export interface Traveler {
   id: string;
   /** Vorname */
   name: string;
-  /** Alter zum Reisezeitpunkt */
-  age: number;
-  /** Familie bzw. Haushalt; bei Personen aus Gruppen der Nachname */
+  /** Alter zum Reisezeitpunkt; fehlt: gilt als erwachsen */
+  age?: number | null;
+  /** Familie; bei Personen aus Gruppen der Nachname */
   household: string;
   color?: string;
   /** false: für diese Reise nicht dabei (zählt nirgends mit) */
@@ -29,7 +29,7 @@ export interface Person {
   id: string;
   first: string;
   last: string;
-  age?: number;
+  age?: number | null;
 }
 
 /** Gespeicherte Gruppe, z. B. Familie oder Kegelclub. Eine Person kann in mehreren Gruppen sein. */

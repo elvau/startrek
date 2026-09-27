@@ -1,7 +1,8 @@
 <script lang="ts">
   /* Einfacher Modus: ein Betrag für den ganzen Bereich, gleich auf alle Aktiven verteilt */
   import type { CatKey } from "../model";
-  import { access, app, calc, setDetailed, setSimple } from "../store.svelte";
+  import { access, app, calc, discardDetails, setDetailed, setSimple } from "../store.svelte";
+  import { calcItem } from "../calc";
   import { eur, parseNum } from "../calc";
   import { reveal } from "./reveal";
 
@@ -15,7 +16,10 @@
   };
   const v = $derived(app.trip.simple?.[cat]);
   const n = $derived(calc.T.active);
-  const hidden = $derived(app.trip.items.filter(i => i.cat === cat).length);
+  const hiddenItems = $derived(app.trip.items.filter(i => i.cat === cat));
+  const hidden = $derived(hiddenItems.length);
+  // Summe der gespeicherten Posten, als wären sie aktiv
+  const hiddenSum = $derived(hiddenItems.reduce((a, it) => a + (it.status === "dropped" ? 0 : calcItem(it, app.trip).net), 0));
   let text = $state("");
   let focused = $state(false);
   // Anzeige folgt dem Wert, außer während man tippt
@@ -47,6 +51,10 @@
     {/if}
   </div>
   {#if hidden && !access.readonly}
-    <p class="muted small simple-hidden">{hidden} {hidden === 1 ? "detaillierter Posten ist" : "detaillierte Posten sind"} ausgeblendet. <button class="linkbtn" onclick={() => setDetailed(cat, true)}>Detailliert anzeigen</button></p>
+    <p class="muted small simple-hidden">
+      Details gespeichert: {hidden} Posten, zusammen {eur(hiddenSum)}. Sie zählen im einfachen Modus nicht und kommen beim Wechsel auf „Detailliert“ zurück{v != null && Math.abs(v - hiddenSum) > 0.005 ? ", dann gilt wieder deren Summe statt des Betrags oben" : ""}.
+      <button class="linkbtn" onclick={() => setDetailed(cat, true)}>Wiederherstellen</button>
+      <button class="linkbtn danger" onclick={() => { if (confirm(`Die ${hidden} gespeicherten Posten bei „${label}“ endgültig verwerfen?`)) discardDetails(cat); }}>Verwerfen</button>
+    </p>
   {/if}
 </article>

@@ -5,8 +5,8 @@
   import Icon from "./Icon.svelte";
   import ModeSwitch from "./ModeSwitch.svelte";
 
-  let { ch, n, sum, sub, children, onadd, mode, onmode }: {
-    ch: Chapter; n: number; sum: string; sub: string; children: Snippet; onadd?: () => void;
+  let { ch, n, sum, sub, children, onadd, onreset, mode, onmode }: {
+    ch: Chapter; n: number; sum: string; sub: string; children: Snippet; onadd?: () => void; onreset?: () => void;
     mode?: "simple" | "detail"; onmode?: (detail: boolean) => void;
   } = $props();
 </script>
@@ -19,6 +19,11 @@
   </div>
   <div class="cards">
     {@render children()}
-    {#if onadd}<button class="add" onclick={onadd}>+ {ch.k === "flights" ? "Flug oder Anreise" : ch.k === "stay" ? "Unterkunft" : "Posten"}</button>{/if}
+    {#if onadd}
+      <div class="add-row">
+        <button class="add" onclick={onadd}>+ {ch.k === "flights" ? "Flug oder Anreise" : ch.k === "stay" ? "Unterkunft" : "Posten"}</button>
+        {#if onreset}<button class="linkbtn danger" onclick={onreset}>Details zurücksetzen</button>{/if}
+      </div>
+    {/if}
   </div>
 </section>
