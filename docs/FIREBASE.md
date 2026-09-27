@@ -17,10 +17,14 @@ Dauer: etwa 15 Minuten. Kosten: Der kostenlose Spark-Tarif reicht für Familie u
 3. Unter **Einstellungen → Autorisierte Domains** die Domain `elvau.github.io` hinzufügen.
 
 ## 3. Datenbank anlegen
+> Wichtig: **Firestore**, nicht die „Realtime Database“. Das sind zwei verschiedene Produkte;
+> die Realtime Database versteht die Regeln nicht („Line 1: Parse error“) und wird nicht gebraucht.
+
 1. Links **Build → Firestore Database → Datenbank erstellen**.
 2. Standort **`europe-west3` (Frankfurt)**, damit die Daten in Deutschland liegen. Lässt sich später nicht ändern.
 3. **Produktionsmodus** wählen.
-4. Reiter **Regeln**: den Inhalt von [`app/firestore.rules`](../app/firestore.rules) komplett einfügen und **Veröffentlichen**.
+4. In **Firestore** den Reiter **Regeln** öffnen, den Inhalt von [`app/firestore.rules`](../app/firestore.rules)
+   komplett einfügen (die erste Zeile ist `rules_version = '2';`) und **Veröffentlichen**.
    Die Regeln sorgen dafür, dass nur Mitglieder eine Reise sehen und nur mit Einladung beitreten können.
 
 ## 4. Web-App registrieren
