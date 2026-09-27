@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Reisekasse – Designprototyp</title>
+<meta name="description" content="Prototyp für die neue Aufmachung: Kapitel mit eigenem Ambiente, Fokus auf den aktuellen Bereich.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* ---------- Tokens ---------- */
+@property --a { syntax: "<color>"; inherits: true; initial-value: #2F6FDB; }
+@property --a-soft { syntax: "<color>"; inherits: true; initial-value: #E4EDFB; }
+:root{
+  --bg:#F4F2EE; --paper:#FFFFFF; --paper-2:#F7F6F3; --ink:#15202E; --ink-2:#4B5566; --ink-3:#7D8696;
+  --line:#E3E0DA; --shadow:0 1px 2px rgba(21,32,46,.06),0 12px 32px -12px rgba(21,32,46,.18);
+  --good:#2E7D4F; --good-soft:#E2F2E8; --warn:#A0660B; --warn-soft:#FBEFD9; --idea:#6B5BD2; --idea-soft:#ECE9FB;
+  --glass:rgba(255,255,255,.72); --glass-line:rgba(255,255,255,.6);
+  /* Kapitel-Farben */
+  --c-trav:#D2693C; --c-trav-s:#FBE8DF;
+  --c-fly:#2F6FDB;  --c-fly-s:#E4EDFB;
+  --c-stay:#C0487A; --c-stay-s:#FAE3ED;
+  --c-move:#1F8A70; --c-move-s:#DDF3EC;
+  --c-fun:#D08A12;  --c-fun-s:#FCF0D6;
+  --c-misc:#7A5AC8; --c-misc-s:#EEE8FA;
+  --a:var(--c-fly); --a-soft:var(--c-fly-s);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D131C; --paper:#161E2A; --paper-2:#1C2533; --ink:#E8EDF4; --ink-2:#AEB8C7; --ink-3:#7F8A9B;
+    --line:#2A3445; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -12px rgba(0,0,0,.6);
+    --good:#7ACB98; --good-soft:#193224; --warn:#E6B45E; --warn-soft:#352914; --idea:#AEA2F2; --idea-soft:#262143;
+    --glass:rgba(22,30,42,.72); --glass-line:rgba(255,255,255,.08);
+    --c-trav:#F08F63; --c-trav-s:#3A2419; --c-fly:#7FAEF5; --c-fly-s:#1B2A45; --c-stay:#EB86B1; --c-stay-s:#3A1E2B;
+    --c-move:#5FCBA9; --c-move-s:#15322A; --c-fun:#F0B84E; --c-fun-s:#372A12; --c-misc:#B39BF0; --c-misc-s:#2A2240;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D131C; --paper:#161E2A; --paper-2:#1C2533; --ink:#E8EDF4; --ink-2:#AEB8C7; --ink-3:#7F8A9B;
+  --line:#2A3445; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -12px rgba(0,0,0,.6);
+  --good:#7ACB98; --good-soft:#193224; --warn:#E6B45E; --warn-soft:#352914; --idea:#AEA2F2; --idea-soft:#262143;
+  --glass:rgba(22,30,42,.72); --glass-line:rgba(255,255,255,.08);
+  --c-trav:#F08F63; --c-trav-s:#3A2419; --c-fly:#7FAEF5; --c-fly-s:#1B2A45; --c-stay:#EB86B1; --c-stay-s:#3A1E2B;
+  --c-move:#5FCBA9; --c-move-s:#15322A; --c-fun:#F0B84E; --c-fun-s:#372A12; --c-misc:#B39BF0; --c-misc-s:#2A2240;
+  color-scheme:dark;
+}
+body[data-ch="trav"]{--a:var(--c-trav);--a-soft:var(--c-trav-s)}
+body[data-ch="fly"]{--a:var(--c-fly);--a-soft:var(--c-fly-s)}
+body[data-ch="stay"]{--a:var(--c-stay);--a-soft:var(--c-stay-s)}
+body[data-ch="move"]{--a:var(--c-move);--a-soft:var(--c-move-s)}
+body[data-ch="fun"]{--a:var(--c-fun);--a-soft:var(--c-fun-s)}
+body[data-ch="misc"]{--a:var(--c-misc);--a-soft:var(--c-misc-s)}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Figtree",system-ui,sans-serif;transition:--a .8s ease,--a-soft .8s ease;overflow-x:hidden}
+h1,h2,h3{font-family:"Bricolage Grotesque","Figtree",sans-serif;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+svg{display:block}
+
+/* ---------- Ambiente (fester Hintergrund, wechselt je Kapitel) ---------- */
+.amb{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.amb>div{position:absolute;inset:0;opacity:0;transition:opacity 1s ease}
+body[data-ch="hero"] .amb-hero,body[data-ch="trav"] .amb-trav,body[data-ch="fly"] .amb-fly,body[data-ch="stay"] .amb-stay,
+body[data-ch="move"] .amb-move,body[data-ch="fun"] .amb-fun,body[data-ch="misc"] .amb-misc{opacity:1}
+.amb-hero{background:linear-gradient(180deg,#7EC3E8 0%,#BFE3F2 45%,#F6E7C8 70%,#E9C98E 100%)}
+.amb-trav{background:radial-gradient(1200px 600px at 80% 10%,#FBE3D3,transparent 60%),linear-gradient(180deg,#FAF3EA,#F4ECE1)}
+.amb-fly{background:linear-gradient(180deg,#5B9BE8 0%,#9CC6F2 40%,#DCEBFA 75%,#F4F8FD 100%)}
+.amb-stay{background:linear-gradient(180deg,#2B2350 0%,#6A3F72 38%,#D0767A 70%,#F2B27E 100%)}
+.amb-move{background:linear-gradient(180deg,#CDEBDF 0%,#E8F5EE 60%,#F4F2EE 100%)}
+.amb-fun{background:radial-gradient(900px 500px at 20% 20%,#FFE3A6,transparent 60%),linear-gradient(180deg,#FFF3D9,#FBEEDD)}
+.amb-misc{background:linear-gradient(180deg,#E6DFF7 0%,#F1EEF9 60%,#F4F2EE 100%)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  .amb-hero{background:linear-gradient(180deg,#0B2340 0%,#16426A 55%,#6B5A3E 100%)}
+  .amb-trav{background:radial-gradient(1200px 600px at 80% 10%,#3A2419,transparent 60%),linear-gradient(180deg,#141A22,#0F141B)}
+  .amb-fly{background:linear-gradient(180deg,#081A33 0%,#10305A 45%,#18406E 75%,#0D131C 100%)}
+  .amb-stay{background:linear-gradient(180deg,#0B0A1E 0%,#241640 40%,#4E2240 75%,#0D131C 100%)}
+  .amb-move{background:linear-gradient(180deg,#0E2A22 0%,#0F1D1A 60%,#0D131C 100%)}
+  .amb-fun{background:radial-gradient(900px 500px at 20% 20%,#3A2A0C,transparent 60%),linear-gradient(180deg,#1A1610,#0D131C)}
+  .amb-misc{background:linear-gradient(180deg,#1F1936 0%,#15131F 60%,#0D131C 100%)}
+}}
+:root[data-theme="dark"]{
+  .amb-hero{background:linear-gradient(180deg,#0B2340 0%,#16426A 55%,#6B5A3E 100%)}
+  .amb-trav{background:radial-gradient(1200px 600px at 80% 10%,#3A2419,transparent 60%),linear-gradient(180deg,#141A22,#0F141B)}
+  .amb-fly{background:linear-gradient(180deg,#081A33 0%,#10305A 45%,#18406E 75%,#0D131C 100%)}
+  .amb-stay{background:linear-gradient(180deg,#0B0A1E 0%,#241640 40%,#4E2240 75%,#0D131C 100%)}
+  .amb-move{background:linear-gradient(180deg,#0E2A22 0%,#0F1D1A 60%,#0D131C 100%)}
+  .amb-fun{background:radial-gradient(900px 500px at 20% 20%,#3A2A0C,transparent 60%),linear-gradient(180deg,#1A1610,#0D131C)}
+  .amb-misc{background:linear-gradient(180deg,#1F1936 0%,#15131F 60%,#0D131C 100%)}
+}
+/* Wolken (Flug + Start) */
+.cloud{position:absolute;fill:#fff;opacity:.85;will-change:transform}
+.amb-fly .cloud{transform:translateX(calc(var(--p,0) * var(--dx,-120px)))}
+/* Flugbahn */
+.fpath{position:absolute;left:0;right:0;top:12%;height:60%;width:100%}
+.fpath path.trail{fill:none;stroke:#fff;stroke-width:2.5;stroke-dasharray:8 10;opacity:.9}
+.fpath path.mask{fill:none;stroke:#000;stroke-width:6}
+.plane{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;color:#fff;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
+/* Sterne, Mond, Häuser (Unterkunft) */
+.star{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;opacity:.8;animation:tw 3s ease-in-out infinite}
+@keyframes tw{50%{opacity:.25}}
+.moon{position:absolute;right:12%;top:12%;width:70px;height:70px;border-radius:50%;background:#FFF4D6;box-shadow:0 0 60px 10px rgba(255,238,190,.35);transform:translateY(calc((1 - var(--p,0)) * 40px))}
+.town{position:absolute;left:0;right:0;bottom:0;height:34vh;min-height:180px}
+.town rect.b{fill:#1E1633}
+.town rect.w{fill:#FFD98A;opacity:0;transition:opacity .6s}
+.town rect.w.on{opacity:.95}
+/* Schienen (Transport) */
+.rails{position:absolute;left:-5%;right:-5%;bottom:14%;height:120px;opacity:.5}
+.rails path{fill:none;stroke:var(--c-move);stroke-width:3}
+.rails .tie{stroke-width:2;stroke-dasharray:3 16}
+.tram{position:absolute;bottom:calc(14% + 34px);left:0;width:120px;height:44px;transform:translateX(calc(var(--p,0) * 100vw - 120px));color:var(--c-move);opacity:.8}
+/* Konfetti (Attraktionen) */
+.conf{position:absolute;width:10px;height:14px;border-radius:2px;opacity:.55;transform:translateY(calc(var(--p,0) * var(--dy,80px))) rotate(calc(var(--p,0) * var(--r,90deg)))}
+/* Sonne (Start) */
+.sun{position:absolute;left:50%;top:58%;width:220px;height:220px;margin-left:-110px;border-radius:50%;background:radial-gradient(circle,#FFE9A8,#FFC867 60%,transparent 70%);opacity:.9;transform:translateY(calc(var(--hp,0) * 160px))}
+.sea{position:absolute;left:0;right:0;bottom:0;height:34%;background:linear-gradient(180deg,#3E9CC7,#1F6F9A)}
+.sea::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(255,255,255,.18) 0 2px,transparent 2px 14px);mask:linear-gradient(180deg,#000,transparent)}
+
+/* ---------- Kopf ---------- */
+.top{position:fixed;left:0;right:0;top:0;z-index:30;padding:10px 16px;transform:translateY(-110%);transition:transform .4s ease}
+body.scrolled .top{transform:none}
+.top-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:6px 8px 6px 14px;border-radius:16px;background:var(--glass);backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);border:1px solid var(--glass-line);box-shadow:var(--shadow)}
+.brand{font:800 16px "Bricolage Grotesque",sans-serif;white-space:nowrap}
+.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;position:relative}
+.nav::-webkit-scrollbar{display:none}
+.nav a{position:relative;z-index:1;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;color:var(--ink-2);text-decoration:none;font-weight:600;font-size:13.5px;white-space:nowrap;transition:color .3s}
+.nav a svg{width:16px;height:16px}
+.nav a.on{color:var(--paper)}
+.nav .pill{position:absolute;z-index:0;top:0;bottom:0;border-radius:10px;background:var(--a);transition:left .45s cubic-bezier(.3,.7,.2,1),width .45s cubic-bezier(.3,.7,.2,1),background-color .6s}
+.tbtn{border:0;background:transparent;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--ink-2)}
+.tbtn:hover{background:var(--paper-2)}
+
+/* ---------- Start ---------- */
+.hero{position:relative;z-index:1;min-height:100svh;display:grid;place-items:center;text-align:center;padding:80px 16px 120px;color:#0E2438}
+.hero .kick{display:inline-flex;gap:8px;align-items:center;padding:6px 14px;border-radius:99px;background:rgba(255,255,255,.55);backdrop-filter:blur(8px);font-weight:600;font-size:13px}
+.hero h1{font-size:clamp(44px,9vw,104px);font-weight:800;line-height:.95;margin:18px 0 12px}
+.hero .meta{font-size:17px;font-weight:500;opacity:.8}
+.hero .total{margin-top:28px;display:inline-flex;flex-direction:column;align-items:center;padding:18px 28px;border-radius:22px;background:rgba(255,255,255,.6);backdrop-filter:blur(10px);box-shadow:0 20px 50px -20px rgba(14,36,56,.4)}
+.hero .total b{font:800 clamp(38px,6vw,56px) "Bricolage Grotesque",sans-serif}
+.hero .total span{font-size:13px;opacity:.75}
+.hint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:600;opacity:.7}
+.hint i{width:22px;height:34px;border:2px solid currentColor;border-radius:12px;position:relative}
+.hint i::after{content:"";position:absolute;left:50%;top:6px;width:4px;height:7px;margin-left:-2px;border-radius:2px;background:currentColor;animation:wheel 1.8s ease-in-out infinite}
+@keyframes wheel{60%{transform:translateY(10px);opacity:0}}
+.hint{opacity:calc(.7 - var(--hp,0) * 3)}
+.hero-in{transform:translateY(calc(var(--hp,0) * -80px));opacity:calc(1 - var(--hp,0) * 1.2)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .hero{color:#EAF3FB}:root:not([data-theme="light"]) .hero .kick,:root:not([data-theme="light"]) .hero .total{background:rgba(10,25,45,.5)}}
+:root[data-theme="dark"] .hero{color:#EAF3FB}
+:root[data-theme="dark"] .hero .kick,:root[data-theme="dark"] .hero .total{background:rgba(10,25,45,.5)}
+
+/* ---------- Layout ---------- */
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 16px 40vh;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
+@media (max-width:980px){.wrap{grid-template-columns:minmax(0,1fr);padding-bottom:50vh}}
+
+/* ---------- Kapitel und Fokus ---------- */
+.chapter{padding:14vh 0 6vh;transition:opacity .6s ease,filter .6s ease,transform .6s ease;transform-origin:50% 0}
+.chapter:not(.on){opacity:.38;filter:saturate(.4) blur(1.5px);transform:scale(.97)}
+.chapter.on{opacity:1;filter:none;transform:none}
+.ch-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px}
+.ch-ico{flex:none;width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:var(--paper);color:var(--cc);box-shadow:var(--shadow)}
+.ch-ico svg{width:28px;height:28px}
+.ch-t{flex:1;min-width:0}
+.ch-t small{display:block;font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--cc)}
+.ch-t h2{font-size:clamp(30px,5vw,44px);font-weight:800;line-height:1.05}
+.ch-sum{text-align:right}
+.ch-sum b{display:block;font:800 26px "Bricolage Grotesque",sans-serif}
+.ch-sum span{font-size:12.5px;color:var(--ink-2)}
+.chapter[data-ch="stay"].on .ch-t,.chapter[data-ch="stay"].on .ch-sum,.chapter[data-ch="fly"].on .ch-t h2{color:#fff;text-shadow:0 2px 20px rgba(0,0,0,.25)}
+.chapter[data-ch="stay"].on .ch-t small,.chapter[data-ch="stay"].on .ch-sum span{color:rgba(255,255,255,.85)}
+.chapter[data-ch="fly"].on .ch-t small{color:#fff}
+
+.cards{display:flex;flex-direction:column;gap:14px}
+.card{position:relative;background:var(--paper);border-radius:20px;box-shadow:var(--shadow);border:1px solid var(--line);transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .5s,box-shadow .3s;outline:none}
+.reveal{opacity:0;transform:translateY(28px)}
+.reveal.in{opacity:1;transform:none}
+.card:focus-visible{box-shadow:0 0 0 3px var(--a),var(--shadow)}
+/* Spotlight: beim Bearbeiten tritt alles andere zurück */
+body.editing .chapter.on .card:not(.edit){opacity:.35;filter:blur(1px)}
+body.editing .aside{opacity:.5}
+.card.edit{transform:scale(1.015);box-shadow:0 0 0 2px var(--a),0 30px 60px -20px rgba(0,0,0,.35);z-index:2}
+
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
+.status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.s-idea{background:var(--idea-soft);color:var(--idea)}
+.s-chosen{background:var(--warn-soft);color:var(--warn)}
+.s-booked{background:var(--good-soft);color:var(--good)}
+.s-paid{background:var(--good);color:var(--paper)}
+.s-paid::before{background:var(--paper)}
+
+/* Bordkarte */
+.bp{display:grid;grid-template-columns:minmax(0,1fr) 170px;overflow:hidden}
+.bp-main{padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.bp-route{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
+.bp-ap b{display:block;font:800 34px/1 "Bricolage Grotesque",sans-serif}
+.bp-ap span{font-size:12.5px;color:var(--ink-2)}
+.bp-ap.r{text-align:right}
+.bp-line{position:relative;height:2px;background:repeating-linear-gradient(90deg,var(--ink-3) 0 6px,transparent 6px 12px)}
+.bp-line svg{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;color:var(--c-fly);background:var(--paper);padding:2px}
+.bp-line em{position:absolute;left:50%;top:14px;transform:translateX(-50%);font-style:normal;font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+.bp-legs{display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.bp-leg{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.bp-leg b{min-width:86px}
+.bp-stub{border-left:2px dashed var(--line);padding:18px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;background:var(--paper-2);position:relative}
+.bp-stub::before,.bp-stub::after{content:"";position:absolute;left:-12px;width:22px;height:22px;border-radius:50%;background:var(--bg)}
+.bp-stub::before{top:-12px}.bp-stub::after{bottom:-12px}
+.price b{display:block;font:800 24px "Bricolage Grotesque",sans-serif}
+.price span{font-size:12px;color:var(--ink-2)}
+@media (max-width:640px){.bp{grid-template-columns:1fr}.bp-stub{border-left:0;border-top:2px dashed var(--line);flex-direction:row;align-items:center}.bp-stub::before,.bp-stub::after{display:none}.bp-ap b{font-size:28px}}
+
+/* Optionen zum Vergleichen */
+.opts{padding:4px 20px 18px;display:flex;flex-direction:column;gap:8px}
+.opts-h{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:700;color:var(--idea)}
+.opt{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--paper);font-size:13.5px;text-align:left;width:100%}
+.opt.sel{border-color:var(--a);background:var(--a-soft)}
+.opt i{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink-3)}
+.opt.sel i{border:5px solid var(--a)}
+.opt small{display:block;color:var(--ink-2);font-size:12px}
+.opt .d{font-size:12px;font-weight:700}
+.d.up{color:#C4452E}.d.down{color:var(--good)}
+
+/* Unterkunft */
+.stay{display:grid;grid-template-columns:220px minmax(0,1fr);overflow:hidden}
+.stay-img{position:relative;min-height:200px;background:linear-gradient(160deg,#F5C58E,#E07A7A 55%,#6A3F72)}
+.stay-img svg{position:absolute;inset:0;width:100%;height:100%}
+.stay-b{padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.stay-b h3{font-size:22px}
+.facts{display:flex;flex-wrap:wrap;gap:8px}
+.fact{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--paper-2);border:1px solid var(--line)}
+.nights{display:flex;gap:4px;flex-wrap:wrap}
+.nights span{width:22px;height:22px;border-radius:7px;background:var(--a-soft);display:grid;place-items:center;font-size:12px;opacity:0;transform:scale(.6);transition:opacity .3s,transform .3s}
+.in .nights span{opacity:1;transform:none}
+.pay{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-2)}
+.pay .bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.pay .bar i{display:block;height:100%;width:0;background:var(--good);border-radius:99px;transition:width 1.2s cubic-bezier(.2,.8,.2,1) .3s}
+.stay-foot{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap}
+@media (max-width:640px){.stay{grid-template-columns:1fr}.stay-img{min-height:150px}}
+
+/* Einfache Posten */
+.row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:14px;align-items:center;padding:16px 18px}
+.row .ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--a-soft);color:var(--a)}
+.row .ic svg{width:22px;height:22px}
+.row h3{font-size:17px;font-family:"Figtree",sans-serif;font-weight:700}
+.row p{margin:2px 0 0;font-size:13px;color:var(--ink-2)}
+.row .r{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.row .r b{font:800 20px "Bricolage Grotesque",sans-serif}
+
+/* Reisende */
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:18px}
+.person{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;border-radius:16px;background:var(--paper-2);text-align:center}
+.av{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font:800 22px "Bricolage Grotesque",sans-serif;color:#fff}
+.person b{font-size:15px}
+.person span:not(.av){font-size:12.5px;color:var(--ink-2)}
+.home{display:flex;gap:10px;align-items:center;padding:0 18px 18px;font-size:13.5px;color:var(--ink-2)}
+
+/* ---------- Seitenleiste: Reiseticket ---------- */
+.aside{position:sticky;top:96px;margin-top:14vh;transition:opacity .4s}
+.tk{border-radius:22px;overflow:hidden;background:var(--paper);box-shadow:var(--shadow);border:1px solid var(--line)}
+.tk-top{padding:20px;background:linear-gradient(135deg,var(--a),color-mix(in srgb,var(--a) 60%,#0B1526));color:#fff;transition:background .8s}
+.tk-top small{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
+.tk-top b{display:block;font:800 40px/1.1 "Bricolage Grotesque",sans-serif;margin-top:6px}
+.tk-top span{font-size:13px;opacity:.85}
+.tk-b{padding:16px 20px 20px;display:flex;flex-direction:column;gap:14px}
+.fix{display:flex;flex-direction:column;gap:6px}
+.fix .bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--line)}
+.fix .bar i{display:block;height:100%}
+.fix .lg{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-2)}
+.fix .lg b{color:var(--ink)}
+.cats{display:flex;flex-direction:column;gap:2px}
+.cat{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;font-size:14px;text-decoration:none;color:var(--ink);transition:background .4s,transform .4s}
+.cat i{width:10px;height:10px;border-radius:3px;background:var(--cc)}
+.cat b{font-variant-numeric:tabular-nums}
+.cat.on{background:var(--a-soft);transform:scale(1.03);font-weight:700}
+.cat-d{grid-column:2/-1;font-size:12px;color:var(--ink-2);display:none}
+.cat.on .cat-d{display:block}
+.pp{font-size:13px;color:var(--ink-2);display:flex;justify-content:space-between}
+@media (max-width:980px){.aside{display:none}}
+
+/* ---------- Handy: untere Leiste ---------- */
+.dock{display:none}
+@media (max-width:980px){
+  .dock{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:30;display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:18px;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--glass-line);box-shadow:var(--shadow);transform:translateY(140%);transition:transform .4s}
+  body.scrolled .dock{transform:none}
+  .dock .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--a);color:#fff;transition:background .6s}
+  .dock .ic svg{width:20px;height:20px}
+  .dock div{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+  .dock small{font-size:12px;color:var(--ink-2)}
+  .dock b{font:800 18px "Bricolage Grotesque",sans-serif}
+  .dock .tot{text-align:right}
+  .top-in .brand{display:none}
+}
+
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .cloud{fill:#9FB3CC;opacity:.25}:root:not([data-theme="light"]) .tk-top{color:#0D131C}}
+:root[data-theme="dark"] .cloud{fill:#9FB3CC;opacity:.25}
+:root[data-theme="dark"] .tk-top{color:#0D131C}
+.note{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:0 16px 120px;color:var(--ink-2);font-size:13.5px;text-align:center}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+  .reveal{opacity:1;transform:none}
+  .chapter:not(.on){filter:none;transform:none}
+}
+</style>
+</head>
+<body data-ch="hero">
+
+<!-- Symbole -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V18l-2 1.5V21l3.5-1 3.5 1v-1.5L13 18v-5l8 2.5z"/></symbol>
+  <symbol id="i-bed" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 18V6M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5M7 11.5a1.5 1.5 0 1 0 0-.01"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 16h14M4 16v-4l2-5h12l2 5v4M7 16v2M17 16v2M4 12h16"/></symbol>
+  <symbol id="i-ship" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 17c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0M5 14l-1-4h16l-1 4M8 10V6h8v4M12 3v3"/></symbol>
+  <symbol id="i-ticket" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 8a2 2 0 0 0 0 4v4h18v-4a2 2 0 0 1 0-4V4H3zM14 4v12"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14a6 6 0 0 1 3.5 6"/></symbol>
+  <symbol id="i-food" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M5 3v8a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 0-3 2-3 5s1 4 3 4v9"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+  <symbol id="i-park" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M4 4h16v16H4zM9 17V7h4a3 3 0 0 1 0 6H9"/></symbol>
+  <symbol id="cl" viewBox="0 0 180 60"><ellipse cx="90" cy="44" rx="86" ry="15"/><circle cx="62" cy="34" r="22"/><circle cx="100" cy="26" r="26"/><circle cx="134" cy="38" r="17"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+</svg>
+
+<!-- Ambiente -->
+<div class="amb" aria-hidden="true">
+  <div class="amb-hero">
+    <svg class="cloud" style="left:8%;top:14%;width:180px" viewBox="0 0 180 60"><use href="#cl"/></svg>
+    <svg class="cloud" style="right:10%;top:24%;width:130px;opacity:.7" viewBox="0 0 180 60"><use href="#cl"/></svg>
+    <div class="sun"></div><div class="sea"></div>
+  </div>
+  <div class="amb-trav"></div>
+  <div class="amb-fly">
+    <svg class="cloud" style="left:5%;top:20%;width:220px;--dx:-160px" viewBox="0 0 180 60"><use href="#cl"/></svg>
+    <svg class="cloud" style="left:60%;top:8%;width:160px;opacity:.6;--dx:-90px" viewBox="0 0 180 60"><use href="#cl"/></svg>
+    <svg class="cloud" style="left:30%;top:62%;width:260px;opacity:.9;--dx:-240px" viewBox="0 0 180 60"><use href="#cl"/></svg>
+    <svg class="cloud" style="left:78%;top:48%;width:190px;opacity:.75;--dx:-180px" viewBox="0 0 180 60"><use href="#cl"/></svg>
+    <svg class="fpath" viewBox="0 0 1000 400" preserveAspectRatio="none"><defs><mask id="fm" maskUnits="userSpaceOnUse" x="-50" y="0" width="1100" height="400"><path id="fmp" d="M-20 360 C 250 330, 420 60, 1020 40" fill="none" stroke="#fff" stroke-width="10"/></mask></defs><path id="fp" class="trail" mask="url(#fm)" d="M-20 360 C 250 330, 420 60, 1020 40"/></svg>
+    <svg class="plane" id="plane" viewBox="0 0 24 24"><use href="#i-plane"/></svg>
+  </div>
+  <div class="amb-stay" id="ambStay">
+    <div class="moon"></div>
+    <svg class="town" id="town" viewBox="0 0 1000 300" preserveAspectRatio="xMidYMax slice"></svg>
+  </div>
+  <div class="amb-move">
+    <svg class="rails" viewBox="0 0 1000 120" preserveAspectRatio="none"><path d="M0 60 C 300 20, 700 100, 1000 60"/><path class="tie" d="M0 60 C 300 20, 700 100, 1000 60" stroke-width="18"/></svg>
+    <svg class="tram" viewBox="0 0 120 44"><rect x="2" y="4" width="116" height="30" rx="10" fill="currentColor"/><rect x="12" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8"/><rect x="40" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8"/><rect x="68" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8"/><circle cx="26" cy="38" r="5" fill="currentColor"/><circle cx="94" cy="38" r="5" fill="currentColor"/></svg>
+  </div>
+  <div class="amb-fun" id="ambFun"></div>
+  <div class="amb-misc"></div>
+</div>
+
+<!-- Kopfleiste -->
+<header class="top">
+  <div class="top-in">
+    <span class="brand">Reisekasse</span>
+    <nav class="nav" id="nav" aria-label="Kapitel">
+      <span class="pill" id="pill"></span>
+      <a href="#trav" data-ch="trav"><svg><use href="#i-users"/></svg>Reisende</a>
+      <a href="#fly" data-ch="fly"><svg><use href="#i-plane"/></svg>Flüge</a>
+      <a href="#stay" data-ch="stay"><svg><use href="#i-bed"/></svg>Unterkunft</a>
+      <a href="#move" data-ch="move"><svg><use href="#i-car"/></svg>Vor Ort</a>
+      <a href="#fun" data-ch="fun"><svg><use href="#i-ticket"/></svg>Erlebnisse</a>
+      <a href="#misc" data-ch="misc"><svg><use href="#i-bag"/></svg>Sonstiges</a>
+    </nav>
+    <button class="tbtn" id="theme" aria-label="Hell oder dunkel"><svg width="18" height="18"><use href="#i-moon"/></svg></button>
+  </div>
+</header>
+
+<!-- Start -->
+<section class="hero" id="hero" data-ch="hero">
+  <div class="hero-in">
+    <span class="kick">☀️ Sommerferien 2027 · Familie Klein</span>
+    <h1>Makarska,<br>Kroatien</h1>
+    <div class="meta">18. bis 29. Juli · 11 Nächte · 4 Reisende</div>
+    <div class="total"><b class="num" id="heroTotal">0 €</b><span id="heroPP">pro Person</span></div>
+  </div>
+  <div class="hint"><i></i>Reise entdecken</div>
+</section>
+
+<div class="wrap">
+  <main id="main">
+
+    <section class="chapter" id="trav" data-ch="trav" style="--cc:var(--c-trav)">
+      <div class="ch-head">
+        <div class="ch-ico"><svg><use href="#i-users"/></svg></div>
+        <div class="ch-t"><small>Kapitel 1</small><h2>Wer fährt mit</h2></div>
+        <div class="ch-sum"><b>4</b><span>1 Haushalt</span></div>
+      </div>
+      <div class="cards">
+        <article class="card reveal" tabindex="0">
+          <div class="people" id="people"></div>
+          <div class="home">🏠 Wohnort 40210 Düsseldorf · Anreise mit dem Auto</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="chapter" id="fly" data-ch="fly" style="--cc:var(--c-fly)">
+      <div class="ch-head">
+        <div class="ch-ico"><svg><use href="#i-plane"/></svg></div>
+        <div class="ch-t"><small>Kapitel 2</small><h2>Abheben</h2></div>
+        <div class="ch-sum"><b class="num" data-sum="fly"></b><span>Flüge und Anreise</span></div>
+      </div>
+      <div class="cards">
+        <article class="card reveal" tabindex="0" data-edit>
+          <div class="bp">
+            <div class="bp-main">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="status s-idea">Idee · 3 Angebote</span><span style="font-size:12.5px;color:var(--ink-2)">Eurowings · Direktflug</span></div>
+              <div class="bp-route">
+                <div class="bp-ap"><b>DUS</b><span>Düsseldorf</span></div>
+                <div class="bp-line"><svg viewBox="0 0 24 24" style="transform:rotate(90deg)"><use href="#i-plane"/></svg><em>2 h 15 min</em></div>
+                <div class="bp-ap r"><b>SPU</b><span>Split</span></div>
+              </div>
+              <div class="bp-legs">
+                <div class="bp-leg"><b>Hin · Sa 18.07.</b><span>06:10 → 08:25</span></div>
+                <div class="bp-leg"><b>Zurück · Do 29.07.</b><span>09:15 → 11:35</span></div>
+              </div>
+            </div>
+            <div class="bp-stub">
+              <div class="price"><b class="num">389 €</b><span>pro Person, inkl. Koffer</span></div>
+              <div class="price"><b class="num">1.556 €</b><span>für 4</span></div>
+            </div>
+          </div>
+          <div class="opts">
+            <div class="opts-h"><span>Angebote vergleichen</span><span>Preis vom 27.09.</span></div>
+            <button class="opt sel"><i></i><span>Eurowings ab DUS, direkt<small>06:10 → 08:25 · 2 h 15 min</small></span><span class="num">1.556 €</span></button>
+            <button class="opt"><i></i><span>Ryanair ab Weeze, direkt<small>14:40 → 16:50 · +45 min Anreise, Gepäck extra</small></span><span class="num">1.096 € <span class="d down">−460</span></span></button>
+            <button class="opt"><i></i><span>Croatia Airlines ab DUS, via Zagreb<small>07:05 → 12:40 · 5 h 35 min</small></span><span class="num">1.324 € <span class="d down">−232</span></span></button>
+          </div>
+        </article>
+        <article class="card reveal" tabindex="0" data-edit>
+          <div class="row">
+            <div class="ic"><svg><use href="#i-park"/></svg></div>
+            <div><h3>Parken am Flughafen</h3><p>P7 Holiday · 12 Tage · Auto 25 min</p></div>
+            <div class="r"><b class="num">96 €</b><span class="status s-paid">Bezahlt</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="chapter" id="stay" data-ch="stay" style="--cc:var(--c-stay)">
+      <div class="ch-head">
+        <div class="ch-ico"><svg><use href="#i-bed"/></svg></div>
+        <div class="ch-t"><small>Kapitel 3</small><h2>Ankommen</h2></div>
+        <div class="ch-sum"><b class="num" data-sum="stay"></b><span>11 Nächte</span></div>
+      </div>
+      <div class="cards">
+        <article class="card reveal" tabindex="0" data-edit>
+          <div class="stay">
+            <div class="stay-img" aria-hidden="true">
+              <svg viewBox="0 0 220 200" preserveAspectRatio="xMidYMax slice"><circle cx="160" cy="60" r="22" fill="#FFE7B0" opacity=".9"/><path d="M0 150 Q 60 120 120 140 T 220 130 V200 H0z" fill="#2B6F8F" opacity=".75"/><rect x="40" y="80" width="70" height="80" rx="4" fill="#F7EDE2"/><rect x="52" y="94" width="14" height="14" fill="#E9A15A"/><rect x="84" y="94" width="14" height="14" fill="#E9A15A"/><rect x="52" y="120" width="14" height="14" fill="#E9A15A"/><rect x="84" y="120" width="14" height="14" fill="#E9A15A"/><path d="M34 82 L75 58 L116 82z" fill="#C4513C"/></svg>
+            </div>
+            <div class="stay-b">
+              <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="status s-booked">Gebucht</span><span style="font-size:12.5px;color:var(--ink-2)">Booking · storniert gratis bis 01.06.</span></div>
+              <h3>Villa Maslina, Makarska</h3>
+              <div class="facts"><span class="fact">★★★★</span><span class="fact">89 % Bewertung</span><span class="fact">2 Schlafzimmer</span><span class="fact">350 m zum Strand</span></div>
+              <div class="nights" id="nights"></div>
+              <div class="stay-foot">
+                <div class="pay"><span>Anzahlung 400 € von 1.628 € bezahlt</span><div class="bar" style="width:200px"><i data-w="24.6%"></i></div></div>
+                <div class="price" style="text-align:right"><b class="num">1.628 €</b><span>148 € pro Nacht · 37 € p. P.</span></div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="chapter" id="move" data-ch="move" style="--cc:var(--c-move)">
+      <div class="ch-head">
+        <div class="ch-ico"><svg><use href="#i-car"/></svg></div>
+        <div class="ch-t"><small>Kapitel 4</small><h2>Unterwegs</h2></div>
+        <div class="ch-sum"><b class="num" data-sum="move"></b><span>Transport vor Ort</span></div>
+      </div>
+      <div class="cards">
+        <article class="card reveal" tabindex="0" data-edit><div class="row"><div class="ic"><svg><use href="#i-car"/></svg></div><div><h3>Mietwagen</h3><p>Kompaktklasse · 11 Tage · ab Flughafen Split</p></div><div class="r"><b class="num">385 €</b><span class="status s-chosen">Gewählt</span></div></div></article>
+        <article class="card reveal" tabindex="0" data-edit><div class="row"><div class="ic"><svg><use href="#i-ship"/></svg></div><div><h3>Fähre nach Brač</h3><p>Makarska → Sumartin, hin und zurück, mit Auto</p></div><div class="r"><b class="num">62 €</b><span class="status s-idea">Idee</span></div></div></article>
+      </div>
+    </section>
+
+    <section class="chapter" id="fun" data-ch="fun" style="--cc:var(--c-fun)">
+      <div class="ch-head">
+        <div class="ch-ico"><svg><use href="#i-ticket"/></svg></div>
+        <div class="ch-t"><small>Kapitel 5</small><h2>Erleben</h2></div>
+        <div class="ch-sum"><b class="num" data-sum="fun"></b><span>Attraktionen</span></div>
+      </div>
+      <div class="cards">
+        <article class="card reveal" tabindex="0" data-edit><div class="row"><div class="ic"><svg><use href="#i-ticket"/></svg></div><div><h3>Nationalpark Krka</h3><p>2 × 40 € Erwachsene · 2 × 15 € Kinder</p></div><div class="r"><b class="num">110 €</b><span class="status s-chosen">Gewählt</span></div></div></article>
+        <article class="card reveal" tabindex="0" data-edit><div class="row"><div class="ic"><svg><use href="#i-ship"/></svg></div><div><h3>Bootstour Blaue Grotte</h3><p>2 × 75 € Erwachsene · 2 × 45 € Kinder</p></div><div class="r"><b class="num">240 €</b><span class="status s-idea">Idee</span></div></div></article>
+      </div>
+    </section>
+
+    <section class="chapter" id="misc" data-ch="misc" style="--cc:var(--c-misc)">
+      <div class="ch-head">
+        <div class="ch-ico"><svg><use href="#i-bag"/></svg></div>
+        <div class="ch-t"><small>Kapitel 6</small><h2>Alles andere</h2></div>
+        <div class="ch-sum"><b class="num" data-sum="misc"></b><span>Sonstiges</span></div>
+      </div>
+      <div class="cards">
+        <article class="card reveal" tabindex="0" data-edit><div class="row"><div class="ic"><svg><use href="#i-food"/></svg></div><div><h3>Verpflegung</h3><p>Gemischt · 28 € pro Person und Tag · 11 Tage</p></div><div class="r"><b class="num">1.232 €</b><span class="status s-chosen">Geschätzt</span></div></div></article>
+        <article class="card reveal" tabindex="0" data-edit><div class="row"><div class="ic"><svg><use href="#i-shield"/></svg></div><div><h3>Reiseversicherung</h3><p>Familie · Rücktritt und Krankheit</p></div><div class="r"><b class="num">89 €</b><span class="status s-paid">Bezahlt</span></div></div></article>
+      </div>
+    </section>
+
+  </main>
+
+  <aside class="aside" id="aside" aria-label="Zusammenfassung">
+    <div class="tk">
+      <div class="tk-top"><small>Gesamt</small><b class="num" id="tkTotal"></b><span id="tkPP"></span></div>
+      <div class="tk-b">
+        <div class="fix">
+          <div class="bar"><i id="barFix" style="background:var(--good)"></i><i id="barOpen" style="background:var(--idea);opacity:.55"></i></div>
+          <div class="lg"><span>Fest <b class="num" id="fixV"></b></span><span>Offen <b class="num" id="openV"></b></span></div>
+        </div>
+        <div class="cats" id="cats"></div>
+        <div class="pp"><span>Pro Person und Nacht</span><b class="num" id="ppn"></b></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<p class="note">Designprototyp mit Beispieldaten. Die echte App rechnet weiter wie bisher.</p>
+
+<div class="dock" aria-hidden="true"><span class="ic" id="dockIc"><svg><use href="#i-plane"/></svg></span><div><small id="dockL">Flüge</small><b class="num" id="dockV"></b></div><div class="tot"><small>Gesamt</small><b class="num" id="dockT"></b></div></div>
+
+<script>
+(function(){
+  "use strict";
+  const eur = n => new Intl.NumberFormat("de-DE", {maximumFractionDigits: 0}).format(Math.round(n)) + " €";
+  const P = 4, NIGHTS = 11;
+  // Beispieldaten: Kategorie, Betrag, Status
+  const ITEMS = [
+    {c: "fly", n: "Flug DUS–SPU", v: 1556, s: "idea"}, {c: "fly", n: "Parken", v: 96, s: "paid"},
+    {c: "stay", n: "Villa Maslina", v: 1628, s: "booked"},
+    {c: "move", n: "Mietwagen", v: 385, s: "chosen"}, {c: "move", n: "Fähre Brač", v: 62, s: "idea"},
+    {c: "fun", n: "Krka", v: 110, s: "chosen"}, {c: "fun", n: "Bootstour", v: 240, s: "idea"},
+    {c: "misc", n: "Verpflegung", v: 1232, s: "chosen"}, {c: "misc", n: "Versicherung", v: 89, s: "paid"}
+  ];
+  const CATS = [
+    {k: "fly", l: "Flüge", i: "i-plane"}, {k: "stay", l: "Unterkunft", i: "i-bed"}, {k: "move", l: "Vor Ort", i: "i-car"},
+    {k: "fun", l: "Erlebnisse", i: "i-ticket"}, {k: "misc", l: "Sonstiges", i: "i-bag"}
+  ];
+  const sum = f => ITEMS.filter(f).reduce((a, x) => a + x.v, 0);
+  const TOTAL = sum(() => true), FIX = sum(x => x.s === "booked" || x.s === "paid");
+  const catSum = k => sum(x => x.c === k);
+
+  document.querySelectorAll("[data-sum]").forEach(el => el.textContent = eur(catSum(el.dataset.sum)));
+  document.getElementById("tkTotal").textContent = eur(TOTAL);
+  document.getElementById("tkPP").textContent = eur(TOTAL / P) + " pro Person · 4 Reisende";
+  document.getElementById("fixV").textContent = eur(FIX);
+  document.getElementById("openV").textContent = eur(TOTAL - FIX);
+  document.getElementById("barFix").style.width = (FIX / TOTAL * 100) + "%";
+  document.getElementById("barOpen").style.width = ((TOTAL - FIX) / TOTAL * 100) + "%";
+  document.getElementById("ppn").textContent = eur(TOTAL / P / NIGHTS);
+  document.getElementById("dockT").textContent = eur(TOTAL);
+  document.getElementById("heroPP").textContent = eur(TOTAL / P) + " pro Person · davon " + eur(FIX) + " fest";
+  document.getElementById("cats").innerHTML = CATS.map(c => {
+    const its = ITEMS.filter(x => x.c === c.k);
+    return `<a class="cat" href="#${c.k}" data-ch="${c.k}" style="--cc:var(--c-${c.k})"><i></i><span>${c.l}</span><b>${eur(catSum(c.k))}</b><span class="cat-d">${its.map(x => x.n + " " + eur(x.v)).join(" · ")}</span></a>`;
+  }).join("");
+
+  // Reisende
+  const PEOPLE = [["Anna", 41, "Erwachsene", "#D2693C"], ["Jonas", 43, "Erwachsener", "#2F6FDB"], ["Mia", 11, "Kind", "#C0487A"], ["Ben", 8, "Kind", "#1F8A70"]];
+  document.getElementById("people").innerHTML = PEOPLE.map(([n, a, t, c]) => `<div class="person"><span class="av" style="background:${c}">${n[0]}</span><b>${n}</b><span>${a} Jahre · ${t}</span></div>`).join("");
+  // Nächte
+  const nightsEl = document.getElementById("nights");
+  nightsEl.innerHTML = Array.from({length: NIGHTS}, (_, i) => `<span style="transition-delay:${i * 60}ms"><svg width="13" height="13"><use href="#i-moon"/></svg></span>`).join("");
+
+  // Stadt mit Fenstern (Unterkunft)
+  const town = document.getElementById("town"); let tw = "";
+  const rnd = (s => () => (s = (s * 9301 + 49297) % 233280) / 233280)(7);
+  for (let x = 0; x < 1000; ){ const w = 50 + rnd() * 70, h = 90 + rnd() * 170; tw += `<rect class="b" x="${x}" y="${300 - h}" width="${w}" height="${h}"/>`;
+    for (let wy = 300 - h + 14; wy < 290; wy += 26) for (let wx = x + 10; wx < x + w - 14; wx += 22) tw += `<rect class="w" x="${wx}" y="${wy}" width="10" height="13" data-t="${rnd().toFixed(3)}"/>`;
+    x += w + 4; }
+  town.innerHTML = tw;
+  const WIN = [...town.querySelectorAll(".w")];
+  // Sterne
+  const stay = document.getElementById("ambStay");
+  for (let i = 0; i < 60; i++){ const s = document.createElement("i"); s.className = "star"; s.style.left = (rnd() * 100) + "%"; s.style.top = (rnd() * 55) + "%"; s.style.animationDelay = (rnd() * 3) + "s"; stay.appendChild(s); }
+  // Konfetti
+  const fun = document.getElementById("ambFun"); const cols = ["#F2A93B", "#E0605E", "#3FA7D6", "#7AC74F", "#B084CC"];
+  for (let i = 0; i < 36; i++){ const c = document.createElement("i"); c.className = "conf"; c.style.left = (rnd() * 100) + "%"; c.style.top = (rnd() * 100) + "%"; c.style.background = cols[i % 5]; c.style.setProperty("--dy", (40 + rnd() * 160) + "px"); c.style.setProperty("--r", (rnd() * 360 - 180) + "deg"); fun.appendChild(c); }
+
+  // Aktives Kapitel
+  const chapters = [...document.querySelectorAll(".chapter")];
+  const navLinks = [...document.querySelectorAll("#nav a")];
+  const pill = document.getElementById("pill");
+  let active = "hero";
+  function setActive(ch){
+    if (ch === active) return; active = ch;
+    document.body.dataset.ch = ch;
+    chapters.forEach(s => s.classList.toggle("on", s.dataset.ch === ch));
+    navLinks.forEach(a => a.classList.toggle("on", a.dataset.ch === ch));
+    document.querySelectorAll(".cat").forEach(a => a.classList.toggle("on", a.dataset.ch === ch));
+    const on = navLinks.find(a => a.dataset.ch === ch);
+    if (on){ pill.style.opacity = 1; pill.style.left = on.offsetLeft + "px"; pill.style.width = on.offsetWidth + "px"; on.scrollIntoView({block: "nearest", inline: "center", behavior: "smooth"}); }
+    else pill.style.opacity = 0;
+    const c = CATS.find(x => x.k === ch);
+    document.getElementById("dockL").textContent = c ? c.l : "Reisende";
+    document.getElementById("dockV").textContent = c ? eur(catSum(ch)) : "4 Personen";
+    document.querySelector("#dockIc use").setAttribute("href", "#" + (c ? c.i : "i-users"));
+  }
+  pill.style.opacity = 0;
+
+  // Fortschritt je Kapitel (für Parallax, Flugzeug, Fenster)
+  const fp = document.getElementById("fp"), fmp = document.getElementById("fmp"), plane = document.getElementById("plane"), fpLen = fp.getTotalLength();
+  const vb = {w: 1000, h: 400};
+  function tick(){
+    const vh = innerHeight, y = scrollY;
+    document.body.classList.toggle("scrolled", y > vh * 0.6);
+    const hp = Math.min(1, y / vh); document.documentElement.style.setProperty("--hp", hp.toFixed(3));
+    // Kapitel in der Bildschirmmitte ist aktiv
+    let cur = y < vh * 0.55 ? "hero" : null;
+    if (!cur) for (const s of chapters){ const r = s.getBoundingClientRect(); if (r.top <= vh * 0.5 && r.bottom > vh * 0.5){ cur = s.dataset.ch; break; } }
+    if (cur) setActive(cur);
+    const sec = chapters.find(s => s.dataset.ch === active);
+    let p = 0; if (sec){ const r = sec.getBoundingClientRect(); p = Math.max(0, Math.min(1, (vh * 0.8 - r.top) / (r.height + vh * 0.3))); }
+    document.body.style.setProperty("--p", p.toFixed(3));
+    if (active === "fly"){
+      const pt = fp.getPointAtLength(p * fpLen), pt2 = fp.getPointAtLength(Math.min(fpLen, p * fpLen + 4));
+      const box = fp.ownerSVGElement.getBoundingClientRect();
+      const x = box.left + pt.x / vb.w * box.width, yy = box.top + pt.y / vb.h * box.height;
+      const ang = Math.atan2((pt2.y - pt.y) * box.height / vb.h, (pt2.x - pt.x) * box.width / vb.w) * 180 / Math.PI + 90;
+      plane.style.transform = `translate(${x}px,${yy}px) rotate(${ang}deg)`;
+      fmp.style.strokeDasharray = fpLen; fmp.style.strokeDashoffset = fpLen * (1 - p);
+    }
+    if (active === "stay") WIN.forEach(w => w.classList.toggle("on", +w.dataset.t < p * 0.9));
+  }
+  let raf = 0; addEventListener("scroll", () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; tick(); }); }, {passive: true});
+  addEventListener("resize", () => { const on = navLinks.find(a => a.dataset.ch === active); if (on){ pill.style.left = on.offsetLeft + "px"; pill.style.width = on.offsetWidth + "px"; } tick(); });
+  tick();
+
+  // Karten erscheinen beim Scrollen
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting){ e.target.classList.add("in"); const b = e.target.querySelector(".bar i[data-w]"); if (b) b.style.width = b.dataset.w; io.unobserve(e.target); } }), {rootMargin: "0px 0px -12% 0px"});
+  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+  // Summe hochzählen
+  const ht = document.getElementById("heroTotal"); const t0 = performance.now();
+  (function count(t){ const k = Math.min(1, (t - t0) / 1400), e = 1 - Math.pow(1 - k, 3); ht.textContent = eur(TOTAL * e); if (k < 1) requestAnimationFrame(count); })(t0);
+
+  // Spotlight beim Bearbeiten
+  document.querySelectorAll("[data-edit]").forEach(card => {
+    card.addEventListener("click", e => { if (e.target.closest(".opt")) return; const on = !card.classList.contains("edit"); document.querySelectorAll(".card.edit").forEach(c => c.classList.remove("edit")); card.classList.toggle("edit", on); document.body.classList.toggle("editing", on); });
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape"){ document.querySelectorAll(".card.edit").forEach(c => c.classList.remove("edit")); document.body.classList.remove("editing"); } });
+  document.addEventListener("click", e => { if (!e.target.closest("[data-edit]")){ document.querySelectorAll(".card.edit").forEach(c => c.classList.remove("edit")); document.body.classList.remove("editing"); } });
+  // Angebot wählen
+  document.querySelectorAll(".opt").forEach(o => o.addEventListener("click", () => { o.parentElement.querySelectorAll(".opt").forEach(x => x.classList.remove("sel")); o.classList.add("sel"); }));
+
+  // Hell / dunkel
+  const root = document.documentElement;
+  try { const t = localStorage.getItem("rk-theme"); if (t) root.dataset.theme = t; } catch(e){}
+  document.getElementById("theme").addEventListener("click", () => {
+    const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark"; try { localStorage.setItem("rk-theme", root.dataset.theme); } catch(e){}
+  });
+})();
+</script>
+</body>
+</html>

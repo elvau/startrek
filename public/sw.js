@@ -1,6 +1,6 @@
 /* Service Worker: App-Hülle vorab cachen, Daten beim ersten Abruf.
    Bei Änderungen an der App VERSION hochzählen. */
-const VERSION = "rk-v1";
+const VERSION = "rk-v2";
 const SHELL = ["./", "index.html", "claude-shim.js", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -18,8 +18,8 @@ self.addEventListener("fetch", e => {
   if (!sameOrigin && !isFont) return;
   // Seite: erst Netz (damit Updates ankommen), sonst Cache
   if (req.mode === "navigate"){
-    e.respondWith(fetch(req).then(r => { const c = r.clone(); caches.open(VERSION).then(cc => cc.put("index.html", c)); return r; })
-      .catch(() => caches.match("index.html")));
+    e.respondWith(fetch(req).then(r => { if (r.ok){ const c = r.clone(); caches.open(VERSION).then(cc => cc.put(req, c)); } return r; })
+      .catch(async () => (await caches.match(req)) || caches.match("index.html")));
     return;
   }
   // Alles andere (Daten, Icons, Schriften): Cache zuerst, im Hintergrund auffrischen
