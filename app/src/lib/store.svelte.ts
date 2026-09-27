@@ -295,10 +295,12 @@ export function removeItem(id: string) {
   if (app.editing === id) app.editing = null;
 }
 
-export function resetSample() {
+/** Beispielreise als neue Reise öffnen; die offene Reise bleibt unangetastet */
+export function openSample() {
+  flush();
   const s = sampleTrip();
-  app.trip = normalize({ ...s, id: app.trip.id });
-  app.editing = null;
+  open({ ...s, id: uid(), name: `Beispiel: ${s.name}` });
+  if (cloud.user) void moveToCloud(app.trip.id);
 }
 
 /* ---------- Einfach oder detailliert ---------- */
