@@ -202,10 +202,20 @@ export async function logout() {
   if (ids.includes(app.trip.id)) openFirst();
 }
 
+/** Nach dem Löschen oder Abmelden: nächste Reise öffnen, sonst eine leere (nie wieder das Beispiel) */
 function openFirst() {
-  const next = app.index.map(m => readTrip(m.id)).find(Boolean);
-  if (next) open(next);
-  else { const s = sampleTrip(); open({ ...s, id: uid() }); }
+  clearTimeout(timer); timer = undefined;
+  const gone = app.trip.id;
+  const next = app.index.filter(m => m.id !== gone).map(m => readTrip(m.id)).find(Boolean);
+  if (next) { open(next); return; }
+  const c = cloud.trips.find(t => t.id !== gone);
+  if (c) {
+    open(readTrip(c.id) || { id: c.id, name: c.name, place: c.name, country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });
+    return;
+  }
+  const empty: Trip = { id: uid(), name: "Neue Reise", place: "Neue Reise", country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } };
+  open(empty);
+  if (cloud.user) void moveToCloud(empty.id);
 }
 
 function open(trip: Trip) {
@@ -255,6 +265,7 @@ export function duplicateTrip() {
 }
 
 export async function deleteTrip(id: string) {
+  if (id === app.trip.id) { clearTimeout(timer); timer = undefined; }
   if (isCloud(id)) {
     await removeCloudTrip(id);
     del(K_TRIP(id));

@@ -109,6 +109,17 @@ try {
   if ((await mal.locator(".hero .tm-btn").first().textContent()).includes("☁")) fail("Mallory ist in der Reise");
   log("Zurückgezogener Link funktioniert nicht mehr");
 
+  // Mallory löscht ihre einzige Reise auf dem Gerät: danach eine leere Reise im Konto, kein Beispiel mehr
+  mal.on("dialog", d => d.accept());
+  await mal.locator(".hero .tm-btn").first().click();
+  await mal.locator(".tm-act", { hasText: "Diese Reise löschen" }).click();
+  await until(async () => (await mal.locator(".hero h1").textContent()).includes("Neue Reise"), "leere Reise nach dem Löschen");
+  await until(async () => (await mal.locator(".hero .tm-btn").first().textContent()).includes("☁"), "leere Reise liegt im Konto");
+  await mal.locator(".hero .acct-btn").click();
+  if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("Hinweis auf Gerät-Reise bleibt");
+  await mal.keyboard.press("Escape");
+  log("Letzte Reise gelöscht: leere Reise im Konto, kein Beispiel");
+
   // Neu laden: Anna hat die Reise weiter im Konto
   await dbState("vor Neuladen");
   await anna.reload();
