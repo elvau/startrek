@@ -8,15 +8,24 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-reisekasse \"vitest run --config vitest.rules.config.ts\"",
+    "build:emu": "VITE_FIREBASE_EMULATOR=1 vite build --outDir dist-emu",
+    "test:cloud": "npm run build:emu && firebase emulators:exec --only auth,firestore --project demo-reisekasse \"node e2e/cloud.mjs\""
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
+    "firebase-tools": "^15.31.0",
+    "playwright": "^1.56.1",
     "svelte": "^5.57.1",
     "svelte-check": "^4.7.6",
     "typescript": "^6.0.3",
     "vite": "^8.3.1",
     "vitest": "^5.0.2"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0"
   }
 }

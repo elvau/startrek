@@ -1,0 +1,75 @@
+rules_version = '2';
+
+// Reisekasse: Reisen gehören ihren Mitgliedern.
+// Rollen: owner (alles, Mitglieder verwalten, löschen), editor (Inhalt bearbeiten), viewer (nur lesen).
+// Beitreten nur mit dem Einladungsschlüssel, den der Besitzer in der Reise hinterlegt hat.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function isMember(d) { return signedIn() && uid() in d.memberIds; }
+    function roleIn(d) { return d.members[uid()]; }
+    function canEdit(d) { return isMember(d) && roleIn(d) in ['owner', 'editor']; }
+    function isOwner(d) { return isMember(d) && d.owner == uid(); }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // memberIds und members beschreiben dieselben Personen, genau ein Besitzer
+    function consistent(d) {
+      return d.memberIds is list && d.members is map
+        && d.members.keys().hasAll(d.memberIds) && d.memberIds.hasAll(d.members.keys())
+        && d.memberIds.size() == d.members.size()
+        && d.members[d.owner] == 'owner';
+    }
+    function validInvite(d) {
+      return !('invite' in d) || d.invite == null
+        || (d.invite.key is string && d.invite.key.size() >= 16 && d.invite.role in ['editor', 'viewer']);
+    }
+    function validContent(d) {
+      return d.data is string && d.data.size() < 900000 && d.name is string && d.name.size() < 200;
+    }
+
+    match /trips/{tripId} {
+      allow read: if isMember(resource.data);
+
+      allow create: if signedIn()
+        && request.resource.data.owner == uid()
+        && request.resource.data.memberIds == [uid()]
+        && request.resource.data.members.keys().hasOnly([uid()])
+        && consistent(request.resource.data)
+        && validInvite(request.resource.data)
+        && validContent(request.resource.data);
+
+      allow update: if
+        // Inhalt bearbeiten: Mitglieder, Besitzer und Einladung bleiben unverändert
+        (canEdit(resource.data)
+          && !changed().hasAny(['owner', 'memberIds', 'members', 'memberNames', 'invite', 'joinKey'])
+          && validContent(request.resource.data))
+        // Besitzer verwaltet Mitglieder und Einladung
+        || (isOwner(resource.data)
+          && request.resource.data.owner == resource.data.owner
+          && consistent(request.resource.data)
+          && validInvite(request.resource.data)
+          && validContent(request.resource.data))
+        // Beitreten mit Einladungsschlüssel: nur sich selbst hinzufügen, mit der Rolle der Einladung
+        || (signedIn()
+          && !(uid() in resource.data.memberIds)
+          && resource.data.get('invite', null) != null
+          && request.resource.data.joinKey == resource.data.invite.key
+          && changed().hasOnly(['memberIds', 'members', 'memberNames', 'joinKey'])
+          && request.resource.data.memberIds == resource.data.memberIds.concat([uid()])
+          && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([uid()])
+          && request.resource.data.members[uid()] == resource.data.invite.role
+          && request.resource.data.memberNames.diff(resource.data.get('memberNames', {})).affectedKeys().hasOnly([uid()]))
+        // Reise verlassen (nicht der Besitzer): nur sich selbst entfernen
+        || (isMember(resource.data)
+          && resource.data.owner != uid()
+          && changed().hasOnly(['memberIds', 'members', 'memberNames'])
+          && request.resource.data.memberIds.toSet() == resource.data.memberIds.toSet().difference([uid()].toSet())
+          && request.resource.data.members.keys().toSet() == resource.data.members.keys().toSet().difference([uid()].toSet())
+          && request.resource.data.members.diff(resource.data.members).changedKeys().size() == 0);
+
+      allow delete: if isOwner(resource.data);
+    }
+  }
+}

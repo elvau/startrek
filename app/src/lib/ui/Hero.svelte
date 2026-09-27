@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { app, calc } from "../store.svelte";
+  import { access, app, calc } from "../store.svelte";
+  import { cloud } from "../cloud/cloud.svelte";
+  import Account from "./Account.svelte";
   import { eur } from "../calc";
   import { nights, range } from "../format";
   import TripMenu from "./TripMenu.svelte";
@@ -27,7 +29,16 @@
 </script>
 
 <section class="hero" id="hero" data-ch="hero">
-  <div class="hero-bar"><TripMenu /><button class="hero-edit" onclick={() => (editing = !editing)} aria-expanded={editing}>{editing ? "Schließen" : "Reise bearbeiten"}</button></div>
+  <div class="hero-bar">
+    <TripMenu />
+    <div class="hero-r">
+      {#if !access.readonly}<button class="hero-edit" onclick={() => (editing = !editing)} aria-expanded={editing} aria-label={editing ? "Schließen" : "Reise bearbeiten"}><span class="ico" aria-hidden="true">{editing ? "×" : "✎"}</span><span class="lbl">{editing ? "Schließen" : "Reise bearbeiten"}</span></button>{/if}
+      <Account />
+    </div>
+  </div>
+  {#if access.loading}<div class="banner">Lade den aktuellen Stand aus dem Konto…</div>
+  {:else if access.readonly}<div class="banner">Du siehst diese Reise nur an.</div>{/if}
+  {#if cloud.joinError}<div class="banner err">{cloud.joinError} <button class="linkbtn" onclick={() => (cloud.joinError = "")}>OK</button></div>{/if}
   <div class="hero-in">
     {#if editing}
       <TripEditor onclose={() => (editing = false)} />

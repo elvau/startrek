@@ -24,6 +24,8 @@ cd app
 npm install
 npm run dev      # http://localhost:5173
 npm test         # Rechenkern
+npm run test:rules   # Sicherheitsregeln (Firebase-Emulator, braucht Java)
+npm run test:cloud   # zwei Personen planen gemeinsam (Emulator + Browser)
 npm run check    # Typprüfung
 ```
 
@@ -33,6 +35,10 @@ npm run check    # Typprüfung
 | `app/src/lib/calc/` | Rechenkern ohne Oberfläche, mit Tests |
 | `app/src/lib/ui/` | Oberfläche: Kapitel, Karten, Ambiente, Fokusmodus |
 | `app/src/styles/` | Design-System (Farben je Kapitel, hell und dunkel) |
+| `app/src/lib/cloud/` | Konto, Synchronisation und Teilen über Firebase |
+| `app/firestore.rules` | Sicherheitsregeln der Datenbank, getestet in `app/rules-test/` |
+
+Konto und Teilen: Einrichtung in [`docs/FIREBASE.md`](docs/FIREBASE.md). Ohne Firebase läuft die App nur lokal.
 
 ## Bisherige App starten
 
@@ -75,6 +81,6 @@ installierte Apps das Update laden.
 
 ## Roadmap
 
-- [ ] Geteiltes Speichern über ein Backend (z. B. Firebase oder Supabase), damit Mitreisende denselben Stand sehen
+- [x] Geteiltes Speichern über Firebase, damit Mitreisende denselben Stand sehen
 - [ ] Flug- und Unterkunftssuche über eigene API-Anbindung
 - [ ] App-Store-Versionen (Android/iOS) mit Capacitor

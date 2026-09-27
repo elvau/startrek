@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Item } from "../model";
-  import { app, calc } from "../store.svelte";
+  import { access, app, calc } from "../store.svelte";
   import { calcOption, eur } from "../calc";
   import { dayShort, duration, time, dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
@@ -14,6 +14,7 @@
 
   function choose(id: string, e: Event) {
     e.stopPropagation();
+    if (access.readonly) return;
     item.chosen = id;
   }
 </script>

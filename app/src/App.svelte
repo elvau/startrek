@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { app, calc, addItem, resetSample } from "./lib/store.svelte";
+  import { access, app, calc, addItem, resetSample } from "./lib/store.svelte";
+  import { cloud } from "./lib/cloud/cloud.svelte";
+  import LoginDialog from "./lib/ui/LoginDialog.svelte";
   import { eur } from "./lib/calc";
   import { CHAPTERS, CAT_CHAPTERS, SPLIT } from "./lib/chapters";
   import { initScroll } from "./lib/scroll.svelte";
@@ -47,7 +49,7 @@
 
     {#each CAT_CHAPTERS as ch, i (ch.k)}
       {@const items = app.trip.items.filter(x => x.cat === ch.k)}
-      <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn ? `${nn} Nächte` : ch.sub} onadd={() => addItem(ch.k)}>
+      <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn ? `${nn} Nächte` : ch.sub} onadd={access.readonly ? undefined : () => addItem(ch.k)}>
         {#if ch.k === "stay"}<article class="card plan-card" use:reveal><PresencePlan /></article>{/if}
         {#each items as item (item.id)}
           <ItemCard {item} icon={ch.icon} />
@@ -65,8 +67,9 @@
 </div>
 
 <p class="note">
-  Neue Reisekasse, Vorschau. Gespeichert wird in diesem Browser.
-  <button class="linkbtn" onclick={() => { if (confirm("Beispielreise wiederherstellen? Eigene Änderungen gehen verloren.")) resetSample(); }}>Beispiel zurücksetzen</button>
+  {cloud.user ? "Reisen mit ☁ liegen in deinem Konto." : "Gespeichert wird in diesem Browser."}
+  {#if !access.readonly}<button class="linkbtn" onclick={() => { if (confirm("Beispielreise wiederherstellen? Eigene Änderungen gehen verloren.")) resetSample(); }}>Beispiel zurücksetzen</button>{/if}
 </p>
 
 <Dock />
+{#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}

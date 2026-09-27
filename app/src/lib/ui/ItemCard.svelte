@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Item } from "../model";
-  import { app } from "../store.svelte";
+  import { access, app } from "../store.svelte";
   import FlightCard from "./FlightCard.svelte";
   import StayCard from "./StayCard.svelte";
   import ItemRow from "./ItemRow.svelte";
@@ -13,11 +13,12 @@
   const isStay = $derived(item.cat === "stay");
 
   function toggle(e: MouseEvent) {
+    if (access.readonly) return;
     if ((e.target as HTMLElement).closest("button,input,select,a,label")) return;
     app.editing = editing ? null : item.id;
   }
   function key(e: KeyboardEvent) {
-    if (e.key === "Enter" && e.target === e.currentTarget) app.editing = editing ? null : item.id;
+    if (e.key === "Enter" && e.target === e.currentTarget && !access.readonly) app.editing = editing ? null : item.id;
   }
 </script>
 
