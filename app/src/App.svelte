@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { access, app, calc, addItem, resetSample } from "./lib/store.svelte";
+  import { access, app, calc, addItem, resetSample, setDetailed } from "./lib/store.svelte";
+  import { isDetailed } from "./lib/model";
+  import SimpleCard from "./lib/ui/SimpleCard.svelte";
   import { cloud } from "./lib/cloud/cloud.svelte";
   import LoginDialog from "./lib/ui/LoginDialog.svelte";
   import { eur } from "./lib/calc";
@@ -32,7 +34,7 @@
 
   $effect(() => { document.body.classList.toggle("editing", !!app.editing); });
 
-  const households = $derived(new Set(app.trip.travelers.map(t => t.household.trim() || "Ohne Haushalt")).size);
+  const households = $derived(Object.keys(calc.T.byHousehold).length);
   const nn = $derived(nights(app.trip.from, app.trip.to));
 </script>
 
@@ -43,19 +45,26 @@
 
 <div class="wrap">
   <main>
-    <Chapter ch={CHAPTERS[0]} n={1} sum={String(app.trip.travelers.length)} sub="{households} {households === 1 ? 'Haushalt' : 'Haushalte'}">
+    <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? `von ${app.trip.travelers.length} dabei · ` : ''}{households} {households === 1 ? 'Familie' : 'Familien'}">
       <article class="card" use:reveal><TravelersCard /></article>
     </Chapter>
 
     {#each CAT_CHAPTERS as ch, i (ch.k)}
       {@const items = app.trip.items.filter(x => x.cat === ch.k)}
-      <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn ? `${nn} Nächte` : ch.sub} onadd={access.readonly ? undefined : () => addItem(ch.k)}>
-        {#if ch.k === "stay"}<article class="card plan-card" use:reveal><PresencePlan /></article>{/if}
-        {#each items as item (item.id)}
-          <ItemCard {item} icon={ch.icon} />
+      {@const det = isDetailed(app.trip, ch.k)}
+      <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn && det ? `${nn} Nächte` : ch.sub}
+        onadd={access.readonly || !det ? undefined : () => addItem(ch.k)}
+        mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on)}>
+        {#if !det}
+          <SimpleCard cat={ch.k} label={ch.label} />
         {:else}
-          <div class="empty-ch">Noch nichts eingetragen.</div>
-        {/each}
+          {#if ch.k === "stay"}<article class="card plan-card" use:reveal><PresencePlan /></article>{/if}
+          {#each items as item (item.id)}
+            <ItemCard {item} icon={ch.icon} />
+          {:else}
+            <div class="empty-ch">Noch nichts eingetragen.</div>
+          {/each}
+        {/if}
       </Chapter>
     {/each}
 

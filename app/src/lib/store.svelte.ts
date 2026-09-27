@@ -1,6 +1,6 @@
 /* App-Zustand: mehrere Reisen, lokal gespeichert. Später hinter einem Speicher-Adapter (Firebase). */
 import { totals } from "./calc";
-import { DEFAULT_SETTINGS, uid, type CatKey, type Item, type Trip } from "./model";
+import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Traveler, type Trip } from "./model";
 import { sampleTrip } from "./seed";
 import { cloud, cloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
 
@@ -240,14 +240,15 @@ export function switchTrip(id: string) {
   if (c) open({ id, name: c.name, place: c.name, country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });
 }
 
-export function newTrip() {
+/** Neue Reise, standardmäßig im einfachen Modus; Reisende z. B. aus gespeicherten Gruppen */
+export function newTrip(opts: { name?: string; travelers?: Traveler[] } = {}) {
   flush();
   const toCloud = !!cloud.user;
-  const hh = app.trip.travelers[0]?.household || "Wir";
+  const name = opts.name?.trim() || "Neue Reise";
   open({
-    id: uid(), name: "Neue Reise", place: "Neue Reise", country: "",
-    // Reisende und Wohnorte übernehmen, das spart Tipparbeit
-    travelers: JSON.parse(JSON.stringify(app.trip.travelers.length ? app.trip.travelers : [{ id: uid(), name: "Ich", age: 35, household: hh }])),
+    id: uid(), name, place: name, country: "",
+    travelers: opts.travelers || [],
+    // Wohnorte und Anreise je Familie aus der bisherigen Reise übernehmen, das spart Tipparbeit
     households: JSON.parse(JSON.stringify(app.trip.households || {})),
     items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
   });
@@ -298,4 +299,47 @@ export function resetSample() {
   const s = sampleTrip();
   app.trip = normalize({ ...s, id: app.trip.id });
   app.editing = null;
+}
+
+/* ---------- Einfach oder detailliert ---------- */
+
+const CAT_NAMES: Record<CatKey, string> = { flights: "Flüge", stay: "Unterkunft", transport: "Transport vor Ort", attractions: "Erlebnisse", misc: "Sonstiges" };
+
+/**
+ * Bereich umschalten, ohne etwas zu verlieren:
+ * einfach → detailliert: ein vorhandener Betrag wird zum ersten Posten, wenn es noch keine gibt;
+ * detailliert → einfach: ist noch kein Betrag eingetragen, wird die Summe der Posten übernommen.
+ */
+export function setDetailed(cat: CatKey, on: boolean) {
+  const trip = app.trip;
+  if (isDetailed(trip, cat) === on) return;
+  if (on) {
+    const v = trip.simple?.[cat] || 0;
+    if (v > 0 && !trip.items.some(i => i.cat === cat)) {
+      trip.items.push({
+        id: uid(), cat, name: `${CAT_NAMES[cat]} (pauschal)`, status: "chosen",
+        options: [{ id: uid(), label: "Pauschal", price: { mode: "unit", currency: "EUR", unit: v } }]
+      });
+    }
+  } else if (!((trip.simple?.[cat] ?? 0) > 0)) {
+    const sum = calc.T.byCat[cat];
+    if (sum > 0) { trip.simple ||= {}; trip.simple[cat] = Math.round(sum); }
+  }
+  trip.detail ||= {};
+  trip.detail[cat] = on;
+  if (app.editing && !on) app.editing = null;
+}
+
+export function setAllDetailed(on: boolean) { CAT_KEYS.forEach(c => setDetailed(c, on)); }
+
+/** "simple", "detail" oder "mixed" für die ganze Reise */
+export function tripMode(): "simple" | "detail" | "mixed" {
+  const d = CAT_KEYS.map(c => isDetailed(app.trip, c));
+  return d.every(Boolean) ? "detail" : d.some(Boolean) ? "mixed" : "simple";
+}
+
+export function setSimple(cat: CatKey, v: number | undefined) {
+  app.trip.simple ||= {};
+  if (v == null || isNaN(v)) delete app.trip.simple[cat];
+  else app.trip.simple[cat] = Math.max(0, v);
 }

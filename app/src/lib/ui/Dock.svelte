@@ -6,7 +6,7 @@
   import Icon from "./Icon.svelte";
 
   const ch = $derived(CHAPTERS.find(c => c.k === view.active) || CHAPTERS[0]);
-  const val = $derived(ch.k === "trav" ? `${app.trip.travelers.length} Personen` : ch.k === "split" ? `${Object.keys(calc.T.byHousehold).length} ${Object.keys(calc.T.byHousehold).length === 1 ? "Familie" : "Familien"}` : eur(calc.T.byCat[ch.k]));
+  const val = $derived(ch.k === "trav" ? `${calc.T.active} ${calc.T.active === 1 ? "Person" : "Personen"}` : ch.k === "split" ? `${Object.keys(calc.T.byHousehold).length} ${Object.keys(calc.T.byHousehold).length === 1 ? "Familie" : "Familien"}` : eur(calc.T.byCat[ch.k]));
 </script>
 
 <div class="dock" aria-hidden="true">

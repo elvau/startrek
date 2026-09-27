@@ -1,12 +1,16 @@
 <script lang="ts">
-  import { access, allTrips, app, deleteTrip, duplicateTrip, moveToCloud, newTrip, switchTrip } from "../store.svelte";
+  import { access, allTrips, app, deleteTrip, duplicateTrip, moveToCloud, switchTrip } from "../store.svelte";
   import { cloud, cloudTrip } from "../cloud/cloud.svelte";
   import { monthYear } from "../format";
   import ShareDialog from "./ShareDialog.svelte";
+  import NewTripDialog from "./NewTripDialog.svelte";
+  import GroupsDialog from "./GroupsDialog.svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
   let open = $state(false);
   let share = $state(false);
+  let creating = $state(false);
+  let groups = $state(false);
   let root: HTMLDivElement;
 
   const trips = $derived(allTrips());
@@ -46,7 +50,7 @@
         </button>
       {/each}
       <div class="tm-sep"></div>
-      <button role="menuitem" class="tm-act" onclick={() => act(newTrip)}>+ Neue Reise</button>
+      <button role="menuitem" class="tm-act" onclick={() => { creating = true; open = false; }}>+ Neue Reise</button>
       <button role="menuitem" class="tm-act" onclick={() => act(duplicateTrip)}>Diese Reise kopieren</button>
       {#if cloud.user && !cur}
         <button role="menuitem" class="tm-act" onclick={() => act(() => moveToCloud(app.trip.id))}>☁ Im Konto speichern</button>
@@ -56,6 +60,7 @@
       {:else if cloud.configured && !cloud.user}
         <button role="menuitem" class="tm-act" onclick={() => { cloud.showLogin = true; open = false; }}>Anmelden zum Teilen</button>
       {/if}
+      <button role="menuitem" class="tm-act" onclick={() => { groups = true; open = false; }}>Gruppen und Personen</button>
       {#if !access.readonly || (cur && !isOwner)}
         <button role="menuitem" class="tm-act danger" onclick={remove}>{cur && !isOwner ? "Reise verlassen" : "Diese Reise löschen"}</button>
       {/if}
@@ -64,3 +69,5 @@
 </div>
 
 {#if share}<ShareDialog id={app.trip.id} onclose={() => (share = false)} />{/if}
+{#if creating}<NewTripDialog onclose={() => (creating = false)} />{/if}
+{#if groups}<GroupsDialog onclose={() => (groups = false)} />{/if}

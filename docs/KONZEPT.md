@@ -298,3 +298,16 @@ Entschieden im September 2026, Vorlage ist der Prototyp unter `public/design/`.
 Noch nicht übernommen aus der alten App: Rundreise mit Stationen, Karte, Länderpakete mit
 Vorschlägen, Verpflegung nach Stil und Anwesenheit, gespeicherte Stände und Vergleich, PDF,
 Gruppenrabatte in der Oberfläche einstellen, Abflughäfen bearbeiten.
+
+## 12. Einfach zuerst (Stand September 2026)
+
+- **Einfacher Modus als Standard:** Neue Reisen haben je Bereich (Flüge, Unterkunft, Vor Ort,
+  Erlebnisse, Sonstiges) ein Betragsfeld. Die Summe wird gleich auf alle aktiven Personen verteilt,
+  dazu eine Summe je Familie (Nachname).
+- **Umschalten je Bereich oder für die ganze Reise** zwischen *Einfach* und *Detailliert*. Nichts geht
+  verloren: Ein Betrag wird beim Umschalten zum ersten Posten, und die Summe der Posten wird zum Betrag;
+  ausgeblendete Posten bleiben gespeichert.
+- **Gruppen und Personen** im Konto (`profiles/{uid}`): Vor- und Nachname sind Pflicht, eine Person
+  kann in mehreren Gruppen sein (z. B. Familie und Kegelclub). Neue Reisen werden für eine oder mehrere
+  Gruppen angelegt; einzelne Personen lassen sich je Reise auf *nicht dabei* stellen.
+- Personen in einer Reise sind eine Kopie: Änderungen in der Gruppe ändern bestehende Reisen nicht.

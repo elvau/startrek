@@ -11,11 +11,37 @@ export type AgeClass = "adult" | "child" | "infant";
 
 export interface Traveler {
   id: string;
+  /** Vorname */
   name: string;
   /** Alter zum Reisezeitpunkt */
   age: number;
+  /** Familie bzw. Haushalt; bei Personen aus Gruppen der Nachname */
   household: string;
   color?: string;
+  /** false: für diese Reise nicht dabei (zählt nirgends mit) */
+  active?: boolean;
+  /** gespeicherte Person, aus der dieser Reisende stammt */
+  personId?: string;
+}
+
+/** Gespeicherte Person (im Konto), unabhängig von Reisen */
+export interface Person {
+  id: string;
+  first: string;
+  last: string;
+  age?: number;
+}
+
+/** Gespeicherte Gruppe, z. B. Familie oder Kegelclub. Eine Person kann in mehreren Gruppen sein. */
+export interface Group {
+  id: string;
+  name: string;
+  memberIds: string[];
+}
+
+export interface Directory {
+  people: Person[];
+  groups: Group[];
 }
 
 export interface Tier {
@@ -156,6 +182,10 @@ export interface Trip {
   travelers: Traveler[];
   households?: Record<string, Household>;
   items: Item[];
+  /** Einfacher Modus: ein Betrag je Bereich, gleich auf alle Aktiven verteilt */
+  simple?: Partial<Record<CatKey, number>>;
+  /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
+  detail?: Partial<Record<CatKey, boolean>>;
   tiers: Partial<Record<CatKey, Tier[]>>;
   settings: Settings;
 }
@@ -165,3 +195,8 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 export const DEFAULT_SETTINGS: Settings = { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 };
 
 export const hhKey = (t: Traveler) => t.household.trim() || "Ohne Haushalt";
+
+export const isActive = (t: Traveler) => t.active !== false;
+
+/** Wird dieser Bereich mit einzelnen Posten gerechnet? */
+export const isDetailed = (trip: Trip, cat: CatKey) => trip.detail?.[cat] ?? trip.items.some(i => i.cat === cat);

@@ -25,7 +25,10 @@ Dauer: etwa 15 Minuten. Kosten: Der kostenlose Spark-Tarif reicht für Familie u
 3. **Produktionsmodus** wählen.
 4. In **Firestore** den Reiter **Regeln** öffnen, den Inhalt von [`app/firestore.rules`](../app/firestore.rules)
    komplett einfügen (die erste Zeile ist `rules_version = '2';`) und **Veröffentlichen**.
-   Die Regeln sorgen dafür, dass nur Mitglieder eine Reise sehen und nur mit Einladung beitreten können.
+   Die Regeln sorgen dafür, dass nur Mitglieder eine Reise sehen und nur mit Einladung beitreten können,
+   und dass gespeicherte Gruppen und Personen nur für einen selbst sichtbar sind.
+
+   **Wenn sich `app/firestore.rules` ändert, die Regeln hier erneut einfügen und veröffentlichen.**
 
 ## 4. Web-App registrieren
 1. **Projektübersicht** (Zahnrad) **→ Projekteinstellungen → Meine Apps → Web-App hinzufügen** (Symbol `</>`).
@@ -61,6 +64,7 @@ beschränken. Dann kann niemand den Schlüssel auf einer anderen Seite verwenden
 Beide laufen bei jedem Pull Request automatisch.
 
 ## Wie es funktioniert
+- Gespeicherte Personen und Gruppen liegen je Konto in `profiles/{uid}`, nur für einen selbst lesbar.
 - Jede Reise ist ein Dokument `trips/{id}` mit dem Inhalt als Text, dem Besitzer, den Mitgliedern
   mit Rolle (`owner`, `editor`, `viewer`) und optional einer Einladung (zufälliger Schlüssel und Rolle).
 - Die App arbeitet immer mit einer lokalen Kopie und gleicht live ab; offline Geänderte wird später übertragen.

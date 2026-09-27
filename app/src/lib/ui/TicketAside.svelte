@@ -7,7 +7,7 @@
   import { view } from "../scroll.svelte";
 
   const T = $derived(calc.T);
-  const n = $derived(app.trip.travelers.length);
+  const n = $derived(T.active);
   const nn = $derived(nights(app.trip.from, app.trip.to));
 </script>
 
