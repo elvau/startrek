@@ -3,6 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -11,20 +12,53 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Abhängigkeiten
+        working-directory: app
+        run: npm ci
+      - name: Tests
+        working-directory: app
+        run: npm test
+      - name: Typprüfung
+        working-directory: app
+        run: npm run check
+      - name: Neue App bauen
+        working-directory: app
+        run: npm run build
+        env:
+          BASE: /${{ github.event.repository.name }}/neu/
+      - name: Seite zusammenstellen
+        run: |
+          mkdir -p _site
+          cp -r public/. _site/
+          mkdir -p _site/neu
+          cp -r app/dist/. _site/neu/
+      - uses: actions/configure-pages@v5
+        if: github.event_name != 'pull_request'
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: _site
+
   deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: public
       - id: deployment
         uses: actions/deploy-pages@v4

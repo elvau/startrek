@@ -233,7 +233,7 @@ glauben muss. Die Gewichte werden in der ersten Version fest vorgegeben und spä
 | --- | --- | --- |
 | Sprache | TypeScript | Datenmodell mit Typen, weniger Rechenfehler |
 | Build | Vite | schnell, einfach, PWA-Plugin |
-| Oberfläche | Svelte oder Preact | klein und schnell, gut für Handy |
+| Oberfläche | Svelte 5 | klein und schnell, gut für Handy |
 | Tests | Vitest | Rechenkern und Planer |
 | Speicherung | zuerst IndexedDB lokal, dann Firebase (Firestore, Region Frankfurt) | offline, später gemeinsam |
 | App-Stores | Capacitor | dieselbe Web-App für Android und iOS |
@@ -264,7 +264,37 @@ man täglich braucht.
    Für Strandurlaub sind Regionen deutlich genauer.
 4. **Pauschalreisen:** Sollen Pauschalangebote (Flug und Hotel zusammen) als eigene Option
    vergleichbar sein? Für Familien im Sommer oft günstiger.
-5. **Oberfläche:** Soll das Aussehen bleiben (Farben, Ticket-Seitenleiste, Hanko-Stempel)
-   oder darf es neu gestaltet werden?
+5. ~~**Oberfläche**~~ entschieden: das Design aus `public/design/` (Kapitel mit eigenem
+   Ambiente, Fokus auf den aktuellen Bereich). Siehe 10.
 6. **Wer nutzt die App?** Erst nur Familie und Freunde, oder von Anfang an öffentlich mit
    Konten? Das entscheidet, wie früh Phase 4 kommt.
+
+## 10. Design
+
+Entschieden im September 2026, Vorlage ist der Prototyp unter `public/design/`.
+
+- **Kapitel statt Formular:** Reisende, Flüge („Abheben“), Unterkunft („Ankommen“), Vor Ort
+  („Unterwegs“), Erlebnisse („Erleben“), Sonstiges („Alles andere“).
+- **Ambiente je Kapitel:** eigener Hintergrund und Akzentfarbe. Flüge: Himmel mit Wolken und
+  Flugzeug auf einer Flugbahn. Unterkunft: Abenddämmerung, Fenster gehen an. Vor Ort: Schienen.
+  Erlebnisse: Konfetti.
+- **Fokus:** Nur das Kapitel in der Bildschirmmitte ist scharf, der Rest tritt zurück. Beim
+  Bearbeiten einer Karte (Fokusmodus) tritt auch der Rest des Kapitels zurück.
+- **Übersicht:** Gesamt, fest und offen, Kategorien; die aktuelle Kategorie ist hervorgehoben.
+  Am Handy als Leiste unten.
+- **Karten nach Art:** Flüge als Bordkarte mit Angebotsvergleich, Unterkunft mit Bild,
+  Nächten und Zahlungsfortschritt, alles andere als Zeile mit Symbol.
+- Hell und dunkel, „Bewegung reduzieren“ wird beachtet.
+
+## 11. Stand
+
+| Phase | Stand |
+| --- | --- |
+| 0 | erledigt |
+| 1 | begonnen: Projekt, Datenmodell mit Status und Angeboten, Rechenkern für Preise pro Person und pauschal, Altersklassen, Gruppenrabatte, Beteiligte, Währungen, fest/offen, Zahlungen, mit Tests |
+| 2 | begonnen: Oberfläche im neuen Design, Posten anlegen und bearbeiten, Angebote vergleichen, Reisende bearbeiten, lokal gespeichert |
+
+Noch nicht übernommen aus der alten App: Unterkunft nach Anwesenheit je Haushalt, Anreise zum
+Flughafen mit PLZ, Rundreise mit Stationen und Zeitstrahl, Karte, Länderpakete mit
+Vorschlägen, Verpflegung nach Stil, mehrere Reisen, gespeicherte Stände, PDF, Import der
+alten Daten.

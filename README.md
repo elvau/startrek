@@ -6,7 +6,35 @@ gesamt, mit Gruppenrabatten, Mehrwährung, Karte, Reiseplan und PDF-Export.
 
 Ursprünglich als claude.ai-Artifact entstanden, hier als eigenständige Web-App (PWA).
 
-## Starten
+## Zwei Apps nebeneinander
+
+| | Adresse | Ordner |
+| --- | --- | --- |
+| **Neue Reisekasse** (im Aufbau) | `/neu/` | `app/` (Svelte, TypeScript, Vite) |
+| Bisherige Reisekasse | `/` | `public/` |
+| Designprototyp | `/design/` | `public/design/` |
+
+Die bisherige App bleibt online, bis die neue alles kann, was man täglich braucht.
+Plan und Anwendungsfälle: [`docs/KONZEPT.md`](docs/KONZEPT.md).
+
+## Neue App entwickeln
+
+```bash
+cd app
+npm install
+npm run dev      # http://localhost:5173
+npm test         # Rechenkern
+npm run check    # Typprüfung
+```
+
+| Pfad | Inhalt |
+| --- | --- |
+| `app/src/lib/model.ts` | Datenmodell: Reise, Reisende, Posten mit Status und Angeboten |
+| `app/src/lib/calc/` | Rechenkern ohne Oberfläche, mit Tests |
+| `app/src/lib/ui/` | Oberfläche: Kapitel, Karten, Ambiente, Fokusmodus |
+| `app/src/styles/` | Design-System (Farben je Kapitel, hell und dunkel) |
+
+## Bisherige App starten
 
 ```bash
 npm start        # http://localhost:8080
@@ -38,8 +66,9 @@ Kein Build-Schritt: alles in `public/` wird direkt ausgeliefert.
 
 ## Veröffentlichen
 
-Bei jedem Push auf `main` deployt `.github/workflows/pages.yml` den Ordner `public/`
-auf GitHub Pages. Einmalig einschalten: *Settings → Pages → Source: GitHub Actions*.
+Bei jedem Push auf `main` prüft `.github/workflows/pages.yml` die neue App (Tests,
+Typprüfung), baut sie nach `/neu/` und veröffentlicht alles auf GitHub Pages. Bei Pull
+Requests laufen nur die Prüfungen. Einmalig einschalten: *Settings → Pages → Source: GitHub Actions*.
 
 Nach Änderungen an der App in `public/sw.js` die `VERSION` hochzählen, damit
 installierte Apps das Update laden.
