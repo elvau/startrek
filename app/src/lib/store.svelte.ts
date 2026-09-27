@@ -40,6 +40,17 @@ function boot(): { index: TripMeta[]; trip: Trip } {
     put(K_INDEX, JSON.stringify(index));
     del(K_OLD);
   }
+  // Beispielreisen hatten früher alle die ID "beispiel"; eigene ID vergeben, damit sie im Konto nicht kollidieren
+  const oldEx = index.find(m => m.id === "beispiel");
+  if (oldEx) {
+    const t = readTrip("beispiel");
+    const nid = "b-" + uid();
+    if (t) { t.id = nid; put(K_TRIP(nid), JSON.stringify(t)); }
+    del(K_TRIP("beispiel"));
+    oldEx.id = nid;
+    put(K_INDEX, JSON.stringify(index));
+    if (get(K_CUR) === "beispiel") put(K_CUR, nid);
+  }
   const cur = get(K_CUR);
   const trip = (cur && readTrip(cur)) || readTrip(index[0].id) || normalize(sampleTrip());
   return { index, trip };
@@ -274,6 +285,6 @@ export function removeItem(id: string) {
 
 export function resetSample() {
   const s = sampleTrip();
-  app.trip = normalize({ ...s, id: app.trip.id === s.id ? s.id : app.trip.id });
+  app.trip = normalize({ ...s, id: app.trip.id });
   app.editing = null;
 }

@@ -9,8 +9,9 @@ const URL = "http://127.0.0.1:4174/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
 /** Stand in der Datenbank, am Emulator vorbei gelesen */
+let tripId = "";
 async function dbState(tag) {
-  const r = await fetch("http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/beispiel", { headers: { Authorization: "Bearer owner" } });
+  const r = await fetch(`http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/${tripId}`, { headers: { Authorization: "Bearer owner" } });
   const j = await r.json();
   const data = JSON.parse(j.fields?.data?.stringValue || "{}");
   const auto = (data.items || []).find(x => x.id === "auto");
@@ -52,6 +53,7 @@ try {
   await anna.locator(".tm-act", { hasText: "Ins Konto übernehmen" }).click();
   await until(async () => (await anna.locator(".hero .tm-btn").textContent()).includes("☁"), "Reise im Konto");
   const before = await total(anna);
+  tripId = await anna.evaluate(() => localStorage.getItem("rk2-current"));
   log("Reise im Konto, Summe", before);
 
   // Anna erstellt einen Einladungslink
@@ -68,6 +70,7 @@ try {
   await oma.goto(link);
   await oma.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
   await login(oma, "Oma");
+  await until(async () => (await oma.locator(".hero .tm-btn").first().textContent()).includes("☁"), "Oma hat die Reise im Konto");
   await until(async () => (await oma.locator(".hero h1").textContent()).includes("Makarska"), "Oma sieht die Reise");
   await until(async () => !(await oma.locator(".banner").count()), "Stand geladen");
   if ((await total(oma)) !== before) fail(`Oma sieht ${await total(oma)} statt ${before}`);
