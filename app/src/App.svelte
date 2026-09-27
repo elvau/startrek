@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { app, calc, addItem, resetSample } from "./lib/store.svelte";
   import { eur } from "./lib/calc";
-  import { CHAPTERS, CAT_CHAPTERS } from "./lib/chapters";
+  import { CHAPTERS, CAT_CHAPTERS, SPLIT } from "./lib/chapters";
   import { initScroll } from "./lib/scroll.svelte";
   import { nights } from "./lib/format";
   import Sprite from "./lib/ui/Sprite.svelte";
@@ -16,6 +16,7 @@
   import Dock from "./lib/ui/Dock.svelte";
   import { reveal } from "./lib/ui/reveal";
   import PresencePlan from "./lib/ui/PresencePlan.svelte";
+  import Split from "./lib/ui/Split.svelte";
 
   onMount(() => {
     try { const t = localStorage.getItem("rk-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
@@ -55,6 +56,10 @@
         {/each}
       </Chapter>
     {/each}
+
+    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.total)} sub="{households} {households === 1 ? 'Haushalt' : 'Haushalte'}">
+      <Split />
+    </Chapter>
   </main>
   <TicketAside />
 </div>

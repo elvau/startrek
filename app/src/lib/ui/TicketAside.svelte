@@ -34,6 +34,17 @@
           </a>
         {/each}
       </div>
+      {#if Object.keys(T.byHousehold).length > 1}
+        <div class="fam">
+          <span class="sect">Pro Familie</span>
+          {#each Object.entries(T.byHousehold) as [h, v] (h)}
+            <a class="fam-l" href="#hh-{h}"><span>{h}</span><b class="num">{eur(v)}</b></a>
+          {/each}
+          <a class="fam-more" href="#split">Wer zahlt was im Detail →</a>
+        </div>
+      {:else}
+        <a class="fam-more" href="#split">Abrechnung im Detail →</a>
+      {/if}
       {#if nn && n}<div class="pp"><span>Pro Person und Nacht</span><b class="num">{eur(T.total / n / nn)}</b></div>{/if}
       <div class="pp"><span>Bereits bezahlt</span><b class="num">{eur(T.paid)}</b></div>
       {#if !app.saved}<div class="pp"><span>Speichert…</span></div>{/if}
