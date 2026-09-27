@@ -1,0 +1,50 @@
+<script lang="ts">
+  import type { Item } from "../model";
+  import { calc } from "../store.svelte";
+  import { eur } from "../calc";
+  import { dateDE } from "../format";
+  import StatusBadge from "./StatusBadge.svelte";
+
+  let { item }: { item: Item } = $props();
+  const r = $derived(calc.T.items[item.id]);
+  const s = $derived(r?.option?.stay);
+  const nn = $derived(s?.nights || r?.option?.price.qty || 0);
+  const pct = $derived(r && r.net ? Math.min(100, (r.paid / r.net) * 100) : 0);
+  let shown = $state(false);
+  $effect(() => { const t = setTimeout(() => (shown = true), 300); return () => clearTimeout(t); });
+</script>
+
+<div class="stay">
+  <div class="stay-img" aria-hidden="true">
+    <svg viewBox="0 0 220 200" preserveAspectRatio="xMidYMax slice"><circle cx="160" cy="60" r="22" fill="#FFE7B0" opacity=".9" /><path d="M0 150 Q 60 120 120 140 T 220 130 V200 H0z" fill="#2B6F8F" opacity=".75" /><rect x="40" y="80" width="70" height="80" rx="4" fill="#F7EDE2" /><rect x="52" y="94" width="14" height="14" fill="#E9A15A" /><rect x="84" y="94" width="14" height="14" fill="#E9A15A" /><rect x="52" y="120" width="14" height="14" fill="#E9A15A" /><rect x="84" y="120" width="14" height="14" fill="#E9A15A" /><path d="M34 82 L75 58 L116 82z" fill="#C4513C" /></svg>
+  </div>
+  <div class="stay-b">
+    <div class="stay-hd">
+      <StatusBadge status={item.status} />
+      {#if item.booking?.provider}<span class="muted">{item.booking.provider}{item.booking.cancelUntil ? ` · storniert gratis bis ${dateDE(item.booking.cancelUntil)}` : ""}</span>{/if}
+    </div>
+    <h3>{item.name || "Neue Unterkunft"}</h3>
+    <div class="facts">
+      {#if s?.stars}<span class="fact">{"★".repeat(s.stars)}</span>{/if}
+      {#if s?.rating}<span class="fact">{s.rating} % Bewertung</span>{/if}
+      {#each s?.facts || [] as f}<span class="fact">{f}</span>{/each}
+    </div>
+    {#if nn}
+      <div class="nights" class:in={shown}>
+        {#each Array(Math.min(nn, 31)) as _, i}<span style="transition-delay:{i * 60}ms"><svg width="13" height="13"><use href="#i-moon" /></svg></span>{/each}
+      </div>
+    {/if}
+    <div class="stay-foot">
+      <div class="pay">
+        {#if item.status === "paid"}<span>Vollständig bezahlt</span>
+        {:else if r?.paid}<span>{eur(r.paid)} von {eur(r.net)} bezahlt</span>
+        {:else}<span>Noch nichts bezahlt</span>{/if}
+        <div class="bar"><i style:width="{shown ? pct : 0}%"></i></div>
+      </div>
+      <div class="price r">
+        <b class="num">{eur(r?.net || 0)}</b>
+        <span>{nn ? `${eur((r?.net || 0) / nn)} pro Nacht` : ""}{nn && r?.n ? ` · ${eur((r?.net || 0) / nn / r.n)} p. P.` : ""}</span>
+      </div>
+    </div>
+  </div>
+</div>
