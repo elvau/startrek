@@ -7,8 +7,9 @@
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
 import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Item, type Option, type Settings, type Tier, type Traveler, type Trip } from "../model";
 
-export function ageClass(age: number, s: Settings): AgeClass {
-  if (age >= s.adultAge) return "adult";
+export function ageClass(age: number | null | undefined, s: Settings): AgeClass {
+  // ohne Altersangabe erwachsen
+  if (age == null || age >= s.adultAge) return "adult";
   if (age >= s.childAge) return "child";
   return "infant";
 }
@@ -274,7 +275,7 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
       const lines: ShareLine[] = [];
       const sv = T.simple[cat];
       if (sv && T.active) {
-        lines.push({ label: "Pauschal, gleich verteilt", v: (sv / T.active) * ms.length, who: ms.length, detail: `${eur(sv / T.active)} pro Person`, fixed: false });
+        lines.push({ label: "Gesamtbetrag, gleich verteilt", v: (sv / T.active) * ms.length, who: ms.length, detail: `${eur(sv / T.active)} pro Person`, fixed: false });
       }
       for (const it of trip.items) {
         if (it.cat !== cat) continue;

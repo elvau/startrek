@@ -1,7 +1,7 @@
 <script lang="ts">
   import { access, app } from "../store.svelte";
   import { ageClass } from "../calc";
-  import { isActive, uid } from "../model";
+  import { isActive, isDetailed, uid } from "../model";
   import { dir, saveAsGroup, travelersFrom } from "../directory.svelte";
   import Households from "./Households.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
@@ -19,7 +19,7 @@
   function add(e: Event) {
     e.stopPropagation();
     const i = app.trip.travelers.length;
-    app.trip.travelers.push({ id: uid(), name: "", age: 30, household: app.trip.travelers[0]?.household || "", color: COLORS[i % COLORS.length] });
+    app.trip.travelers.push({ id: uid(), name: "", household: app.trip.travelers[0]?.household || "", color: COLORS[i % COLORS.length] });
     edit = true;
   }
   function addFrom(ids: string[]) {
@@ -43,11 +43,11 @@
       {#if edit}
         <input class="inp" class:need={missing(t.name)} bind:value={t.name} placeholder="Vorname *" aria-label="Vorname" />
         <input class="inp" class:need={missing(t.household)} bind:value={t.household} placeholder="Nachname *" aria-label="Nachname" />
-        <label class="in-row"><input class="inp num" type="number" min="0" max="120" bind:value={t.age} aria-label="Alter" /> Jahre</label>
+        <label class="in-row"><input class="inp num" type="number" min="0" max="120" bind:value={t.age} placeholder="?" aria-label="Alter" /> Jahre</label>
         <button class="linkbtn danger" onclick={() => (app.trip.travelers = app.trip.travelers.filter(x => x.id !== t.id))}>Entfernen</button>
       {:else}
         <b>{t.name || "Ohne Namen"} {t.household}</b>
-        <span>{t.age} Jahre · {L[ageClass(t.age, app.trip.settings)]}</span>
+        <span>{t.age != null && String(t.age) !== "" ? `${t.age} Jahre · ` : ""}{L[ageClass(t.age, app.trip.settings)]}</span>
         <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
           onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? "✓ dabei" : "nicht dabei"}</button>
       {/if}
@@ -77,5 +77,6 @@
     </div>
   {/if}
 {/if}
-<Households />
+<!-- Wohnort, Anreise und Anwesenheit braucht es erst für detaillierte Flüge oder Unterkünfte -->
+{#if isDetailed(app.trip, "flights") || isDetailed(app.trip, "stay")}<Households />{/if}
 {#if groups}<GroupsDialog onclose={() => (groups = false)} />{/if}

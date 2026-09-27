@@ -20,6 +20,8 @@ describe("Altersklassen", () => {
     expect(ageClass(11, DEFAULT_SETTINGS)).toBe("child");
     expect(ageClass(6, DEFAULT_SETTINGS)).toBe("child");
     expect(ageClass(5, DEFAULT_SETTINGS)).toBe("infant");
+    expect(ageClass(undefined, DEFAULT_SETTINGS)).toBe("adult");
+    expect(ageClass(null, DEFAULT_SETTINGS)).toBe("adult");
   });
 });
 

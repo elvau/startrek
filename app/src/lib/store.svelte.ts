@@ -303,31 +303,39 @@ export function resetSample() {
 
 /* ---------- Einfach oder detailliert ---------- */
 
-const CAT_NAMES: Record<CatKey, string> = { flights: "Flüge", stay: "Unterkunft", transport: "Transport vor Ort", attractions: "Erlebnisse", misc: "Sonstiges" };
+const CAT_NAMES: Record<CatKey, string> = { flights: "Flüge", stay: "Unterkunft", transport: "Vor Ort", attractions: "Erlebnisse", misc: "Sonstiges" };
 
 /**
- * Bereich umschalten, ohne etwas zu verlieren:
- * einfach → detailliert: ein vorhandener Betrag wird zum ersten Posten, wenn es noch keine gibt;
- * detailliert → einfach: ist noch kein Betrag eingetragen, wird die Summe der Posten übernommen.
+ * Bereich umschalten. Die Posten eines Bereichs bleiben beim Wechsel auf "Einfach" gespeichert
+ * (ausgeblendet) und kommen beim Wechsel zurück wieder:
+ * einfach → detailliert: gibt es noch keine Posten, wird aus dem Betrag ein erster Posten;
+ * detailliert → einfach: der Betrag wird auf die Summe der Posten gesetzt, damit die Gesamtsumme nicht springt.
  */
 export function setDetailed(cat: CatKey, on: boolean) {
   const trip = app.trip;
   if (isDetailed(trip, cat) === on) return;
+  const has = trip.items.some(i => i.cat === cat);
   if (on) {
     const v = trip.simple?.[cat] || 0;
-    if (v > 0 && !trip.items.some(i => i.cat === cat)) {
+    if (v > 0 && !has) {
       trip.items.push({
-        id: uid(), cat, name: `${CAT_NAMES[cat]} (pauschal)`, status: "chosen",
-        options: [{ id: uid(), label: "Pauschal", price: { mode: "unit", currency: "EUR", unit: v } }]
+        id: uid(), cat, name: CAT_NAMES[cat], status: "chosen",
+        options: [{ id: uid(), label: "Gesamtbetrag", price: { mode: "unit", currency: "EUR", unit: v } }]
       });
     }
-  } else if (!((trip.simple?.[cat] ?? 0) > 0)) {
-    const sum = calc.T.byCat[cat];
-    if (sum > 0) { trip.simple ||= {}; trip.simple[cat] = Math.round(sum); }
+  } else if (has) {
+    trip.simple ||= {};
+    trip.simple[cat] = Math.round(calc.T.byCat[cat] * 100) / 100;
   }
   trip.detail ||= {};
   trip.detail[cat] = on;
   if (app.editing && !on) app.editing = null;
+}
+
+/** Gespeicherte Posten eines Bereichs verwerfen (der einfache Betrag bleibt) */
+export function discardDetails(cat: CatKey) {
+  app.trip.items = app.trip.items.filter(i => i.cat !== cat);
+  if (app.editing && !app.trip.items.some(i => i.id === app.editing)) app.editing = null;
 }
 
 export function setAllDetailed(on: boolean) { CAT_KEYS.forEach(c => setDetailed(c, on)); }

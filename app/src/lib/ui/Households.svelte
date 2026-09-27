@@ -1,12 +1,12 @@
 <script lang="ts">
   /* Haushalte: Wohnort (PLZ), Anreise zum Flughafen, Anwesenheit */
   import { access, app } from "../store.svelte";
-  import { hhKey, type Household } from "../model";
+  import { hhKey, isActive, type Household } from "../model";
   import { presences } from "../calc";
   import { dateDE } from "../format";
   import { loadPlz, suggest, type Place } from "../plz";
 
-  const names = $derived([...new Set(app.trip.travelers.map(hhKey))]);
+  const names = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))]);
   const pres = $derived(presences(app.trip));
   let open = $state<string | null>(null);
   let plz = $state<Map<string, Place> | null>(null);
@@ -34,7 +34,7 @@
   }
   const sugg = $derived(plz && open && !/^\d{5}$/.test(q.trim()) ? suggest(plz, q) : []);
 
-  function members(name: string) { return app.trip.travelers.filter(t => hhKey(t) === name); }
+  function members(name: string) { return app.trip.travelers.filter(t => isActive(t) && hhKey(t) === name); }
   function presText(name: string) {
     const h = app.trip.households?.[name];
     const p = members(name).map(t => pres[t.id]).find(Boolean);
@@ -50,7 +50,7 @@
 </script>
 
 <div class="hhs">
-  <div class="hhs-h"><span class="dlabel">Haushalte und Anreise</span></div>
+  <div class="hhs-h"><span class="dlabel">Familien: Wohnort, Anreise, Anwesenheit</span></div>
   {#each names as name (name)}
     {@const h = app.trip.households?.[name]}
     <div class="hh" class:open={open === name}>

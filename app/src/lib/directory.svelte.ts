@@ -66,7 +66,7 @@ $effect.root(() => {
 
 export const fullName = (p: Person) => `${p.first} ${p.last}`.trim();
 
-export function addPerson(first: string, last: string, age?: number): Person {
+export function addPerson(first: string, last: string, age?: number | null): Person {
   const p: Person = { id: uid(), first: first.trim(), last: last.trim(), ...(age ? { age } : {}) };
   dir.people.push(p);
   return p;
@@ -95,7 +95,7 @@ const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"
 export function travelersFrom(ids: string[], existing: Traveler[] = []): Traveler[] {
   const have = new Set(existing.map(t => t.personId).filter(Boolean));
   return ids.filter(id => !have.has(id)).map(id => dir.people.find(p => p.id === id)).filter((p): p is Person => !!p)
-    .map((p, i) => ({ id: uid(), personId: p.id, name: p.first, household: p.last, age: p.age ?? 30, color: COLORS[(existing.length + i) % COLORS.length] }));
+    .map((p, i) => ({ id: uid(), personId: p.id, name: p.first, household: p.last, age: p.age ?? undefined, color: COLORS[(existing.length + i) % COLORS.length] }));
 }
 
 /** Aktuelle Reisende als Personen und Gruppe speichern */

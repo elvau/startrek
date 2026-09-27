@@ -1,7 +1,7 @@
 <script lang="ts">
   /* Wer ist wann da, und hat jede Nacht ein Bett? Pro Haushalt ein Balken über alle Nächte. */
   import { app } from "../store.svelte";
-  import { hhKey } from "../model";
+  import { hhKey, isActive } from "../model";
   import { presences, participantsOf } from "../calc";
   import { needs, nightsList, okDate, addDays } from "../calc/travel";
   import { dateDE, dayShort } from "../format";
@@ -16,10 +16,11 @@
     if (dates.length < 2) return null;
     const nights = nightsList(dates[0], dates[dates.length - 1]);
     if (!nights.length || nights.length > 120) return null;
-    const hhs = [...new Set(trip.travelers.map(hhKey))];
+    const act = trip.travelers.filter(isActive);
+    const hhs = [...new Set(act.map(hhKey))];
     const notes: { crit: boolean; text: string }[] = [];
     const rows = hhs.map(h => {
-      const ms = trip.travelers.filter(t => hhKey(t) === h);
+      const ms = act.filter(t => hhKey(t) === h);
       const known = ms.some(t => pres[t.id]);
       const cells = nights.map(x => {
         const here = ms.filter(t => pres[t.id] ? needs(pres[t.id], x) : false);
@@ -33,7 +34,7 @@
       if (gaps.length) notes.push({ crit: true, text: `${h}: ${gaps.length === 1 ? "eine Nacht" : `${gaps.length} Nächte`} ohne Unterkunft (${gaps.slice(0, 4).map(dateDE).join(", ")}${gaps.length > 4 ? " …" : ""})` });
       const dbl = nights.filter((_, i) => cells[i].k === "dbl");
       if (dbl.length) notes.push({ crit: false, text: `${h}: ${dbl.length === 1 ? "eine Nacht" : `${dbl.length} Nächte`} doppelt gebucht (${dbl.slice(0, 4).map(dateDE).join(", ")})` });
-      if (!known) notes.push({ crit: false, text: `${h}: Anwesenheit offen. Flug mit Zeiten eintragen oder eigene Daten beim Haushalt.` });
+      if (!known) notes.push({ crit: false, text: `${h}: Anwesenheit offen. Flug mit Zeiten eintragen oder eigene Daten bei der Familie (Kapitel „Wer fährt mit“).` });
       return { h, cells };
     });
     return { nights, rows, stays, notes };

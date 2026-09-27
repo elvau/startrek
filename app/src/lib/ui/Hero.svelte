@@ -48,14 +48,14 @@
     {:else}
       {#if trip.kicker}<span class="kick">☀️ {trip.kicker}</span>{/if}
       <h1>{trip.place || trip.name}{#if trip.country},<br />{trip.country}{/if}</h1>
-      <div class="meta">{[range(trip.from, trip.to), nights(trip.from, trip.to) ? `${nights(trip.from, trip.to)} Nächte` : "", `${n} Reisende`].filter(Boolean).join(" · ")}</div>
+      <div class="meta">{[range(trip.from, trip.to), nights(trip.from, trip.to) ? `${nights(trip.from, trip.to)} Nächte` : "", n ? `${n} ${n === 1 ? "Person" : "Personen"}` : "noch niemand dabei"].filter(Boolean).join(" · ")}</div>
     {/if}
     {#if !access.readonly}
       <div class="hero-mode"><ModeSwitch value={tripMode()} onchange={setAllDetailed} label="Ganze Reise: einfach oder detailliert" />{#if tripMode() === "mixed"}<span class="muted small">gemischt</span>{/if}</div>
     {/if}
     <div class="total">
       <b class="num">{eur(value)}</b>
-      <span>{eur(n ? calc.T.total / n : 0)} pro Person · davon {eur(calc.T.fixed)} fest</span>
+      <span>{n ? `${eur(calc.T.total / n)} pro Person` : "noch niemand dabei"}{calc.T.fixed ? ` · davon ${eur(calc.T.fixed)} fest` : ""}</span>
     </div>
   </div>
   <div class="hint"><i></i>Reise entdecken</div>

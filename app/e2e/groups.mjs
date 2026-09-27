@@ -91,11 +91,18 @@ try {
 
   // Flüge auf detailliert und zurück, ohne dass sich die Summe ändert
   await a.locator("#flights .mode button", { hasText: "Detailliert" }).click();
-  await a.locator("#flights .card", { hasText: "Flüge (pauschal)" }).waitFor();
+  await a.locator("#flights .card[data-item]").waitFor();
   if ((await total(a)) !== "1.500 €") fail("Summe nach Umschalten: " + await total(a));
   await a.locator("#flights .mode button", { hasText: "Einfach" }).click();
   await a.locator("#flights .simple-hidden").waitFor();
   if ((await total(a)) !== "1.500 €") fail("Summe nach Zurückschalten: " + await total(a));
+  const fl = await a.locator(".aside .cat", { hasText: "Flüge" }).first().textContent();
+  if (!fl.includes("Gesamtbetrag gleich verteilt")) fail("Übersicht Flüge: " + fl);
+  await a.locator("#flights .mode button", { hasText: "Detailliert" }).click();
+  await a.locator("#flights .card[data-item]").waitFor();
+  if ((await a.locator("#flights .card[data-item]").count()) !== 1) fail("Posten doppelt nach Wiederherstellen");
+  await a.locator("#flights .mode button", { hasText: "Einfach" }).click();
+  await a.locator("#flights .simple-hidden").waitFor();
   log("Flüge detailliert und zurück: Betrag wird Posten und umgekehrt, Summe bleibt 1.500 €");
 
   // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da
