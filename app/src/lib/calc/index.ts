@@ -5,7 +5,7 @@
  * Beteiligte, Währungsumrechnung.
  */
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
-import { FIXED, type AgeClass, type CatKey, type Item, type Option, type Settings, type Tier, type Traveler, type Trip } from "../model";
+import { CAT_KEYS, FIXED, hhKey, type AgeClass, type CatKey, type Item, type Option, type Settings, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number, s: Settings): AgeClass {
   if (age >= s.adultAge) return "adult";
@@ -219,3 +219,56 @@ export function parseNum(v: unknown): number {
 
 const fmt = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
 export const eur = (v: number) => fmt.format(Math.round(v || 0)) + " €";
+
+/* ---------- Abrechnung pro Haushalt ---------- */
+
+export interface ShareLine {
+  item: Item;
+  /** Anteil des Haushalts */
+  v: number;
+  /** wie viele aus dem Haushalt dabei sind */
+  who: number;
+  /** z. B. "2 × Erwachsen 389 € · 2 × Kind 290 €", wenn sich die Anteile unterscheiden */
+  detail: string;
+  fixed: boolean;
+}
+export interface HouseholdShare {
+  name: string;
+  members: { t: Traveler; v: number }[];
+  total: number;
+  fixed: number;
+  open: number;
+  cats: { cat: CatKey; sum: number; lines: ShareLine[] }[];
+}
+
+const AGE_L: Record<AgeClass, string> = { adult: "Erwachsen", child: "Kind", infant: "Kleinkind" };
+
+export function householdShares(trip: Trip, T: Totals = totals(trip)): HouseholdShare[] {
+  const names = [...new Set(trip.travelers.map(hhKey))];
+  return names.map(name => {
+    const ms = trip.travelers.filter(t => hhKey(t) === name);
+    const cats = CAT_KEYS.map(cat => {
+      const lines: ShareLine[] = [];
+      for (const it of trip.items) {
+        if (it.cat !== cat) continue;
+        const r = T.items[it.id];
+        if (!r || !r.counts) continue;
+        const inn = ms.filter(t => r.per[t.id] != null && r.per[t.id] > 0.005);
+        const v = inn.reduce((a, t) => a + r.per[t.id], 0);
+        if (v < 0.5) continue;
+        const grp: Partial<Record<AgeClass, { n: number; v: number }>> = {};
+        inn.forEach(t => { const c = ageClass(t.age, trip.settings); (grp[c] ||= { n: 0, v: Math.round(r.per[t.id]) }).n++; });
+        const keys = (["adult", "child", "infant"] as AgeClass[]).filter(c => grp[c]);
+        const differ = new Set(inn.map(t => Math.round(r.per[t.id]))).size > 1;
+        const detail = differ && keys.length > 1 && new Set(keys.map(c => grp[c]!.v)).size > 1
+          ? keys.map(c => `${grp[c]!.n} × ${AGE_L[c]} ${eur(grp[c]!.v)}`).join(" · ")
+          : "";
+        lines.push({ item: it, v, who: inn.length, detail, fixed: FIXED.includes(it.status) });
+      }
+      return { cat, sum: lines.reduce((a, l) => a + l.v, 0), lines };
+    }).filter(c => c.lines.length);
+    const total = cats.reduce((a, c) => a + c.sum, 0);
+    const fixed = cats.reduce((a, c) => a + c.lines.filter(l => l.fixed).reduce((x, l) => x + l.v, 0), 0);
+    return { name, members: ms.map(t => ({ t, v: T.byPerson[t.id] || 0 })), total, fixed, open: total - fixed, cats };
+  });
+}
