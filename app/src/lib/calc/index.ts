@@ -4,6 +4,7 @@
  * Altersklassen, Kinder- und Kleinkindpreise, Gruppenrabatt-Stufen, Verteilung auf
  * Beteiligte, Währungsumrechnung.
  */
+import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
 import { FIXED, type AgeClass, type CatKey, type Item, type Option, type Settings, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number, s: Settings): AgeClass {
@@ -26,6 +27,17 @@ export const participantsOf = (it: Item, trip: Trip): Traveler[] =>
 
 const rateOf = (cur: string, s: Settings) => (cur === "EUR" ? 1 : s.rates[cur] || 1);
 
+export interface StayCalc {
+  nights: string[];
+  /** Personen je Nacht */
+  occ: Record<string, number>;
+  /** Nächte je Person */
+  w: Record<string, number>;
+  maxOcc: number;
+  /** mehr Gäste als Plätze in mindestens einer Nacht */
+  over: boolean;
+}
+
 export interface OptionCalc {
   /** Anzahl Beteiligte */
   n: number;
@@ -37,9 +49,16 @@ export interface OptionCalc {
   tier: Tier | null;
   /** Anteil je Person nach Rabatt, in € */
   per: Record<string, number>;
+  /** Flug: Anreise zum Abflughafen, in gross und net enthalten */
+  access?: AccessCalc | null;
+  /** Unterkunft mit Zeitraum */
+  stay?: StayCalc;
 }
 
+const hasStayDates = (it: Item) => it.cat === "stay" && okDate(it.from) && okDate(it.to) && it.to! > it.from!;
+
 export function calcOption(opt: Option, it: Item, trip: Trip): OptionCalc {
+  if (hasStayDates(it)) return calcStay(opt, it, trip);
   const people = participantsOf(it, trip);
   const n = people.length;
   const p = opt.price;
@@ -56,16 +75,72 @@ export function calcOption(opt: Option, it: Item, trip: Trip): OptionCalc {
     people.forEach(t => (per[t.id] = n ? (gross * (1 - d)) / n : 0));
   } else {
     people.forEach(t => {
-      const c = ageClass(t.age, trip.settings);
-      let pr = p.adult ?? 0;
-      if (c !== "adult" && p.child != null) pr = p.child;
-      if (c === "infant" && p.infant != null) pr = p.infant;
-      const g = pr * qty * fx;
+      const g = priceFor(t, p, trip) * qty * fx;
       gross += g;
       per[t.id] = g * (1 - d);
     });
   }
-  return { n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per };
+  const access = it.cat === "flights" && it.access !== false ? flightAccess(opt, people, trip) : null;
+  const acc = access?.cost || 0;
+  if (access) for (const id in access.per) per[id] = (per[id] || 0) + access.per[id];
+  return { n, units, gross: gross + acc, net: gross * (1 - d) + acc, saved: gross * d, tier, per, access };
+}
+
+function priceFor(t: Traveler, p: Option["price"], trip: Trip): number {
+  const c = ageClass(t.age, trip.settings);
+  let pr = p.adult ?? 0;
+  if (c !== "adult" && p.child != null) pr = p.child;
+  if (c === "infant" && p.infant != null) pr = p.infant;
+  return pr;
+}
+
+/** Anwesenheit aller Reisenden (aus eigenen Daten oder dem gewählten Flug) */
+export function presences(trip: Trip): Record<string, Presence | null> {
+  const out: Record<string, Presence | null> = {};
+  trip.travelers.forEach(t => (out[t.id] = presenceOf(t, trip, x => activeOption(x, trip))));
+  return out;
+}
+
+/**
+ * Unterkunft mit Zeitraum: jede Nacht zählt nur für die, die da sind.
+ * Pauschalen werden je Nacht auf die Anwesenden verteilt, Personenpreise gelten pro Nacht.
+ */
+function calcStay(opt: Option, it: Item, trip: Trip): OptionCalc {
+  const pres = presences(trip);
+  const nights = nightsList(it.from, it.to);
+  const people = participantsOf(it, trip);
+  const w: Record<string, number> = {}, occ: Record<string, number> = {}, here: Record<string, Traveler[]> = {};
+  nights.forEach(x => (here[x] = []));
+  people.forEach(t => {
+    const ns = nights.filter(x => needs(pres[t.id], x));
+    if (ns.length) { w[t.id] = ns.length; ns.forEach(x => { occ[x] = (occ[x] || 0) + 1; here[x].push(t); }); }
+  });
+  const guests = people.filter(t => w[t.id]);
+  const n = guests.length, sumW = guests.reduce((a, t) => a + w[t.id], 0);
+  const maxOcc = Math.max(0, ...Object.values(occ));
+  const p = opt.price, fx = 1 / rateOf(p.currency, trip.settings), qty = p.qty ?? 1;
+  const cap = p.capacity || 0, multi = p.mode === "unit" && !!p.multiply;
+  const tier = it.tier ? bestTier([it.tier], n) : bestTier(trip.tiers[it.cat], n);
+  const d = tier ? tier.pct / 100 : 0;
+  const per: Record<string, number> = {};
+  let gross = 0, units = 0;
+  if (p.mode === "unit") {
+    units = n === 0 ? 0 : cap > 0 && multi ? Math.ceil(maxOcc / cap) : 1;
+    gross = (p.unit || 0) * (p.basis === "stay" ? 1 : nights.length) * units * qty * fx;
+    const perNight = nights.length ? (gross * (1 - d)) / nights.length : 0;
+    let rest = 0;
+    guests.forEach(t => (per[t.id] = 0));
+    nights.forEach(x => { const hs = here[x]; if (hs.length) hs.forEach(t => (per[t.id] += perNight / hs.length)); else rest += perNight; });
+    if (rest && sumW) guests.forEach(t => (per[t.id] += (rest * w[t.id]) / sumW));
+  } else {
+    guests.forEach(t => {
+      const g = priceFor(t, p, trip) * w[t.id] * qty * fx;
+      gross += g;
+      per[t.id] = g * (1 - d);
+    });
+  }
+  const over = cap > 0 && !multi && maxOcc > cap;
+  return { n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc, over } };
 }
 
 /** Die Option, die in die Summe eingeht: gewählt, sonst die günstigste */

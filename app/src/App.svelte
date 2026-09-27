@@ -15,6 +15,7 @@
   import TicketAside from "./lib/ui/TicketAside.svelte";
   import Dock from "./lib/ui/Dock.svelte";
   import { reveal } from "./lib/ui/reveal";
+  import PresencePlan from "./lib/ui/PresencePlan.svelte";
 
   onMount(() => {
     try { const t = localStorage.getItem("rk-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
@@ -46,6 +47,7 @@
     {#each CAT_CHAPTERS as ch, i (ch.k)}
       {@const items = app.trip.items.filter(x => x.cat === ch.k)}
       <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn ? `${nn} Nächte` : ch.sub} onadd={() => addItem(ch.k)}>
+        {#if ch.k === "stay"}<article class="card plan-card" use:reveal><PresencePlan /></article>{/if}
         {#each items as item (item.id)}
           <ItemCard {item} icon={ch.icon} />
         {:else}

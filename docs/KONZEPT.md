@@ -291,10 +291,9 @@ Entschieden im September 2026, Vorlage ist der Prototyp unter `public/design/`.
 | Phase | Stand |
 | --- | --- |
 | 0 | erledigt |
-| 1 | begonnen: Projekt, Datenmodell mit Status und Angeboten, Rechenkern für Preise pro Person und pauschal, Altersklassen, Gruppenrabatte, Beteiligte, Währungen, fest/offen, Zahlungen, mit Tests |
-| 2 | begonnen: Oberfläche im neuen Design, Posten anlegen und bearbeiten, Angebote vergleichen, Reisende bearbeiten, lokal gespeichert |
+| 1 | weitgehend erledigt: Projekt, Datenmodell mit Status und Angeboten, Rechenkern (Preise pro Person und pauschal, Altersklassen, Gruppenrabatte, Beteiligte, Währungen, fest/offen, Zahlungen, Anwesenheit, Unterkunft je Nacht, Anreise zum Flughafen), 30 Tests |
+| 2 | begonnen: Oberfläche im neuen Design, mehrere Reisen (wechseln, anlegen, kopieren, löschen), Reise bearbeiten, Posten und Angebote, Flugzeiten, Reisende und Haushalte mit PLZ, Anreise und Anwesenheit, Plan „Wer ist wann wo“ mit Lücken und Doppelbuchungen, lokal gespeichert |
 
-Noch nicht übernommen aus der alten App: Unterkunft nach Anwesenheit je Haushalt, Anreise zum
-Flughafen mit PLZ, Rundreise mit Stationen und Zeitstrahl, Karte, Länderpakete mit
-Vorschlägen, Verpflegung nach Stil, mehrere Reisen, gespeicherte Stände, PDF, Import der
-alten Daten.
+Noch nicht übernommen aus der alten App: Rundreise mit Stationen, Karte, Länderpakete mit
+Vorschlägen, Verpflegung nach Stil und Anwesenheit, gespeicherte Stände und Vergleich, PDF,
+Gruppenrabatte in der Oberfläche einstellen, Abflughäfen bearbeiten.

@@ -2,6 +2,7 @@
   import { CHAPTERS } from "../chapters";
   import { view } from "../scroll.svelte";
   import Icon from "./Icon.svelte";
+  import TripMenu from "./TripMenu.svelte";
 
   let nav: HTMLElement;
   let pill = $state({ left: 0, width: 0, show: false });
@@ -24,6 +25,7 @@
 <header class="top">
   <div class="top-in">
     <span class="brand">Reisekasse</span>
+    <TripMenu compact />
     <nav class="nav" bind:this={nav} aria-label="Kapitel">
       <span class="pill" style:left="{pill.left}px" style:width="{pill.width}px" style:opacity={pill.show ? 1 : 0}></span>
       {#each CHAPTERS as c (c.k)}

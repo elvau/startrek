@@ -27,3 +27,6 @@ export function duration(a: string, b: string): string {
   if (!(m > 0)) return "";
   return `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`;
 }
+
+/** "Juli 2027" */
+export const monthYear = (iso: string) => { const x = d(iso); return `${MONTHS[x.getMonth()]} ${x.getFullYear()}`; };

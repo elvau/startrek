@@ -32,6 +32,8 @@ export interface Tier {
  */
 export interface Price {
   mode: "person" | "unit";
+  /** Unterkunft mit Zeitraum: Preis gilt pro Nacht (Standard) oder für den ganzen Aufenthalt */
+  basis?: "night" | "stay";
   currency: string;
   /** Menge, z. B. Nächte, Tage, Fahrten. Standard 1 */
   qty?: number;
@@ -93,7 +95,40 @@ export interface Item {
   /** eigener Gruppenrabatt statt dem der Kategorie */
   tier?: Tier;
   booking?: { ref?: string; provider?: string; cancelUntil?: string };
+  /** Unterkunft: Zeitraum (Anreise, Abreise). Dann zählt jede Nacht nur für die Anwesenden. */
+  from?: string;
+  to?: string;
+  /** Flug: Anreise zum Abflughafen automatisch einrechnen (Standard: ja) */
+  access?: boolean;
   payments?: Payment[];
+}
+
+export interface Household {
+  /** Postleitzahl des Wohnorts */
+  plz?: string;
+  /** aufgelöster Wohnort, wird beim Eintippen der PLZ gesetzt */
+  geo?: { lat: number; lon: number; ort: string };
+  /** Anreise zum Flughafen */
+  mode?: "car" | "train" | "with";
+  cars?: number;
+  /** fährt mit diesem Haushalt mit */
+  link?: string;
+  /** eigene Anwesenheit statt aus dem Flug: erste Nacht, Abreisetag */
+  arrive?: string;
+  depart?: string;
+}
+
+export interface Airport {
+  code: string;
+  name: string;
+  /** Bahnticket pro Person, hin und zurück */
+  pp: number;
+  /** Fahrzeit in Stunden, wenn keine PLZ bekannt */
+  h: number;
+  /** Parken pro Tag */
+  park: number;
+  lat: number;
+  lon: number;
 }
 
 export interface Settings {
@@ -103,6 +138,10 @@ export interface Settings {
   childAge: number;
   /** Einheiten Fremdwährung pro 1 € */
   rates: Record<string, number>;
+  /** Autokosten pro km */
+  kmCost?: number;
+  /** eigene Abflughäfen statt der Standardliste */
+  airports?: Airport[];
 }
 
 export interface Trip {
@@ -115,6 +154,7 @@ export interface Trip {
   to?: string;
   home?: string;
   travelers: Traveler[];
+  households?: Record<string, Household>;
   items: Item[];
   tiers: Partial<Record<CatKey, Tier[]>>;
   settings: Settings;
@@ -122,4 +162,6 @@ export interface Trip {
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
-export const DEFAULT_SETTINGS: Settings = { adultAge: 12, childAge: 6, rates: { EUR: 1 } };
+export const DEFAULT_SETTINGS: Settings = { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 };
+
+export const hhKey = (t: Traveler) => t.household.trim() || "Ohne Haushalt";
