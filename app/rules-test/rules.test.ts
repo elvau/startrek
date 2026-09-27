@@ -42,6 +42,10 @@ describe("Lesen", () => {
   it("Mitglieder dürfen", async () => { await assertSucceeds(getDoc(doc(db("vera"), "trips/t1"))); });
   it("Fremde nicht", async () => { await assertFails(getDoc(doc(db("mallory"), "trips/t1"))); });
   it("ohne Anmeldung nicht", async () => { await assertFails(getDoc(doc(db(), "trips/t1"))); });
+  it("nicht vorhandene Reise: angemeldet darf man sehen, dass es sie nicht gibt", async () => {
+    await assertSucceeds(getDoc(doc(db("mallory"), "trips/gibtsnicht")));
+    await assertFails(getDoc(doc(db(), "trips/gibtsnicht")));
+  });
 });
 
 describe("Bearbeiten", () => {

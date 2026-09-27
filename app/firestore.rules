@@ -30,7 +30,9 @@ service cloud.firestore {
     }
 
     match /trips/{tripId} {
-      allow read: if isMember(resource.data);
+      // Nicht vorhandene Reisen dürfen angemeldete Nutzer "lesen" (verrät nur, dass die zufällige ID frei ist);
+      // nötig, damit das Anlegen prüfen kann, ob es die Reise schon gibt, statt sie zu überschreiben.
+      allow read: if (signedIn() && resource == null) || isMember(resource.data);
 
       allow create: if signedIn()
         && request.resource.data.owner == uid()

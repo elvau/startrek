@@ -169,7 +169,11 @@ export async function moveToCloud(id: string) {
   if (id === app.trip.id) flush();
   const t = id === app.trip.id ? app.trip : readTrip(id);
   if (!t) return;
-  await upload(JSON.parse(JSON.stringify(t)));
+  try { await upload(JSON.parse(JSON.stringify(t))); }
+  catch (e) {
+    cloud.error = (e as { code?: string }).code === "unavailable" ? "Offline: Übernehmen ins Konto geht nur mit Verbindung." : "Die Reise konnte nicht ins Konto übernommen werden.";
+    return;
+  }
   app.index = app.index.filter(x => x.id !== id);
   put(K_INDEX, JSON.stringify(app.index));
 }

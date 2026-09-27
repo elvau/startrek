@@ -10,7 +10,7 @@ import {
 } from "firebase/auth";
 import {
   arrayRemove, arrayUnion, connectFirestoreEmulator, deleteDoc, deleteField, doc, initializeFirestore, onSnapshot,
-  persistentLocalCache, persistentMultipleTabManager, query, serverTimestamp, setDoc, updateDoc, where, collection,
+  persistentLocalCache, persistentMultipleTabManager, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, collection,
   type Firestore, type Unsubscribe
 } from "firebase/firestore";
 
@@ -119,7 +119,17 @@ export function createTrip(id: string, name: string, data: string, u: User) {
     name, data, owner: u.uid, memberIds: [u.uid], members: { [u.uid]: "owner" },
     memberNames: { [u.uid]: displayName(u) }, invite: null, updatedAt: serverTimestamp(), updatedBy: u.uid
   };
-  return setDoc(tripRef(id), d);
+  // Transaktion statt setDoc: wird das Anlegen wiederholt (z. B. nach Verbindungsabbruch),
+  // darf es eine inzwischen geteilte und bearbeitete Reise nicht überschreiben.
+  const ref = tripRef(id);
+  return runTransaction(start().db, async tx => {
+    const s = await tx.get(ref);
+    if (s.exists()) {
+      if ((s.data() as TripDoc).owner !== u.uid) throw Object.assign(new Error("Reise gibt es schon"), { code: "already-exists" });
+      return;
+    }
+    tx.set(ref, d);
+  });
 }
 
 export const saveTrip = (id: string, name: string, data: string, uid: string) =>
