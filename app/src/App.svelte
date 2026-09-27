@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { access, app, calc, addItem, discardDetails, resetSample, setDetailed } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, openSample, setDetailed } from "./lib/store.svelte";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
   import { cloud } from "./lib/cloud/cloud.svelte";
@@ -22,10 +22,12 @@
   import PresencePlan from "./lib/ui/PresencePlan.svelte";
   import Split from "./lib/ui/Split.svelte";
 
+  let sheet = $state(false);
+
   onMount(() => {
     try { const t = localStorage.getItem("rk-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
     const off = initScroll();
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") app.editing = null; };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { app.editing = null; sheet = false; } };
     const outside = (e: MouseEvent) => { if (app.editing && !(e.target as HTMLElement).closest(".card, .add")) app.editing = null; };
     addEventListener("keydown", esc);
     addEventListener("click", outside);
@@ -78,8 +80,17 @@
 
 <p class="note">
   {cloud.user ? "Reisen mit ☁ liegen in deinem Konto." : "Gespeichert wird in diesem Browser."}
-  {#if !access.readonly}<button class="linkbtn" onclick={() => { if (confirm("Beispielreise wiederherstellen? Eigene Änderungen gehen verloren.")) resetSample(); }}>Beispiel zurücksetzen</button>{/if}
+  <button class="linkbtn" onclick={() => { if (confirm("Die Beispielreise als neue Reise öffnen? Deine Reisen bleiben, wie sie sind.")) openSample(); }}>Beispielreise ansehen</button>
 </p>
 
-<Dock />
+<Dock onopen={() => (sheet = true)} />
+{#if sheet}
+  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+  <div class="modal-bg sheet-bg" onclick={e => { if (e.target === e.currentTarget) sheet = false; }}>
+    <div class="sheet-in" role="dialog" aria-modal="true" aria-label="Übersicht">
+      <button class="x sheet-x" onclick={() => (sheet = false)} aria-label="Schließen">✕</button>
+      <TicketAside sheet onpick={() => (sheet = false)} />
+    </div>
+  </div>
+{/if}
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}

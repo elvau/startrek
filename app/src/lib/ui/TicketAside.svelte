@@ -7,6 +7,9 @@
   import { nights } from "../format";
   import { view } from "../scroll.svelte";
 
+  // sheet: auf dem Handy als Blatt über der Seite, ein Tipp auf einen Link schließt es
+  let { sheet = false, onpick }: { sheet?: boolean; onpick?: () => void } = $props();
+
   const T = $derived(calc.T);
   const n = $derived(T.active);
   const nn = $derived(nights(app.trip.from, app.trip.to));
@@ -23,7 +26,8 @@
   }
 </script>
 
-<aside class="aside" aria-label="Zusammenfassung">
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<aside class="aside" class:sheet aria-label="Zusammenfassung" onclick={e => { if ((e.target as Element).closest("a")) onpick?.(); }}>
   <div class="tk">
     <div class="tk-top">
       <small>Gesamt</small>
