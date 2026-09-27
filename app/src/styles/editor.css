@@ -215,3 +215,46 @@ body[data-ch="split"] .amb-trav{opacity:1}
   .hero-edit{padding:6px 11px}
   .hero .tm-btn{max-width:52vw}
 }
+
+/* Einfach / Detailliert */
+.mode{display:inline-flex;gap:2px;padding:3px;border-radius:99px;background:color-mix(in srgb,var(--paper) 75%,transparent);border:1px solid var(--line);backdrop-filter:blur(6px);margin-top:8px;vertical-align:middle}
+.mode button{border:0;background:transparent;border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:700;color:var(--ink-2);transition:background .2s,color .2s}
+.mode button.on{background:var(--a);color:#fff}
+:root[data-theme="dark"] .mode button.on{color:#0D131C}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .mode button.on{color:#0D131C}}
+.ch-t .mode{display:flex;width:max-content}
+.hero-mode{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:14px}
+.hero-mode .mode{margin-top:0}
+.simple-card{cursor:default;padding:20px 22px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.simple-l{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1 1 260px}
+.simple-t{font-weight:700;font-size:15px}
+.simple-in{display:flex;align-items:center;gap:8px}
+.simple-in input{font:800 34px "Bricolage Grotesque",sans-serif;width:100%;max-width:260px;padding:8px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--paper-2);color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.simple-in input:focus{outline:2px solid var(--a);background:var(--paper)}
+.simple-eur{font:800 28px "Bricolage Grotesque",sans-serif;color:var(--ink-2)}
+.simple-out{display:flex;flex-direction:column;align-items:flex-end;text-align:right;font-size:13px;color:var(--ink-2)}
+.simple-out b{font:800 24px "Bricolage Grotesque",sans-serif;color:var(--ink)}
+.simple-hidden{flex-basis:100%;margin:0}
+@media (max-width:640px){.simple-out{align-items:flex-start;text-align:left}}
+
+/* Reisende, Gruppen */
+.person.off{opacity:.5}
+.person.off .av{filter:grayscale(1)}
+.dabei{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;color:var(--ink-3)}
+.dabei.on{background:var(--good-soft);border-color:transparent;color:var(--good)}
+.inp.need{border-color:#C4452E;background:color-mix(in srgb,#C4452E 8%,var(--paper))}
+.trav-acts{gap:6px 16px;justify-content:flex-start}
+.trav-note{margin:0;padding:0 18px 10px}
+.pick{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 14px}
+.chip small{opacity:.7;margin-left:4px}
+.chip[disabled]{opacity:.45;cursor:default}
+.groups-d,.newtrip{display:flex;flex-direction:column;gap:14px}
+.grp{border:1px solid var(--line);border-radius:14px}
+.grp.open{border-color:var(--a)}
+.grp-h{width:100%;border:0;background:transparent;display:flex;justify-content:space-between;gap:8px;padding:10px 12px;text-align:left;font-size:14px}
+.grp-b{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.grp-name{font-weight:700}
+.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.plist li{display:grid;grid-template-columns:1fr 1fr 80px 34px;gap:6px;align-items:center}
+.plist .inp{width:100%}
+.grp-chip{font-weight:700}

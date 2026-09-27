@@ -3,6 +3,8 @@
   import { access, app, calc } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import Account from "./Account.svelte";
+  import ModeSwitch from "./ModeSwitch.svelte";
+  import { setAllDetailed, tripMode } from "../store.svelte";
   import { eur } from "../calc";
   import { nights, range } from "../format";
   import TripMenu from "./TripMenu.svelte";
@@ -25,7 +27,8 @@
     requestAnimationFrame(step);
   });
   const value = $derived(counting ? shown : calc.T.total);
-  const n = $derived(trip.travelers.length);
+  // nur wer dabei ist
+  const n = $derived(calc.T.active);
 </script>
 
 <section class="hero" id="hero" data-ch="hero">
@@ -46,6 +49,9 @@
       {#if trip.kicker}<span class="kick">☀️ {trip.kicker}</span>{/if}
       <h1>{trip.place || trip.name}{#if trip.country},<br />{trip.country}{/if}</h1>
       <div class="meta">{[range(trip.from, trip.to), nights(trip.from, trip.to) ? `${nights(trip.from, trip.to)} Nächte` : "", `${n} Reisende`].filter(Boolean).join(" · ")}</div>
+    {/if}
+    {#if !access.readonly}
+      <div class="hero-mode"><ModeSwitch value={tripMode()} onchange={setAllDetailed} label="Ganze Reise: einfach oder detailliert" />{#if tripMode() === "mixed"}<span class="muted small">gemischt</span>{/if}</div>
     {/if}
     <div class="total">
       <b class="num">{eur(value)}</b>

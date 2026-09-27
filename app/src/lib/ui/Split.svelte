@@ -37,10 +37,10 @@
         <details open>
           <summary style="--cc:var(--c-{c.cat})"><i></i><Icon name={label(c.cat).icon} size={16} /><span>{label(c.cat).label}</span><b class="num">{eur(c.sum)}</b></summary>
           <ul>
-            {#each c.lines as l (l.item.id)}
+            {#each c.lines as l (l.item?.id || "simple")}
               <li>
-                <button class="sh-l" onclick={() => jump(l.item.id)}>
-                  <span class="sh-n">{l.item.name || "Ohne Namen"}<small>{[l.detail, l.who < h.members.length ? `${l.who} von ${h.members.length} dabei` : "", ST[l.item.status]].filter(Boolean).join(" · ")}</small></span>
+                <button class="sh-l" onclick={() => (l.item ? jump(l.item.id) : document.getElementById(c.cat)?.scrollIntoView({ behavior: "smooth" }))}>
+                  <span class="sh-n">{l.label}<small>{[l.detail, l.who < h.members.length ? `${l.who} von ${h.members.length} dabei` : "", l.item ? ST[l.item.status] : ""].filter(Boolean).join(" · ")}</small></span>
                   <span class="num" class:fixed={l.fixed}>{eur(l.v)}</span>
                 </button>
               </li>

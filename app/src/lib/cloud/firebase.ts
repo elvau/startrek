@@ -154,3 +154,13 @@ export function newKey(): string {
   crypto.getRandomValues(a);
   return [...a].map(x => x.toString(36).padStart(2, "0")).join("").slice(0, 24);
 }
+
+/* ---------- Gespeicherte Personen und Gruppen (profiles/{uid}) ---------- */
+
+const profileRef = (uid: string) => doc(start().db, "profiles", uid);
+
+export function watchProfile(uid: string, fn: (data: string | null, pending: boolean) => void, err: (e: Error) => void): Unsubscribe {
+  return onSnapshot(profileRef(uid), s => fn(s.exists() ? (s.data().data as string) : null, s.metadata.hasPendingWrites), err);
+}
+
+export const saveProfile = (uid: string, data: string) => setDoc(profileRef(uid), { data, updatedAt: serverTimestamp() });

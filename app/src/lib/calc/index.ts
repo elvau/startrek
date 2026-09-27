@@ -5,7 +5,7 @@
  * Beteiligte, Währungsumrechnung.
  */
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
-import { CAT_KEYS, FIXED, hhKey, type AgeClass, type CatKey, type Item, type Option, type Settings, type Tier, type Traveler, type Trip } from "../model";
+import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Item, type Option, type Settings, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number, s: Settings): AgeClass {
   if (age >= s.adultAge) return "adult";
@@ -23,7 +23,9 @@ export function bestTier(tiers: Tier[] | undefined, n: number): Tier | null {
 }
 
 export const participantsOf = (it: Item, trip: Trip): Traveler[] =>
-  trip.travelers.filter(t => !it.participants || it.participants.includes(t.id));
+  trip.travelers.filter(t => isActive(t) && (!it.participants || it.participants.includes(t.id)));
+
+export const activeTravelers = (trip: Trip) => trip.travelers.filter(isActive);
 
 const rateOf = (cur: string, s: Settings) => (cur === "EUR" ? 1 : s.rates[cur] || 1);
 
@@ -171,13 +173,17 @@ export interface Totals {
   saved: number;
   /** gebucht oder bezahlt */
   fixed: number;
-  /** Idee oder gewählt */
+  /** Idee oder gewählt, dazu alle einfachen Beträge */
   open: number;
   paid: number;
   byCat: Record<CatKey, number>;
   byPerson: Record<string, number>;
   byHousehold: Record<string, number>;
   items: Record<string, ItemCalc>;
+  /** einfacher Modus: Betrag je Bereich (nur Bereiche, die nicht detailliert sind) */
+  simple: Partial<Record<CatKey, number>>;
+  /** Anzahl Aktive, auf die einfache Beträge verteilt werden */
+  active: number;
 }
 
 export function totals(trip: Trip): Totals {
@@ -185,10 +191,24 @@ export function totals(trip: Trip): Totals {
   const byPerson: Record<string, number> = {};
   const byHousehold: Record<string, number> = {};
   const items: Record<string, ItemCalc> = {};
+  const simple: Partial<Record<CatKey, number>> = {};
   trip.travelers.forEach(t => (byPerson[t.id] = 0));
+  const act = activeTravelers(trip);
   let total = 0, saved = 0, fixed = 0, paid = 0;
+  for (const cat of CAT_KEYS) {
+    if (isDetailed(trip, cat)) continue;
+    // einfacher Modus: ein Betrag, gleich auf alle Aktiven verteilt
+    const v = Math.max(0, trip.simple?.[cat] || 0);
+    simple[cat] = v;
+    if (!v) continue;
+    total += v;
+    byCat[cat] += v;
+    act.forEach(t => (byPerson[t.id] += v / act.length));
+  }
   for (const it of trip.items) {
     const r = calcItem(it, trip);
+    // Posten in einfachen Bereichen bleiben erhalten, zählen aber nicht
+    if (!isDetailed(trip, it.cat)) r.counts = false;
     items[it.id] = r;
     if (!r.counts) continue;
     total += r.net;
@@ -199,10 +219,11 @@ export function totals(trip: Trip): Totals {
     for (const id in r.per) byPerson[id] = (byPerson[id] || 0) + r.per[id];
   }
   trip.travelers.forEach(t => {
+    if (!isActive(t)) return;
     const h = t.household.trim() || "Ohne Haushalt";
     byHousehold[h] = (byHousehold[h] || 0) + (byPerson[t.id] || 0);
   });
-  return { total, saved, fixed, open: total - fixed, paid, byCat, byPerson, byHousehold, items };
+  return { total, saved, fixed, open: total - fixed, paid, byCat, byPerson, byHousehold, items, simple, active: act.length };
 }
 
 /** Zahl aus deutscher oder englischer Eingabe, wie in der alten App */
@@ -223,7 +244,9 @@ export const eur = (v: number) => fmt.format(Math.round(v || 0)) + " €";
 /* ---------- Abrechnung pro Haushalt ---------- */
 
 export interface ShareLine {
-  item: Item;
+  /** fehlt bei einfachen Beträgen */
+  item?: Item;
+  label: string;
   /** Anteil des Haushalts */
   v: number;
   /** wie viele aus dem Haushalt dabei sind */
@@ -244,11 +267,15 @@ export interface HouseholdShare {
 const AGE_L: Record<AgeClass, string> = { adult: "Erwachsen", child: "Kind", infant: "Kleinkind" };
 
 export function householdShares(trip: Trip, T: Totals = totals(trip)): HouseholdShare[] {
-  const names = [...new Set(trip.travelers.map(hhKey))];
+  const names = [...new Set(activeTravelers(trip).map(hhKey))];
   return names.map(name => {
-    const ms = trip.travelers.filter(t => hhKey(t) === name);
+    const ms = activeTravelers(trip).filter(t => hhKey(t) === name);
     const cats = CAT_KEYS.map(cat => {
       const lines: ShareLine[] = [];
+      const sv = T.simple[cat];
+      if (sv && T.active) {
+        lines.push({ label: "Pauschal, gleich verteilt", v: (sv / T.active) * ms.length, who: ms.length, detail: `${eur(sv / T.active)} pro Person`, fixed: false });
+      }
       for (const it of trip.items) {
         if (it.cat !== cat) continue;
         const r = T.items[it.id];
@@ -263,7 +290,7 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
         const detail = differ && keys.length > 1 && new Set(keys.map(c => grp[c]!.v)).size > 1
           ? keys.map(c => `${grp[c]!.n} × ${AGE_L[c]} ${eur(grp[c]!.v)}`).join(" · ")
           : "";
-        lines.push({ item: it, v, who: inn.length, detail, fixed: FIXED.includes(it.status) });
+        lines.push({ item: it, label: it.name || "Ohne Namen", v, who: inn.length, detail, fixed: FIXED.includes(it.status) });
       }
       return { cat, sum: lines.reduce((a, l) => a + l.v, 0), lines };
     }).filter(c => c.lines.length);

@@ -94,3 +94,15 @@ describe("Verlassen", () => {
   it("die Besitzerin kann nicht einfach gehen", () =>
     assertFails(updateDoc(doc(db("anna"), "trips/t1"), { memberIds: arrayRemove("anna"), "members.anna": deleteField() })));
 });
+
+describe("Personen und Gruppen", () => {
+  const prof = { data: '{"people":[],"groups":[]}' };
+  it("jeder liest und schreibt nur das eigene Profil", async () => {
+    await assertSucceeds(setDoc(doc(db("anna"), "profiles/anna"), prof));
+    await assertSucceeds(getDoc(doc(db("anna"), "profiles/anna")));
+    await assertFails(getDoc(doc(db("ben"), "profiles/anna")));
+    await assertFails(setDoc(doc(db("ben"), "profiles/anna"), prof));
+    await assertFails(getDoc(doc(db(), "profiles/anna")));
+  });
+  it("nur erlaubte Felder", () => assertFails(setDoc(doc(db("anna"), "profiles/anna"), { ...prof, admin: true })));
+});
