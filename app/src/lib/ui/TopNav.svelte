@@ -12,7 +12,8 @@
     const a = nav?.querySelector<HTMLAnchorElement>(`a[data-ch="${view.active}"]`);
     if (!a) { pill.show = false; return; }
     pill = { left: a.offsetLeft, width: a.offsetWidth, show: true };
-    a.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    // nur die Leiste seitlich verschieben; scrollIntoView würde auf dem Handy auch die Seite bewegen
+    nav.scrollTo({ left: a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2, behavior: "smooth" });
   });
 
   function toggleTheme() {
