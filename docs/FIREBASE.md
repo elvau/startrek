@@ -35,25 +35,22 @@ Dauer: etwa 15 Minuten. Kosten: Der kostenlose Spark-Tarif reicht für Familie u
 Die Werte sind nicht geheim, sie stehen später ohnehin im Quelltext der Webseite. Geschützt werden
 die Daten durch die Regeln aus Schritt 3.
 
-## 5. Werte bei GitHub hinterlegen
-Im Repository **Settings → Secrets and variables → Actions → Reiter Variables → New repository variable**,
-vier Variablen anlegen:
+## 5. Werte in die App eintragen
+Die vier Werte stehen in [`app/.env.production`](../app/.env.production) (`VITE_FIREBASE_API_KEY`,
+`VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`). Bei jedem Push auf
+`main` wird die App damit gebaut; oben rechts erscheint **Anmelden**.
 
-| Name | Wert |
-| --- | --- |
-| `FIREBASE_API_KEY` | `apiKey` |
-| `FIREBASE_AUTH_DOMAIN` | `authDomain` |
-| `FIREBASE_PROJECT_ID` | `projectId` |
-| `FIREBASE_APP_ID` | `appId` |
+Ohne diese Datei (oder mit leeren Werten) läuft die App nur lokal ohne Konto.
 
-Danach unter **Actions → Deploy to GitHub Pages → Run workflow** einmal neu veröffentlichen.
-In der App erscheint oben rechts **Anmelden**.
+**Empfohlen:** In der [Google Cloud Console → APIs & Dienste → Anmeldedaten](https://console.cloud.google.com/apis/credentials)
+den „Browser key“ des Projekts auf **HTTP-Verweis-URLs** `https://elvau.github.io/*` und `http://localhost/*`
+beschränken. Dann kann niemand den Schlüssel auf einer anderen Seite verwenden.
 
 ## Lokal entwickeln
 - Gegen die Emulatoren (kein echtes Projekt nötig): `npm run build:emu`, dann
   `npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "npx vite preview --outDir dist-emu"`.
   Im Anmeldedialog gibt es dann eine Test-Anmeldung ohne Google.
-- Gegen das echte Projekt: `app/.env.local` mit `VITE_FIREBASE_API_KEY=…` usw. anlegen, dann `npm run dev`.
+- Gegen das echte Projekt: `npm run build && npm run preview` (nutzt `app/.env.production`).
   `localhost` ist in Firebase standardmäßig als Domain erlaubt.
 
 ## Tests
