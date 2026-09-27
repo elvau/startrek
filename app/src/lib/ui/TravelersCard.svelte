@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { app } from "../store.svelte";
+  import { access, app } from "../store.svelte";
   import { ageClass } from "../calc";
   import { uid } from "../model";
   import Households from "./Households.svelte";
@@ -31,9 +31,9 @@
       {/if}
     </div>
   {/each}
-  <button class="person add" onclick={add}><span class="av plus">+</span><b>Person</b></button>
+  {#if !access.readonly}<button class="person add" onclick={add}><span class="av plus">+</span><b>Person</b></button>{/if}
 </div>
 <div class="home">
-  <button class="linkbtn" onclick={e => { e.stopPropagation(); edit = !edit; }}>{edit ? "Fertig" : "Personen bearbeiten"}</button>
+  {#if !access.readonly}<button class="linkbtn" onclick={e => { e.stopPropagation(); edit = !edit; }}>{edit ? "Fertig" : "Personen bearbeiten"}</button>{/if}
 </div>
 <Households />

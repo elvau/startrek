@@ -3,6 +3,7 @@
   import { view } from "../scroll.svelte";
   import Icon from "./Icon.svelte";
   import TripMenu from "./TripMenu.svelte";
+  import Account from "./Account.svelte";
 
   let nav: HTMLElement;
   let pill = $state({ left: 0, width: 0, show: false });
@@ -32,6 +33,7 @@
         <a href="#{c.k}" data-ch={c.k} class:on={view.active === c.k}><Icon name={c.icon} />{c.label}</a>
       {/each}
     </nav>
+    <Account compact />
     <button class="tbtn" onclick={toggleTheme} aria-label="Hell oder dunkel"><Icon name="moon" size={18} /></button>
   </div>
 </header>

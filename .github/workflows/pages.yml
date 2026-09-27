@@ -39,6 +39,7 @@ jobs:
         run: npm run build
         env:
           BASE: /${{ github.event.repository.name }}/neu/
+          # Firebase-Konfiguration kommt aus app/.env.production
       - name: Seite zusammenstellen
         run: |
           mkdir -p _site
@@ -52,9 +53,33 @@ jobs:
         with:
           path: _site
 
+  cloud:
+    name: Konto und Teilen (Firebase-Emulator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Abhängigkeiten
+        working-directory: app
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Sicherheitsregeln
+        working-directory: app
+        run: npm run test:rules
+      - name: Zwei Personen planen gemeinsam
+        working-directory: app
+        run: npm run test:cloud
+
   deploy:
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [build, cloud]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

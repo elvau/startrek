@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, calc } from "../store.svelte";
+  import { cloud, isCloud } from "../cloud/cloud.svelte";
   import { activeOption, eur } from "../calc";
   import { CAT_CHAPTERS } from "../chapters";
   import { nights } from "../format";
@@ -47,7 +48,7 @@
       {/if}
       {#if nn && n}<div class="pp"><span>Pro Person und Nacht</span><b class="num">{eur(T.total / n / nn)}</b></div>{/if}
       <div class="pp"><span>Bereits bezahlt</span><b class="num">{eur(T.paid)}</b></div>
-      {#if !app.saved}<div class="pp"><span>Speichert…</span></div>{/if}
+      <div class="pp save"><span>{!app.saved || cloud.status === "saving" ? "Speichert…" : isCloud(app.trip.id) ? (cloud.status === "offline" ? "Offline, wird später übertragen" : cloud.status === "error" ? "Fehler beim Speichern" : "☁ Im Konto gespeichert") : "Auf diesem Gerät gespeichert"}</span></div>
     </div>
   </div>
 </aside>

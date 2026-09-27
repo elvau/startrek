@@ -1,9 +1,9 @@
-import { DEFAULT_SETTINGS, type Trip } from "./model";
+import { DEFAULT_SETTINGS, uid, type Trip } from "./model";
 
-/** Beispielreise für den ersten Start */
+/** Beispielreise für den ersten Start. Eigene ID, damit Beispiele verschiedener Personen im Konto nicht kollidieren. */
 export function sampleTrip(): Trip {
   return {
-    id: "beispiel",
+    id: "b-" + uid(),
     name: "Sommer in Kroatien",
     place: "Makarska",
     country: "Kroatien",

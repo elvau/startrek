@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Haushalte: Wohnort (PLZ), Anreise zum Flughafen, Anwesenheit */
-  import { app } from "../store.svelte";
+  import { access, app } from "../store.svelte";
   import { hhKey, type Household } from "../model";
   import { presences } from "../calc";
   import { dateDE } from "../format";
@@ -17,6 +17,7 @@
     return (app.trip.households[name] ||= { mode: "car", cars: 1 });
   }
   function toggle(name: string) {
+    if (access.readonly) return;
     open = open === name ? null : name;
     if (open) hh(name);
     q = app.trip.households?.[name]?.plz || "";

@@ -1,10 +1,18 @@
 <script lang="ts">
-  import { app, deleteTrip, duplicateTrip, newTrip, switchTrip } from "../store.svelte";
+  import { access, allTrips, app, deleteTrip, duplicateTrip, moveToCloud, newTrip, switchTrip } from "../store.svelte";
+  import { cloud, cloudTrip } from "../cloud/cloud.svelte";
   import { monthYear } from "../format";
+  import ShareDialog from "./ShareDialog.svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
   let open = $state(false);
+  let share = $state(false);
   let root: HTMLDivElement;
+
+  const trips = $derived(allTrips());
+  const cur = $derived(cloudTrip(app.trip.id));
+  const isOwner = $derived(!!cur && cur.owner === cloud.user?.uid);
+  const R = { owner: "", editor: "plant mit", viewer: "nur ansehen" };
 
   $effect(() => {
     if (!open) return;
@@ -15,28 +23,44 @@
     return () => { removeEventListener("click", close, true); removeEventListener("keydown", esc); };
   });
 
-  function act(fn: () => void) { fn(); open = false; }
+  function act(fn: () => unknown) { void fn(); open = false; }
   function remove() {
-    if (confirm(`„${app.trip.name}“ wirklich löschen? Das lässt sich nicht rückgängig machen.`)) act(() => deleteTrip(app.trip.id));
+    const q = cur && !isOwner
+      ? `„${app.trip.name}“ verlassen? Du siehst die Reise danach nicht mehr.`
+      : `„${app.trip.name}“ wirklich löschen?${cur && Object.keys(cur.members).length > 1 ? " Sie verschwindet auch für alle Mitreisenden." : ""} Das lässt sich nicht rückgängig machen.`;
+    if (confirm(q)) act(() => deleteTrip(app.trip.id));
   }
 </script>
 
 <div class="tmenu" class:compact bind:this={root}>
   <button class="tm-btn" aria-haspopup="menu" aria-expanded={open} onclick={() => (open = !open)}>
-    <span class="tm-name">{app.trip.name || "Reise"}</span><span class="tm-car" aria-hidden="true">▾</span>
+    {#if cur}<span aria-hidden="true">☁</span>{/if}<span class="tm-name">{app.trip.name || "Reise"}</span><span class="tm-car" aria-hidden="true">▾</span>
   </button>
   {#if open}
     <div class="tm-pop" role="menu">
       <div class="tm-h">Meine Reisen</div>
-      {#each app.index as m (m.id)}
+      {#each trips as m (m.id)}
         <button role="menuitemradio" aria-checked={m.id === app.trip.id} class="tm-trip" class:on={m.id === app.trip.id} onclick={() => act(() => switchTrip(m.id))}>
-          <b>{m.name || "Ohne Namen"}</b><small>{[m.place, m.from ? monthYear(m.from) : ""].filter(Boolean).join(" · ")}</small>
+          <b>{m.cloud ? "☁ " : ""}{m.name || "Ohne Namen"}</b>
+          <small>{[m.place, m.from ? monthYear(m.from) : "", m.role ? R[m.role] : "", m.shared ? "geteilt" : "", !m.cloud && cloud.user ? "nur auf diesem Gerät" : ""].filter(Boolean).join(" · ")}</small>
         </button>
       {/each}
       <div class="tm-sep"></div>
       <button role="menuitem" class="tm-act" onclick={() => act(newTrip)}>+ Neue Reise</button>
       <button role="menuitem" class="tm-act" onclick={() => act(duplicateTrip)}>Diese Reise kopieren</button>
-      <button role="menuitem" class="tm-act danger" onclick={remove}>Diese Reise löschen</button>
+      {#if cloud.user && !cur}
+        <button role="menuitem" class="tm-act" onclick={() => act(() => moveToCloud(app.trip.id))}>☁ Im Konto speichern</button>
+      {/if}
+      {#if cur}
+        <button role="menuitem" class="tm-act" onclick={() => { share = true; open = false; }}>{isOwner ? "Teilen und Mitglieder" : "Mitglieder"}</button>
+      {:else if cloud.configured && !cloud.user}
+        <button role="menuitem" class="tm-act" onclick={() => { cloud.showLogin = true; open = false; }}>Anmelden zum Teilen</button>
+      {/if}
+      {#if !access.readonly || (cur && !isOwner)}
+        <button role="menuitem" class="tm-act danger" onclick={remove}>{cur && !isOwner ? "Reise verlassen" : "Diese Reise löschen"}</button>
+      {/if}
     </div>
   {/if}
 </div>
+
+{#if share}<ShareDialog id={app.trip.id} onclose={() => (share = false)} />{/if}
