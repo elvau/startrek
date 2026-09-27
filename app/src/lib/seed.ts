@@ -10,13 +10,15 @@ export function sampleTrip(): Trip {
     kicker: "Sommerferien 2027 · Familie Klein",
     from: "2027-07-18",
     to: "2027-07-29",
-    home: "40210 Düsseldorf · Anreise mit dem Auto",
     travelers: [
       { id: "anna", name: "Anna", age: 41, household: "Klein", color: "#D2693C" },
       { id: "jonas", name: "Jonas", age: 43, household: "Klein", color: "#2F6FDB" },
       { id: "mia", name: "Mia", age: 11, household: "Klein", color: "#C0487A" },
       { id: "ben", name: "Ben", age: 8, household: "Klein", color: "#1F8A70" }
     ],
+    households: {
+      Klein: { plz: "40210", geo: { lat: 51.223, lon: 6.779, ort: "Düsseldorf" }, mode: "car", cars: 1 }
+    },
     tiers: {},
     settings: { ...DEFAULT_SETTINGS },
     items: [
@@ -51,18 +53,14 @@ export function sampleTrip(): Trip {
         ]
       },
       {
-        id: "parken", cat: "flights", name: "Parken am Flughafen", icon: "park", status: "paid",
-        note: "P7 Holiday · 12 Tage · Auto 25 min",
-        options: [{ id: "p", label: "P7 Holiday", price: { mode: "unit", currency: "EUR", unit: 96 } }]
-      },
-      {
         id: "villa", cat: "stay", name: "Villa Maslina, Makarska", status: "booked",
+        from: "2027-07-18", to: "2027-07-29",
         booking: { provider: "Booking", cancelUntil: "2027-06-01" },
         payments: [{ amount: 400, note: "Anzahlung" }],
         options: [{
           id: "v", label: "Apartment, 2 Schlafzimmer",
-          price: { mode: "unit", currency: "EUR", unit: 148, qty: 11 },
-          stay: { stars: 4, rating: 89, nights: 11, facts: ["2 Schlafzimmer", "350 m zum Strand"] }
+          price: { mode: "unit", currency: "EUR", unit: 148, basis: "night", capacity: 5 },
+          stay: { stars: 4, rating: 89, facts: ["2 Schlafzimmer", "350 m zum Strand"] }
         }]
       },
       {

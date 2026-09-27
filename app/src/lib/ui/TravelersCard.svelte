@@ -2,6 +2,7 @@
   import { app } from "../store.svelte";
   import { ageClass } from "../calc";
   import { uid } from "../model";
+  import Households from "./Households.svelte";
 
   const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"];
   const L = { adult: "Erwachsen", child: "Kind", infant: "Kleinkind" };
@@ -33,6 +34,6 @@
   <button class="person add" onclick={add}><span class="av plus">+</span><b>Person</b></button>
 </div>
 <div class="home">
-  {#if app.trip.home}<span>🏠 {app.trip.home}</span>{/if}
-  <button class="linkbtn" onclick={e => { e.stopPropagation(); edit = !edit; }}>{edit ? "Fertig" : "Bearbeiten"}</button>
+  <button class="linkbtn" onclick={e => { e.stopPropagation(); edit = !edit; }}>{edit ? "Fertig" : "Personen bearbeiten"}</button>
 </div>
+<Households />

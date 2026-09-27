@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Item } from "../model";
-  import { calc } from "../store.svelte";
+  import { app, calc } from "../store.svelte";
   import { eur } from "../calc";
   import { dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
@@ -8,7 +8,11 @@
   let { item }: { item: Item } = $props();
   const r = $derived(calc.T.items[item.id]);
   const s = $derived(r?.option?.stay);
-  const nn = $derived(s?.nights || r?.option?.price.qty || 0);
+  const sc = $derived(r?.stay);
+  const nn = $derived(sc ? sc.nights.length : s?.nights || r?.option?.price.qty || 0);
+  // Gäste, die nicht alle Nächte da sind
+  const partial = $derived(sc ? Object.entries(sc.w).filter(([, w]) => w < sc.nights.length).map(([id, w]) => `${app.trip.travelers.find(t => t.id === id)?.name || "?"} ${w} ${w === 1 ? "Nacht" : "Nächte"}`) : []);
+  const absent = $derived(sc ? sc.nights.filter(x => !sc.occ[x]).length : 0);
   const pct = $derived(r && r.net ? Math.min(100, (r.paid / r.net) * 100) : 0);
   let shown = $state(false);
   $effect(() => { const t = setTimeout(() => (shown = true), 300); return () => clearTimeout(t); });
@@ -24,6 +28,7 @@
       {#if item.booking?.provider}<span class="muted">{item.booking.provider}{item.booking.cancelUntil ? ` · storniert gratis bis ${dateDE(item.booking.cancelUntil)}` : ""}</span>{/if}
     </div>
     <h3>{item.name || "Neue Unterkunft"}</h3>
+    {#if item.from && item.to}<div class="muted">{dateDE(item.from)} bis {dateDE(item.to)} · {nn} {nn === 1 ? "Nacht" : "Nächte"}{r?.stay ? ` · bis zu ${r.stay.maxOcc} Gäste` : ""}</div>{/if}
     <div class="facts">
       {#if s?.stars}<span class="fact">{"★".repeat(s.stars)}</span>{/if}
       {#if s?.rating}<span class="fact">{s.rating} % Bewertung</span>{/if}
@@ -31,9 +36,15 @@
     </div>
     {#if nn}
       <div class="nights" class:in={shown}>
-        {#each Array(Math.min(nn, 31)) as _, i}<span style="transition-delay:{i * 60}ms"><svg width="13" height="13"><use href="#i-moon" /></svg></span>{/each}
+        {#each Array(Math.min(nn, 31)) as _, i}
+          {@const x = sc?.nights[i]}
+          <span style="transition-delay:{i * 60}ms" class:empty={x && !sc?.occ[x]} title={x ? `${dateDE(x)}: ${sc?.occ[x] || 0} Gäste` : ""}><svg width="13" height="13"><use href="#i-moon" /></svg></span>
+        {/each}
       </div>
     {/if}
+    {#if sc?.over}<div class="warnline">⚠ In manchen Nächten mehr Gäste ({sc.maxOcc}) als Plätze ({r?.option?.price.capacity}).</div>{/if}
+    {#if absent}<div class="warnline">⚠ {absent} {absent === 1 ? "Nacht" : "Nächte"} ohne Gäste, der Preis wird auf alle verteilt.</div>{/if}
+    {#if partial.length}<div class="muted">Nicht alle Nächte da: {partial.join(", ")}</div>{/if}
     <div class="stay-foot">
       <div class="pay">
         {#if item.status === "paid"}<span>Vollständig bezahlt</span>
