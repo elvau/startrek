@@ -1,9 +1,10 @@
 <script lang="ts">
   /* Bearbeiten eines Postens im Fokusmodus: Status, Angebote, Preis, Beteiligte */
-  import { isActive, uid, type FlightLeg, type Item, type Status } from "../model";
+  import { hhKey, isActive, uid, type FlightLeg, type Item, type Status } from "../model";
   import { app, removeItem } from "../store.svelte";
   import { activeOption, ageClass } from "../calc";
   import { openStaySearch } from "../stays/open.svelte";
+  import { openFlightSearch } from "../flights/open.svelte";
 
   let { item }: { item: Item } = $props();
   const STATUS: [Status, string][] = [["idea", "Idee"], ["chosen", "Gewählt"], ["booked", "Gebucht"], ["paid", "Bezahlt"], ["dropped", "Verworfen"]];
@@ -106,6 +107,7 @@
           <label class="f">Umstiege<input class="n sm" type="number" min="0" max="4" value={L?.stops ?? 0} oninput={e => setLeg(dir as "out", "stops", e.currentTarget.value)} /></label>
         </div>
       {/each}
+      <div><button class="btn primary sm fs-item" onclick={() => openFlightSearch({ itemId: item.id })}>✈ Flüge suchen{item.participants ? ` für ${[...new Set(app.trip.travelers.filter(t => item.participants!.includes(t.id)).map(hhKey))].join(", ")}` : ""}</button></div>
       <label class="check"><input type="checkbox" checked={item.access !== false} onchange={e => (item.access = e.currentTarget.checked ? undefined : false)} /> Anreise zum Abflughafen einrechnen (Auto mit Parken oder Bahn, je Familie)</label>
     </div>
   {/if}

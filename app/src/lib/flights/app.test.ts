@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi } from "./kiwi";
-import { compareRow, deadline, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
+import { compareRow, covered, deadline, defaultFlyers, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
 import { totals } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 
@@ -73,5 +73,54 @@ describe("Flugsuche in der App", () => {
     const row = compareRow("DUS", [r, rate(t, b, "DUS", true)]);
     expect(row).toMatchObject({ code: "DUS", price: 989, count: 2, direct: r.total });
     expect(compareRow("CGN", [], "Kiwi antwortet mit 503")).toMatchObject({ count: 0, error: "Kiwi antwortet mit 503" });
+  });
+});
+
+/** zwei Familien wie im Artefakt: Klein aus Düsseldorf, Hase aus München */
+const two = (): Trip => ({
+  ...trip(),
+  travelers: [
+    { id: "a", name: "Anna", age: 41, household: "Klein" }, { id: "c", name: "Mia", age: 8, household: "Klein" },
+    { id: "h", name: "Hanna", age: 38, household: "Hase" }, { id: "i", name: "Ida", age: 5, household: "Hase" }, { id: "j", name: "Jan", age: 40, household: "Hase" }
+  ],
+  households: { Klein: { geo: { lat: 51.23, lon: 6.78, ort: "Düsseldorf" }, mode: "car" }, Hase: { geo: { lat: 48.14, lon: 11.58, ort: "München" }, mode: "car" } }
+});
+
+describe("Flüge je Familie oder Person (wie im Artefakt)", () => {
+  it("zählt nur, wer fliegt", () => {
+    expect(passengers(two(), ["h", "i", "j"])).toEqual({ adults: 2, children: 1, infants: 0 });
+    expect(defaultQuery(two(), "", ["h", "i", "j"])).toMatchObject({ from: "München", adults: 2, children: 1 });
+  });
+  it("Vorschlag: erste Familie ohne Flug; eine Familie oder alle versorgt: alle", () => {
+    const t = two();
+    expect(defaultFlyers(t)).toEqual(["a", "c"]);
+    t.items.push({ id: "f1", cat: "flights", name: "Flug Klein", status: "idea", participants: ["a", "c"], options: [] });
+    expect([...covered(t)]).toEqual(["a", "c"]);
+    expect(defaultFlyers(t)).toEqual(["h", "i", "j"]);
+    t.items.push({ id: "f2", cat: "flights", name: "Flug Hase", status: "idea", participants: ["h", "i", "j"], options: [] });
+    expect(defaultFlyers(t)).toBeUndefined();
+    expect(defaultFlyers(trip())).toBeUndefined();
+  });
+  it("Flughäfen: je Familie die nächsten zum Wohnort", () => {
+    expect(nearestAirports(two(), 4, ["h", "i", "j"])[0]).toBe("MUC");
+    const both = nearestAirports(two(), 4);
+    expect(both).toContain("DUS");
+    expect(both).toContain("MUC");
+  });
+  it("Anfahrt nur für die Familien, die fliegen", () => {
+    const [o] = fromKiwi(fixture);
+    const all = rate(two(), o, "DUS", true), klein = rate(two(), o, "DUS", true, ["a", "c"]);
+    expect(klein.access).toBeGreaterThan(0);
+    expect(klein.access).toBeLessThan(all.access);
+  });
+  it("Übernehmen: Posten nur für die Fliegenden, Name „Flug Klein“; weitere Treffer als Angebote dazu", () => {
+    const t = two();
+    const [a, b] = fromKiwi(fixture);
+    const it = takeOffer(t, a, undefined, ["a", "c"]);
+    expect(it).toMatchObject({ name: "Flug Klein", participants: ["a", "c"] });
+    takeOffer(t, b, it.id, ["a", "c"]);
+    expect(it.options).toHaveLength(2);
+    expect(takeOffer(t, a, undefined, ["a", "c", "h", "i", "j"]).participants).toBeUndefined();
+    expect(takeOffer(t, a, undefined, ["a", "h"]).name).toBe("Flug Düsseldorf – Split");
   });
 });

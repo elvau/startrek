@@ -108,6 +108,65 @@ try {
   if (!txt.includes("Eurowings") || !txt.includes("2 Angebote")) fail("Posten: " + txt.slice(0, 200));
   log("Feste Daten ± 2 Tage; zwei Treffer übernommen (Liste und „Wählen“ in der Tabelle): ein Flug-Posten mit 2 Angeboten");
 
+  // wie im Artefakt: je Familie suchen und buchen (eigene Flughäfen, eigene Anfahrt, eigener Flug-Posten)
+  const TWO = {
+    id: "k2", name: "Split", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-29",
+    travelers: [{ id: "a", name: "Anna", age: 41, household: "Klein" }, { id: "c", name: "Mia", age: 8, household: "Klein" },
+      { id: "h", name: "Hanna", age: 38, household: "Hase" }, { id: "i", name: "Ida", age: 5, household: "Hase" }, { id: "j", name: "Jan", age: 40, household: "Hase" }],
+    households: { Klein: { plz: "40210", geo: { lat: 51.23, lon: 6.78, ort: "Düsseldorf" }, mode: "car" }, Hase: { plz: "80331", geo: { lat: 48.14, lon: 11.58, ort: "München" }, mode: "car" } },
+    items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 }, kmCost: 0.3 }
+  };
+  await p.evaluate(t => { localStorage.removeItem("rk-flight-search"); localStorage.setItem("rk2-t:k2", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k2", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k2"); }, TWO);
+  await p.reload();
+  await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
+  await p.locator("#flights .fs-open").click();
+  if (!(await m.locator(".fs-who .chip.on", { hasText: "Klein (2)" }).count())) fail("Vorschlag erste Familie ohne Flug fehlt");
+  const kAps = await m.locator(".fs-aps .chip.on").allTextContents();
+  if (!kAps.includes("DUS") || kAps.includes("MUC")) fail("Flughäfen nicht zum Wohnort von Klein: " + kAps);
+  if (!(await m.locator("p", { hasText: "1 Erw. · 1 Kind (Klein)" }).count())) fail("Personen für Klein: " + await m.locator(".fs-form p.muted").last().textContent());
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().waitFor();
+  const k = asked.at(-1);
+  if (k.adults !== 1 || k.children !== 1 || k.infants !== 0) fail("Anfrage nur für Klein: " + JSON.stringify(k));
+  await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.keyboard.press("Escape");
+  const kc = p.locator("#flights .card[data-item]", { hasText: "Klein · 2 Pers." });
+  await kc.waitFor();
+  log("Je Familie: Vorschlag Klein (1 Erw., 1 Kind, ab DUS), gesucht nur für Klein, Posten „Flug Klein“");
+
+  // nochmal: jetzt ist Hase dran, mit Flughäfen bei München
+  await p.locator("#flights .fs-open").click();
+  if (!(await m.locator(".fs-who .chip.on", { hasText: "Hase (3)" }).count())) fail("Vorschlag Hase fehlt");
+  if (!(await m.locator(".fs-who .chip", { hasText: "Klein (2)" }).locator("small", { hasText: "hat Flug" }).count())) fail("Klein nicht als versorgt markiert");
+  const hAps = await m.locator(".fs-aps .chip.on").allTextContents();
+  if (!hAps.includes("MUC") || hAps.includes("DUS")) fail("Flughäfen nicht zum Wohnort von Hase: " + hAps);
+  // eine Person herausnehmen: Jan fliegt separat
+  await m.locator(".fs-who summary").click();
+  await m.locator(".fs-who .chip", { hasText: "Jan" }).click();
+  // (die nachgestellten Treffer starten alle in DUS: von München aus wären sie „zu spät zuhause“, darum feste Daten)
+  await m.locator(".fs-mode .chip", { hasText: "Feste Daten" }).click();
+  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
+  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().waitFor();
+  const h = asked.at(-1);
+  if (h.adults !== 1 || h.children !== 1) fail("Anfrage Hase ohne Jan: " + JSON.stringify(h));
+  await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.keyboard.press("Escape");
+  await p.locator("#flights .card[data-item]", { hasText: "Hase · 2 Pers." }).waitFor();
+  log("Hase als Nächstes vorgeschlagen (ab MUC), Jan einzeln abgewählt: Posten „Flug Hase“ für Hanna und Ida");
+
+  // Suche aus dem Posten: gilt für dessen Personen, Treffer kommen dazu
+  await kc.click();
+  await p.locator(".fs-item").click();
+  if (!(await m.locator(".modal-h h3", { hasText: "Flüge suchen: Flug Klein" }).count())) fail("Suche aus dem Posten");
+  if (!(await m.locator(".fs-who .chip.on", { hasText: "Klein (2)" }).count())) fail("Posten-Personen nicht übernommen");
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").nth(1).locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.keyboard.press("Escape");
+  if (!(await kc.textContent()).includes("2 Angebote")) fail("Treffer nicht im Posten Klein");
+  log("Suche aus „Flug Klein“: gleiche Personen, Treffer als zweites Angebot im Posten");
+
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");
 } finally {

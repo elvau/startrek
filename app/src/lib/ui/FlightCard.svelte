@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Item } from "../model";
+  import { hhKey, isActive, type Item } from "../model";
   import { access, app, calc } from "../store.svelte";
   import { calcOption, eur } from "../calc";
   import { dayShort, duration, time, dateDE } from "../format";
@@ -11,6 +11,16 @@
   const out = $derived(opt?.legs?.find(l => l.dir === "out"));
   const back = $derived(opt?.legs?.find(l => l.dir === "back"));
   const pp = $derived(r && r.n ? r.net / r.n : 0);
+  // Städte nur aus Namen wie „Flug Düsseldorf – Split“
+  const cities = $derived(item.name.match(/^Flug\s+(.+?)\s+[–-]\s+(.+)$/));
+  // wer fliegt, wie im Artefakt: Familie(n) mit Personenzahl, bei mehreren Familien ohne Auswahl „Alle“
+  const who = $derived.by(() => {
+    const act = app.trip.travelers.filter(isActive);
+    const ppl = item.participants ? act.filter(t => item.participants!.includes(t.id)) : act;
+    const hhs = [...new Set(ppl.map(hhKey))];
+    if (!item.participants) return new Set(act.map(hhKey)).size > 1 ? `Alle · ${ppl.length} Pers.` : "";
+    return `${hhs.join(", ")} · ${ppl.length} Pers.`;
+  });
 
   function choose(id: string, e: Event) {
     e.stopPropagation();
@@ -23,13 +33,14 @@
   <div class="bp-main">
     <div class="bp-hd">
       <StatusBadge status={item.status} extra={item.options.length > 1 ? ` · ${item.options.length} Angebote` : ""} />
+      {#if who}<span class="bp-who">{who}</span>{/if}
       <span class="muted">{out?.carrier || opt?.label || ""}{out ? (out.stops ? ` · ${out.stops} Umstieg` : " · Direktflug") : ""}</span>
     </div>
     {#if out}
       <div class="bp-route">
-        <div class="bp-ap"><b>{out.from}</b><span>{item.name.split(/[–-]/)[0]?.replace(/^Flug\s*/, "").trim()}</span></div>
+        <div class="bp-ap"><b>{out.from}</b><span>{cities?.[1] || ""}</span></div>
         <div class="bp-line"><svg viewBox="0 0 24 24" style="transform:rotate(90deg)"><use href="#i-plane" /></svg><em>{duration(out.dep, out.arr)}</em></div>
-        <div class="bp-ap r"><b>{out.to}</b><span>{item.name.split(/[–-]/)[1]?.trim() || ""}</span></div>
+        <div class="bp-ap r"><b>{out.to}</b><span>{cities?.[2] || ""}</span></div>
       </div>
       {#if r?.access}
         <div class="bp-acc">
