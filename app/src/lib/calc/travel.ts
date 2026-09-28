@@ -1,7 +1,7 @@
 /*
  * Anwesenheit und Anreise, wie in der bisherigen App (presenceOf, stayCalc, accessFor).
  */
-import { hhKey, type Airport, type Household, type Item, type Option, type Traveler, type Trip } from "../model";
+import { hhKey, type Airport, type FlightLeg, type Household, type Item, type Option, type Traveler, type Trip } from "../model";
 import { DEFAULT_AIRPORTS } from "../airports";
 
 const DAY = 86400000;
@@ -29,12 +29,22 @@ export function flightFor(t: Traveler, trip: Trip): Item | undefined {
   return fl.find(it => it.participants?.includes(t.id)) || fl.find(it => !it.participants);
 }
 
+/**
+ * Hin- und Rückflug einer Person, auch aus getrennten Posten (erst nur bis Rio, später der Rückflug):
+ * Posten, in denen sie ausdrücklich steht, sonst die für alle; erster Hinflug, letzter Rückflug.
+ */
+export function flightLegs(t: Traveler, trip: Trip, pick: (it: Item) => Option | null): { out?: FlightLeg; back?: FlightLeg } {
+  const fl = trip.items.filter(it => it.cat === "flights" && it.status !== "dropped" && (it.follow || it.options.some(o => o.legs?.length)));
+  const mine = fl.filter(it => it.participants?.includes(t.id));
+  const legs = (mine.length ? mine : fl.filter(it => !it.participants)).flatMap(it => pick(it)?.legs || []);
+  const by = (dir: FlightLeg["dir"]) => legs.filter(l => l.dir === dir && okDate(l.dep)).sort((a, b) => a.dep.localeCompare(b.dep));
+  return { out: by("out")[0], back: by("back").at(-1) };
+}
+
 export function presenceOf(t: Traveler, trip: Trip, pick: (it: Item) => Option | null): Presence | null {
   const h = trip.households?.[hhKey(t)];
   if (okDate(h?.arrive) && okDate(h?.depart) && h!.depart! > h!.arrive!) return { a: h!.arrive!, d: h!.depart!, src: "manual" };
-  const it = flightFor(t, trip);
-  const o = it && pick(it);
-  const out = o?.legs?.find(l => l.dir === "out"), back = o?.legs?.find(l => l.dir === "back");
+  const { out, back } = flightLegs(t, trip, pick);
   if (!out || !back || !okDate(out.arr) || !okDate(back.dep)) return null;
   return { a: out.arr.slice(0, 10), d: back.dep.slice(0, 10), src: "flight" };
 }

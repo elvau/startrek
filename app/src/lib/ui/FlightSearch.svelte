@@ -13,7 +13,9 @@
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { ccOf, findCity } from "../geo/places";
   import { airportsNear, areaAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
-  import { FLIGHTS_URL, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
+  import { addDays } from "../flights/kiwi";
+  import { isShort, searchRound, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
+  import { FLIGHTS_URL, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import type { FlightScope } from "../flights/open.svelte";
   import { googleFlightsLink, skyscannerLink } from "../links";
@@ -64,6 +66,8 @@
   const originLoc = (code: string): Loc | null => (apCities.includes(code) ? locOf(airportData, code, "city") : locOf(airportData, code, "airport"));
 
   let mode = $state<"flex" | "fixed">((saved.mode as "flex" | "fixed") || "flex");
+  // Art der Reise: hin und zurück, nur hin (z. B. erst mal bis Rio), Rundreise mit mehreren Stationen
+  let kind = $state<"return" | "oneway" | "round">((saved.kind as "return" | "oneway" | "round") || "return");
   let to = $state(base.to);
   let toLoc = $state<Loc | null>(null);
   const cc = $derived(ccOf(geo, trip.country));
@@ -95,6 +99,19 @@
   // flexibel
   let rFrom = $state(base.depart);
   let rTo = $state(base.latest || "");
+  // nur hin / Rundreise: spätester Abflug (Zeitfenster)
+  let wTo = $state(base.depart ? addDays(base.depart, 7) : "");
+  // Rundreise: Stationen mit Nächten vor Ort, am Ende zurück nach Hause
+  interface Station { loc: Loc | null; text: string; min: number; max: number }
+  let stations = $state<Station[]>([{ loc: null, text: "", min: 4, max: 7 }]);
+  let home = $state(true);
+  let rounds = $state<{ rt: RoundTrip; r: Rated }[] | null>(null);
+  let roundErrors = $state<string[]>([]);
+  function setKind(k: typeof kind) {
+    kind = k;
+    // erste Station der Rundreise: bisheriges Ziel
+    if (k === "round" && !stations[0].text && (toLoc || to.trim())) { stations[0].loc = toLoc; stations[0].text = to; }
+  }
   let rToTime = $state((saved.rToTime as string) || "22:00");
   let lo = $state(base.nightsMin || 7);
   let hi = $state(base.nightsMax || 14);
@@ -146,9 +163,15 @@
 
   async function search(e: Event) {
     e.preventDefault();
-    error = ""; list = null; rows = []; sources = []; lateOut = 0;
+    error = ""; list = null; rows = []; sources = []; lateOut = 0; rounds = null; roundErrors = [];
     if (!aps.length) { error = "Bitte mindestens einen Abflughafen auswählen."; return; }
-    if (mode === "flex") {
+    if (kind === "round") return roundSearch();
+    if (kind === "oneway") {
+      if (mode === "flex" && (!rFrom || !wTo)) { error = "Bitte früheste und späteste Abreise eintragen."; return; }
+      if (mode === "flex" && wTo < rFrom) { error = "Die späteste Abreise liegt vor der frühesten."; return; }
+      if (mode === "flex" && nights(rFrom, wTo) > 62) { error = "Das Zeitfenster darf höchstens 2 Monate lang sein."; return; }
+      if (mode === "fixed" && !out) { error = "Bitte ein Abflugdatum eintragen."; return; }
+    } else if (mode === "flex") {
       if (span == null) { error = "Bitte früheste Hinreise und spätestes Zuhause-Datum eintragen."; return; }
       if (span < 1) { error = "Das Zuhause-Datum liegt vor der frühesten Hinreise."; return; }
     } else if (!out) { error = "Bitte ein Hinflugdatum eintragen."; return; }
@@ -160,14 +183,15 @@
     // Auswahl = Name + Liste von Codes; bei einer Stadt zusätzlich ihr Stadt-Code
     const toQ = dest ? { to: dest.code, toAirports: dest.airports, ...(dest.kind === "city" ? { toCityCode: dest.code } : {}) } : { to: to.trim().toUpperCase() };
     const fromQ = (code: string) => { const l = originLoc(code); return l ? { from: l.code, fromAirports: l.airports, ...(l.kind === "city" ? { fromCityCode: l.code } : {}) } : { from: code }; };
-    try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], apCities: custom ? apCities.filter(c => aps.includes(c)) : [], mode, rToTime, flexDays, maxStops, bags, noSelf, withAccess })); } catch {}
+    try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], apCities: custom ? apCities.filter(c => aps.includes(c)) : [], mode, kind, rToTime, flexDays, maxStops, bags, noSelf, withAccess })); } catch {}
 
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
-    const q: Omit<FlightQuery, "from"> = mode === "flex"
-      ? { ...toQ, depart: rFrom, latest: rTo, nightsMin: lo, nightsMax: hi, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" }
-      : { ...toQ, depart: out, ret: ret || undefined, flexDays, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" };
-    const dl = mode === "flex" ? deadline(rTo, rToTime) : NaN;
+    const common = { ...toQ, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" };
+    const q: Omit<FlightQuery, "from"> = kind === "oneway"
+      ? mode === "flex" ? { ...common, depart: rFrom, departTo: wTo } : { ...common, depart: out, flexDays }
+      : mode === "flex" ? { ...common, depart: rFrom, latest: rTo, nightsMin: lo, nightsMax: hi } : { ...common, depart: out, ret: ret || undefined, flexDays };
+    const dl = kind === "return" && mode === "flex" ? deadline(rTo, rToTime) : NaN;
     const all: Rated[] = [], cmp: CompareRow[] = [], src = new Map<string, SourceStatus>();
     let late = 0;
     try {
@@ -194,6 +218,55 @@
     } catch (err) {
       if ((err as Error).name !== "AbortError") error = (err as Error).message;
     } finally { busy = false; progress = ""; }
+  }
+
+  /** Ort der Auswahl als Liste von Codes für die Rundreise */
+  const placeOf = (l: Loc): RoundPlace => ({ name: l.kind === "airport" ? l.code : l.city, code: l.code, airports: l.airports, ...(l.kind === "city" ? { cityCode: l.code } : {}) });
+
+  async function roundSearch() {
+    if (!rFrom || !wTo || wTo < rFrom) { error = "Bitte früheste und späteste Abreise eintragen."; return; }
+    if (n > 9) { error = `Es fliegen ${n} Personen. Kiwi sucht höchstens 9 Personen pro Buchung. Oben bei „Wer fliegt“ eine Familie wählen.`; return; }
+    if (!whoIds.length) { error = "Bitte oben auswählen, wer fliegt."; return; }
+    const stops: RoundStop[] = [];
+    for (const [i, st] of stations.entries()) {
+      const l = st.loc ?? resolveLoc(airportData, st.text, cc) ?? areaFor(st.text);
+      if (!l) { error = `Station ${i + 1}: „${st.text.trim() || "leer"}“ nicht gefunden. Bitte einen Vorschlag aus der Liste wählen.`; return; }
+      if (!(st.min >= 0 && st.max >= st.min && st.max <= 60)) { error = `Station ${i + 1}: Nächte von 0 bis 60, von ≤ bis.`; return; }
+      stops.push({ place: placeOf(l), min: st.min, max: st.max });
+    }
+    // Start: alle gewählten Abflughäfen als eine Liste (Städte mit all ihren Flughäfen)
+    const fromAps = [...new Set(aps.flatMap(c => originLoc(c)?.airports ?? [c]))];
+    const one = aps.length === 1 ? originLoc(aps[0]) : null;
+    const from: RoundPlace = { name: aps.join("/"), code: fromAps[0], airports: fromAps, ...(one?.kind === "city" ? { cityCode: one.code } : {}) };
+    try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], apCities: custom ? apCities.filter(c => aps.includes(c)) : [], mode, kind, rToTime, flexDays, maxStops, bags, noSelf, withAccess })); } catch {}
+    busy = true;
+    ctrl?.abort(); ctrl = new AbortController();
+    const signal = ctrl.signal;
+    try {
+      const plan = { from, stops, home, depart: rFrom, departTo: wTo, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" };
+      const run = (p: typeof plan, what: string) => searchRound(p, q => searchFlights(q, signal), (k, of) => (progress = `${what}Strecke ${k} von ${of}`));
+      // getrennte Flüge; kurze Stationen (unter 48 h) zusätzlich als Gabelflug mit langem Umstieg auf einem Ticket
+      const res = [await run(plan, "")];
+      const short = stops.slice(0, home ? stops.length : -1).some(isShort);
+      if (short) res.push(await run({ ...plan, stops: stops.map(s => (isShort(s) ? { ...s, via: true } : s)) }, "Gabelflug: "));
+      const seen = new Set<string>();
+      rounds = res.flatMap(r => r.trips).filter(rt => (seen.has(rt.id) ? false : (seen.add(rt.id), true)))
+        .map(rt => ({ rt, r: rateRound(trip, rt, home, withAccess, who) })).sort((a, b) => a.r.total - b.r.total).slice(0, 30);
+      const srcs = new Map<string, SourceStatus>();
+      res.flatMap(r => r.sources).forEach(s => { const o = srcs.get(s.id); srcs.set(s.id, o ? { ...o, ok: o.ok || s.ok, count: o.count + s.count } : { ...s }); });
+      sources = [...srcs.values()];
+      // Fehler nur zeigen, wenn es gar keine Rundreise gab
+      roundErrors = rounds.length ? [] : res.flatMap(r => r.errors);
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") error = (err as Error).message;
+    } finally { busy = false; progress = ""; }
+  }
+
+  function takeR(rt: RoundTrip) {
+    app.trip.detail ||= {};
+    app.trip.detail.flights = true;
+    into = takeRound(app.trip, rt, home, into, who).id;
+    taken[rt.id] = true;
   }
 
   function take(o: Rated) {
@@ -257,6 +330,13 @@
       </p>
     </div>
 
+    <div class="chips fs-kind" role="radiogroup" aria-label="Art der Reise">
+      {#each [["return", "Hin & zurück"], ["oneway", "Nur Hinflug"], ["round", "Rundreise"]] as [k, t] (k)}
+        <button type="button" role="radio" aria-checked={kind === k} class="chip" class:on={kind === k} onclick={() => setKind(k as typeof kind)}>{t}</button>
+      {/each}
+    </div>
+
+    {#if kind !== "round"}
     <div class="chips fs-mode" role="radiogroup" aria-label="Daten">
       <button type="button" role="radio" aria-checked={mode === "fixed"} class="chip" class:on={mode === "fixed"} onclick={() => (mode = "fixed")}>Feste Daten</button>
       <button type="button" role="radio" aria-checked={mode === "flex"} class="chip" class:on={mode === "flex"} onclick={() => (mode = "flex")}>Flexibler Zeitraum</button>
@@ -265,7 +345,43 @@
     <LocationPicker label="Nach" bind:value={toLoc} bind:text={to} placeholder="Flughafen, Stadt oder Ort wählen" required near={nearDest} {areaFor} />
     {#if toLoc && toLoc.kind !== "airport"}<p class="muted small fs-note">Sucht über {toLoc.airports.length} Flughäfen: {toLoc.airports.join(", ")}. Nur einen? In der Liste den Flughafen wählen.</p>{/if}
 
-    {#if mode === "flex"}
+    {/if}
+
+    {#if kind === "round"}
+      <div class="fs-flexbox">
+        <div class="ed-row">
+          <label class="f">Abflug frühestens<input type="date" bind:value={rFrom} required /></label>
+          <label class="f">spätestens<input type="date" bind:value={wTo} min={rFrom} required /></label>
+        </div>
+        <div class="fs-stations">
+          {#each stations as st, i (i)}
+            <div class="fs-station">
+              <LocationPicker label="{i + 1}. Station" bind:value={st.loc} bind:text={st.text} placeholder="Stadt, Flughafen oder Ort" near={i === 0 ? nearDest : []} {areaFor} />
+              <label class="f fs-n">Nächte von<input type="number" min="0" max="60" bind:value={st.min} /></label>
+              <label class="f fs-n">bis<input type="number" min="1" max="60" bind:value={st.max} /></label>
+              {#if stations.length > 1}<button type="button" class="btn sm fs-del" aria-label="Station {i + 1} entfernen" onclick={() => (stations = stations.filter((_, j) => j !== i))}>×</button>{/if}
+            </div>
+            {#if st.max <= 1 && (home || i < stations.length - 1)}<p class="muted small fs-short">Unter 48 Stunden: wird auch als Gabelflug gesucht, ein Ticket mit langem Umstieg dort.</p>{/if}
+          {/each}
+          {#if stations.length < 5}<button type="button" class="btn sm fs-addst" onclick={() => (stations = [...stations, { loc: null, text: "", min: 3, max: 6 }])}>+ Station</button>{/if}
+        </div>
+        <label class="in-row"><input type="checkbox" bind:checked={home} /> Am Ende zurück nach Hause ({aps.join(", ")})</label>
+        <p class="muted small">Jede Strecke wird einzeln gesucht und passend zu den Nächten kombiniert. Die Flüge sind getrennte Tickets.</p>
+      </div>
+    {:else if kind === "oneway"}
+      {#if mode === "flex"}
+        <div class="ed-row">
+          <label class="f">Früheste Abreise<input type="date" bind:value={rFrom} required /></label>
+          <label class="f">Späteste Abreise<input type="date" bind:value={wTo} min={rFrom} required /></label>
+        </div>
+        <p class="muted small">Gesucht wird der günstigste Tag im Zeitfenster, nur Hinflug. Den Weiterflug oder Rückflug später einzeln suchen.</p>
+      {:else}
+        <div class="ed-row">
+          <label class="f">Abflug am<input type="date" bind:value={out} required /></label>
+          <label class="f fs-sel">± Tage<select bind:value={flexDays}>{#each [0, 1, 2, 3] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
+        </div>
+      {/if}
+    {:else if mode === "flex"}
       <div class="fs-flexbox">
         <div class="ed-row">
           <label class="f">Früheste Hinreise<input type="date" bind:value={rFrom} required /></label>
@@ -297,17 +413,60 @@
     </div>
     <p class="muted small">{people}{who ? ` (${[...new Set(flyers(trip, who).map(hhKey))].join(", ")})` : " (alle aus „Wer fährt mit“)"}. Preise gelten für alle zusammen, die Anfahrt {who ? ([...new Set(flyers(trip, who).map(hhKey))].length === 1 ? "nur für diese Familie" : "nur für diese Familien") : "für alle Familien"}.</p>
     {#if !FLIGHTS_URL}<p class="warnline small">Der Such-Dienst ist noch nicht eingerichtet. Anleitung: docs/FLUGSUCHE.md im Projekt.</p>{/if}
-    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `Suche läuft… ${progress}` : aps.length > 1 ? `${aps.length} Flughäfen vergleichen` : "Suchen"}</button>
-    {#if to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
+    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `Suche läuft… ${progress}` : kind === "round" ? "Rundreise suchen" : aps.length > 1 ? `${aps.length} Flughäfen vergleichen` : "Suchen"}</button>
+    {#if kind !== "round" && to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
       {@const d0 = toLoc ?? resolveLoc(airportData, to, cc)}
       {@const o0 = originLoc(aps[0])}
-      {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: mode === "flex" ? rTo || undefined : ret || undefined, ...pax }}
+      {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: kind === "oneway" ? undefined : mode === "flex" ? rTo || undefined : ret || undefined, ...pax }}
       {@const sky = skyscannerLink(lq)}
       <p class="muted small fs-direct">Direkt beim Anbieter suchen (ab {aps[0]}): <a href={googleFlightsLink({ ...lq, from: o0?.kind === "city" ? o0.city : lq.from, to: d0 && d0.kind !== "airport" ? d0.city : lq.to })} target="_blank" rel="noopener noreferrer">Google Flüge ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
     {/if}
   </form>
 
   {#if error}<p class="err small">{error}</p>{/if}
+
+  {#if rounds}
+    {#if sources.length}
+      <div class="fs-src small">
+        {#each sources as s (s.id)}
+          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? `${s.count} Treffer` : s.configured ? "Fehler" : "noch nicht eingerichtet"}</span>
+        {/each}
+      </div>
+    {/if}
+    {#if rounds.length}
+      <p class="muted small">{rounds.length} {rounds.length === 1 ? "Rundreise" : "Rundreisen"} · günstigste zuerst {withAccess ? "inkl. Anfahrt" : ""} · {n} Pers. · jedes Ticket wird einzeln gebucht</p>
+      <div class="fs-list">
+        {#each rounds as x (x.rt.id)}
+          <article class="fs-res fs-round">
+            <div class="fs-top">
+              <span class="pill-ap">ab {x.rt.legs[0].out.from}</span>
+              <b class="num fs-price">{eur(x.r.total)}</b>
+              <span class="fs-badge">{x.rt.legs.length === 1 ? "1 Ticket" : `${x.rt.legs.length} Tickets`}</span>
+            </div>
+            <p class="muted small fs-sub">Flüge {eur(x.rt.price)}{withAccess && x.r.access ? ` + Anfahrt ${eur(x.r.access)}` : ""}{n > 1 ? ` · ${eur(x.r.total / n)} p. P.` : ""}</p>
+            <div class="fs-pills">
+              {#each x.rt.stays as st, i (i)}
+                {#if st.hours != null}<span class="pill-h">{st.name}: {Math.round(st.hours)} h Umstieg</span>
+                {:else if st.nights != null}<span class="pill-n">{st.name}: {st.nights} {st.nights === 1 ? "Nacht" : "Nächte"}</span>{/if}
+              {/each}
+              {#if !isNaN(x.r.home)}<span class="pill-h">zuhause ca. {fmtMin(x.r.home)}</span>{/if}
+            </div>
+            {#each x.rt.legs as l, i (i)}
+              {@render legRow(`${i + 1}.`, l.out)}
+              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<a href={l.url} target="_blank" rel="noopener noreferrer">Beim Anbieter ↗</a>{/if}</p>
+            {/each}
+            <div class="fs-acts">
+              <button class="btn primary sm" disabled={taken[x.rt.id]} onclick={() => takeR(x.rt)}>{taken[x.rt.id] ? "✓ Übernommen" : "Übernehmen"}</button>
+            </div>
+          </article>
+        {/each}
+      </div>
+      {#if into}<p class="muted small">Übernommene Rundreisen stehen als Angebot in einem Posten im Kapitel Flüge.</p>{/if}
+    {:else}
+      <p class="muted small">Keine passende Rundreise gefunden. Zeitraum, Nächte oder Stationen ändern.</p>
+    {/if}
+    {#each roundErrors as e (e)}<p class="muted small">{e}</p>{/each}
+  {/if}
 
   {#if list}
     {#if sources.length}

@@ -106,3 +106,25 @@ describe("Travelpayouts mit mehreren Flughäfen", () => {
     expect(offers.map(o => o.out.to)).toEqual(["BWK", "SPU"]);
   });
 });
+
+describe("Travelpayouts nur Hinflug im Zeitfenster", () => {
+  it("jeder Monat des Fensters, ohne Rückflug", () => {
+    expect(tpPairs({ ...q, ret: undefined, depart: "2027-02-20", departTo: "2027-03-10" })).toEqual([["2027-02", undefined], ["2027-03", undefined]]);
+    const p = tpParams({ ...q, ret: undefined, depart: "2027-02-20", departTo: "2027-03-10" }, undefined, ["2027-02", undefined]);
+    expect(p.get("one_way")).toBe("true");
+  });
+  it("Treffer außerhalb des Fensters fallen raus", () => {
+    const one = { ...q, ret: undefined, depart: "2027-07-19", departTo: "2027-07-25" };
+    expect(fromTravelpayouts(sample, one)).toHaveLength(0);
+    expect(fromTravelpayouts(sample, { ...one, depart: "2027-07-18" })).toHaveLength(2);
+  });
+});
+
+describe("Travelpayouts und Gabelflug", () => {
+  it("kann keinen Umstiegsort: bleibt still statt falscher Treffer", async () => {
+    let called = false;
+    const f = (async () => { called = true; return Response.json(sample); }) as unknown as typeof fetch;
+    expect(await searchTravelpayouts({ ...q, via: ["DOH"], viaHours: [10, 48] }, "t", f)).toEqual([]);
+    expect(called).toBe(false);
+  });
+});

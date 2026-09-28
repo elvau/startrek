@@ -4,6 +4,7 @@ import { hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Trip
 import { nights } from "../format";
 import { accessFor, airportsOf, roadKm } from "../calc/travel";
 import type { FlightOffer, FlightQuery, OfferLeg, SearchResult } from "./types";
+import type { RoundTrip } from "./roundtrip";
 
 /** Adresse des Such-Dienstes (Cloudflare Worker); leer: noch nicht eingerichtet */
 export const FLIGHTS_URL = (import.meta.env.VITE_FLIGHTS_URL as string | undefined)?.replace(/\/$/, "") || "";
@@ -89,6 +90,41 @@ export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: strin
   const item: Item = { id: uid(), cat: "flights", name, status: "idea", options: [opt], ...(part ? { participants: [...part] } : {}) };
   trip.items.push(item);
   return item;
+}
+
+/** Rundreise als ein Angebot: Hinflug, weitere Flüge, Rückflug (falls es nach Hause geht); getrennte Tickets */
+export function roundToOption(rt: RoundTrip, home: boolean): Option {
+  const n = rt.legs.length;
+  const route = [rt.legs[0].out.from, ...rt.legs.map(l => l.out.to)];
+  return {
+    id: uid(),
+    label: `Rundreise ${route.join(" → ")}`,
+    detail: `${n === 1 ? "1 Ticket" : `${n} Tickets, getrennt buchen`}${rt.stays?.length ? ` · ${rt.stays.map(s => (s.hours != null ? `${s.name} ${Math.round(s.hours)} h` : `${s.name} ${s.nights} N.`)).join(" / ")}` : ""}`,
+    price: { mode: "unit", currency: rt.legs[0].currency, unit: rt.price },
+    source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: new Date().toISOString().slice(0, 10), url: rt.legs[0].url },
+    legs: rt.legs.map((l, i) => legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out))
+  };
+}
+
+/** Rundreise übernehmen: neuer Posten „Rundreise …“ oder weiteres Angebot im gewählten Posten */
+export function takeRound(trip: Trip, rt: RoundTrip, home: boolean, into?: string, ids?: string[]): Item {
+  const opt = roundToOption(rt, home);
+  const target = into ? trip.items.find(i => i.id === into) : undefined;
+  if (target?.follow) { target.follow = undefined; target.options = [opt]; target.chosen = undefined; return target; }
+  if (target) { target.options.push(opt); return target; }
+  const act = trip.travelers.filter(isActive);
+  const part = ids?.length && act.some(t => !ids.includes(t.id)) ? ids : undefined;
+  const hhs = part ? [...new Set(act.filter(t => part.includes(t.id)).map(hhKey))] : [];
+  const cities = rt.legs.map(l => l.out.toCity || l.out.to);
+  const item: Item = { id: uid(), cat: "flights", name: `Rundreise ${(home ? cities.slice(0, -1) : cities).join(" – ")}${hhs.length === 1 ? ` (${hhs[0]})` : ""}`, status: "idea", options: [opt], ...(part ? { participants: [...part] } : {}) };
+  trip.items.push(item);
+  return item;
+}
+
+/** Rundreise mit Anfahrt bewerten: wie ein Flug vom ersten Abflug bis zur letzten Landung */
+export function rateRound(trip: Trip, rt: RoundTrip, home: boolean, withAccess: boolean, ids?: string[]): Rated {
+  const first = rt.legs[0], last = rt.legs.at(-1)!;
+  return rate(trip, { ...first, id: rt.id, price: rt.price, back: home ? last.out : undefined }, first.out.from, withAccess, ids);
 }
 
 export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promise<SearchResult> {

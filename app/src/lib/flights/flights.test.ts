@@ -123,3 +123,38 @@ describe("Städte mit mehreren Flughäfen", () => {
     expect(parseQuery({ ...b, toCityCode: "Tokyo" })).toBe("Stadt-Code ungültig");
   });
 });
+
+describe("Nur Hinflug mit Zeitfenster", () => {
+  it("Kiwi: Abflug zwischen zwei Tagen, ohne Rückflug", () => {
+    const a = kiwiArgs({ ...q, ret: undefined, depart: "2027-03-01", departTo: "2027-03-10" });
+    expect(a).toMatchObject({ departureDate: "01/03/2027", departureDateTo: "10/03/2027" });
+    expect(a).not.toHaveProperty("returnDate");
+  });
+  it("prüft das Fenster", () => {
+    const b = { from: "DUS", to: "GIG", depart: "2027-03-01" };
+    expect(parseQuery({ ...b, departTo: "2027-03-10" })).toMatchObject({ departTo: "2027-03-10" });
+    expect(parseQuery({ ...b, departTo: "2027-02-10" })).toBe("Zeitfenster endet vor dem Anfang");
+    expect(parseQuery({ ...b, departTo: "2027-06-10" })).toBe("Zeitfenster höchstens 2 Monate");
+    // mit Rückflug zählt das Fenster nicht
+    expect(parseQuery({ ...b, ret: "2027-03-20", departTo: "2027-03-10" })).not.toHaveProperty("departTo");
+  });
+});
+
+describe("Gabelflug mit langem Umstieg", () => {
+  it("Kiwi: Umstiegsort und Stunden, mindestens ein Umstieg", () => {
+    const a = kiwiArgs({ ...q, ret: undefined, to: "BKK", via: ["DOH"], viaHours: [10, 48], maxStops: 0 });
+    expect(a).toMatchObject({ stopover_airports: "DOH", stopover_from: 10, stopover_to: 48, max_sector_stopovers: 1 });
+  });
+  it("Aufenthalt je Umstieg aus den Segmenten", () => {
+    const seg = (from: string, to: string, dep: string, arr: string) => ({ from, to, departureTime: dep, arrivalTime: arr, flightNumber: "QR1", carrier: "QR" });
+    const [o] = fromKiwi({ itineraries: [{ id: "x", price: 384, outbound: { from: "DUS", to: "BKK", departureTime: "2027-03-10T14:45:00", arrivalTime: "2027-03-12T06:40:00", durationSeconds: 1, route: ["DUS", "DOH", "BKK"],
+      segments: [seg("DUS", "DOH", "2027-03-10T14:45:00", "2027-03-10T22:50:00"), seg("DOH", "BKK", "2027-03-11T20:15:00", "2027-03-12T06:40:00")] } }] });
+    expect(o.out.layovers).toEqual([{ at: "DOH", hours: 21.4 }]);
+  });
+  it("prüft Umstieg", () => {
+    const b = { from: "DUS", to: "BKK", depart: "2027-03-10" };
+    expect(parseQuery({ ...b, via: ["DOH"], viaHours: [10, 48] })).toMatchObject({ via: ["DOH"], viaHours: [10, 48] });
+    expect(parseQuery({ ...b, via: ["DOH"], viaHours: [48, 10] })).toBe("Umstieg: Stunden 1 bis 72, von ≤ bis");
+    expect(parseQuery({ ...b, via: ["doh"], viaHours: [10, 48] })).toBe("Umstieg: bis zu 8 Codes");
+  });
+});

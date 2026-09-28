@@ -118,3 +118,27 @@ describe("Anreise zum Flughafen", () => {
     expect(calcItem(t.items[0], t).net).toBe(200);
   });
 });
+
+describe("Anwesenheit aus getrennten Flügen", () => {
+  it("erst nur bis Split, Rückflug als eigener Posten: Anwesenheit von Landung bis Rückflug", () => {
+    const t = trip();
+    const f = t.items[0];
+    f.options[0].legs = f.options[0].legs!.filter(l => l.dir === "out");
+    expect(presences(t).a).toBeNull();
+    t.items.push({
+      id: "r", cat: "flights", name: "Rückflug", status: "idea", participants: ["a", "b"],
+      options: [{ id: "r1", label: "EW", price: { mode: "unit", currency: "EUR", unit: 200 }, legs: [{ dir: "back", from: "SPU", to: "DUS", dep: "2027-07-28T09:15", arr: "2027-07-28T11:35" }] }]
+    });
+    expect(presences(t).a).toMatchObject({ a: "2027-07-18", d: "2027-07-28", src: "flight" });
+  });
+
+  it("Rundreise: vom ersten Hinflug bis zum Rückflug, Zwischenflüge ändern nichts", () => {
+    const t = trip();
+    t.items[0].options[0].legs = [
+      { dir: "out", from: "DUS", to: "GIG", dep: "2027-03-01T10:00", arr: "2027-03-01T20:00" },
+      { dir: "via", from: "GIG", to: "EZE", dep: "2027-03-07T09:00", arr: "2027-03-07T12:00" },
+      { dir: "back", from: "EZE", to: "DUS", dep: "2027-03-12T15:00", arr: "2027-03-13T09:00" }
+    ];
+    expect(presences(t).a).toMatchObject({ a: "2027-03-01", d: "2027-03-12" });
+  });
+});
