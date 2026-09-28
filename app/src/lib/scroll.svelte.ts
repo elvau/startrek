@@ -1,6 +1,13 @@
 /* Welches Kapitel ist gerade in der Bildschirmmitte, und wie weit ist man darin gescrollt */
 export const view = $state({ active: "hero", p: 0, hp: 0, scrolled: false });
 
+/** Lage im Seitenlayout, unabhängig von Transformationen (getBoundingClientRect rechnet die mit ein) */
+function box(el: HTMLElement): { top: number; height: number } {
+  let top = 0;
+  for (let e: HTMLElement | null = el; e; e = e.offsetParent as HTMLElement | null) top += e.offsetTop;
+  return { top: top - scrollY, height: el.offsetHeight };
+}
+
 export function initScroll(): () => void {
   let raf = 0;
   const tick = () => {
@@ -11,13 +18,13 @@ export function initScroll(): () => void {
     const chapters = [...document.querySelectorAll<HTMLElement>(".chapter")];
     let cur: string | null = y < vh * 0.55 ? "hero" : null;
     if (!cur) for (const s of chapters) {
-      const r = s.getBoundingClientRect();
-      if (r.top <= vh * 0.5 && r.bottom > vh * 0.5) { cur = s.dataset.ch!; break; }
+      const r = box(s);
+      if (r.top <= vh * 0.5 && r.top + r.height > vh * 0.5) { cur = s.dataset.ch!; break; }
     }
     if (cur) view.active = cur;
     const sec = chapters.find(s => s.dataset.ch === view.active);
     let p = 0;
-    if (sec) { const r = sec.getBoundingClientRect(); p = Math.max(0, Math.min(1, (vh * 0.8 - r.top) / (r.height + vh * 0.3))); }
+    if (sec) { const r = box(sec); p = Math.max(0, Math.min(1, (vh * 0.8 - r.top) / (r.height + vh * 0.3))); }
     view.p = p;
     document.body.dataset.ch = view.active;
     document.body.classList.toggle("scrolled", view.scrolled);

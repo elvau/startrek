@@ -4,8 +4,7 @@
   import Modal from "./Modal.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
   import { autoName, nights } from "../format";
-  import WhoPicker, { whoTravelers, type WhoMode } from "./WhoPicker.svelte";
-  import type { FamilyRow } from "../placeholders";
+  import WhoPicker, { newWho, whoTravelers } from "./WhoPicker.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
   let name = $state("");
@@ -14,14 +13,12 @@
   let to = $state("");
   const auto = $derived(autoName({ place, from, to }));
   const nn = $derived(nights(from, to));
-  let mode = $state<WhoMode>("solo");
-  let fams = $state<FamilyRow[]>([{ animal: "Reh", adults: 2, kids: 0, infants: 0 }]);
-  let picked = $state<string[]>([]);
+  let who = $state(newWho());
   let groups = $state(false);
 
   function create(e: Event) {
     e.preventDefault();
-    newTrip({ name, place, from, to, travelers: whoTravelers(mode, fams, picked) });
+    newTrip({ name, place, from, to, travelers: whoTravelers(who) });
     onclose();
   }
 </script>
@@ -42,7 +39,7 @@
       <label class="f">Name (optional)<input bind:value={name} placeholder={auto || "wird aus Ziel und Zeitraum gebildet"} /></label>
       <div class="ed-sec">
         <span class="dlabel">Wer fährt mit?</span>
-        <WhoPicker bind:mode bind:fams bind:picked />
+        <WhoPicker bind:who />
         <button type="button" class="linkbtn" onclick={() => (groups = true)}>Gruppen und Personen verwalten</button>
       </div>
       <div class="ed-foot"><span class="muted small">Startet im einfachen Modus: ein Betrag je Bereich.</span><button class="btn primary">Reise anlegen</button></div>

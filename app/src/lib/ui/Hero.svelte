@@ -8,6 +8,7 @@
   import { eur } from "../calc";
   import { nights, range } from "../format";
   import TripMenu from "./TripMenu.svelte";
+  import GroupsButton from "./GroupsButton.svelte";
   import TripEditor from "./TripEditor.svelte";
 
   let editing = $state(false);
@@ -36,6 +37,7 @@
     <TripMenu />
     <div class="hero-r">
       {#if !access.readonly}<button class="hero-edit" onclick={() => (editing = !editing)} aria-expanded={editing} aria-label={editing ? "Schließen" : "Reise bearbeiten"}><span class="ico" aria-hidden="true">{editing ? "×" : "✎"}</span><span class="lbl">{editing ? "Schließen" : "Reise bearbeiten"}</span></button>{/if}
+      <GroupsButton />
       <Account />
     </div>
   </div>

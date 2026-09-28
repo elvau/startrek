@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextAnimal, placeholderTravelers } from "./placeholders";
+import { ANIMALS, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler } from "./placeholders";
 import { ageClass, totals } from "./calc";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
@@ -31,8 +31,23 @@ describe("Platzhalter-Familien", () => {
     };
     expect(totals(trip).byCat.attractions).toBe(30);
   });
-  it("nimmt das nächste freie Tier", () => {
-    expect(nextAnimal([])).toBe("Reh");
-    expect(nextAnimal(["Reh", "Bär"])).toBe("Fuchs");
+  it("nimmt ein zufälliges freies Tier", () => {
+    const seen = new Set(Array.from({ length: 200 }, () => nextAnimal(["Reh", "Bär"])));
+    expect(seen.has("Reh") || seen.has("Bär")).toBe(false);
+    expect(seen.size).toBeGreaterThan(5);
+    expect(nextAnimal([], () => 0)).toBe(ANIMALS[0][0]);
+    // alle vergeben: trotzdem ein Tier
+    expect(ANIMALS.map(a => a[0])).toContain(nextAnimal(ANIMALS.map(a => a[0])));
+  });
+  it("Solo ist nicht immer das Reh", () => {
+    const seen = new Set(Array.from({ length: 100 }, () => soloTraveler().household));
+    expect(seen.size).toBeGreaterThan(3);
+  });
+  it("Gruppe: jede Person eine eigene Familie, bei vielen mit Nummer", () => {
+    const g = groupTravelers(25, 3);
+    expect(g).toHaveLength(28);
+    expect(new Set(g.map(t => t.household)).size).toBe(28);
+    expect(g.filter(t => t.kind === "child")).toHaveLength(3);
+    expect(g.some(t => / 2$/.test(t.name))).toBe(true);
   });
 });
