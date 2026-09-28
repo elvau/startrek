@@ -4,6 +4,15 @@ export interface FlightQuery {
   /** Abflug: IATA-Code, Stadt oder Flughafen */
   from: string;
   to: string;
+  /**
+   * Auswahl aus der Liste: alle Flughäfen einer Stadt (NYC → JFK, EWR, LGA) bzw. der eine gewählte Flughafen.
+   * Treffer an anderen Flughäfen fallen raus.
+   */
+  fromAirports?: string[];
+  toAirports?: string[];
+  /** englischer Stadtname, wenn eine Stadt gewählt ist (für Anbieter, die Städte beim Namen suchen) */
+  fromCity?: string;
+  toCity?: string;
   /** JJJJ-MM-TT */
   depart: string;
   /** fehlt: nur Hinflug */

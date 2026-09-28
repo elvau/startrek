@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi, kiwiArgs, searchKiwi } from "./kiwi";
-import { inWindow, merge, parseQuery, searchAll } from "./search";
+import { atAirports, inWindow, merge, parseQuery, searchAll } from "./search";
 import type { FlightQuery } from "./types";
 
 const q: FlightQuery = { from: "DUS", to: "SPU", depart: "2027-07-18", ret: "2027-07-29", adults: 2, children: 1, infants: 0 };
@@ -97,5 +97,28 @@ describe("Flugsuche", () => {
     expect(parseQuery({ from: "DUS", to: "SPU", depart: "2027-07-18", ret: "2027-07-01" })).toBeTypeOf("string");
     expect(parseQuery({ from: "DUS", to: "SPU", depart: "2027-07-18", adults: 1, infants: 2 })).toBeTypeOf("string");
     expect(parseQuery({ from: "DUS", to: "SPU", depart: "2027-07-18", adults: 12 })).toBeTypeOf("string");
+  });
+});
+
+describe("Städte mit mehreren Flughäfen", () => {
+  it("Kiwi bekommt bei einer Stadt den Namen, sonst das Kürzel", () => {
+    expect(kiwiArgs({ ...q, to: "TYO", toAirports: ["HND", "NRT"], toCity: "Tokyo" }).flyTo).toBe("Tokyo");
+    expect(kiwiArgs({ ...q, to: "HND", toAirports: ["HND"] }).flyTo).toBe("HND");
+    expect(kiwiArgs(q).flyFrom).toBe("DUS");
+  });
+
+  it("nur Treffer an den gewählten Flughäfen", () => {
+    const o = (from: string, to: string) => ({ id: from + to, source: "x", sourceName: "x", price: 1, currency: "EUR", out: { from, to, dep: "2027-07-18T10:00", arr: "2027-07-18T12:00", minutes: 120, stops: 0, route: [from, to], carriers: [], flights: [from + to] } });
+    const list = [o("DUS", "HND"), o("DUS", "NRT"), o("DUS", "KIX"), o("CGN", "HND")];
+    expect(atAirports({ ...q, fromAirports: ["DUS"], toAirports: ["HND", "NRT"] }, list).map(x => x.id)).toEqual(["DUSHND", "DUSNRT"]);
+    expect(atAirports(q, list)).toHaveLength(4);
+  });
+
+  it("prüft Flughafenlisten und Stadtnamen", () => {
+    const b = { from: "DUS", to: "TYO", depart: "2027-07-18" };
+    expect(parseQuery({ ...b, toAirports: ["HND", "NRT"], toCity: "Tokyo" })).toMatchObject({ toAirports: ["HND", "NRT"], toCity: "Tokyo" });
+    expect(parseQuery({ ...b, toAirports: ["hnd"] })).toBe("Flughäfen: bis zu 8 Codes");
+    expect(parseQuery({ ...b, toAirports: "HND" })).toBe("Flughäfen: bis zu 8 Codes");
+    expect(parseQuery({ ...b, toCity: "x".repeat(61) })).toBe("Stadtname zu lang");
   });
 });
