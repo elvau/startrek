@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "../i18n/index.svelte";
   /* Neue Reise: nur wer mitfährt; Ort und Zeitraum kommen später in der Reise dazu (Name bildet sich daraus) */
   import { newTrip } from "../store.svelte";
   import Modal from "./Modal.svelte";
@@ -19,14 +20,14 @@
 {#if groups}
   <GroupsDialog onclose={() => (groups = false)} />
 {:else}
-  <Modal title="Neue Reise" {onclose}>
+  <Modal title={t("newtrip.title")} {onclose}>
     <form class="newtrip" onsubmit={create}>
       <div class="ed-sec">
-        <span class="dlabel">Wer fährt mit?</span>
+        <span class="dlabel">{t("newtrip.who")}</span>
         <WhoPicker bind:who />
-        <button type="button" class="linkbtn" onclick={() => (groups = true)}>Gruppen und Personen verwalten</button>
+        <button type="button" class="linkbtn" onclick={() => (groups = true)}>{t("groups.manage")}</button>
       </div>
-      <div class="ed-foot"><span class="muted small">Ort und Zeitraum trägst du danach oben in der Reise ein.</span><button class="btn primary">Reise anlegen</button></div>
+      <div class="ed-foot"><span class="muted small">{t("newtrip.hint")}</span><button class="btn primary">{t("newtrip.create")}</button></div>
     </form>
   </Modal>
 {/if}

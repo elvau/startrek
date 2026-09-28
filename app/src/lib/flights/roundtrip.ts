@@ -5,6 +5,7 @@
  * Getrennte Tickets: jeder Flug wird einzeln gebucht.
  * Kurze Stationen (höchstens eine Nacht) gehen auch als Gabelflug: ein Ticket mit langem Umstieg dort (via).
  */
+import { t } from "../i18n/index.svelte";
 import { addDays } from "./kiwi";
 import type { FlightOffer, FlightQuery, SearchResult, SourceStatus } from "./types";
 
@@ -130,7 +131,7 @@ export async function searchRound(p: RoundPlan, search: (q: FlightQuery) => Prom
     const seen = new Set<string>();
     partial = next.sort((a, b) => a.price - b.price).filter(x => { const k2 = x.legs.map(l => l.id).join("|"); return seen.has(k2) ? false : (seen.add(k2), true); }).slice(0, KEEP);
     if (!partial.length) {
-      if (!errors.length) errors.push(k ? `Keine passenden Flüge ${from.name} → ${to.name} nach ${stop!.min}–${stop!.max} Nächten` : `Keine Flüge ${from.name} → ${to.name} im Zeitraum`);
+      if (!errors.length) errors.push(k ? t("round.noneAfter", { a: from.name, b: to.name, min: stop!.min, max: stop!.max }) : t("round.none", { a: from.name, b: to.name }));
       break;
     }
   }

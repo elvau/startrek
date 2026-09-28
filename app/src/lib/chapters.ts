@@ -1,18 +1,25 @@
 import type { CatKey } from "./model";
+import { t, type Key } from "./i18n/index.svelte";
 
 export type ChapterKey = "trav" | CatKey | "split";
 
-export interface Chapter { k: ChapterKey; label: string; title: string; icon: string; sub: string }
+export interface Chapter { k: ChapterKey; readonly label: string; readonly title: string; icon: string; readonly sub: string }
+
+/** Texte kommen aus der Übersetzung (Getter: passen sich beim Sprachwechsel an) */
+const ch = (k: ChapterKey, icon: string): Chapter => ({
+  k, icon,
+  get label() { return t(`ch.${k}.label` as Key); },
+  get title() { return t(`ch.${k}.title` as Key); },
+  get sub() { return t(`ch.${k}.sub` as Key); }
+});
 
 export const CHAPTERS: Chapter[] = [
-  { k: "trav", label: "Reisende", title: "Wer fährt mit", icon: "users", sub: "" },
-  { k: "flights", label: "Flüge", title: "Abheben", icon: "plane", sub: "Flüge und Anreise" },
-  { k: "stay", label: "Unterkunft", title: "Ankommen", icon: "bed", sub: "Unterkünfte" },
-  { k: "transport", label: "Vor Ort", title: "Unterwegs", icon: "car", sub: "Transport vor Ort" },
-  { k: "attractions", label: "Erlebnisse", title: "Erleben", icon: "ticket", sub: "Attraktionen" },
-  { k: "misc", label: "Sonstiges", title: "Alles andere", icon: "bag", sub: "Verpflegung, Versicherung, Sonstiges" },
-  { k: "split", label: "Abrechnung", title: "Wer zahlt was", icon: "wallet", sub: "pro Familie" }
+  ch("trav", "users"), ch("flights", "plane"), ch("stay", "bed"), ch("transport", "car"),
+  ch("attractions", "ticket"), ch("misc", "bag"), ch("split", "wallet")
 ];
+
+export const chLabel = (c: Chapter) => c.label;
+export const chTitle = (c: Chapter) => c.title;
 
 export const CAT_CHAPTERS = CHAPTERS.filter(c => c.k !== "trav" && c.k !== "split") as (Chapter & { k: CatKey })[];
 export const SPLIT = CHAPTERS.find(c => c.k === "split")!;

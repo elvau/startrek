@@ -1,3 +1,4 @@
+import { i18n, t } from "../i18n/index.svelte";
 /*
  * Flughafen- und Städteauswahl (Daten: airports.json auf der Seite, aus OurAirports, wird bei jedem Deploy erneuert).
  * Eine Stadt mit mehreren Flughäfen (Tokio, New York) sucht über alle; wer ein Kürzel wählt, sucht nur dort.
@@ -33,14 +34,19 @@ export const emptyAirports = (): AirportData => ({ airports: [], cities: [] });
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/ß/g, "ss").trim();
 
-let names: Intl.DisplayNames | null = null;
+const names = new Map<string, Intl.DisplayNames>();
 /** Ländername auf Deutsch („HR“ → „Kroatien“) */
 export function countryName(cc: string): string {
-  try { names ??= new Intl.DisplayNames(["de"], { type: "region" }); return names.of(cc) || cc; } catch { return cc; }
+  try {
+    const l = i18n.lang;
+    if (!names.has(l)) names.set(l, new Intl.DisplayNames([l], { type: "region" }));
+    return names.get(l)!.of(cc) || cc;
+  } catch { return cc; }
 }
 
 const fromAirport = (a: RawAirport): Loc => ({ kind: "airport", code: a[0], name: a[1], city: a[2], en: a[2], cc: a[3], airports: [a[0]], lat: a[4], lon: a[5] });
-const fromCity = (c: RawCity): Loc => ({ kind: "city", code: c[0], name: c[1], city: c[1], en: c[2], cc: c[3], airports: c[4] });
+// Stadtname deutsch nur in der deutschen Oberfläche, sonst englisch
+const fromCity = (c: RawCity): Loc => { const n = i18n.lang === "de" ? c[1] : c[2]; return { kind: "city", code: c[0], name: n, city: n, en: c[2], cc: c[3], airports: c[4] }; };
 
 /** Code nachschlagen: Stadt-Code zuerst (TYO), dann Flughafen (HND) */
 export function locOf(d: AirportData, code: string, prefer: "city" | "airport" = "city"): Loc | null {
@@ -105,8 +111,8 @@ export function resolveLoc(d: AirportData, text: string, cc?: string | null): Lo
 
 /** Text im Eingabefeld für eine Auswahl */
 export const locLabel = (l: Loc) =>
-  l.kind === "city" ? `${l.name} (alle ${l.airports.length} Flughäfen)`
-  : l.kind === "area" ? `Umkreis ${l.city}: ${l.airports.join(", ")}`
+  l.kind === "city" ? t("loc.cityLabel", { name: l.name, n: l.airports.length })
+  : l.kind === "area" ? t("loc.areaLabel", { name: l.city, list: l.airports.join(", ") })
   : `${l.code} · ${l.city === l.name ? l.name : `${l.city}, ${l.name}`}`;
 
 export function kmBetween(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
@@ -126,7 +132,7 @@ export function airportsNear(d: AirportData, p: { lat: number; lon: number }, ma
 export function areaAround(d: AirportData, place: { name: string; lat: number; lon: number; cc?: string }, maxKm = 150, n = 6): Loc | null {
   const near = airportsNear(d, place, maxKm, n);
   if (near.length < 2) return null;
-  return { kind: "area", code: near[0].code, name: `Alle Flughäfen im Umkreis von ${place.name}`, city: place.name, en: place.name, cc: place.cc || near[0].cc, airports: near.map(a => a.code), lat: place.lat, lon: place.lon };
+  return { kind: "area", code: near[0].code, name: t("loc.areaName", { name: place.name }), city: place.name, en: place.name, cc: place.cc || near[0].cc, airports: near.map(a => a.code), lat: place.lat, lon: place.lon };
 }
 
 /* ---------- Laden (einmal pro Sitzung) ---------- */

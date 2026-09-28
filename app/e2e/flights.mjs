@@ -41,7 +41,7 @@ await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 const errors = [];
 try {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
   p.on("pageerror", e => errors.push(e.message));
   const asked = [];
   await p.route("https://flights.test/flights/search", async r => {

@@ -1,14 +1,16 @@
 <script lang="ts">
+  import { t, tn } from "../i18n/index.svelte";
   /* Wer zahlt was: pro Familie Summe, fest und offen, Mitglieder und alle Posten */
   import { app, calc } from "../store.svelte";
   import { eur, householdShares } from "../calc";
   import { CAT_CHAPTERS } from "../chapters";
   import { reveal } from "./reveal";
   import Icon from "./Icon.svelte";
+  import type { Key } from "../i18n/index.svelte";
 
   const shares = $derived(householdShares(app.trip, calc.T));
   const label = (k: string) => CAT_CHAPTERS.find(c => c.k === k)!;
-  const ST: Record<string, string> = { idea: "Idee", chosen: "Gewählt", booked: "Gebucht", paid: "Bezahlt" };
+  const ST = (s: string) => t(`status.${s}` as Key);
 
   function jump(id: string) {
     app.editing = id;
@@ -21,16 +23,16 @@
     <div class="sh-head">
       <div>
         <h3>{h.name}</h3>
-        <span class="muted">{h.members.length} {h.members.length === 1 ? "Person" : "Personen"} · {eur(h.members.length ? h.total / h.members.length : 0)} pro Person</span>
+        <span class="muted">{tn("n.persons", h.members.length)} · {t("perPerson", { v: eur(h.members.length ? h.total / h.members.length : 0) })}</span>
       </div>
-      <div class="sh-tot"><b class="num">{eur(h.total)}</b><span>{calc.T.total ? Math.round((h.total / calc.T.total) * 100) : 0} % der Reise</span></div>
+      <div class="sh-tot"><b class="num">{eur(h.total)}</b><span>{t("split.share", { p: calc.T.total ? Math.round((h.total / calc.T.total) * 100) : 0 })}</span></div>
     </div>
     <div class="fix">
       <div class="bar"><i style="background:var(--good)" style:width="{h.total ? (h.fixed / h.total) * 100 : 0}%"></i><i style="background:var(--idea);opacity:.55" style:width="{h.total ? (h.open / h.total) * 100 : 0}%"></i></div>
-      <div class="lg"><span>Fest <b class="num">{eur(h.fixed)}</b></span><span>Offen <b class="num">{eur(h.open)}</b></span></div>
+      <div class="lg"><span>{t("fixed")} <b class="num">{eur(h.fixed)}</b></span><span>{t("open")} <b class="num">{eur(h.open)}</b></span></div>
     </div>
     <div class="sh-members">
-      {#each h.members as m (m.t.id)}<span class="sh-m"><span class="av sm" style:background={m.t.color || "var(--ink-3)"}>{(m.t.name || "?")[0]}</span>{m.t.name || "Ohne Namen"} <b class="num">{eur(m.v)}</b></span>{/each}
+      {#each h.members as m (m.t.id)}<span class="sh-m"><span class="av sm" style:background={m.t.color || "var(--ink-3)"}>{(m.t.name || "?")[0]}</span>{m.t.name || t("trav.noName")} <b class="num">{eur(m.v)}</b></span>{/each}
     </div>
     <div class="sh-cats">
       {#each h.cats as c (c.cat)}
@@ -40,7 +42,7 @@
             {#each c.lines as l (l.item?.id || "simple")}
               <li>
                 <button class="sh-l" onclick={() => (l.item ? jump(l.item.id) : document.getElementById(c.cat)?.scrollIntoView({ behavior: "smooth" }))}>
-                  <span class="sh-n">{l.label}<small>{[l.detail, l.who < h.members.length ? `${l.who} von ${h.members.length} dabei` : "", l.item ? ST[l.item.status] : ""].filter(Boolean).join(" · ")}</small></span>
+                  <span class="sh-n">{l.label}<small>{[l.detail, l.who < h.members.length ? t("split.who", { a: l.who, b: h.members.length }) : "", l.item ? ST(l.item.status) : ""].filter(Boolean).join(" · ")}</small></span>
                   <span class="num" class:fixed={l.fixed}>{eur(l.v)}</span>
                 </button>
               </li>
@@ -51,5 +53,5 @@
     </div>
   </article>
 {:else}
-  <div class="empty-ch">Noch keine Reisenden eingetragen.</div>
+  <div class="empty-ch">{t("split.empty")}</div>
 {/each}

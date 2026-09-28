@@ -1,6 +1,7 @@
 /*
  * Anwesenheit und Anreise, wie in der bisherigen App (presenceOf, stayCalc, accessFor).
  */
+import { t, tn } from "../i18n/index.svelte";
 import { hhKey, type Airport, type FlightLeg, type Household, type Item, type Option, type Traveler, type Trip } from "../model";
 import { DEFAULT_AIRPORTS } from "../airports";
 
@@ -69,16 +70,16 @@ export function accessFor(name: string, ap: Airport, persons: number, days: numb
   const h: Household = trip.households?.[name] || {};
   if (h.mode === "with" && h.link && h.link !== name && depth < 3) {
     const main = accessFor(h.link, ap, 1, days, trip, depth + 1);
-    return { cost: 0, hours: main.hours, km: main.km, info: `fährt mit ${h.link}` };
+    return { cost: 0, hours: main.hours, km: main.km, info: t("hh.ridesWith", { name: h.link }) };
   }
   const km = roadKm(h.geo, ap);
   const driveH = km != null ? km / 85 + 0.25 : ap.h;
   if (h.mode === "train" || km == null) {
-    return { cost: ap.pp * persons, hours: km != null ? driveH * 1.4 : ap.h, km, info: `Bahn ${ap.pp} € × ${persons}${km == null && h.mode !== "train" ? " (PLZ fehlt)" : ""}` };
+    return { cost: ap.pp * persons, hours: km != null ? driveH * 1.4 : ap.h, km, info: `${t("hh.train")} ${ap.pp} € × ${persons}${km == null && h.mode !== "train" ? ` (${t("acc.noPlz")})` : ""}` };
   }
   const cars = Math.max(1, h.cars || 1);
   const drive = 2 * km * (trip.settings.kmCost ?? 0.3) * cars, park = ap.park * days * cars;
-  return { cost: drive + park, hours: driveH, km, info: `Auto 2 × ${Math.round(km)} km${cars > 1 ? ` mit ${cars} Autos` : ""} + ${days} Tage Parken` };
+  return { cost: drive + park, hours: driveH, km, info: t("acc.car", { km: Math.round(km), cars: cars > 1 ? ` ${t("acc.withCars", { n: cars })}` : "", days: tn("n.days", days) }) };
 }
 
 export interface AccessCalc { cost: number; per: Record<string, number>; lines: { hh: string; ap: string; a: Access }[]; missing?: string }

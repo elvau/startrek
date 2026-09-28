@@ -1,3 +1,5 @@
+import { i18n, locale, t, tn } from "./i18n/index.svelte";
+
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 const DAYS = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
@@ -10,16 +12,27 @@ export function nights(from?: string, to?: string): number {
 
 /** "18. bis 29. Juli" oder "28. Juli bis 3. August" */
 export function range(from?: string, to?: string): string {
-  if (!from || !to) return "Reisedaten offen";
+  if (!from || !to) return t("date.open");
   const a = d(from), b = d(to);
+  // andere Sprachen: Zeitspanne wie im Land üblich („18–29 July“, „18–29 juillet“)
+  if (i18n.lang !== "de") return new Intl.DateTimeFormat(locale(), { day: "numeric", month: "long" }).formatRange(a, b);
   if (a.getMonth() === b.getMonth()) return `${a.getDate()}. bis ${b.getDate()}. ${MONTHS[b.getMonth()]}`;
   return `${a.getDate()}. ${MONTHS[a.getMonth()]} bis ${b.getDate()}. ${MONTHS[b.getMonth()]}`;
 }
 
 /** "Sa 18.07." */
-export const dayShort = (iso: string) => { const x = d(iso); return `${DAYS[x.getDay()]} ${String(x.getDate()).padStart(2, "0")}.${String(x.getMonth() + 1).padStart(2, "0")}.`; };
+export const dayShort = (iso: string) => {
+  const x = d(iso);
+  if (i18n.lang !== "de") return new Intl.DateTimeFormat(locale(), { weekday: "short", day: "2-digit", month: "2-digit" }).format(x);
+  return `${DAYS[x.getDay()]} ${String(x.getDate()).padStart(2, "0")}.${String(x.getMonth() + 1).padStart(2, "0")}.`;
+};
 export const time = (iso: string) => iso.slice(11, 16);
-export const dateDE = (iso: string) => { const x = d(iso); return `${String(x.getDate()).padStart(2, "0")}.${String(x.getMonth() + 1).padStart(2, "0")}.`; };
+/** Tag und Monat („18.07.“, englisch „18/07“) */
+export const dateDE = (iso: string) => {
+  const x = d(iso);
+  if (i18n.lang !== "de") return new Intl.DateTimeFormat(locale(), { day: "2-digit", month: "2-digit" }).format(x);
+  return `${String(x.getDate()).padStart(2, "0")}.${String(x.getMonth() + 1).padStart(2, "0")}.`;
+};
 
 /** Dauer zwischen zwei lokalen Zeiten, "2 h 15 min" */
 export function duration(a: string, b: string): string {
@@ -29,12 +42,16 @@ export function duration(a: string, b: string): string {
 }
 
 /** "Juli 2027" */
-export const monthYear = (iso: string) => { const x = d(iso); return `${MONTHS[x.getMonth()]} ${x.getFullYear()}`; };
+export const monthYear = (iso: string) => {
+  const x = d(iso);
+  if (i18n.lang !== "de") return new Intl.DateTimeFormat(locale(), { month: "long", year: "numeric" }).format(x);
+  return `${MONTHS[x.getMonth()]} ${x.getFullYear()}`;
+};
 
 /** Name aus Ziel und Zeitraum, z. B. "Mosel · Juli 2027 · 4 Tage"; ohne Ziel und Daten null */
-export function autoName(t: { place?: string; from?: string; to?: string }): string | null {
-  const place = t.place?.trim();
-  if (!place && !t.from) return null;
-  const n = nights(t.from, t.to);
-  return [place || "Reise", t.from ? monthYear(t.from) : "", n ? `${n + 1} Tage` : ""].filter(Boolean).join(" · ");
+export function autoName(x: { place?: string; from?: string; to?: string }): string | null {
+  const place = x.place?.trim();
+  if (!place && !x.from) return null;
+  const n = nights(x.from, x.to);
+  return [place || t("trip"), x.from ? monthYear(x.from) : "", n ? tn("n.days", n + 1) : ""].filter(Boolean).join(" · ");
 }

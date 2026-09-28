@@ -4,6 +4,7 @@
  * Altersklassen, Kinder- und Kleinkindpreise, Gruppenrabatt-Stufen, Verteilung auf
  * Beteiligte, Währungsumrechnung.
  */
+import { i18n, locale, t, type Key } from "../i18n/index.svelte";
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
 import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Item, type Option, type Settings, type Tier, type Traveler, type Trip } from "../model";
 
@@ -165,7 +166,7 @@ function followOption(main: Item, trip: Trip): Option | null {
   const price: Option["price"] = p.mode === "unit"
     ? { mode: "person", currency: p.currency, adult: Math.round(((p.unit || 0) * (p.qty ?? 1) / n) * 100) / 100 }
     : { mode: "person", currency: p.currency, adult: p.adult, child: p.child, infant: p.infant, qty: p.qty };
-  return { id: `follow:${main.id}`, label: `wie ${main.name || "anderer Flug"}`, detail: o.detail, price, source: o.source, legs: o.legs };
+  return { id: `follow:${main.id}`, label: t("follow.label", { name: main.name || t("ie.otherFlight") }), detail: o.detail, price, source: o.source, legs: o.legs };
 }
 
 /** Die Option, die in die Summe eingeht: gewählt, sonst die günstigste; beim Mitfliegen der Flug des anderen Postens */
@@ -264,7 +265,14 @@ export function parseNum(v: unknown): number {
 }
 
 const fmt = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
-export const eur = (v: number) => fmt.format(Math.round(v || 0)) + " €";
+const cur = new Map<string, Intl.NumberFormat>();
+/** Betrag in Euro, gerundet: deutsch „1.505 €“, sonst im Format der Sprache (z. B. „€1,505“) */
+export const eur = (v: number) => {
+  if (i18n.lang === "de") return fmt.format(Math.round(v || 0)) + " €";
+  const l = locale();
+  if (!cur.has(l)) cur.set(l, new Intl.NumberFormat(l, { style: "currency", currency: "EUR", maximumFractionDigits: 0, minimumFractionDigits: 0 }));
+  return cur.get(l)!.format(Math.round(v || 0));
+};
 
 /* ---------- Abrechnung pro Haushalt ---------- */
 
@@ -289,7 +297,7 @@ export interface HouseholdShare {
   cats: { cat: CatKey; sum: number; lines: ShareLine[] }[];
 }
 
-const AGE_L: Record<AgeClass, string> = { adult: "Erwachsen", child: "Kind", infant: "Kleinkind" };
+const AGE_L = (c: AgeClass) => t(`age.class.${c}` as Key);
 
 export function householdShares(trip: Trip, T: Totals = totals(trip)): HouseholdShare[] {
   const names = [...new Set(activeTravelers(trip).map(hhKey))];
@@ -299,7 +307,7 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
       const lines: ShareLine[] = [];
       const sv = T.simple[cat];
       if (sv && T.active) {
-        lines.push({ label: "Gesamtbetrag, gleich verteilt", v: (sv / T.active) * ms.length, who: ms.length, detail: `${eur(sv / T.active)} pro Person`, fixed: false });
+        lines.push({ label: t("split.simpleLine"), v: (sv / T.active) * ms.length, who: ms.length, detail: t("perPerson", { v: eur(sv / T.active) }), fixed: false });
       }
       for (const it of trip.items) {
         if (it.cat !== cat) continue;
@@ -313,9 +321,9 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
         const keys = (["adult", "child", "infant"] as AgeClass[]).filter(c => grp[c]);
         const differ = new Set(inn.map(t => Math.round(r.per[t.id]))).size > 1;
         const detail = differ && keys.length > 1 && new Set(keys.map(c => grp[c]!.v)).size > 1
-          ? keys.map(c => `${grp[c]!.n} × ${AGE_L[c]} ${eur(grp[c]!.v)}`).join(" · ")
+          ? keys.map(c => `${grp[c]!.n} × ${AGE_L(c)} ${eur(grp[c]!.v)}`).join(" · ")
           : "";
-        lines.push({ item: it, label: it.name || "Ohne Namen", v, who: inn.length, detail, fixed: FIXED.includes(it.status) });
+        lines.push({ item: it, label: it.name || t("trav.noName"), v, who: inn.length, detail, fixed: FIXED.includes(it.status) });
       }
       return { cat, sum: lines.reduce((a, l) => a + l.v, 0), lines };
     }).filter(c => c.lines.length);

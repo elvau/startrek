@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from "../i18n/index.svelte";
   import { app, calc } from "../store.svelte";
   import { cloud, isCloud } from "../cloud/cloud.svelte";
   import { activeOption, eur } from "../calc";
@@ -19,20 +20,20 @@
   function detailText(k: (typeof CAT_CHAPTERS)[number]["k"], label: string): string {
     if (!isDetailed(app.trip, k)) {
       const v = T.simple[k] || 0;
-      return v ? `${label}, Gesamtbetrag gleich verteilt` : "noch kein Betrag eingetragen";
+      return v ? t("aside.simple", { label }) : t("aside.noAmount");
     }
     const its = app.trip.items.filter(x => x.cat === k && x.status !== "dropped");
-    return its.length ? its.map(x => `${x.name || activeOption(x, app.trip)?.label || "Neuer Posten"} ${eur(T.items[x.id]?.net || 0)}`).join(" · ") : "noch keine Posten eingetragen";
+    return its.length ? its.map(x => `${x.name || activeOption(x, app.trip)?.label || t("item.new")} ${eur(T.items[x.id]?.net || 0)}`).join(" · ") : t("aside.noItems");
   }
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-<aside class="aside" class:sheet aria-label="Zusammenfassung" onclick={e => { if ((e.target as Element).closest("a")) onpick?.(); }}>
+<aside class="aside" class:sheet aria-label={t("aside.summary")} onclick={e => { if ((e.target as Element).closest("a")) onpick?.(); }}>
   <div class="tk">
     <div class="tk-top">
-      <small>Gesamt</small>
+      <small>{t("total")}</small>
       <b class="num">{eur(T.total)}</b>
-      <span>{n ? `${eur(T.total / n)} pro Person · ${n} ${n === 1 ? "Person" : "Personen"}` : "noch niemand dabei"}</span>
+      <span>{n ? `${t("perPerson", { v: eur(T.total / n) })} · ${tn("n.persons", n)}` : t("nobody")}</span>
     </div>
     <div class="tk-b">
       {#if anyDetail}<div class="fix">
@@ -40,7 +41,7 @@
           <i style="background:var(--good)" style:width="{T.total ? (T.fixed / T.total) * 100 : 0}%"></i>
           <i style="background:var(--idea);opacity:.55" style:width="{T.total ? (T.open / T.total) * 100 : 0}%"></i>
         </div>
-        <div class="lg"><span>Fest <b class="num">{eur(T.fixed)}</b></span><span>Offen <b class="num">{eur(T.open)}</b></span></div>
+        <div class="lg"><span>{t("fixed")} <b class="num">{eur(T.fixed)}</b></span><span>{t("open")} <b class="num">{eur(T.open)}</b></span></div>
       </div>{/if}
       <div class="cats">
         {#each CAT_CHAPTERS as c (c.k)}
@@ -52,18 +53,18 @@
       </div>
       {#if Object.keys(T.byHousehold).length > 1}
         <div class="fam">
-          <span class="sect">Pro Familie</span>
+          <span class="sect">{t("aside.perFamily")}</span>
           {#each Object.entries(T.byHousehold) as [h, v] (h)}
             <a class="fam-l" href="#hh-{h}"><span>{h}</span><b class="num">{eur(v)}</b></a>
           {/each}
-          <a class="fam-more" href="#split">Wer zahlt was im Detail →</a>
+          <a class="fam-more" href="#split">{t("aside.whoPays")} →</a>
         </div>
       {:else}
-        <a class="fam-more" href="#split">Abrechnung im Detail →</a>
+        <a class="fam-more" href="#split">{t("aside.split")} →</a>
       {/if}
-      {#if nn && n}<div class="pp"><span>Pro Person und Nacht</span><b class="num">{eur(T.total / n / nn)}</b></div>{/if}
-      {#if anyDetail}<div class="pp"><span>Bereits bezahlt</span><b class="num">{eur(T.paid)}</b></div>{/if}
-      <div class="pp save"><span>{!app.saved || cloud.status === "saving" ? "Speichert…" : isCloud(app.trip.id) ? (cloud.status === "offline" ? "Offline, wird später übertragen" : cloud.status === "error" ? "Fehler beim Speichern" : "☁ Im Konto gespeichert") : "Auf diesem Gerät gespeichert"}</span></div>
+      {#if nn && n}<div class="pp"><span>{t("aside.perNight")}</span><b class="num">{eur(T.total / n / nn)}</b></div>{/if}
+      {#if anyDetail}<div class="pp"><span>{t("aside.paid")}</span><b class="num">{eur(T.paid)}</b></div>{/if}
+      <div class="pp save"><span>{!app.saved || cloud.status === "saving" ? t("acct.st.saving") : isCloud(app.trip.id) ? (cloud.status === "offline" ? t("aside.offline") : cloud.status === "error" ? t("acct.st.error") : `☁ ${t("acct.st.saved")}`) : t("aside.savedLocal")}</span></div>
     </div>
   </div>
 </aside>

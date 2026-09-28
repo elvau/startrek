@@ -2,6 +2,7 @@
  * Nächte am Flughafen (wie im Artefakt): sehr früher Rückflug oder späte Landung weit weg von der Unterkunft.
  * Vorschläge sind Orte in der Nähe des Flughafens.
  */
+import { tn } from "../i18n/index.svelte";
 import type { Trip } from "../model";
 import { addDays } from "../calc/travel";
 import { dayShort, time } from "../format";
@@ -33,7 +34,6 @@ export function airportNights(trip: Trip, g: GeoData): AirportNight[] {
   const has = (from: string, to: string, ids: string[]) => trip.items.some(i => i.cat === "stay" && i.status !== "dropped" && i.from === from && i.to === to && (!i.participants || ids.every(id => i.participants!.includes(id))));
   for (const a of arrivals(trip)) {
     if (!a.p) continue;
-    const verb = (one: string, many: string) => (a.ids.length > 1 ? many : one);
     if (a.dep && a.depAp && a.dep.length >= 16) {
       const ap = airportOf(g, a.depAp);
       const dest = ap && trip.place ? findCity(g, trip.place, cc || ap.cc) : null;
@@ -42,8 +42,8 @@ export function airportNights(trip: Trip, g: GeoData): AirportNight[] {
         const leave = mins(a.dep) - 120 - (h ?? 0) * 60;
         const from = addDays(a.p.d, -1), to = a.p.d;
         let text = "", crit = false;
-        if (dest && h! > 0.75 && leave < 7 * 60) { crit = true; text = `${a.who} ${verb("fliegt", "fliegen")} ${dayShort(a.dep)} ${time(a.dep)} ab ${ap.code}, von ${dest.name} ca. ${hm(h!)}: Abfahrt spätestens ca. ${clock(leave)}. Letzte Nacht näher am Flughafen?`; }
-        else if (!dest && mins(a.dep) < 9 * 60) text = `${a.who} ${verb("fliegt", "fliegen")} ${dayShort(a.dep)} ${time(a.dep)} ab ${ap.code}, sehr früh. Letzte Nacht näher am Flughafen?`;
+        if (dest && h! > 0.75 && leave < 7 * 60) { crit = true; text = tn("apn.lastFar", a.ids.length, { who: a.who, day: dayShort(a.dep), time: time(a.dep), ap: ap.code, dest: dest.name, h: hm(h!), leave: clock(leave) }); }
+        else if (!dest && mins(a.dep) < 9 * 60) text = tn("apn.lastEarly", a.ids.length, { who: a.who, day: dayShort(a.dep), time: time(a.dep), ap: ap.code });
         if (text && !has(from, to, a.ids)) out.push({ kind: "last", crit, text, from, to, ids: a.ids, ap, places: placesNear(g, ap, 4), suggest: stayNear(g, ap)?.name });
       }
     }
@@ -55,7 +55,7 @@ export function airportNights(trip: Trip, g: GeoData): AirportNight[] {
         const from = a.p.a, to = addDays(a.p.a, 1);
         const late = mins(a.arr) + 60 + h * 60 > 23 * 60 || mins(a.arr) >= 22 * 60;
         if (late && (!dest || h > 0.75) && !has(from, to, a.ids)) {
-          const text = `${a.who} ${verb("landet", "landen")} ${dayShort(a.arr)} ${time(a.arr)} in ${ap.code}${dest ? `, bis ${dest.name} noch ca. ${hm(h)}` : ""}. Erste Nacht am Flughafen?`;
+          const text = dest ? tn("apn.firstFar", a.ids.length, { who: a.who, day: dayShort(a.arr), time: time(a.arr), ap: ap.code, dest: dest.name, h: hm(h) }) : tn("apn.first", a.ids.length, { who: a.who, day: dayShort(a.arr), time: time(a.arr), ap: ap.code });
           out.push({ kind: "first", crit: false, text, from, to, ids: a.ids, ap, places: placesNear(g, ap, 4), suggest: stayNear(g, ap)?.name });
         }
       }

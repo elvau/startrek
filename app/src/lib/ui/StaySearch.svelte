@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { locale, t, tn } from "../i18n/index.svelte";
   /*
    * Unterkünfte suchen (wie im Artefakt): Zeitraum und Gäste aus der Anwesenheit (Flüge oder eigene Daten),
    * Booking.com und Trivago gleichzeitig, zusammengeführt nach Preis.
@@ -51,7 +52,7 @@
   const near = $derived.by(() => {
     const codes = [...new Set(arr.flatMap(a => [a.arrAp, a.depAp]).filter((c): c is string => !!c))];
     return codes.map(c => airportOf(geo, c)).filter(a => !!a).map(ap => ({
-      ap: ap!, role: [arr.some(a => a.arrAp === ap!.code) && "Landung", arr.some(a => a.depAp === ap!.code) && "Abflug"].filter(Boolean).join(" und "),
+      ap: ap!, role: [arr.some(a => a.arrAp === ap!.code) && t("st.landing"), arr.some(a => a.depAp === ap!.code) && t("ie.dep")].filter(Boolean).join(` ${t("and")} `),
       places: placesNear(geo, ap!, 5), city: cityForAirport(geo, ap!)
     }));
   });
@@ -78,15 +79,15 @@
   const shown = $derived(sort === "rating" ? [...(list || [])].sort((a, b) => (b.score || 0) - (a.score || 0) || a.total - b.total) : list || []);
   const toggleSrc = (id: string) => (use = use.includes(id) ? use.filter(x => x !== id) : [...use, id]);
   const score = (s: number) => s.toFixed(1).replace(".", ",");
-  const people = (a: number, kids: number[]) => `${a} Erw.${kids.length ? `, ${kids.length} ${kids.length === 1 ? "Kind" : "Kinder"} (${kids.join(", ")} J.)` : ""}`;
+  const people = (a: number, kids: number[]) => `${a} ${t("age.adultShort")}${kids.length ? `, ${tn("n.kids", kids.length)} (${kids.join(", ")} ${t("st.yearsShort")})` : ""}`;
 
   async function search(e: Event) {
     e.preventDefault();
     error = ""; list = null; sources = [];
-    if (!place.trim()) { error = "Bitte einen Ort eintragen."; return; }
-    if (!nn || nn < 1) { error = "Bitte An- und Abreise eintragen (Abreise nach Anreise)."; return; }
-    if (!who.length) { error = "In diesem Zeitraum ist laut Flügen niemand da."; return; }
-    if (!use.length) { error = "Bitte mindestens eine Quelle auswählen."; return; }
+    if (!place.trim()) { error = t("st.errPlace"); return; }
+    if (!nn || nn < 1) { error = t("st.errDates"); return; }
+    if (!who.length) { error = t("st.errNobody"); return; }
+    if (!use.length) { error = t("st.errSource"); return; }
     try { localStorage.setItem(K, JSON.stringify({ type, sources: use.length < SOURCES.length ? use : [] })); } catch {}
     const sp = searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc);
     const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type, sources: use, currency: "EUR" };
@@ -112,19 +113,19 @@
   }
 </script>
 
-<Modal title={item ? `Unterkunft suchen: ${item.name || "Neue Unterkunft"}` : "Unterkunft suchen"} {onclose} wide>
+<Modal title={item ? `${t("st.open")}: ${item.name || t("stay.new")}` : t("st.open")} {onclose} wide>
   {#if arr.length}
     <div class="st-pres">
-      <span class="dlabel">Anwesenheit {arr.some(a => a.arr || a.dep) ? "laut Flügen" : ""}</span>
+      <span class="dlabel">{arr.some(a => a.arr || a.dep) ? t("st.presFlights") : t("st.pres")}</span>
       <ul>
         {#each arr as a (a.ids.join())}
           <li>
             <b>{a.who}</b>
             {#if a.p}
-              <span>{a.arr ? `${dayShort(a.arr)} ${time(a.arr)}` : dayShort(a.p.a)} an → {a.dep ? `${dayShort(a.dep)} ${time(a.dep)}` : dayShort(a.p.d)} ab · {nights(a.p.a, a.p.d)} Nächte{a.p.src === "manual" ? " (eigene Daten)" : ""}</span>
+              <span>{t("st.arrDep", { a: a.arr ? `${dayShort(a.arr)} ${time(a.arr)}` : dayShort(a.p.a), d: a.dep ? `${dayShort(a.dep)} ${time(a.dep)}` : dayShort(a.p.d) })} · {tn("n.nights", nights(a.p.a, a.p.d))}{a.p.src === "manual" ? ` (${t("hh.ownDates")})` : ""}</span>
               {#each hints(a) as h (h)}<small class="muted">{h}</small>{/each}
             {:else}
-              <span class="muted">Anwesenheit offen: Flug mit Zeiten eintragen oder eigene Daten bei der Familie.</span>
+              <span class="muted">{t("st.presOpen")}</span>
             {/if}
           </li>
         {/each}
@@ -134,17 +135,17 @@
 
   <form class="fs-form" onsubmit={search}>
     <div class="ed-row">
-      <label class="f grow">Ort<input bind:value={place} placeholder="z. B. Split" required /></label>
-      <label class="f">Check-in<input type="date" bind:value={checkin} required /></label>
-      <label class="f">Check-out<input type="date" bind:value={checkout} min={checkin} required /></label>
-      <label class="f">Zimmer<input class="n sm" type="number" min="1" max={Math.min(10, g.adults)} bind:value={rooms} /></label>
+      <label class="f grow">{t("te.place")}<input bind:value={place} placeholder={t("st.placePh")} required /></label>
+      <label class="f">{t("st.checkin")}<input type="date" bind:value={checkin} required /></label>
+      <label class="f">{t("st.checkout")}<input type="date" bind:value={checkout} min={checkin} required /></label>
+      <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(10, g.adults)} bind:value={rooms} /></label>
     </div>
     {#if near.length || trip.place}
       <div class="st-near">
-        {#if trip.place}<span class="muted small">Reiseziel:</span><button type="button" class="chip sm" class:on={place === trip.place} onclick={() => (place = trip.place)}>{trip.place}</button>{/if}
+        {#if trip.place}<span class="muted small">{t("st.dest")}</span><button type="button" class="chip sm" class:on={place === trip.place} onclick={() => (place = trip.place)}>{trip.place}</button>{/if}
         {#each near as n (n.ap.code)}
           {#if n.places.length}
-            <span class="muted small">Am Flughafen {n.ap.code} ({n.role}):</span>
+            <span class="muted small">{t("st.atAirport", { ap: n.ap.code, role: n.role })}</span>
             {@const sug = stayNear(geo, n.ap)}
             {#each sug && !n.places.some(p => p.name === sug.name) ? [sug, ...n.places] : n.places as p (p.name)}<button type="button" class="chip sm" class:on={place === p.name} onclick={() => (place = p.name)}>{p.name} <small>{Math.round(p.km)} km</small></button>{/each}
           {/if}
@@ -152,28 +153,28 @@
       </div>
     {/if}
     <div class="ed-row fs-opts">
-      <div class="chips" role="radiogroup" aria-label="Art der Unterkunft">
-        <button type="button" role="radio" aria-checked={type === "whole"} class="chip" class:on={type === "whole"} onclick={() => (type = "whole")}>Ganze Unterkunft</button>
-        <button type="button" role="radio" aria-checked={type === "hotel"} class="chip" class:on={type === "hotel"} onclick={() => (type = "hotel")}>Hotel</button>
-        <button type="button" role="radio" aria-checked={type === "all"} class="chip" class:on={type === "all"} onclick={() => (type = "all")}>Alle</button>
+      <div class="chips" role="radiogroup" aria-label={t("st.type")}>
+        <button type="button" role="radio" aria-checked={type === "whole"} class="chip" class:on={type === "whole"} onclick={() => (type = "whole")}>{t("st.whole")}</button>
+        <button type="button" role="radio" aria-checked={type === "hotel"} class="chip" class:on={type === "hotel"} onclick={() => (type = "hotel")}>{t("st.hotel")}</button>
+        <button type="button" role="radio" aria-checked={type === "all"} class="chip" class:on={type === "all"} onclick={() => (type = "all")}>{t("all")}</button>
       </div>
-      <div class="chips" aria-label="Quellen">
+      <div class="chips" aria-label={t("st.sources")}>
         {#each SOURCES as s (s.id)}
           <button type="button" class="chip" class:on={use.includes(s.id)} aria-pressed={use.includes(s.id)} onclick={() => toggleSrc(s.id)}>{s.name}</button>
         {/each}
       </div>
     </div>
     <p class="muted small st-guests">
-      {#if nn > 0}{dayShort(checkin)} bis {dayShort(checkout)} · {nn} {nn === 1 ? "Nacht" : "Nächte"} · {/if}
-      {#if who.length}<b>{who.length} {who.length === 1 ? "Gast" : "Gäste"}</b>: {people(g.adults, g.childAges)}{:else}niemand vor Ort{/if}
-      · aus Flügen und „Wer fährt mit“{ids ? " (nur die Beteiligten)" : ""}.
-      {#if partial.length}<br />Nicht alle Nächte da: {partial.map(x => `${x.t.name} ${x.nights} von ${nn}`).join(", ")}.{/if}
+      {#if nn > 0}{t("range.fromTo", { a: dayShort(checkin), b: dayShort(checkout) })} · {tn("n.nights", nn)} · {/if}
+      {#if who.length}<b>{tn("n.guests", who.length)}</b>: {people(g.adults, g.childAges)}{:else}{t("st.nobody")}{/if}
+      · {ids ? t("st.fromOnly") : t("st.from")}
+      {#if partial.length}<br />{t("stay.partial", { list: partial.map(x => t("st.partialOf", { name: x.t.name, a: x.nights, b: nn })).join(", ") })}{/if}
     </p>
-    {#if !FLIGHTS_URL}<p class="warnline small">Der Such-Dienst ist noch nicht eingerichtet. Anleitung: docs/FLUGSUCHE.md im Projekt.</p>{/if}
-    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `Suche bei ${SOURCES.filter(s => use.includes(s.id)).map(s => s.name).join(" und ")}…` : "Unterkünfte suchen"}</button>
+    {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
+    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? t("st.busy", { src: SOURCES.filter(s => use.includes(s.id)).map(s => s.name).join(` ${t("and")} `) }) : t("st.searchBtn")}</button>
     {#if place.trim() && nn > 0}
       {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)) }}
-      <p class="muted small fs-direct">Direkt beim Anbieter suchen: <a href={bookingLink(lq)} target="_blank" rel="noopener noreferrer">Booking.com ↗</a> · <a href={airbnbLink(lq)} target="_blank" rel="noopener noreferrer">Airbnb ↗</a></p>
+      <p class="muted small fs-direct">{t("search.direct")} <a href={bookingLink(lq)} target="_blank" rel="noopener noreferrer">Booking.com ↗</a> · <a href={airbnbLink(lq)} target="_blank" rel="noopener noreferrer">Airbnb ↗</a></p>
     {/if}
   </form>
 
@@ -183,18 +184,18 @@
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
-          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? `${s.count} Treffer` : s.configured ? "Fehler" : "noch nicht eingerichtet"}</span>
+          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
         {/each}
       </div>
     {/if}
     {#if list.length}
       {@const an = nights(asked.checkin, asked.checkout) || 1}
       {@const n = asked.adults + asked.childAges.length}
-      <div class="chips fs-sort" role="radiogroup" aria-label="Sortierung">
-        <button type="button" class="chip" class:on={sort === "price"} onclick={() => (sort = "price")}>Günstigste</button>
-        <button type="button" class="chip" class:on={sort === "rating"} onclick={() => (sort = "rating")}>Beste Bewertung</button>
+      <div class="chips fs-sort" role="radiogroup" aria-label={t("search.sort")}>
+        <button type="button" class="chip" class:on={sort === "price"} onclick={() => (sort = "price")}>{t("search.cheapest")}</button>
+        <button type="button" class="chip" class:on={sort === "rating"} onclick={() => (sort = "rating")}>{t("st.bestRated")}</button>
       </div>
-      <p class="muted small">{list.length} Angebote in {asked.place} für {n} {n === 1 ? "Gast" : "Gäste"} ({people(asked.adults, asked.childAges)}), {an} Nächte ab {dateDE(asked.checkin)}, {asked.rooms} Zimmer · ab {eur(list[0].total)}</p>
+      <p class="muted small">{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(list[0].total) })}</p>
       <div class="fs-list">
         {#each shown as o (o.id)}
           {@const diff = current && current.url !== o.url ? o.total - current.total : null}
@@ -207,28 +208,28 @@
               </div>
               <div class="fs-top">
                 <b class="num fs-price">{eur(o.total)}</b>
-                <span class="muted small">{eur(o.total / an)} pro Nacht{n > 1 ? ` · ${eur(o.total / an / n)} p. P./Nacht` : ""}</span>
-                {#if diff != null && Math.abs(diff) >= 1}<span class="st-diff" class:good={diff < 0}>{diff < 0 ? "−" : "+"}{eur(Math.abs(diff))} zum bisherigen</span>{/if}
+                <span class="muted small">{t("perNight", { v: eur(o.total / an) })}{n > 1 ? ` · ${t("st.ppNight", { v: eur(o.total / an / n) })}` : ""}</span>
+                {#if diff != null && Math.abs(diff) >= 1}<span class="st-diff" class:good={diff < 0}>{diff < 0 ? "−" : "+"}{eur(Math.abs(diff))} {t("st.vsCurrent")}</span>{/if}
               </div>
               <div class="fs-pills">
-                {#if o.score}<span class="pill-n">{score(o.score)}{o.reviews ? ` (${o.reviews.toLocaleString("de-DE")} Bew.)` : ""}</span>{/if}
+                {#if o.score}<span class="pill-n">{score(o.score)}{o.reviews ? ` (${t("st.reviews", { n: o.reviews.toLocaleString(locale()) })})` : ""}</span>{/if}
                 {#if o.stars}<span class="pill-h">{"★".repeat(o.stars)}</span>{/if}
                 {#each o.facts || [] as f (f)}<span class="pill-h">{f}</span>{/each}
               </div>
               {#if o.place}<p class="muted small fs-sub">{o.place}</p>{/if}
               <div class="fs-acts">
-                {#if !taken[o.id] && current?.url === o.url}<span class="pill-n">gewählt</span>
-                {:else}<button class="btn primary sm" disabled={taken[o.id]} onclick={() => take(o)}>{taken[o.id] ? "✓ Übernommen" : "Übernehmen"}</button>{/if}
-                {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel="noopener noreferrer">Beim Anbieter ↗</a>{/if}
-                <button class="btn sm" disabled title="Direkt in der App buchen kommt bald">Hier buchen <small>bald</small></button>
+                {#if !taken[o.id] && current?.url === o.url}<span class="pill-n">{t("st.chosen")}</span>
+                {:else}<button class="btn primary sm" disabled={taken[o.id]} onclick={() => take(o)}>{taken[o.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>{/if}
+                {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel="noopener noreferrer">{t("search.atProvider")} ↗</a>{/if}
+                <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
               </div>
             </div>
           </article>
         {/each}
       </div>
-      {#if into}<p class="muted small">Übernommene Unterkünfte stehen als Angebote im Posten „{trip.items.find(i => i.id === into)?.name}“ im Kapitel Unterkunft. Dort kannst du vergleichen und eine wählen.</p>{/if}
+      {#if into}<p class="muted small">{t("st.takenHint", { name: trip.items.find(i => i.id === into)?.name || "" })}</p>{/if}
     {:else}
-      <p class="muted small">Keine Angebote gefunden. Anderen Ort, andere Art oder mehr Zimmer versuchen.</p>
+      <p class="muted small">{t("st.none")}</p>
     {/if}
   {/if}
 </Modal>

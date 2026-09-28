@@ -7,7 +7,7 @@ await new Promise(r => setTimeout(r, 2500));
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 try {
   for (const [n, vp] of [["d", { width: 1280, height: 860 }], ["m", { width: 390, height: 844 }]]) {
-    const p = await b.newPage({ viewport: vp });
+    const p = await b.newPage({ viewport: vp, locale: "de-DE" });
     await p.goto("http://127.0.0.1:4174/");
     await p.evaluate(() => {
       localStorage.setItem("rk2-dir", JSON.stringify({ people: [{ id: "d", first: "Dani", last: "Klein" }, { id: "m", first: "Monika", last: "Klein" }, { id: "u", first: "Uwe", last: "Schmitz", age: 52 }], groups: [{ id: "g1", name: "Familie Klein", memberIds: ["d", "m"] }, { id: "g2", name: "Kegeln", memberIds: ["m", "u"] }] }));

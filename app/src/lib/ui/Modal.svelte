@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "../i18n/index.svelte";
   import type { Snippet } from "svelte";
   import { portal } from "./portal";
   let { title, onclose, children, wide = false }: { title: string; onclose: () => void; children: Snippet; wide?: boolean } = $props();
@@ -14,7 +15,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div class="modal-bg" use:portal onclick={onclose}>
   <div class="modal" class:wide role="dialog" tabindex="-1" aria-modal="true" aria-label={title} bind:this={box} onclick={e => e.stopPropagation()}>
-    <div class="modal-h"><h3>{title}</h3><button class="x" onclick={onclose} aria-label="Schließen">×</button></div>
+    <div class="modal-h"><h3>{title}</h3><button class="x" onclick={onclose} aria-label={t("close")}>×</button></div>
     {@render children()}
   </div>
 </div>

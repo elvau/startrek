@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "../i18n/index.svelte";
   /*
    * Flughafen, Stadt oder Umkreis wählen (Auswahlliste mit Suche): antippen zeigt die Vorschläge
    * (z. B. Flughäfen um das Reiseziel), tippen sucht in allen Flughäfen. Eine Auswahl ist ein Name mit einer Liste von Codes.
@@ -6,7 +7,7 @@
   import { airportData, ensureAirports } from "../geo/geo.svelte";
   import { countryName, locLabel, searchLocs, type Loc } from "../geo/locations";
 
-  let { value = $bindable(null), text = $bindable(""), label = "", placeholder = "Stadt, Flughafen oder Code", required = false, clearOnPick = false, onpick, cls = "", near = [], areaFor }:
+  let { value = $bindable(null), text = $bindable(""), label = "", placeholder = "", required = false, clearOnPick = false, onpick, cls = "", near = [], areaFor }:
     {
       value?: Loc | null; text?: string; label?: string; placeholder?: string; required?: boolean; clearOnPick?: boolean; onpick?: (l: Loc) => void; cls?: string;
       /** Vorschläge ohne Eingabe (z. B. Umkreis und Flughäfen am Reiseziel) */
@@ -53,9 +54,9 @@
 <div class="lp {cls}">
   <label class="f">{label}
     <span class="lp-box">
-      <input bind:this={inputEl} bind:value={text} {placeholder} {required} autocomplete="off" role="combobox" aria-expanded={open && hits.length > 0} aria-controls={id} aria-autocomplete="list"
+      <input bind:this={inputEl} bind:value={text} placeholder={placeholder || t("lp.placeholder")} {required} autocomplete="off" role="combobox" aria-expanded={open && hits.length > 0} aria-controls={id} aria-autocomplete="list"
         oninput={input} onkeydown={key} onfocus={() => { typing = false; show(); }} onblur={() => setTimeout(() => (open = false), 150)} />
-      <button type="button" class="lp-btn" tabindex="-1" aria-label="Vorschläge zeigen" onmousedown={e => { e.preventDefault(); toggle(); }}>▾</button>
+      <button type="button" class="lp-btn" tabindex="-1" aria-label={t("lp.show")} onmousedown={e => { e.preventDefault(); toggle(); }}>▾</button>
     </span>
   </label>
   {#if open && hits.length}
@@ -69,7 +70,7 @@
             <span>{l.city}{l.name !== l.city ? ` · ${l.name}` : ""}</span>
             <small class="muted lp-cc">{l.km != null ? `${l.km} km` : countryName(l.cc)}</small>
           {:else}
-            <span><b>{l.kind === "area" ? l.name : `${l.name}, alle Flughäfen`}</b> <small class="muted">{l.airports.join(", ")}</small></span>
+            <span><b>{l.kind === "area" ? l.name : t("lp.cityAll", { name: l.name })}</b> <small class="muted">{l.airports.join(", ")}</small></span>
             <small class="muted lp-cc">{countryName(l.cc)}</small>
           {/if}
         </li>

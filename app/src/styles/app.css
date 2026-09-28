@@ -314,3 +314,7 @@ body.editing .aside{opacity:.5}
   .reveal{opacity:1;transform:none}
   .chapter:not(.on){filter:none;transform:none}
 }
+/* Sprachauswahl in der Kopfzeile */
+.lang-sel{border:0;background:transparent;color:var(--ink-2);font:700 12px/1 inherit;padding:6px 2px;border-radius:10px;width:auto;cursor:pointer}
+.lang-sel:hover{background:var(--paper-2)}
+.lang-sel.long{background:var(--glass);border:1px solid var(--glass-line);padding:7px 8px;font-weight:600;color:var(--ink)}

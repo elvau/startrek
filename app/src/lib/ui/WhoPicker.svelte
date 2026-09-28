@@ -1,6 +1,7 @@
 <script module lang="ts">
+  import { t, tn } from "../i18n/index.svelte";
   import { dir, travelersFrom } from "../directory.svelte";
-  import { animalEmoji, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler, type FamilyRow } from "../placeholders";
+  import { animalEmoji, animalName, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler, type FamilyRow } from "../placeholders";
   import type { Traveler } from "../model";
 
   export type WhoMode = "solo" | "partner" | "family" | "group" | "saved";
@@ -21,17 +22,17 @@
   /** Art der Reise für den vorläufigen Namen, z. B. „Solo Pinguin“, „Gruppenreise Zebra“ */
   export function whoName(w: Who): string {
     switch (w.mode) {
-      case "solo": return `Solo ${w.solo}`;
-      case "partner": return `Partnerreise ${w.partner}`;
+      case "solo": return t("who.nameSolo", { a: animalName(w.solo) });
+      case "partner": return t("who.namePartner", { a: animalName(w.partner) });
       case "family": {
-        const a = w.fams.map(f => f.animal);
-        return `Familienreise ${a.length > 2 ? `${a.slice(0, 2).join(" & ")} u. a.` : a.join(" & ")}`;
+        const a = w.fams.map(f => animalName(f.animal));
+        return t("who.nameFamily", { a: a.length > 2 ? t("who.andOthers", { a: a.slice(0, 2).join(" & ") }) : a.join(" & ") });
       }
-      case "group": return `Gruppenreise ${w.mascot}`;
+      case "group": return t("who.nameGroup", { a: animalName(w.mascot) });
       default: {
         // genau eine gespeicherte Gruppe gewählt: deren Name
         const g = dir.groups.find(g => g.memberIds.length && g.memberIds.length === w.picked.length && g.memberIds.every(id => w.picked.includes(id)));
-        return g ? g.name : "Reise";
+        return g ? g.name : t("trip");
       }
     }
   }
@@ -53,12 +54,12 @@
 
   let { who = $bindable() }: { who: Who } = $props();
   const famCount = $derived(who.fams.reduce((a, r) => a + r.adults + r.kids + (r.infants || 0), 0));
-  const OPTS: { k: WhoMode; t: string; s: string }[] = [
-    { k: "solo", t: "Solo", s: "1 Person" },
-    { k: "partner", t: "Partner", s: "zu zweit" },
-    { k: "family", t: "Familie", s: "eine oder mehrere" },
-    { k: "group", t: "Gruppe", s: "Mannschaft, Verein" }
-  ];
+  const OPTS = $derived<{ k: WhoMode; t: string; s: string }[]>([
+    { k: "solo", t: t("who.solo"), s: t("who.soloSub") },
+    { k: "partner", t: t("who.partner"), s: t("who.partnerSub") },
+    { k: "family", t: t("family"), s: t("who.familySub") },
+    { k: "group", t: t("who.group"), s: t("who.groupSub") }
+  ]);
   const other = (cur: string) => nextAnimal([cur]);
   const step = (k: "adults" | "kids", d: number) => (who.group[k] = Math.max(k === "adults" ? 1 : 0, Math.min(40, who.group[k] + d)));
 
@@ -120,41 +121,41 @@
   </svg>
 {/snippet}
 
-<div class="who" role="radiogroup" aria-label="Wer fährt mit">
+<div class="who" role="radiogroup" aria-label={t("ch.trav.title")}>
   {#each OPTS as o (o.k)}
     <button type="button" role="radio" aria-checked={who.mode === o.k} class="who-b who-{o.k}" class:on={who.mode === o.k} onclick={() => (who.mode = o.k)}>
       <span class="who-art">{@render fig(o.k)}</span><b>{o.t}</b><small>{o.s}</small></button>
   {/each}
   {#if dir.groups.length || dir.people.length}
     <button type="button" role="radio" aria-checked={who.mode === "saved"} class="who-b who-saved" class:on={who.mode === "saved"} onclick={() => (who.mode = "saved")}>
-      <span class="who-art">{@render fig("saved")}</span><b>Gespeichert</b><small>deine Gruppen</small></button>
+      <span class="who-art">{@render fig("saved")}</span><b>{t("who.saved")}</b><small>{t("who.savedSub")}</small></button>
   {/if}
 </div>
 
 <div class="who-d">
   {#if who.mode === "solo"}
-    <p class="small">Du planst als <b>{animalEmoji(who.solo)} {who.solo}</b>. <button type="button" class="linkbtn" onclick={() => (who.solo = other(who.solo))}>Anderes Tier</button></p>
-    <p class="muted small">Namen und weitere Personen kannst du jederzeit in der Reise ergänzen.</p>
+    <p class="small">{t("who.soloAs")} <b>{animalEmoji(who.solo)} {animalName(who.solo)}</b>. <button type="button" class="linkbtn" onclick={() => (who.solo = other(who.solo))}>{t("who.otherAnimal")}</button></p>
+    <p class="muted small">{t("who.soloHint")}</p>
   {:else if who.mode === "partner"}
-    <p class="small">Ihr plant zu zweit als <b>{animalEmoji(who.partner)} Familie {who.partner}</b>. <button type="button" class="linkbtn" onclick={() => (who.partner = other(who.partner))}>Anderes Tier</button></p>
-    <p class="muted small">Ihr zählt als eine Familie und zahlt gemeinsam.</p>
+    <p class="small">{t("who.partnerAs")} <b>{animalEmoji(who.partner)} {t("family.named", { name: animalName(who.partner) })}</b>. <button type="button" class="linkbtn" onclick={() => (who.partner = other(who.partner))}>{t("who.otherAnimal")}</button></p>
+    <p class="muted small">{t("who.partnerHint")}</p>
   {:else if who.mode === "family"}
-    <p class="muted small">Eine oder mehrere Familien, jede als Tier, z. B. „Familie Fuchs: 2 Erwachsene, 2 Kinder“. Echte Namen kannst du später eintragen.</p>
+    <p class="muted small">{t("who.familyHint")}</p>
     <QuickFamilies bind:rows={who.fams} />
-    {#if famCount}<p class="muted small">Zusammen {famCount} {famCount === 1 ? "Person" : "Personen"}.</p>{/if}
+    {#if famCount}<p class="muted small">{t("who.together", { p: tn("n.persons", famCount) })}</p>{/if}
   {:else if who.mode === "group"}
-    <p class="small">Die Reise heißt vorerst <b>Gruppenreise {animalEmoji(who.mascot)} {who.mascot}</b>. <button type="button" class="linkbtn" onclick={() => (who.mascot = other(who.mascot))}>Anderes Tier</button></p>
-    <p class="muted small">Jede Person rechnet für sich ab, z. B. Mannschaft, Verein oder Kegelclub.</p>
+    <p class="small">{t("who.groupAs")} <b>{t("who.nameGroup", { a: `${animalEmoji(who.mascot)} ${animalName(who.mascot)}` })}</b>. <button type="button" class="linkbtn" onclick={() => (who.mascot = other(who.mascot))}>{t("who.otherAnimal")}</button></p>
+    <p class="muted small">{t("who.groupHint")}</p>
     <div class="qf-counts grp-counts">
-      {#each [["adults", "Erw.", "Erwachsene"], ["kids", "Kinder", "Kinder"]] as [k, l, full] (k)}
+      {#each [["adults", t("age.adultShort"), t("age.adults")], ["kids", t("age.kids"), t("age.kids")]] as [k, l, full] (k)}
         <span class="qf-step" role="group" aria-label={full}>
-          <button type="button" onclick={() => step(k as "adults", -1)} aria-label="{full} weniger">−</button>
+          <button type="button" onclick={() => step(k as "adults", -1)} aria-label={t("step.less", { what: full })}>−</button>
           <b>{who.group[k as "adults"]}</b><small>{l}</small>
-          <button type="button" onclick={() => step(k as "adults", 1)} aria-label="{full} mehr">+</button>
+          <button type="button" onclick={() => step(k as "adults", 1)} aria-label={t("step.more", { what: full })}>+</button>
         </span>
       {/each}
     </div>
-    <p class="muted small">Zusammen {who.group.adults + who.group.kids} Personen.</p>
+    <p class="muted small">{t("who.together", { p: tn("n.persons", who.group.adults + who.group.kids) })}</p>
   {:else}
     <div class="chips">
       {#each dir.groups as g (g.id)}
@@ -167,6 +168,6 @@
         <button type="button" class="chip" class:on={who.picked.includes(p.id)} aria-pressed={who.picked.includes(p.id)} onclick={() => toggle(p.id)}>{p.first} {p.last}</button>
       {/each}
     </div>
-    <p class="muted small">{who.picked.length} {who.picked.length === 1 ? "Person" : "Personen"} ausgewählt. Einzelne kannst du später für diese Reise auf „nicht dabei“ stellen.</p>
+    <p class="muted small">{t("who.picked", { p: tn("n.persons", who.picked.length) })}</p>
   {/if}
 </div>

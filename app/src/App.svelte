@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { applyDocument, t, tn } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
   import { access, app, calc, addItem, discardDetails, openSample, setDetailed } from "./lib/store.svelte";
   import { isDetailed } from "./lib/model";
@@ -32,7 +33,8 @@
   let sheet = $state(false);
 
   onMount(() => {
-    try { const t = localStorage.getItem("rk-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+    try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
+    applyDocument();
     const off = initScroll();
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { app.editing = null; sheet = false; } };
     // Klick außerhalb des offenen Postens schließt ihn (auch auf den Plan, der sonst ausgegraut bliebe)
@@ -57,27 +59,27 @@
 
 <div class="wrap">
   <main>
-    <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? `von ${app.trip.travelers.length} dabei · ` : ''}{households} {households === 1 ? 'Familie' : 'Familien'}">
+    <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{tn('n.families', households)}">
       <article class="card" use:reveal><TravelersCard /></article>
     </Chapter>
 
     {#each CAT_CHAPTERS as ch, i (ch.k)}
       {@const items = app.trip.items.filter(x => x.cat === ch.k)}
       {@const det = isDetailed(app.trip, ch.k)}
-      <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn && det ? `${nn} Nächte` : ch.sub}
+      <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn && det ? tn("n.nights", nn) : ch.sub}
         onadd={access.readonly || !det ? undefined : () => addItem(ch.k)}
-        onreset={items.length ? () => { if (confirm(`Alle ${items.length} Posten bei „${ch.label}“ löschen?`)) discardDetails(ch.k); } : undefined}
+        onreset={items.length ? () => { if (confirm(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
-          <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ Flüge suchen</button></div>
+          <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button></div>
         {:else if ch.k === "attractions"}
           {@const aq = { place: app.trip.place, from: app.trip.from, to: app.trip.to }}
           <p class="search-row muted small fs-direct">
-            {#if app.trip.place}Erlebnisse in {app.trip.place} finden: <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <a href={viatorLink(aq)} target="_blank" rel="noopener noreferrer">Viator ↗</a> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
-            {:else}Mit einem Reiseziel gibt es hier Links zu GetYourGuide, Viator und Tiqets.{/if}
+            {#if app.trip.place}{t("att.find", { place: app.trip.place })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <a href={viatorLink(aq)} target="_blank" rel="noopener noreferrer">Viator ↗</a> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
+            {:else}{t("att.noPlace")}{/if}
           </p>
         {:else if ch.k === "stay" && !access.readonly}
-          <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 Unterkunft suchen</button></div>
+          <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 {t("st.open")}</button></div>
         {/if}
         {#if ch.k === "misc"}<article class="card plan-card" use:reveal><FoodCard /></article>{/if}
         {#if !det}
@@ -87,13 +89,13 @@
           {#each items as item (item.id)}
             <ItemCard {item} icon={ch.icon} />
           {:else}
-            <div class="empty-ch">Noch nichts eingetragen.</div>
+            <div class="empty-ch">{t("app.empty")}</div>
           {/each}
         {/if}
       </Chapter>
     {/each}
 
-    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.total)} sub="{households} {households === 1 ? 'Familie' : 'Familien'}">
+    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.total)} sub={tn("n.families", households)}>
       <Split />
     </Chapter>
   </main>
@@ -101,17 +103,17 @@
 </div>
 
 <p class="note">
-  {cloud.user ? "Reisen mit ☁ liegen in deinem Konto." : "Gespeichert wird in diesem Browser."}
-  <button class="linkbtn" onclick={() => { if (confirm("Die Beispielreise als neue Reise öffnen? Deine Reisen bleiben, wie sie sind.")) openSample(); }}>Beispielreise ansehen</button>
-  <span class="legal"><a href="{LEGAL}impressum.html">Impressum</a> · <a href="{LEGAL}datenschutz.html">Datenschutz</a></span>
+  {cloud.user ? t("app.savedCloud") : t("app.savedLocal")}
+  <button class="linkbtn" onclick={() => { if (confirm(t("sample.confirm"))) openSample(); }}>{t("sample.open")}</button>
+  <span class="legal"><a href="{LEGAL}impressum.html">{t("legal.imprint")}</a> · <a href="{LEGAL}datenschutz.html">{t("legal.privacy")}</a></span>
 </p>
 
 <Dock onopen={() => (sheet = true)} />
 {#if sheet}
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
   <div class="modal-bg sheet-bg" onclick={e => { if (e.target === e.currentTarget) sheet = false; }}>
-    <div class="sheet-in" role="dialog" aria-modal="true" aria-label="Übersicht">
-      <button class="x sheet-x" onclick={() => (sheet = false)} aria-label="Schließen">✕</button>
+    <div class="sheet-in" role="dialog" aria-modal="true" aria-label={t("overview")}>
+      <button class="x sheet-x" onclick={() => (sheet = false)} aria-label={t("close")}>✕</button>
       <TicketAside sheet onpick={() => (sheet = false)} />
     </div>
   </div>

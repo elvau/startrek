@@ -1,5 +1,6 @@
 <script lang="ts">
   import { access, app } from "../store.svelte";
+  import { t, t as tt, tn, type Key } from "../i18n/index.svelte";
   import { ageClass } from "../calc";
   import { isActive, isDetailed, uid } from "../model";
   import { dir, saveAsGroup, travelersFrom } from "../directory.svelte";
@@ -9,7 +10,7 @@
   import { animalEmoji, nextAnimal, placeholderTravelers, type FamilyRow } from "../placeholders";
 
   const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"];
-  const L = { adult: "Erwachsen", child: "Kind", infant: "Kleinkind" };
+  const L = (c: string) => t(`age.class.${c}` as Key);
   let edit = $state(false);
   let pick = $state(false);
   let groups = $state(false);
@@ -57,14 +58,14 @@
     pick = false;
   }
   function saveGroup() {
-    if (incomplete) { edit = true; saved = "Bitte bei allen Vor- und Nachname eintragen."; return; }
+    if (incomplete) { edit = true; saved = t("trav.needNames"); return; }
     // Platzhalter bleiben in der Reise und kommen nicht in gespeicherte Gruppen
     const real = app.trip.travelers.filter(t => !t.placeholder);
-    if (!real.length) { saved = "Platzhalter werden nicht gespeichert. Trage erst echte Namen ein (Personen bearbeiten)."; return; }
-    const name = prompt("Name der Gruppe, z. B. „Familie Klein“ oder „Kegelclub“:", app.trip.name);
+    if (!real.length) { saved = t("trav.noPlaceholders"); return; }
+    const name = prompt(t("trav.groupPrompt"), app.trip.name);
     if (!name?.trim()) return;
     const g = saveAsGroup(name, real);
-    saved = `Gespeichert als Gruppe „${g.name}“ (${g.memberIds.length} ${g.memberIds.length === 1 ? "Person" : "Personen"}).`;
+    saved = t("trav.savedGroup", { name: g.name, p: tn("n.persons", g.memberIds.length) });
     setTimeout(() => (saved = ""), 4000);
   }
 </script>
@@ -77,37 +78,37 @@
       <span class="av" class:emoji style:--ring={t.color || COLORS[i % COLORS.length]} style:background={emoji ? null : t.color || COLORS[i % COLORS.length]}>{emoji || (t.name || "?")[0]}</span>
       {#if edit}
         <!-- ein echter Name macht aus dem Platzhalter eine Person -->
-        <input class="inp" class:need={missing(t.name)} bind:value={t.name} oninput={() => (t.placeholder = undefined)} placeholder="Vorname *" aria-label="Vorname" />
-        <input class="inp" class:need={missing(t.household)} bind:value={t.household} oninput={() => (t.placeholder = undefined)} placeholder="Nachname *" aria-label="Nachname" />
-        <label class="in-row"><input class="inp num" type="number" min="0" max="120" bind:value={t.age} placeholder="?" aria-label="Alter" /> Jahre</label>
-        <button class="linkbtn danger" onclick={() => (app.trip.travelers = app.trip.travelers.filter(x => x.id !== t.id))}>Entfernen</button>
+        <input class="inp" class:need={missing(t.name)} bind:value={t.name} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.first')} *" aria-label={tt("trav.first")} />
+        <input class="inp" class:need={missing(t.household)} bind:value={t.household} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.last')} *" aria-label={tt("trav.last")} />
+        <label class="in-row"><input class="inp num" type="number" min="0" max="120" bind:value={t.age} placeholder="?" aria-label={tt("trav.age")} /> {tt("trav.years")}</label>
+        <button class="linkbtn danger" onclick={() => (app.trip.travelers = app.trip.travelers.filter(x => x.id !== t.id))}>{tt("remove")}</button>
       {:else}
-        <b>{t.placeholder ? t.name : `${t.name || "Ohne Namen"} ${t.household}`}</b>
-        <span>{t.age != null && String(t.age) !== "" ? `${t.age} Jahre · ` : ""}{#if cls === "adult"}{L[cls]}{:else}<em class="age-pill {cls}">{L[cls]}</em>{/if}</span>
+        <b>{t.placeholder ? t.name : `${t.name || tt("trav.noName")} ${t.household}`}</b>
+        <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}</span>
         <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
-          onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? "✓ dabei" : "nicht dabei"}</button>
+          onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? `✓ ${tt("trav.in")}` : tt("trav.out")}</button>
         {#if t.placeholder && !access.readonly}
-          <button class="linkbtn repl" class:on={replacing === t.id} onclick={() => { replacing = replacing === t.id ? null : t.id; pick = quick = false; }}>Ersetzen</button>
+          <button class="linkbtn repl" class:on={replacing === t.id} onclick={() => { replacing = replacing === t.id ? null : t.id; pick = quick = false; }}>{tt("trav.replace")}</button>
         {/if}
       {/if}
     </div>
   {/each}
-  {#if !access.readonly}<button class="person add" onclick={add}><span class="av plus">+</span><b>Person</b></button>{/if}
+  {#if !access.readonly}<button class="person add" onclick={add}><span class="av plus">+</span><b>{t("trav.person")}</b></button>{/if}
 </div>
 
 {#if !access.readonly}
   <div class="home trav-acts">
-    <button class="linkbtn" onclick={e => { e.stopPropagation(); edit = !edit; }}>{edit ? "Fertig" : "Personen bearbeiten"}</button>
-    {#if dir.groups.length || dir.people.length}<button class="linkbtn" onclick={() => (pick = !pick)}>Aus Gruppe hinzufügen</button>{/if}
-    <button class="linkbtn" onclick={() => { openQuick(); replacing = null; }}>Familie als Platzhalter</button>
-    {#if app.trip.travelers.length}<button class="linkbtn" onclick={saveGroup}>Als Gruppe speichern</button>{/if}
-    <button class="linkbtn" onclick={() => (groups = true)}>Gruppen verwalten</button>
+    <button class="linkbtn" onclick={e => { e.stopPropagation(); edit = !edit; }}>{edit ? t("done") : t("trav.edit")}</button>
+    {#if dir.groups.length || dir.people.length}<button class="linkbtn" onclick={() => (pick = !pick)}>{t("trav.fromGroup")}</button>{/if}
+    <button class="linkbtn" onclick={() => { openQuick(); replacing = null; }}>{t("trav.quick")}</button>
+    {#if app.trip.travelers.length}<button class="linkbtn" onclick={saveGroup}>{t("trav.saveGroup")}</button>{/if}
+    <button class="linkbtn" onclick={() => (groups = true)}>{t("groups.manageShort")}</button>
   </div>
-  {#if edit && incomplete}<p class="warnline trav-note">Vor- und Nachname sind Pflicht. Der Nachname fasst eine Familie zusammen.</p>{/if}
+  {#if edit && incomplete}<p class="warnline trav-note">{t("trav.namesRequired")}</p>{/if}
   {#if saved}<p class="muted trav-note">{saved}</p>{/if}
   {#if repl}
     <div class="pick repl-pick">
-      <span class="dlabel">„{repl.name}“ ersetzen durch</span>
+      <span class="dlabel">{t("trav.replaceWith", { name: repl.name })}</span>
       {#if candidates.length}
         <div class="chips">
           {#each candidates as p (p.id)}
@@ -115,28 +116,28 @@
           {/each}
         </div>
       {:else if dir.people.length}
-        <p class="muted small">Alle gespeicherten Personen sind schon in dieser Reise.</p>
+        <p class="muted small">{t("trav.allIn")}</p>
       {:else}
-        <p class="muted small">Tipp: Du hast noch keine Personen gespeichert. Füge jetzt Personen zu deinen Gruppen hinzu, dann kannst du Platzhalter hier mit einem Tipp ersetzen.</p>
+        <p class="muted small">{t("trav.noPeople")}</p>
       {/if}
       <div class="repl-acts">
-        <button class="linkbtn" onclick={() => (groups = true)}>{dir.people.length ? "Gruppen verwalten" : "Personen und Gruppen anlegen"}</button>
-        <button class="linkbtn" onclick={() => (replacing = null)}>Abbrechen</button>
+        <button class="linkbtn" onclick={() => (groups = true)}>{dir.people.length ? t("groups.manageShort") : t("trav.createPeople")}</button>
+        <button class="linkbtn" onclick={() => (replacing = null)}>{t("cancel")}</button>
       </div>
     </div>
   {/if}
   {#if quick}
     <div class="pick quick">
       <QuickFamilies bind:rows={fams} used={households} />
-      <button class="btn primary" disabled={!fams.some(r => r.adults + r.kids + (r.infants || 0))} onclick={addQuick}>Hinzufügen</button>
-      <p class="muted small">Nur für diese Reise, nicht in Gruppen gespeichert. Echte Namen trägst du bei „Personen bearbeiten“ ein.</p>
+      <button class="btn primary" disabled={!fams.some(r => r.adults + r.kids + (r.infants || 0))} onclick={addQuick}>{t("add")}</button>
+      <p class="muted small">{t("trav.quickHint")}</p>
     </div>
   {/if}
   {#if pick}
     <div class="pick">
       {#each dir.groups as g (g.id)}
         {@const neu = g.memberIds.filter(id => !app.trip.travelers.some(t => t.personId === id))}
-        <button class="chip" disabled={!neu.length} onclick={() => addFrom(g.memberIds)}>{g.name} <small>{neu.length ? `+${neu.length}` : "alle dabei"}</small></button>
+        <button class="chip" disabled={!neu.length} onclick={() => addFrom(g.memberIds)}>{g.name} <small>{neu.length ? `+${neu.length}` : t("trav.allThere")}</small></button>
       {/each}
       {#each dir.people.filter(p => !app.trip.travelers.some(t => t.personId === p.id)) as p (p.id)}
         <button class="chip" onclick={() => addFrom([p.id])}>+ {p.first} {p.last}</button>

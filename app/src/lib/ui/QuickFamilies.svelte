@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { t } from "../i18n/index.svelte";
   /* Schnell: Familien als Platzhalter, z. B. Familie Reh mit 2 Erwachsenen und 3 Kindern */
-  import { ANIMALS, nextAnimal, type FamilyRow } from "../placeholders";
+  import { ANIMALS, animalName, nextAnimal, type FamilyRow } from "../placeholders";
 
   let { rows = $bindable(), used = [] }: { rows: FamilyRow[]; used?: string[] } = $props();
 
@@ -14,23 +15,23 @@
   {#each rows as r, i (i)}
     <div class="qf-row">
       <div class="qf-top">
-      <select bind:value={r.animal} aria-label="Familie">
+      <select bind:value={r.animal} aria-label={t("family")}>
         {#each ANIMALS as [n, e] (n)}
-          <option value={n} disabled={n !== r.animal && taken.includes(n)}>{e} Familie {n}</option>
+          <option value={n} disabled={n !== r.animal && taken.includes(n)}>{e} {t("family.named", { name: animalName(n) })}</option>
         {/each}
       </select>
-      <button type="button" class="x" onclick={() => rows.splice(i, 1)} aria-label="Familie {r.animal} entfernen">×</button>
+      <button type="button" class="x" onclick={() => rows.splice(i, 1)} aria-label={t("family.remove", { name: animalName(r.animal) })}>×</button>
       </div>
       <div class="qf-counts">
-      {#each [["adults", "Erw.", "Erwachsene"], ["kids", "Kinder", "Kinder (6–11)"], ["infants", "Kleink.", "Kleinkinder (unter 6)"]] as [k, l, full] (k)}
+      {#each [["adults", t("age.adultShort"), t("age.adults")], ["kids", t("age.kids"), t("age.kidsRange")], ["infants", t("age.infantShort"), t("age.infantsRange")]] as [k, l, full] (k)}
         <span class="qf-step" role="group" aria-label={full} title={full}>
-          <button type="button" onclick={() => step(r, k as K, -1)} aria-label="{l} weniger">−</button>
+          <button type="button" onclick={() => step(r, k as K, -1)} aria-label={t("step.less", { what: l })}>−</button>
           <b>{r[k as K] || 0}</b><small>{l}</small>
-          <button type="button" onclick={() => step(r, k as K, 1)} aria-label="{l} mehr">+</button>
+          <button type="button" onclick={() => step(r, k as K, 1)} aria-label={t("step.more", { what: l })}>+</button>
         </span>
       {/each}
       </div>
     </div>
   {/each}
-  <button type="button" class="linkbtn" onclick={add}>+ {rows.length ? "weitere Familie" : "Familie"}</button>
+  <button type="button" class="linkbtn" onclick={add}>+ {rows.length ? t("family.another") : t("family")}</button>
 </div>
