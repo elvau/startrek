@@ -10,8 +10,9 @@ type RawCity = [string, string, string, string, string[]];
 export interface AirportData { asOf?: string; airports: RawAirport[]; cities: RawCity[] }
 
 export interface Loc {
-  kind: "city" | "airport";
-  /** Stadt-Code (NYC) oder Flughafen (JFK) */
+  /** ein Flughafen, eine Stadt mit Stadt-Code (NYC) oder alle Flughäfen im Umkreis eines Orts */
+  kind: "city" | "airport" | "area";
+  /** Stadt-Code (NYC), Flughafen (JFK), im Umkreis der nächste Flughafen */
   code: string;
   /** Anzeige: „Tokio“ bzw. „Haneda“ */
   name: string;
@@ -24,6 +25,8 @@ export interface Loc {
   airports: string[];
   lat?: number;
   lon?: number;
+  /** Entfernung zum gesuchten Ort (Vorschläge im Umkreis) */
+  km?: number;
 }
 
 export const emptyAirports = (): AirportData => ({ airports: [], cities: [] });
@@ -101,7 +104,30 @@ export function resolveLoc(d: AirportData, text: string, cc?: string | null): Lo
 }
 
 /** Text im Eingabefeld für eine Auswahl */
-export const locLabel = (l: Loc) => (l.kind === "city" ? `${l.name} (alle ${l.airports.length} Flughäfen)` : `${l.code} · ${l.city === l.name ? l.name : `${l.city}, ${l.name}`}`);
+export const locLabel = (l: Loc) =>
+  l.kind === "city" ? `${l.name} (alle ${l.airports.length} Flughäfen)`
+  : l.kind === "area" ? `Umkreis ${l.city}: ${l.airports.join(", ")}`
+  : `${l.code} · ${l.city === l.name ? l.name : `${l.city}, ${l.name}`}`;
+
+export function kmBetween(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const R = 6371, r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lon - a.lon) * r;
+  const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** Flughäfen um einen Punkt, nächste zuerst (kleine Flughäfen nur, wenn es sonst zu wenige gibt) */
+export function airportsNear(d: AirportData, p: { lat: number; lon: number }, maxKm = 150, n = 6): Loc[] {
+  const all = d.airports.map(a => ({ ...fromAirport(a), km: Math.round(kmBetween(p, { lat: a[4], lon: a[5] })), size: a[6] })).filter(a => a.km <= maxKm);
+  const big = all.filter(a => a.size !== "s");
+  return (big.length >= 2 ? big : all).sort((a, b) => a.km - b.km).slice(0, n).map(({ size: _s, ...l }) => l);
+}
+
+/** „alle Flughäfen im Umkreis“ eines Orts als eine Auswahl (nur, wenn es mindestens zwei gibt) */
+export function areaAround(d: AirportData, place: { name: string; lat: number; lon: number; cc?: string }, maxKm = 150, n = 6): Loc | null {
+  const near = airportsNear(d, place, maxKm, n);
+  if (near.length < 2) return null;
+  return { kind: "area", code: near[0].code, name: `Alle Flughäfen im Umkreis von ${place.name}`, city: place.name, en: place.name, cc: place.cc || near[0].cc, airports: near.map(a => a.code), lat: place.lat, lon: place.lon };
+}
 
 /* ---------- Laden (einmal pro Sitzung) ---------- */
 

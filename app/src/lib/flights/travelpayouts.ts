@@ -76,10 +76,25 @@ export function fromTravelpayouts(data: any, q: FlightQuery, marker?: string): F
 
 const nightsBetween = (o: FlightOffer) => Math.round((Date.parse(o.back!.dep.slice(0, 10)) - Date.parse(o.out.arr.slice(0, 10))) / 86400000);
 
+/** höchstens so viele Anfragen je Suche (Codes × Monate), damit Travelpayouts nicht bremst */
+export const TP_MAX = 12;
+
+/**
+ * Travelpayouts kennt nur einen Code je Anfrage: eine Stadt mit Stadt-Code (TYO) geht in einem Rutsch,
+ * sonst eine Anfrage je Flughafen der Liste (die wichtigsten zuerst, bis TP_MAX).
+ */
+export function tpRoutes(q: FlightQuery, months: number): [string, string][] {
+  const side = (code: string, city?: string, aps?: string[]) => (city ? [city] : aps?.length ? aps : [code]);
+  const from = side(q.from, q.fromCityCode, q.fromAirports), to = side(q.to, q.toCityCode, q.toAirports);
+  const all = from.flatMap(a => to.map(b => [a, b] as [string, string]));
+  return all.slice(0, Math.max(1, Math.floor(TP_MAX / Math.max(1, months))));
+}
+
 export async function searchTravelpayouts(q: FlightQuery, token: string, f: typeof fetch = fetch, marker?: string): Promise<FlightOffer[]> {
-  // flexibel mehrere Monate gleichzeitig; ein Fehler zählt nur, wenn keine Anfrage durchkommt
+  // flexibel mehrere Monate, mehrere Flughäfen: alles gleichzeitig; ein Fehler zählt nur, wenn keine Anfrage durchkommt
   const pairs = tpPairs(q);
-  const res = await Promise.allSettled(pairs.map(pair => tpFetch(q, token, f, marker, pair)));
+  const jobs = tpRoutes(q, pairs.length).flatMap(([from, to]) => pairs.map(pair => ({ qq: { ...q, from, to }, pair })));
+  const res = await Promise.allSettled(jobs.map(j => tpFetch(j.qq, token, f, marker, j.pair)));
   const ok = res.filter((r): r is PromiseFulfilledResult<FlightOffer[]> => r.status === "fulfilled");
   if (!ok.length) throw (res[0] as PromiseRejectedResult).reason;
   const seen = new Set<string>();

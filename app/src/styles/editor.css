@@ -437,6 +437,10 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .lp-list li{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:7px 8px;border-radius:8px;font-size:13.5px;cursor:pointer}
 .lp-list li.sub{padding-left:22px;grid-template-columns:38px minmax(0,1fr) auto}
 .lp-list li.on,.lp-list li:hover{background:var(--a-soft)}
+.lp-box{position:relative;display:block}
+.lp-box input{width:100%;padding-right:34px}
+.lp-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--ink-3);font-size:14px;padding:6px 8px;cursor:pointer}
+.lp-list li.group{border-bottom:1px solid var(--line)}
 .lp-code{font-variant-numeric:tabular-nums;letter-spacing:.02em;color:var(--a)}
 .lp-cc{white-space:nowrap}
 .fs-add.lp{width:190px}

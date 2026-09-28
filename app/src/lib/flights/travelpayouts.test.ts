@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromTravelpayouts, searchTravelpayouts, tpPairs, tpParams } from "./travelpayouts";
+import { TP_MAX, fromTravelpayouts, searchTravelpayouts, tpPairs, tpParams, tpRoutes } from "./travelpayouts";
 import { searchAll } from "./search";
 import type { FlightQuery } from "./types";
 
@@ -76,5 +76,33 @@ describe("Travelpayouts: flexibler Zeitraum", () => {
     expect(asked).toEqual(["2027-07/2027-07", "2027-07/2027-08", "2027-08/2027-08"]);
     expect(r.length).toBeGreaterThan(0);
     expect(new Set(r.map(o => o.id)).size).toBe(r.length);
+  });
+});
+
+describe("Travelpayouts mit mehreren Flughäfen", () => {
+  it("Stadt mit Stadt-Code: eine Anfrage; Umkreis: eine je Flughafen", () => {
+    expect(tpRoutes({ ...q, to: "TYO", toAirports: ["HND", "NRT"], toCityCode: "TYO" }, 1)).toEqual([["DUS", "TYO"]]);
+    expect(tpRoutes({ ...q, to: "SPU", toAirports: ["SPU", "BWK", "DBV"] }, 1)).toEqual([["DUS", "SPU"], ["DUS", "BWK"], ["DUS", "DBV"]]);
+    expect(tpRoutes(q, 1)).toEqual([["DUS", "SPU"]]);
+  });
+
+  it("höchstens TP_MAX Anfragen (Flughäfen × Monate), die nächsten Flughäfen zuerst", () => {
+    const many = { ...q, to: "SPU", toAirports: ["SPU", "BWK", "DBV", "ZAD", "OMO", "ZAG"] };
+    expect(tpRoutes(many, 1)).toHaveLength(6);
+    expect(tpRoutes(many, 6).map(r => r[1])).toEqual(["SPU", "BWK"]);
+    expect(tpRoutes(many, 20)).toHaveLength(1);
+    expect(TP_MAX).toBe(12);
+  });
+
+  it("fragt je Flughafen und führt zusammen", async () => {
+    const asked: string[] = [];
+    const f = (async (url: string) => {
+      const dest = new URL(url).searchParams.get("destination")!;
+      asked.push(dest);
+      return Response.json({ success: true, currency: "eur", data: [{ ...sample.data[0], destination: dest, destination_airport: dest, price: dest === "BWK" ? 100 : 300 }] });
+    }) as unknown as typeof fetch;
+    const offers = await searchTravelpayouts({ ...q, toAirports: ["SPU", "BWK"] }, "t", f);
+    expect(asked.sort()).toEqual(["BWK", "SPU"]);
+    expect(offers.map(o => o.out.to)).toEqual(["BWK", "SPU"]);
   });
 });

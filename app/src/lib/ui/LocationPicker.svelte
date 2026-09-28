@@ -1,31 +1,48 @@
 <script lang="ts">
   /*
-   * Flughafen oder Stadt wählen: tippen, Vorschlag anklicken (oder Pfeiltasten + Enter).
-   * Eine Stadt mit mehreren Flughäfen sucht über alle; ein Kürzel nur dort.
+   * Flughafen, Stadt oder Umkreis wählen (Auswahlliste mit Suche): antippen zeigt die Vorschläge
+   * (z. B. Flughäfen um das Reiseziel), tippen sucht in allen Flughäfen. Eine Auswahl ist ein Name mit einer Liste von Codes.
    */
   import { airportData, ensureAirports } from "../geo/geo.svelte";
   import { countryName, locLabel, searchLocs, type Loc } from "../geo/locations";
 
-  let { value = $bindable(null), text = $bindable(""), label = "", placeholder = "Stadt, Flughafen oder Code", required = false, clearOnPick = false, onpick, cls = "" }:
-    { value?: Loc | null; text?: string; label?: string; placeholder?: string; required?: boolean; clearOnPick?: boolean; onpick?: (l: Loc) => void; cls?: string } = $props();
+  let { value = $bindable(null), text = $bindable(""), label = "", placeholder = "Stadt, Flughafen oder Code", required = false, clearOnPick = false, onpick, cls = "", near = [], areaFor }:
+    {
+      value?: Loc | null; text?: string; label?: string; placeholder?: string; required?: boolean; clearOnPick?: boolean; onpick?: (l: Loc) => void; cls?: string;
+      /** Vorschläge ohne Eingabe (z. B. Umkreis und Flughäfen am Reiseziel) */
+      near?: Loc[];
+      /** zu einer Eingabe zusätzlich „alle Flughäfen im Umkreis“ anbieten */
+      areaFor?: (text: string) => Loc | null;
+    } = $props();
 
   let open = $state(false);
+  let typing = $state(false);
   let active = $state(0);
+  let inputEl: HTMLInputElement | undefined = $state();
   const id = `lp-${Math.random().toString(36).slice(2, 8)}`;
-  const hits = $derived(open ? searchLocs(airportData, text, 8) : []);
+  const hits = $derived.by(() => {
+    if (!open) return [];
+    if (!typing || !text.trim()) return near;
+    const found = searchLocs(airportData, text, 8);
+    const area = areaFor?.(text);
+    if (!area) return found;
+    // Umkreis hinter dem besten Treffer (bei einer Stadt hinter ihren Flughäfen)
+    const first = found[0];
+    const after = !first ? 0 : 1 + (first.kind === "city" ? found.slice(1).filter(l => first.airports.includes(l.code)).length : 0);
+    return [...found.slice(0, after), area, ...found.slice(after)].slice(0, 9);
+  });
 
   function pick(l: Loc) {
     onpick?.(l);
     if (clearOnPick) { text = ""; value = null; }
     else { value = l; text = locLabel(l); }
-    open = false;
+    open = false; typing = false;
   }
-  function input() {
-    value = null; open = true; active = 0;
-    ensureAirports();
-  }
+  function show() { ensureAirports(); open = true; active = 0; }
+  function input() { value = null; typing = true; show(); }
+  function toggle() { if (open) open = false; else { typing = false; show(); inputEl?.focus(); } }
   function key(e: KeyboardEvent) {
-    if (!open || !hits.length) { if (e.key === "ArrowDown") { open = true; ensureAirports(); } return; }
+    if (!open || !hits.length) { if (e.key === "ArrowDown") { e.preventDefault(); typing = false; show(); } return; }
     if (e.key === "ArrowDown") { e.preventDefault(); active = (active + 1) % hits.length; }
     else if (e.key === "ArrowUp") { e.preventDefault(); active = (active - 1 + hits.length) % hits.length; }
     else if (e.key === "Enter") { e.preventDefault(); pick(hits[active]); }
@@ -35,21 +52,26 @@
 
 <div class="lp {cls}">
   <label class="f">{label}
-    <input bind:value={text} {placeholder} {required} autocomplete="off" role="combobox" aria-expanded={open && hits.length > 0} aria-controls={id} aria-autocomplete="list"
-      oninput={input} onkeydown={key} onfocus={() => ensureAirports()} onblur={() => setTimeout(() => (open = false), 150)} />
+    <span class="lp-box">
+      <input bind:this={inputEl} bind:value={text} {placeholder} {required} autocomplete="off" role="combobox" aria-expanded={open && hits.length > 0} aria-controls={id} aria-autocomplete="list"
+        oninput={input} onkeydown={key} onfocus={() => { typing = false; show(); }} onblur={() => setTimeout(() => (open = false), 150)} />
+      <button type="button" class="lp-btn" tabindex="-1" aria-label="Vorschläge zeigen" onmousedown={e => { e.preventDefault(); toggle(); }}>▾</button>
+    </span>
   </label>
   {#if open && hits.length}
     <ul class="lp-list" {id} role="listbox">
-      {#each hits as l, i (l.kind + l.code)}
-        <li role="option" aria-selected={i === active} class:on={i === active} class:sub={l.kind === "airport" && hits.some(h => h.kind === "city" && h.airports.includes(l.code))}
+      {#each hits as l, i (l.kind + l.code + l.airports.join())}
+        <li role="option" aria-selected={i === active} class:on={i === active} class:group={l.kind !== "airport"}
+          class:sub={l.kind === "airport" && hits.some(h => h.kind !== "airport" && h.airports.includes(l.code))}
           onmousedown={e => { e.preventDefault(); pick(l); }}>
-          <b class="lp-code">{l.code}</b>
-          {#if l.kind === "city"}
-            <span><b>{l.name}</b> <small class="muted">alle Flughäfen: {l.airports.join(", ")}</small></span>
-          {:else}
+          <b class="lp-code">{l.kind === "area" ? "◎" : l.code}</b>
+          {#if l.kind === "airport"}
             <span>{l.city}{l.name !== l.city ? ` · ${l.name}` : ""}</span>
+            <small class="muted lp-cc">{l.km != null ? `${l.km} km` : countryName(l.cc)}</small>
+          {:else}
+            <span><b>{l.kind === "area" ? l.name : `${l.name}, alle Flughäfen`}</b> <small class="muted">{l.airports.join(", ")}</small></span>
+            <small class="muted lp-cc">{countryName(l.cc)}</small>
           {/if}
-          <small class="muted lp-cc">{countryName(l.cc)}</small>
         </li>
       {/each}
     </ul>

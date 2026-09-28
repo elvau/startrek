@@ -14,8 +14,8 @@ export function addDays(iso: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Stadt mit mehreren Flughäfen: englischer Name (Stadt-Codes wie SHA oder BKK sind zugleich Flughäfen) */
-const kiwiPlace = (code: string, city?: string, aps?: string[]) => (city && (aps?.length ?? 0) > 1 ? city : code);
+/** mehrere Flughäfen: Kiwi nimmt eine Liste („SPU,BWK,DBV“) und sucht alle auf einmal */
+const kiwiPlace = (code: string, aps?: string[]) => (aps && aps.length > 1 ? aps.join(",") : code);
 
 export function kiwiArgs(q: FlightQuery) {
   // flexibel: Abflug zwischen frühester Abreise und (späteste Rückkehr − Mindest-Nächte), Nächte als Spanne
@@ -25,8 +25,7 @@ export function kiwiArgs(q: FlightQuery) {
   const fixedFlex = !flex && q.flexDays ? { departureDateFlexDays: q.flexDays, ...(q.ret ? { returnDateFlexDays: q.flexDays } : {}) } : {};
   const adults = Math.max(1, q.adults);
   return {
-    // Kiwi sucht eine Stadt beim Namen über alle Flughäfen, ein Kürzel nur dort
-    flyFrom: kiwiPlace(q.from, q.fromCity, q.fromAirports), flyTo: kiwiPlace(q.to, q.toCity, q.toAirports), departureDate: kiwiDate(q.depart),
+    flyFrom: kiwiPlace(q.from, q.fromAirports), flyTo: kiwiPlace(q.to, q.toAirports), departureDate: kiwiDate(q.depart),
     ...(flex ?? (q.ret ? { returnDate: kiwiDate(q.ret) } : {})), ...fixedFlex,
     ...(q.maxStops != null ? { max_sector_stopovers: q.maxStops } : {}),
     ...(q.selfTransfer != null ? { allow_self_transfer: q.selfTransfer } : {}),

@@ -101,8 +101,9 @@ describe("Flugsuche", () => {
 });
 
 describe("Städte mit mehreren Flughäfen", () => {
-  it("Kiwi bekommt bei einer Stadt den Namen, sonst das Kürzel", () => {
-    expect(kiwiArgs({ ...q, to: "TYO", toAirports: ["HND", "NRT"], toCity: "Tokyo" }).flyTo).toBe("Tokyo");
+  it("Kiwi bekommt mehrere Flughäfen als Liste, sonst das Kürzel", () => {
+    expect(kiwiArgs({ ...q, to: "TYO", toAirports: ["HND", "NRT"], toCityCode: "TYO" }).flyTo).toBe("HND,NRT");
+    expect(kiwiArgs({ ...q, to: "SPU", toAirports: ["SPU", "BWK", "DBV"] }).flyTo).toBe("SPU,BWK,DBV");
     expect(kiwiArgs({ ...q, to: "HND", toAirports: ["HND"] }).flyTo).toBe("HND");
     expect(kiwiArgs(q).flyFrom).toBe("DUS");
   });
@@ -116,9 +117,9 @@ describe("Städte mit mehreren Flughäfen", () => {
 
   it("prüft Flughafenlisten und Stadtnamen", () => {
     const b = { from: "DUS", to: "TYO", depart: "2027-07-18" };
-    expect(parseQuery({ ...b, toAirports: ["HND", "NRT"], toCity: "Tokyo" })).toMatchObject({ toAirports: ["HND", "NRT"], toCity: "Tokyo" });
+    expect(parseQuery({ ...b, toAirports: ["HND", "NRT"], toCityCode: "TYO" })).toMatchObject({ toAirports: ["HND", "NRT"], toCityCode: "TYO" });
     expect(parseQuery({ ...b, toAirports: ["hnd"] })).toBe("Flughäfen: bis zu 8 Codes");
     expect(parseQuery({ ...b, toAirports: "HND" })).toBe("Flughäfen: bis zu 8 Codes");
-    expect(parseQuery({ ...b, toCity: "x".repeat(61) })).toBe("Stadtname zu lang");
+    expect(parseQuery({ ...b, toCityCode: "Tokyo" })).toBe("Stadt-Code ungültig");
   });
 });

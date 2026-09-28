@@ -10,9 +10,9 @@
   import Modal from "./Modal.svelte";
   import DualRange from "./DualRange.svelte";
   import LocationPicker from "./LocationPicker.svelte";
-  import { airportData, ensureAirports, geo } from "../geo/geo.svelte";
-  import { ccOf } from "../geo/places";
-  import { locLabel, locOf, resolveLoc, type Loc } from "../geo/locations";
+  import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
+  import { ccOf, findCity } from "../geo/places";
+  import { airportsNear, areaAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { FLIGHTS_URL, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import type { FlightScope } from "../flights/open.svelte";
@@ -66,10 +66,30 @@
   let mode = $state<"flex" | "fixed">((saved.mode as "flex" | "fixed") || "flex");
   let to = $state(base.to);
   let toLoc = $state<Loc | null>(null);
-  // Ziel der Reise („Split“) gleich als Auswahl zeigen, sobald die Flughafendaten da sind
-  ensureAirports().then(() => {
-    if (toLoc || to !== base.to) return;
-    const l = resolveLoc(airportData, base.to, ccOf(geo, trip.country));
+  const cc = $derived(ccOf(geo, trip.country));
+  /** Ort mit Koordinaten: bekannter Ort (auch ohne Flughafen, z. B. Makarska) oder Flughafen/Stadt aus der Liste */
+  function pointOf(text: string): { name: string; lat: number; lon: number; cc?: string } | null {
+    const name = text.split(",")[0].trim();
+    if (!name || /^[A-Za-z]{3}$/.test(name)) return null;
+    const c = findCity(geo, name, cc) || findCity(geo, name);
+    if (c) return { name: c.name, lat: c.lat, lon: c.lon, cc: c.cc };
+    const hit = searchLocs(airportData, name, 1)[0];
+    const ap = hit && (hit.lat != null ? hit : locOf(airportData, hit.airports[0], "airport"));
+    return ap?.lat != null ? { name: hit.city, lat: ap.lat, lon: ap.lon!, cc: hit.cc } : null;
+  }
+  const areaFor = (text: string) => { const p = pointOf(text); return p ? areaAround(airportData, p) : null; };
+  // Vorschläge ohne Eingabe: alle Flughäfen im Umkreis des Reiseziels, dann jeder einzeln mit Entfernung
+  const nearDest = $derived.by(() => {
+    const p = airportData.airports.length ? pointOf(trip.place || base.to) : null;
+    if (!p) return [];
+    const city = resolveLoc(airportData, p.name, cc);
+    const area = areaAround(airportData, p);
+    return [...(city?.kind === "city" ? [city] : []), ...(area ? [area] : []), ...airportsNear(airportData, p)];
+  });
+  // Ziel der Reise gleich als Auswahl: der Flughafen am Ort (Split → SPU), sonst alle im Umkreis (Makarska)
+  Promise.all([ensureGeo(trip), ensureAirports()]).then(() => {
+    if (toLoc || to !== base.to || !base.to) return;
+    const l = resolveLoc(airportData, base.to, cc) ?? areaFor(base.to);
     if (l) { toLoc = l; to = locLabel(l); }
   });
   // flexibel
@@ -135,10 +155,11 @@
     if (n > 9) { error = `Es fliegen ${n} Personen. Kiwi sucht höchstens 9 Personen pro Buchung. Oben bei „Wer fliegt“ eine Familie wählen und je Familie suchen.`; return; }
     if (!whoIds.length) { error = "Bitte oben auswählen, wer fliegt."; return; }
     // Ziel: gewählte Stadt oder Flughafen; Freitext wird nachgeschlagen („Split“ → SPU)
-    const dest = toLoc ?? resolveLoc(airportData, to, ccOf(geo, trip.country));
+    const dest = toLoc ?? resolveLoc(airportData, to, cc) ?? areaFor(to);
     if (!dest && !/^[A-Za-z]{3}$/.test(to.trim())) { error = `„${to.trim()}“ nicht gefunden. Bitte einen Vorschlag aus der Liste wählen oder den Flughafen-Code eingeben.`; return; }
-    const toQ = dest ? { to: dest.code, toAirports: dest.airports, ...(dest.kind === "city" ? { toCity: dest.en } : {}) } : { to: to.trim().toUpperCase() };
-    const fromQ = (code: string) => { const l = originLoc(code); return l ? { from: l.code, fromAirports: l.airports, ...(l.kind === "city" ? { fromCity: l.en } : {}) } : { from: code }; };
+    // Auswahl = Name + Liste von Codes; bei einer Stadt zusätzlich ihr Stadt-Code
+    const toQ = dest ? { to: dest.code, toAirports: dest.airports, ...(dest.kind === "city" ? { toCityCode: dest.code } : {}) } : { to: to.trim().toUpperCase() };
+    const fromQ = (code: string) => { const l = originLoc(code); return l ? { from: l.code, fromAirports: l.airports, ...(l.kind === "city" ? { fromCityCode: l.code } : {}) } : { from: code }; };
     try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], apCities: custom ? apCities.filter(c => aps.includes(c)) : [], mode, rToTime, flexDays, maxStops, bags, noSelf, withAccess })); } catch {}
 
     busy = true;
@@ -241,8 +262,8 @@
       <button type="button" role="radio" aria-checked={mode === "flex"} class="chip" class:on={mode === "flex"} onclick={() => (mode = "flex")}>Flexibler Zeitraum</button>
     </div>
 
-    <LocationPicker label="Nach" bind:value={toLoc} bind:text={to} placeholder="z. B. Split, Tokio oder SPU" required />
-    {#if toLoc?.kind === "city"}<p class="muted small fs-note">Sucht über alle Flughäfen von {toLoc.name} ({toLoc.airports.join(", ")}). Nur einen? Den Code eintippen und wählen.</p>{/if}
+    <LocationPicker label="Nach" bind:value={toLoc} bind:text={to} placeholder="Flughafen, Stadt oder Ort wählen" required near={nearDest} {areaFor} />
+    {#if toLoc && toLoc.kind !== "airport"}<p class="muted small fs-note">Sucht über {toLoc.airports.length} Flughäfen: {toLoc.airports.join(", ")}. Nur einen? In der Liste den Flughafen wählen.</p>{/if}
 
     {#if mode === "flex"}
       <div class="fs-flexbox">
@@ -278,11 +299,11 @@
     {#if !FLIGHTS_URL}<p class="warnline small">Der Such-Dienst ist noch nicht eingerichtet. Anleitung: docs/FLUGSUCHE.md im Projekt.</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `Suche läuft… ${progress}` : aps.length > 1 ? `${aps.length} Flughäfen vergleichen` : "Suchen"}</button>
     {#if to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
-      {@const d0 = toLoc ?? resolveLoc(airportData, to, ccOf(geo, trip.country))}
+      {@const d0 = toLoc ?? resolveLoc(airportData, to, cc)}
       {@const o0 = originLoc(aps[0])}
       {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: mode === "flex" ? rTo || undefined : ret || undefined, ...pax }}
       {@const sky = skyscannerLink(lq)}
-      <p class="muted small fs-direct">Direkt beim Anbieter suchen (ab {aps[0]}): <a href={googleFlightsLink({ ...lq, from: o0?.kind === "city" ? o0.city : lq.from, to: d0?.kind === "city" ? d0.city : lq.to })} target="_blank" rel="noopener noreferrer">Google Flüge ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
+      <p class="muted small fs-direct">Direkt beim Anbieter suchen (ab {aps[0]}): <a href={googleFlightsLink({ ...lq, from: o0?.kind === "city" ? o0.city : lq.from, to: d0 && d0.kind !== "airport" ? d0.city : lq.to })} target="_blank" rel="noopener noreferrer">Google Flüge ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
     {/if}
   </form>
 
