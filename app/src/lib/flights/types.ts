@@ -15,6 +15,14 @@ export interface FlightQuery {
   latest?: string;
   nightsMin?: number;
   nightsMax?: number;
+  /** feste Daten: ± so viele Tage um Hin- und Rückflug (0–3) */
+  flexDays?: number;
+  /** höchstens so viele Umstiege je Richtung (0–2) */
+  maxStops?: number;
+  /** ein Koffer pro Erwachsenem und Kind */
+  bags?: boolean;
+  /** Verbindungen aus getrennten Tickets („Self-Transfer“) erlauben */
+  selfTransfer?: boolean;
   adults: number;
   children: number;
   infants: number;

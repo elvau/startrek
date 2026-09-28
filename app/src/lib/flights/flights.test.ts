@@ -70,6 +70,19 @@ describe("Flugsuche", () => {
     expect(inWindow({ ...q, depart: "2027-07-19", latest: "2027-07-29", nightsMin: 7 }, k)).toHaveLength(0);
     expect(inWindow(q, k)).toHaveLength(3);
   });
+  it("Optionen: Umstiege, Self-Transfer, Koffer, ± Tage", () => {
+    expect(kiwiArgs({ ...q, maxStops: 0, selfTransfer: false, bags: true, flexDays: 2 })).toMatchObject({
+      max_sector_stopovers: 0, allow_self_transfer: false, adults_hold_bags: [1, 1], children_hold_bags: [1], departureDateFlexDays: 2, returnDateFlexDays: 2
+    });
+    const plain = kiwiArgs(q);
+    expect(plain).not.toHaveProperty("max_sector_stopovers");
+    expect(plain).not.toHaveProperty("adults_hold_bags");
+    // flexibler Zeitraum: keine ± Tage
+    expect(kiwiArgs({ ...q, latest: "2027-07-29", nightsMin: 7, flexDays: 2 })).not.toHaveProperty("departureDateFlexDays");
+    expect(parseQuery({ from: "DUS", to: "SPU", depart: "2027-07-18", maxStops: 1, bags: true, selfTransfer: false, flexDays: 1 })).toMatchObject({ maxStops: 1, bags: true, selfTransfer: false, flexDays: 1 });
+    expect(parseQuery({ from: "DUS", to: "SPU", depart: "2027-07-18", maxStops: 5 })).toBeTypeOf("string");
+    expect(parseQuery({ from: "DUS", to: "SPU", depart: "2027-07-18", flexDays: 7 })).toBeTypeOf("string");
+  });
   it("prüft flexible Anfragen", () => {
     const base = { from: "DUS", to: "SPU", depart: "2027-07-15", adults: 2 };
     expect(parseQuery({ ...base, latest: "2027-07-29", nightsMin: 7, nightsMax: 10, ret: "2027-07-20" })).toMatchObject({ latest: "2027-07-29", nightsMin: 7, nightsMax: 10, ret: undefined });

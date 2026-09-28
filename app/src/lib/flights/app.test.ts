@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi } from "./kiwi";
-import { defaultQuery, offerToOption, passengers, takeOffer } from "./app";
+import { compareRow, deadline, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
 import { totals } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 
@@ -49,5 +49,29 @@ describe("Flugsuche in der App", () => {
     expect(item.options).toHaveLength(2);
     // ohne Wahl zählt das günstigste Angebot, dazu die Anreise zum Flughafen (hier ohne Wohnort-Entfernung 0)
     expect(totals(t).items[item.id].net).toBeGreaterThanOrEqual(989);
+  });
+  it("wählt die 4 nächsten Flughäfen zum Wohnort", () => {
+    const t = trip();
+    t.households = { Klein: { geo: { lat: 51.23, lon: 6.78, ort: "Düsseldorf" } } };
+    expect(nearestAirports(t)[0]).toBe("DUS");
+    expect(nearestAirports(t)).toHaveLength(4);
+    expect(nearestAirports({ ...t, households: {} })).toEqual(["DUS", "NRN", "CGN", "DTM"]);
+  });
+  it("rechnet Anfahrt und „zuhause ca.“ je Treffer; Vergleich je Flughafen", () => {
+    const t = trip();
+    t.households = { Klein: { geo: { lat: 51.23, lon: 6.78, ort: "Düsseldorf" }, mode: "car" } };
+    const [a, b] = fromKiwi(fixture);
+    const r = rate(t, a, "DUS", true);
+    expect(r.access).toBeGreaterThan(0);
+    expect(r.total).toBe(989 + r.access);
+    expect(r.nights).toBe(11);
+    // Landung 29.07. 16:25, dazu Heimfahrt und 45 min Gepäck
+    expect(r.home).toBeGreaterThan(deadline("2027-07-29", "16:25"));
+    expect(r.home).toBeLessThan(deadline("2027-07-29", "18:30"));
+    expect(fmtMin(deadline("2027-07-29", "18:10"))).toBe("Do 29.07. 18:10");
+    expect(rate(t, a, "DUS", false).total).toBe(989);
+    const row = compareRow("DUS", [r, rate(t, b, "DUS", true)]);
+    expect(row).toMatchObject({ code: "DUS", price: 989, count: 2, direct: r.total });
+    expect(compareRow("CGN", [], "Kiwi antwortet mit 503")).toMatchObject({ count: 0, error: "Kiwi antwortet mit 503" });
   });
 });
