@@ -127,15 +127,20 @@ try {
   const qf = a.locator(".newtrip .qf");
   await qf.locator(".linkbtn").click();
   await qf.locator(".linkbtn").click();
-  for (const i of [0, 1]) for (let k = 0; k < 3; k++) await qf.locator(".qf-row").nth(i).locator('[aria-label="Kinder mehr"]').click();
+  // Reh: 2 Erwachsene, 3 Kinder; Bär: 2 Erwachsene, 2 Kinder, 1 Kleinkind
+  for (let k = 0; k < 3; k++) await qf.locator(".qf-row").nth(0).locator('[aria-label="Kinder mehr"]').click();
+  for (let k = 0; k < 2; k++) await qf.locator(".qf-row").nth(1).locator('[aria-label="Kinder mehr"]').click();
+  await qf.locator(".qf-row").nth(1).locator('[aria-label="Kleink. mehr"]').click();
   const fams = await qf.locator(".qf-row select").evaluateAll(xs => xs.map(x => x.value));
   if (fams.join() !== "Reh,Bär") fail("Familien: " + fams);
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
   await until(async () => (await a.locator(".hero h1").textContent()).includes("Ostsee"), "Ostsee offen");
   const ph = await a.locator(".person:not(.add) b").allTextContents();
-  if (ph.length !== 10 || ph[0] !== "Reh Erw. 1" || ph[9] !== "Bär Kind 3") fail("Platzhalter: " + ph);
+  if (ph.length !== 10 || ph[0] !== "Reh Erw. 1" || ph[9] !== "Bär Kleinkind 1") fail("Platzhalter: " + ph);
   const kids = await a.locator(".person", { hasText: "Reh Kind 1" }).locator("span").allTextContents();
   if (!kids.some(x => x.includes("Kind"))) fail("Kind nicht als Kind: " + kids);
+  const baby = await a.locator(".person", { hasText: "Bär Kleinkind 1" }).locator("span").allTextContents();
+  if (!baby.some(x => x.includes("Kleinkind"))) fail("Kleinkind nicht als Kleinkind: " + baby);
   await amount("stay", "1000");
   await until(async () => (await a.locator("#stay .simple-out b").textContent()) === "100 €", "100 € pro Person");
   const hh2 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
@@ -143,7 +148,7 @@ try {
   await a.locator("#trav .card").scrollIntoViewIfNeeded();
   await a.locator(".trav-acts .linkbtn", { hasText: "Als Gruppe speichern" }).click();
   await a.locator(".trav-note", { hasText: "Platzhalter werden nicht gespeichert" }).waitFor();
-  log("Platzhalter: Familie Reh und Bär mit je 5, 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
+  log("Platzhalter: Familie Reh (2+3) und Bär (2+2+1 Kleinkind), 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
 
   // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da
   await a.evaluate(() => scrollTo(0, 0));

@@ -16,7 +16,7 @@
   const auto = $derived(autoName({ place, from, to }));
   const nn = $derived(nights(from, to));
   let fams = $state<FamilyRow[]>([]);
-  const famCount = $derived(fams.reduce((a, r) => a + r.adults + r.kids, 0));
+  const famCount = $derived(fams.reduce((a, r) => a + r.adults + r.kids + (r.infants || 0), 0));
   let picked = $state<string[]>([]);
   let groups = $state(false);
 
@@ -67,7 +67,7 @@
           <p class="muted small">Noch keine gespeicherten Gruppen. Du kannst die Personen auch später in der Reise eintragen.</p>
         {/if}
         <span class="dlabel">Oder schnell, ohne Namen</span>
-        <p class="muted small">Familien als Platzhalter, z. B. „Familie Reh: 2 Erwachsene, 3 Kinder“. Sie gelten nur für diese Reise; echte Namen kannst du später eintragen.</p>
+        <p class="muted small">Familien als Platzhalter, z. B. „Familie Reh: 2 Erwachsene, 2 Kinder, 1 Kleinkind“. Sie gelten nur für diese Reise; echte Namen kannst du später eintragen.</p>
         <QuickFamilies bind:rows={fams} />
         {#if picked.length || famCount}<p class="muted small">Zusammen {picked.length + famCount} {picked.length + famCount === 1 ? "Person" : "Personen"}.</p>{/if}
         <button type="button" class="linkbtn" onclick={() => (groups = true)}>Gruppen und Personen verwalten</button>

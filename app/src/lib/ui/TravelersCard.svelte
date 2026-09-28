@@ -17,7 +17,7 @@
   let quick = $state(false);
   let fams = $state<FamilyRow[]>([]);
   const households = $derived([...new Set(app.trip.travelers.map(t => t.household))]);
-  function openQuick() { fams = [{ animal: nextAnimal(households), adults: 2, kids: 0 }]; quick = !quick; }
+  function openQuick() { fams = [{ animal: nextAnimal(households), adults: 2, kids: 0, infants: 0 }]; quick = !quick; }
   function addQuick() {
     app.trip.travelers.push(...placeholderTravelers(fams, app.trip.travelers.length));
     quick = false;
@@ -84,7 +84,7 @@
   {#if quick}
     <div class="pick quick">
       <QuickFamilies bind:rows={fams} used={households} />
-      <button class="btn primary" disabled={!fams.some(r => r.adults + r.kids)} onclick={addQuick}>Hinzufügen</button>
+      <button class="btn primary" disabled={!fams.some(r => r.adults + r.kids + (r.infants || 0))} onclick={addQuick}>Hinzufügen</button>
       <p class="muted small">Nur für diese Reise, nicht in Gruppen gespeichert. Echte Namen trägst du bei „Personen bearbeiten“ ein.</p>
     </div>
   {/if}
