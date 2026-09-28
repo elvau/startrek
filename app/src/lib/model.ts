@@ -130,6 +130,8 @@ export interface Item {
   to?: string;
   /** Flug: Anreise zum Abflughafen automatisch einrechnen (Standard: ja) */
   access?: boolean;
+  /** Flug: fliegt mit im Flug dieses Postens (gleicher Flug, gleicher Preis pro Person, wie im Artefakt „Wie Klein“) */
+  follow?: string;
   payments?: Payment[];
 }
 

@@ -9,7 +9,7 @@
 
   let { item, icon }: { item: Item; icon: string } = $props();
   const editing = $derived(app.editing === item.id);
-  const hasLegs = $derived(item.options.some(o => o.legs?.length));
+  const hasLegs = $derived(!!item.follow || item.options.some(o => o.legs?.length));
   const isStay = $derived(item.cat === "stay");
 
   function toggle(e: MouseEvent) {

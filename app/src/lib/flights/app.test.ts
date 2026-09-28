@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi } from "./kiwi";
-import { compareRow, covered, deadline, defaultFlyers, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
-import { totals } from "../calc";
+import { compareRow, covered, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
+import { activeOption, totals } from "../calc";
+import { presences } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 
 const trip = (): Trip => ({
@@ -122,5 +123,26 @@ describe("Flüge je Familie oder Person (wie im Artefakt)", () => {
     expect(it.options).toHaveLength(2);
     expect(takeOffer(t, a, undefined, ["a", "c", "h", "i", "j"]).participants).toBeUndefined();
     expect(takeOffer(t, a, undefined, ["a", "h"]).name).toBe("Flug Düsseldorf – Split");
+  });
+  it("mitfliegen wie im Artefakt: gleicher Flug, Preis pro Person, eigene Anfahrt, Anwesenheit folgt", () => {
+    const t = two();
+    const [a, b] = fromKiwi(fixture);
+    const klein = takeOffer(t, a, undefined, ["a", "c"]);
+    const hase = followFlight(t, klein.id, ["h", "i", "j"]);
+    expect(hase).toMatchObject({ name: "Flug Hase", follow: klein.id, participants: ["h", "i", "j"] });
+    const o = activeOption(hase, t)!;
+    // 989 € für Klein (2 Personen) → 494,50 € pro Person
+    expect(o.price).toMatchObject({ mode: "person", adult: 494.5 });
+    expect(o.legs?.find(l => l.dir === "out")?.from).toBe("DUS");
+    const T = totals(t);
+    // 3 × 494,50 € plus Anfahrt von München nach Düsseldorf
+    expect(T.items[hase.id].net).toBeGreaterThan(3 * 494.5);
+    expect(T.items[hase.id].access?.lines.map(l => l.hh)).toEqual(["Hase"]);
+    expect(presences(t).h).toMatchObject({ a: "2027-07-18", d: "2027-07-29", src: "flight" });
+    // eigener Flug übernommen: fliegt ab jetzt selbst
+    takeOffer(t, b, hase.id, ["h", "i", "j"]);
+    expect(hase.follow).toBeUndefined();
+    expect(hase.options).toHaveLength(1);
+    expect(activeOption(hase, t)?.price.mode).toBe("unit");
   });
 });

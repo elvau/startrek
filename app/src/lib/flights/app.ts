@@ -78,6 +78,8 @@ export function offerToOption(o: FlightOffer): Option {
 export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: string[]): Item {
   const opt = offerToOption(o);
   const target = into ? trip.items.find(i => i.id === into) : undefined;
+  // wer bisher mitflog und einen eigenen Flug übernimmt, fliegt ab jetzt selbst
+  if (target?.follow) { target.follow = undefined; target.options = [opt]; target.chosen = undefined; return target; }
   if (target) { target.options.push(opt); return target; }
   // nur ein Teil fliegt (z. B. eine Familie): Posten gilt nur für sie, Name wie im Artefakt „Flug Klein“
   const act = trip.travelers.filter(isActive);
@@ -98,6 +100,15 @@ export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promi
 }
 
 /* ---------- Mehrere Abflughäfen vergleichen (wie im Artefakt) ---------- */
+
+/** Mitfliegen wie im Artefakt: neuer Posten für diese Personen mit dem Flug eines anderen Postens */
+export function followFlight(trip: Trip, mainId: string, ids: string[]): Item {
+  const act = trip.travelers.filter(isActive);
+  const hhs = [...new Set(act.filter(t => ids.includes(t.id)).map(hhKey))];
+  const item: Item = { id: uid(), cat: "flights", name: `Flug ${hhs.join(", ") || "Mitreisende"}`, status: "idea", follow: mainId, participants: [...ids], options: [] };
+  trip.items.push(item);
+  return item;
+}
 
 /** Standard-Auswahl wie im Artefakt: je Familie der Fliegenden die n nächsten Flughäfen zum Wohnort, sonst die ersten der Liste */
 export function nearestAirports(trip: Trip, n = 4, ids?: string[]): string[] {

@@ -147,8 +147,31 @@ function calcStay(opt: Option, it: Item, trip: Trip): OptionCalc {
   return { n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc, over } };
 }
 
-/** Die Option, die in die Summe eingeht: gewählt, sonst die günstigste */
+/** Flug-Posten, dem dieser Posten folgt (nur eine Stufe, nie sich selbst) */
+export function followed(it: Item, trip: Trip): Item | null {
+  if (it.cat !== "flights" || !it.follow || it.follow === it.id) return null;
+  const m = trip.items.find(x => x.id === it.follow && x.cat === "flights" && !x.follow && x.status !== "dropped");
+  return m || null;
+}
+
+/**
+ * Mitfliegen: gleicher Flug wie der andere Posten, Preis pro Person daraus
+ * (pauschal geteilt durch dessen Mitfliegende, sonst dessen Erwachsenen-, Kinder- und Babypreis).
+ */
+function followOption(main: Item, trip: Trip): Option | null {
+  const o = activeOption(main, trip);
+  if (!o) return null;
+  const p = o.price, n = participantsOf(main, trip).length || 1;
+  const price: Option["price"] = p.mode === "unit"
+    ? { mode: "person", currency: p.currency, adult: Math.round(((p.unit || 0) * (p.qty ?? 1) / n) * 100) / 100 }
+    : { mode: "person", currency: p.currency, adult: p.adult, child: p.child, infant: p.infant, qty: p.qty };
+  return { id: `follow:${main.id}`, label: `wie ${main.name || "anderer Flug"}`, detail: o.detail, price, source: o.source, legs: o.legs };
+}
+
+/** Die Option, die in die Summe eingeht: gewählt, sonst die günstigste; beim Mitfliegen der Flug des anderen Postens */
 export function activeOption(it: Item, trip: Trip): Option | null {
+  const main = followed(it, trip);
+  if (main) return followOption(main, trip);
   if (!it.options.length) return null;
   const chosen = it.chosen && it.options.find(o => o.id === it.chosen);
   if (chosen) return chosen;
