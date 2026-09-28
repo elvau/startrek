@@ -10,6 +10,6 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["src", "../app/src/lib/flights/types.ts", "../app/src/lib/flights/kiwi.ts", "../app/src/lib/flights/search.ts", "../app/src/lib/mcp.ts", "../app/src/lib/stays/types.ts", "../app/src/lib/stays/providers.ts", "../app/src/lib/stays/search.ts"],
+  "include": ["src", "../app/src/lib/flights/types.ts", "../app/src/lib/flights/kiwi.ts", "../app/src/lib/flights/search.ts", "../app/src/lib/flights/travelpayouts.ts", "../app/src/lib/mcp.ts", "../app/src/lib/stays/types.ts", "../app/src/lib/stays/providers.ts", "../app/src/lib/stays/search.ts"],
   "exclude": ["../app/src/lib/flights/*.test.ts", "../app/src/lib/stays/*.test.ts"]
 }
