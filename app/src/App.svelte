@@ -24,6 +24,7 @@
   import Welcome from "./lib/ui/Welcome.svelte";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
   import StaySearch from "./lib/ui/StaySearch.svelte";
+  import FoodCard from "./lib/ui/FoodCard.svelte";
   import { getYourGuideLink, tiqetsLink, viatorLink } from "./lib/links";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
   import { flightSearch, openFlightSearch } from "./lib/flights/open.svelte";
@@ -76,6 +77,7 @@
         {:else if ch.k === "stay" && !access.readonly}
           <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 Unterkunft suchen</button></div>
         {/if}
+        {#if ch.k === "misc"}<article class="card plan-card" use:reveal><FoodCard /></article>{/if}
         {#if !det}
           <SimpleCard cat={ch.k} label={ch.label} />
         {:else}

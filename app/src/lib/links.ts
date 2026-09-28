@@ -52,3 +52,8 @@ export function getYourGuideLink(q: ActivityLinkQuery): string {
 export const viatorLink = (q: ActivityLinkQuery) => `https://www.viator.com/de-DE/searchResults/all?text=${encodeURIComponent(q.place)}`;
 
 export const tiqetsLink = (q: ActivityLinkQuery) => `https://www.tiqets.com/de/search?q=${encodeURIComponent(q.place)}`;
+
+/* ---------- Essen ---------- */
+
+export const mapsSearchLink = (what: string, place: string) => `https://www.google.com/maps/search/${encodeURIComponent(`${what} ${place}`)}`;
+export const tripadvisorRestaurantsLink = (place: string) => `https://www.tripadvisor.de/Search?q=${encodeURIComponent(`Restaurants ${place}`)}`;

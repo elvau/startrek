@@ -130,6 +130,10 @@ export interface Item {
   to?: string;
   /** Flug: Anreise zum Abflughafen automatisch einrechnen (Standard: ja) */
   access?: boolean;
+  /** automatisch gerechnet (Verpflegung je Familie), wird bei Änderungen neu gesetzt */
+  auto?: "food";
+  /** Familie des automatischen Postens */
+  hh?: string;
   /** Flug: fliegt mit im Flug dieses Postens (gleicher Flug, gleicher Preis pro Person, wie im Artefakt „Wie Klein“) */
   follow?: string;
   payments?: Payment[];
@@ -196,7 +200,12 @@ export interface Trip {
   detail?: Partial<Record<CatKey, boolean>>;
   tiers: Partial<Record<CatKey, Tier[]>>;
   settings: Settings;
+  /** Verpflegung wie im Artefakt: Essensstil für alle oder je Familie, Kinder und Babys in Prozent */
+  food?: FoodCfg;
 }
+
+export type FoodStyle = "self" | "mix" | "out" | "treat";
+export interface FoodCfg { on?: boolean; style?: FoodStyle; hh?: Record<string, FoodStyle>; child?: number; infant?: number }
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 

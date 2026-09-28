@@ -165,6 +165,22 @@ try {
   log("Suche am Flughafen: Trogir, Croatia, eine Nacht 28.07. bis 29.07.");
   await m.locator(".x").click();
 
+  // Verpflegung wie im Artefakt: Essensstil, Tage je Familie, automatische Posten; Restaurants und Supermärkte als Links
+  await p.locator("#misc .food .btn", { hasText: "Verpflegung einrechnen" }).scrollIntoViewIfNeeded();
+  await p.locator("#misc .food .btn", { hasText: "Verpflegung einrechnen" }).click();
+  const fr = p.locator("#misc .food-rows li", { hasText: "Klein" });
+  await fr.waitFor();
+  const ft = await fr.textContent();
+  if (!ft.includes("12 Tage")) fail("Verpflegung Klein: " + ft);
+  await p.locator("#misc .card[data-item]", { hasText: "Verpflegung Klein" }).waitFor();
+  const before = await fr.locator("b.num").textContent();
+  await p.locator("#misc .food .chip", { hasText: "Genießer" }).first().click();
+  await p.waitForTimeout(200);
+  if ((await fr.locator("b.num").textContent()) === before) fail("Stil ändert den Betrag nicht");
+  const rl = await p.locator("#misc .fs-direct a", { hasText: "Restaurants" }).getAttribute("href");
+  if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
+  log("Verpflegung: Klein 12 Tage, Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nUnterkunftssuche: alles in Ordnung");
 } finally {
