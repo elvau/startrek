@@ -8,6 +8,13 @@ export interface FlightQuery {
   depart: string;
   /** fehlt: nur Hinflug */
   ret?: string;
+  /**
+   * Flexibel statt fester Daten: depart ist die früheste Abreise, latest die späteste Rückkehr (wieder zu Hause),
+   * dazwischen nightsMin bis nightsMax Nächte am Ziel. ret wird dann nicht benutzt.
+   */
+  latest?: string;
+  nightsMin?: number;
+  nightsMax?: number;
   adults: number;
   children: number;
   infants: number;

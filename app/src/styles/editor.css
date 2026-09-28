@@ -349,3 +349,9 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .btn.sm small{font-weight:600;opacity:.8}
 .search-row{display:flex;justify-content:flex-start;margin:-4px 0 14px}
 @media (max-width:520px){.fs-route{flex-wrap:wrap}.fs-swap{display:none}}
+.fs-mode{margin-bottom:-2px}
+.fs-nights{flex-direction:column;align-items:flex-start;gap:6px}
+.fs-nn-row{display:flex;align-items:center;gap:12px}
+.fs-nights .dlabel{margin:0}
+.fs-nights .inp.num{width:64px;text-align:center}
+.fs-nn{font-weight:700;color:var(--ink-2)}

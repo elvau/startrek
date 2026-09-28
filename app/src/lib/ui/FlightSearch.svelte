@@ -2,7 +2,7 @@
   /* Flüge suchen: über den Such-Dienst bei mehreren Anbietern gleichzeitig; Ergebnis als Angebot übernehmen */
   import { app } from "../store.svelte";
   import { eur } from "../calc";
-  import { dayShort, time } from "../format";
+  import { dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
   import { FLIGHTS_URL, defaultQuery, searchFlights, stopsText, takeOffer } from "../flights/app";
   import type { FlightOffer, OfferLeg, SearchResult } from "../flights/types";
@@ -12,7 +12,8 @@
   let last = "";
   try { last = localStorage.getItem(K_FROM) || ""; } catch {}
   const q = $state(defaultQuery(app.trip, last));
-  // Standard: hin und zurück
+  // Standard: flexibel (früheste Abreise, späteste Rückkehr, Spanne an Nächten); sonst feste Daten, hin und zurück
+  let flex = $state(true);
   let oneWay = $state(false);
   let busy = $state(false);
   let error = $state("");
@@ -37,7 +38,10 @@
     error = ""; result = null; busy = true;
     ctrl?.abort(); ctrl = new AbortController();
     try { localStorage.setItem(K_FROM, q.from); } catch {}
-    try { result = await searchFlights({ ...q, ret: oneWay ? undefined : q.ret || undefined }, ctrl.signal); }
+    const query = flex
+      ? { ...q, ret: undefined, nightsMax: Math.max(q.nightsMin || 1, q.nightsMax || 1) }
+      : { ...q, latest: undefined, nightsMin: undefined, nightsMax: undefined, ret: oneWay ? undefined : q.ret || undefined };
+    try { result = await searchFlights(query, ctrl.signal); }
     catch (err) { if ((err as Error).name !== "AbortError") error = (err as Error).message; }
     finally { busy = false; }
   }
@@ -66,11 +70,30 @@
       <button type="button" class="x fs-swap" onclick={swap} aria-label="Start und Ziel tauschen" title="Tauschen">⇄</button>
       <label class="f grow">Nach<input bind:value={q.to} placeholder="z. B. Split oder SPU" required /></label>
     </div>
-    <div class="ed-row">
-      <label class="f">Hin<input type="date" bind:value={q.depart} required /></label>
-      {#if !oneWay}<label class="f">Zurück<input type="date" bind:value={q.ret} min={q.depart} required /></label>{/if}
-      <label class="in-row fs-one"><input type="checkbox" bind:checked={oneWay} /> nur Hinflug</label>
+    <div class="chips fs-mode" role="radiogroup" aria-label="Daten">
+      <button type="button" role="radio" aria-checked={flex} class="chip" class:on={flex} onclick={() => (flex = true)}>Flexibel</button>
+      <button type="button" role="radio" aria-checked={!flex} class="chip" class:on={!flex} onclick={() => (flex = false)}>Feste Daten</button>
     </div>
+    {#if flex}
+      <div class="ed-row">
+        <label class="f">Früheste Abreise<input type="date" bind:value={q.depart} required /></label>
+        <label class="f">Späteste Rückkehr<input type="date" bind:value={q.latest} min={q.depart} required /></label>
+      </div>
+      <div class="ed-row fs-nights">
+        <span class="dlabel">Nächte vor Ort</span>
+        <span class="fs-nn-row">
+          <label class="in-row">von <input class="inp num" type="number" min="1" max="60" bind:value={q.nightsMin} required aria-label="mindestens Nächte" /></label>
+          <label class="in-row">bis <input class="inp num" type="number" min={q.nightsMin || 1} max="60" bind:value={q.nightsMax} required aria-label="höchstens Nächte" /></label>
+          <span class="muted small">Nächte</span>
+        </span>
+      </div>
+    {:else}
+      <div class="ed-row">
+        <label class="f">Hin<input type="date" bind:value={q.depart} required /></label>
+        {#if !oneWay}<label class="f">Zurück<input type="date" bind:value={q.ret} min={q.depart} required /></label>{/if}
+        <label class="in-row fs-one"><input type="checkbox" bind:checked={oneWay} /> nur Hinflug</label>
+      </div>
+    {/if}
     <p class="muted small">{people} (aus „Wer fährt mit“). Preise gelten für alle zusammen.</p>
     {#if !FLIGHTS_URL}
       <p class="warnline small">Der Such-Dienst ist noch nicht eingerichtet. Anleitung: docs/FLUGSUCHE.md im Projekt.</p>
@@ -99,6 +122,7 @@
             <div class="fs-top">
               <b class="num fs-price">{eur(o.price)}</b>
               {#if n > 1}<span class="muted small">{eur(o.price / n)} pro Person</span>{/if}
+              {#if o.back}<span class="small fs-nn">{nights(o.out.dep.slice(0, 10), o.back.dep.slice(0, 10))} Nächte</span>{/if}
               <span class="fs-badge">{o.sourceName}</span>
             </div>
             {@render legRow("Hin", o.out)}

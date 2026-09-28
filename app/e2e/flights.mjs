@@ -44,13 +44,20 @@ try {
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   const m = p.locator(".modal");
-  await m.locator("label", { hasText: "Von" }).locator("input").fill("DUS");
-  await m.locator("label", { hasText: "Nach" }).locator("input").fill("SPU");
-  await m.locator("label.f", { hasText: "Hin" }).locator("input").fill("2027-07-18");
-  await m.locator("label", { hasText: "Zurück" }).locator("input").fill("2027-07-29");
+  await m.locator("label.f", { hasText: "Von" }).locator("input").fill("DUS");
+  await m.locator("label.f", { hasText: "Nach" }).locator("input").fill("SPU");
+  // flexibel ist Standard: früheste Abreise, späteste Rückkehr, Nächte von–bis
+  if (!(await m.locator(".fs-mode .chip.on").textContent()).includes("Flexibel")) fail("flexibel nicht vorausgewählt");
+  await m.locator("label", { hasText: "Früheste Abreise" }).locator("input").fill("2027-07-15");
+  await m.locator("label", { hasText: "Späteste Rückkehr" }).locator("input").fill("2027-07-29");
+  await m.locator('[aria-label="mindestens Nächte"]').fill("7");
+  await m.locator('[aria-label="höchstens Nächte"]').fill("12");
   await m.locator(".fs-form .btn", { hasText: "Flüge suchen" }).click();
   await m.locator(".fs-res").first().waitFor();
-  if (!asked || asked.from !== "DUS" || asked.ret !== "2027-07-29" || asked.adults !== 1) fail("Anfrage: " + JSON.stringify(asked));
+  if (!asked || asked.from !== "DUS" || asked.depart !== "2027-07-15" || asked.latest !== "2027-07-29" || asked.nightsMin !== 7 || asked.nightsMax !== 12 || asked.ret || asked.adults !== 1)
+    fail("Anfrage: " + JSON.stringify(asked));
+  if (!(await m.locator(".fs-res").first().textContent()).includes("11 Nächte")) fail("Nächte je Treffer fehlen");
+  log("Flexibel: 15.07. bis 29.07., 7–12 Nächte → Anfrage mit Zeitraum und Spanne, Treffer zeigen die Nächte");
   if ((await m.locator(".fs-res").count()) !== 2) fail("Treffer");
   const src = await m.locator(".fs-src").textContent();
   if (!src.includes("Kiwi.com: 2 Treffer") || !src.includes("Duffel: noch nicht eingerichtet")) fail("Quellen: " + src);

@@ -1,5 +1,5 @@
 /* Alle Quellen gleichzeitig fragen, zusammenführen, Doppelte entfernen, nach Preis sortieren */
-import { searchKiwi } from "./kiwi";
+import { addDays, searchKiwi } from "./kiwi";
 import type { FlightOffer, FlightQuery, SearchResult, SourceStatus } from "./types";
 
 /** Schlüssel des Such-Dienstes (Cloudflare-Secrets); fehlt einer, bleibt die Quelle aus */
@@ -38,6 +38,12 @@ export function merge(lists: FlightOffer[][]): FlightOffer[] {
   return [...best.values()].sort((a, b) => a.price - b.price || a.out.minutes - b.out.minutes);
 }
 
+/** flexibel: nur Treffer, die frühestens am Abreisetag starten und spätestens am letzten Tag wieder zu Hause sind */
+export function inWindow(q: FlightQuery, offers: FlightOffer[]): FlightOffer[] {
+  if (!q.latest) return offers;
+  return offers.filter(o => o.out.dep.slice(0, 10) >= q.depart && (o.back ?? o.out).arr.slice(0, 10) <= q.latest!);
+}
+
 export async function searchAll(q: FlightQuery, env: FlightEnv = {}, f: typeof fetch = fetch, timeoutMs = 25000): Promise<SearchResult> {
   const active = PROVIDERS.filter(p => p.configured(env));
   const sources: SourceStatus[] = PROVIDERS.filter(p => !p.configured(env)).map(p => ({ id: p.id, name: p.name, configured: false, ok: false, count: 0 }));
@@ -53,7 +59,7 @@ export async function searchAll(q: FlightQuery, env: FlightEnv = {}, f: typeof f
     }
   }));
   sources.sort((a, b) => PROVIDERS.findIndex(p => p.id === a.id) - PROVIDERS.findIndex(p => p.id === b.id));
-  return { offers: merge(lists), sources };
+  return { offers: inWindow(q, merge(lists)), sources };
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -67,10 +73,19 @@ export function parseQuery(b: unknown): FlightQuery | string {
   if (!from || !to || from.length > 60 || to.length > 60) return "Start und Ziel angeben";
   if (!DATE.test(depart) || (ret && !DATE.test(ret))) return "Datum im Format JJJJ-MM-TT";
   if (ret && ret < depart) return "Rückflug liegt vor dem Hinflug";
+  const latest = str("latest");
+  let flex: Pick<FlightQuery, "latest" | "nightsMin" | "nightsMax"> = {};
+  if (latest) {
+    const nightsMin = o.nightsMin ?? 1, nightsMax = o.nightsMax ?? nightsMin;
+    if (!DATE.test(latest)) return "Datum im Format JJJJ-MM-TT";
+    if (!int(nightsMin, 1, 60) || !int(nightsMax, 1, 60) || (nightsMax as number) < (nightsMin as number)) return "Nächte: 1 bis 60, von ≤ bis";
+    if (addDays(depart, nightsMin as number) > latest) return "Zwischen frühester Abreise und spätester Rückkehr passen nicht so viele Nächte";
+    flex = { latest, nightsMin: nightsMin as number, nightsMax: nightsMax as number };
+  }
   const adults = o.adults ?? 1, children = o.children ?? 0, infants = o.infants ?? 0;
   if (!int(adults, 1, 9) || !int(children, 0, 8) || !int(infants, 0, 4)) return "Personen: 1–9 Erwachsene, bis 8 Kinder, bis 4 Babys";
   if ((infants as number) > (adults as number)) return "Höchstens ein Baby pro Erwachsenem";
   const currency = str("currency") || "EUR";
   if (!/^[A-Z]{3}$/.test(currency)) return "Währung ungültig";
-  return { from, to, depart, ret: ret || undefined, adults: adults as number, children: children as number, infants: infants as number, currency };
+  return { from, to, depart, ret: flex.latest ? undefined : ret || undefined, ...flex, adults: adults as number, children: children as number, infants: infants as number, currency };
 }

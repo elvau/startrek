@@ -1,6 +1,7 @@
 /* Flugsuche in der App: Anfrage aus der Reise, Ergebnis als Angebot in einen Flug-Posten */
 import { ageClass } from "../calc";
 import { hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Trip } from "../model";
+import { nights } from "../format";
 import type { FlightOffer, FlightQuery, OfferLeg, SearchResult } from "./types";
 
 /** Adresse des Such-Dienstes (Cloudflare Worker); leer: noch nicht eingerichtet */
@@ -18,11 +19,19 @@ export function passengers(trip: Trip): Pick<FlightQuery, "adults" | "children" 
   return { adults: Math.max(1, adults), children, infants: Math.min(infants, Math.max(1, adults)) };
 }
 
-/** Vorschlag für die Suche: Wohnort der ersten Familie, Ort und Daten der Reise */
+/**
+ * Vorschlag für die Suche: Wohnort der ersten Familie, Ort und Daten der Reise.
+ * Flexibel: Reisezeitraum als Fenster, Nächte von (Dauer − 2) bis Dauer; ohne Daten 7 bis 14 Nächte.
+ */
 export function defaultQuery(trip: Trip, lastFrom = ""): FlightQuery {
   const first = trip.travelers.find(isActive);
   const home = first ? trip.households?.[hhKey(first)]?.geo?.ort : undefined;
-  return { from: lastFrom || home || "", to: trip.place || "", depart: trip.from || "", ret: trip.to || undefined, ...passengers(trip), currency: "EUR" };
+  const n = nights(trip.from, trip.to);
+  return {
+    from: lastFrom || home || "", to: trip.place || "", depart: trip.from || "", ret: trip.to || undefined,
+    latest: trip.to || "", nightsMin: n ? Math.max(1, n - 2) : 7, nightsMax: n || 14,
+    ...passengers(trip), currency: "EUR"
+  };
 }
 
 const legOf = (dir: FlightLeg["dir"], l: OfferLeg): FlightLeg => ({ dir, from: l.from, to: l.to, dep: l.dep.slice(0, 16), arr: l.arr.slice(0, 16), carrier: l.carriers.join(" / "), stops: l.stops });

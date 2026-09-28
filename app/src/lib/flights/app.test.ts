@@ -26,6 +26,9 @@ describe("Flugsuche in der App", () => {
   it("schlägt Wohnort, Ziel und Daten der Reise vor", () => {
     expect(defaultQuery(trip())).toMatchObject({ from: "Düsseldorf", to: "Split", depart: "2027-07-18", ret: "2027-07-29" });
     expect(defaultQuery(trip(), "DUS").from).toBe("DUS");
+    // flexibel: Reisezeitraum als Fenster, 11 Nächte → 9 bis 11
+    expect(defaultQuery(trip())).toMatchObject({ latest: "2027-07-29", nightsMin: 9, nightsMax: 11 });
+    expect(defaultQuery({ ...trip(), from: undefined, to: undefined })).toMatchObject({ latest: "", nightsMin: 7, nightsMax: 14 });
   });
   it("macht aus einem Treffer ein Angebot mit Quelle, Link und Hin- und Rückflug", () => {
     const o = offerToOption(fromKiwi(fixture)[0]);

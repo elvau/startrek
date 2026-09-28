@@ -6,10 +6,21 @@ export const KIWI_MCP = "https://mcp.kiwi.com";
 /** JJJJ-MM-TT → TT/MM/JJJJ */
 const kiwiDate = (iso: string) => iso.split("-").reverse().join("/");
 
+/** Tage auf ein Datum (JJJJ-MM-TT) rechnen */
+export function addDays(iso: string, n: number): string {
+  const d = new Date(iso + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
 export function kiwiArgs(q: FlightQuery) {
+  // flexibel: Abflug zwischen frühester Abreise und (späteste Rückkehr − Mindest-Nächte), Nächte als Spanne
+  const flex = q.latest && q.nightsMin
+    ? { departureDateTo: kiwiDate(addDays(q.latest, -q.nightsMin)), nights_in_dst_from: q.nightsMin, nights_in_dst_to: q.nightsMax ?? q.nightsMin }
+    : null;
   return {
     flyFrom: q.from, flyTo: q.to, departureDate: kiwiDate(q.depart),
-    ...(q.ret ? { returnDate: kiwiDate(q.ret) } : {}),
+    ...(flex ?? (q.ret ? { returnDate: kiwiDate(q.ret) } : {})),
     adults: Math.max(1, q.adults), children: q.children, infants: q.infants,
     currency: q.currency || "EUR", locale: "de", sort: "price"
   };
