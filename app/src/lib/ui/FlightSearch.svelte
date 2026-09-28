@@ -14,7 +14,7 @@
   import { ccOf, findCity } from "../geo/places";
   import { airportsNear, areaAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { addDays } from "../flights/kiwi";
-  import { searchRound, type RoundPlace, type RoundTrip } from "../flights/roundtrip";
+  import { isShort, searchRound, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
   import { FLIGHTS_URL, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import type { FlightScope } from "../flights/open.svelte";
@@ -227,11 +227,11 @@
     if (!rFrom || !wTo || wTo < rFrom) { error = "Bitte früheste und späteste Abreise eintragen."; return; }
     if (n > 9) { error = `Es fliegen ${n} Personen. Kiwi sucht höchstens 9 Personen pro Buchung. Oben bei „Wer fliegt“ eine Familie wählen.`; return; }
     if (!whoIds.length) { error = "Bitte oben auswählen, wer fliegt."; return; }
-    const stops = [];
+    const stops: RoundStop[] = [];
     for (const [i, st] of stations.entries()) {
       const l = st.loc ?? resolveLoc(airportData, st.text, cc) ?? areaFor(st.text);
       if (!l) { error = `Station ${i + 1}: „${st.text.trim() || "leer"}“ nicht gefunden. Bitte einen Vorschlag aus der Liste wählen.`; return; }
-      if (!(st.min >= 1 && st.max >= st.min && st.max <= 60)) { error = `Station ${i + 1}: Nächte von 1 bis 60, von ≤ bis.`; return; }
+      if (!(st.min >= 0 && st.max >= st.min && st.max <= 60)) { error = `Station ${i + 1}: Nächte von 0 bis 60, von ≤ bis.`; return; }
       stops.push({ place: placeOf(l), min: st.min, max: st.max });
     }
     // Start: alle gewählten Abflughäfen als eine Liste (Städte mit all ihren Flughäfen)
@@ -243,11 +243,20 @@
     ctrl?.abort(); ctrl = new AbortController();
     const signal = ctrl.signal;
     try {
-      const res = await searchRound({ from, stops, home, depart: rFrom, departTo: wTo, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" },
-        q => searchFlights(q, signal), (k, of) => (progress = `Strecke ${k} von ${of}`));
-      rounds = res.trips.map(rt => ({ rt, r: rateRound(trip, rt, home, withAccess, who) })).sort((a, b) => a.r.total - b.r.total);
-      sources = res.sources;
-      roundErrors = res.errors;
+      const plan = { from, stops, home, depart: rFrom, departTo: wTo, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" };
+      const run = (p: typeof plan, what: string) => searchRound(p, q => searchFlights(q, signal), (k, of) => (progress = `${what}Strecke ${k} von ${of}`));
+      // getrennte Flüge; kurze Stationen (unter 48 h) zusätzlich als Gabelflug mit langem Umstieg auf einem Ticket
+      const res = [await run(plan, "")];
+      const short = stops.slice(0, home ? stops.length : -1).some(isShort);
+      if (short) res.push(await run({ ...plan, stops: stops.map(s => (isShort(s) ? { ...s, via: true } : s)) }, "Gabelflug: "));
+      const seen = new Set<string>();
+      rounds = res.flatMap(r => r.trips).filter(rt => (seen.has(rt.id) ? false : (seen.add(rt.id), true)))
+        .map(rt => ({ rt, r: rateRound(trip, rt, home, withAccess, who) })).sort((a, b) => a.r.total - b.r.total).slice(0, 30);
+      const srcs = new Map<string, SourceStatus>();
+      res.flatMap(r => r.sources).forEach(s => { const o = srcs.get(s.id); srcs.set(s.id, o ? { ...o, ok: o.ok || s.ok, count: o.count + s.count } : { ...s }); });
+      sources = [...srcs.values()];
+      // Fehler nur zeigen, wenn es gar keine Rundreise gab
+      roundErrors = rounds.length ? [] : res.flatMap(r => r.errors);
     } catch (err) {
       if ((err as Error).name !== "AbortError") error = (err as Error).message;
     } finally { busy = false; progress = ""; }
@@ -348,10 +357,11 @@
           {#each stations as st, i (i)}
             <div class="fs-station">
               <LocationPicker label="{i + 1}. Station" bind:value={st.loc} bind:text={st.text} placeholder="Stadt, Flughafen oder Ort" near={i === 0 ? nearDest : []} {areaFor} />
-              <label class="f fs-n">Nächte von<input type="number" min="1" max="60" bind:value={st.min} /></label>
+              <label class="f fs-n">Nächte von<input type="number" min="0" max="60" bind:value={st.min} /></label>
               <label class="f fs-n">bis<input type="number" min="1" max="60" bind:value={st.max} /></label>
               {#if stations.length > 1}<button type="button" class="btn sm fs-del" aria-label="Station {i + 1} entfernen" onclick={() => (stations = stations.filter((_, j) => j !== i))}>×</button>{/if}
             </div>
+            {#if st.max <= 1 && (home || i < stations.length - 1)}<p class="muted small fs-short">Unter 48 Stunden: wird auch als Gabelflug gesucht, ein Ticket mit langem Umstieg dort.</p>{/if}
           {/each}
           {#if stations.length < 5}<button type="button" class="btn sm fs-addst" onclick={() => (stations = [...stations, { loc: null, text: "", min: 3, max: 6 }])}>+ Station</button>{/if}
         </div>
@@ -424,18 +434,21 @@
       </div>
     {/if}
     {#if rounds.length}
-      <p class="muted small">{rounds.length} {rounds.length === 1 ? "Rundreise" : "Rundreisen"} · günstigste zuerst {withAccess ? "inkl. Anfahrt" : ""} · {n} Pers. · jeder Flug wird einzeln gebucht</p>
+      <p class="muted small">{rounds.length} {rounds.length === 1 ? "Rundreise" : "Rundreisen"} · günstigste zuerst {withAccess ? "inkl. Anfahrt" : ""} · {n} Pers. · jedes Ticket wird einzeln gebucht</p>
       <div class="fs-list">
         {#each rounds as x (x.rt.id)}
           <article class="fs-res fs-round">
             <div class="fs-top">
               <span class="pill-ap">ab {x.rt.legs[0].out.from}</span>
               <b class="num fs-price">{eur(x.r.total)}</b>
-              <span class="fs-badge">{x.rt.legs.length} Flüge</span>
+              <span class="fs-badge">{x.rt.legs.length === 1 ? "1 Ticket" : `${x.rt.legs.length} Tickets`}</span>
             </div>
             <p class="muted small fs-sub">Flüge {eur(x.rt.price)}{withAccess && x.r.access ? ` + Anfahrt ${eur(x.r.access)}` : ""}{n > 1 ? ` · ${eur(x.r.total / n)} p. P.` : ""}</p>
             <div class="fs-pills">
-              {#each x.rt.nights as nn, i (i)}<span class="pill-n">{x.rt.legs[i].out.toCity || x.rt.legs[i].out.to}: {nn} {nn === 1 ? "Nacht" : "Nächte"}</span>{/each}
+              {#each x.rt.stays as st, i (i)}
+                {#if st.hours != null}<span class="pill-h">{st.name}: {Math.round(st.hours)} h Umstieg</span>
+                {:else if st.nights != null}<span class="pill-n">{st.name}: {st.nights} {st.nights === 1 ? "Nacht" : "Nächte"}</span>{/if}
+              {/each}
               {#if !isNaN(x.r.home)}<span class="pill-h">zuhause ca. {fmtMin(x.r.home)}</span>{/if}
             </div>
             {#each x.rt.legs as l, i (i)}

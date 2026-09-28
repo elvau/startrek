@@ -99,7 +99,7 @@ export function roundToOption(rt: RoundTrip, home: boolean): Option {
   return {
     id: uid(),
     label: `Rundreise ${route.join(" → ")}`,
-    detail: `${n} Flüge, getrennt buchen${rt.nights.length ? ` · ${rt.nights.map(x => `${x} N.`).join(" / ")}` : ""}`,
+    detail: `${n === 1 ? "1 Ticket" : `${n} Tickets, getrennt buchen`}${rt.stays?.length ? ` · ${rt.stays.map(s => (s.hours != null ? `${s.name} ${Math.round(s.hours)} h` : `${s.name} ${s.nights} N.`)).join(" / ")}` : ""}`,
     price: { mode: "unit", currency: rt.legs[0].currency, unit: rt.price },
     source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: new Date().toISOString().slice(0, 10), url: rt.legs[0].url },
     legs: rt.legs.map((l, i) => legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out))

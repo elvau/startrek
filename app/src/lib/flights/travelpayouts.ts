@@ -98,6 +98,8 @@ export function tpRoutes(q: FlightQuery, months: number): [string, string][] {
 }
 
 export async function searchTravelpayouts(q: FlightQuery, token: string, f: typeof fetch = fetch, marker?: string): Promise<FlightOffer[]> {
+  // Umstieg an einem bestimmten Ort kann Travelpayouts nicht (keine Umstiegsorte in den Daten)
+  if (q.via?.length) return [];
   // flexibel mehrere Monate, mehrere Flughäfen: alles gleichzeitig; ein Fehler zählt nur, wenn keine Anfrage durchkommt
   const pairs = tpPairs(q);
   const jobs = tpRoutes(q, pairs.length).flatMap(([from, to]) => pairs.map(pair => ({ qq: { ...q, from, to }, pair })));

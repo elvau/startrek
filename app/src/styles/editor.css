@@ -455,3 +455,4 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .fs-addst{align-self:flex-start}
 .fs-legsrc{margin:-2px 0 4px 44px}
 @media (max-width:560px){.fs-station{grid-template-columns:1fr 1fr 34px}.fs-station .lp{grid-column:1/-1}}
+.fs-short{margin:-2px 0 2px}

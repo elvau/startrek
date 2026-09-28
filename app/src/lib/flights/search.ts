@@ -92,7 +92,13 @@ export function parseQuery(b: unknown): FlightQuery | string {
   const adults = o.adults ?? 1, children = o.children ?? 0, infants = o.infants ?? 0;
   if (!int(adults, 1, 9) || !int(children, 0, 8) || !int(infants, 0, 4)) return "Personen: 1–9 Erwachsene, bis 8 Kinder, bis 4 Babys";
   if ((infants as number) > (adults as number)) return "Höchstens ein Baby pro Erwachsenem";
-  const opt: Pick<FlightQuery, "flexDays" | "maxStops" | "bags" | "selfTransfer" | "departTo"> = {};
+  const opt: Pick<FlightQuery, "flexDays" | "maxStops" | "bags" | "selfTransfer" | "departTo" | "via" | "viaHours"> = {};
+  if (o.via != null) {
+    const v = o.via, h = o.viaHours;
+    if (!Array.isArray(v) || !v.length || v.length > 8 || !v.every(x => typeof x === "string" && /^[A-Z]{3}$/.test(x))) return "Umstieg: bis zu 8 Codes";
+    if (!Array.isArray(h) || h.length !== 2 || !int(h[0], 1, 72) || !int(h[1], 1, 72) || h[1] < h[0]) return "Umstieg: Stunden 1 bis 72, von ≤ bis";
+    opt.via = v as string[]; opt.viaHours = [h[0], h[1]];
+  }
   const departTo = str("departTo");
   if (departTo) {
     if (!DATE.test(departTo)) return "Datum im Format JJJJ-MM-TT";

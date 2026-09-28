@@ -20,6 +20,12 @@ export interface FlightQuery {
   /** nur Hinflug mit Zeitfenster: Abflug zwischen depart und departTo (JJJJ-MM-TT) */
   departTo?: string;
   /**
+   * Gabelflug mit langem Umstieg (ein Ticket): nur über diese Flughäfen umsteigen, Aufenthalt viaHours[0]–viaHours[1] Stunden.
+   * Nur Kiwi kann das; andere Quellen bleiben dann still.
+   */
+  via?: string[];
+  viaHours?: [number, number];
+  /**
    * Flexibel statt fester Daten: depart ist die früheste Abreise, latest die späteste Rückkehr (wieder zu Hause),
    * dazwischen nightsMin bis nightsMax Nächte am Ziel. ret wird dann nicht benutzt.
    */
@@ -54,6 +60,8 @@ export interface OfferLeg {
   route: string[];
   carriers: string[];
   flights: string[];
+  /** Umstiege mit Aufenthalt in Stunden (Kiwi) */
+  layovers?: { at: string; hours: number }[];
 }
 
 export interface FlightOffer {

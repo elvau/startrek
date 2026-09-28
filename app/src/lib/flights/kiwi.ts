@@ -28,7 +28,9 @@ export function kiwiArgs(q: FlightQuery) {
   return {
     flyFrom: kiwiPlace(q.from, q.fromAirports), flyTo: kiwiPlace(q.to, q.toAirports), departureDate: kiwiDate(q.depart),
     ...(flex ?? window ?? (q.ret ? { returnDate: kiwiDate(q.ret) } : {})), ...fixedFlex,
-    ...(q.maxStops != null ? { max_sector_stopovers: q.maxStops } : {}),
+    // Gabelflug: mindestens ein Umstieg, und zwar dort
+    ...(q.maxStops != null ? { max_sector_stopovers: q.via?.length ? Math.max(1, q.maxStops) : q.maxStops } : {}),
+    ...(q.via?.length ? { stopover_airports: q.via.join(","), stopover_from: q.viaHours?.[0] ?? 8, stopover_to: q.viaHours?.[1] ?? 48 } : {}),
     ...(q.selfTransfer != null ? { allow_self_transfer: q.selfTransfer } : {}),
     ...(q.bags ? { adults_hold_bags: Array(adults).fill(1), ...(q.children ? { children_hold_bags: Array(q.children).fill(1) } : {}) } : {}),
     adults, children: q.children, infants: q.infants,
@@ -45,7 +47,8 @@ function leg(l: any): OfferLeg {
     dep: l.departureTime, arr: l.arrivalTime,
     minutes: Math.round((l.durationSeconds || 0) / 60), stops: l.stops ?? Math.max(0, segs.length - 1),
     route: l.route || [], carriers: [...new Set(segs.map(s => s.carrierName || s.carrier).filter(Boolean))] as string[],
-    flights: segs.map(s => s.flightNumber).filter(Boolean)
+    flights: segs.map(s => s.flightNumber).filter(Boolean),
+    layovers: segs.slice(1).map((s, i) => ({ at: s.from, hours: Math.round((Date.parse(s.departureTime) - Date.parse(segs[i].arrivalTime)) / 360000) / 10 })).filter(x => !isNaN(x.hours))
   };
 }
 

@@ -119,3 +119,12 @@ describe("Travelpayouts nur Hinflug im Zeitfenster", () => {
     expect(fromTravelpayouts(sample, { ...one, depart: "2027-07-18" })).toHaveLength(2);
   });
 });
+
+describe("Travelpayouts und Gabelflug", () => {
+  it("kann keinen Umstiegsort: bleibt still statt falscher Treffer", async () => {
+    let called = false;
+    const f = (async () => { called = true; return Response.json(sample); }) as unknown as typeof fetch;
+    expect(await searchTravelpayouts({ ...q, via: ["DOH"], viaHours: [10, 48] }, "t", f)).toEqual([]);
+    expect(called).toBe(false);
+  });
+});

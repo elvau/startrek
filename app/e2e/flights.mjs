@@ -31,7 +31,8 @@ function oneWay(q) {
   const from = q.fromAirports?.[0] || q.from, to = q.toAirports?.[0] || q.to, offers = [];
   for (let d = q.depart, i = 0; d <= q.departTo; d = new Date(Date.parse(d) + 86400000).toISOString().slice(0, 10), i++)
     offers.push({ id: `kiwi:${from}${to}${d}`, source: "kiwi", sourceName: "Kiwi.com", price: 300 + 10 * i, currency: "EUR", url: `https://kiwi.com/u/${from}${to}`,
-      out: { ...leg(from, to, `${d}T10:00:00`, `${d}T20:00:00`, 600, [`XX${i}${from}`], ["Test Air"], [from, to]), fromCity: from, toCity: to } });
+      out: { ...leg(from, to, `${d}T10:00:00`, `${d}T20:00:00`, 600, [`XX${i}${from}`], ["Test Air"], q.via ? [from, q.via[0], to] : [from, to]), fromCity: from, toCity: to,
+        ...(q.via ? { stops: 1, layovers: [{ at: q.via[0], hours: 20 }] } : {}) } });
   return { offers, sources: RESULT.sources.map(s => (s.id === "kiwi" ? { ...s, count: offers.length } : s)) };
 }
 
@@ -301,13 +302,42 @@ try {
   if (!rq.some(x => x.from === "GIG" && x.to === "EZE" && x.depart === "2027-03-06" && x.departTo === "2027-03-08")) fail("2. Strecke: " + JSON.stringify(rq.map(x => [x.from, x.to, x.depart, x.departTo])));
   if (!rq.some(x => x.from === "EZE" && x.toAirports?.includes("DUS"))) fail("Rückflug nach Hause fehlt");
   const r0 = await m.locator(".fs-round").first().textContent();
-  if (!r0.includes("3 Flüge") || !r0.includes("GIG: 5 Nächte") || !r0.includes("EZE: 3 Nächte")) fail("Rundreise-Treffer: " + r0.slice(0, 300));
+  if (!r0.includes("3 Tickets") || !r0.includes("GIG: 5 Nächte") || !r0.includes("EZE: 3 Nächte")) fail("Rundreise-Treffer: " + r0.slice(0, 300));
   if ((await m.locator(".fs-round").first().locator(".fs-leg").count()) !== 3) fail("drei Flüge erwartet");
   await m.locator(".fs-round").first().locator(".btn", { hasText: "Übernehmen" }).click();
   await p.keyboard.press("Escape");
   const rc = p.locator("#flights .card[data-item]", { hasText: "GIG → EZE" });
   await rc.waitFor();
   log("Rundreise: DUS → GIG (5 Nächte) → EZE (3 Nächte) → zurück, Strecke für Strecke gesucht, als ein Posten mit 3 Flügen übernommen");
+
+  // kurzer Aufenthalt (0–1 Nacht in Rio): zusätzlich als Gabelflug, ein Ticket DUS → EZE mit langem Umstieg in GIG
+  await p.locator("#flights .fs-open").click();
+  await m.locator(".fs-kind .chip", { hasText: "Rundreise" }).click();
+  await m.locator("label", { hasText: "Abflug frühestens" }).locator("input").fill("2027-03-01");
+  await m.locator("label", { hasText: "spätestens" }).locator("input").first().fill("2027-03-03");
+  const s1 = m.locator(".fs-station").nth(0);
+  await s1.locator("input").first().fill("GIG");
+  await m.locator(".lp-list li", { hasText: "GIG" }).first().click();
+  await s1.locator("label", { hasText: "Nächte von" }).locator("input").fill("0");
+  await s1.locator("label", { hasText: "bis" }).last().locator("input").fill("1");
+  if (!(await m.locator(".fs-short").count())) fail("Hinweis Gabelflug fehlt");
+  await m.locator(".fs-addst").click();
+  const s2 = m.locator(".fs-station").nth(1);
+  await s2.locator("input").first().fill("EZE");
+  await m.locator(".lp-list li", { hasText: "EZE" }).first().click();
+  await s2.locator("label", { hasText: "Nächte von" }).locator("input").fill("3");
+  await s2.locator("label", { hasText: "bis" }).last().locator("input").fill("4");
+  const before3 = asked.length;
+  await m.locator(".fs-form .btn.primary", { hasText: "Rundreise suchen" }).click();
+  await m.locator(".fs-round").first().waitFor();
+  await m.locator(".fs-form .btn.primary", { hasText: "Rundreise suchen" }).waitFor();
+  const vq = asked.slice(before3).find(x => x.via);
+  if (!vq || vq.to !== "EZE" || vq.via.join() !== "GIG" || vq.viaHours.join() !== "4,48") fail("Anfrage Gabelflug: " + JSON.stringify(asked.slice(before3).map(x => [x.from, x.to, x.via])));
+  const g0 = await m.locator(".fs-round").first().textContent();
+  if (!g0.includes("2 Tickets") || !g0.includes("GIG: 20 h Umstieg") || !g0.includes("EZE: 3 Nächte")) fail("Gabelflug-Treffer: " + g0.slice(0, 300));
+  if (!(await m.locator(".fs-round", { hasText: "3 Tickets" }).count())) fail("getrennte Flüge fehlen neben dem Gabelflug");
+  await p.keyboard.press("Escape");
+  log("Kurzer Aufenthalt in GIG (0–1 Nacht): auch als Gabelflug DUS → EZE mit 20 h Umstieg gesucht, günstigster Treffer mit 2 statt 3 Tickets");
 
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");

@@ -93,6 +93,10 @@ Treffer an anderen Flughäfen fallen raus.
   die nächste. Gebucht wird jeder Flug einzeln (getrennte Tickets). Im Plan wird daraus ein Posten mit Hinflug,
   Zwischenflügen und Rückflug; die Anwesenheit reicht vom ersten Hinflug bis zum Rückflug, auch wenn Hin- und
   Rückflug in getrennten Posten stehen.
+- **Gabelflug mit langem Umstieg**: Stationen mit höchstens einer Nacht (unter 48 Stunden) sucht die Rundreise zusätzlich
+  als ein Ticket über diese Station (Kiwi: `stopover_airports`, Aufenthalt 4–48 h je nach Nächten). Beide Varianten
+  stehen gemischt in der Liste; „2 Tickets“ statt „3 Tickets“ zeigt den Gabelflug. Travelpayouts kennt keine
+  Umstiegsorte und bleibt bei diesen Anfragen still.
 
 ## Unterkünfte
 
