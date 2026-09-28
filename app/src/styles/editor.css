@@ -32,6 +32,7 @@ body.editing .chapter.on .add{opacity:.35}
 .f input,.f select,.inp{font:inherit;font-size:14px;font-weight:500;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
 .f input.n{width:110px;text-align:right;font-variant-numeric:tabular-nums}
 .f input.short{width:70px;text-transform:uppercase}
+.f input[type=datetime-local]{width:196px;font-variant-numeric:tabular-nums}
 .f input:focus,.f select:focus,.inp:focus{outline:2px solid var(--a);outline-offset:0;background:var(--paper)}
 .seg{display:flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:12px;background:var(--paper-2);border:1px solid var(--line);align-self:flex-start}
 .seg button{border:0;background:transparent;border-radius:9px;padding:6px 12px;font-weight:700;font-size:13px;color:var(--ink-2);transition:background .2s,color .2s}
@@ -98,7 +99,7 @@ body.editing .chapter.on .add{opacity:.35}
 .f input.n.sm{width:70px}
 .check{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink-2)}
 .check input{width:18px;height:18px;accent-color:var(--a)}
-.ed-leg{align-self:center;padding-top:14px;font-weight:700;font-size:13px;min-width:70px}
+.ed-leg{align-self:center;padding-top:14px;font-weight:700;font-size:13px;width:70px;flex:none}
 
 /* Flug: Anreise */
 .bp-acc{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--ink-2);padding:8px 10px;border-radius:10px;background:var(--paper-2)}
