@@ -3,24 +3,21 @@
   import { app, openSample } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import Modal from "./Modal.svelte";
-  import WhoPicker, { whoTravelers, type WhoMode } from "./WhoPicker.svelte";
-  import type { FamilyRow } from "../placeholders";
+  import WhoPicker, { newWho, whoTravelers } from "./WhoPicker.svelte";
 
-  let mode = $state<WhoMode>("solo");
-  let fams = $state<FamilyRow[]>([{ animal: "Reh", adults: 2, kids: 0, infants: 0 }]);
-  let picked = $state<string[]>([]);
+  let who = $state(newWho());
   const close = () => (app.welcome = false);
   // die Startreise bekommt die gewählten Reisenden; Ziel und Zeitraum trägt man später in der Reise ein
   function start() {
-    app.trip.travelers = whoTravelers(mode, fams, picked);
+    app.trip.travelers = whoTravelers(who);
     close();
   }
 </script>
 
 <Modal title="Willkommen bei der Reisekasse" onclose={close}>
-  <p class="muted">Plane, was eine Reise kostet und wer wie viel zahlt. Wie reist du?</p>
+  <p class="muted">Plane, was eine Reise kostet und wer wie viel zahlt. Wer reist mit?</p>
   <div class="welcome">
-    <WhoPicker bind:mode bind:fams bind:picked />
+    <WhoPicker bind:who />
     <button class="btn primary go" onclick={start}>Los geht's</button>
     <div class="welcome-more">
       <button class="linkbtn" onclick={() => { openSample(); close(); }}>Beispielreise ansehen</button>

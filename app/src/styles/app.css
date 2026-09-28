@@ -147,9 +147,10 @@ body.scrolled .top{transform:none}
 @media (max-width:980px){.wrap{grid-template-columns:minmax(0,1fr);padding-bottom:50vh}}
 
 /* ---------- Kapitel und Fokus ---------- */
-.chapter{padding:14vh 0 6vh;transition:opacity .6s ease,filter .6s ease,transform .6s ease;transform-origin:50% 0}
-.chapter:not(.on){opacity:.38;filter:saturate(.4) blur(1.5px);transform:scale(.97)}
-.chapter.on{opacity:1;filter:none;transform:none}
+/* inaktive Kapitel nur blasser, nicht verkleinert: eine Skalierung verschiebt den Inhalt beim Kapitelwechsel */
+.chapter{padding:14vh 0 6vh;transition:opacity .6s ease,filter .6s ease}
+.chapter:not(.on){opacity:.38;filter:saturate(.4) blur(1.5px)}
+.chapter.on{opacity:1;filter:none}
 .ch-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px}
 .ch-ico{flex:none;width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:var(--paper);color:var(--cc);box-shadow:var(--shadow)}
 .ch-ico svg{width:28px;height:28px}

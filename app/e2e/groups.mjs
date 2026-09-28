@@ -32,15 +32,15 @@ try {
   const a = await page("Anna");
   await a.goto(URL);
   await a.locator(".modal h3", { hasText: "Willkommen" }).waitFor();
-  if (!(await a.locator(".modal .who-b.on").textContent()).includes("solo")) fail("solo nicht vorausgewählt");
+  if (!(await a.locator(".modal .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
   await a.locator(".modal .btn", { hasText: "Los geht's" }).click();
   const solo = await a.locator(".person:not(.add) b").allTextContents();
-  if (solo.join() !== "Reh") fail("Start ohne anonymes Reh: " + solo);
-  log("Erster Start: 1-Personen-Reise mit anonymem Reh");
+  if (solo.length !== 1 || solo[0].includes(" ")) fail("Start nicht mit einem Tier: " + solo);
+  log("Erster Start: 1-Personen-Reise als", solo[0]);
 
   // Gruppen und Personen anlegen
-  await menu(a);
-  await a.locator(".tm-act", { hasText: "Gruppen und Personen" }).click();
+  await a.evaluate(() => scrollTo(0, 0));
+  await a.locator(".hero .grp-btn").click();
   const d = a.locator(".modal");
   await d.locator("form", { hasText: "Neue Gruppe" }).locator("input").fill("Familie Klein");
   await d.locator("form", { hasText: "Neue Gruppe" }).locator("button").click();
@@ -66,12 +66,12 @@ try {
   await a.keyboard.press("Escape");
 
   // Neue Reise für die Kegelgruppe, einfacher Modus
-  await menu(a);
-  await a.locator(".tm-act", { hasText: "+ Neue Reise" }).click();
+  await a.evaluate(() => scrollTo(0, 0));
+  await a.locator(".hero .tm-plus").click();
   await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Mosel");
   await a.locator(".newtrip label", { hasText: "Von" }).locator("input").fill("2027-05-06");
   await a.locator(".newtrip label", { hasText: "Bis" }).locator("input").fill("2027-05-09");
-  if ((await a.locator(".newtrip .who-b.on").textContent()).includes("Reh") !== true) fail("Reh nicht vorausgewählt");
+  if (!(await a.locator(".newtrip .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
   await a.locator(".newtrip .who-b", { hasText: "Gespeichert" }).click();
   await a.locator(".newtrip .grp-chip", { hasText: "Kegeln" }).click();
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
@@ -126,26 +126,27 @@ try {
   await a.locator("#flights .simple-hidden").waitFor();
   log("Flüge detailliert und zurück: Betrag wird Posten und umgekehrt, Summe bleibt 1.500 €");
 
-  // Schnell mit Platzhaltern: Familie Reh und Familie Bär, je 2 Erwachsene und 3 Kinder
-  await menu(a);
-  await a.locator(".tm-act", { hasText: "+ Neue Reise" }).click();
+  // Schnell mit Platzhaltern: zwei Tierfamilien (zufällige Tiere)
+  await a.evaluate(() => scrollTo(0, 0));
+  await a.locator(".hero .tm-plus").click();
   await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Ostsee");
-  await a.locator(".newtrip .who-b", { hasText: "Rudel" }).click();
+  await a.locator(".newtrip .who-b", { hasText: "Familie" }).click();
   const qf = a.locator(".newtrip .qf");
   await qf.locator(".linkbtn").click();
-  // Reh: 2 Erwachsene, 3 Kinder; Bär: 2 Erwachsene, 2 Kinder, 1 Kleinkind
+  // erste Familie: 2 Erwachsene, 3 Kinder; zweite: 2 Erwachsene, 2 Kinder, 1 Kleinkind
   for (let k = 0; k < 3; k++) await qf.locator(".qf-row").nth(0).locator('[aria-label="Kinder mehr"]').click();
   for (let k = 0; k < 2; k++) await qf.locator(".qf-row").nth(1).locator('[aria-label="Kinder mehr"]').click();
   await qf.locator(".qf-row").nth(1).locator('[aria-label="Kleink. mehr"]').click();
   const fams = await qf.locator(".qf-row select").evaluateAll(xs => xs.map(x => x.value));
-  if (fams.join() !== "Reh,Bär") fail("Familien: " + fams);
+  const [A, B] = fams;
+  if (fams.length !== 2 || A === B) fail("Familien: " + fams);
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
   await until(async () => (await a.locator(".hero h1").textContent()).includes("Ostsee"), "Ostsee offen");
   const ph = await a.locator(".person:not(.add) b").allTextContents();
-  if (ph.length !== 10 || ph[0] !== "Reh Erw. 1" || ph[9] !== "Bär Kleinkind 1") fail("Platzhalter: " + ph);
-  const kids = await a.locator(".person", { hasText: "Reh Kind 1" }).locator("span").allTextContents();
+  if (ph.length !== 10 || ph[0] !== `${A} Erw. 1` || ph[9] !== `${B} Kleinkind 1`) fail("Platzhalter: " + ph);
+  const kids = await a.locator(".person", { hasText: `${A} Kind 1` }).locator("span").allTextContents();
   if (!kids.some(x => x.includes("Kind"))) fail("Kind nicht als Kind: " + kids);
-  const baby = await a.locator(".person", { hasText: "Bär Kleinkind 1" }).locator("span").allTextContents();
+  const baby = await a.locator(".person", { hasText: `${B} Kleinkind 1` }).locator("span").allTextContents();
   if (!baby.some(x => x.includes("Kleinkind"))) fail("Kleinkind nicht als Kleinkind: " + baby);
   await amount("stay", "1000");
   await until(async () => (await a.locator("#stay .simple-out b").textContent()) === "100 €", "100 € pro Person");
@@ -155,16 +156,16 @@ try {
   await a.locator(".trav-acts .linkbtn", { hasText: "Als Gruppe speichern" }).click();
   await a.locator(".trav-note", { hasText: "Platzhalter werden nicht gespeichert" }).waitFor();
   // Platzhalter durch gespeicherte Person ersetzen
-  await a.locator(".person", { hasText: "Reh Erw. 1" }).locator(".repl").click();
+  await a.locator(".person", { hasText: `${A} Erw. 1` }).locator(".repl").click();
   const cand = await a.locator(".repl-pick .chip").allTextContents();
   if (!cand.some(c => c.includes("Dani Klein"))) fail("Kandidaten: " + cand);
   await a.locator(".repl-pick .chip", { hasText: "Dani Klein" }).click();
   const after = await a.locator(".person:not(.add) b").allTextContents();
-  if (after.length !== 10 || after[0] !== "Dani Klein" || after.includes("Reh Erw. 1")) fail("nach Ersetzen: " + after);
+  if (after.length !== 10 || after[0] !== "Dani Klein" || after.includes(`${A} Erw. 1`)) fail("nach Ersetzen: " + after);
   const hh3 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
   if (!hh3.some(x => x.startsWith("Klein") && x.includes("100 €"))) fail("Klein nach Ersetzen: " + hh3);
-  log("„Reh Erw. 1“ durch die gespeicherte Dani Klein ersetzt, Familie Klein zahlt 100 €");
-  log("Platzhalter: Familie Reh (2+3) und Bär (2+2+1 Kleinkind), 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
+  log(`„${A} Erw. 1“ durch die gespeicherte`, " Dani Klein ersetzt, Familie Klein zahlt 100 €");
+  log(`Platzhalter: Familie ${A} (2+3) und ${B} (2+2+1 Kleinkind)`, " 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
 
   // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da
   await a.evaluate(() => scrollTo(0, 0));
@@ -179,8 +180,7 @@ try {
   await b.locator(".login .test input").fill("Anna");
   await b.locator(".login .test button").click();
   await b.locator(".hero .acct-btn").waitFor();
-  await menu(b);
-  await b.locator(".tm-act", { hasText: "Gruppen und Personen" }).click();
+  await b.locator(".hero .grp-btn").click();
   await until(async () => (await b.locator(".modal .grp-h").count()) === 2, "Gruppen auf zweitem Gerät");
   log("Gruppen sind nach der Anmeldung auf dem zweiten Gerät da");
 

@@ -285,10 +285,10 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .pick.repl-pick{flex-direction:column;align-items:flex-start;gap:8px}
 .repl-acts{display:flex;gap:16px}
 .person .repl{font-size:12.5px;margin-top:2px}
-.who{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;align-self:stretch}
+.who{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-self:stretch}
+@media (max-width:520px){.who{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .who-b{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 8px;border-radius:16px;border:1.5px solid var(--line);background:var(--paper-2);color:var(--ink)}
 .who-b.on{border-color:var(--a);background:var(--a-soft);box-shadow:0 0 0 2px var(--a) inset}
-.who-i{font-size:28px;line-height:1.1}
 .who-b b{font-size:14px}
 .who-b small{font-size:11.5px;color:var(--ink-2)}
 /* Kinder erkennbar: kleinerer Avatar, farbige Marke */
@@ -302,3 +302,26 @@ body[data-ch="split"] .amb-trav{opacity:1}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .age-pill{background:#4A3413;color:#FFD08A}:root:not([data-theme="light"]) .age-pill.infant{background:#4A1F38;color:#F5A8D2}}
 .welcome .btn.go{align-items:center;font-size:16px;padding:13px 16px;align-self:stretch}
 .welcome-more{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 20px;margin-top:2px}
+/* Kopfzeile: Reisen + Neue Reise links, Gruppen rechts */
+.tmenu{display:inline-flex;align-items:center;gap:6px}
+.tm-ico{font-size:14px}
+.tm-plus,.icon-btn{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:99px;border:1px solid var(--glass-line);background:rgba(255,255,255,.55);backdrop-filter:blur(8px);color:inherit;font-size:20px;font-weight:700;line-height:1}
+.icon-btn svg{width:18px;height:18px}
+.tmenu.compact .tm-plus,.top-in .icon-btn{width:30px;height:30px;background:var(--paper-2);border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .tm-plus,:root[data-theme="dark"] .icon-btn{background:rgba(10,25,45,.5)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tm-plus,:root:not([data-theme="light"]) .icon-btn{background:rgba(10,25,45,.5)}}
+.tm-list{display:flex;flex-direction:column;gap:2px;max-height:45vh;overflow:auto;margin:0 -6px}
+.tm-acts{display:flex;flex-wrap:wrap;gap:4px 8px;margin:-6px -10px 0}
+.modal .tm-h{padding:4px 0 0}
+@media (max-width:640px){.top-in .grp-btn{display:none}}
+.who-art{display:grid;place-items:center;width:64px;height:48px;border-radius:14px;margin-bottom:4px;background:linear-gradient(160deg,var(--w1),var(--w2));color:#fff}
+.who-fig{width:52px;height:36px;fill:currentColor}
+.who-solo{--w1:#F2A65A;--w2:#D2693C}
+.who-partner{--w1:#F08BB0;--w2:#C0487A}
+.who-family{--w1:#6FB7F5;--w2:#2F6FDB}
+.who-group{--w1:#5CC9A2;--w2:#1F8A70}
+.who-saved{--w1:#A99BE0;--w2:#7A5AC8}
+.who-d{display:flex;flex-direction:column;gap:6px;align-items:flex-start;align-self:stretch}
+.who-d p{margin:0}
+.grp-counts{grid-template-columns:repeat(2,minmax(0,150px))}
+@media (max-width:640px){.hero .tm-btn{max-width:calc(100vw - 250px)}.hero-r{gap:6px}.hero .acct .tm-btn{padding:6px 11px}}
