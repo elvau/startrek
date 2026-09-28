@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"],
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true
+  },
+  "include": ["src", "../app/src/lib/flights/types.ts", "../app/src/lib/flights/kiwi.ts", "../app/src/lib/flights/search.ts"],
+  "exclude": ["../app/src/lib/flights/*.test.ts"]
+}

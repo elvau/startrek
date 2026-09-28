@@ -326,3 +326,26 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .grp-counts{grid-template-columns:repeat(2,minmax(0,150px))}
 @media (max-width:640px){.hero .tm-btn{max-width:calc(100vw - 250px)}.hero-r{gap:6px}.hero .acct .tm-btn{padding:6px 11px}}
 :root[data-theme="dark"] .who-art{filter:brightness(.85)}
+/* Flugsuche */
+.fs-form{display:flex;flex-direction:column;gap:10px}
+.fs-route{flex-wrap:nowrap}
+.fs-swap{align-self:flex-end;margin-bottom:2px;font-size:16px}
+.fs-one{align-self:center;padding-top:14px;gap:6px;font-size:13.5px}
+.fs-src{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--ink-2)}
+.fs-src .ok{color:#1F8A70;font-weight:700}
+.fs-src .off{opacity:.7}
+.fs-list{display:flex;flex-direction:column;gap:10px}
+.fs-res{border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:var(--paper)}
+.fs-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.fs-price{font:800 22px "Bricolage Grotesque",sans-serif}
+.fs-badge{margin-left:auto;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--a-soft);color:var(--a)}
+.fs-leg{display:grid;grid-template-columns:52px 1fr;gap:0 8px;font-size:13.5px}
+.fs-leg .muted{grid-column:2;font-size:12.5px}
+.fs-dir{grid-row:1/3;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);padding-top:2px}
+.fs-bag{margin:0}
+.fs-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.btn.sm{padding:6px 12px;font-size:13px;text-decoration:none;color:inherit}
+.btn.primary.sm{color:#fff}
+.btn.sm small{font-weight:600;opacity:.8}
+.search-row{display:flex;justify-content:flex-start;margin:-4px 0 14px}
+@media (max-width:520px){.fs-route{flex-wrap:wrap}.fs-swap{display:none}}
