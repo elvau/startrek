@@ -128,9 +128,9 @@ body.scrolled .top{transform:none}
 .hero{position:relative;z-index:1;min-height:100svh;display:grid;place-items:center;text-align:center;padding:80px 16px 120px;color:#0E2438}
 .hero .kick{display:inline-flex;gap:8px;align-items:center;padding:6px 14px;border-radius:99px;background:rgba(255,255,255,.55);backdrop-filter:blur(8px);font-weight:600;font-size:13px}
 .hero h1{font-size:clamp(44px,9vw,104px);font-weight:800;line-height:.95;margin:18px 0 12px}
-.h1-edit{display:inline-grid;place-items:center;vertical-align:middle;width:.5em;height:.5em;min-width:34px;min-height:34px;margin-left:.2em;border-radius:99px;border:1px solid var(--glass-line);background:rgba(255,255,255,.55);color:inherit;font-size:.28em;font-weight:600;line-height:1;opacity:.75;transform:translateY(-.08em)}
-.h1-edit:hover{opacity:1}
-.h1-in{display:block;width:min(100%,900px);margin:18px auto 12px;padding:.05em .3em;border:0;border-bottom:3px solid var(--a);background:rgba(255,255,255,.35);border-radius:14px;color:inherit;text-align:center;font:800 clamp(36px,7vw,84px)/1.05 "Bricolage Grotesque","Figtree",sans-serif;outline:none}
+.h1-name{cursor:text;outline:none;border-radius:12px;text-decoration:underline dashed transparent;text-decoration-thickness:.04em;text-underline-offset:.12em;transition:text-decoration-color .2s,background .2s}
+.h1-name:hover{text-decoration-color:currentColor}
+.h1-name:focus{text-decoration-color:var(--a);background:rgba(255,255,255,.18)}
 .hero .meta{font-size:17px;font-weight:500;opacity:.8}
 .hero .total{margin-top:28px;display:inline-flex;flex-direction:column;align-items:center;padding:18px 28px;border-radius:22px;background:rgba(255,255,255,.6);backdrop-filter:blur(10px);box-shadow:0 20px 50px -20px rgba(14,36,56,.4)}
 .hero .total b{font:800 clamp(38px,6vw,56px) "Bricolage Grotesque",sans-serif}
