@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi, kiwiArgs, searchKiwi } from "./kiwi";
-import { merge, parseQuery, searchAll } from "./search";
+import { inWindow, merge, parseQuery, searchAll } from "./search";
 import type { FlightQuery } from "./types";
 
 const q: FlightQuery = { from: "DUS", to: "SPU", depart: "2027-07-18", ret: "2027-07-29", adults: 2, children: 1, infants: 0 };
@@ -57,6 +57,25 @@ describe("Flugsuche", () => {
     const down = await searchAll(q, {}, (async () => new Response("", { status: 503 })) as typeof fetch);
     expect(down.offers).toEqual([]);
     expect(down.sources[0]).toMatchObject({ id: "kiwi", ok: false, error: "Kiwi antwortet mit 503" });
+  });
+  it("flexibel: Abflug-Zeitraum bis späteste Rückkehr minus Mindest-Nächte, Nächte als Spanne", () => {
+    const a = kiwiArgs({ ...q, ret: undefined, depart: "2027-07-15", latest: "2027-07-29", nightsMin: 7, nightsMax: 10 });
+    expect(a).toMatchObject({ departureDate: "15/07/2027", departureDateTo: "22/07/2027", nights_in_dst_from: 7, nights_in_dst_to: 10 });
+    expect(a).not.toHaveProperty("returnDate");
+  });
+  it("flexibel: Treffer nach der spätesten Rückkehr fallen raus", () => {
+    const k = fromKiwi(fixture); // alle zurück am 29.07.
+    expect(inWindow({ ...q, depart: "2027-07-15", latest: "2027-07-29", nightsMin: 7 }, k)).toHaveLength(3);
+    expect(inWindow({ ...q, depart: "2027-07-15", latest: "2027-07-28", nightsMin: 7 }, k)).toHaveLength(0);
+    expect(inWindow({ ...q, depart: "2027-07-19", latest: "2027-07-29", nightsMin: 7 }, k)).toHaveLength(0);
+    expect(inWindow(q, k)).toHaveLength(3);
+  });
+  it("prüft flexible Anfragen", () => {
+    const base = { from: "DUS", to: "SPU", depart: "2027-07-15", adults: 2 };
+    expect(parseQuery({ ...base, latest: "2027-07-29", nightsMin: 7, nightsMax: 10, ret: "2027-07-20" })).toMatchObject({ latest: "2027-07-29", nightsMin: 7, nightsMax: 10, ret: undefined });
+    expect(parseQuery({ ...base, latest: "2027-07-18", nightsMin: 7 })).toBeTypeOf("string");
+    expect(parseQuery({ ...base, latest: "2027-07-29", nightsMin: 10, nightsMax: 7 })).toBeTypeOf("string");
+    expect(parseQuery({ ...base, latest: "29.07.2027", nightsMin: 7 })).toBeTypeOf("string");
   });
   it("prüft Anfragen", () => {
     expect(parseQuery({ from: "DUS", to: "SPU", depart: "2027-07-18", adults: 2 })).toMatchObject({ adults: 2, children: 0, currency: "EUR" });
