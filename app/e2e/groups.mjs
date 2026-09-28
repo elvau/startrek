@@ -90,13 +90,14 @@ try {
   log("Name aus Ziel und Zeitraum:", tname, "· leere Startreise weggeräumt");
 
   // Umbenennen direkt an der Überschrift: eigener Name steht groß, Ort wandert in die Zeile darunter
-  await a.locator(".hero .h1-edit").click();
-  await a.locator(".hero .h1-in").fill("Kegeltour 2027");
+  await a.locator(".hero h1.h1-name").click();
+  await a.keyboard.press("ControlOrMeta+a");
+  await a.keyboard.type("Kegeltour 2027");
   await a.keyboard.press("Enter");
   await until(async () => (await a.locator(".hero h1").textContent()).startsWith("Kegeltour 2027"), "eigener Name");
   if ((await a.locator(".hero .tm-name").first().textContent()) !== "Kegeltour 2027") fail("Name oben nicht übernommen");
   if (!(await a.locator(".hero .meta").textContent()).startsWith("Mosel")) fail("Ort nicht unter dem Namen");
-  log("Umbenannt per ✎: „Kegeltour 2027“, darunter Mosel");
+  log("Umbenannt direkt in der Überschrift: „Kegeltour 2027“, darunter Mosel");
   const names = (await a.locator(".person:not(.add) b").allTextContents()).join(", ");
   if (names !== "Monika Klein, Uwe Schmitz") fail("Reisende: " + names);
   if ((await a.locator(".simple-card").count()) !== 5) fail("nicht alle Bereiche einfach");

@@ -15,12 +15,20 @@
   // Überschrift: eigener Name, sonst Ort (mit Land) oder der vorläufige Name
   const custom = $derived(!app.trip.autoName && !!app.trip.name && app.trip.name !== app.trip.place);
   const title = $derived(custom ? app.trip.name : app.trip.place || app.trip.name);
-  const where = $derived(custom && app.trip.place ? [app.trip.place, app.trip.country].filter(Boolean).join(", ") : "");
-  let naming = $state(false);
-  let draft = $state("");
-  function startNaming() { draft = custom || !app.trip.place ? app.trip.name : ""; naming = true; }
-  function saveName() { if (naming) { renameTrip(draft); naming = false; } }
-  const focus = (el: HTMLInputElement) => { el.focus(); el.select(); };
+  // darunter: Ort und Land, wenn die Überschrift ein eigener Name ist, sonst nur das Land
+  const where = $derived(custom ? [app.trip.place, app.trip.country].filter(Boolean).join(", ") : app.trip.country);
+  // Überschrift direkt überschreiben: hineinklicken, tippen, Enter oder wegklicken speichert, Esc bricht ab
+  let rev = $state(0);
+  function saveName(el: HTMLElement) {
+    const v = el.innerText.replace(/\s+/g, " ").trim();
+    if (v && v !== title) renameTrip(v);
+    rev++; // Überschrift neu aufbauen, damit sie wieder dem gespeicherten Namen folgt
+  }
+  function nameKey(e: KeyboardEvent) {
+    const el = e.currentTarget as HTMLElement;
+    if (e.key === "Enter") { e.preventDefault(); el.blur(); }
+    if (e.key === "Escape") { el.innerText = title; el.blur(); }
+  }
 
   const trip = $derived(app.trip);
   let shown = $state(0);
@@ -58,12 +66,14 @@
       <TripEditor onclose={() => (editing = false)} />
     {:else}
       {#if trip.kicker}<span class="kick">☀️ {trip.kicker}</span>{/if}
-      {#if naming}
-        <input class="h1-in" bind:value={draft} use:focus aria-label="Name der Reise" placeholder="Name der Reise"
-          onkeydown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") naming = false; }} onblur={saveName} />
-      {:else}
-        <h1>{title}{#if !custom && trip.place && trip.country},<br />{trip.country}{/if}{#if !access.readonly}<button class="h1-edit" onclick={startNaming} aria-label="Reise umbenennen" title="Umbenennen">✎</button>{/if}</h1>
-      {/if}
+      {#key `${rev}|${title}`}
+        {#if access.readonly}
+          <h1>{title}</h1>
+        {:else}
+          <h1 class="h1-name" contenteditable="true" spellcheck="false" aria-label="Name der Reise, zum Umbenennen hineinklicken"
+            title="Zum Umbenennen hineinklicken" onkeydown={nameKey} onblur={e => saveName(e.currentTarget)}>{title}</h1>
+        {/if}
+      {/key}
       <div class="meta">{[where, range(trip.from, trip.to), nights(trip.from, trip.to) ? `${nights(trip.from, trip.to)} Nächte` : "", n ? `${n} ${n === 1 ? "Person" : "Personen"}` : "noch niemand dabei"].filter(Boolean).join(" · ")}</div>
     {/if}
     {#if !access.readonly}
