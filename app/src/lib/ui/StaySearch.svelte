@@ -11,6 +11,8 @@
   import { FLIGHTS_URL } from "../flights/app";
   import { guests, searchStaysRemote, takeStay } from "../stays/app";
   import { arrivals, guestsIn, hints, stayWindow } from "../stays/presence";
+  import { ensureGeo, geo } from "../geo/geo.svelte";
+  import { airportOf, ccOf, cityForAirport, placesNear, searchParts, stayNear } from "../geo/places";
   import type { StayScope } from "../stays/open.svelte";
   import type { StayOffer, StayQuery, StayType } from "../stays/types";
   import type { SourceStatus } from "../flights/types";
@@ -29,7 +31,7 @@
   const ids = start.ids ?? item?.participants;
   const win = stayWindow(trip, ids);
 
-  let place = $state(trip.place || "");
+  let place = $state(start.place || trip.place || "");
   let checkin = $state(start.from || item?.from || win?.from || "");
   let checkout = $state(start.to || item?.to || win?.to || "");
   let rooms = $state(1);
@@ -42,6 +44,17 @@
   const g = $derived(guests(who.map(x => x.t)));
   const partial = $derived(who.filter(x => x.nights < nn));
   const arr = arrivals(trip).filter(a => !ids || a.ids.some(id => ids.includes(id)));
+
+  // wie im Artefakt: Orte am Ankunfts- und Abflughafen als Vorschläge; ohne Reiseziel der Ort am Ankunftsflughafen
+  ensureGeo(trip);
+  const near = $derived.by(() => {
+    const codes = [...new Set(arr.flatMap(a => [a.arrAp, a.depAp]).filter((c): c is string => !!c))];
+    return codes.map(c => airportOf(geo, c)).filter(a => !!a).map(ap => ({
+      ap: ap!, role: [arr.some(a => a.arrAp === ap!.code) && "Landung", arr.some(a => a.depAp === ap!.code) && "Abflug"].filter(Boolean).join(" und "),
+      places: placesNear(geo, ap!, 5), city: cityForAirport(geo, ap!)
+    }));
+  });
+  $effect(() => { if (!place && near[0]?.city) place = near[0].city.name; });
 
   let busy = $state(false);
   let error = $state("");
@@ -74,7 +87,8 @@
     if (!who.length) { error = "In diesem Zeitraum ist laut Flügen niemand da."; return; }
     if (!use.length) { error = "Bitte mindestens eine Quelle auswählen."; return; }
     try { localStorage.setItem(K, JSON.stringify({ type, sources: use.length < SOURCES.length ? use : [] })); } catch {}
-    const q: StayQuery = { place: place.trim(), country: trip.country || undefined, checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type, sources: use, currency: "EUR" };
+    const sp = searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc);
+    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type, sources: use, currency: "EUR" };
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
     try {
@@ -124,6 +138,18 @@
       <label class="f">Check-out<input type="date" bind:value={checkout} min={checkin} required /></label>
       <label class="f">Zimmer<input class="n sm" type="number" min="1" max={Math.min(10, g.adults)} bind:value={rooms} /></label>
     </div>
+    {#if near.length || trip.place}
+      <div class="st-near">
+        {#if trip.place}<span class="muted small">Reiseziel:</span><button type="button" class="chip sm" class:on={place === trip.place} onclick={() => (place = trip.place)}>{trip.place}</button>{/if}
+        {#each near as n (n.ap.code)}
+          {#if n.places.length}
+            <span class="muted small">Am Flughafen {n.ap.code} ({n.role}):</span>
+            {@const sug = stayNear(geo, n.ap)}
+            {#each sug && !n.places.some(p => p.name === sug.name) ? [sug, ...n.places] : n.places as p (p.name)}<button type="button" class="chip sm" class:on={place === p.name} onclick={() => (place = p.name)}>{p.name} <small>{Math.round(p.km)} km</small></button>{/each}
+          {/if}
+        {/each}
+      </div>
+    {/if}
     <div class="ed-row fs-opts">
       <div class="chips" role="radiogroup" aria-label="Art der Unterkunft">
         <button type="button" role="radio" aria-checked={type === "whole"} class="chip" class:on={type === "whole"} onclick={() => (type = "whole")}>Ganze Unterkunft</button>

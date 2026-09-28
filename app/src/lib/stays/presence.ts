@@ -17,16 +17,20 @@ export interface Arrival {
   /** Landung am Ziel und Abflug zurück (ISO lokal), nur aus Flügen */
   arr?: string;
   dep?: string;
+  /** Ankunfts- und Abflughafen am Ziel */
+  arrAp?: string;
+  depAp?: string;
 }
 
 const stayItems = (trip: Trip) =>
   trip.items.filter(it => it.cat === "stay" && it.status !== "dropped" && okDate(it.from) && okDate(it.to) && it.to! > it.from!);
 
 /** Landung und Rückflug einer Person aus ihrem Flug */
-function flightTimes(t: Traveler, trip: Trip): { arr?: string; dep?: string } {
+function flightTimes(t: Traveler, trip: Trip): Pick<Arrival, "arr" | "dep" | "arrAp" | "depAp"> {
   const it = flightFor(t, trip);
   const o = it && activeOption(it, trip);
-  return { arr: o?.legs?.find(l => l.dir === "out")?.arr || undefined, dep: o?.legs?.find(l => l.dir === "back")?.dep || undefined };
+  const out = o?.legs?.find(l => l.dir === "out"), back = o?.legs?.find(l => l.dir === "back");
+  return { arr: out?.arr || undefined, dep: back?.dep || undefined, arrAp: out?.to || undefined, depAp: back?.from || undefined };
 }
 
 export function arrivals(trip: Trip): Arrival[] {
@@ -36,7 +40,7 @@ export function arrivals(trip: Trip): Arrival[] {
   for (const t of act) {
     const p = pres[t.id];
     const ft = p?.src === "flight" ? flightTimes(t, trip) : {};
-    const k = [hhKey(t), p?.a, p?.d, ft.arr, ft.dep].join("|");
+    const k = [hhKey(t), p?.a, p?.d, ft.arr, ft.dep, ft.arrAp, ft.depAp].join("|");
     if (!map.has(k)) map.set(k, { hh: hhKey(t), who: "", ids: [], p, ...ft });
     map.get(k)!.ids.push(t.id);
   }

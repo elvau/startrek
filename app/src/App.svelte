@@ -33,7 +33,8 @@
     try { const t = localStorage.getItem("rk-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
     const off = initScroll();
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { app.editing = null; sheet = false; } };
-    const outside = (e: MouseEvent) => { if (app.editing && !(e.target as HTMLElement).closest(".card, .add, .mode")) app.editing = null; };
+    // Klick außerhalb des offenen Postens schließt ihn (auch auf den Plan, der sonst ausgegraut bliebe)
+    const outside = (e: MouseEvent) => { if (app.editing && !(e.target as HTMLElement).closest(".card:not(.plan-card), .add, .mode, .modal-bg")) app.editing = null; };
     addEventListener("keydown", esc);
     addEventListener("click", outside);
     return () => { off(); removeEventListener("keydown", esc); removeEventListener("click", outside); };
