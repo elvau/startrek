@@ -1,0 +1,12 @@
+# Gleicher Such-Dienst wie in ../wrangler.toml, für Builds mit Root directory „worker“
+# (die Vorschau-Builds von Cloudflare für Pull Requests starten in diesem Ordner).
+# Änderungen bitte in beiden Dateien gleich halten.
+name = "startrek"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[observability]
+enabled = true
+
+[vars]
+ALLOWED_ORIGINS = "https://elvau.github.io,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
