@@ -7,6 +7,11 @@
   import { dateDE, dayShort } from "../format";
   import { arrivals, gaps, hints } from "../stays/presence";
   import { openStaySearch } from "../stays/open.svelte";
+  import { airportNights } from "../stays/airports";
+  import { ensureGeo, geo } from "../geo/geo.svelte";
+
+  // Orts- und Flughafendaten für die Vorschläge am Flughafen (einmal laden)
+  $effect(() => { ensureGeo(app.trip); });
 
   const COLORS = ["var(--c-stay)", "var(--c-flights)", "var(--c-transport)", "var(--c-attractions)", "var(--c-misc)"];
 
@@ -39,9 +44,11 @@
     });
     // wie im Artefakt: Lücken zuerst (mit „Unterkunft suchen“), dann Hinweise zu An- und Abreise
     const gs = gaps(trip);
-    const info = arrivals(trip).flatMap(a => hints(a).map(h => `${a.who}: ${h}`));
+    const aps = airportNights(trip, geo);
+    // Hinweis „sehr früh“ nur, wenn es dafür noch keinen Vorschlag am Flughafen gibt
+    const info = arrivals(trip).flatMap(a => hints(a).filter(h => !(h.includes("sehr früh") && aps.some(x => x.kind === "last" && x.ids.join() === a.ids.join()))).map(h => `${a.who}: ${h}`));
     const open = stays.filter(s => s.options.every(o => !o.label && !o.price.unit && !o.price.adult));
-    return { nights, rows, stays, notes, gs, info, open };
+    return { nights, rows, stays, notes, gs, info, open, aps };
   });
 
   // aufeinanderfolgende gleiche Zellen zu Balken zusammenfassen
@@ -79,11 +86,16 @@
         {/each}
       </div>
     </div>
-    {#if plan.gs.length || plan.notes.length || plan.open.length || plan.info.length}
+    {#if plan.gs.length || plan.notes.length || plan.open.length || plan.info.length || plan.aps.length}
       <ul class="pl-notes">
         {#each plan.gs as g (g.from + g.to + g.who)}
           <li class="crit"><b>{g.who}</b>: {g.nights === 1 ? `Nacht ${dayShort(g.from)}` : `${dayShort(g.from)} bis ${dayShort(g.to)}`} ohne Unterkunft ({g.nights} {g.nights === 1 ? "Nacht" : "Nächte"})
             {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ from: g.from, to: g.to, ids: g.ids })}>Unterkunft suchen</button>{/if}</li>
+        {/each}
+        {#each plan.aps as a (a.kind + a.from + a.ids.join())}
+          <li class:crit={a.crit} class:warn={!a.crit}>{a.text}
+            {#if a.places.length}<span class="pl-near">In der Nähe von {a.ap.code}: {a.places.map(p => `${p.name} ${Math.round(p.km)} km`).join(" · ")}</span>{/if}
+            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ from: a.from, to: a.to, ids: a.ids, place: a.suggest })}>Unterkunft am Flughafen suchen</button>{/if}</li>
         {/each}
         {#each plan.notes as n}<li class:crit={n.crit}>{n.text}</li>{/each}
         {#each plan.open as s (s.id)}

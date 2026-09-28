@@ -33,6 +33,9 @@ try {
     await new Promise(res => setTimeout(res, 200));
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(RESULT) });
   });
+  // Orts- und Flughafendaten des Artefakts (liegen auf der Seite eine Ebene über der App)
+  for (const f of ["world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+  await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   await p.goto(URL);
   await p.locator(".modal .btn", { hasText: "Los geht's" }).click();
   await p.locator("#stay .st-open").scrollIntoViewIfNeeded();
@@ -122,6 +125,37 @@ try {
   await m.locator(".fs-res").first().waitFor();
   if (!(await m.locator(".fs-res", { hasText: "Rooms Šećer" }).locator(".st-diff.good", { hasText: "−680 €" }).count())) fail("Vergleich zum bisherigen Preis fehlt");
   log("Suche aus dem Posten: 720 € ist 680 € günstiger als die Villa");
+  await m.locator(".x").click();
+  // Fehler von vorher: der offene Posten graute danach „Wer ist wann wo“ aus
+  if (await p.evaluate(() => document.body.classList.contains("editing"))) fail("Posten nach der Suche noch offen, Plan ausgegraut");
+  const op = await p.locator("#stay .plan-card").evaluate(el => getComputedStyle(el).opacity);
+  if (op !== "1") fail("Plan ausgegraut: opacity " + op);
+  log("Nach der Suche aus dem Posten ist der Plan nicht ausgegraut");
+
+  // wie im Artefakt: sehr früher Rückflug weit weg vom Ziel → letzte Nacht am Flughafen, mit Orten in der Nähe
+  const early = JSON.parse(JSON.stringify(TRIP));
+  early.place = "Makarska";
+  early.items[0].options[0].legs[1].dep = "2027-07-29T06:30";
+  early.items.push({ id: "s2", cat: "stay", name: "Villa 2", status: "idea", from: "2027-07-25", to: "2027-07-29", participants: ["a", "b"], options: [{ id: "v2", label: "Villa 2", price: { mode: "unit", currency: "EUR", unit: 800, basis: "stay" } }] });
+  await p.evaluate(t => localStorage.setItem("rk2-t:k1", JSON.stringify(t)), early);
+  await p.reload();
+  const apn = p.locator("#stay .pl-notes li", { hasText: "Letzte Nacht näher am Flughafen?" });
+  await apn.waitFor();
+  const at = await apn.textContent();
+  if (!at.includes("06:30 ab SPU") || !at.includes("von Makarska") || !at.includes("Trogir")) fail("Vorschlag am Flughafen: " + at);
+  log("Plan: Rückflug 06:30 ab SPU, von Makarska ca. 1 h → letzte Nacht am Flughafen, z. B. Trogir");
+  await apn.locator(".linkbtn", { hasText: "Unterkunft am Flughafen suchen" }).click();
+  if ((await m.locator("label.f", { hasText: "Check-in" }).locator("input").inputValue()) !== "2027-07-28") fail("Check-in nicht die letzte Nacht");
+  const placeNow = await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue();
+  if (!(await m.locator(".st-near .chip.on", { hasText: placeNow }).count())) fail("Ort am Flughafen nicht vorgewählt: " + placeNow);
+  if (!(await m.locator(".st-near", { hasText: "Am Flughafen SPU" }).count())) fail("Orte am Flughafen fehlen");
+  await m.locator(".st-near .chip", { hasText: "Trogir" }).click();
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().waitFor();
+  const q3 = asked.at(-1);
+  if (q3.place !== "Trogir" || q3.country !== "Croatia" || q3.checkin !== "2027-07-28" || q3.checkout !== "2027-07-29") fail("Anfrage am Flughafen: " + JSON.stringify(q3));
+  log("Suche am Flughafen: Trogir, Croatia, eine Nacht 28.07. bis 29.07.");
+  await m.locator(".x").click();
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nUnterkunftssuche: alles in Ordnung");
