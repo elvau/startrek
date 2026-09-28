@@ -28,3 +28,8 @@ export function placeholderTravelers(rows: FamilyRow[], start = 0): Traveler[] {
   });
   return out;
 }
+
+/** Eine Person, anonym: „Reh“ (Standard für eine neue Reise) */
+export function soloTraveler(animal = "Reh"): Traveler {
+  return { id: uid(), name: animal, household: animal, kind: "adult", color: COLORS[0], placeholder: true };
+}

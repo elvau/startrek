@@ -33,6 +33,9 @@ try {
   await a.goto(URL);
   await a.locator(".modal h3", { hasText: "Willkommen" }).waitFor();
   await a.keyboard.press("Escape");
+  const solo = await a.locator(".person:not(.add) b").allTextContents();
+  if (solo.join() !== "Reh") fail("Start ohne anonymes Reh: " + solo);
+  log("Erster Start: 1-Personen-Reise mit anonymem Reh");
 
   // Gruppen und Personen anlegen
   await menu(a);
@@ -67,6 +70,8 @@ try {
   await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Mosel");
   await a.locator(".newtrip label", { hasText: "Von" }).locator("input").fill("2027-05-06");
   await a.locator(".newtrip label", { hasText: "Bis" }).locator("input").fill("2027-05-09");
+  if ((await a.locator(".newtrip .who-b.on").textContent()).includes("Reh") !== true) fail("Reh nicht vorausgewählt");
+  await a.locator(".newtrip .who-b", { hasText: "Gespeichert" }).click();
   await a.locator(".newtrip .grp-chip", { hasText: "Kegeln" }).click();
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
   await until(async () => (await a.locator(".hero h1").textContent()).includes("Mosel"), "neue Reise offen");
@@ -124,8 +129,8 @@ try {
   await menu(a);
   await a.locator(".tm-act", { hasText: "+ Neue Reise" }).click();
   await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Ostsee");
+  await a.locator(".newtrip .who-b", { hasText: "Rudel" }).click();
   const qf = a.locator(".newtrip .qf");
-  await qf.locator(".linkbtn").click();
   await qf.locator(".linkbtn").click();
   // Reh: 2 Erwachsene, 3 Kinder; Bär: 2 Erwachsene, 2 Kinder, 1 Kleinkind
   for (let k = 0; k < 3; k++) await qf.locator(".qf-row").nth(0).locator('[aria-label="Kinder mehr"]').click();
@@ -148,6 +153,16 @@ try {
   await a.locator("#trav .card").scrollIntoViewIfNeeded();
   await a.locator(".trav-acts .linkbtn", { hasText: "Als Gruppe speichern" }).click();
   await a.locator(".trav-note", { hasText: "Platzhalter werden nicht gespeichert" }).waitFor();
+  // Platzhalter durch gespeicherte Person ersetzen
+  await a.locator(".person", { hasText: "Reh Erw. 1" }).locator(".repl").click();
+  const cand = await a.locator(".repl-pick .chip").allTextContents();
+  if (!cand.some(c => c.includes("Dani Klein"))) fail("Kandidaten: " + cand);
+  await a.locator(".repl-pick .chip", { hasText: "Dani Klein" }).click();
+  const after = await a.locator(".person:not(.add) b").allTextContents();
+  if (after.length !== 10 || after[0] !== "Dani Klein" || after.includes("Reh Erw. 1")) fail("nach Ersetzen: " + after);
+  const hh3 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
+  if (!hh3.some(x => x.startsWith("Klein") && x.includes("100 €"))) fail("Klein nach Ersetzen: " + hh3);
+  log("„Reh Erw. 1“ durch die gespeicherte Dani Klein ersetzt, Familie Klein zahlt 100 €");
   log("Platzhalter: Familie Reh (2+3) und Bär (2+2+1 Kleinkind), 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
 
   // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da

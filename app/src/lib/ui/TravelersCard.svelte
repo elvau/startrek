@@ -23,6 +23,26 @@
     quick = false;
   }
 
+  // Platzhalter durch eine gespeicherte Person ersetzen; Reisender bleibt derselbe (Posten-Zuordnung bleibt)
+  let replacing = $state<string | null>(null);
+  const repl = $derived(app.trip.travelers.find(t => t.id === replacing) || null);
+  const candidates = $derived.by(() => {
+    if (!repl) return [];
+    const want = ageClass(repl.age, app.trip.settings, repl.kind);
+    const free = dir.people.filter(p => !app.trip.travelers.some(t => t.personId === p.id));
+    // passende Altersklasse zuerst (ohne Alter gespeichert zählt als passend)
+    const fits = (a?: number | null) => a == null || ageClass(a, app.trip.settings) === want;
+    return [...free.filter(p => fits(p.age)), ...free.filter(p => !fits(p.age))];
+  });
+  function replaceWith(pid: string) {
+    const p = dir.people.find(x => x.id === pid);
+    if (!repl || !p) return;
+    Object.assign(repl, { name: p.first, household: p.last, personId: p.id, placeholder: undefined });
+    // bekanntes Alter gilt, sonst bleibt die Altersklasse des Platzhalters
+    if (p.age != null) { repl.age = p.age; repl.kind = undefined; }
+    replacing = null;
+  }
+
   const missing = (s: string) => !s || !s.trim();
   const incomplete = $derived(app.trip.travelers.some(t => missing(t.name) || missing(t.household)));
 
@@ -44,7 +64,7 @@
     const name = prompt("Name der Gruppe, z. B. „Familie Klein“ oder „Kegelclub“:", app.trip.name);
     if (!name?.trim()) return;
     const g = saveAsGroup(name, real);
-    saved = `Gespeichert als Gruppe „${g.name}“ (${g.memberIds.length} Personen).`;
+    saved = `Gespeichert als Gruppe „${g.name}“ (${g.memberIds.length} ${g.memberIds.length === 1 ? "Person" : "Personen"}).`;
     setTimeout(() => (saved = ""), 4000);
   }
 </script>
@@ -52,7 +72,8 @@
 <div class="people">
   {#each app.trip.travelers as t, i (t.id)}
     {@const emoji = t.placeholder ? animalEmoji(t.household) : null}
-    <div class="person" class:off={!isActive(t)}>
+    {@const cls = ageClass(t.age, app.trip.settings, t.kind)}
+    <div class="person" class:off={!isActive(t)} class:kid={cls !== "adult"}>
       <span class="av" class:emoji style:--ring={t.color || COLORS[i % COLORS.length]} style:background={emoji ? null : t.color || COLORS[i % COLORS.length]}>{emoji || (t.name || "?")[0]}</span>
       {#if edit}
         <!-- ein echter Name macht aus dem Platzhalter eine Person -->
@@ -62,9 +83,12 @@
         <button class="linkbtn danger" onclick={() => (app.trip.travelers = app.trip.travelers.filter(x => x.id !== t.id))}>Entfernen</button>
       {:else}
         <b>{t.placeholder ? t.name : `${t.name || "Ohne Namen"} ${t.household}`}</b>
-        <span>{t.age != null && String(t.age) !== "" ? `${t.age} Jahre · ` : ""}{L[ageClass(t.age, app.trip.settings, t.kind)]}</span>
+        <span>{t.age != null && String(t.age) !== "" ? `${t.age} Jahre · ` : ""}{#if cls === "adult"}{L[cls]}{:else}<em class="age-pill {cls}">{L[cls]}</em>{/if}</span>
         <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
           onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? "✓ dabei" : "nicht dabei"}</button>
+        {#if t.placeholder && !access.readonly}
+          <button class="linkbtn repl" class:on={replacing === t.id} onclick={() => { replacing = replacing === t.id ? null : t.id; pick = quick = false; }}>Ersetzen</button>
+        {/if}
       {/if}
     </div>
   {/each}
@@ -75,12 +99,32 @@
   <div class="home trav-acts">
     <button class="linkbtn" onclick={e => { e.stopPropagation(); edit = !edit; }}>{edit ? "Fertig" : "Personen bearbeiten"}</button>
     {#if dir.groups.length || dir.people.length}<button class="linkbtn" onclick={() => (pick = !pick)}>Aus Gruppe hinzufügen</button>{/if}
-    <button class="linkbtn" onclick={openQuick}>Familie als Platzhalter</button>
+    <button class="linkbtn" onclick={() => { openQuick(); replacing = null; }}>Familie als Platzhalter</button>
     {#if app.trip.travelers.length}<button class="linkbtn" onclick={saveGroup}>Als Gruppe speichern</button>{/if}
     <button class="linkbtn" onclick={() => (groups = true)}>Gruppen verwalten</button>
   </div>
   {#if edit && incomplete}<p class="warnline trav-note">Vor- und Nachname sind Pflicht. Der Nachname fasst eine Familie zusammen.</p>{/if}
   {#if saved}<p class="muted trav-note">{saved}</p>{/if}
+  {#if repl}
+    <div class="pick repl-pick">
+      <span class="dlabel">„{repl.name}“ ersetzen durch</span>
+      {#if candidates.length}
+        <div class="chips">
+          {#each candidates as p (p.id)}
+            <button class="chip" onclick={() => replaceWith(p.id)}>{p.first} {p.last}{#if p.age != null} <small>{p.age}</small>{/if}</button>
+          {/each}
+        </div>
+      {:else if dir.people.length}
+        <p class="muted small">Alle gespeicherten Personen sind schon in dieser Reise.</p>
+      {:else}
+        <p class="muted small">Tipp: Du hast noch keine Personen gespeichert. Füge jetzt Personen zu deinen Gruppen hinzu, dann kannst du Platzhalter hier mit einem Tipp ersetzen.</p>
+      {/if}
+      <div class="repl-acts">
+        <button class="linkbtn" onclick={() => (groups = true)}>{dir.people.length ? "Gruppen verwalten" : "Personen und Gruppen anlegen"}</button>
+        <button class="linkbtn" onclick={() => (replacing = null)}>Abbrechen</button>
+      </div>
+    </div>
+  {/if}
   {#if quick}
     <div class="pick quick">
       <QuickFamilies bind:rows={fams} used={households} />
