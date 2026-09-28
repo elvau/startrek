@@ -18,18 +18,19 @@ App (GitHub Pages)  ──►  Such-Dienst (Cloudflare Worker)  ──►  Kiwi.
 Der Worker **„startrek“** ist in Cloudflare mit dem GitHub-Repo verbunden („Workers Builds“).
 Cloudflare baut und veröffentlicht bei jedem Push auf `main` selbst, eine GitHub Action ist dafür nicht nötig.
 
-Einmalig im Cloudflare-Dashboard: **Workers & Pages → startrek → Settings → Build**:
+Einmalig im Cloudflare-Dashboard: **Workers & Pages → startrek → Settings → Build** (Reiter „Production“):
 
 | Einstellung | Wert |
 |---|---|
 | Git repository | `elvau/startrek` |
-| Production branch | `main` |
-| **Root directory** | **`worker`** |
+| Branch control | `main` |
+| Root directory | `/` |
 | Build command | leer lassen |
 | Deploy command | `npx wrangler deploy` |
 
-Wichtig ist das Root directory `worker`: Dort liegt `wrangler.toml`, und der Name darin (`startrek`)
-muss zum Worker in Cloudflare passen.
+Die Konfiguration `wrangler.toml` liegt im Hauptordner des Repos und zeigt auf `worker/src/index.ts`.
+Ohne sie würde Wrangler den Ordner `app/` als statische Seite erkennen und dessen Quelldateien hochladen.
+Vorschau-Builds für Branches brauchen wir nicht: unter „Previews Base“ ausschalten oder dort ebenfalls `/` als Root directory.
 
 Danach: **Deployments → Retry build** (oder auf den nächsten Merge warten).
 Die Adresse steht unter **Settings → Domains & Routes** bei `workers.dev`,
@@ -68,5 +69,5 @@ VITE_FLIGHTS_URL=http://127.0.0.1:8787 npm run dev
 - `app/src/lib/flights/kiwi.ts`: Kiwi.com über den öffentlichen MCP-Server `https://mcp.kiwi.com`
 - `app/src/lib/flights/search.ts`: alle Quellen gleichzeitig, Doppelte raus, nach Preis sortiert; Prüfung der Anfrage
 - `app/src/lib/flights/app.ts`: in der App: Anfrage aus der Reise, Treffer als Angebot übernehmen
-- `worker/src/index.ts`: der Dienst selbst (Herkunftsprüfung, Zwischenspeicher)
+- `worker/src/index.ts`: der Dienst selbst (Herkunftsprüfung, Zwischenspeicher); Konfiguration in `wrangler.toml` im Hauptordner
 - `app/src/lib/ui/FlightSearch.svelte`: der Such-Dialog; „Hier buchen“ ist vorbereitet, aber noch ausgegraut
