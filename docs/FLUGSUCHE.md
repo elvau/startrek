@@ -1,15 +1,16 @@
-# Flugsuche: Such-Dienst einrichten
+# Flug- und Unterkunftssuche: Such-Dienst einrichten
 
-Die App fragt Flug-Anbieter nicht selbst ab. Das übernimmt ein kleiner Such-Dienst
+Die App fragt Flug- und Unterkunfts-Anbieter nicht selbst ab. Das übernimmt ein kleiner Such-Dienst
 (`worker/`, ein Cloudflare Worker). Er fragt alle eingerichteten Anbieter gleichzeitig,
 führt die Ergebnisse zusammen und hält die Schlüssel der Anbieter geheim.
 
 ```
-App (GitHub Pages)  ──►  Such-Dienst (Cloudflare Worker)  ──►  Kiwi.com, später Duffel, Travelpayouts …
+App (GitHub Pages)  ──►  Such-Dienst (Cloudflare Worker)  ──►  Flüge: Kiwi.com, später Duffel, Travelpayouts …
+                                                          ──►  Unterkünfte: Trivago, Booking.com
 ```
 
 - Kosten: Cloudflare Workers kostenlos (bis 100.000 Aufrufe pro Tag), keine Kreditkarte nötig.
-- Kiwi.com braucht keinen Schlüssel und läuft sofort.
+- Kiwi.com und Trivago brauchen keinen Schlüssel und laufen sofort.
 - Der Dienst nimmt nur Anfragen von `https://elvau.github.io` (und lokal) an.
 - Gleiche Suchen kommen 10 Minuten aus dem Zwischenspeicher.
 
@@ -53,6 +54,17 @@ Cloudflare-Dashboard → **Workers & Pages → startrek → Settings → Variabl
 Sobald ein Secret da ist, taucht der Anbieter in der Suche als „eingerichtet“ auf. Die Anbindung
 selbst (`app/src/lib/flights/`) folgt, wenn die Schlüssel vorliegen.
 
+## Unterkünfte
+
+- **Trivago** vergleicht viele Portale (Airbnb, CHECK24, Booking.com, Hotelseiten …) und läuft über den
+  öffentlichen MCP-Server `https://mcp.trivago.com/mcp` (andere Adresse: Variable `TRIVAGO_MCP_URL`).
+- **Booking.com** wird erst gefragt, wenn die Adresse seines MCP-Servers eingetragen ist:
+  Cloudflare-Dashboard → **Workers & Pages → startrek → Settings → Variables and Secrets → Add**,
+  Typ „Text“, Name `BOOKING_MCP_URL`. Bis dahin zeigt die Suche „Booking.com: noch nicht eingerichtet“.
+
+Die Suche fragt beide gleichzeitig, führt gleiche Unterkünfte zusammen (gleicher Name, gleiche Lage,
+die günstigere bleibt) und liefert Gesamtpreise für den ganzen Aufenthalt.
+
 ## Lokal ausprobieren
 
 ```
@@ -65,9 +77,11 @@ VITE_FLIGHTS_URL=http://127.0.0.1:8787 npm run dev
 
 ## Aufbau
 
+- `app/src/lib/mcp.ts`: kleiner MCP-Client für Kiwi, Trivago und Booking.com
+- `app/src/lib/stays/`: Unterkünfte (Anbieter, Zusammenführen, Anfrage aus der Reise), Dialog `app/src/lib/ui/StaySearch.svelte`
 - `app/src/lib/flights/types.ts`: gemeinsames Format (Anfrage, Treffer, Stand je Quelle)
 - `app/src/lib/flights/kiwi.ts`: Kiwi.com über den öffentlichen MCP-Server `https://mcp.kiwi.com`
 - `app/src/lib/flights/search.ts`: alle Quellen gleichzeitig, Doppelte raus, nach Preis sortiert; Prüfung der Anfrage
 - `app/src/lib/flights/app.ts`: in der App: Anfrage aus der Reise, Treffer als Angebot übernehmen
-- `worker/src/index.ts`: der Dienst selbst (Herkunftsprüfung, Zwischenspeicher); Konfiguration in `wrangler.toml` im Hauptordner
+- `worker/src/index.ts`: der Dienst selbst (`/flights/search`, `/stays/search`, Herkunftsprüfung, Zwischenspeicher); Konfiguration in `wrangler.toml` im Hauptordner
 - `app/src/lib/ui/FlightSearch.svelte`: der Such-Dialog; „Hier buchen“ ist vorbereitet, aber noch ausgegraut

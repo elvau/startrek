@@ -1,5 +1,6 @@
 /* Kiwi.com über den öffentlichen MCP-Server (ohne Schlüssel) */
 import type { FlightOffer, FlightQuery, OfferLeg } from "./types";
+import { callTool } from "../mcp";
 
 export const KIWI_MCP = "https://mcp.kiwi.com";
 
@@ -54,36 +55,9 @@ export function fromKiwi(data: any): FlightOffer[] {
   }));
 }
 
-/** JSON-RPC-Antwort lesen: als JSON oder als Server-Sent Events (Streamable HTTP) */
-async function rpc(res: Response): Promise<any> {
-  if (!res.ok) throw new Error(`Kiwi antwortet mit ${res.status}`);
-  const text = await res.text();
-  if ((res.headers.get("content-type") || "").includes("text/event-stream")) {
-    const msgs = text.split(/\r?\n/).filter(l => l.startsWith("data:")).map(l => { try { return JSON.parse(l.slice(5)); } catch { return null; } }).filter(Boolean);
-    return msgs.find(m => "result" in m || "error" in m) ?? msgs.at(-1);
-  }
-  return text ? JSON.parse(text) : null;
-}
-
-/** Suche über MCP: initialize → initialized → tools/call search-flight */
+/** Suche über den MCP-Server von Kiwi (Werkzeug search-flight) */
 export async function searchKiwi(q: FlightQuery, fetchFn: typeof fetch = fetch, url = KIWI_MCP): Promise<FlightOffer[]> {
-  const base = { "content-type": "application/json", accept: "application/json, text/event-stream" };
-  const init = await fetchFn(url, { method: "POST", headers: base, body: JSON.stringify({
-    jsonrpc: "2.0", id: 1, method: "initialize",
-    params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "reisekasse", version: "1.0" } }
-  }) });
-  const session = init.headers.get("mcp-session-id");
-  const hello = await rpc(init);
-  if (hello?.error) throw new Error(hello.error.message || "Kiwi: Verbindung abgelehnt");
-  const headers: Record<string, string> = { ...base, ...(session ? { "mcp-session-id": session } : {}) };
-  await fetchFn(url, { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) });
-  const res = await rpc(await fetchFn(url, { method: "POST", headers, body: JSON.stringify({
-    jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "search-flight", arguments: kiwiArgs(q) }
-  }) }));
-  if (res?.error) throw new Error(res.error.message || "Kiwi: Fehler bei der Suche");
-  const r = res?.result;
-  if (r?.isError) throw new Error(r.content?.[0]?.text || "Kiwi: Fehler bei der Suche");
-  const data = r?.structuredContent ?? JSON.parse(r?.content?.find((c: any) => c.type === "text")?.text || "{}");
+  const data = await callTool(url, "search-flight", kiwiArgs(q), "Kiwi", fetchFn);
   if (data?.error) throw new Error(String(data.error));
   return fromKiwi(data);
 }

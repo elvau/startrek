@@ -28,7 +28,8 @@
       {#if item.booking?.provider}<span class="muted">{item.booking.provider}{item.booking.cancelUntil ? ` · storniert gratis bis ${dateDE(item.booking.cancelUntil)}` : ""}</span>{/if}
     </div>
     <h3>{item.name || "Neue Unterkunft"}</h3>
-    {#if item.from && item.to}<div class="muted">{dateDE(item.from)} bis {dateDE(item.to)} · {nn} {nn === 1 ? "Nacht" : "Nächte"}{r?.stay ? ` · bis zu ${r.stay.maxOcc} Gäste` : ""}</div>{/if}
+    {#if r?.option?.label && r.option.label !== item.name}<div class="stay-opt">{r.option.label}{r.option.source?.name ? ` · ${r.option.source.name}` : ""}{item.options.length > 1 ? ` · ${item.options.length} Angebote` : ""}</div>{/if}
+    {#if item.from && item.to}<div class="muted">{dateDE(item.from)} bis {dateDE(item.to)} · {nn} {nn === 1 ? "Nacht" : "Nächte"}{r?.stay ? ` · bis zu ${r.stay.maxOcc} ${r.stay.maxOcc === 1 ? "Gast" : "Gäste"}` : ""}</div>{/if}
     <div class="facts">
       {#if s?.stars}<span class="fact">{"★".repeat(s.stars)}</span>{/if}
       {#if s?.rating}<span class="fact">{s.rating} % Bewertung</span>{/if}
