@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import data from "../../../../public/airports.json";
-import { countryName, locLabel, locOf, resolveLoc, searchLocs, type AirportData } from "./locations";
+import { airportsNear, areaAround, countryName, locLabel, locOf, resolveLoc, searchLocs, type AirportData } from "./locations";
 // @ts-expect-error Skript ohne Typen
 import { build, parseCsv } from "../../../../scripts/airports.mjs";
 
@@ -76,5 +76,25 @@ describe("Erzeugen der Flughafendaten (scripts/airports.mjs)", () => {
     expect(hnd[7]).toBe("Tokyo, Haneda");
     expect(out.airports.find((a: string[]) => a[0] === "CGN")[2]).toBe("Köln");
     expect(out.cities).toEqual([["TYO", "Tokio", "Tokyo", "JP", ["HND", "NRT"]]]);
+  });
+});
+
+describe("Umkreis", () => {
+  const makarska = { name: "Makarska", lat: 43.297, lon: 17.017, cc: "HR" };
+  it("alle Flughäfen im Umkreis eines Orts ohne eigenen Flughafen, nächste zuerst", () => {
+    const a = areaAround(d, makarska)!;
+    expect(a).toMatchObject({ kind: "area", city: "Makarska", cc: "HR" });
+    expect(a.airports.slice(0, 2).sort()).toEqual(["BWK", "SPU"]);
+    expect(a.airports).toContain("DBV");
+    expect(a.code).toBe(a.airports[0]);
+    expect(locLabel(a)).toMatch(/^Umkreis Makarska: /);
+  });
+  it("Flughäfen mit Entfernung", () => {
+    const near = airportsNear(d, makarska, 150);
+    expect(near[0].km).toBeLessThan(near.at(-1)!.km!);
+    expect(near.every(n => n.km! <= 150)).toBe(true);
+  });
+  it("kein Umkreis mitten im Nirgendwo", () => {
+    expect(areaAround(d, { name: "Atlantik", lat: 40, lon: -40 })).toBeNull();
   });
 });

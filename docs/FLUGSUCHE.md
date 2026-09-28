@@ -74,10 +74,15 @@ Flughäfen (Liste in `scripts/airports.mjs`). Die Datei wird bei jedem Deploy un
 (`node scripts/airports.mjs`); klappt der Abruf nicht, bleibt die Datei aus dem Projekt. Nichts davon liegt in Firebase:
 die Daten sind öffentlich, der Browser lädt sie einmal und hält sie im Cache.
 
-| Auswahl | Kiwi.com | Travelpayouts | Treffer |
+Eine Auswahl ist ein Name mit einer Liste von Codes:
+
+| Auswahl | Codes | Kiwi.com | Travelpayouts |
 |---|---|---|---|
-| Stadt, z. B. Tokio (TYO) | Stadtname „Tokyo“ | Stadt-Code TYO | nur an HND und NRT |
-| Flughafen, z. B. HND | HND | HND | nur an HND |
+| Flughafen, z. B. SPU | SPU | eine Anfrage „SPU“ | eine Anfrage je Monat |
+| Stadt, z. B. Tokio | HND, NRT (Stadt-Code TYO) | eine Anfrage „HND,NRT“ | eine Anfrage „TYO“ je Monat |
+| Umkreis, z. B. von Split (bis 150 km) | SPU, BWK, ZAD, OMO | eine Anfrage „SPU,BWK,ZAD,OMO“ | eine Anfrage je Flughafen und Monat, höchstens 12 (nächste Flughäfen zuerst) |
+
+Treffer an anderen Flughäfen fallen raus.
 
 ## Unterkünfte
 

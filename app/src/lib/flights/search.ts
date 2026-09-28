@@ -97,16 +97,16 @@ export function parseQuery(b: unknown): FlightQuery | string {
   if (o.maxStops != null) { if (!int(o.maxStops, 0, 2)) return "Umstiege: 0 bis 2"; opt.maxStops = o.maxStops as number; }
   if (o.bags != null) { if (typeof o.bags !== "boolean") return "Koffer: ja oder nein"; opt.bags = o.bags; }
   if (o.selfTransfer != null) { if (typeof o.selfTransfer !== "boolean") return "Self-Transfer: ja oder nein"; opt.selfTransfer = o.selfTransfer; }
-  const places: Pick<FlightQuery, "fromAirports" | "toAirports" | "fromCity" | "toCity"> = {};
+  const places: Pick<FlightQuery, "fromAirports" | "toAirports" | "fromCityCode" | "toCityCode"> = {};
   for (const k of ["fromAirports", "toAirports"] as const) {
     if (o[k] == null) continue;
     const v = o[k];
     if (!Array.isArray(v) || v.length > 8 || !v.every(x => typeof x === "string" && /^[A-Z]{3}$/.test(x))) return "Flughäfen: bis zu 8 Codes";
     if (v.length) places[k] = v as string[];
   }
-  for (const k of ["fromCity", "toCity"] as const) {
+  for (const k of ["fromCityCode", "toCityCode"] as const) {
     const v = str(k);
-    if (v.length > 60) return "Stadtname zu lang";
+    if (v && !/^[A-Z]{3}$/.test(v)) return "Stadt-Code ungültig";
     if (v) places[k] = v;
   }
   const currency = str("currency") || "EUR";

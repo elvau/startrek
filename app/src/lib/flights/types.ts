@@ -5,14 +5,14 @@ export interface FlightQuery {
   from: string;
   to: string;
   /**
-   * Auswahl aus der Liste: alle Flughäfen einer Stadt (NYC → JFK, EWR, LGA) bzw. der eine gewählte Flughafen.
-   * Treffer an anderen Flughäfen fallen raus.
+   * Auswahl aus der Liste als Codes: ein Flughafen (HND), alle einer Stadt (JFK, EWR, LGA) oder alle im Umkreis
+   * (SPU, BWK, DBV). Anbieter mit Listen (Kiwi) fragen einmal, andere je Code. Treffer an anderen Flughäfen fallen raus.
    */
   fromAirports?: string[];
   toAirports?: string[];
-  /** englischer Stadtname, wenn eine Stadt gewählt ist (für Anbieter, die Städte beim Namen suchen) */
-  fromCity?: string;
-  toCity?: string;
+  /** Stadt-Code, falls die Liste genau eine Stadt ist (TYO): dann reicht bei Travelpayouts eine Anfrage */
+  fromCityCode?: string;
+  toCityCode?: string;
   /** JJJJ-MM-TT */
   depart: string;
   /** fehlt: nur Hinflug */

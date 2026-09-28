@@ -39,7 +39,8 @@ try {
     await new Promise(res => setTimeout(res, 200));
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(RESULT) });
   });
-  await p.route("**/airports.json", r => r.fulfill({ path: "../public/airports.json" }));
+  for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+  await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   await p.goto(URL);
   await p.locator(".modal .btn", { hasText: "Los geht's" }).click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
@@ -108,10 +109,11 @@ try {
   await m.locator(".fs-res").first().waitFor();
   const tq = asked.slice(before);
   const lon = tq.find(x => x.from === "LON"), dus = tq.find(x => x.from !== "LON");
-  if (tq.length !== 3 || tq.some(x => x.to !== "TYO" || x.toCity !== "Tokyo" || x.toAirports?.join() !== "HND,NRT")) fail("Anfragen Tokio: " + JSON.stringify(tq));
-  if (!lon || lon.fromCity !== "London" || !lon.fromAirports?.includes("LHR") || !lon.fromAirports?.includes("STN")) fail("Abflug London: " + JSON.stringify(lon));
-  if (dus.fromAirports?.join() !== dus.from || dus.fromCity) fail("Abflug einzelner Flughafen: " + JSON.stringify(dus));
-  log("Tokio (alle: HND, NRT) als Ziel und London (alle) als Abflug: Stadt-Code, englischer Name und Flughafenliste gehen an den Such-Dienst");
+  if (tq.length !== 3 || tq.some(x => x.to !== "TYO" || x.toCityCode !== "TYO" || x.toAirports?.join() !== "HND,NRT")) fail("Anfragen Tokio: " + JSON.stringify(tq));
+  if (!lon || lon.fromCityCode !== "LON" || !lon.fromAirports?.includes("LHR") || !lon.fromAirports?.includes("STN")) fail("Abflug London: " + JSON.stringify(lon));
+  if (dus.fromAirports?.join() !== dus.from || dus.fromCityCode) fail("Abflug einzelner Flughafen: " + JSON.stringify(dus));
+  log("Tokio (alle: HND, NRT) als Ziel und London (alle) als Abflug: Stadt-Code und Flughafenliste gehen an den Such-Dienst");
+
   // zurück: London abwählen, Ziel wieder Split per Kürzel
   await lonChip.click();
   if (await m.locator(".fs-aps .chip", { hasText: "LON" }).count()) fail("London nicht entfernt");
@@ -160,9 +162,21 @@ try {
   const kAps = await m.locator(".fs-aps .chip.on").allTextContents();
   if (!kAps.includes("DUS") || kAps.includes("MUC")) fail("Flughäfen nicht zum Wohnort von Klein: " + kAps);
   if (!(await m.locator("p", { hasText: "1 Erw. · 1 Kind (Klein)" }).count())) fail("Personen für Klein: " + await m.locator(".fs-form p.muted").last().textContent());
+  // Ziel aus der Reise: Split → Flughafen SPU; Auswahlliste bietet alle Flughäfen im Umkreis und jeden einzeln mit Entfernung
+  const kDest = m.locator("label.f", { hasText: "Nach" }).locator("input");
+  for (let i = 0; i < 50 && !(await kDest.inputValue()).startsWith("SPU"); i++) await p.waitForTimeout(100);
+  if (!(await kDest.inputValue()).startsWith("SPU · Split")) fail("Ziel aus der Reise: " + await kDest.inputValue());
+  await m.locator(".lp:not(.fs-add) .lp-btn").click();
+  await m.locator(".lp-list li").first().waitFor();
+  const opts = await m.locator(".lp-list li").allTextContents();
+  if (!opts[0]?.includes("Alle Flughäfen im Umkreis von Split") || !opts[0].includes("BWK") || !opts.some(o => /SPU.*km/.test(o))) fail("Vorschläge Umkreis: " + JSON.stringify(opts.slice(0, 4)));
+  await m.locator(".lp-list li").first().click();
+  if (!(await kDest.inputValue()).startsWith("Umkreis Split: SPU")) fail("Auswahl Umkreis: " + await kDest.inputValue());
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   const k = asked.at(-1);
+  if (!k.toAirports?.includes("SPU") || !k.toAirports.includes("BWK") || k.toCityCode) fail("Anfrage Umkreis: " + JSON.stringify(k));
+  log(`Auswahlliste „Nach“: Umkreis Split gewählt, ${k.toAirports.join(", ")} gehen als Liste an den Such-Dienst`);
   if (k.adults !== 1 || k.children !== 1 || k.infants !== 0) fail("Anfrage nur für Klein: " + JSON.stringify(k));
   await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
   await p.keyboard.press("Escape");
