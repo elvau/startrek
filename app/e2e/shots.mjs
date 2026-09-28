@@ -6,7 +6,7 @@ const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port"
 await new Promise(r => setTimeout(r, 2500));
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 try {
-  const p = await b.newPage({ viewport: { width: 1280, height: 860 } });
+  const p = await b.newPage({ viewport: { width: 1280, height: 860 }, locale: "de-DE" });
   await p.goto("http://127.0.0.1:4174/"); await p.waitForTimeout(1200);
   await p.locator(".hero .acct .tm-btn").click(); await p.waitForTimeout(400);
   await p.screenshot({ path: `${OUT}/e-login.png` });
@@ -20,7 +20,7 @@ try {
   await p.locator(".tm-act", { hasText: "Teilen" }).click();
   await p.locator(".modal .btn", { hasText: "Link erstellen" }).click(); await p.waitForTimeout(800);
   await p.screenshot({ path: `${OUT}/e-share.png` });
-  const m = await b.newPage({ viewport: { width: 390, height: 844 } });
+  const m = await b.newPage({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
   await m.goto("http://127.0.0.1:4174/"); await m.waitForTimeout(1500);
   await m.screenshot({ path: `${OUT}/e-m-hero.png` });
 } finally { await b.close(); server.kill(); }

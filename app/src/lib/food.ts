@@ -3,16 +3,17 @@
  * (Pakete mit echten Richtwerten, sonst Schätzung nach Preisniveau), je Familie für die Tage vor Ort.
  * Die Posten „Verpflegung …“ im Kapitel Sonstiges werden daraus automatisch gesetzt.
  */
+import { t, type Key } from "./i18n/index.svelte";
 import { hhKey, isActive, uid, type FoodCfg, type FoodStyle, type Item, type Trip } from "./model";
 import { presences } from "./calc";
 import { nightsList, okDate } from "./calc/travel";
 import { ccOf, findCity, type GeoData } from "./geo/places";
 
-export const FOOD_STYLES: { k: FoodStyle; l: string; d: string }[] = [
-  { k: "self", l: "Überwiegend selbst", d: "Supermarkt, in der Unterkunft kochen" },
-  { k: "mix", l: "Gemischt", d: "Frühstück selbst, mittags günstig essen, abends selbst" },
-  { k: "out", l: "Überwiegend auswärts", d: "Restaurants, Imbiss, Cafés" },
-  { k: "treat", l: "Genießer", d: "öfter gehoben essen gehen" }
+/** Essensstil mit Namen und Beschreibung in der gewählten Sprache (Getter: folgt dem Sprachwechsel) */
+const style = (k: FoodStyle) => ({ k, get l() { return t(`food.style.${k}.l` as Key); }, get d() { return t(`food.style.${k}.d` as Key); } });
+
+export const FOOD_STYLES: { k: FoodStyle; readonly l: string; readonly d: string }[] = [
+  style("self"), style("mix"), style("out"), style("treat")
 ];
 /** Deutschland als Maßstab (Preisniveau 1), € pro Erwachsenem und Tag */
 export const FOOD_DE: Record<FoodStyle, number> = { self: 20, mix: 35, out: 55, treat: 85 };
@@ -67,8 +68,8 @@ export function syncFood(trip: Trip, g: GeoData): boolean {
     let it = trip.items.find(i => i.auto === "food" && i.hh === r.hh);
     const style = FOOD_STYLES.find(s => s.k === r.style)!;
     const want = {
-      name: `Verpflegung ${r.hh}`, participants: r.ids,
-      label: style.l, detail: `${r.note}. Richtwert${r.est ? " (geschätzt)" : ""} pro Tag, Kinder ${cfg.child} %, Kleinkinder ${cfg.infant} %`,
+      name: t("food.itemName", { hh: r.hh }), participants: r.ids,
+      label: style.l, detail: `${r.note}. ${r.est ? t("food.detailEst", { c: cfg.child, i: cfg.infant }) : t("food.detail", { c: cfg.child, i: cfg.infant })}`,
       price: { mode: "person" as const, currency: "EUR", adult: r.eur, child: Math.round(r.eur * cfg.child / 100), infant: Math.round(r.eur * cfg.infant / 100), qty: r.days }
     };
     if (!it) {

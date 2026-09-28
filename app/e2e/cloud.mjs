@@ -24,7 +24,7 @@ await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 const errors = [];
 async function person(name) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(`${name}: ${e.message}`));
   p.on("console", m => { if (m.text().startsWith("[rk]") || m.type() === "error") console.log(`  (${name}) ${m.text()}`); });

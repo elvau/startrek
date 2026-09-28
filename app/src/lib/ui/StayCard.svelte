@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from "../i18n/index.svelte";
   import type { Item } from "../model";
   import { app, calc } from "../store.svelte";
   import { eur } from "../calc";
@@ -11,11 +12,11 @@
   const sc = $derived(r?.stay);
   const nn = $derived(sc ? sc.nights.length : s?.nights || r?.option?.price.qty || 0);
   // Gäste, die nicht alle Nächte da sind
-  const partial = $derived(sc ? Object.entries(sc.w).filter(([, w]) => w < sc.nights.length).map(([id, w]) => `${app.trip.travelers.find(t => t.id === id)?.name || "?"} ${w} ${w === 1 ? "Nacht" : "Nächte"}`) : []);
+  const partial = $derived(sc ? Object.entries(sc.w).filter(([, w]) => w < sc.nights.length).map(([id, w]) => `${app.trip.travelers.find(x => x.id === id)?.name || "?"} ${tn("n.nights", w)}`) : []);
   const absent = $derived(sc ? sc.nights.filter(x => !sc.occ[x]).length : 0);
   const pct = $derived(r && r.net ? Math.min(100, (r.paid / r.net) * 100) : 0);
   let shown = $state(false);
-  $effect(() => { const t = setTimeout(() => (shown = true), 300); return () => clearTimeout(t); });
+  $effect(() => { const tm = setTimeout(() => (shown = true), 300); return () => clearTimeout(tm); });
 </script>
 
 <div class="stay">
@@ -25,37 +26,37 @@
   <div class="stay-b">
     <div class="stay-hd">
       <StatusBadge status={item.status} />
-      {#if item.booking?.provider}<span class="muted">{item.booking.provider}{item.booking.cancelUntil ? ` · storniert gratis bis ${dateDE(item.booking.cancelUntil)}` : ""}</span>{/if}
+      {#if item.booking?.provider}<span class="muted">{item.booking.provider}{item.booking.cancelUntil ? ` · ${t("stay.freeCancel", { d: dateDE(item.booking.cancelUntil) })}` : ""}</span>{/if}
     </div>
-    <h3>{item.name || "Neue Unterkunft"}</h3>
-    {#if r?.option?.label && r.option.label !== item.name}<div class="stay-opt">{r.option.label}{r.option.source?.name ? ` · ${r.option.source.name}` : ""}{item.options.length > 1 ? ` · ${item.options.length} Angebote` : ""}</div>{/if}
-    {#if item.from && item.to}<div class="muted">{dateDE(item.from)} bis {dateDE(item.to)} · {nn} {nn === 1 ? "Nacht" : "Nächte"}{r?.stay ? ` · bis zu ${r.stay.maxOcc} ${r.stay.maxOcc === 1 ? "Gast" : "Gäste"}` : ""}</div>{/if}
+    <h3>{item.name || t("stay.new")}</h3>
+    {#if r?.option?.label && r.option.label !== item.name}<div class="stay-opt">{r.option.label}{r.option.source?.name ? ` · ${r.option.source.name}` : ""}{item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""}</div>{/if}
+    {#if item.from && item.to}<div class="muted">{t("range.fromTo", { a: dateDE(item.from), b: dateDE(item.to) })} · {tn("n.nights", nn)}{r?.stay ? ` · ${t("stay.upTo", { g: tn("n.guests", r.stay.maxOcc) })}` : ""}</div>{/if}
     <div class="facts">
       {#if s?.stars}<span class="fact">{"★".repeat(s.stars)}</span>{/if}
-      {#if s?.rating}<span class="fact">{s.rating} % Bewertung</span>{/if}
+      {#if s?.rating}<span class="fact">{t("stay.rating", { p: s.rating })}</span>{/if}
       {#each s?.facts || [] as f}<span class="fact">{f}</span>{/each}
     </div>
     {#if nn}
       <div class="nights" class:in={shown}>
         {#each Array(Math.min(nn, 31)) as _, i}
           {@const x = sc?.nights[i]}
-          <span style="transition-delay:{i * 60}ms" class:empty={x && !sc?.occ[x]} title={x ? `${dateDE(x)}: ${sc?.occ[x] || 0} Gäste` : ""}><svg width="13" height="13"><use href="#i-moon" /></svg></span>
+          <span style="transition-delay:{i * 60}ms" class:empty={x && !sc?.occ[x]} title={x ? `${dateDE(x)}: ${tn("n.guests", sc?.occ[x] || 0)}` : ""}><svg width="13" height="13"><use href="#i-moon" /></svg></span>
         {/each}
       </div>
     {/if}
-    {#if sc?.over}<div class="warnline">⚠ In manchen Nächten mehr Gäste ({sc.maxOcc}) als Plätze ({r?.option?.price.capacity}).</div>{/if}
-    {#if absent}<div class="warnline">⚠ {absent} {absent === 1 ? "Nacht" : "Nächte"} ohne Gäste, der Preis wird auf alle verteilt.</div>{/if}
-    {#if partial.length}<div class="muted">Nicht alle Nächte da: {partial.join(", ")}</div>{/if}
+    {#if sc?.over}<div class="warnline">⚠ {t("stay.over", { g: sc.maxOcc, c: r?.option?.price.capacity ?? "?" })}</div>{/if}
+    {#if absent}<div class="warnline">⚠ {t("stay.empty", { n: tn("n.nights", absent) })}</div>{/if}
+    {#if partial.length}<div class="muted">{t("stay.partial", { list: partial.join(", ") })}</div>{/if}
     <div class="stay-foot">
       <div class="pay">
-        {#if item.status === "paid"}<span>Vollständig bezahlt</span>
-        {:else if r?.paid}<span>{eur(r.paid)} von {eur(r.net)} bezahlt</span>
-        {:else}<span>Noch nichts bezahlt</span>{/if}
+        {#if item.status === "paid"}<span>{t("pay.full")}</span>
+        {:else if r?.paid}<span>{t("pay.part", { a: eur(r.paid), b: eur(r.net) })}</span>
+        {:else}<span>{t("pay.none")}</span>{/if}
         <div class="bar"><i style:width="{shown ? pct : 0}%"></i></div>
       </div>
       <div class="price r">
         <b class="num">{eur(r?.net || 0)}</b>
-        <span>{nn ? `${eur((r?.net || 0) / nn)} pro Nacht` : ""}{nn && r?.n ? ` · ${eur((r?.net || 0) / nn / r.n)} p. P.` : ""}</span>
+        <span>{nn ? t("perNight", { v: eur((r?.net || 0) / nn) }) : ""}{nn && r?.n ? ` · ${t("pp", { v: eur((r?.net || 0) / nn / r.n) })}` : ""}</span>
       </div>
     </div>
   </div>

@@ -3,6 +3,7 @@
  * Reisen im Konto werden zusätzlich in Firestore gespeichert und live abgeglichen.
  * Bei gleichzeitigen Änderungen gewinnt die zuletzt gespeicherte Fassung der ganzen Reise.
  */
+import { t } from "../i18n/index.svelte";
 import type { User } from "firebase/auth";
 import type { Unsubscribe } from "firebase/firestore";
 import type { Trip } from "../model";
@@ -60,7 +61,7 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
   if (!configured) return;
   const f = await load();
   try {
-    await f.finishLoginLink(() => prompt("Zur Bestätigung: mit welcher E-Mail-Adresse hast du dich angemeldet?"));
+    await f.finishLoginLink(() => prompt(t("cloud.confirmEmail")));
   } catch (e) { cloud.error = message(e); }
   f.onUser(u => {
     fbUser = u;
@@ -103,7 +104,7 @@ export async function acceptJoin(): Promise<string | null> {
   cloud.join = null;
   if (isCloud(j.id)) { cloud.joined = j.id; return j.id; }
   try { await f.joinTrip(j.id, j.key, j.role, fbUser); cloud.joined = j.id; return j.id; }
-  catch (e) { cloud.joinError = "Die Einladung ist ungültig oder wurde zurückgezogen."; console.warn(e); return null; }
+  catch (e) { cloud.joinError = t("cloud.inviteInvalid"); console.warn(e); return null; }
 }
 
 /** Aktuelle Reise live beobachten, falls sie im Konto liegt */
@@ -157,7 +158,7 @@ export async function push(trip: Trip, json: string) {
   synced.set(trip.id, json);
   cloud.status = navigator.onLine ? "saving" : "offline";
   const f = await load();
-  try { await f.saveTrip(trip.id, trip.name || "Reise", json, fbUser.uid); cloud.status = "saved"; }
+  try { await f.saveTrip(trip.id, trip.name || t("trip"), json, fbUser.uid); cloud.status = "saved"; }
   catch (e) { cloud.error = message(e); cloud.status = "error"; synced.delete(trip.id); }
 }
 
@@ -169,7 +170,7 @@ export async function upload(trip: Trip) {
   synced.set(trip.id, json);
   cloud.loaded[trip.id] = true;
   creating.add(trip.id);
-  try { await f.createTrip(trip.id, trip.name || "Reise", json, fbUser); }
+  try { await f.createTrip(trip.id, trip.name || t("trip"), json, fbUser); }
   finally { creating.delete(trip.id); }
   if (wanted === trip.id) void watch(trip.id);
 }
@@ -202,9 +203,9 @@ export async function loginTest(email: string, name: string) { if (emulator) awa
 function message(e: unknown): string {
   const code = (e as { code?: string })?.code || "";
   if (code.includes("popup-closed")) return "";
-  if (code.includes("permission-denied")) return "Keine Berechtigung für diese Reise.";
-  if (code.includes("unavailable")) return "Keine Verbindung, Änderungen werden später gespeichert.";
-  if (code.includes("unauthorized-domain")) return "Diese Adresse ist in Firebase noch nicht freigegeben.";
-  if (code.includes("operation-not-allowed")) return "Diese Anmeldeart ist in Firebase noch nicht eingeschaltet.";
+  if (code.includes("permission-denied")) return t("cloud.denied");
+  if (code.includes("unavailable")) return t("cloud.offline");
+  if (code.includes("unauthorized-domain")) return t("cloud.domain");
+  if (code.includes("operation-not-allowed")) return t("cloud.method");
   return (e as Error)?.message || String(e);
 }

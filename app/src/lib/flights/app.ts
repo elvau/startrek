@@ -1,7 +1,8 @@
 /* Flugsuche in der App: Anfrage aus der Reise, Ergebnis als Angebot in einen Flug-Posten */
+import { t, tn } from "../i18n/index.svelte";
 import { ageClass } from "../calc";
 import { hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Trip } from "../model";
-import { nights } from "../format";
+import { dayShort, nights } from "../format";
 import { accessFor, airportsOf, roadKm } from "../calc/travel";
 import type { FlightOffer, FlightQuery, OfferLeg, SearchResult } from "./types";
 import type { RoundTrip } from "./roundtrip";
@@ -61,13 +62,13 @@ export function defaultQuery(trip: Trip, lastFrom = "", ids?: string[]): FlightQ
 
 const legOf = (dir: FlightLeg["dir"], l: OfferLeg): FlightLeg => ({ dir, from: l.from, to: l.to, dep: l.dep.slice(0, 16), arr: l.arr.slice(0, 16), carrier: l.carriers.join(" / "), stops: l.stops });
 
-export const stopsText = (n: number) => (n ? `${n} Umstieg${n > 1 ? "e" : ""}` : "direkt");
+export const stopsText = (n: number) => (n ? tn("n.stops", n) : t("fs.th.direct"));
 
 /** Suchergebnis als Angebot: Gesamtpreis für alle, gleich verteilt; mit Quelle und Link */
 export function offerToOption(o: FlightOffer): Option {
   return {
     id: uid(),
-    label: `${o.out.carriers.join(" / ")} ab ${o.out.from}, ${stopsText(o.out.stops)}`,
+    label: `${o.out.carriers.join(" / ")} ${t("fs.from", { ap: o.out.from })}, ${stopsText(o.out.stops)}`,
     detail: [o.out.route.join(" → "), o.back ? o.back.route.join(" → ") : ""].filter(Boolean).join(" · "),
     price: { mode: "unit", currency: o.currency, unit: o.price },
     source: { name: o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url },
@@ -86,7 +87,7 @@ export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: strin
   const act = trip.travelers.filter(isActive);
   const part = ids?.length && act.some(t => !ids.includes(t.id)) ? ids : undefined;
   const hhs = part ? [...new Set(act.filter(t => part.includes(t.id)).map(hhKey))] : [];
-  const name = hhs.length === 1 ? `Flug ${hhs[0]}` : `Flug ${o.out.fromCity || o.out.from} – ${o.out.toCity || o.out.to}`;
+  const name = hhs.length === 1 ? t("fl.nameFor", { who: hhs[0] }) : t("fl.nameRoute", { a: o.out.fromCity || o.out.from, b: o.out.toCity || o.out.to });
   const item: Item = { id: uid(), cat: "flights", name, status: "idea", options: [opt], ...(part ? { participants: [...part] } : {}) };
   trip.items.push(item);
   return item;
@@ -98,8 +99,8 @@ export function roundToOption(rt: RoundTrip, home: boolean): Option {
   const route = [rt.legs[0].out.from, ...rt.legs.map(l => l.out.to)];
   return {
     id: uid(),
-    label: `Rundreise ${route.join(" → ")}`,
-    detail: `${n === 1 ? "1 Ticket" : `${n} Tickets, getrennt buchen`}${rt.stays?.length ? ` · ${rt.stays.map(s => (s.hours != null ? `${s.name} ${Math.round(s.hours)} h` : `${s.name} ${s.nights} N.`)).join(" / ")}` : ""}`,
+    label: `${t("fs.round")} ${route.join(" → ")}`,
+    detail: `${n === 1 ? tn("n.tickets", 1) : t("round.separate", { n: tn("n.tickets", n) })}${rt.stays?.length ? ` · ${rt.stays.map(s => (s.hours != null ? `${s.name} ${Math.round(s.hours)} h` : `${s.name} ${t("round.nightsShort", { n: s.nights ?? 0 })}`)).join(" / ")}` : ""}`,
     price: { mode: "unit", currency: rt.legs[0].currency, unit: rt.price },
     source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: new Date().toISOString().slice(0, 10), url: rt.legs[0].url },
     legs: rt.legs.map((l, i) => legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out))
@@ -116,7 +117,7 @@ export function takeRound(trip: Trip, rt: RoundTrip, home: boolean, into?: strin
   const part = ids?.length && act.some(t => !ids.includes(t.id)) ? ids : undefined;
   const hhs = part ? [...new Set(act.filter(t => part.includes(t.id)).map(hhKey))] : [];
   const cities = rt.legs.map(l => l.out.toCity || l.out.to);
-  const item: Item = { id: uid(), cat: "flights", name: `Rundreise ${(home ? cities.slice(0, -1) : cities).join(" – ")}${hhs.length === 1 ? ` (${hhs[0]})` : ""}`, status: "idea", options: [opt], ...(part ? { participants: [...part] } : {}) };
+  const item: Item = { id: uid(), cat: "flights", name: `${t("fs.round")} ${(home ? cities.slice(0, -1) : cities).join(" – ")}${hhs.length === 1 ? ` (${hhs[0]})` : ""}`, status: "idea", options: [opt], ...(part ? { participants: [...part] } : {}) };
   trip.items.push(item);
   return item;
 }
@@ -128,10 +129,10 @@ export function rateRound(trip: Trip, rt: RoundTrip, home: boolean, withAccess: 
 }
 
 export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promise<SearchResult> {
-  if (!FLIGHTS_URL) throw new Error("Der Such-Dienst ist noch nicht eingerichtet.");
+  if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   const res = await fetch(`${FLIGHTS_URL}/flights/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Such-Dienst antwortet mit ${res.status}`);
+  if (!res.ok) throw new Error(data.error || t("search.status", { s: res.status }));
   return data as SearchResult;
 }
 
@@ -141,7 +142,7 @@ export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promi
 export function followFlight(trip: Trip, mainId: string, ids: string[]): Item {
   const act = trip.travelers.filter(isActive);
   const hhs = [...new Set(act.filter(t => ids.includes(t.id)).map(hhKey))];
-  const item: Item = { id: uid(), cat: "flights", name: `Flug ${hhs.join(", ") || "Mitreisende"}`, status: "idea", follow: mainId, participants: [...ids], options: [] };
+  const item: Item = { id: uid(), cat: "flights", name: t("fl.nameFor", { who: hhs.join(", ") || t("fl.companions") }), status: "idea", follow: mainId, participants: [...ids], options: [] };
   trip.items.push(item);
   return item;
 }
@@ -198,7 +199,7 @@ export interface CompareRow { code: string; price: number; access: number; total
 
 /** Vergleich je Flughafen: günstigster Treffer, Anfahrt, gesamt, Reisezeit (Flug + 2 × Anfahrt), günstigster Direktflug */
 export function compareRow(code: string, list: Rated[], error?: string): CompareRow {
-  if (!list.length) return { code, price: 0, access: 0, total: 0, hours: 0, direct: null, count: 0, error: error || "keine Verbindung gefunden" };
+  if (!list.length) return { code, price: 0, access: 0, total: 0, hours: 0, direct: null, count: 0, error: error || t("fs.noConnection") };
   const cheap = list.reduce((a, b) => (b.total < a.total ? b : a));
   const dir = list.filter(o => !o.out.stops && !o.back?.stops);
   const flightH = (cheap.out.minutes + (cheap.back?.minutes || 0)) / 60;
@@ -211,5 +212,5 @@ export function compareRow(code: string, list: Rated[], error?: string): Compare
 /** Wochentag, Datum, Uhrzeit aus Minuten, z. B. „Mo 29.07. 18:10“ */
 export function fmtMin(mins: number): string {
   const d = new Date(mins * 60000), p = (n: number) => String(n).padStart(2, "0");
-  return `${["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][d.getUTCDay()]} ${p(d.getUTCDate())}.${p(d.getUTCMonth() + 1)}. ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+  return `${dayShort(d.toISOString().slice(0, 10))} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
 }

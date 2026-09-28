@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, tn } from "../i18n/index.svelte";
   import { onMount } from "svelte";
   import { access, app, calc } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
@@ -10,6 +11,7 @@
   import TripMenu from "./TripMenu.svelte";
   import GroupsButton from "./GroupsButton.svelte";
   import TripEditor from "./TripEditor.svelte";
+  import LangSelect from "./LangSelect.svelte";
 
   let editing = $state(false);
   // Überschrift: eigener Name, sonst Ort (mit Land) oder der vorläufige Name
@@ -37,8 +39,8 @@
   // Summe beim Start hochzählen, danach direkt folgen
   onMount(() => {
     const t0 = performance.now(), target = calc.T.total;
-    const step = (t: number) => {
-      const k = Math.min(1, (t - t0) / 1400);
+    const step = (ts: number) => {
+      const k = Math.min(1, (ts - t0) / 1400);
       shown = target * (1 - Math.pow(1 - k, 3));
       if (k < 1) requestAnimationFrame(step); else counting = false;
     };
@@ -53,13 +55,14 @@
   <div class="hero-bar">
     <TripMenu />
     <div class="hero-r">
-      {#if !access.readonly}<button class="hero-edit" onclick={() => (editing = !editing)} aria-expanded={editing} aria-label={editing ? "Schließen" : "Reise bearbeiten"}><span class="ico" aria-hidden="true">{editing ? "×" : "✎"}</span><span class="lbl">{editing ? "Schließen" : "Reise bearbeiten"}</span></button>{/if}
+      {#if !access.readonly}<button class="hero-edit" onclick={() => (editing = !editing)} aria-expanded={editing} aria-label={editing ? t("close") : t("hero.edit")}><span class="ico" aria-hidden="true">{editing ? "×" : "✎"}</span><span class="lbl">{editing ? t("close") : t("hero.edit")}</span></button>{/if}
       <GroupsButton />
       <Account />
+      <LangSelect />
     </div>
   </div>
-  {#if access.loading}<div class="banner">Lade den aktuellen Stand aus dem Konto…</div>
-  {:else if access.readonly}<div class="banner">Du siehst diese Reise nur an.</div>{/if}
+  {#if access.loading}<div class="banner">{t("hero.loading")}</div>
+  {:else if access.readonly}<div class="banner">{t("hero.readonly")}</div>{/if}
   {#if cloud.joinError}<div class="banner err">{cloud.joinError} <button class="linkbtn" onclick={() => (cloud.joinError = "")}>OK</button></div>{/if}
   <div class="hero-in">
     {#if editing}
@@ -70,19 +73,19 @@
         {#if access.readonly}
           <h1>{title}</h1>
         {:else}
-          <h1 class="h1-name" contenteditable="true" spellcheck="false" aria-label="Name der Reise, zum Umbenennen hineinklicken"
-            title="Zum Umbenennen hineinklicken" onkeydown={nameKey} onblur={e => saveName(e.currentTarget)}>{title}</h1>
+          <h1 class="h1-name" contenteditable="true" spellcheck="false" aria-label={t("hero.renameAria")}
+            title={t("hero.rename")} onkeydown={nameKey} onblur={e => saveName(e.currentTarget)}>{title}</h1>
         {/if}
       {/key}
-      <div class="meta">{[where, range(trip.from, trip.to), nights(trip.from, trip.to) ? `${nights(trip.from, trip.to)} Nächte` : "", n ? `${n} ${n === 1 ? "Person" : "Personen"}` : "noch niemand dabei"].filter(Boolean).join(" · ")}</div>
+      <div class="meta">{[where, range(trip.from, trip.to), nights(trip.from, trip.to) ? tn("n.nights", nights(trip.from, trip.to)) : "", n ? tn("n.persons", n) : t("nobody")].filter(Boolean).join(" · ")}</div>
     {/if}
     {#if !access.readonly}
-      <div class="hero-mode"><ModeSwitch value={tripMode()} onchange={setAllDetailed} label="Ganze Reise: einfach oder detailliert" />{#if tripMode() === "mixed"}<span class="muted small">gemischt</span>{/if}</div>
+      <div class="hero-mode"><ModeSwitch value={tripMode()} onchange={setAllDetailed} label={t("hero.mode")} />{#if tripMode() === "mixed"}<span class="muted small">{t("hero.mixed")}</span>{/if}</div>
     {/if}
     <div class="total">
       <b class="num">{eur(value)}</b>
-      <span>{n ? `${eur(calc.T.total / n)} pro Person` : "noch niemand dabei"}{calc.T.fixed ? ` · davon ${eur(calc.T.fixed)} fest` : ""}</span>
+      <span>{n ? t("perPerson", { v: eur(calc.T.total / n) }) : t("nobody")}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
     </div>
   </div>
-  <div class="hint"><i></i>Reise entdecken</div>
+  <div class="hint"><i></i>{t("hero.discover")}</div>
 </section>

@@ -25,7 +25,7 @@ await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 const errors = [];
 try {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
   p.on("pageerror", e => errors.push(e.message));
   const asked = [];
   await p.route("https://flights.test/stays/search", async r => {
@@ -180,6 +180,17 @@ try {
   const rl = await p.locator("#misc .fs-direct a", { hasText: "Restaurants" }).getAttribute("href");
   if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
   log("Verpflegung: Klein 12 Tage, Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
+
+  // Sprache umschalten: Texte, Datums- und Betragsformat folgen, die Wahl bleibt nach dem Neuladen
+  await p.locator(".hero .lang-sel").selectOption("en");
+  await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
+  if ((await p.evaluate(() => document.documentElement.lang)) !== "en") fail("html lang nicht en");
+  if (!(await p.locator(".top .nav").textContent()).includes("Flights")) fail("Kapitel nicht übersetzt");
+  await p.reload();
+  await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
+  await p.locator(".hero .lang-sel").selectOption("de");
+  await p.locator("#stay .st-open", { hasText: "Unterkunft suchen" }).waitFor();
+  log("Sprache: Englisch gewählt, Oberfläche übersetzt, bleibt nach dem Neuladen; zurück auf Deutsch");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nUnterkunftssuche: alles in Ordnung");

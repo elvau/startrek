@@ -1,14 +1,16 @@
 <script lang="ts">
+  import { t } from "../i18n/index.svelte";
   /* Bearbeiten eines Postens im Fokusmodus: Status, Angebote, Preis, Beteiligte */
   import { hhKey, isActive, uid, type FlightLeg, type Item, type Status } from "../model";
   import { app, removeItem } from "../store.svelte";
+  import type { Key } from "../i18n/index.svelte";
   import { activeOption, ageClass, eur, followed } from "../calc";
   import { dayShort, time } from "../format";
   import { openStaySearch } from "../stays/open.svelte";
   import { openFlightSearch } from "../flights/open.svelte";
 
   let { item }: { item: Item } = $props();
-  const STATUS: [Status, string][] = [["idea", "Idee"], ["chosen", "Gewählt"], ["booked", "Gebucht"], ["paid", "Bezahlt"], ["dropped", "Verworfen"]];
+  const STATUS: Status[] = ["idea", "chosen", "booked", "paid", "dropped"];
 
   const opt = $derived(activeOption(item, app.trip) || item.options[0]);
   const all = $derived(!item.participants);
@@ -67,24 +69,24 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div class="editor" onclick={e => e.stopPropagation()}>
   <div class="ed-row">
-    <label class="f grow">Bezeichnung<input bind:value={item.name} placeholder="z. B. Hotel am Strand" /></label>
+    <label class="f grow">{t("ie.name")}<input bind:value={item.name} placeholder={t("ie.namePh")} /></label>
   </div>
 
   <div class="ed-sec">
-    <span class="dlabel">Status</span>
-    <div class="seg" role="radiogroup" aria-label="Status">
-      {#each STATUS as [k, l]}
-        <button role="radio" aria-checked={item.status === k} class:on={item.status === k} data-s={k} onclick={() => (item.status = k)}>{l}</button>
+    <span class="dlabel">{t("ie.status")}</span>
+    <div class="seg" role="radiogroup" aria-label={t("ie.status")}>
+      {#each STATUS as k}
+        <button role="radio" aria-checked={item.status === k} class:on={item.status === k} data-s={k} onclick={() => (item.status = k)}>{t(`status.${k}` as Key)}</button>
       {/each}
     </div>
   </div>
 
   {#if item.options.length > 1}
     <div class="ed-sec">
-      <span class="dlabel">Angebot</span>
+      <span class="dlabel">{t("ie.offer")}</span>
       <div class="chips">
         {#each item.options as o, i (o.id)}
-          <button class="chip" class:on={o.id === opt?.id} onclick={() => (item.chosen = o.id)}>{o.label || `Angebot ${i + 1}`}</button>
+          <button class="chip" class:on={o.id === opt?.id} onclick={() => (item.chosen = o.id)}>{o.label || t("ie.offerN", { n: i + 1 })}</button>
         {/each}
       </div>
     </div>
@@ -92,111 +94,111 @@
 
   {#if isStay}
     <div class="ed-sec">
-      <span class="dlabel">Zeitraum</span>
+      <span class="dlabel">{t("ie.period")}</span>
       <div class="ed-row">
-        <label class="f">Anreise<input type="date" bind:value={item.from} /></label>
-        <label class="f">Abreise<input type="date" bind:value={item.to} min={item.from} /></label>
-        <span class="muted ed-note">Jede Nacht zählt nur für die, die dann da sind.</span>
+        <label class="f">{t("ie.checkin")}<input type="date" bind:value={item.from} /></label>
+        <label class="f">{t("hh.departure")}<input type="date" bind:value={item.to} min={item.from} /></label>
+        <span class="muted ed-note">{t("ie.nightsHint")}</span>
       </div>
-      <div><button class="btn primary sm st-item" onclick={() => openStaySearch({ itemId: item.id })}>🔎 Unterkunft suchen</button></div>
+      <div><button class="btn primary sm st-item" onclick={() => openStaySearch({ itemId: item.id })}>🔎 {t("st.open")}</button></div>
     </div>
   {/if}
 
   {#if isFlight && others.length}
     <div class="ed-sec">
-      <span class="dlabel">Flug</span>
+      <span class="dlabel">{t("ie.flight")}</span>
       <div class="chips">
-        <button class="chip" class:on={!main} onclick={() => setFollow(undefined)}>Eigener Flug</button>
-        {#each others as o (o.id)}<button class="chip" class:on={main?.id === o.id} onclick={() => setFollow(o.id)}>Wie {o.name || "anderer Flug"}</button>{/each}
+        <button class="chip" class:on={!main} onclick={() => setFollow(undefined)}>{t("ie.ownFlight")}</button>
+        {#each others as o (o.id)}<button class="chip" class:on={main?.id === o.id} onclick={() => setFollow(o.id)}>{t("ie.like", { name: o.name || t("ie.otherFlight") })}</button>{/each}
       </div>
       {#if main}
         {@const out = opt?.legs?.find(l => l.dir === "out")}
         {@const back = opt?.legs?.find(l => l.dir === "back")}
-        <p class="muted small">Gleicher Flug wie „{main.name}“{out?.dep ? `: hin ${dayShort(out.dep)} ${time(out.dep)} ab ${out.from}` : ""}{back?.dep ? `, zurück ${dayShort(back.dep)} ${time(back.dep)}` : ""}. Preis pro Person wie dort{opt?.price.adult ? ` (${eur(opt.price.adult)})` : ""}, Anfahrt zum Flughafen für die eigene Familie. Aufenthalt und Unterkunftsplan folgen dem Flug.</p>
-        <div><button class="btn sm fs-item" onclick={() => openFlightSearch({ itemId: item.id })}>✈ Eigenen Flug suchen und vergleichen</button></div>
+        <p class="muted small">{t("ie.sameFlight", { name: main.name })}{out?.dep ? `: ${t("ie.sameOut", { day: dayShort(out.dep), time: time(out.dep), ap: out.from })}` : ""}{back?.dep ? `, ${t("ie.sameBack", { day: dayShort(back.dep), time: time(back.dep) })}` : ""}. {t("ie.samePrice")}{opt?.price.adult ? ` (${eur(opt.price.adult)})` : ""}, {t("ie.sameRest")}</p>
+        <div><button class="btn sm fs-item" onclick={() => openFlightSearch({ itemId: item.id })}>✈ {t("ie.searchOwn")}</button></div>
       {/if}
     </div>
   {/if}
 
   {#if isFlight && opt && !main}
     <div class="ed-sec">
-      <span class="dlabel">Flugzeiten</span>
-      {#each [["out", "Hinflug"], ["back", "Rückflug"]] as [dir, l] (dir)}
+      <span class="dlabel">{t("ie.times")}</span>
+      {#each [["out", t("ie.outFlight")], ["back", t("ie.backFlight")]] as [dir, l] (dir)}
         {@const L = legOf(dir as "out" | "back")}
         <div class="ed-row">
           <span class="ed-leg">{l}</span>
-          <label class="f">Von<input class="short" maxlength="3" placeholder="DUS" value={L?.from ?? ""} oninput={e => setLeg(dir as "out", "from", e.currentTarget.value)} /></label>
-          <label class="f">Nach<input class="short" maxlength="3" placeholder="SPU" value={L?.to ?? ""} oninput={e => setLeg(dir as "out", "to", e.currentTarget.value)} /></label>
-          <label class="f">Abflug<input type="datetime-local" value={L?.dep ?? ""} oninput={e => setLeg(dir as "out", "dep", e.currentTarget.value)} /></label>
-          <label class="f">Ankunft<input type="datetime-local" value={L?.arr ?? ""} oninput={e => setLeg(dir as "out", "arr", e.currentTarget.value)} /></label>
-          <label class="f">Umstiege<input class="n sm" type="number" min="0" max="4" value={L?.stops ?? 0} oninput={e => setLeg(dir as "out", "stops", e.currentTarget.value)} /></label>
+          <label class="f">{t("te.from")}<input class="short" maxlength="3" placeholder="DUS" value={L?.from ?? ""} oninput={e => setLeg(dir as "out", "from", e.currentTarget.value)} /></label>
+          <label class="f">{t("ie.to")}<input class="short" maxlength="3" placeholder="SPU" value={L?.to ?? ""} oninput={e => setLeg(dir as "out", "to", e.currentTarget.value)} /></label>
+          <label class="f">{t("ie.dep")}<input type="datetime-local" value={L?.dep ?? ""} oninput={e => setLeg(dir as "out", "dep", e.currentTarget.value)} /></label>
+          <label class="f">{t("ie.arr")}<input type="datetime-local" value={L?.arr ?? ""} oninput={e => setLeg(dir as "out", "arr", e.currentTarget.value)} /></label>
+          <label class="f">{t("ie.stops")}<input class="n sm" type="number" min="0" max="4" value={L?.stops ?? 0} oninput={e => setLeg(dir as "out", "stops", e.currentTarget.value)} /></label>
         </div>
       {/each}
-      <div><button class="btn primary sm fs-item" onclick={() => openFlightSearch({ itemId: item.id })}>✈ Flüge suchen{item.participants ? ` für ${[...new Set(app.trip.travelers.filter(t => item.participants!.includes(t.id)).map(hhKey))].join(", ")}` : ""}</button></div>
-      <label class="check"><input type="checkbox" checked={item.access !== false} onchange={e => (item.access = e.currentTarget.checked ? undefined : false)} /> Anreise zum Abflughafen einrechnen (Auto mit Parken oder Bahn, je Familie)</label>
+      <div><button class="btn primary sm fs-item" onclick={() => openFlightSearch({ itemId: item.id })}>✈ {t("fs.open")}{item.participants ? ` ${t("ie.forWho", { who: [...new Set(app.trip.travelers.filter(x => item.participants!.includes(x.id)).map(hhKey))].join(", ") })}` : ""}</button></div>
+      <label class="check"><input type="checkbox" checked={item.access !== false} onchange={e => (item.access = e.currentTarget.checked ? undefined : false)} /> {t("ie.access")}</label>
     </div>
   {/if}
 
   {#if opt && !main}
     <div class="ed-sec">
       <div class="ed-row">
-        <label class="f grow">Angebot<input bind:value={opt.label} placeholder="Anbieter, Tarif" /></label>
-        <label class="f">Abrechnung
+        <label class="f grow">{t("ie.offer")}<input bind:value={opt.label} placeholder={t("ie.offerPh")} /></label>
+        <label class="f">{t("ie.billing")}
           <select bind:value={opt.price.mode}>
-            <option value="person">pro Person</option>
-            <option value="unit">pauschal</option>
+            <option value="person">{t("simple.perPerson")}</option>
+            <option value="unit">{t("ie.flat")}</option>
           </select>
         </label>
-        <label class="f">Währung<input class="short" bind:value={opt.price.currency} maxlength="3" /></label>
+        <label class="f">{t("ie.currency")}<input class="short" bind:value={opt.price.currency} maxlength="3" /></label>
       </div>
       <div class="ed-row">
         {#if opt.price.mode === "person"}
-          <label class="f">Erwachsene{perNight ? " / Nacht" : ""}<input class="n" inputmode="decimal" value={opt.price.adult ?? ""} oninput={e => (opt.price.adult = num(e.currentTarget.value))} /></label>
-          <label class="f">Kinder<input class="n" inputmode="decimal" placeholder="wie Erw." value={opt.price.child ?? ""} oninput={e => (opt.price.child = num(e.currentTarget.value))} /></label>
-          <label class="f">Kleinkinder<input class="n" inputmode="decimal" placeholder="wie Kind" value={opt.price.infant ?? ""} oninput={e => (opt.price.infant = num(e.currentTarget.value))} /></label>
+          <label class="f">{t("age.adults")}{perNight ? ` / ${t("ie.night")}` : ""}<input class="n" inputmode="decimal" value={opt.price.adult ?? ""} oninput={e => (opt.price.adult = num(e.currentTarget.value))} /></label>
+          <label class="f">{t("age.kids")}<input class="n" inputmode="decimal" placeholder={t("ie.likeAdult")} value={opt.price.child ?? ""} oninput={e => (opt.price.child = num(e.currentTarget.value))} /></label>
+          <label class="f">{t("age.infants")}<input class="n" inputmode="decimal" placeholder={t("ie.likeChild")} value={opt.price.infant ?? ""} oninput={e => (opt.price.infant = num(e.currentTarget.value))} /></label>
         {:else}
-          <label class="f">Preis{perNight ? " pro Nacht" : ""}<input class="n" inputmode="decimal" value={opt.price.unit ?? ""} oninput={e => (opt.price.unit = num(e.currentTarget.value))} /></label>
+          <label class="f">{t("ie.price")}{perNight ? ` ${t("ie.perNight")}` : ""}<input class="n" inputmode="decimal" value={opt.price.unit ?? ""} oninput={e => (opt.price.unit = num(e.currentTarget.value))} /></label>
           {#if isStay && item.from && item.to}
-            <label class="f">gilt
+            <label class="f">{t("ie.applies")}
               <select value={opt.price.basis === "stay" ? "stay" : "night"} onchange={e => (opt.price.basis = e.currentTarget.value as "night" | "stay")}>
-                <option value="night">pro Nacht</option>
-                <option value="stay">für den Aufenthalt</option>
+                <option value="night">{t("ie.perNight")}</option>
+                <option value="stay">{t("ie.perStay")}</option>
               </select>
             </label>
-            <label class="f">Max. Gäste<input class="n" inputmode="numeric" placeholder="egal" value={opt.price.capacity ?? ""} oninput={e => (opt.price.capacity = num(e.currentTarget.value))} /></label>
+            <label class="f">{t("ie.maxGuests")}<input class="n" inputmode="numeric" placeholder={t("ie.any")} value={opt.price.capacity ?? ""} oninput={e => (opt.price.capacity = num(e.currentTarget.value))} /></label>
           {:else}
-            <label class="f">Pers. pro Einheit<input class="n" inputmode="numeric" placeholder="egal" value={opt.price.capacity ?? ""} oninput={e => { opt.price.capacity = num(e.currentTarget.value); opt.price.multiply = !!opt.price.capacity; }} /></label>
+            <label class="f">{t("ie.perUnit")}<input class="n" inputmode="numeric" placeholder={t("ie.any")} value={opt.price.capacity ?? ""} oninput={e => { opt.price.capacity = num(e.currentTarget.value); opt.price.multiply = !!opt.price.capacity; }} /></label>
           {/if}
         {/if}
-        <label class="f">Menge<input class="n" inputmode="decimal" placeholder="1" value={opt.price.qty ?? ""} oninput={e => (opt.price.qty = num(e.currentTarget.value))} /></label>
+        <label class="f">{t("ie.qty")}<input class="n" inputmode="decimal" placeholder="1" value={opt.price.qty ?? ""} oninput={e => (opt.price.qty = num(e.currentTarget.value))} /></label>
       </div>
       {#if isStay && opt.price.mode === "unit" && opt.price.capacity}
-        <label class="check"><input type="checkbox" bind:checked={opt.price.multiply} /> Bei mehr Gästen weitere Zimmer oder Apartments dazubuchen</label>
+        <label class="check"><input type="checkbox" bind:checked={opt.price.multiply} /> {t("ie.multiply")}</label>
       {/if}
       <div class="ed-row">
-        <button class="linkbtn" onclick={addOption}>+ Angebot zum Vergleichen</button>
-        {#if item.options.length > 1}<button class="linkbtn danger" onclick={dropOption}>Dieses Angebot entfernen</button>{/if}
+        <button class="linkbtn" onclick={addOption}>+ {t("ie.addOffer")}</button>
+        {#if item.options.length > 1}<button class="linkbtn danger" onclick={dropOption}>{t("ie.dropOffer")}</button>{/if}
       </div>
     </div>
   {/if}
 
   <div class="ed-sec">
-    <span class="dlabel">Wer ist dabei</span>
+    <span class="dlabel">{t("ie.who")}</span>
     <div class="chips">
-      <button class="chip" class:on={all} onclick={() => (item.participants = undefined)}>Alle</button>
-      {#each people as t (t.id)}
-        {@const cls = ageClass(t.age, app.trip.settings, t.kind)}
-        <button class="chip" class:on={all || item.participants?.includes(t.id)} onclick={() => togglePerson(t.id)}>{t.name || "Ohne Namen"}{#if cls !== "adult"} <em class="age-pill {cls}">{cls === "child" ? "Kind" : "Kleinkind"}</em>{/if}</button>
+      <button class="chip" class:on={all} onclick={() => (item.participants = undefined)}>{t("all")}</button>
+      {#each people as p (p.id)}
+        {@const cls = ageClass(p.age, app.trip.settings, p.kind)}
+        <button class="chip" class:on={all || item.participants?.includes(p.id)} onclick={() => togglePerson(p.id)}>{p.name || t("trav.noName")}{#if cls !== "adult"} <em class="age-pill {cls}">{t(`age.class.${cls}` as Key)}</em>{/if}</button>
       {/each}
     </div>
   </div>
 
   <div class="ed-row">
-    <label class="f grow">Notiz<input bind:value={item.note} placeholder="Details, erscheint auf der Karte" /></label>
+    <label class="f grow">{t("ie.note")}<input bind:value={item.note} placeholder={t("ie.notePh")} /></label>
   </div>
 
   <div class="ed-foot">
-    <button class="linkbtn danger" onclick={() => removeItem(item.id)}>Posten löschen</button>
-    <button class="btn primary" onclick={() => (app.editing = null)}>Fertig</button>
+    <button class="linkbtn danger" onclick={() => removeItem(item.id)}>{t("ie.delete")}</button>
+    <button class="btn primary" onclick={() => (app.editing = null)}>{t("done")}</button>
   </div>
 </div>

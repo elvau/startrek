@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { arrow, t, tn } from "../i18n/index.svelte";
   /*
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
    * feste Daten (± Tage) oder flexibler Zeitraum mit „spätestens zuhause“ und Nächten per Schieberegler.
@@ -128,7 +129,7 @@
 
   const pax = $derived(passengers(trip, who));
   const n = $derived(pax.adults + pax.children + pax.infants);
-  const people = $derived([`${pax.adults} Erw.`, pax.children && `${pax.children} ${pax.children === 1 ? "Kind" : "Kinder"}`, pax.infants && `${pax.infants} ${pax.infants === 1 ? "Baby" : "Babys"}`].filter(Boolean).join(" · "));
+  const people = $derived([`${pax.adults} ${t("age.adultShort")}`, pax.children && tn("n.kids", pax.children), pax.infants && tn("n.babies", pax.infants)].filter(Boolean).join(" · "));
 
   let busy = $state(false);
   let progress = $state("");
@@ -164,22 +165,22 @@
   async function search(e: Event) {
     e.preventDefault();
     error = ""; list = null; rows = []; sources = []; lateOut = 0; rounds = null; roundErrors = [];
-    if (!aps.length) { error = "Bitte mindestens einen Abflughafen auswählen."; return; }
+    if (!aps.length) { error = t("fs.errAirport"); return; }
     if (kind === "round") return roundSearch();
     if (kind === "oneway") {
-      if (mode === "flex" && (!rFrom || !wTo)) { error = "Bitte früheste und späteste Abreise eintragen."; return; }
-      if (mode === "flex" && wTo < rFrom) { error = "Die späteste Abreise liegt vor der frühesten."; return; }
-      if (mode === "flex" && nights(rFrom, wTo) > 62) { error = "Das Zeitfenster darf höchstens 2 Monate lang sein."; return; }
-      if (mode === "fixed" && !out) { error = "Bitte ein Abflugdatum eintragen."; return; }
+      if (mode === "flex" && (!rFrom || !wTo)) { error = t("fs.errWindow"); return; }
+      if (mode === "flex" && wTo < rFrom) { error = t("fs.errWindowOrder"); return; }
+      if (mode === "flex" && nights(rFrom, wTo) > 62) { error = t("fs.errWindowLong"); return; }
+      if (mode === "fixed" && !out) { error = t("fs.errDepart"); return; }
     } else if (mode === "flex") {
-      if (span == null) { error = "Bitte früheste Hinreise und spätestes Zuhause-Datum eintragen."; return; }
-      if (span < 1) { error = "Das Zuhause-Datum liegt vor der frühesten Hinreise."; return; }
-    } else if (!out) { error = "Bitte ein Hinflugdatum eintragen."; return; }
-    if (n > 9) { error = `Es fliegen ${n} Personen. Kiwi sucht höchstens 9 Personen pro Buchung. Oben bei „Wer fliegt“ eine Familie wählen und je Familie suchen.`; return; }
-    if (!whoIds.length) { error = "Bitte oben auswählen, wer fliegt."; return; }
+      if (span == null) { error = t("fs.errFlex"); return; }
+      if (span < 1) { error = t("fs.errFlexOrder"); return; }
+    } else if (!out) { error = t("fs.errOut"); return; }
+    if (n > 9) { error = t("fs.errMax", { n }); return; }
+    if (!whoIds.length) { error = t("fs.errWho"); return; }
     // Ziel: gewählte Stadt oder Flughafen; Freitext wird nachgeschlagen („Split“ → SPU)
     const dest = toLoc ?? resolveLoc(airportData, to, cc) ?? areaFor(to);
-    if (!dest && !/^[A-Za-z]{3}$/.test(to.trim())) { error = `„${to.trim()}“ nicht gefunden. Bitte einen Vorschlag aus der Liste wählen oder den Flughafen-Code eingeben.`; return; }
+    if (!dest && !/^[A-Za-z]{3}$/.test(to.trim())) { error = t("fs.errNotFound", { q: to.trim() }); return; }
     // Auswahl = Name + Liste von Codes; bei einer Stadt zusätzlich ihr Stadt-Code
     const toQ = dest ? { to: dest.code, toAirports: dest.airports, ...(dest.kind === "city" ? { toCityCode: dest.code } : {}) } : { to: to.trim().toUpperCase() };
     const fromQ = (code: string) => { const l = originLoc(code); return l ? { from: l.code, fromAirports: l.airports, ...(l.kind === "city" ? { fromCityCode: l.code } : {}) } : { from: code }; };
@@ -196,7 +197,7 @@
     let late = 0;
     try {
       for (const [i, code] of aps.entries()) {
-        progress = `${code} (${i + 1} von ${aps.length})`;
+        progress = t("fs.progress", { code, i: i + 1, n: aps.length });
         try {
           const r = await searchFlights({ ...q, ...fromQ(code) }, ctrl.signal);
           r.sources.forEach(s => { const p = src.get(s.id); src.set(s.id, p ? { ...p, ok: p.ok || s.ok, count: p.count + s.count, error: p.ok ? p.error : s.error } : { ...s }); });
@@ -224,14 +225,14 @@
   const placeOf = (l: Loc): RoundPlace => ({ name: l.kind === "airport" ? l.code : l.city, code: l.code, airports: l.airports, ...(l.kind === "city" ? { cityCode: l.code } : {}) });
 
   async function roundSearch() {
-    if (!rFrom || !wTo || wTo < rFrom) { error = "Bitte früheste und späteste Abreise eintragen."; return; }
-    if (n > 9) { error = `Es fliegen ${n} Personen. Kiwi sucht höchstens 9 Personen pro Buchung. Oben bei „Wer fliegt“ eine Familie wählen.`; return; }
-    if (!whoIds.length) { error = "Bitte oben auswählen, wer fliegt."; return; }
+    if (!rFrom || !wTo || wTo < rFrom) { error = t("fs.errWindow"); return; }
+    if (n > 9) { error = t("fs.errMax", { n }); return; }
+    if (!whoIds.length) { error = t("fs.errWho"); return; }
     const stops: RoundStop[] = [];
     for (const [i, st] of stations.entries()) {
       const l = st.loc ?? resolveLoc(airportData, st.text, cc) ?? areaFor(st.text);
-      if (!l) { error = `Station ${i + 1}: „${st.text.trim() || "leer"}“ nicht gefunden. Bitte einen Vorschlag aus der Liste wählen.`; return; }
-      if (!(st.min >= 0 && st.max >= st.min && st.max <= 60)) { error = `Station ${i + 1}: Nächte von 0 bis 60, von ≤ bis.`; return; }
+      if (!l) { error = t("fs.errStation", { i: i + 1, q: st.text.trim() || "—" }); return; }
+      if (!(st.min >= 0 && st.max >= st.min && st.max <= 60)) { error = t("fs.errStationNights", { i: i + 1 }); return; }
       stops.push({ place: placeOf(l), min: st.min, max: st.max });
     }
     // Start: alle gewählten Abflughäfen als eine Liste (Städte mit all ihren Flughäfen)
@@ -244,11 +245,11 @@
     const signal = ctrl.signal;
     try {
       const plan = { from, stops, home, depart: rFrom, departTo: wTo, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" };
-      const run = (p: typeof plan, what: string) => searchRound(p, q => searchFlights(q, signal), (k, of) => (progress = `${what}Strecke ${k} von ${of}`));
+      const run = (p: typeof plan, what: string) => searchRound(p, q => searchFlights(q, signal), (k, of) => (progress = `${what}${t("fs.leg", { k, n: of })}`));
       // getrennte Flüge; kurze Stationen (unter 48 h) zusätzlich als Gabelflug mit langem Umstieg auf einem Ticket
       const res = [await run(plan, "")];
       const short = stops.slice(0, home ? stops.length : -1).some(isShort);
-      if (short) res.push(await run({ ...plan, stops: stops.map(s => (isShort(s) ? { ...s, via: true } : s)) }, "Gabelflug: "));
+      if (short) res.push(await run({ ...plan, stops: stops.map(s => (isShort(s) ? { ...s, via: true } : s)) }, `${t("fs.openJaw")}: `));
       const seen = new Set<string>();
       rounds = res.flatMap(r => r.trips).filter(rt => (seen.has(rt.id) ? false : (seen.add(rt.id), true)))
         .map(rt => ({ rt, r: rateRound(trip, rt, home, withAccess, who) })).sort((a, b) => a.r.total - b.r.total).slice(0, 30);
@@ -285,141 +286,141 @@
 {#snippet legRow(dir: string, l: OfferLeg)}
   <div class="fs-leg">
     <span class="fs-dir">{dir}</span>
-    <span><b>{dayShort(l.dep)} {time(l.dep)} → {time(l.arr)}</b> · {dur(l.minutes)} · {stopsText(l.stops)}</span>
+    <span><b>{dayShort(l.dep)} {time(l.dep)} {arrow()} {time(l.arr)}</b> · {dur(l.minutes)} · {stopsText(l.stops)}</span>
     <span class="muted">{l.route.join(" → ")} · {l.carriers.join(" / ")}</span>
   </div>
 {/snippet}
 
-<Modal title={item ? `Flüge suchen: ${item.name || "Flug"}` : "Flüge suchen"} {onclose} wide>
+<Modal title={item ? `${t("fs.open")}: ${item.name || t("ie.flight")}` : t("fs.open")} {onclose} wide>
   <form class="fs-form" onsubmit={search}>
     <div class="fs-who">
-      <span class="dlabel">Wer fliegt</span>
+      <span class="dlabel">{t("fs.who")}</span>
       <div class="chips">
-        <button type="button" class="chip" class:on={!who} aria-pressed={!who} onclick={() => setWho(undefined)}>Alle ({act.length})</button>
+        <button type="button" class="chip" class:on={!who} aria-pressed={!who} onclick={() => setWho(undefined)}>{t("all")} ({act.length})</button>
         {#if hhs.length > 1}
           {#each hhs as h (h)}
-            {@const ms = act.filter(t => hhKey(t) === h)}
-            <button type="button" class="chip" class:on={hhOn(h)} aria-pressed={hhOn(h)} onclick={() => toggleHh(h)}>{h} ({ms.length}){#if ms.every(t => cov.has(t.id)) && !item}<small> hat Flug</small>{/if}</button>
+            {@const ms = act.filter(x => hhKey(x) === h)}
+            <button type="button" class="chip" class:on={hhOn(h)} aria-pressed={hhOn(h)} onclick={() => toggleHh(h)}>{h} ({ms.length}){#if ms.every(x => cov.has(x.id)) && !item}<small> {t("fs.hasFlight")}</small>{/if}</button>
           {/each}
         {/if}
       </div>
-      <details class="more"><summary class="muted small">Einzelne Personen</summary>
-        <div class="chips">{#each act as t (t.id)}<button type="button" class="chip sm" class:on={whoIds.includes(t.id)} aria-pressed={whoIds.includes(t.id)} onclick={() => togglePerson(t.id)}>{t.name}</button>{/each}</div>
+      <details class="more"><summary class="muted small">{t("fs.single")}</summary>
+        <div class="chips">{#each act as p (p.id)}<button type="button" class="chip sm" class:on={whoIds.includes(p.id)} aria-pressed={whoIds.includes(p.id)} onclick={() => togglePerson(p.id)}>{p.name}</button>{/each}</div>
       </details>
-      {#if hhs.length > 1 && !who}<p class="muted small">Tipp wie im Artefakt: je Familie suchen, dann gelten eigene Abflughäfen und die eigene Anfahrt.</p>{/if}
+      {#if hhs.length > 1 && !who}<p class="muted small">{t("fs.tipFamily")}</p>{/if}
       {#if who && mains.length && !item}
-        <div class="chips fs-along"><span class="muted small">Oder mitfliegen, gleicher Flug:</span>
-          {#each mains as mm (mm.id)}<button type="button" class="chip sm" onclick={() => flyAlong(mm.id)}>Wie {mm.name}</button>{/each}
+        <div class="chips fs-along"><span class="muted small">{t("fs.alongLabel")}</span>
+          {#each mains as mm (mm.id)}<button type="button" class="chip sm" onclick={() => flyAlong(mm.id)}>{t("ie.like", { name: mm.name })}</button>{/each}
         </div>
       {/if}
-      {#if alongCost != null}<p class="muted small">Bisher: mitfliegen wie „{trip.items.find(i => i.id === item?.follow)?.name}“ für {eur(alongCost)} inkl. Anfahrt. Die Treffer zeigen den Unterschied; „Übernehmen“ macht daraus einen eigenen Flug.</p>{/if}
+      {#if alongCost != null}<p class="muted small">{t("fs.alongCost", { name: trip.items.find(i => i.id === item?.follow)?.name || "", v: eur(alongCost) })}</p>{/if}
     </div>
     <div>
-      <span class="dlabel">Abflughäfen (werden einzeln abgefragt und verglichen)</span>
+      <span class="dlabel">{t("fs.origins")}</span>
       <div class="chips fs-aps">
         {#each allCodes as c (c)}
           {@const a = known.find(x => x.code === c)}
           {@const l = a ? null : originLoc(c)}
-          <button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} title={a?.name || (l ? locLabel(l) : c)} onclick={() => toggleAp(c)}>{c}{#if l?.kind === "city"}<small>{l.name}, alle</small>{/if}</button>
+          <button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} title={a?.name || (l ? locLabel(l) : c)} onclick={() => toggleAp(c)}>{c}{#if l?.kind === "city"}<small>{t("fs.cityAll", { name: l.name })}</small>{/if}</button>
         {/each}
-        <LocationPicker cls="fs-add" placeholder="+ Stadt oder Code" clearOnPick onpick={addAp} />
+        <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
       </div>
       <p class="muted small">
-        {#if custom}Eigene Auswahl. <button type="button" class="linkbtn" onclick={resetAps}>Standard wiederherstellen</button>
-        {:else}Standard: die 4 nächsten Flughäfen zum Wohnort.{/if}
+        {#if custom}{t("fs.custom")} <button type="button" class="linkbtn" onclick={resetAps}>{t("fs.reset")}</button>
+        {:else}{t("fs.default")}{/if}
       </p>
     </div>
 
-    <div class="chips fs-kind" role="radiogroup" aria-label="Art der Reise">
-      {#each [["return", "Hin & zurück"], ["oneway", "Nur Hinflug"], ["round", "Rundreise"]] as [k, t] (k)}
-        <button type="button" role="radio" aria-checked={kind === k} class="chip" class:on={kind === k} onclick={() => setKind(k as typeof kind)}>{t}</button>
+    <div class="chips fs-kind" role="radiogroup" aria-label={t("fs.kind")}>
+      {#each [["return", t("fs.return")], ["oneway", t("fs.oneway")], ["round", t("fs.round")]] as [k, lbl] (k)}
+        <button type="button" role="radio" aria-checked={kind === k} class="chip" class:on={kind === k} onclick={() => setKind(k as typeof kind)}>{lbl}</button>
       {/each}
     </div>
 
     {#if kind !== "round"}
-    <div class="chips fs-mode" role="radiogroup" aria-label="Daten">
-      <button type="button" role="radio" aria-checked={mode === "fixed"} class="chip" class:on={mode === "fixed"} onclick={() => (mode = "fixed")}>Feste Daten</button>
-      <button type="button" role="radio" aria-checked={mode === "flex"} class="chip" class:on={mode === "flex"} onclick={() => (mode = "flex")}>Flexibler Zeitraum</button>
+    <div class="chips fs-mode" role="radiogroup" aria-label={t("fs.dates")}>
+      <button type="button" role="radio" aria-checked={mode === "fixed"} class="chip" class:on={mode === "fixed"} onclick={() => (mode = "fixed")}>{t("fs.fixed")}</button>
+      <button type="button" role="radio" aria-checked={mode === "flex"} class="chip" class:on={mode === "flex"} onclick={() => (mode = "flex")}>{t("fs.flex")}</button>
     </div>
 
-    <LocationPicker label="Nach" bind:value={toLoc} bind:text={to} placeholder="Flughafen, Stadt oder Ort wählen" required near={nearDest} {areaFor} />
-    {#if toLoc && toLoc.kind !== "airport"}<p class="muted small fs-note">Sucht über {toLoc.airports.length} Flughäfen: {toLoc.airports.join(", ")}. Nur einen? In der Liste den Flughafen wählen.</p>{/if}
+    <LocationPicker label={t("ie.to")} bind:value={toLoc} bind:text={to} placeholder={t("fs.toPh")} required near={nearDest} {areaFor} />
+    {#if toLoc && toLoc.kind !== "airport"}<p class="muted small fs-note">{t("fs.multiNote", { n: toLoc.airports.length, list: toLoc.airports.join(", ") })}</p>{/if}
 
     {/if}
 
     {#if kind === "round"}
       <div class="fs-flexbox">
         <div class="ed-row">
-          <label class="f">Abflug frühestens<input type="date" bind:value={rFrom} required /></label>
-          <label class="f">spätestens<input type="date" bind:value={wTo} min={rFrom} required /></label>
+          <label class="f">{t("fs.depEarliest")}<input type="date" bind:value={rFrom} required /></label>
+          <label class="f">{t("fs.latest")}<input type="date" bind:value={wTo} min={rFrom} required /></label>
         </div>
         <div class="fs-stations">
           {#each stations as st, i (i)}
             <div class="fs-station">
-              <LocationPicker label="{i + 1}. Station" bind:value={st.loc} bind:text={st.text} placeholder="Stadt, Flughafen oder Ort" near={i === 0 ? nearDest : []} {areaFor} />
-              <label class="f fs-n">Nächte von<input type="number" min="0" max="60" bind:value={st.min} /></label>
-              <label class="f fs-n">bis<input type="number" min="1" max="60" bind:value={st.max} /></label>
-              {#if stations.length > 1}<button type="button" class="btn sm fs-del" aria-label="Station {i + 1} entfernen" onclick={() => (stations = stations.filter((_, j) => j !== i))}>×</button>{/if}
+              <LocationPicker label={t("fs.station", { i: i + 1 })} bind:value={st.loc} bind:text={st.text} placeholder={t("fs.stationPh")} near={i === 0 ? nearDest : []} {areaFor} />
+              <label class="f fs-n">{t("fs.nightsFrom")}<input type="number" min="0" max="60" bind:value={st.min} /></label>
+              <label class="f fs-n">{t("range.to")}<input type="number" min="1" max="60" bind:value={st.max} /></label>
+              {#if stations.length > 1}<button type="button" class="btn sm fs-del" aria-label={t("fs.stationRemove", { i: i + 1 })} onclick={() => (stations = stations.filter((_, j) => j !== i))}>×</button>{/if}
             </div>
-            {#if st.max <= 1 && (home || i < stations.length - 1)}<p class="muted small fs-short">Unter 48 Stunden: wird auch als Gabelflug gesucht, ein Ticket mit langem Umstieg dort.</p>{/if}
+            {#if st.max <= 1 && (home || i < stations.length - 1)}<p class="muted small fs-short">{t("fs.shortHint")}</p>{/if}
           {/each}
-          {#if stations.length < 5}<button type="button" class="btn sm fs-addst" onclick={() => (stations = [...stations, { loc: null, text: "", min: 3, max: 6 }])}>+ Station</button>{/if}
+          {#if stations.length < 5}<button type="button" class="btn sm fs-addst" onclick={() => (stations = [...stations, { loc: null, text: "", min: 3, max: 6 }])}>+ {t("fs.addStation")}</button>{/if}
         </div>
-        <label class="in-row"><input type="checkbox" bind:checked={home} /> Am Ende zurück nach Hause ({aps.join(", ")})</label>
-        <p class="muted small">Jede Strecke wird einzeln gesucht und passend zu den Nächten kombiniert. Die Flüge sind getrennte Tickets.</p>
+        <label class="in-row"><input type="checkbox" bind:checked={home} /> {t("fs.homeAtEnd", { list: aps.join(", ") })}</label>
+        <p class="muted small">{t("fs.roundHint")}</p>
       </div>
     {:else if kind === "oneway"}
       {#if mode === "flex"}
         <div class="ed-row">
-          <label class="f">Früheste Abreise<input type="date" bind:value={rFrom} required /></label>
-          <label class="f">Späteste Abreise<input type="date" bind:value={wTo} min={rFrom} required /></label>
+          <label class="f">{t("fs.earliestDep")}<input type="date" bind:value={rFrom} required /></label>
+          <label class="f">{t("fs.latestDep")}<input type="date" bind:value={wTo} min={rFrom} required /></label>
         </div>
-        <p class="muted small">Gesucht wird der günstigste Tag im Zeitfenster, nur Hinflug. Den Weiterflug oder Rückflug später einzeln suchen.</p>
+        <p class="muted small">{t("fs.onewayHint")}</p>
       {:else}
         <div class="ed-row">
-          <label class="f">Abflug am<input type="date" bind:value={out} required /></label>
-          <label class="f fs-sel">± Tage<select bind:value={flexDays}>{#each [0, 1, 2, 3] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
+          <label class="f">{t("fs.depOn")}<input type="date" bind:value={out} required /></label>
+          <label class="f fs-sel">{t("fs.plusMinus")}<select bind:value={flexDays}>{#each [0, 1, 2, 3] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
         </div>
       {/if}
     {:else if mode === "flex"}
       <div class="fs-flexbox">
         <div class="ed-row">
-          <label class="f">Früheste Hinreise<input type="date" bind:value={rFrom} required /></label>
-          <label class="f">Spätestens zuhause am<input type="date" bind:value={rTo} min={rFrom} required /></label>
-          <label class="f fs-time">um<input type="time" bind:value={rToTime} /></label>
+          <label class="f">{t("fs.earliestOut")}<input type="date" bind:value={rFrom} required /></label>
+          <label class="f">{t("fs.homeBy")}<input type="date" bind:value={rTo} min={rFrom} required /></label>
+          <label class="f fs-time">{t("fs.at")}<input type="time" bind:value={rToTime} /></label>
         </div>
         {#if span == null}
-          <p class="muted small">Bitte früheste Hinreise und spätestes Zuhause-Datum eintragen.</p>
+          <p class="muted small">{t("fs.errFlex")}</p>
         {:else if span < 1}
-          <p class="warnline small">Das Zuhause-Datum liegt vor der frühesten Hinreise.</p>
+          <p class="warnline small">{t("fs.errFlexOrder")}</p>
         {:else}
-          <DualRange bind:lo bind:hi min={1} max={span} label="Reisedauer (Nächte vor Ort)" unit="Nächte" maxNote="max. {span} (ganzer Zeitraum)" />
+          <DualRange bind:lo bind:hi min={1} max={span} label={t("fs.duration")} unit={t("fs.nightsUnit")} maxNote={t("fs.maxNote", { n: span })} />
         {/if}
-        <p class="muted small">Gesucht wird der günstigste Hin- und Rückflugtag im Zeitraum. Rückflüge, bei denen ihr nach Landung, Gepäck und Heimfahrt nicht rechtzeitig zuhause wärt, fallen raus.</p>
+        <p class="muted small">{t("fs.flexHint")}</p>
       </div>
     {:else}
       <div class="ed-row">
-        <label class="f">Hin am<input type="date" bind:value={out} required /></label>
-        <label class="f">Rück am <small class="muted">(leer = nur Hinweg)</small><input type="date" bind:value={ret} min={out} /></label>
-        <label class="f fs-sel">± Tage<select bind:value={flexDays}>{#each [0, 1, 2, 3] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
+        <label class="f">{t("fs.outOn")}<input type="date" bind:value={out} required /></label>
+        <label class="f">{t("fs.backOn")} <small class="muted">({t("fs.backEmpty")})</small><input type="date" bind:value={ret} min={out} /></label>
+        <label class="f fs-sel">{t("fs.plusMinus")}<select bind:value={flexDays}>{#each [0, 1, 2, 3] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
       </div>
     {/if}
 
     <div class="ed-row fs-opts">
-      <label class="f fs-sel">Umstiege max.<select bind:value={maxStops}>{#each [0, 1, 2] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
-      <label class="in-row"><input type="checkbox" bind:checked={bags} /> 1 Koffer pro Person</label>
-      <label class="in-row"><input type="checkbox" bind:checked={noSelf} /> ohne Self-Transfer</label>
-      <label class="in-row"><input type="checkbox" bind:checked={withAccess} /> Anfahrt einrechnen</label>
+      <label class="f fs-sel">{t("fs.maxStops")}<select bind:value={maxStops}>{#each [0, 1, 2] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
+      <label class="in-row"><input type="checkbox" bind:checked={bags} /> {t("fs.bag")}</label>
+      <label class="in-row"><input type="checkbox" bind:checked={noSelf} /> {t("fs.noSelf")}</label>
+      <label class="in-row"><input type="checkbox" bind:checked={withAccess} /> {t("fs.withAccess")}</label>
     </div>
-    <p class="muted small">{people}{who ? ` (${[...new Set(flyers(trip, who).map(hhKey))].join(", ")})` : " (alle aus „Wer fährt mit“)"}. Preise gelten für alle zusammen, die Anfahrt {who ? ([...new Set(flyers(trip, who).map(hhKey))].length === 1 ? "nur für diese Familie" : "nur für diese Familien") : "für alle Familien"}.</p>
-    {#if !FLIGHTS_URL}<p class="warnline small">Der Such-Dienst ist noch nicht eingerichtet. Anleitung: docs/FLUGSUCHE.md im Projekt.</p>{/if}
-    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `Suche läuft… ${progress}` : kind === "round" ? "Rundreise suchen" : aps.length > 1 ? `${aps.length} Flughäfen vergleichen` : "Suchen"}</button>
+    <p class="muted small">{people}{who ? ` (${[...new Set(flyers(trip, who).map(hhKey))].join(", ")})` : ` (${t("fs.allTrav")})`}. {who ? ([...new Set(flyers(trip, who).map(hhKey))].length === 1 ? t("fs.pricesOne") : t("fs.pricesSome")) : t("fs.pricesAll")}</p>
+    {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
+    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `${t("fs.busy")} ${progress}` : kind === "round" ? t("fs.roundBtn") : aps.length > 1 ? t("fs.compareN", { n: aps.length }) : t("fs.searchBtn")}</button>
     {#if kind !== "round" && to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
       {@const d0 = toLoc ?? resolveLoc(airportData, to, cc)}
       {@const o0 = originLoc(aps[0])}
       {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: kind === "oneway" ? undefined : mode === "flex" ? rTo || undefined : ret || undefined, ...pax }}
       {@const sky = skyscannerLink(lq)}
-      <p class="muted small fs-direct">Direkt beim Anbieter suchen (ab {aps[0]}): <a href={googleFlightsLink({ ...lq, from: o0?.kind === "city" ? o0.city : lq.from, to: d0 && d0.kind !== "airport" ? d0.city : lq.to })} target="_blank" rel="noopener noreferrer">Google Flüge ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
+      <p class="muted small fs-direct">{t("fs.directFrom", { ap: aps[0] })} <a href={googleFlightsLink({ ...lq, from: o0?.kind === "city" ? o0.city : lq.from, to: d0 && d0.kind !== "airport" ? d0.city : lq.to })} target="_blank" rel="noopener noreferrer">{t("fs.googleFlights")} ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
     {/if}
   </form>
 
@@ -429,42 +430,42 @@
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
-          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? `${s.count} Treffer` : s.configured ? "Fehler" : "noch nicht eingerichtet"}</span>
+          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
         {/each}
       </div>
     {/if}
     {#if rounds.length}
-      <p class="muted small">{rounds.length} {rounds.length === 1 ? "Rundreise" : "Rundreisen"} · günstigste zuerst {withAccess ? "inkl. Anfahrt" : ""} · {n} Pers. · jedes Ticket wird einzeln gebucht</p>
+      <p class="muted small">{tn("n.rounds", rounds.length)} · {withAccess ? t("fs.cheapestInclAccess") : t("fs.cheapestFirst")} · {t("persShort", { n })} · {t("fs.ticketsSeparate")}</p>
       <div class="fs-list">
         {#each rounds as x (x.rt.id)}
           <article class="fs-res fs-round">
             <div class="fs-top">
-              <span class="pill-ap">ab {x.rt.legs[0].out.from}</span>
+              <span class="pill-ap">{t("fs.from", { ap: x.rt.legs[0].out.from })}</span>
               <b class="num fs-price">{eur(x.r.total)}</b>
-              <span class="fs-badge">{x.rt.legs.length === 1 ? "1 Ticket" : `${x.rt.legs.length} Tickets`}</span>
+              <span class="fs-badge">{tn("n.tickets", x.rt.legs.length)}</span>
             </div>
-            <p class="muted small fs-sub">Flüge {eur(x.rt.price)}{withAccess && x.r.access ? ` + Anfahrt ${eur(x.r.access)}` : ""}{n > 1 ? ` · ${eur(x.r.total / n)} p. P.` : ""}</p>
+            <p class="muted small fs-sub">{t("fs.flightsPrice", { v: eur(x.rt.price) })}{withAccess && x.r.access ? ` + ${t("fs.accessPrice", { v: eur(x.r.access) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(x.r.total / n) })}` : ""}</p>
             <div class="fs-pills">
               {#each x.rt.stays as st, i (i)}
-                {#if st.hours != null}<span class="pill-h">{st.name}: {Math.round(st.hours)} h Umstieg</span>
-                {:else if st.nights != null}<span class="pill-n">{st.name}: {st.nights} {st.nights === 1 ? "Nacht" : "Nächte"}</span>{/if}
+                {#if st.hours != null}<span class="pill-h">{st.name}: {t("fs.layover", { h: Math.round(st.hours) })}</span>
+                {:else if st.nights != null}<span class="pill-n">{st.name}: {tn("n.nights", st.nights)}</span>{/if}
               {/each}
-              {#if !isNaN(x.r.home)}<span class="pill-h">zuhause ca. {fmtMin(x.r.home)}</span>{/if}
+              {#if !isNaN(x.r.home)}<span class="pill-h">{t("fs.homeAt", { t: fmtMin(x.r.home) })}</span>{/if}
             </div>
             {#each x.rt.legs as l, i (i)}
               {@render legRow(`${i + 1}.`, l.out)}
-              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<a href={l.url} target="_blank" rel={l.source === "travelpayouts" ? "noopener noreferrer sponsored" : "noopener noreferrer"}>Beim Anbieter ↗</a>{#if l.source === "travelpayouts"} <small>Partner-Link*</small>{/if}{/if}</p>
+              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<a href={l.url} target="_blank" rel={l.source === "travelpayouts" ? "noopener noreferrer sponsored" : "noopener noreferrer"}>{t("search.atProvider")} ↗</a>{#if l.source === "travelpayouts"} <small>{t("fs.partner")}*</small>{/if}{/if}</p>
             {/each}
             <div class="fs-acts">
-              <button class="btn primary sm" disabled={taken[x.rt.id]} onclick={() => takeR(x.rt)}>{taken[x.rt.id] ? "✓ Übernommen" : "Übernehmen"}</button>
+              <button class="btn primary sm" disabled={taken[x.rt.id]} onclick={() => takeR(x.rt)}>{taken[x.rt.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
             </div>
           </article>
         {/each}
       </div>
-      {#if rounds.some(x => x.rt.legs.some(l => l.source === "travelpayouts"))}<p class="muted small">* Partner-Link: Bei einer Buchung darüber erhalte ich eine kleine Provision, für euch ändert sich der Preis nicht.</p>{/if}
-      {#if into}<p class="muted small">Übernommene Rundreisen stehen als Angebot in einem Posten im Kapitel Flüge.</p>{/if}
+      {#if rounds.some(x => x.rt.legs.some(l => l.source === "travelpayouts"))}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+      {#if into}<p class="muted small">{t("fs.roundTaken")}</p>{/if}
     {:else}
-      <p class="muted small">Keine passende Rundreise gefunden. Zeitraum, Nächte oder Stationen ändern.</p>
+      <p class="muted small">{t("fs.roundNone")}</p>
     {/if}
     {#each roundErrors as e (e)}<p class="muted small">{e}</p>{/each}
   {/if}
@@ -473,14 +474,14 @@
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
-          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? `${s.count} Treffer` : s.configured ? "Fehler" : "noch nicht eingerichtet"}</span>
+          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
         {/each}
       </div>
     {/if}
     {#if rows.length > 1}
       <div class="fs-cmp-wrap">
         <table class="fs-cmp">
-          <thead><tr><th>Ab</th><th>Flug</th><th class="c-x">Anfahrt</th><th>gesamt</th><th class="c-x">Zeit</th><th>direkt</th><th></th></tr></thead>
+          <thead><tr><th>{t("fs.th.from")}</th><th>{t("ie.flight")}</th><th class="c-x">{t("fs.th.access")}</th><th>{t("fs.th.total")}</th><th class="c-x">{t("fs.th.time")}</th><th>{t("fs.th.direct")}</th><th></th></tr></thead>
           <tbody>
             {#each rows as r, i (r.code)}
               {#if r.count}
@@ -490,8 +491,8 @@
                   <td class="num muted c-x">{r.access ? eur(r.access) : "0 €"}</td>
                   <td class="num"><b>{eur(r.total)}</b></td>
                   <td class="num c-x">{Math.round(r.hours)} h</td>
-                  <td class="num">{r.direct != null ? eur(r.direct) : "nein"}</td>
-                  <td><button class="btn sm" onclick={() => takeCheapest(r.code)}>Wählen</button></td>
+                  <td class="num">{r.direct != null ? eur(r.direct) : t("no")}</td>
+                  <td><button class="btn sm" onclick={() => takeCheapest(r.code)}>{t("fs.pick")}</button></td>
                 </tr>
               {:else}
                 <tr class="muted"><td><b>{r.code}</b></td><td colspan="6">{r.error}</td></tr>
@@ -500,48 +501,48 @@
           </tbody>
         </table>
       </div>
-      <p class="muted small">Reisezeit = Flug + zweimal Anfahrt. Gesamt {withAccess ? "inkl." : "ohne"} Anfahrt.</p>
+      <p class="muted small">{withAccess ? t("fs.cmpNoteIncl") : t("fs.cmpNoteExcl")}</p>
     {/if}
-    {#if lateOut}<p class="muted small">{lateOut} {lateOut === 1 ? "Verbindung" : "Verbindungen"} aussortiert, weil ihr zu spät zuhause wärt.</p>{/if}
+    {#if lateOut}<p class="muted small">{tn("fs.lateOut", lateOut)}</p>{/if}
 
     {#if list.length}
-      <div class="chips fs-sort" role="radiogroup" aria-label="Sortierung">
-        <button type="button" class="chip" class:on={sort === "price"} onclick={() => (sort = "price")}>Günstigste</button>
-        <button type="button" class="chip" class:on={sort === "time"} onclick={() => (sort = "time")}>Schnellste</button>
-        <button type="button" class="chip" class:on={sort === "direct"} onclick={() => (sort = "direct")}>Nur direkt</button>
+      <div class="chips fs-sort" role="radiogroup" aria-label={t("search.sort")}>
+        <button type="button" class="chip" class:on={sort === "price"} onclick={() => (sort = "price")}>{t("search.cheapest")}</button>
+        <button type="button" class="chip" class:on={sort === "time"} onclick={() => (sort = "time")}>{t("fs.fastest")}</button>
+        <button type="button" class="chip" class:on={sort === "direct"} onclick={() => (sort = "direct")}>{t("fs.directOnly")}</button>
       </div>
-      <p class="muted small">{list.length} beste Treffer über {rows.length > 1 ? "alle Flughäfen" : aps[0]} · sortiert nach Preis {withAccess ? "inkl. Anfahrt" : ""} · {n} Pers.</p>
+      <p class="muted small">{t("fs.listSummary", { n: list.length, over: rows.length > 1 ? t("fs.allAirports") : aps[0] })} · {withAccess ? t("fs.byPriceIncl") : t("fs.byPrice")} · {t("persShort", { n })}</p>
       <div class="fs-list">
         {#each shown as o (o.id + o.origin)}
           <article class="fs-res">
             <div class="fs-top">
-              <span class="pill-ap">ab {o.out.from}</span>
+              <span class="pill-ap">{t("fs.from", { ap: o.out.from })}</span>
               <b class="num fs-price">{eur(o.total)}</b>
               <span class="fs-badge">{o.sourceName}</span>
             </div>
-            {#if alongCost != null && Math.abs(o.total - alongCost) >= 1}<p class="st-diff fs-sub" class:good={o.total < alongCost}>{o.total < alongCost ? `${eur(alongCost - o.total)} günstiger` : `${eur(o.total - alongCost)} teurer`} als mitfliegen</p>{/if}
-            <p class="muted small fs-sub">Flug {eur(o.price)}{withAccess && o.access ? ` + Anfahrt ${eur(o.access)}` : ""}{n > 1 ? ` · ${eur(o.total / n)} p. P.` : ""}{o.baggage ? ` · ${o.baggage.checked} Koffer` : ""}</p>
+            {#if alongCost != null && Math.abs(o.total - alongCost) >= 1}<p class="st-diff fs-sub" class:good={o.total < alongCost}>{o.total < alongCost ? t("fs.cheaperAlong", { v: eur(alongCost - o.total) }) : t("fs.dearerAlong", { v: eur(o.total - alongCost) })}</p>{/if}
+            <p class="muted small fs-sub">{t("fs.flightPrice", { v: eur(o.price) })}{withAccess && o.access ? ` + ${t("fs.accessPrice", { v: eur(o.access) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(o.total / n) })}` : ""}{o.baggage ? ` · ${tn("n.bags", o.baggage.checked)}` : ""}</p>
             <div class="fs-pills">
-              {#if o.nights != null}<span class="pill-n">{o.nights} Nächte vor Ort</span>{/if}
-              {#if !isNaN(o.home)}<span class="pill-h">zuhause ca. {fmtMin(o.home)}</span>{/if}
-              {#if o.accessHours}<span class="pill-h">Anfahrt ca. {hm(o.accessHours)}</span>{/if}
+              {#if o.nights != null}<span class="pill-n">{tn("fs.nightsThere", o.nights)}</span>{/if}
+              {#if !isNaN(o.home)}<span class="pill-h">{t("fs.homeAt", { t: fmtMin(o.home) })}</span>{/if}
+              {#if o.accessHours}<span class="pill-h">{t("fs.accessAbout", { h: hm(o.accessHours) })}</span>{/if}
             </div>
-            {@render legRow("Hin", o.out)}
-            {#if o.back}{@render legRow("Rück", o.back)}{/if}
+            {@render legRow(t("fl.out"), o.out)}
+            {#if o.back}{@render legRow(t("fs.backShort"), o.back)}{/if}
             <div class="fs-acts">
-              <button class="btn primary sm" disabled={taken[o.id + o.origin]} onclick={() => take(o)}>{taken[o.id + o.origin] ? "✓ Übernommen" : "Übernehmen"}</button>
-              {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel={o.source === "travelpayouts" ? "noopener noreferrer sponsored" : "noopener noreferrer"}>Beim Anbieter ↗{#if o.source === "travelpayouts"}<small class="fs-ad">Partner-Link*</small>{/if}</a>{/if}
-              <button class="btn sm" disabled title="Direkt in der App buchen kommt bald">Hier buchen <small>bald</small></button>
+              <button class="btn primary sm" disabled={taken[o.id + o.origin]} onclick={() => take(o)}>{taken[o.id + o.origin] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
+              {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel={o.source === "travelpayouts" ? "noopener noreferrer sponsored" : "noopener noreferrer"}>{t("search.atProvider")} ↗{#if o.source === "travelpayouts"}<small class="fs-ad">{t("fs.partner")}*</small>{/if}</a>{/if}
+              <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
             </div>
           </article>
         {:else}
-          <p class="muted small">Keine Direktflüge gefunden.</p>
+          <p class="muted small">{t("fs.noDirect")}</p>
         {/each}
       </div>
-      {#if list.some(o => o.source === "travelpayouts")}<p class="muted small">* Partner-Link: Bei einer Buchung darüber erhalte ich eine kleine Provision, für euch ändert sich der Preis nicht.</p>{/if}
-      {#if into}<p class="muted small">Übernommene Flüge stehen als Angebote in einem Posten im Kapitel Flüge. Dort kannst du vergleichen und eins wählen.</p>{/if}
+      {#if list.some(o => o.source === "travelpayouts")}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+      {#if into}<p class="muted small">{t("fs.takenHint")}</p>{/if}
     {:else}
-      <p class="muted small">Keine passenden Flüge gefunden. Datum, Umstiege oder Flughäfen ändern.</p>
+      <p class="muted small">{t("fs.none")}</p>
     {/if}
   {/if}
 </Modal>

@@ -1,19 +1,20 @@
 <script lang="ts">
+  import { t, tn } from "../i18n/index.svelte";
   import { app, calc } from "../store.svelte";
   import { eur } from "../calc";
-  import { CHAPTERS } from "../chapters";
+  import { CHAPTERS, chLabel } from "../chapters";
   import { view } from "../scroll.svelte";
   import Icon from "./Icon.svelte";
 
   let { onopen }: { onopen: () => void } = $props();
 
   const ch = $derived(CHAPTERS.find(c => c.k === view.active) || CHAPTERS[0]);
-  const val = $derived(ch.k === "trav" ? `${calc.T.active} ${calc.T.active === 1 ? "Person" : "Personen"}` : ch.k === "split" ? `${Object.keys(calc.T.byHousehold).length} ${Object.keys(calc.T.byHousehold).length === 1 ? "Familie" : "Familien"}` : eur(calc.T.byCat[ch.k]));
+  const val = $derived(ch.k === "trav" ? tn("n.persons", calc.T.active) : ch.k === "split" ? tn("n.families", Object.keys(calc.T.byHousehold).length) : eur(calc.T.byCat[ch.k]));
 </script>
 
-<button class="dock" onclick={onopen} aria-label="Übersicht öffnen, gesamt {eur(calc.T.total)}">
+<button class="dock" onclick={onopen} aria-label={t("dock.open", { total: eur(calc.T.total) })}>
   <span class="ic"><Icon name={ch.icon} /></span>
-  <div><small>{ch.label}</small><b class="num">{val}</b></div>
-  <div class="tot"><small>Gesamt</small><b class="num">{eur(calc.T.total)}</b></div>
+  <div><small>{chLabel(ch)}</small><b class="num">{val}</b></div>
+  <div class="tot"><small>{t("total")}</small><b class="num">{eur(calc.T.total)}</b></div>
   <span class="up" aria-hidden="true">▴</span>
 </button>

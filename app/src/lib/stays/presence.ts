@@ -2,6 +2,7 @@
  * Unterkunft aus der Anwesenheit (wie im Artefakt): wer ist wann vor Ort, laut Flügen oder eigenen Daten,
  * welche Nächte haben noch kein Bett, und wer schläft in einem Zeitraum wo.
  */
+import { t } from "../i18n/index.svelte";
 import { hhKey, isActive, type Item, type Traveler, type Trip } from "../model";
 import { activeOption, participantsOf, presences } from "../calc";
 import { addDays, flightLegs, needs, nightsList, okDate, type Presence } from "../calc/travel";
@@ -47,18 +48,19 @@ export function arrivals(trip: Trip): Arrival[] {
     .sort((a, b) => (a.p?.a || "~").localeCompare(b.p?.a || "~"));
 }
 
-/** Hinweise zu An- und Abreise: Check-in, Check-out, sehr früher Abflug */
-export function hints(a: Arrival): string[] {
-  const out: string[] = [];
+/** Hinweise zu An- und Abreise: Check-in, Check-out, sehr früher Abflug (mit Art, damit die Oberfläche filtern kann) */
+export function hintList(a: Arrival): { kind: "checkin" | "checkout" | "early"; text: string }[] {
+  const out: { kind: "checkin" | "checkout" | "early"; text: string }[] = [];
   const h = (s: string) => +s.slice(11, 13) + +s.slice(14, 16) / 60;
-  if (a.arr && a.arr.length >= 16 && h(a.arr) < 14) out.push(`Ankunft ${dayShort(a.arr)} ${time(a.arr)}, Check-in meist erst ab 15 Uhr`);
+  if (a.arr && a.arr.length >= 16 && h(a.arr) < 14) out.push({ kind: "checkin", text: t("hint.checkin", { day: dayShort(a.arr), time: time(a.arr) }) });
   if (a.dep && a.dep.length >= 16) {
     const d = h(a.dep);
-    if (d >= 15) out.push(`Abflug ${dayShort(a.dep)} ${time(a.dep)}, nach dem Check-out (meist 10 bis 11 Uhr) noch ca. ${Math.round(d - 11)} h mit Gepäck`);
-    else if (d < 9) out.push(`Abflug ${dayShort(a.dep)} ${time(a.dep)}, sehr früh: Nacht davor nah am Flughafen?`);
+    if (d >= 15) out.push({ kind: "checkout", text: t("hint.checkout", { day: dayShort(a.dep), time: time(a.dep), h: Math.round(d - 11) }) });
+    else if (d < 9) out.push({ kind: "early", text: t("hint.early", { day: dayShort(a.dep), time: time(a.dep) }) });
   }
   return out;
 }
+export const hints = (a: Arrival): string[] => hintList(a).map(x => x.text);
 
 /** Zeitraum, in dem jemand vor Ort ist (erste Ankunft bis letzte Abreise); sonst Reisedaten */
 export function stayWindow(trip: Trip, ids?: string[]): { from: string; to: string } | null {

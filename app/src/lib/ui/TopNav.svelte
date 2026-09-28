@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from "../i18n/index.svelte";
+  import LangSelect from "./LangSelect.svelte";
   import { CHAPTERS } from "../chapters";
   import { view } from "../scroll.svelte";
   import Icon from "./Icon.svelte";
@@ -27,9 +29,9 @@
 
 <header class="top">
   <div class="top-in">
-    <span class="brand">Reisekasse</span>
+    <span class="brand">{t("brand")}</span>
     <TripMenu compact />
-    <nav class="nav" bind:this={nav} aria-label="Kapitel">
+    <nav class="nav" bind:this={nav} aria-label={t("nav.chapters")}>
       <span class="pill" style:left="{pill.left}px" style:width="{pill.width}px" style:opacity={pill.show ? 1 : 0}></span>
       {#each CHAPTERS as c (c.k)}
         <a href="#{c.k}" data-ch={c.k} class:on={view.active === c.k}><Icon name={c.icon} />{c.label}</a>
@@ -37,6 +39,7 @@
     </nav>
     <GroupsButton />
     <Account compact />
-    <button class="tbtn" onclick={toggleTheme} aria-label="Hell oder dunkel"><Icon name="moon" size={18} /></button>
+    <button class="tbtn" onclick={toggleTheme} aria-label={t("nav.theme")}><Icon name="moon" size={18} /></button>
+    <LangSelect short />
   </div>
 </header>

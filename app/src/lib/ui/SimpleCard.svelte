@@ -1,19 +1,15 @@
 <script lang="ts">
+  import { t, tn } from "../i18n/index.svelte";
   /* Einfacher Modus: ein Betrag für den ganzen Bereich, gleich auf alle Aktiven verteilt */
   import type { CatKey } from "../model";
+  import type { Key } from "../i18n/index.svelte";
   import { access, app, calc, discardDetails, setDetailed, setSimple } from "../store.svelte";
   import { calcItem } from "../calc";
   import { eur, parseNum } from "../calc";
   import { reveal } from "./reveal";
 
   let { cat, label }: { cat: CatKey; label: string } = $props();
-  const HINT: Record<CatKey, string> = {
-    flights: "alle Flüge zusammen, hin und zurück",
-    stay: "alle Übernachtungen zusammen",
-    transport: "Mietwagen, Bahn, Taxi, Fähre …",
-    attractions: "Eintritte, Ausflüge, Touren",
-    misc: "Essen, Versicherung, alles andere"
-  };
+  const HINT = (c: CatKey) => t(`simple.hint.${c}` as Key);
   const v = $derived(app.trip.simple?.[cat]);
   const n = $derived(calc.T.active);
   const hiddenItems = $derived(app.trip.items.filter(i => i.cat === cat));
@@ -34,27 +30,27 @@
 
 <article class="card simple-card" use:reveal>
   <label class="simple-l">
-    <span class="simple-t">{label} gesamt</span>
+    <span class="simple-t">{t("simple.total", { label })}</span>
     <span class="simple-in">
-      <input inputmode="decimal" placeholder="0" value={text} oninput={input} onfocus={() => (focused = true)} onblur={() => (focused = false)} disabled={access.readonly} aria-label="{label} gesamt in Euro" />
+      <input inputmode="decimal" placeholder="0" value={text} oninput={input} onfocus={() => (focused = true)} onblur={() => (focused = false)} disabled={access.readonly} aria-label={t("simple.totalEur", { label })} />
       <span class="simple-eur">€</span>
     </span>
-    <span class="muted">{HINT[cat]}</span>
+    <span class="muted">{HINT(cat)}</span>
   </label>
   <div class="simple-out">
     {#if !n}
-      <span class="warnline">Noch niemand dabei. Oben bei „Wer fährt mit“ Personen hinzufügen.</span>
+      <span class="warnline">{t("simple.nobody")}</span>
     {:else if v}
-      <b class="num">{eur(v / n)}</b><span> pro Person · {n} {n === 1 ? "Person" : "Personen"}</span>
+      <b class="num">{eur(v / n)}</b><span> {t("simple.perPerson")} · {tn("n.persons", n)}</span>
     {:else}
-      <span class="muted">wird gleich auf {n} {n === 1 ? "Person" : "Personen"} verteilt</span>
+      <span class="muted">{t("simple.split", { p: tn("n.persons", n) })}</span>
     {/if}
   </div>
   {#if hidden && !access.readonly}
     <p class="muted small simple-hidden">
-      Details gespeichert: {hidden} Posten, zusammen {eur(hiddenSum)}. Sie zählen im einfachen Modus nicht und kommen beim Wechsel auf „Detailliert“ zurück{v != null && Math.abs(v - hiddenSum) > 0.005 ? ", dann gilt wieder deren Summe statt des Betrags oben" : ""}.
-      <button class="linkbtn" onclick={() => setDetailed(cat, true)}>Wiederherstellen</button>
-      <button class="linkbtn danger" onclick={() => { if (confirm(`Die ${hidden} gespeicherten Posten bei „${label}“ endgültig verwerfen?`)) discardDetails(cat); }}>Verwerfen</button>
+      {t("simple.hidden", { n: hidden, sum: eur(hiddenSum) })}{v != null && Math.abs(v - hiddenSum) > 0.005 ? ` ${t("simple.hiddenSum")}` : ""}
+      <button class="linkbtn" onclick={() => setDetailed(cat, true)}>{t("simple.restore")}</button>
+      <button class="linkbtn danger" onclick={() => { if (confirm(t("simple.discardConfirm", { n: hidden, label }))) discardDetails(cat); }}>{t("simple.discard")}</button>
     </p>
   {/if}
 </article>

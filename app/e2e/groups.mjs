@@ -14,7 +14,7 @@ await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 const errors = [];
 async function page(name) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(`${name}: ${e.message}`));
   p.on("dialog", d => d.accept(d.type() === "prompt" ? "Kegeltruppe" : undefined));

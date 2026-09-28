@@ -1,4 +1,5 @@
 /* Unterkunftssuche in der App: Anfrage aus der Reise, Treffer als Angebot in einen Unterkunft-Posten */
+import { t } from "../i18n/index.svelte";
 import { isActive, uid, type Item, type Option, type Traveler, type Trip } from "../model";
 import { FLIGHTS_URL } from "../flights/app";
 import type { StayOffer, StayQuery, StaySearchResult, StayType } from "./types";
@@ -36,7 +37,7 @@ export function stayToOption(o: StayOffer, people: number): Option {
     label: o.name,
     detail: o.place,
     price: { mode: "unit", basis: "stay", currency: o.currency, unit: Math.round(o.total), capacity: Math.max(1, people) },
-    source: { name: o.via && o.via !== o.sourceName ? `${o.sourceName} über ${o.via}` : o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url },
+    source: { name: o.via && o.via !== o.sourceName ? t("st.via", { a: o.sourceName, b: o.via }) : o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url },
     stay: { stars: o.stars, rating: o.score != null ? Math.round(o.score * 10) : undefined, facts: o.facts?.length ? o.facts : undefined }
   };
 }
@@ -58,20 +59,20 @@ export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, 
   const empty = !part ? trip.items.find(i => i.cat === "stay" && !i.participants && blank(i) && (!i.from || i.from === q.checkin) && (!i.to || i.to === q.checkout)) : undefined;
   if (empty) {
     empty.options = [opt];
-    if (!empty.name || empty.name === "Neue Unterkunft") empty.name = `Unterkunft in ${q.place}`;
+    if (!empty.name || empty.name === t("stay.new")) empty.name = t("st.itemName", { place: q.place });
     empty.from = q.checkin; empty.to = q.checkout;
     return empty;
   }
-  const item: Item = { id: uid(), cat: "stay", name: `Unterkunft in ${q.place}`, status: "idea", from: q.checkin, to: q.checkout, options: [opt] };
+  const item: Item = { id: uid(), cat: "stay", name: t("st.itemName", { place: q.place }), status: "idea", from: q.checkin, to: q.checkout, options: [opt] };
   if (part) item.participants = part;
   trip.items.push(item);
   return item;
 }
 
 export async function searchStaysRemote(q: StayQuery, signal?: AbortSignal): Promise<StaySearchResult> {
-  if (!FLIGHTS_URL) throw new Error("Der Such-Dienst ist noch nicht eingerichtet.");
+  if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   const res = await fetch(`${FLIGHTS_URL}/stays/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Such-Dienst antwortet mit ${res.status}`);
+  if (!res.ok) throw new Error(data.error || t("search.status", { s: res.status }));
   return data as StaySearchResult;
 }

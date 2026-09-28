@@ -1,4 +1,5 @@
 /* App-Zustand: mehrere Reisen, lokal gespeichert. Später hinter einem Speicher-Adapter (Firebase). */
+import { t as tr, type Key } from "./i18n/index.svelte";
 import { totals } from "./calc";
 import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type Traveler, type Trip } from "./model";
 import { sampleTrip } from "./seed";
@@ -40,7 +41,7 @@ function emptyTrip(o: NewOpts = {}): Trip {
   const auto = autoName(o);
   // Standard: eine Person als Tier
   const travelers = o.travelers ?? [soloTraveler()];
-  const base = o.base || (travelers.length === 1 && travelers[0].placeholder ? `Solo ${travelers[0].household}` : "Reise");
+  const base = o.base || (travelers.length === 1 && travelers[0].placeholder ? tr("who.nameSolo", { a: travelers[0].household }) : tr("trip"));
   return {
     id: uid(), name: own || auto || startName(base), autoName: !own,
     place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
@@ -243,7 +244,7 @@ export async function moveToCloud(id: string) {
   try { await upload(JSON.parse(JSON.stringify(t))); }
   catch (e) {
     uploaded.delete(id);
-    cloud.error = (e as { code?: string }).code === "unavailable" ? "Offline: Übernehmen ins Konto geht nur mit Verbindung." : "Die Reise konnte nicht ins Konto übernommen werden.";
+    cloud.error = (e as { code?: string }).code === "unavailable" ? tr("store.offlineMove") : tr("store.moveFailed");
     return;
   }
   app.index = app.index.filter(x => x.id !== id);
@@ -334,7 +335,7 @@ export function duplicateTrip() {
   flush();
   const copy: Trip = JSON.parse(JSON.stringify(app.trip));
   copy.id = uid();
-  copy.name = copy.name + " (Kopie)";
+  copy.name = `${copy.name} (${tr("store.copy")})`;
   const toCloud = !!cloud.user;
   open(copy);
   if (toCloud) void moveToCloud(copy.id);
@@ -388,14 +389,14 @@ export function openSample() {
   flush();
   const prev = app.trip;
   const s = sampleTrip();
-  open({ ...s, id: uid(), name: `Beispiel: ${s.name}` });
+  open({ ...s, id: uid(), name: tr("store.sampleName", { name: s.name }) });
   dropIfPristine(prev);
   if (cloud.user) void moveToCloud(app.trip.id);
 }
 
 /* ---------- Einfach oder detailliert ---------- */
 
-const CAT_NAMES: Record<CatKey, string> = { flights: "Flüge", stay: "Unterkunft", transport: "Vor Ort", attractions: "Erlebnisse", misc: "Sonstiges" };
+const CAT_NAMES = (c: CatKey) => tr(`ch.${c}.label` as Key);
 
 /**
  * Bereich umschalten. Die Posten eines Bereichs bleiben beim Wechsel auf "Einfach" gespeichert
@@ -419,7 +420,7 @@ export function setDetailed(cat: CatKey, on: boolean, edit = false) {
         ? { mode: "person", currency: "EUR", adult: Math.round((v / n) * 100) / 100 }
         : { mode: "unit", currency: "EUR", unit: v };
       // Anreise zum Flughafen nicht zusätzlich berechnen, sonst stimmt die Summe nicht mehr
-      const it: Item = { id: uid(), cat, name: CAT_NAMES[cat], status: "chosen", options: [{ id: uid(), label: "", price }], ...(cat === "flights" ? { access: false } : {}) };
+      const it: Item = { id: uid(), cat, name: CAT_NAMES(cat), status: "chosen", options: [{ id: uid(), label: "", price }], ...(cat === "flights" ? { access: false } : {}) };
       trip.items.push(it);
       if (edit) app.editing = it.id;
     } else if (edit) addItem(cat);

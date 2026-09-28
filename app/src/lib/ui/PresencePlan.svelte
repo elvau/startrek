@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { t, tn } from "../i18n/index.svelte";
   /* Wer ist wann da, und hat jede Nacht ein Bett? Pro Haushalt ein Balken über alle Nächte. */
   import { access, app } from "../store.svelte";
   import { hhKey, isActive } from "../model";
   import { presences, participantsOf } from "../calc";
   import { needs, nightsList, okDate, addDays } from "../calc/travel";
   import { dateDE, dayShort } from "../format";
-  import { arrivals, gaps, hints } from "../stays/presence";
+  import { arrivals, gaps, hintList } from "../stays/presence";
   import { openStaySearch } from "../stays/open.svelte";
   import { airportNights } from "../stays/airports";
   import { ensureGeo, geo } from "../geo/geo.svelte";
@@ -38,15 +39,15 @@
         return { k: cover.length > 1 ? ("dbl" as const) : ("ok" as const), s: stays.indexOf(cover[0]) };
       });
       const dbl = nights.filter((_, i) => cells[i].k === "dbl");
-      if (dbl.length) notes.push({ crit: false, text: `${h}: ${dbl.length === 1 ? "eine Nacht" : `${dbl.length} Nächte`} doppelt gebucht (${dbl.slice(0, 4).map(dateDE).join(", ")})` });
-      if (!known) notes.push({ crit: false, text: `${h}: Anwesenheit offen. Flug mit Zeiten eintragen oder eigene Daten bei der Familie (Kapitel „Wer fährt mit“).` });
+      if (dbl.length) notes.push({ crit: false, text: `${h}: ${t("plan.double", { n: tn("n.nights", dbl.length), list: dbl.slice(0, 4).map(dateDE).join(", ") })}` });
+      if (!known) notes.push({ crit: false, text: `${h}: ${t("plan.unknown")}` });
       return { h, cells };
     });
     // wie im Artefakt: Lücken zuerst (mit „Unterkunft suchen“), dann Hinweise zu An- und Abreise
     const gs = gaps(trip);
     const aps = airportNights(trip, geo);
     // Hinweis „sehr früh“ nur, wenn es dafür noch keinen Vorschlag am Flughafen gibt
-    const info = arrivals(trip).flatMap(a => hints(a).filter(h => !(h.includes("sehr früh") && aps.some(x => x.kind === "last" && x.ids.join() === a.ids.join()))).map(h => `${a.who}: ${h}`));
+    const info = arrivals(trip).flatMap(a => hintList(a).filter(h => !(h.kind === "early" && aps.some(x => x.kind === "last" && x.ids.join() === a.ids.join()))).map(h => `${a.who}: ${h.text}`));
     const open = stays.filter(s => s.options.every(o => !o.label && !o.price.unit && !o.price.adult));
     return { nights, rows, stays, notes, gs, info, open, aps };
   });
@@ -65,21 +66,21 @@
 
 {#if plan}
   <div class="plan">
-    <div class="plan-h"><h3>Wer ist wann wo</h3><span class="muted">{plan.nights.length} Nächte · {dateDE(plan.nights[0])} bis {dateDE(addDays(plan.nights[plan.nights.length - 1], 1))}</span></div>
+    <div class="plan-h"><h3>{t("plan.title")}</h3><span class="muted">{tn("n.nights", plan.nights.length)} · {t("range.fromTo", { a: dateDE(plan.nights[0]), b: dateDE(addDays(plan.nights[plan.nights.length - 1], 1)) })}</span></div>
     <div class="pl-wrap">
       <div class="pl-grid" style="grid-template-columns:minmax(70px,max-content) repeat({plan.nights.length}, minmax(18px,1fr))">
         <span class="pl-corner"></span>
         {#each plan.nights as x, i}
-          {@const wd = dayShort(x).slice(0, 2)}
-          <span class="pl-h" class:we={wd === "Sa" || wd === "So"} style="grid-column:{i + 2}">{+x.slice(8, 10)}</span>
+          {@const wd = new Date(x + "T12:00:00Z").getUTCDay()}
+          <span class="pl-h" class:we={wd === 6 || wd === 0} style="grid-column:{i + 2}">{+x.slice(8, 10)}</span>
         {/each}
         {#each plan.rows as r, ri (r.h)}
           <span class="pl-name" style="grid-row:{ri + 2}">{r.h}</span>
           {#each runs(r.cells) as seg}
             {#if seg.k !== "away"}
               <span class="pl-seg {seg.k}" style="grid-row:{ri + 2};grid-column:{seg.start + 2} / {seg.end + 2};--sc:{seg.s != null ? COLORS[seg.s % COLORS.length] : 'var(--line)'}"
-                title={seg.k === "gap" ? "keine Unterkunft" : seg.k === "unk" ? "Anwesenheit offen" : seg.s != null ? plan.stays[seg.s].name : ""}>
-                {seg.k === "gap" ? "fehlt" : seg.k === "ok" && seg.s != null && seg.end - seg.start > 2 ? plan.stays[seg.s].name.split(",")[0] : ""}
+                title={seg.k === "gap" ? t("plan.noStay") : seg.k === "unk" ? t("hh.presOpen") : seg.s != null ? plan.stays[seg.s].name : ""}>
+                {seg.k === "gap" ? t("plan.missing") : seg.k === "ok" && seg.s != null && seg.end - seg.start > 2 ? plan.stays[seg.s].name.split(",")[0] : ""}
               </span>
             {/if}
           {/each}
@@ -89,27 +90,27 @@
     {#if plan.gs.length || plan.notes.length || plan.open.length || plan.info.length || plan.aps.length}
       <ul class="pl-notes">
         {#each plan.gs as g (g.from + g.to + g.who)}
-          <li class="crit"><b>{g.who}</b>: {g.nights === 1 ? `Nacht ${dayShort(g.from)}` : `${dayShort(g.from)} bis ${dayShort(g.to)}`} ohne Unterkunft ({g.nights} {g.nights === 1 ? "Nacht" : "Nächte"})
-            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ from: g.from, to: g.to, ids: g.ids })}>Unterkunft suchen</button>{/if}</li>
+          <li class="crit"><b>{g.who}</b>: {g.nights === 1 ? t("plan.gapOne", { d: dayShort(g.from) }) : t("plan.gap", { a: dayShort(g.from), b: dayShort(g.to), n: tn("n.nights", g.nights) })}
+            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ from: g.from, to: g.to, ids: g.ids })}>{t("st.open")}</button>{/if}</li>
         {/each}
         {#each plan.aps as a (a.kind + a.from + a.ids.join())}
           <li class:crit={a.crit} class:warn={!a.crit}>{a.text}
-            {#if a.places.length}<span class="pl-near">In der Nähe von {a.ap.code}: {a.places.map(p => `${p.name} ${Math.round(p.km)} km`).join(" · ")}</span>{/if}
-            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ from: a.from, to: a.to, ids: a.ids, place: a.suggest })}>Unterkunft am Flughafen suchen</button>{/if}</li>
+            {#if a.places.length}<span class="pl-near">{t("plan.near", { ap: a.ap.code })} {a.places.map(p => `${p.name} ${Math.round(p.km)} km`).join(" · ")}</span>{/if}
+            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ from: a.from, to: a.to, ids: a.ids, place: a.suggest })}>{t("plan.searchAirport")}</button>{/if}</li>
         {/each}
         {#each plan.notes as n}<li class:crit={n.crit}>{n.text}</li>{/each}
         {#each plan.open as s (s.id)}
-          <li><b>{s.name || "Neue Unterkunft"}</b> ({dateDE(s.from!)} bis {dateDE(s.to!)}): noch keine Unterkunft ausgewählt
-            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ itemId: s.id })}>suchen</button>{/if}</li>
+          <li><b>{s.name || t("stay.new")}</b> ({t("range.fromTo", { a: dateDE(s.from!), b: dateDE(s.to!) })}): {t("plan.noneChosen")}
+            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ itemId: s.id })}>{t("plan.search")}</button>{/if}</li>
         {/each}
-        {#each plan.info as t (t)}<li class="info">{t}</li>{/each}
+        {#each plan.info as x (x)}<li class="info">{x}</li>{/each}
       </ul>
     {/if}
     {#if !plan.gs.length && !plan.notes.length}
-      <p class="pl-ok">✓ Jede Nacht hat eine Unterkunft.</p>
+      <p class="pl-ok">✓ {t("plan.allOk")}</p>
     {/if}
   </div>
 {:else}
-  <div class="plan"><div class="plan-h"><h3>Wer ist wann wo</h3></div>
-    <p class="muted">Trag Reisedaten, Flugzeiten oder Unterkünfte mit Zeitraum ein, dann siehst du hier, wer wann wo schläft.</p></div>
+  <div class="plan"><div class="plan-h"><h3>{t("plan.title")}</h3></div>
+    <p class="muted">{t("plan.emptyHint")}</p></div>
 {/if}
