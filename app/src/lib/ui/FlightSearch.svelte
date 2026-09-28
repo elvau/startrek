@@ -9,22 +9,40 @@
   import { dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
   import DualRange from "./DualRange.svelte";
-  import { FLIGHTS_URL, compareRow, deadline, defaultQuery, fmtMin, nearestAirports, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
+  import { hhKey, isActive } from "../model";
+  import type { FlightScope } from "../flights/open.svelte";
   import type { FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
 
-  let { onclose }: { onclose: () => void } = $props();
+  let { onclose, scope = {} }: { onclose: () => void; scope?: FlightScope } = $props();
 
   const K = "rk-flight-search";
   let saved: Record<string, unknown> = {};
   try { saved = JSON.parse(localStorage.getItem(K) || "{}"); } catch {}
 
   const trip = app.trip;
-  const base = defaultQuery(trip);
+  // Wer fliegt (wie im Artefakt je Flug-Posten): aus dem Posten, sonst die erste Familie ohne Flug, sonst alle
+  const start = (() => ({ ...scope }))();
+  const item = start.itemId ? trip.items.find(i => i.id === start.itemId) : undefined;
+  let who = $state<string[] | undefined>(start.ids ?? item?.participants ?? defaultFlyers(trip));
+  const act = trip.travelers.filter(isActive);
+  const hhs = [...new Set(act.map(hhKey))];
+  const cov = covered(trip);
+  const whoIds = $derived(flyers(trip, who).map(t => t.id));
+  const hhOn = (h: string) => !!who && act.filter(t => hhKey(t) === h).every(t => who!.includes(t.id));
+  function setWho(ids: string[] | undefined) {
+    who = ids && ids.length && ids.length < act.length ? ids : undefined;
+    if (!custom) aps = nearestAirports(trip, 4, who);
+  }
+  const toggleHh = (h: string) => { const ids = act.filter(t => hhKey(t) === h).map(t => t.id); setWho(hhOn(h) ? whoIds.filter(id => !ids.includes(id)) : [...new Set([...(who || []), ...ids])]); };
+  // bei „Alle“ nimmt ein Klick die Person heraus, sonst schaltet er sie dazu oder weg
+  const togglePerson = (id: string) => setWho(!who ? whoIds.filter(x => x !== id) : who.includes(id) ? who.filter(x => x !== id) : [...who, id]);
+  const base = defaultQuery(trip, "", start.ids ?? item?.participants ?? defaultFlyers(trip));
   const known = airportsOf(trip);
   // Abflughäfen: eigene Auswahl (gemerkt) oder die 4 nächsten zum Wohnort
   const savedAps = Array.isArray(saved.aps) && (saved.aps as string[]).length ? (saved.aps as string[]) : null;
   let custom = $state(!!savedAps);
-  let aps = $state<string[]>(savedAps ?? nearestAirports(trip));
+  let aps = $state<string[]>(savedAps ?? nearestAirports(trip, 4, start.ids ?? item?.participants ?? defaultFlyers(trip)));
   const allCodes = $derived([...new Set([...known.map(a => a.code), ...aps])]);
   let extra = $state("");
 
@@ -47,9 +65,9 @@
   let noSelf = $state(saved.noSelf !== false);
   let withAccess = $state(saved.withAccess !== false);
 
-  const pax = { adults: base.adults, children: base.children, infants: base.infants };
-  const n = pax.adults + pax.children + pax.infants;
-  const people = [`${pax.adults} Erw.`, pax.children && `${pax.children} ${pax.children === 1 ? "Kind" : "Kinder"}`, pax.infants && `${pax.infants} ${pax.infants === 1 ? "Baby" : "Babys"}`].filter(Boolean).join(" · ");
+  const pax = $derived(passengers(trip, who));
+  const n = $derived(pax.adults + pax.children + pax.infants);
+  const people = $derived([`${pax.adults} Erw.`, pax.children && `${pax.children} ${pax.children === 1 ? "Kind" : "Kinder"}`, pax.infants && `${pax.infants} ${pax.infants === 1 ? "Baby" : "Babys"}`].filter(Boolean).join(" · "));
 
   let busy = $state(false);
   let progress = $state("");
@@ -60,7 +78,7 @@
   let lateOut = $state(0);
   let sort = $state<"price" | "time" | "direct">("price");
   let taken = $state<Record<string, boolean>>({});
-  let into = $state<string | undefined>();
+  let into = $state<string | undefined>(item?.id);
   let ctrl: AbortController | undefined;
 
   function toggleAp(code: string) {
@@ -73,7 +91,7 @@
     if (/^[A-Z]{3}$/.test(c) && !aps.includes(c)) { aps = [...aps, c]; custom = true; }
     extra = "";
   }
-  function resetAps() { aps = nearestAirports(trip); custom = false; }
+  function resetAps() { aps = nearestAirports(trip, 4, who); custom = false; }
 
   const shown = $derived.by(() => {
     const l = [...(list || [])];
@@ -92,7 +110,8 @@
       if (span == null) { error = "Bitte früheste Hinreise und spätestes Zuhause-Datum eintragen."; return; }
       if (span < 1) { error = "Das Zuhause-Datum liegt vor der frühesten Hinreise."; return; }
     } else if (!out) { error = "Bitte ein Hinflugdatum eintragen."; return; }
-    if (n > 9) { error = `Es sind ${n} Personen dabei. Kiwi sucht höchstens 9 Personen pro Buchung. Unter „Wer fährt mit“ einzelne auf „nicht dabei“ stellen und je Familie suchen.`; return; }
+    if (n > 9) { error = `Es fliegen ${n} Personen. Kiwi sucht höchstens 9 Personen pro Buchung. Oben bei „Wer fliegt“ eine Familie wählen und je Familie suchen.`; return; }
+    if (!whoIds.length) { error = "Bitte oben auswählen, wer fliegt."; return; }
     try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], mode, rToTime, flexDays, maxStops, bags, noSelf, withAccess })); } catch {}
 
     busy = true;
@@ -109,7 +128,7 @@
         try {
           const r = await searchFlights({ ...q, from: code }, ctrl.signal);
           r.sources.forEach(s => { const p = src.get(s.id); src.set(s.id, p ? { ...p, ok: p.ok || s.ok, count: p.count + s.count, error: p.ok ? p.error : s.error } : { ...s }); });
-          let rated = r.offers.map(o => rate(trip, o, code, withAccess));
+          let rated = r.offers.map(o => rate(trip, o, code, withAccess, who));
           if (!isNaN(dl)) { const before = rated.length; rated = rated.filter(o => !isNaN(o.home) && o.home <= dl); late += before - rated.length; }
           all.push(...rated);
           const err = r.sources.find(s => s.configured && !s.ok)?.error;
@@ -132,7 +151,7 @@
     // gefundene Flüge rechnen detailliert; weitere Treffer kommen als Angebote in denselben Posten
     app.trip.detail ||= {};
     app.trip.detail.flights = true;
-    into = takeOffer(app.trip, o, into).id;
+    into = takeOffer(app.trip, o, into, who).id;
     taken[o.id + o.origin] = true;
   }
   function takeCheapest(code: string) {
@@ -149,8 +168,24 @@
   </div>
 {/snippet}
 
-<Modal title="Flüge suchen" {onclose} wide>
+<Modal title={item ? `Flüge suchen: ${item.name || "Flug"}` : "Flüge suchen"} {onclose} wide>
   <form class="fs-form" onsubmit={search}>
+    <div class="fs-who">
+      <span class="dlabel">Wer fliegt</span>
+      <div class="chips">
+        <button type="button" class="chip" class:on={!who} aria-pressed={!who} onclick={() => setWho(undefined)}>Alle ({act.length})</button>
+        {#if hhs.length > 1}
+          {#each hhs as h (h)}
+            {@const ms = act.filter(t => hhKey(t) === h)}
+            <button type="button" class="chip" class:on={hhOn(h)} aria-pressed={hhOn(h)} onclick={() => toggleHh(h)}>{h} ({ms.length}){#if ms.every(t => cov.has(t.id)) && !item}<small> hat Flug</small>{/if}</button>
+          {/each}
+        {/if}
+      </div>
+      <details class="more"><summary class="muted small">Einzelne Personen</summary>
+        <div class="chips">{#each act as t (t.id)}<button type="button" class="chip sm" class:on={whoIds.includes(t.id)} aria-pressed={whoIds.includes(t.id)} onclick={() => togglePerson(t.id)}>{t.name}</button>{/each}</div>
+      </details>
+      {#if hhs.length > 1 && !who}<p class="muted small">Tipp wie im Artefakt: je Familie suchen, dann gelten eigene Abflughäfen und die eigene Anfahrt.</p>{/if}
+    </div>
     <div>
       <span class="dlabel">Abflughäfen (werden einzeln abgefragt und verglichen)</span>
       <div class="chips fs-aps">
@@ -203,7 +238,7 @@
       <label class="in-row"><input type="checkbox" bind:checked={noSelf} /> ohne Self-Transfer</label>
       <label class="in-row"><input type="checkbox" bind:checked={withAccess} /> Anfahrt einrechnen</label>
     </div>
-    <p class="muted small">{people} (aus „Wer fährt mit“). Preise gelten für alle zusammen.</p>
+    <p class="muted small">{people}{who ? ` (${[...new Set(flyers(trip, who).map(hhKey))].join(", ")})` : " (alle aus „Wer fährt mit“)"}. Preise gelten für alle zusammen, die Anfahrt {who ? ([...new Set(flyers(trip, who).map(hhKey))].length === 1 ? "nur für diese Familie" : "nur für diese Familien") : "für alle Familien"}.</p>
     {#if !FLIGHTS_URL}<p class="warnline small">Der Such-Dienst ist noch nicht eingerichtet. Anleitung: docs/FLUGSUCHE.md im Projekt.</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `Suche läuft… ${progress}` : aps.length > 1 ? `${aps.length} Flughäfen vergleichen` : "Suchen"}</button>
   </form>

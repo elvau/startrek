@@ -25,9 +25,9 @@
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
   import StaySearch from "./lib/ui/StaySearch.svelte";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
+  import { flightSearch, openFlightSearch } from "./lib/flights/open.svelte";
 
   let sheet = $state(false);
-  let flightSearch = $state(false);
 
   onMount(() => {
     try { const t = localStorage.getItem("rk-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
@@ -65,7 +65,7 @@
         onreset={items.length ? () => { if (confirm(`Alle ${items.length} Posten bei „${ch.label}“ löschen?`)) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
-          <div class="search-row"><button class="btn primary fs-open" onclick={() => (flightSearch = true)}>✈ Flüge suchen</button></div>
+          <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ Flüge suchen</button></div>
         {:else if ch.k === "stay" && !access.readonly}
           <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 Unterkunft suchen</button></div>
         {/if}
@@ -106,5 +106,5 @@
 {/if}
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
 {#if app.welcome && !cloud.user}<Welcome />{/if}
-{#if flightSearch}<FlightSearch onclose={() => (flightSearch = false)} />{/if}
+{#if flightSearch.open}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/if}
 {#if staySearch.open}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/if}
