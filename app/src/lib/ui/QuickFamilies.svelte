@@ -5,26 +5,31 @@
   let { rows = $bindable(), used = [] }: { rows: FamilyRow[]; used?: string[] } = $props();
 
   const taken = $derived([...used, ...rows.map(r => r.animal)]);
-  const add = () => rows.push({ animal: nextAnimal(taken), adults: 2, kids: 0 });
-  const step = (r: FamilyRow, k: "adults" | "kids", d: number) => (r[k] = Math.max(0, Math.min(20, r[k] + d)));
+  type K = "adults" | "kids" | "infants";
+  const add = () => rows.push({ animal: nextAnimal(taken), adults: 2, kids: 0, infants: 0 });
+  const step = (r: FamilyRow, k: K, d: number) => (r[k] = Math.max(0, Math.min(20, (r[k] || 0) + d)));
 </script>
 
 <div class="qf">
   {#each rows as r, i (i)}
     <div class="qf-row">
+      <div class="qf-top">
       <select bind:value={r.animal} aria-label="Familie">
         {#each ANIMALS as [n, e] (n)}
           <option value={n} disabled={n !== r.animal && taken.includes(n)}>{e} Familie {n}</option>
         {/each}
       </select>
-      {#each [["adults", "Erw."], ["kids", "Kinder"]] as [k, l] (k)}
-        <span class="qf-step" role="group" aria-label={l}>
-          <button type="button" onclick={() => step(r, k as "adults", -1)} aria-label="{l} weniger">−</button>
-          <b>{r[k as "adults"]}</b><small>{l}</small>
-          <button type="button" onclick={() => step(r, k as "adults", 1)} aria-label="{l} mehr">+</button>
+      <button type="button" class="x" onclick={() => rows.splice(i, 1)} aria-label="Familie {r.animal} entfernen">×</button>
+      </div>
+      <div class="qf-counts">
+      {#each [["adults", "Erw.", "Erwachsene"], ["kids", "Kinder", "Kinder (6–11)"], ["infants", "Kleink.", "Kleinkinder (unter 6)"]] as [k, l, full] (k)}
+        <span class="qf-step" role="group" aria-label={full} title={full}>
+          <button type="button" onclick={() => step(r, k as K, -1)} aria-label="{l} weniger">−</button>
+          <b>{r[k as K] || 0}</b><small>{l}</small>
+          <button type="button" onclick={() => step(r, k as K, 1)} aria-label="{l} mehr">+</button>
         </span>
       {/each}
-      <button type="button" class="x" onclick={() => rows.splice(i, 1)} aria-label="Familie {r.animal} entfernen">×</button>
+      </div>
     </div>
   {/each}
   <button type="button" class="linkbtn" onclick={add}>+ {rows.length ? "weitere Familie" : "Familie"}</button>

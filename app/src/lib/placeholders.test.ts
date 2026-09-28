@@ -22,6 +22,15 @@ describe("Platzhalter-Familien", () => {
     expect(totals(trip).byCat.attractions).toBe(4 * 20 + 6 * 10);
     expect(totals(trip).byHousehold).toEqual({ Reh: 70, Bär: 70 });
   });
+  it("Kleinkinder bekommen ihren eigenen Preis", () => {
+    const ks = placeholderTravelers([{ animal: "Igel", adults: 1, kids: 1, infants: 2 }]);
+    expect(ks.map(t => t.name)).toEqual(["Igel Erw. 1", "Igel Kind 1", "Igel Kleinkind 1", "Igel Kleinkind 2"]);
+    const trip: Trip = {
+      id: "t", name: "", place: "", country: "", travelers: ks, tiers: {}, settings: { ...DEFAULT_SETTINGS },
+      items: [{ id: "e", cat: "attractions", name: "Zoo", status: "chosen", options: [{ id: "o", label: "", price: { mode: "person", currency: "EUR", adult: 20, child: 10, infant: 0 } }] }]
+    };
+    expect(totals(trip).byCat.attractions).toBe(30);
+  });
   it("nimmt das nächste freie Tier", () => {
     expect(nextAnimal([])).toBe("Reh");
     expect(nextAnimal(["Reh", "Bär"])).toBe("Fuchs");
