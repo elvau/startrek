@@ -1,0 +1,86 @@
+/* Unterkünfte: alle Quellen gleichzeitig fragen, Doppelte zusammenführen, nach Preis sortieren */
+import type { SourceStatus } from "../flights/types";
+import { searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
+import type { StayOffer, StayQuery, StaySearchResult } from "./types";
+
+/** Adressen der MCP-Server (Cloudflare-Variablen); Booking.com erst mit eingetragener Adresse */
+export interface StayEnv { BOOKING_MCP_URL?: string; TRIVAGO_MCP_URL?: string }
+
+interface Provider {
+  id: string;
+  name: string;
+  configured: (env: StayEnv) => boolean;
+  search: (q: StayQuery, env: StayEnv, f: typeof fetch) => Promise<StayOffer[]>;
+}
+
+export const STAY_PROVIDERS: Provider[] = [
+  { id: "booking", name: "Booking.com", configured: env => !!env.BOOKING_MCP_URL, search: (q, env, f) => searchBooking(q, env.BOOKING_MCP_URL!, f) },
+  { id: "trivago", name: "Trivago", configured: () => true, search: (q, env, f) => searchTrivago(q, env.TRIVAGO_MCP_URL || TRIVAGO_MCP, f) }
+];
+
+const withTimeout = <T>(p: Promise<T>, ms: number) =>
+  Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`keine Antwort nach ${ms / 1000} s`)), ms))]);
+
+/** gleiche Unterkunft aus mehreren Quellen (gleicher Name, höchstens ~300 m auseinander): nur die günstigste bleibt */
+const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+const near = (a: StayOffer, b: StayOffer) =>
+  a.lat == null || b.lat == null || a.lon == null || b.lon == null || (Math.abs(a.lat - b.lat) < 0.003 && Math.abs(a.lon - b.lon) < 0.004);
+
+export function mergeStays(lists: StayOffer[][]): StayOffer[] {
+  const out: StayOffer[] = [];
+  for (const o of lists.flat()) {
+    const i = out.findIndex(x => norm(x.name) === norm(o.name) && near(x, o));
+    if (i < 0) out.push(o);
+    else if (o.total < out[i].total) out[i] = o;
+  }
+  return out.sort((a, b) => a.total - b.total);
+}
+
+export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fetch = fetch, timeoutMs = 25000): Promise<StaySearchResult> {
+  const wanted = (p: Provider) => !q.sources?.length || q.sources.includes(p.id);
+  const active = STAY_PROVIDERS.filter(p => wanted(p) && p.configured(env));
+  const sources: SourceStatus[] = STAY_PROVIDERS.filter(p => wanted(p) && !p.configured(env)).map(p => ({ id: p.id, name: p.name, configured: false, ok: false, count: 0 }));
+  const lists = await Promise.all(active.map(async p => {
+    const t0 = Date.now();
+    try {
+      const offers = await withTimeout(p.search(q, env, f), timeoutMs);
+      sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0 });
+      return offers;
+    } catch (e) {
+      sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: (e as Error).message });
+      return [];
+    }
+  }));
+  sources.sort((a, b) => STAY_PROVIDERS.findIndex(p => p.id === a.id) - STAY_PROVIDERS.findIndex(p => p.id === b.id));
+  return { offers: mergeStays(lists), sources };
+}
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const int = (v: unknown, min: number, max: number) => Number.isInteger(v) && (v as number) >= min && (v as number) <= max;
+const DAY = 86400000;
+
+/** Anfrage prüfen (im Such-Dienst, bevor irgendwer gefragt wird) */
+export function parseStayQuery(b: unknown): StayQuery | string {
+  const o = (b || {}) as Record<string, unknown>;
+  const str = (k: string) => (typeof o[k] === "string" ? (o[k] as string).trim() : "");
+  const place = str("place"), country = str("country"), checkin = str("checkin"), checkout = str("checkout");
+  if (!place || place.length > 80 || country.length > 60) return "Ort angeben";
+  if (!DATE.test(checkin) || !DATE.test(checkout)) return "Datum im Format JJJJ-MM-TT";
+  const n = (Date.parse(checkout) - Date.parse(checkin)) / DAY;
+  if (!(n >= 1)) return "Abreise muss nach der Anreise liegen";
+  if (n > 90) return "Höchstens 90 Nächte";
+  const adults = o.adults ?? 1, rooms = o.rooms ?? 1, childAges = o.childAges ?? [];
+  if (!int(adults, 1, 20)) return "1 bis 20 Erwachsene";
+  if (!Array.isArray(childAges) || childAges.length > 10 || !childAges.every(a => int(a, 0, 17))) return "Kinder: bis zu 10, Alter 0 bis 17";
+  if (!int(rooms, 1, 10) || (rooms as number) > (adults as number)) return "Zimmer: 1 bis 10, höchstens so viele wie Erwachsene";
+  const type = o.type ?? "all";
+  if (type !== "whole" && type !== "hotel" && type !== "all") return "Art: whole, hotel oder all";
+  let sources: string[] | undefined;
+  if (o.sources != null) {
+    if (!Array.isArray(o.sources) || !o.sources.every(s => STAY_PROVIDERS.some(p => p.id === s))) return "Unbekannte Quelle";
+    sources = o.sources as string[];
+  }
+  const currency = str("currency") || "EUR";
+  if (!/^[A-Z]{3}$/.test(currency)) return "Währung ungültig";
+  return { place, ...(country ? { country } : {}), checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type, ...(sources ? { sources } : {}), currency };
+}
