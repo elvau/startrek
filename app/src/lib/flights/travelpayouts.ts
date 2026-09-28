@@ -62,7 +62,14 @@ const nightsBetween = (o: FlightOffer) => Math.round((Date.parse(o.back!.dep.sli
 export async function searchTravelpayouts(q: FlightQuery, token: string, f: typeof fetch = fetch, marker?: string): Promise<FlightOffer[]> {
   // Token im Kopf statt in der Adresse, damit er in keinem Protokoll landet
   const res = await f(`${TP_URL}?${tpParams(q, marker)}`, { headers: { accept: "application/json", "x-access-token": token } });
-  if (!res.ok) throw new Error(`Travelpayouts antwortet mit ${res.status}`);
+  if (!res.ok) {
+    // Begründung aus der Antwort mitgeben (z. B. welches Feld nicht passt), sonst nur der Status
+    const body = await res.text().catch(() => "");
+    let why = "";
+    try { const j = JSON.parse(body); why = String(j.error || j.message || ""); } catch { why = body; }
+    why = why.replace(/\s+/g, " ").trim().slice(0, 160);
+    throw new Error(`Travelpayouts antwortet mit ${res.status}${why ? `: ${why}` : ""}`);
+  }
   const data: any = await res.json();
   if (data?.success === false) throw new Error(String(data.error || "Travelpayouts: Fehler bei der Suche"));
   return fromTravelpayouts(data, q, marker);
