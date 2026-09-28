@@ -48,11 +48,14 @@ const blank = (it: Item) => it.options.length === 1 && !it.options[0].label && !
  * Übernehmen: erstes Ergebnis füllt einen leeren Unterkunft-Posten oder legt einen an,
  * weitere kommen als Angebote zum Vergleichen dazu.
  */
-export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string): Item {
+export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, ids?: string[]): Item {
   const opt = stayToOption(o, q.adults + q.childAges.length);
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   if (target) { target.options.push(opt); return target; }
-  const empty = trip.items.find(i => i.cat === "stay" && blank(i) && (!i.from || i.from === q.checkin) && (!i.to || i.to === q.checkout));
+  // nur ein Teil der Reisenden (z. B. eine Familie, die früher kommt)
+  const act = trip.travelers.filter(isActive).map(t => t.id);
+  const part = ids?.length && act.some(id => !ids.includes(id)) ? ids.filter(id => act.includes(id)) : undefined;
+  const empty = !part ? trip.items.find(i => i.cat === "stay" && !i.participants && blank(i) && (!i.from || i.from === q.checkin) && (!i.to || i.to === q.checkout)) : undefined;
   if (empty) {
     empty.options = [opt];
     if (!empty.name || empty.name === "Neue Unterkunft") empty.name = `Unterkunft in ${q.place}`;
@@ -60,6 +63,7 @@ export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string):
     return empty;
   }
   const item: Item = { id: uid(), cat: "stay", name: `Unterkunft in ${q.place}`, status: "idea", from: q.checkin, to: q.checkout, options: [opt] };
+  if (part) item.participants = part;
   trip.items.push(item);
   return item;
 }

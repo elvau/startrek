@@ -24,10 +24,10 @@
   import Welcome from "./lib/ui/Welcome.svelte";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
   import StaySearch from "./lib/ui/StaySearch.svelte";
+  import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
 
   let sheet = $state(false);
   let flightSearch = $state(false);
-  let staySearch = $state(false);
 
   onMount(() => {
     try { const t = localStorage.getItem("rk-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
@@ -66,7 +66,7 @@
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => (flightSearch = true)}>✈ Flüge suchen</button></div>
         {:else if ch.k === "stay" && !access.readonly}
-          <div class="search-row"><button class="btn primary st-open" onclick={() => (staySearch = true)}>🛏 Unterkunft suchen</button></div>
+          <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 Unterkunft suchen</button></div>
         {/if}
         {#if !det}
           <SimpleCard cat={ch.k} label={ch.label} />
@@ -106,4 +106,4 @@
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
 {#if app.welcome && !cloud.user}<Welcome />{/if}
 {#if flightSearch}<FlightSearch onclose={() => (flightSearch = false)} />{/if}
-{#if staySearch}<StaySearch onclose={() => (staySearch = false)} />{/if}
+{#if staySearch.open}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/if}
