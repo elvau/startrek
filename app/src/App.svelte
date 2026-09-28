@@ -46,6 +46,8 @@
 
   const households = $derived(Object.keys(calc.T.byHousehold).length);
   const nn = $derived(nights(app.trip.from, app.trip.to));
+  // Impressum und Datenschutz liegen neben der App (…/startrek/impressum.html)
+  const LEGAL = ((import.meta.env.BASE_URL as string) || "/").replace(/neu\/?$/, "");
 </script>
 
 <Sprite />
@@ -101,6 +103,7 @@
 <p class="note">
   {cloud.user ? "Reisen mit ☁ liegen in deinem Konto." : "Gespeichert wird in diesem Browser."}
   <button class="linkbtn" onclick={() => { if (confirm("Die Beispielreise als neue Reise öffnen? Deine Reisen bleiben, wie sie sind.")) openSample(); }}>Beispielreise ansehen</button>
+  <span class="legal"><a href="{LEGAL}impressum.html">Impressum</a> · <a href="{LEGAL}datenschutz.html">Datenschutz</a></span>
 </p>
 
 <Dock onopen={() => (sheet = true)} />

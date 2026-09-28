@@ -453,7 +453,7 @@
             </div>
             {#each x.rt.legs as l, i (i)}
               {@render legRow(`${i + 1}.`, l.out)}
-              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<a href={l.url} target="_blank" rel="noopener noreferrer">Beim Anbieter ↗</a>{/if}</p>
+              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<a href={l.url} target="_blank" rel={l.source === "travelpayouts" ? "noopener noreferrer sponsored" : "noopener noreferrer"}>Beim Anbieter ↗</a>{#if l.source === "travelpayouts"} <small>Partner-Link*</small>{/if}{/if}</p>
             {/each}
             <div class="fs-acts">
               <button class="btn primary sm" disabled={taken[x.rt.id]} onclick={() => takeR(x.rt)}>{taken[x.rt.id] ? "✓ Übernommen" : "Übernehmen"}</button>
@@ -461,6 +461,7 @@
           </article>
         {/each}
       </div>
+      {#if rounds.some(x => x.rt.legs.some(l => l.source === "travelpayouts"))}<p class="muted small">* Partner-Link: Bei einer Buchung darüber erhalte ich eine kleine Provision, für euch ändert sich der Preis nicht.</p>{/if}
       {#if into}<p class="muted small">Übernommene Rundreisen stehen als Angebot in einem Posten im Kapitel Flüge.</p>{/if}
     {:else}
       <p class="muted small">Keine passende Rundreise gefunden. Zeitraum, Nächte oder Stationen ändern.</p>
@@ -529,7 +530,7 @@
             {#if o.back}{@render legRow("Rück", o.back)}{/if}
             <div class="fs-acts">
               <button class="btn primary sm" disabled={taken[o.id + o.origin]} onclick={() => take(o)}>{taken[o.id + o.origin] ? "✓ Übernommen" : "Übernehmen"}</button>
-              {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel="noopener noreferrer">Beim Anbieter ↗</a>{/if}
+              {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel={o.source === "travelpayouts" ? "noopener noreferrer sponsored" : "noopener noreferrer"}>Beim Anbieter ↗{#if o.source === "travelpayouts"}<small class="fs-ad">Partner-Link*</small>{/if}</a>{/if}
               <button class="btn sm" disabled title="Direkt in der App buchen kommt bald">Hier buchen <small>bald</small></button>
             </div>
           </article>
@@ -537,6 +538,7 @@
           <p class="muted small">Keine Direktflüge gefunden.</p>
         {/each}
       </div>
+      {#if list.some(o => o.source === "travelpayouts")}<p class="muted small">* Partner-Link: Bei einer Buchung darüber erhalte ich eine kleine Provision, für euch ändert sich der Preis nicht.</p>{/if}
       {#if into}<p class="muted small">Übernommene Flüge stehen als Angebote in einem Posten im Kapitel Flüge. Dort kannst du vergleichen und eins wählen.</p>{/if}
     {:else}
       <p class="muted small">Keine passenden Flüge gefunden. Datum, Umstiege oder Flughäfen ändern.</p>
