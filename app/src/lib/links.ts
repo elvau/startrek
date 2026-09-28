@@ -36,3 +36,19 @@ export function skyscannerLink(q: FlightLinkQuery, childAges: number[] = []): st
   const p = new URLSearchParams({ adultsv2: String(q.adults), cabinclass: "economy", ...(ages.length ? { childrenv2: ages.join("|") } : {}) });
   return `https://www.skyscanner.de/transport/flights/${q.from.toLowerCase()}/${q.to.toLowerCase()}/${d(q.depart)}/${q.ret ? `${d(q.ret)}/` : ""}?${p}`;
 }
+
+/* ---------- Erlebnisse ---------- */
+
+export interface ActivityLinkQuery { place: string; from?: string; to?: string }
+
+/** GetYourGuide: Suche nach Ort, mit Reisezeitraum */
+export function getYourGuideLink(q: ActivityLinkQuery): string {
+  const p = new URLSearchParams({ q: q.place });
+  if (q.from) p.set("date_from", q.from);
+  if (q.to) p.set("date_to", q.to);
+  return `https://www.getyourguide.de/s/?${p}`;
+}
+
+export const viatorLink = (q: ActivityLinkQuery) => `https://www.viator.com/de-DE/searchResults/all?text=${encodeURIComponent(q.place)}`;
+
+export const tiqetsLink = (q: ActivityLinkQuery) => `https://www.tiqets.com/de/search?q=${encodeURIComponent(q.place)}`;

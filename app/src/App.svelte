@@ -24,6 +24,7 @@
   import Welcome from "./lib/ui/Welcome.svelte";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
   import StaySearch from "./lib/ui/StaySearch.svelte";
+  import { getYourGuideLink, tiqetsLink, viatorLink } from "./lib/links";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
   import { flightSearch, openFlightSearch } from "./lib/flights/open.svelte";
 
@@ -66,6 +67,12 @@
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ Flüge suchen</button></div>
+        {:else if ch.k === "attractions"}
+          {@const aq = { place: app.trip.place, from: app.trip.from, to: app.trip.to }}
+          <p class="search-row muted small fs-direct">
+            {#if app.trip.place}Erlebnisse in {app.trip.place} finden: <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <a href={viatorLink(aq)} target="_blank" rel="noopener noreferrer">Viator ↗</a> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
+            {:else}Mit einem Reiseziel gibt es hier Links zu GetYourGuide, Viator und Tiqets.{/if}
+          </p>
         {:else if ch.k === "stay" && !access.readonly}
           <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 Unterkunft suchen</button></div>
         {/if}

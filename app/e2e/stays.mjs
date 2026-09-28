@@ -52,6 +52,8 @@ try {
   const bk = await m.locator(".fs-direct a", { hasText: "Booking.com" }).getAttribute("href");
   if (!bk.includes("ss=Split") || !bk.includes("checkin=2027-07-18") || !bk.includes("checkout=2027-07-25")) fail("Booking-Link: " + bk);
   log("Direkt-Link zu Booking.com mit Ort und Daten");
+  const gyg = p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" });
+  if (await gyg.count()) fail("Erlebnis-Links ohne Reiseziel");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   const q = asked[0];
@@ -97,6 +99,9 @@ try {
   };
   await p.evaluate(t => { localStorage.setItem("rk2-t:k1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k1", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k1"); }, TRIP);
   await p.reload();
+  const gl = await p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" }).getAttribute("href");
+  if (!gl.includes("q=Split") || !gl.includes("date_from=2027-07-18")) fail("GetYourGuide-Link: " + gl);
+  log("Erlebnisse: Links zu GetYourGuide (mit Reisezeitraum), Viator und Tiqets");
   const gap = p.locator("#stay .pl-notes li.crit", { hasText: "ohne Unterkunft" });
   await gap.first().waitFor();
   const gt = await gap.first().textContent();

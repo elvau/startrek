@@ -425,3 +425,4 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .fs-along{align-items:center;margin-top:2px}
 .fs-direct{margin:0}
 .fs-direct a{color:var(--a);font-weight:700;text-decoration:none}
+.search-row.fs-direct{display:block;line-height:1.7}
