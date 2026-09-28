@@ -300,3 +300,5 @@ body[data-ch="split"] .amb-trav{opacity:1}
 :root[data-theme="dark"] .age-pill{background:#4A3413;color:#FFD08A}
 :root[data-theme="dark"] .age-pill.infant{background:#4A1F38;color:#F5A8D2}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .age-pill{background:#4A3413;color:#FFD08A}:root:not([data-theme="light"]) .age-pill.infant{background:#4A1F38;color:#F5A8D2}}
+.welcome .btn.go{align-items:center;font-size:16px;padding:13px 16px;align-self:stretch}
+.welcome-more{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 20px;margin-top:2px}
