@@ -1,5 +1,5 @@
 # Such-Dienst der Reisekasse. Veröffentlichen: siehe docs/FLUGSUCHE.md
-name = "reisekasse-suche"
+name = "startrek"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 
