@@ -120,6 +120,31 @@ try {
   await a.locator("#flights .simple-hidden").waitFor();
   log("Flüge detailliert und zurück: Betrag wird Posten und umgekehrt, Summe bleibt 1.500 €");
 
+  // Schnell mit Platzhaltern: Familie Reh und Familie Bär, je 2 Erwachsene und 3 Kinder
+  await menu(a);
+  await a.locator(".tm-act", { hasText: "+ Neue Reise" }).click();
+  await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Ostsee");
+  const qf = a.locator(".newtrip .qf");
+  await qf.locator(".linkbtn").click();
+  await qf.locator(".linkbtn").click();
+  for (const i of [0, 1]) for (let k = 0; k < 3; k++) await qf.locator(".qf-row").nth(i).locator('[aria-label="Kinder mehr"]').click();
+  const fams = await qf.locator(".qf-row select").evaluateAll(xs => xs.map(x => x.value));
+  if (fams.join() !== "Reh,Bär") fail("Familien: " + fams);
+  await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
+  await until(async () => (await a.locator(".hero h1").textContent()).includes("Ostsee"), "Ostsee offen");
+  const ph = await a.locator(".person:not(.add) b").allTextContents();
+  if (ph.length !== 10 || ph[0] !== "Reh Erw. 1" || ph[9] !== "Bär Kind 3") fail("Platzhalter: " + ph);
+  const kids = await a.locator(".person", { hasText: "Reh Kind 1" }).locator("span").allTextContents();
+  if (!kids.some(x => x.includes("Kind"))) fail("Kind nicht als Kind: " + kids);
+  await amount("stay", "1000");
+  await until(async () => (await a.locator("#stay .simple-out b").textContent()) === "100 €", "100 € pro Person");
+  const hh2 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
+  if (hh2.length !== 2 || !hh2.every(x => x.includes("500 €"))) fail("pro Familie: " + hh2);
+  await a.locator("#trav .card").scrollIntoViewIfNeeded();
+  await a.locator(".trav-acts .linkbtn", { hasText: "Als Gruppe speichern" }).click();
+  await a.locator(".trav-note", { hasText: "Platzhalter werden nicht gespeichert" }).waitFor();
+  log("Platzhalter: Familie Reh und Bär mit je 5, 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
+
   // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da
   await a.evaluate(() => scrollTo(0, 0));
   await a.locator(".hero .acct .tm-btn", { hasText: "Anmelden" }).click();

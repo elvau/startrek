@@ -15,7 +15,7 @@
     const p = opt.price, q = p.qty && p.qty !== 1 ? ` × ${p.qty}` : "";
     if (p.mode === "unit") return `${eur(p.unit || 0)}${q} · pauschal für ${r?.n || 0}`;
     const cnt = { adult: 0, child: 0, infant: 0 };
-    participantsOf(item, app.trip).forEach(t => cnt[ageClass(t.age, app.trip.settings)]++);
+    participantsOf(item, app.trip).forEach(t => cnt[ageClass(t.age, app.trip.settings, t.kind)]++);
     const parts = [];
     if (cnt.adult) parts.push(`${cnt.adult} × ${eur(p.adult || 0)} Erwachsene`);
     if (cnt.child) parts.push(`${cnt.child} × ${eur(p.child ?? p.adult ?? 0)} Kinder`);
