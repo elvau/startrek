@@ -148,6 +148,16 @@ try {
   await a.locator("#trav .card").scrollIntoViewIfNeeded();
   await a.locator(".trav-acts .linkbtn", { hasText: "Als Gruppe speichern" }).click();
   await a.locator(".trav-note", { hasText: "Platzhalter werden nicht gespeichert" }).waitFor();
+  // Platzhalter durch gespeicherte Person ersetzen
+  await a.locator(".person", { hasText: "Reh Erw. 1" }).locator(".repl").click();
+  const cand = await a.locator(".repl-pick .chip").allTextContents();
+  if (!cand.some(c => c.includes("Dani Klein"))) fail("Kandidaten: " + cand);
+  await a.locator(".repl-pick .chip", { hasText: "Dani Klein" }).click();
+  const after = await a.locator(".person:not(.add) b").allTextContents();
+  if (after.length !== 10 || after[0] !== "Dani Klein" || after.includes("Reh Erw. 1")) fail("nach Ersetzen: " + after);
+  const hh3 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
+  if (!hh3.some(x => x.startsWith("Klein") && x.includes("100 €"))) fail("Klein nach Ersetzen: " + hh3);
+  log("„Reh Erw. 1“ durch die gespeicherte Dani Klein ersetzt, Familie Klein zahlt 100 €");
   log("Platzhalter: Familie Reh (2+3) und Bär (2+2+1 Kleinkind), 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
 
   // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da

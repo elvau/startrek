@@ -282,3 +282,6 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .qf-step button:first-child{grid-column:1}
 .qf-step button:last-child{grid-column:3;grid-row:1/3}
 .qf-top select{flex:1;min-width:0}
+.pick.repl-pick{flex-direction:column;align-items:flex-start;gap:8px}
+.repl-acts{display:flex;gap:16px}
+.person .repl{font-size:12.5px;margin-top:2px}
