@@ -48,7 +48,7 @@ try {
   await anna.goto(URL);
   // erster Besuch: Willkommen, Anna schaut sich das Beispiel an
   await anna.locator(".modal .welcome .linkbtn", { hasText: "Beispielreise ansehen" }).click();
-  await until(async () => (await anna.locator(".hero h1").textContent()).includes("Makarska"), "Beispielreise offen");
+  await until(async () => (await anna.locator(".hero-in").textContent()).includes("Makarska"), "Beispielreise offen");
   if ((await anna.locator(".hero .tm-btn").first().click(), await anna.locator(".tm-trip").count()) !== 1) fail("leere Reise nicht weggeräumt");
   await anna.keyboard.press("Escape");
   await anna.locator(".hero .acct .tm-btn", { hasText: "Anmelden" }).click();
@@ -76,7 +76,7 @@ try {
   await oma.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
   await login(oma, "Oma");
   await until(async () => (await oma.locator(".hero .tm-btn").first().textContent()).includes("☁"), "Oma hat die Reise im Konto");
-  await until(async () => (await oma.locator(".hero h1").textContent()).includes("Makarska"), "Oma sieht die Reise");
+  await until(async () => (await oma.locator(".hero-in").textContent()).includes("Makarska"), "Oma sieht die Reise");
   await until(async () => !(await oma.locator(".banner").count()), "Stand geladen");
   if ((await total(oma)) !== before) fail(`Oma sieht ${await total(oma)} statt ${before}`);
   log("Oma ist beigetreten und sieht dieselbe Summe");
@@ -118,7 +118,7 @@ try {
   mal.on("dialog", d => d.accept());
   await mal.locator(".hero .tm-btn").first().click();
   await mal.locator(".tm-act", { hasText: "Diese Reise löschen" }).click();
-  await until(async () => (await mal.locator(".hero h1").textContent()).includes("Neue Reise"), "leere Reise nach dem Löschen");
+  await until(async () => (await mal.locator(".hero h1").textContent()).startsWith("Solo "), "leere Reise nach dem Löschen");
   await until(async () => (await mal.locator(".hero .tm-btn").first().textContent()).includes("☁"), "leere Reise liegt im Konto");
   await mal.locator(".hero .acct-btn").click();
   if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("Hinweis auf Gerät-Reise bleibt");

@@ -68,14 +68,19 @@ try {
   // Neue Reise für die Kegelgruppe, einfacher Modus
   await a.evaluate(() => scrollTo(0, 0));
   await a.locator(".hero .tm-plus").click();
-  await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Mosel");
-  await a.locator(".newtrip label", { hasText: "Von" }).locator("input").fill("2027-05-06");
-  await a.locator(".newtrip label", { hasText: "Bis" }).locator("input").fill("2027-05-09");
+  if (await a.locator(".newtrip label", { hasText: "Wohin" }).count()) fail("Wohin noch im Dialog");
   if (!(await a.locator(".newtrip .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
   await a.locator(".newtrip .who-b", { hasText: "Gespeichert" }).click();
   await a.locator(".newtrip .grp-chip", { hasText: "Kegeln" }).click();
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
-  await until(async () => (await a.locator(".hero h1").textContent()).includes("Mosel"), "neue Reise offen");
+  await until(async () => /^Kegeln \(\d\d\.\d\d\.\)/.test(await a.locator(".hero h1").textContent()), "neue Reise „Kegeln (TT.MM.)“ offen");
+  // Ort und Zeitraum oben in der Reise: der Name bildet sich daraus
+  await a.locator(".hero-edit").click();
+  await a.locator(".trip-ed label", { hasText: "Ort" }).locator("input").fill("Mosel");
+  await a.locator(".trip-ed label", { hasText: "Von" }).locator("input").fill("2027-05-06");
+  await a.locator(".trip-ed label", { hasText: "Bis" }).locator("input").fill("2027-05-09");
+  await a.locator(".trip-ed .btn", { hasText: "Fertig" }).click();
+  await until(async () => (await a.locator(".hero h1").textContent()).includes("Mosel"), "Ort eingetragen");
   const tname = await a.locator(".hero .tm-name").first().textContent();
   if (tname !== "Mosel · Mai 2027 · 4 Tage") fail("Name: " + tname);
   await menu(a);
@@ -83,6 +88,15 @@ try {
   if (listed.length !== 1) fail("leere Reise nicht weggeräumt: " + listed.join(" | "));
   await a.keyboard.press("Escape");
   log("Name aus Ziel und Zeitraum:", tname, "· leere Startreise weggeräumt");
+
+  // Umbenennen direkt an der Überschrift: eigener Name steht groß, Ort wandert in die Zeile darunter
+  await a.locator(".hero .h1-edit").click();
+  await a.locator(".hero .h1-in").fill("Kegeltour 2027");
+  await a.keyboard.press("Enter");
+  await until(async () => (await a.locator(".hero h1").textContent()).startsWith("Kegeltour 2027"), "eigener Name");
+  if ((await a.locator(".hero .tm-name").first().textContent()) !== "Kegeltour 2027") fail("Name oben nicht übernommen");
+  if (!(await a.locator(".hero .meta").textContent()).startsWith("Mosel")) fail("Ort nicht unter dem Namen");
+  log("Umbenannt per ✎: „Kegeltour 2027“, darunter Mosel");
   const names = (await a.locator(".person:not(.add) b").allTextContents()).join(", ");
   if (names !== "Monika Klein, Uwe Schmitz") fail("Reisende: " + names);
   if ((await a.locator(".simple-card").count()) !== 5) fail("nicht alle Bereiche einfach");
@@ -129,7 +143,6 @@ try {
   // Schnell mit Platzhaltern: zwei Tierfamilien (zufällige Tiere)
   await a.evaluate(() => scrollTo(0, 0));
   await a.locator(".hero .tm-plus").click();
-  await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Ostsee");
   await a.locator(".newtrip .who-b", { hasText: "Familie" }).click();
   const qf = a.locator(".newtrip .qf");
   await qf.locator(".linkbtn").click();
@@ -141,7 +154,7 @@ try {
   const [A, B] = fams;
   if (fams.length !== 2 || A === B) fail("Familien: " + fams);
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
-  await until(async () => (await a.locator(".hero h1").textContent()).includes("Ostsee"), "Ostsee offen");
+  await until(async () => (await a.locator(".person:not(.add) b").count()) === 10, "Familien-Reise offen");
   const ph = await a.locator(".person:not(.add) b").allTextContents();
   if (ph.length !== 10 || ph[0] !== `${A} Erw. 1` || ph[9] !== `${B} Kleinkind 1`) fail("Platzhalter: " + ph);
   const kids = await a.locator(".person", { hasText: `${A} Kind 1` }).locator("span").allTextContents();

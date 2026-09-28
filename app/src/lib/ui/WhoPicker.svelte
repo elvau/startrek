@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import { travelersFrom } from "../directory.svelte";
+  import { dir, travelersFrom } from "../directory.svelte";
   import { animalEmoji, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler, type FamilyRow } from "../placeholders";
   import type { Traveler } from "../model";
 
@@ -10,11 +10,30 @@
     partner: string;
     fams: FamilyRow[];
     group: { adults: number; kids: number };
+    /** Tier im Namen der Gruppenreise */
+    mascot: string;
     picked: string[];
   }
   /** Startauswahl: solo, mit zufälligen Tieren */
   export function newWho(): Who {
-    return { mode: "solo", solo: nextAnimal(), partner: nextAnimal(), fams: [{ animal: nextAnimal(), adults: 2, kids: 0, infants: 0 }], group: { adults: 6, kids: 0 }, picked: [] };
+    return { mode: "solo", solo: nextAnimal(), partner: nextAnimal(), fams: [{ animal: nextAnimal(), adults: 2, kids: 0, infants: 0 }], group: { adults: 6, kids: 0 }, mascot: nextAnimal(), picked: [] };
+  }
+  /** Art der Reise für den vorläufigen Namen, z. B. „Solo Pinguin“, „Gruppenreise Zebra“ */
+  export function whoName(w: Who): string {
+    switch (w.mode) {
+      case "solo": return `Solo ${w.solo}`;
+      case "partner": return `Partnerreise ${w.partner}`;
+      case "family": {
+        const a = w.fams.map(f => f.animal);
+        return `Familienreise ${a.length > 2 ? `${a.slice(0, 2).join(" & ")} u. a.` : a.join(" & ")}`;
+      }
+      case "group": return `Gruppenreise ${w.mascot}`;
+      default: {
+        // genau eine gespeicherte Gruppe gewählt: deren Name
+        const g = dir.groups.find(g => g.memberIds.length && g.memberIds.length === w.picked.length && g.memberIds.every(id => w.picked.includes(id)));
+        return g ? g.name : "Reise";
+      }
+    }
   }
   /** Reisende nach der Auswahl */
   export function whoTravelers(w: Who): Traveler[] {
@@ -30,7 +49,6 @@
 
 <script lang="ts">
   /* Wer fährt mit: Solo, Partner, Familie, Gruppe (oder gespeicherte Gruppen) */
-  import { dir } from "../directory.svelte";
   import QuickFamilies from "./QuickFamilies.svelte";
 
   let { who = $bindable() }: { who: Who } = $props();
@@ -51,17 +69,54 @@
   const toggle = (id: string) => (who.picked = who.picked.includes(id) ? who.picked.filter(x => x !== id) : [...who.picked, id]);
 </script>
 
-<!-- kleine Figuren: Köpfe und Körper, Kinder kleiner -->
-{#snippet person(x: number, s: number, o = 1)}
-  <g opacity={o}><circle cx={x} cy={22 - 11 * s} r={5.5 * s} /><path d="M{x - 8 * s} 44 v{-8 * s} a{8 * s} {8 * s} 0 0 1 {16 * s} 0 v{8 * s} z" /></g>
+<!-- kleine Szenen: Figuren mit Haut, Haar, Oberteil; Kinder kleiner -->
+{#snippet person(x: number, s: number, shirt: string, skin = "#F2C9A5", hair = "#4A3222", o = 1)}
+  {@const g = 54}
+  {@const lh = 13 * s}
+  {@const th = 15 * s}
+  {@const r = 6 * s}
+  {@const top = g - lh - th}
+  {@const cy = top - r + 1.5 * s}
+  <g opacity={o}>
+    <rect x={x - 5 * s} y={g - lh - 1} width={4 * s} height={lh + 1} rx={2 * s} fill="#3A4256" />
+    <rect x={x + 1 * s} y={g - lh - 1} width={4 * s} height={lh + 1} rx={2 * s} fill="#3A4256" />
+    <rect x={x - 7.5 * s} y={top} width={15 * s} height={th + 2 * s} rx={5.5 * s} fill={shirt} />
+    <circle cx={x} cy={cy} r={r} fill={skin} />
+    <path d="M{x - r} {cy + 0.5 * s} a{r} {r} 0 0 1 {2 * r} 0 q{-r * 0.9} {-r * 0.55} {-2 * r} 0z" fill={hair} />
+  </g>
 {/snippet}
 {#snippet fig(k: WhoMode)}
-  <svg class="who-fig" viewBox="0 0 64 44" aria-hidden="true">
-    {#if k === "solo"}{@render person(32, 1.25)}
-    {:else if k === "partner"}{@render person(24, 1.15)}{@render person(40, 1.15)}
-    {:else if k === "family"}{@render person(17, 1.1)}{@render person(47, 1.1)}{@render person(32, .8)}{@render person(25, .65)}{@render person(39, .65)}
-    {:else if k === "group"}{@render person(12, .85, .55)}{@render person(24, .9, .75)}{@render person(52, .85, .55)}{@render person(40, .9, .75)}{@render person(32, 1.05)}
-    {:else}{@render person(22, 1)}{@render person(42, 1)}{/if}
+  <svg class="who-fig" viewBox="0 0 80 60" aria-hidden="true">
+    <ellipse cx="40" cy="55" rx="30" ry="3.5" fill="#000" opacity=".07" />
+    {#if k === "solo"}
+      {@render person(33, 1.15, "#E07B45")}
+      <!-- Rollkoffer -->
+      <path d="M49 34v-4a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v4" fill="none" stroke="#7A4B2A" stroke-width="2" />
+      <rect x="45" y="34" width="18" height="18" rx="3.5" fill="#F2B04A" />
+      <rect x="47.5" y="37.5" width="13" height="2" rx="1" fill="#fff" opacity=".6" />
+      <circle cx="49" cy="53.5" r="1.8" fill="#3A4256" /><circle cx="59" cy="53.5" r="1.8" fill="#3A4256" />
+    {:else if k === "partner"}
+      {@render person(29, 1.1, "#D9537F", "#F2C9A5", "#6B3F22")}
+      {@render person(51, 1.1, "#4E7BD9", "#D9A07A", "#2B2B2B")}
+      <path transform="translate(40 3) scale(.75) translate(-40 0)" d="M40 6c-2.2-3.4-8-2.6-8 1.8 0 3.6 5 6.6 8 9 3-2.4 8-5.4 8-9 0-4.4-5.8-5.2-8-1.8z" fill="#E0527E" />
+    {:else if k === "family"}
+      {@render person(19, 1.05, "#3F8BD8", "#F2C9A5", "#6B3F22")}
+      {@render person(61, 1.05, "#E07B45", "#F2C9A5", "#C9853A")}
+      {@render person(34, .72, "#F2B04A", "#F7D7BE", "#C9853A")}
+      {@render person(47, .62, "#5CB88F", "#F7D7BE", "#6B3F22")}
+    {:else if k === "group"}
+      <!-- Wimpel -->
+      <line x1="66" y1="8" x2="66" y2="54" stroke="#7A4B2A" stroke-width="1.8" />
+      <path d="M66 9l-14 5 14 5z" fill="#F2B04A" />
+      {@render person(18, .82, "#8FCFB3", "#D9A07A", "#2B2B2B", .75)}
+      {@render person(40, .82, "#8FCFB3", "#F2C9A5", "#C9853A", .75)}
+      {@render person(29, 1, "#1F8A70", "#F2C9A5", "#4A3222")}
+      {@render person(51, 1, "#1F8A70", "#A86B4A", "#2B2B2B")}
+    {:else}
+      {@render person(30, 1, "#7A5AC8")}
+      {@render person(50, 1, "#A99BE0", "#D9A07A", "#2B2B2B")}
+      <circle cx="40" cy="14" r="7" fill="#fff" /><path d="M36.5 14l2.5 2.5 4.5-5" fill="none" stroke="#7A5AC8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    {/if}
   </svg>
 {/snippet}
 
@@ -88,6 +143,7 @@
     <QuickFamilies bind:rows={who.fams} />
     {#if famCount}<p class="muted small">Zusammen {famCount} {famCount === 1 ? "Person" : "Personen"}.</p>{/if}
   {:else if who.mode === "group"}
+    <p class="small">Die Reise heißt vorerst <b>Gruppenreise {animalEmoji(who.mascot)} {who.mascot}</b>. <button type="button" class="linkbtn" onclick={() => (who.mascot = other(who.mascot))}>Anderes Tier</button></p>
     <p class="muted small">Jede Person rechnet für sich ab, z. B. Mannschaft, Verein oder Kegelclub.</p>
     <div class="qf-counts grp-counts">
       {#each [["adults", "Erw.", "Erwachsene"], ["kids", "Kinder", "Kinder"]] as [k, l, full] (k)}

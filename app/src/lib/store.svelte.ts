@@ -29,15 +29,22 @@ function normalize(t: Trip): Trip {
   return t;
 }
 
-/** Leere Reise; der Name kommt später aus Ziel und Zeitraum */
-function emptyTrip(o: { name?: string; place?: string; from?: string; to?: string } = {}): Trip {
+/** Vorläufiger Name aus der Art der Reise und dem heutigen Tag, z. B. „Solo Pinguin (28.09.)“ */
+export const startName = (base: string) => `${base} (${dateDE(new Date().toISOString().slice(0, 10))})`;
+
+type NewOpts = { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[]; base?: string };
+
+/** Leere Reise; der vorläufige Name weicht, sobald Ort oder Zeitraum da sind oder man selbst einen vergibt */
+function emptyTrip(o: NewOpts = {}): Trip {
   const own = o.name?.trim();
   const auto = autoName(o);
+  // Standard: eine Person als Tier
+  const travelers = o.travelers ?? [soloTraveler()];
+  const base = o.base || (travelers.length === 1 && travelers[0].placeholder ? `Solo ${travelers[0].household}` : "Reise");
   return {
-    id: uid(), name: own || auto || `Neue Reise vom ${dateDE(new Date().toISOString().slice(0, 10))}`, autoName: !own,
+    id: uid(), name: own || auto || startName(base), autoName: !own,
     place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
-    // Standard: eine Person, anonym als Reh
-    travelers: [soloTraveler()], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
+    travelers, items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
   };
 }
 
@@ -311,12 +318,11 @@ export function switchTrip(id: string) {
 }
 
 /** Neue Reise, standardmäßig im einfachen Modus; Reisende z. B. aus gespeicherten Gruppen */
-export function newTrip(opts: { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[] } = {}) {
+export function newTrip(opts: NewOpts = {}) {
   flush();
   const prev = app.trip;
   open({
     ...emptyTrip(opts),
-    travelers: opts.travelers ?? [soloTraveler()],
     // Wohnorte und Anreise je Familie aus der bisherigen Reise übernehmen, das spart Tipparbeit
     households: JSON.parse(JSON.stringify(prev.households || {}))
   });
@@ -362,6 +368,19 @@ export function addItem(cat: CatKey): Item {
 export function removeItem(id: string) {
   app.trip.items = app.trip.items.filter(x => x.id !== id);
   if (app.editing === id) app.editing = null;
+}
+
+/** Erster Start: die gewählten Reisenden in die Startreise, mit passendem vorläufigen Namen */
+export function startWith(travelers: Traveler[], base: string) {
+  app.trip.travelers = travelers;
+  if (app.trip.autoName && !autoName(app.trip)) app.trip.name = startName(base);
+}
+
+/** Reise selbst benennen; leer: Name folgt wieder Ort und Zeitraum */
+export function renameTrip(name: string) {
+  const v = name.trim();
+  if (v) { app.trip.name = v; app.trip.autoName = false; }
+  else { app.trip.autoName = true; app.trip.name = autoName(app.trip) || app.trip.name; }
 }
 
 /** Beispielreise als neue Reise öffnen; die offene Reise bleibt unangetastet */
