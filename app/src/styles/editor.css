@@ -431,3 +431,14 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .food-rows li{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
 .food-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
 .food-h b.num{margin-left:auto}
+/* Flughafen- und Städteauswahl */
+.lp{position:relative;min-width:0}
+.lp-list{position:absolute;z-index:30;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:300px;overflow:auto}
+.lp-list li{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:7px 8px;border-radius:8px;font-size:13.5px;cursor:pointer}
+.lp-list li.sub{padding-left:22px;grid-template-columns:38px minmax(0,1fr) auto}
+.lp-list li.on,.lp-list li:hover{background:var(--a-soft)}
+.lp-code{font-variant-numeric:tabular-nums;letter-spacing:.02em;color:var(--a)}
+.lp-cc{white-space:nowrap}
+.fs-add.lp{width:190px}
+.fs-add.lp .f{gap:0}
+.fs-add .lp-list{min-width:min(320px,80vw)}

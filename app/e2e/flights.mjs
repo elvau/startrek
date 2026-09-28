@@ -39,6 +39,7 @@ try {
     await new Promise(res => setTimeout(res, 200));
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(RESULT) });
   });
+  await p.route("**/airports.json", r => r.fulfill({ path: "../public/airports.json" }));
   await p.goto(URL);
   await p.locator(".modal .btn", { hasText: "Los geht's" }).click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
@@ -69,6 +70,7 @@ try {
   const a0 = asked[0];
   if (a0.depart !== "2027-07-15" || a0.latest !== "2027-07-29" || a0.nightsMin !== 7 || a0.nightsMax !== 12 || a0.maxStops !== 1 || a0.bags !== true || a0.selfTransfer !== false || a0.ret)
     fail("Anfrage: " + JSON.stringify(a0));
+  if (a0.to !== "SPU" || a0.toAirports?.join() !== "SPU" || a0.toCity) fail("Ziel: " + JSON.stringify(a0));
   log(`Flexibel: ${on.slice(0, 2).join(" + ")}, 15.07. bis zuhause 29.07. 20:00, Schieberegler 7–12 Nächte, max. 1 Umstieg, Koffer, ohne Self-Transfer`);
 
   // Vergleich je Flughafen, Treffer mit Anfahrt, Nächten und „zuhause ca.“
@@ -85,6 +87,37 @@ try {
   await m.locator(".fs-form .btn.primary").click();
   await m.locator("p", { hasText: "aussortiert, weil ihr zu spät zuhause wärt" }).waitFor();
   log("Spätestens 17:00 zuhause: Verbindungen mit Landung 16:25 aussortiert");
+
+  // Stadt mit mehreren Flughäfen: Ziel Tokio (alle), dazu Abflug London (alle Londoner Flughäfen)
+  const dest = m.locator("label.f", { hasText: "Nach" }).locator("input");
+  await dest.fill("Tokio");
+  await m.locator(".lp-list li").first().waitFor();
+  const first = await m.locator(".lp-list li").first().textContent();
+  if (!first.includes("TYO") || !first.includes("HND")) fail("Vorschlag Tokio: " + first);
+  await dest.press("Enter");
+  if (!(await dest.inputValue()).startsWith("Tokio (alle")) fail("Auswahl Tokio: " + await dest.inputValue());
+  if (!(await m.locator(".fs-note").textContent()).includes("HND")) fail("Hinweis alle Flughäfen fehlt");
+  const add = m.locator(".fs-add input");
+  await add.fill("London");
+  await m.locator(".lp-list li", { hasText: "LON" }).first().click();
+  const lonChip = m.locator(".fs-aps .chip", { hasText: "LON" });
+  if (!(await lonChip.textContent()).includes("London, alle")) fail("Chip London: " + await lonChip.textContent());
+  await m.locator("label.fs-time input").fill("20:00");
+  const before = asked.length;
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().waitFor();
+  const tq = asked.slice(before);
+  const lon = tq.find(x => x.from === "LON"), dus = tq.find(x => x.from !== "LON");
+  if (tq.length !== 3 || tq.some(x => x.to !== "TYO" || x.toCity !== "Tokyo" || x.toAirports?.join() !== "HND,NRT")) fail("Anfragen Tokio: " + JSON.stringify(tq));
+  if (!lon || lon.fromCity !== "London" || !lon.fromAirports?.includes("LHR") || !lon.fromAirports?.includes("STN")) fail("Abflug London: " + JSON.stringify(lon));
+  if (dus.fromAirports?.join() !== dus.from || dus.fromCity) fail("Abflug einzelner Flughafen: " + JSON.stringify(dus));
+  log("Tokio (alle: HND, NRT) als Ziel und London (alle) als Abflug: Stadt-Code, englischer Name und Flughafenliste gehen an den Such-Dienst");
+  // zurück: London abwählen, Ziel wieder Split per Kürzel
+  await lonChip.click();
+  if (await m.locator(".fs-aps .chip", { hasText: "LON" }).count()) fail("London nicht entfernt");
+  await dest.fill("SPU");
+  await m.locator(".lp-list li", { hasText: "SPU" }).first().click();
+  if (!(await dest.inputValue()).startsWith("SPU · Split")) fail("Auswahl Split: " + await dest.inputValue());
 
   // wieder 20:00, feste Daten mit ± Tagen prüfen, dann übernehmen
   await m.locator(".fs-mode .chip", { hasText: "Feste Daten" }).click();

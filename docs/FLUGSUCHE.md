@@ -63,8 +63,21 @@ Sobald ein Secret da ist, taucht der Anbieter in der Suche als „eingerichtet�
    deiner Partnerkennung (Provision bei Buchung).
 
 Hinweise: Travelpayouts liefert Preise aus dem Zwischenspeicher von Aviasales (Suchen der letzten Tage),
-pro Person; die App rechnet sie auf alle Reisenden hoch. Start und Ziel müssen Flughafencodes sein (DUS, SPU).
+pro Person; die App rechnet sie auf alle Reisenden hoch. Start und Ziel schickt die App als Code (DUS, SPU oder Stadt-Code wie TYO).
 Duffel ist noch nicht angebunden.
+
+## Flughäfen und Städte
+
+Die Auswahl in der App („Nach“, „+ Stadt oder Code“) nutzt `public/airports.json`: rund 4000 Flughäfen mit
+Linienverkehr aus [OurAirports](https://ourairports.com/data/) (gemeinfrei) und rund 40 Städte mit mehreren
+Flughäfen (Liste in `scripts/airports.mjs`). Die Datei wird bei jedem Deploy und jeden Montag neu erzeugt
+(`node scripts/airports.mjs`); klappt der Abruf nicht, bleibt die Datei aus dem Projekt. Nichts davon liegt in Firebase:
+die Daten sind öffentlich, der Browser lädt sie einmal und hält sie im Cache.
+
+| Auswahl | Kiwi.com | Travelpayouts | Treffer |
+|---|---|---|---|
+| Stadt, z. B. Tokio (TYO) | Stadtname „Tokyo“ | Stadt-Code TYO | nur an HND und NRT |
+| Flughafen, z. B. HND | HND | HND | nur an HND |
 
 ## Unterkünfte
 

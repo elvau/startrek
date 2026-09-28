@@ -45,6 +45,12 @@ export function inWindow(q: FlightQuery, offers: FlightOffer[]): FlightOffer[] {
   return offers.filter(o => o.out.dep.slice(0, 10) >= q.depart && (o.back ?? o.out).arr.slice(0, 10) <= q.latest!);
 }
 
+/** nur Treffer an den gewählten Flughäfen (eine Stadt: alle ihre Flughäfen; ein Kürzel: nur dieser) */
+export function atAirports(q: FlightQuery, offers: FlightOffer[]): FlightOffer[] {
+  const ok = (list: string[] | undefined, code: string) => !list?.length || list.includes(code);
+  return offers.filter(o => ok(q.fromAirports, o.out.from) && ok(q.toAirports, o.out.to));
+}
+
 export async function searchAll(q: FlightQuery, env: FlightEnv = {}, f: typeof fetch = fetch, timeoutMs = 25000): Promise<SearchResult> {
   const active = PROVIDERS.filter(p => p.configured(env));
   const sources: SourceStatus[] = PROVIDERS.filter(p => !p.configured(env)).map(p => ({ id: p.id, name: p.name, configured: false, ok: false, count: 0 }));
@@ -60,7 +66,7 @@ export async function searchAll(q: FlightQuery, env: FlightEnv = {}, f: typeof f
     }
   }));
   sources.sort((a, b) => PROVIDERS.findIndex(p => p.id === a.id) - PROVIDERS.findIndex(p => p.id === b.id));
-  return { offers: inWindow(q, merge(lists)), sources };
+  return { offers: atAirports(q, inWindow(q, merge(lists))), sources };
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -91,7 +97,19 @@ export function parseQuery(b: unknown): FlightQuery | string {
   if (o.maxStops != null) { if (!int(o.maxStops, 0, 2)) return "Umstiege: 0 bis 2"; opt.maxStops = o.maxStops as number; }
   if (o.bags != null) { if (typeof o.bags !== "boolean") return "Koffer: ja oder nein"; opt.bags = o.bags; }
   if (o.selfTransfer != null) { if (typeof o.selfTransfer !== "boolean") return "Self-Transfer: ja oder nein"; opt.selfTransfer = o.selfTransfer; }
+  const places: Pick<FlightQuery, "fromAirports" | "toAirports" | "fromCity" | "toCity"> = {};
+  for (const k of ["fromAirports", "toAirports"] as const) {
+    if (o[k] == null) continue;
+    const v = o[k];
+    if (!Array.isArray(v) || v.length > 8 || !v.every(x => typeof x === "string" && /^[A-Z]{3}$/.test(x))) return "Flughäfen: bis zu 8 Codes";
+    if (v.length) places[k] = v as string[];
+  }
+  for (const k of ["fromCity", "toCity"] as const) {
+    const v = str(k);
+    if (v.length > 60) return "Stadtname zu lang";
+    if (v) places[k] = v;
+  }
   const currency = str("currency") || "EUR";
   if (!/^[A-Z]{3}$/.test(currency)) return "Währung ungültig";
-  return { from, to, depart, ret: flex.latest ? undefined : ret || undefined, ...flex, ...opt, adults: adults as number, children: children as number, infants: infants as number, currency };
+  return { from, to, depart, ret: flex.latest ? undefined : ret || undefined, ...places, ...flex, ...opt, adults: adults as number, children: children as number, infants: infants as number, currency };
 }

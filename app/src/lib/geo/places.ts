@@ -128,3 +128,12 @@ export async function loadGeo(g: GeoData, ccs: string[], fetchFn: typeof fetch =
     return cache.buckets[b];
   }));
 }
+
+/* ---------- Auswahl im Reise-Editor ---------- */
+
+/** alle Länder mit deutschem Namen, alphabetisch */
+export const countryNames = (g: GeoData): string[] => g.world.map(w => w.l).sort((a, b) => a.localeCompare(b, "de"));
+
+/** bekannte Orte eines Landes (Pakete und Weltdaten, keine Dörfer), wichtige zuerst */
+export const cityNames = (g: GeoData, cc: string | null): string[] =>
+  cc ? citiesOf(g, cc).filter(c => c.top !== undefined).sort((a, b) => Number(!!b.top) - Number(!!a.top) || a.name.localeCompare(b.name, "de")).map(c => c.name) : [];

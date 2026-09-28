@@ -9,6 +9,10 @@
   import { dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
   import DualRange from "./DualRange.svelte";
+  import LocationPicker from "./LocationPicker.svelte";
+  import { airportData, ensureAirports, geo } from "../geo/geo.svelte";
+  import { ccOf } from "../geo/places";
+  import { locLabel, locOf, resolveLoc, type Loc } from "../geo/locations";
   import { FLIGHTS_URL, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import type { FlightScope } from "../flights/open.svelte";
@@ -55,10 +59,19 @@
   let custom = $state(!!savedAps);
   let aps = $state<string[]>(savedAps ?? nearestAirports(trip, 4, start.ids ?? item?.participants ?? defaultFlyers(trip)));
   const allCodes = $derived([...new Set([...known.map(a => a.code), ...aps])]);
-  let extra = $state("");
+  // aus der Liste gewählte Abflug-Städte (z. B. LON = alle Londoner Flughäfen); alles andere ist ein Flughafen
+  let apCities = $state<string[]>(Array.isArray(saved.apCities) ? (saved.apCities as string[]) : []);
+  const originLoc = (code: string): Loc | null => (apCities.includes(code) ? locOf(airportData, code, "city") : locOf(airportData, code, "airport"));
 
   let mode = $state<"flex" | "fixed">((saved.mode as "flex" | "fixed") || "flex");
   let to = $state(base.to);
+  let toLoc = $state<Loc | null>(null);
+  // Ziel der Reise („Split“) gleich als Auswahl zeigen, sobald die Flughafendaten da sind
+  ensureAirports().then(() => {
+    if (toLoc || to !== base.to) return;
+    const l = resolveLoc(airportData, base.to, ccOf(geo, trip.country));
+    if (l) { toLoc = l; to = locLabel(l); }
+  });
   // flexibel
   let rFrom = $state(base.depart);
   let rTo = $state(base.latest || "");
@@ -96,11 +109,9 @@
     aps = aps.includes(code) ? aps.filter(c => c !== code) : [...aps, code];
     custom = true;
   }
-  function addAp(e: Event) {
-    e.preventDefault();
-    const c = extra.trim().toUpperCase();
-    if (/^[A-Z]{3}$/.test(c) && !aps.includes(c)) { aps = [...aps, c]; custom = true; }
-    extra = "";
+  function addAp(l: Loc) {
+    if (!aps.includes(l.code)) { aps = [...aps, l.code]; custom = true; }
+    apCities = l.kind === "city" ? [...new Set([...apCities, l.code])] : apCities.filter(c => c !== l.code);
   }
   function resetAps() { aps = nearestAirports(trip, 4, who); custom = false; }
 
@@ -123,13 +134,18 @@
     } else if (!out) { error = "Bitte ein Hinflugdatum eintragen."; return; }
     if (n > 9) { error = `Es fliegen ${n} Personen. Kiwi sucht höchstens 9 Personen pro Buchung. Oben bei „Wer fliegt“ eine Familie wählen und je Familie suchen.`; return; }
     if (!whoIds.length) { error = "Bitte oben auswählen, wer fliegt."; return; }
-    try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], mode, rToTime, flexDays, maxStops, bags, noSelf, withAccess })); } catch {}
+    // Ziel: gewählte Stadt oder Flughafen; Freitext wird nachgeschlagen („Split“ → SPU)
+    const dest = toLoc ?? resolveLoc(airportData, to, ccOf(geo, trip.country));
+    if (!dest && !/^[A-Za-z]{3}$/.test(to.trim())) { error = `„${to.trim()}“ nicht gefunden. Bitte einen Vorschlag aus der Liste wählen oder den Flughafen-Code eingeben.`; return; }
+    const toQ = dest ? { to: dest.code, toAirports: dest.airports, ...(dest.kind === "city" ? { toCity: dest.en } : {}) } : { to: to.trim().toUpperCase() };
+    const fromQ = (code: string) => { const l = originLoc(code); return l ? { from: l.code, fromAirports: l.airports, ...(l.kind === "city" ? { fromCity: l.en } : {}) } : { from: code }; };
+    try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], apCities: custom ? apCities.filter(c => aps.includes(c)) : [], mode, rToTime, flexDays, maxStops, bags, noSelf, withAccess })); } catch {}
 
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
     const q: Omit<FlightQuery, "from"> = mode === "flex"
-      ? { to, depart: rFrom, latest: rTo, nightsMin: lo, nightsMax: hi, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" }
-      : { to, depart: out, ret: ret || undefined, flexDays, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" };
+      ? { ...toQ, depart: rFrom, latest: rTo, nightsMin: lo, nightsMax: hi, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" }
+      : { ...toQ, depart: out, ret: ret || undefined, flexDays, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" };
     const dl = mode === "flex" ? deadline(rTo, rToTime) : NaN;
     const all: Rated[] = [], cmp: CompareRow[] = [], src = new Map<string, SourceStatus>();
     let late = 0;
@@ -137,7 +153,7 @@
       for (const [i, code] of aps.entries()) {
         progress = `${code} (${i + 1} von ${aps.length})`;
         try {
-          const r = await searchFlights({ ...q, from: code }, ctrl.signal);
+          const r = await searchFlights({ ...q, ...fromQ(code) }, ctrl.signal);
           r.sources.forEach(s => { const p = src.get(s.id); src.set(s.id, p ? { ...p, ok: p.ok || s.ok, count: p.count + s.count, error: p.ok ? p.error : s.error } : { ...s }); });
           let rated = r.offers.map(o => rate(trip, o, code, withAccess, who));
           if (!isNaN(dl)) { const before = rated.length; rated = rated.filter(o => !isNaN(o.home) && o.home <= dl); late += before - rated.length; }
@@ -209,9 +225,10 @@
       <div class="chips fs-aps">
         {#each allCodes as c (c)}
           {@const a = known.find(x => x.code === c)}
-          <button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} title={a?.name || c} onclick={() => toggleAp(c)}>{c}</button>
+          {@const l = a ? null : originLoc(c)}
+          <button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} title={a?.name || (l ? locLabel(l) : c)} onclick={() => toggleAp(c)}>{c}{#if l?.kind === "city"}<small>{l.name}, alle</small>{/if}</button>
         {/each}
-        <span class="fs-add"><input class="inp" bind:value={extra} placeholder="+ Code" maxlength="3" aria-label="weiteren Flughafen hinzufügen (IATA-Code)" onkeydown={e => { if (e.key === "Enter") addAp(e); }} /></span>
+        <LocationPicker cls="fs-add" placeholder="+ Stadt oder Code" clearOnPick onpick={addAp} />
       </div>
       <p class="muted small">
         {#if custom}Eigene Auswahl. <button type="button" class="linkbtn" onclick={resetAps}>Standard wiederherstellen</button>
@@ -224,7 +241,8 @@
       <button type="button" role="radio" aria-checked={mode === "flex"} class="chip" class:on={mode === "flex"} onclick={() => (mode = "flex")}>Flexibler Zeitraum</button>
     </div>
 
-    <label class="f">Nach<input bind:value={to} placeholder="z. B. Split oder SPU" required /></label>
+    <LocationPicker label="Nach" bind:value={toLoc} bind:text={to} placeholder="z. B. Split, Tokio oder SPU" required />
+    {#if toLoc?.kind === "city"}<p class="muted small fs-note">Sucht über alle Flughäfen von {toLoc.name} ({toLoc.airports.join(", ")}). Nur einen? Den Code eintippen und wählen.</p>{/if}
 
     {#if mode === "flex"}
       <div class="fs-flexbox">
@@ -260,9 +278,11 @@
     {#if !FLIGHTS_URL}<p class="warnline small">Der Such-Dienst ist noch nicht eingerichtet. Anleitung: docs/FLUGSUCHE.md im Projekt.</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `Suche läuft… ${progress}` : aps.length > 1 ? `${aps.length} Flughäfen vergleichen` : "Suchen"}</button>
     {#if to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
-      {@const lq = { from: aps[0], to: to.trim(), depart: mode === "flex" ? rFrom : out, ret: mode === "flex" ? rTo || undefined : ret || undefined, ...pax }}
+      {@const d0 = toLoc ?? resolveLoc(airportData, to, ccOf(geo, trip.country))}
+      {@const o0 = originLoc(aps[0])}
+      {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: mode === "flex" ? rTo || undefined : ret || undefined, ...pax }}
       {@const sky = skyscannerLink(lq)}
-      <p class="muted small fs-direct">Direkt beim Anbieter suchen (ab {aps[0]}): <a href={googleFlightsLink(lq)} target="_blank" rel="noopener noreferrer">Google Flüge ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
+      <p class="muted small fs-direct">Direkt beim Anbieter suchen (ab {aps[0]}): <a href={googleFlightsLink({ ...lq, from: o0?.kind === "city" ? o0.city : lq.from, to: d0?.kind === "city" ? d0.city : lq.to })} target="_blank" rel="noopener noreferrer">Google Flüge ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
     {/if}
   </form>
 
