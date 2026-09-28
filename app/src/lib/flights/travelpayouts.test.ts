@@ -46,3 +46,12 @@ describe("Travelpayouts", () => {
     expect(r.offers[0].price).toBe(840);
   });
 });
+
+describe("Travelpayouts: Fehlermeldungen", () => {
+  it("gibt die Begründung aus der Antwort weiter", async () => {
+    const bad = (async () => new Response(JSON.stringify({ success: false, error: "return_at must be after departure_at" }), { status: 400 })) as typeof fetch;
+    await expect(searchTravelpayouts(q, "x", bad)).rejects.toThrow("Travelpayouts antwortet mit 400: return_at must be after departure_at");
+    const plain = (async () => new Response("Bad Request", { status: 400 })) as typeof fetch;
+    await expect(searchTravelpayouts(q, "x", plain)).rejects.toThrow("Travelpayouts antwortet mit 400: Bad Request");
+  });
+});

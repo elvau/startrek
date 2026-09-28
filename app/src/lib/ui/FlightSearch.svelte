@@ -142,7 +142,8 @@
           let rated = r.offers.map(o => rate(trip, o, code, withAccess, who));
           if (!isNaN(dl)) { const before = rated.length; rated = rated.filter(o => !isNaN(o.home) && o.home <= dl); late += before - rated.length; }
           all.push(...rated);
-          const err = r.sources.find(s => s.configured && !s.ok)?.error;
+          // Fehler nur zeigen, wenn keine Quelle geantwortet hat; sonst gab es schlicht keine passende Verbindung
+          const err = r.sources.some(s => s.ok) ? undefined : r.sources.find(s => s.configured && !s.ok)?.error;
           cmp.push(compareRow(code, rated, rated.length ? undefined : err));
         } catch (err) {
           if ((err as Error).name === "AbortError") throw err;
