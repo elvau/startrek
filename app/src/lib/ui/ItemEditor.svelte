@@ -3,6 +3,7 @@
   import { isActive, uid, type FlightLeg, type Item, type Status } from "../model";
   import { app, removeItem } from "../store.svelte";
   import { activeOption, ageClass } from "../calc";
+  import { openStaySearch } from "../stays/open.svelte";
 
   let { item }: { item: Item } = $props();
   const STATUS: [Status, string][] = [["idea", "Idee"], ["chosen", "Gewählt"], ["booked", "Gebucht"], ["paid", "Bezahlt"], ["dropped", "Verworfen"]];
@@ -87,6 +88,7 @@
         <label class="f">Abreise<input type="date" bind:value={item.to} min={item.from} /></label>
         <span class="muted ed-note">Jede Nacht zählt nur für die, die dann da sind.</span>
       </div>
+      <div><button class="btn primary sm st-item" onclick={() => openStaySearch({ itemId: item.id })}>🔎 Unterkunft suchen</button></div>
     </div>
   {/if}
 

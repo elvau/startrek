@@ -402,3 +402,14 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .st-name{font-size:15px;min-width:0;overflow-wrap:anywhere}
 .stay-opt{font-size:13.5px;font-weight:600;color:var(--ink-2)}
 @media (max-width:520px){.st-img{width:64px;height:64px}}
+.st-pres{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:14px;background:var(--paper-2)}
+.st-pres ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.st-pres li{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:13.5px;align-items:baseline}
+.st-pres li small{flex-basis:100%;font-size:12px}
+.st-guests{line-height:1.5}
+.st-diff{font-size:12.5px;font-weight:700;color:#C4452E}
+.st-diff.good{color:var(--good)}
+.st-cur{border-color:var(--a)}
+.pl-notes li.info{color:var(--ink-3)}
+.pl-notes li.info::before{background:var(--ink-3)}
+.pl-notes .linkbtn{margin-left:4px}

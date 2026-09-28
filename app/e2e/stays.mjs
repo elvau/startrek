@@ -43,8 +43,8 @@ try {
   if (!(await m.locator(".chip.on", { hasText: "Ganze Unterkunft" }).count())) fail("Ganze Unterkunft nicht vorausgewählt");
   if ((await m.locator(".chip.on", { hasText: /Booking\.com|Trivago/ }).count()) !== 2) fail("nicht beide Quellen an");
   await m.locator("label.f", { hasText: "Ort" }).locator("input").fill("Split");
-  await m.locator("label.f", { hasText: "Anreise" }).locator("input").fill("2027-07-18");
-  await m.locator("label.f", { hasText: "Abreise" }).locator("input").fill("2027-07-25");
+  await m.locator("label.f", { hasText: "Check-in" }).locator("input").fill("2027-07-18");
+  await m.locator("label.f", { hasText: "Check-out" }).locator("input").fill("2027-07-25");
   if (!(await m.locator("p", { hasText: "7 Nächte" }).count())) fail("Nächte nicht angezeigt");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
@@ -76,6 +76,52 @@ try {
   if (!c.includes("2 Angebote") || !c.includes("7 Nächte")) fail("Posten: " + c);
   if (!c.includes("720")) fail("günstigstes Angebot nicht gewählt: " + c);
   log("Übernommen: ein Posten mit 2 Angeboten, günstigstes zählt");
+
+  // wie im Artefakt: Anwesenheit aus dem Flug, Lücke im Plan → „Unterkunft suchen“ für genau diese Nächte und Personen
+  const TRIP = {
+    id: "k1", name: "Split", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-29",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }, { id: "c", name: "Cleo", household: "Hase", age: 35 }],
+    households: { Hase: { arrive: "2027-07-20", depart: "2027-07-25" } },
+    items: [
+      { id: "f", cat: "flights", name: "Flug", status: "idea", participants: ["a", "b"], options: [{ id: "o", label: "EW", price: { mode: "unit", currency: "EUR", unit: 900 },
+        legs: [{ dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T06:10", arr: "2027-07-18T08:05" }, { dir: "back", from: "SPU", to: "DUS", dep: "2027-07-29T16:25", arr: "2027-07-29T18:25" }] }] },
+      { id: "s", cat: "stay", name: "Villa", status: "idea", from: "2027-07-18", to: "2027-07-25", options: [{ id: "v", label: "Villa", price: { mode: "unit", currency: "EUR", unit: 1400, basis: "stay" } }] }
+    ],
+    tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }
+  };
+  await p.evaluate(t => { localStorage.setItem("rk2-t:k1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k1", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k1"); }, TRIP);
+  await p.reload();
+  const gap = p.locator("#stay .pl-notes li.crit", { hasText: "ohne Unterkunft" });
+  await gap.first().waitFor();
+  const gt = await gap.first().textContent();
+  if (!gt.includes("Klein") || !gt.includes("So 25.07. bis Do 29.07.") || !gt.includes("4 Nächte")) fail("Lücke im Plan: " + gt);
+  if (!(await p.locator("#stay .pl-notes li.info", { hasText: "Check-in meist erst ab 15 Uhr" }).count())) fail("Hinweis Check-in fehlt");
+  log("Plan: Lücke 25.07. bis 29.07. für Klein, Hinweis zum Check-in");
+  await gap.first().locator(".linkbtn", { hasText: "Unterkunft suchen" }).click();
+  const pres = await m.locator(".st-pres").textContent();
+  if (!pres.includes("So 18.07. 08:05 an") || !pres.includes("Do 29.07. 16:25 ab") || pres.includes("Hase")) fail("Anwesenheit: " + pres);
+  if ((await m.locator("label.f", { hasText: "Check-in" }).locator("input").inputValue()) !== "2027-07-25") fail("Check-in nicht aus der Lücke");
+  if ((await m.locator("label.f", { hasText: "Check-out" }).locator("input").inputValue()) !== "2027-07-29") fail("Check-out nicht aus der Lücke");
+  const gg = await m.locator(".st-guests").textContent();
+  if (!gg.includes("2 Gäste") || !gg.includes("1 Erw., 1 Kind (9 J.)")) fail("Gäste: " + gg);
+  log("Suche aus der Lücke: 25.07. bis 29.07., 2 Gäste (Anna, Ben 9 J.), Anwesenheit laut Flug");
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().waitFor();
+  const q2 = asked.at(-1);
+  if (q2.checkin !== "2027-07-25" || q2.checkout !== "2027-07-29" || q2.adults !== 1 || q2.childAges.join() !== "9") fail("Anfrage aus der Lücke: " + JSON.stringify(q2));
+  await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
+  await m.locator(".x").click();
+  await p.locator("#stay .pl-ok, #stay .pl-notes").first().waitFor();
+  if ((await p.locator("#stay .pl-notes li.crit", { hasText: "Klein" }).count())) fail("Lücke für Klein noch da");
+  log("Übernommen: Posten nur für Klein, 25.07. bis 29.07., Lücke weg");
+
+  // Suche aus dem Posten heraus: Vergleich zum bisherigen Preis
+  await p.locator("#stay .card:not(.plan-card)", { hasText: "Villa" }).click();
+  await p.locator(".st-item").click();
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().waitFor();
+  if (!(await m.locator(".fs-res", { hasText: "Rooms Šećer" }).locator(".st-diff.good", { hasText: "−680 €" }).count())) fail("Vergleich zum bisherigen Preis fehlt");
+  log("Suche aus dem Posten: 720 € ist 680 € günstiger als die Villa");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nUnterkunftssuche: alles in Ordnung");

@@ -1,10 +1,12 @@
 <script lang="ts">
   /* Wer ist wann da, und hat jede Nacht ein Bett? Pro Haushalt ein Balken über alle Nächte. */
-  import { app } from "../store.svelte";
+  import { access, app } from "../store.svelte";
   import { hhKey, isActive } from "../model";
   import { presences, participantsOf } from "../calc";
   import { needs, nightsList, okDate, addDays } from "../calc/travel";
   import { dateDE, dayShort } from "../format";
+  import { arrivals, gaps, hints } from "../stays/presence";
+  import { openStaySearch } from "../stays/open.svelte";
 
   const COLORS = ["var(--c-stay)", "var(--c-flights)", "var(--c-transport)", "var(--c-attractions)", "var(--c-misc)"];
 
@@ -30,14 +32,16 @@
         if (!cover.length) return { k: "gap" as const };
         return { k: cover.length > 1 ? ("dbl" as const) : ("ok" as const), s: stays.indexOf(cover[0]) };
       });
-      const gaps = nights.filter((_, i) => cells[i].k === "gap");
-      if (gaps.length) notes.push({ crit: true, text: `${h}: ${gaps.length === 1 ? "eine Nacht" : `${gaps.length} Nächte`} ohne Unterkunft (${gaps.slice(0, 4).map(dateDE).join(", ")}${gaps.length > 4 ? " …" : ""})` });
       const dbl = nights.filter((_, i) => cells[i].k === "dbl");
       if (dbl.length) notes.push({ crit: false, text: `${h}: ${dbl.length === 1 ? "eine Nacht" : `${dbl.length} Nächte`} doppelt gebucht (${dbl.slice(0, 4).map(dateDE).join(", ")})` });
       if (!known) notes.push({ crit: false, text: `${h}: Anwesenheit offen. Flug mit Zeiten eintragen oder eigene Daten bei der Familie (Kapitel „Wer fährt mit“).` });
       return { h, cells };
     });
-    return { nights, rows, stays, notes };
+    // wie im Artefakt: Lücken zuerst (mit „Unterkunft suchen“), dann Hinweise zu An- und Abreise
+    const gs = gaps(trip);
+    const info = arrivals(trip).flatMap(a => hints(a).map(h => `${a.who}: ${h}`));
+    const open = stays.filter(s => s.options.every(o => !o.label && !o.price.unit && !o.price.adult));
+    return { nights, rows, stays, notes, gs, info, open };
   });
 
   // aufeinanderfolgende gleiche Zellen zu Balken zusammenfassen
@@ -75,9 +79,21 @@
         {/each}
       </div>
     </div>
-    {#if plan.notes.length}
-      <ul class="pl-notes">{#each plan.notes as n}<li class:crit={n.crit}>{n.text}</li>{/each}</ul>
-    {:else}
+    {#if plan.gs.length || plan.notes.length || plan.open.length || plan.info.length}
+      <ul class="pl-notes">
+        {#each plan.gs as g (g.from + g.to + g.who)}
+          <li class="crit"><b>{g.who}</b>: {g.nights === 1 ? `Nacht ${dayShort(g.from)}` : `${dayShort(g.from)} bis ${dayShort(g.to)}`} ohne Unterkunft ({g.nights} {g.nights === 1 ? "Nacht" : "Nächte"})
+            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ from: g.from, to: g.to, ids: g.ids })}>Unterkunft suchen</button>{/if}</li>
+        {/each}
+        {#each plan.notes as n}<li class:crit={n.crit}>{n.text}</li>{/each}
+        {#each plan.open as s (s.id)}
+          <li><b>{s.name || "Neue Unterkunft"}</b> ({dateDE(s.from!)} bis {dateDE(s.to!)}): noch keine Unterkunft ausgewählt
+            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ itemId: s.id })}>suchen</button>{/if}</li>
+        {/each}
+        {#each plan.info as t (t)}<li class="info">{t}</li>{/each}
+      </ul>
+    {/if}
+    {#if !plan.gs.length && !plan.notes.length}
       <p class="pl-ok">✓ Jede Nacht hat eine Unterkunft.</p>
     {/if}
   </div>
