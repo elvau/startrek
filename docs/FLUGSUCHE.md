@@ -51,8 +51,19 @@ Cloudflare-Dashboard → **Workers & Pages → startrek → Settings → Variabl
 | `DUFFEL_TOKEN` | Duffel: Live-Preise der Airlines, später direkt buchbar | <https://app.duffel.com> (Test-Token reicht zum Ausprobieren) |
 | `TRAVELPAYOUTS_TOKEN` | Travelpayouts/Aviasales: Tiefpreise, Provisions-Links | <https://www.travelpayouts.com> |
 
-Sobald ein Secret da ist, taucht der Anbieter in der Suche als „eingerichtet“ auf. Die Anbindung
-selbst (`app/src/lib/flights/`) folgt, wenn die Schlüssel vorliegen.
+Sobald ein Secret da ist, taucht der Anbieter in der Suche als „eingerichtet“ auf.
+
+### Travelpayouts (angebunden)
+
+1. Auf <https://www.travelpayouts.com> kostenlos anmelden, dort das Programm **Aviasales** hinzufügen.
+2. Unter **Profil → API-Token** den Token kopieren, die Partnerkennung (**Marker**, eine Zahl) steht daneben.
+3. Im Worker zwei Einträge anlegen: `TRAVELPAYOUTS_TOKEN` (Typ „Secret“) und `TRAVELPAYOUTS_MARKER` (Typ „Text“).
+4. Danach sucht die Flugsuche Kiwi.com und Travelpayouts gleichzeitig. Die Links führen zu Aviasales mit
+   deiner Partnerkennung (Provision bei Buchung).
+
+Hinweise: Travelpayouts liefert Preise aus dem Zwischenspeicher von Aviasales (Suchen der letzten Tage),
+pro Person; die App rechnet sie auf alle Reisenden hoch. Start und Ziel müssen Flughafencodes sein (DUS, SPU).
+Duffel ist noch nicht angebunden.
 
 ## Unterkünfte
 

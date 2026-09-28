@@ -1,9 +1,10 @@
 /* Alle Quellen gleichzeitig fragen, zusammenführen, Doppelte entfernen, nach Preis sortieren */
 import { addDays, searchKiwi } from "./kiwi";
+import { searchTravelpayouts } from "./travelpayouts";
 import type { FlightOffer, FlightQuery, SearchResult, SourceStatus } from "./types";
 
 /** Schlüssel des Such-Dienstes (Cloudflare-Secrets); fehlt einer, bleibt die Quelle aus */
-export interface FlightEnv { DUFFEL_TOKEN?: string; TRAVELPAYOUTS_TOKEN?: string; KIWI_MCP_URL?: string }
+export interface FlightEnv { DUFFEL_TOKEN?: string; TRAVELPAYOUTS_TOKEN?: string; TRAVELPAYOUTS_MARKER?: string; KIWI_MCP_URL?: string }
 
 interface Provider {
   id: string;
@@ -16,9 +17,9 @@ const notYet = (name: string) => async (): Promise<FlightOffer[]> => { throw new
 
 export const PROVIDERS: Provider[] = [
   { id: "kiwi", name: "Kiwi.com", configured: () => true, search: (q, env, f) => searchKiwi(q, f, env.KIWI_MCP_URL || undefined) },
-  // folgen, sobald Schlüssel da sind
+  // folgt, sobald ein Schlüssel da ist
   { id: "duffel", name: "Duffel", configured: env => !!env.DUFFEL_TOKEN, search: notYet("Duffel") },
-  { id: "travelpayouts", name: "Travelpayouts", configured: env => !!env.TRAVELPAYOUTS_TOKEN, search: notYet("Travelpayouts") }
+  { id: "travelpayouts", name: "Travelpayouts", configured: env => !!env.TRAVELPAYOUTS_TOKEN, search: (q, env, f) => searchTravelpayouts(q, env.TRAVELPAYOUTS_TOKEN!, f, env.TRAVELPAYOUTS_MARKER || undefined) }
 ];
 
 const withTimeout = <T>(p: Promise<T>, ms: number) =>
