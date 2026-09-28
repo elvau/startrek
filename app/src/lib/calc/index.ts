@@ -7,9 +7,10 @@
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
 import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Item, type Option, type Settings, type Tier, type Traveler, type Trip } from "../model";
 
-export function ageClass(age: number | null | undefined, s: Settings): AgeClass {
-  // ohne Altersangabe erwachsen
-  if (age == null || age >= s.adultAge) return "adult";
+export function ageClass(age: number | null | undefined, s: Settings, kind?: AgeClass): AgeClass {
+  // ohne Altersangabe: angegebene Klasse (Platzhalter), sonst erwachsen
+  if (age == null || (age as unknown) === "") return kind || "adult";
+  if (age >= s.adultAge) return "adult";
   if (age >= s.childAge) return "child";
   return "infant";
 }
@@ -90,7 +91,7 @@ export function calcOption(opt: Option, it: Item, trip: Trip): OptionCalc {
 }
 
 function priceFor(t: Traveler, p: Option["price"], trip: Trip): number {
-  const c = ageClass(t.age, trip.settings);
+  const c = ageClass(t.age, trip.settings, t.kind);
   let pr = p.adult ?? 0;
   if (c !== "adult" && p.child != null) pr = p.child;
   if (c === "infant" && p.infant != null) pr = p.infant;
@@ -285,7 +286,7 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
         const v = inn.reduce((a, t) => a + r.per[t.id], 0);
         if (v < 0.5) continue;
         const grp: Partial<Record<AgeClass, { n: number; v: number }>> = {};
-        inn.forEach(t => { const c = ageClass(t.age, trip.settings); (grp[c] ||= { n: 0, v: Math.round(r.per[t.id]) }).n++; });
+        inn.forEach(t => { const c = ageClass(t.age, trip.settings, t.kind); (grp[c] ||= { n: 0, v: Math.round(r.per[t.id]) }).n++; });
         const keys = (["adult", "child", "infant"] as AgeClass[]).filter(c => grp[c]);
         const differ = new Set(inn.map(t => Math.round(r.per[t.id]))).size > 1;
         const detail = differ && keys.length > 1 && new Set(keys.map(c => grp[c]!.v)).size > 1

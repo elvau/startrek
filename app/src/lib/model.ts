@@ -22,6 +22,10 @@ export interface Traveler {
   active?: boolean;
   /** gespeicherte Person, aus der dieser Reisende stammt */
   personId?: string;
+  /** Altersklasse, wenn kein Alter bekannt ist (z. B. bei Platzhaltern) */
+  kind?: "adult" | "child" | "infant";
+  /** anonymer Platzhalter („Reh Kind 1“), nur in dieser Reise, nicht in Gruppen gespeichert */
+  placeholder?: boolean;
 }
 
 /** Gespeicherte Person (im Konto), unabhängig von Reisen */

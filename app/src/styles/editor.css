@@ -264,3 +264,13 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .welcome .btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 16px;text-align:left;font-size:15px}
 .welcome .btn small{font-weight:500;font-size:12.5px;opacity:.8}
 .welcome .linkbtn{align-self:center;margin-top:4px}
+.qf{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.qf-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.qf-row select{border:1px solid var(--line);background:var(--paper-2);color:var(--ink);border-radius:10px;padding:7px 8px;font:inherit;font-weight:600}
+.qf-step{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:10px;padding:2px}
+.qf-step button{border:0;background:var(--paper-2);color:var(--ink);width:28px;height:28px;border-radius:8px;font-size:16px;line-height:1}
+.qf-step b{min-width:18px;text-align:center}
+.qf-step small{color:var(--ink-2);font-size:12px;margin-right:2px}
+.qf-row .x{width:30px;height:30px;font-size:18px}
+.av.emoji{font-size:24px;background:var(--paper);box-shadow:inset 0 0 0 3px var(--ring)}
+.pick.quick{flex-direction:column;align-items:flex-start;gap:10px}
