@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { view } from "../scroll.svelte";
 
-  let fp: SVGPathElement, fmp: SVGPathElement, plane: SVGSVGElement, town: SVGSVGElement, stay: HTMLDivElement, fun: HTMLDivElement;
+  let fp: SVGPathElement, fmp: SVGPathElement, plane: SVGSVGElement, tram: SVGSVGElement, flights: HTMLDivElement, town: SVGSVGElement, stay: HTMLDivElement, fun: HTMLDivElement;
   let windows: SVGRectElement[] = [];
 
   // gleichbleibender Zufall, damit die Stadt immer gleich aussieht
@@ -47,6 +47,17 @@
       fmp.style.strokeDasharray = String(len);
       fmp.style.strokeDashoffset = String(len * (1 - p));
     }
+    // Wolken und Bahn bewegen sich nur im eigenen Kapitel; beim Verlassen bleiben sie stehen,
+    // statt beim Ausblenden sichtbar an den Anfang zu springen
+    if (a === "flights" && flights) flights.querySelectorAll<SVGElement>(".cloud").forEach(c => (c.style.transform = `translateX(calc(${p} * var(--dx,-120px)))`));
+    if (a === "transport" && tram) {
+      // eigener Fortschritt über genau die Strecke, in der das Kapitel aktiv ist (Mitte des Bildschirms),
+      // damit er am Anfang links steht; fährt herein und hält rechts, ohne aus dem Bild zu fahren
+      const r = document.getElementById("transport")?.getBoundingClientRect();
+      const q = r && r.height ? Math.max(0, Math.min(1, (innerHeight / 2 - r.top) / r.height)) : p;
+      const e = 1 - (1 - q) ** 2;
+      tram.style.transform = `translateX(${-130 + e * (innerWidth - 40)}px)`;
+    }
     if (a === "stay") windows.forEach(w => w.classList.toggle("on", +w.dataset.t! < p * 0.9));
   });
 </script>
@@ -59,7 +70,7 @@
     <div class="sea"></div>
   </div>
   <div class="amb-trav"></div>
-  <div class="amb-flights">
+  <div class="amb-flights" bind:this={flights}>
     <svg class="cloud" style="left:5%;top:20%;width:220px;--dx:-160px" viewBox="0 0 180 60"><use href="#cl" /></svg>
     <svg class="cloud" style="left:60%;top:8%;width:160px;opacity:.6;--dx:-90px" viewBox="0 0 180 60"><use href="#cl" /></svg>
     <svg class="cloud" style="left:30%;top:62%;width:260px;opacity:.9;--dx:-240px" viewBox="0 0 180 60"><use href="#cl" /></svg>
@@ -83,7 +94,7 @@
       <path d="M0 60 C 300 20, 700 100, 1000 60" />
       <path class="tie" d="M0 60 C 300 20, 700 100, 1000 60" stroke-width="18" />
     </svg>
-    <svg class="tram" viewBox="0 0 120 44">
+    <svg class="tram" bind:this={tram} viewBox="0 0 120 44">
       <rect x="2" y="4" width="116" height="30" rx="10" fill="currentColor" />
       <rect x="12" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8" />
       <rect x="40" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8" />

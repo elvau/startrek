@@ -173,6 +173,8 @@ export interface Settings {
 export interface Trip {
   id: string;
   name: string;
+  /** Name wird aus Ziel und Zeitraum gebildet, bis man selbst einen vergibt */
+  autoName?: boolean;
   place: string;
   country: string;
   kicker?: string;

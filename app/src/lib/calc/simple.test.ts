@@ -25,6 +25,14 @@ describe("Einfacher Modus", () => {
     expect(T.byHousehold).toEqual({ Klein: 1100, Schmitz: 550 });
     expect(T.open).toBe(1650);
   });
+  it("Betrag als Preis pro Person umgewandelt ergibt dieselbe Summe, auch mit Kind und bei Flügen", () => {
+    const t = trip();
+    t.travelers.push({ id: "c", name: "Kind", age: 8, household: "Klein" });
+    t.detail = { flights: true };
+    // wie setDetailed: 600 € auf 4 Aktive, Anreise zum Flughafen aus
+    t.items = [{ id: "f", cat: "flights", name: "Flüge", status: "chosen", access: false, options: [{ id: "o", label: "", price: { mode: "person", currency: "EUR", adult: 150 } }] }];
+    expect(totals(t).byCat.flights).toBe(600);
+  });
   it("wer nicht dabei ist, zählt auch bei Posten nicht", () => {
     const t = trip();
     t.detail = { attractions: true };

@@ -4,9 +4,15 @@
   import { dir, travelersFrom } from "../directory.svelte";
   import Modal from "./Modal.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
+  import { autoName, nights } from "../format";
 
   let { onclose }: { onclose: () => void } = $props();
   let name = $state("");
+  let place = $state("");
+  let from = $state("");
+  let to = $state("");
+  const auto = $derived(autoName({ place, from, to }));
+  const nn = $derived(nights(from, to));
   let picked = $state<string[]>([]);
   let groups = $state(false);
 
@@ -18,7 +24,7 @@
 
   function create(e: Event) {
     e.preventDefault();
-    newTrip({ name, travelers: travelersFrom(picked) });
+    newTrip({ name, place, from, to, travelers: travelersFrom(picked) });
     onclose();
   }
 </script>
@@ -28,7 +34,15 @@
 {:else}
   <Modal title="Neue Reise" {onclose}>
     <form class="newtrip" onsubmit={create}>
-      <label class="f">Name der Reise<input bind:value={name} placeholder="z. B. Kegeltour Mosel" /></label>
+      <div class="ed-row">
+        <label class="f grow">Wohin?<input bind:value={place} placeholder="z. B. Mosel" /></label>
+      </div>
+      <div class="ed-row">
+        <label class="f">Von<input type="date" bind:value={from} /></label>
+        <label class="f">Bis<input type="date" bind:value={to} min={from} /></label>
+        {#if nn}<span class="muted ed-note">{nn + 1} Tage</span>{/if}
+      </div>
+      <label class="f">Name (optional)<input bind:value={name} placeholder={auto || "wird aus Ziel und Zeitraum gebildet"} /></label>
       <div class="ed-sec">
         <span class="dlabel">Wer fährt mit?</span>
         {#if dir.groups.length || dir.people.length}

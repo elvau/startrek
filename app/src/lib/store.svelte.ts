@@ -1,10 +1,11 @@
 /* App-Zustand: mehrere Reisen, lokal gespeichert. Später hinter einem Speicher-Adapter (Firebase). */
 import { totals } from "./calc";
-import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Traveler, type Trip } from "./model";
+import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type Traveler, type Trip } from "./model";
 import { sampleTrip } from "./seed";
+import { autoName, dateDE } from "./format";
 import { cloud, cloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
 
-interface TripMeta { id: string; name: string; place: string; from?: string }
+interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
 export interface TripEntry extends TripMeta { cloud: boolean; role?: Role; shared?: boolean }
 
 const K_INDEX = "rk2-index", K_CUR = "rk2-current", K_TRIP = (id: string) => "rk2-t:" + id, K_OLD = "rk2-trip";
@@ -12,7 +13,7 @@ const K_INDEX = "rk2-index", K_CUR = "rk2-current", K_TRIP = (id: string) => "rk
 const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const put = (k: string, v: string) => { try { localStorage.setItem(k, v); return true; } catch { return false; } };
 const del = (k: string) => { try { localStorage.removeItem(k); } catch {} };
-const meta = (t: Trip): TripMeta => ({ id: t.id, name: t.name, place: t.place, from: t.from });
+const meta = (t: Trip): TripMeta => ({ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: t.travelers.filter(x => x.active !== false).length });
 
 function readTrip(id: string): Trip | null {
   const raw = get(K_TRIP(id));
@@ -27,13 +28,37 @@ function normalize(t: Trip): Trip {
   return t;
 }
 
+/** Leere Reise; der Name kommt später aus Ziel und Zeitraum */
+function emptyTrip(o: { name?: string; place?: string; from?: string; to?: string } = {}): Trip {
+  const own = o.name?.trim();
+  const auto = autoName(o);
+  return {
+    id: uid(), name: own || auto || `Neue Reise vom ${dateDE(new Date().toISOString().slice(0, 10))}`, autoName: !own,
+    place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
+    travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
+  };
+}
+
+/** Noch nichts eingetragen: so eine Reise verschwindet, sobald man woanders hinwechselt */
+function pristine(t: Trip): boolean {
+  return !t.travelers.length && !t.items.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
+    && (!t.place.trim() || t.place === "Neue Reise") && (!!t.autoName || t.name === "Neue Reise");
+}
+
+let firstRun = false;
+/** schon ins Konto übernommen, die Liste im Konto kennt sie aber vielleicht noch nicht */
+const uploaded = new Set<string>();
+
+
 function boot(): { index: TripMeta[]; trip: Trip } {
   let index: TripMeta[] = [];
   try { index = JSON.parse(get(K_INDEX) || "[]"); } catch {}
   if (!index.length) {
-    // erster Start oder Stand aus der ersten Vorschau (eine Reise)
-    let first: Trip = sampleTrip();
+    // erster Start: leere Reise und Willkommen (oder Stand aus der ersten Vorschau)
+    let first: Trip | null = null;
     try { const old = get(K_OLD); if (old) first = JSON.parse(old); } catch {}
+    // über einen Einladungslink gekommen: die Reise kommt gleich, kein Willkommen
+    if (!first) { first = emptyTrip(); firstRun = !location.search.includes("join="); }
     first = normalize(first);
     put(K_TRIP(first.id), JSON.stringify(first));
     index = [meta(first)];
@@ -63,7 +88,9 @@ export const app = $state({
   index: b.index,
   /** Karte im Fokusmodus */
   editing: null as string | null,
-  saved: true
+  saved: true,
+  /** erster Besuch: Auswahl zwischen eigener Reise und Beispiel */
+  welcome: firstRun
 });
 
 const t = $derived.by(() => totals(app.trip));
@@ -93,7 +120,7 @@ $effect.root(() => {
           baseline = { id: m.id, json };
           void push(trip, json);
         }
-      } else {
+      } else if (!uploaded.has(m.id)) {
         const i = app.index.findIndex(x => x.id === m.id);
         if (i < 0) app.index.push(m);
         else if (JSON.stringify(app.index[i]) !== JSON.stringify(m)) app.index[i] = m;
@@ -155,14 +182,35 @@ $effect.root(() => {
   $effect(() => { const id = app.trip.id; void cloud.trips.length; void watch(id); });
   // zurückgehaltene Änderung anwenden, wenn nicht mehr bearbeitet wird
   $effect(() => { if (!app.editing) applyPending(); });
+  // Name folgt Ziel und Zeitraum, bis man selbst einen vergibt
+  $effect(() => {
+    const t = app.trip;
+    if (!t.autoName) return;
+    const n = autoName(t);
+    if (n && n !== t.name) t.name = n;
+  });
+  // angemeldet mit Reisen im Konto: statt einer leeren Reise auf dem Gerät die erste aus dem Konto öffnen
+  // (einmal nach dem Anmelden, später legt man vielleicht bewusst eine leere Reise an)
+  let checked = false;
+  $effect(() => {
+    const first = cloud.trips[0];
+    if (checked || !first || !cloud.user) return;
+    checked = true;
+    if (!isCloud(app.trip.id) && pristine(app.trip) && !uploaded.has(app.trip.id)) {
+      app.welcome = false;
+      switchTrip(first.id);
+    }
+  });
   // nach dem Beitreten die Reise öffnen
   $effect(() => { const j = cloud.joined; if (j && isCloud(j)) { cloud.joined = null; switchTrip(j); } });
 });
 
 /** Alle Reisen: im Konto und nur auf diesem Gerät */
 export function allTrips(): TripEntry[] {
-  const c: TripEntry[] = cloud.trips.map(t => ({ id: t.id, name: t.name, place: "", cloud: true, role: t.role, shared: Object.keys(t.members).length > 1 }));
-  const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, cloud: false }));
+  // Ziel und Zeitraum stehen nur in der Reise selbst; aus der Kopie auf dem Gerät ergänzen, falls vorhanden
+  const local = (id: string) => { const t = id === app.trip.id ? app.trip : readTrip(id); return t ? meta(t) : null; };
+  const c: TripEntry[] = cloud.trips.map(t => ({ place: "", ...local(t.id), id: t.id, name: t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1 }));
+  const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, ...(m.id === app.trip.id ? meta(app.trip) : {}), cloud: false }));
   return [...c, ...l];
 }
 
@@ -180,13 +228,28 @@ export async function moveToCloud(id: string) {
   if (id === app.trip.id) flush();
   const t = id === app.trip.id ? app.trip : readTrip(id);
   if (!t) return;
+  uploaded.add(id);
   try { await upload(JSON.parse(JSON.stringify(t))); }
   catch (e) {
+    uploaded.delete(id);
     cloud.error = (e as { code?: string }).code === "unavailable" ? "Offline: Übernehmen ins Konto geht nur mit Verbindung." : "Die Reise konnte nicht ins Konto übernommen werden.";
     return;
   }
   app.index = app.index.filter(x => x.id !== id);
   put(K_INDEX, JSON.stringify(app.index));
+}
+
+/** Leere, unberührte Reise beim Verlassen wegräumen, damit sich keine „Neue Reise“ ansammelt */
+function dropIfPristine(t: Trip) {
+  if (t.id === app.trip.id || !pristine(t)) return;
+  const c = cloudTrip(t.id);
+  if (c) {
+    if (c.owner === cloud.user?.uid && Object.keys(c.members).length === 1) void removeCloudTrip(t.id).catch(() => {});
+    return;
+  }
+  app.index = app.index.filter(x => x.id !== t.id);
+  put(K_INDEX, JSON.stringify(app.index));
+  del(K_TRIP(t.id));
 }
 
 export async function moveAllToCloud() {
@@ -210,10 +273,10 @@ function openFirst() {
   if (next) { open(next); return; }
   const c = cloud.trips.find(t => t.id !== gone);
   if (c) {
-    open(readTrip(c.id) || { id: c.id, name: c.name, place: c.name, country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });
+    open(readTrip(c.id) || { id: c.id, name: c.name, place: "", country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });
     return;
   }
-  const empty: Trip = { id: uid(), name: "Neue Reise", place: "Neue Reise", country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } };
+  const empty = emptyTrip();
   open(empty);
   if (cloud.user) void moveToCloud(empty.id);
 }
@@ -233,26 +296,28 @@ function open(trip: Trip) {
 export function switchTrip(id: string) {
   if (id === app.trip.id) return;
   flush();
+  const prev = app.trip;
   const t = readTrip(id);
-  if (t) { open(t); return; }
   // Reise aus dem Konto, noch nicht auf diesem Gerät: Platzhalter, Inhalt kommt gleich
-  const c = cloudTrip(id);
-  if (c) open({ id, name: c.name, place: c.name, country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });
+  const c = t ? null : cloudTrip(id);
+  if (t) open(t);
+  else if (c) open({ id, name: c.name, place: "", country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });
+  else return;
+  dropIfPristine(prev);
 }
 
 /** Neue Reise, standardmäßig im einfachen Modus; Reisende z. B. aus gespeicherten Gruppen */
-export function newTrip(opts: { name?: string; travelers?: Traveler[] } = {}) {
+export function newTrip(opts: { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[] } = {}) {
   flush();
-  const toCloud = !!cloud.user;
-  const name = opts.name?.trim() || "Neue Reise";
+  const prev = app.trip;
   open({
-    id: uid(), name, place: name, country: "",
+    ...emptyTrip(opts),
     travelers: opts.travelers || [],
     // Wohnorte und Anreise je Familie aus der bisherigen Reise übernehmen, das spart Tipparbeit
-    households: JSON.parse(JSON.stringify(app.trip.households || {})),
-    items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
+    households: JSON.parse(JSON.stringify(prev.households || {}))
   });
-  if (toCloud) void moveToCloud(app.trip.id);
+  dropIfPristine(prev);
+  if (cloud.user) void moveToCloud(app.trip.id);
 }
 
 export function duplicateTrip() {
@@ -298,8 +363,10 @@ export function removeItem(id: string) {
 /** Beispielreise als neue Reise öffnen; die offene Reise bleibt unangetastet */
 export function openSample() {
   flush();
+  const prev = app.trip;
   const s = sampleTrip();
   open({ ...s, id: uid(), name: `Beispiel: ${s.name}` });
+  dropIfPristine(prev);
   if (cloud.user) void moveToCloud(app.trip.id);
 }
 
@@ -310,28 +377,37 @@ const CAT_NAMES: Record<CatKey, string> = { flights: "Flüge", stay: "Unterkunft
 /**
  * Bereich umschalten. Die Posten eines Bereichs bleiben beim Wechsel auf "Einfach" gespeichert
  * (ausgeblendet) und kommen beim Wechsel zurück wieder:
- * einfach → detailliert: gibt es noch keine Posten, wird aus dem Betrag ein erster Posten;
+ * einfach → detailliert: gibt es noch keine Posten, wird aus dem Betrag ein erster Posten mit Preis pro Person;
+ *   mit edit öffnet sich dieser (oder ein leerer neuer) Posten gleich zum Eintragen.
  * detailliert → einfach: der Betrag wird auf die Summe der Posten gesetzt, damit die Gesamtsumme nicht springt.
  */
-export function setDetailed(cat: CatKey, on: boolean) {
+export function setDetailed(cat: CatKey, on: boolean, edit = false) {
   const trip = app.trip;
   if (isDetailed(trip, cat) === on) return;
   const has = trip.items.some(i => i.cat === cat);
+  trip.detail ||= {};
   if (on) {
+    trip.detail[cat] = true;
+    if (has) return;
     const v = trip.simple?.[cat] || 0;
-    if (v > 0 && !has) {
-      trip.items.push({
-        id: uid(), cat, name: CAT_NAMES[cat], status: "chosen",
-        options: [{ id: uid(), label: "Gesamtbetrag", price: { mode: "unit", currency: "EUR", unit: v } }]
-      });
-    }
-  } else if (has) {
+    const n = calc.T.active;
+    if (v > 0) {
+      const price: Price = n
+        ? { mode: "person", currency: "EUR", adult: Math.round((v / n) * 100) / 100 }
+        : { mode: "unit", currency: "EUR", unit: v };
+      // Anreise zum Flughafen nicht zusätzlich berechnen, sonst stimmt die Summe nicht mehr
+      const it: Item = { id: uid(), cat, name: CAT_NAMES[cat], status: "chosen", options: [{ id: uid(), label: "", price }], ...(cat === "flights" ? { access: false } : {}) };
+      trip.items.push(it);
+      if (edit) app.editing = it.id;
+    } else if (edit) addItem(cat);
+    return;
+  }
+  if (has) {
     trip.simple ||= {};
     trip.simple[cat] = Math.round(calc.T.byCat[cat] * 100) / 100;
   }
-  trip.detail ||= {};
-  trip.detail[cat] = on;
-  if (app.editing && !on) app.editing = null;
+  trip.detail[cat] = false;
+  if (app.editing) app.editing = null;
 }
 
 /** Gespeicherte Posten eines Bereichs verwerfen (der einfache Betrag bleibt) */
