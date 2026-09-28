@@ -33,7 +33,7 @@
   <div class="bp-main">
     <div class="bp-hd">
       <StatusBadge status={item.status} extra={item.options.length > 1 ? ` · ${item.options.length} Angebote` : ""} />
-      {#if who}<span class="bp-who">{who}</span>{/if}
+      {#if who}<span class="bp-who">{who}{item.follow && opt?.id.startsWith("follow:") ? ` · ${opt.label}` : ""}</span>{/if}
       <span class="muted">{out?.carrier || opt?.label || ""}{out ? (out.stops ? ` · ${out.stops} Umstieg` : " · Direktflug") : ""}</span>
     </div>
     {#if out}

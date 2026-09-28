@@ -25,7 +25,7 @@ export const needs = (p: Presence | null, night: string) => !p || (p.a <= night 
 
 /** Flug einer Person: einer, in dem sie ausdrücklich steht, sonst einer für alle */
 export function flightFor(t: Traveler, trip: Trip): Item | undefined {
-  const fl = trip.items.filter(it => it.cat === "flights" && it.status !== "dropped" && it.options.some(o => o.legs?.length));
+  const fl = trip.items.filter(it => it.cat === "flights" && it.status !== "dropped" && (it.follow || it.options.some(o => o.legs?.length)));
   return fl.find(it => it.participants?.includes(t.id)) || fl.find(it => !it.participants);
 }
 

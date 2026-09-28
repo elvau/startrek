@@ -167,6 +167,42 @@ try {
   if (!(await kc.textContent()).includes("2 Angebote")) fail("Treffer nicht im Posten Klein");
   log("Suche aus „Flug Klein“: gleiche Personen, Treffer als zweites Angebot im Posten");
 
+  // wie im Artefakt: Hase fliegt mit Klein mit („Wie Flug Klein“), danach Vergleich mit einem eigenen Flug
+  await p.evaluate(t => { localStorage.setItem("rk-flight-search", JSON.stringify({ mode: "fixed" })); localStorage.setItem("rk2-t:k2", JSON.stringify(t)); }, TWO);
+  await p.reload();
+  await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
+  await p.locator("#flights .fs-open").click();
+  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
+  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.keyboard.press("Escape");
+  await p.locator("#flights .fs-open").click();
+  if (!(await m.locator(".fs-who .chip.on", { hasText: "Hase (3)" }).count())) fail("Vorschlag Hase fehlt (Mitfliegen)");
+  await m.locator(".fs-along .chip", { hasText: "Wie Flug Klein" }).click();
+  const along = p.locator("#flights .card[data-item]", { hasText: "Hase · 3 Pers. · wie Flug Klein" });
+  await along.waitFor();
+  const at = await along.textContent();
+  if (!at.includes("DUS") || !at.includes("Hase:")) fail("Mitflug-Karte: " + at.slice(0, 300));
+  // Anwesenheit von Hase folgt dem Flug von Klein
+  if (await p.locator("#stay .pl-notes li", { hasText: "Hase: Anwesenheit offen" }).count()) fail("Anwesenheit Hase folgt dem Flug nicht");
+  log("Mitfliegen: „Flug Hase“ wie Flug Klein (ab DUS, eigene Anfahrt), Anwesenheit folgt");
+
+  await along.click();
+  if (!(await p.locator(".editor .chip.on", { hasText: "Wie Flug Klein" }).count())) fail("Editor zeigt Mitfliegen nicht");
+  await p.locator(".editor .fs-item", { hasText: "Eigenen Flug suchen" }).click();
+  if (!(await m.locator("p", { hasText: "Bisher: mitfliegen wie „Flug Klein“" }).count())) fail("Vergleich zum Mitfliegen fehlt");
+  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
+  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().waitFor();
+  if (!(await m.locator(".fs-res .st-diff", { hasText: "als mitfliegen" }).count())) fail("Treffer ohne Vergleich zum Mitfliegen");
+  await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.keyboard.press("Escape");
+  await p.locator("#flights .card[data-item]", { hasText: "Hase · 3 Pers." }).waitFor();
+  if (await p.locator("#flights .card[data-item]", { hasText: "wie Flug Klein" }).count()) fail("fliegt nach Übernehmen noch mit");
+  log("Eigenen Flug gesucht: Treffer mit „günstiger/teurer als mitfliegen“, übernommen → Hase fliegt selbst");
+
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");
 } finally {

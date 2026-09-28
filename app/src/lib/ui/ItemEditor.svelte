@@ -2,7 +2,8 @@
   /* Bearbeiten eines Postens im Fokusmodus: Status, Angebote, Preis, Beteiligte */
   import { hhKey, isActive, uid, type FlightLeg, type Item, type Status } from "../model";
   import { app, removeItem } from "../store.svelte";
-  import { activeOption, ageClass } from "../calc";
+  import { activeOption, ageClass, eur, followed } from "../calc";
+  import { dayShort, time } from "../format";
   import { openStaySearch } from "../stays/open.svelte";
   import { openFlightSearch } from "../flights/open.svelte";
 
@@ -52,6 +53,14 @@
     else l[k] = v;
   }
   const legOf = (dir: "out" | "back") => opt?.legs?.find(x => x.dir === dir);
+
+  // Mitfliegen wie im Artefakt: „Wie Flug Klein“ oder eigener Flug
+  const main = $derived(followed(item, app.trip));
+  const others = $derived(isFlight ? app.trip.items.filter(x => x.cat === "flights" && x.id !== item.id && !x.follow && x.status !== "dropped") : []);
+  function setFollow(id: string | undefined) {
+    item.follow = id;
+    if (!id && !item.options.length) item.options.push({ id: uid(), label: "", price: { mode: "person", currency: "EUR" } });
+  }
   const num = (v: string) => (v === "" ? undefined : Number(String(v).replace(",", ".")));
 </script>
 
@@ -93,7 +102,23 @@
     </div>
   {/if}
 
-  {#if isFlight && opt}
+  {#if isFlight && others.length}
+    <div class="ed-sec">
+      <span class="dlabel">Flug</span>
+      <div class="chips">
+        <button class="chip" class:on={!main} onclick={() => setFollow(undefined)}>Eigener Flug</button>
+        {#each others as o (o.id)}<button class="chip" class:on={main?.id === o.id} onclick={() => setFollow(o.id)}>Wie {o.name || "anderer Flug"}</button>{/each}
+      </div>
+      {#if main}
+        {@const out = opt?.legs?.find(l => l.dir === "out")}
+        {@const back = opt?.legs?.find(l => l.dir === "back")}
+        <p class="muted small">Gleicher Flug wie „{main.name}“{out?.dep ? `: hin ${dayShort(out.dep)} ${time(out.dep)} ab ${out.from}` : ""}{back?.dep ? `, zurück ${dayShort(back.dep)} ${time(back.dep)}` : ""}. Preis pro Person wie dort{opt?.price.adult ? ` (${eur(opt.price.adult)})` : ""}, Anfahrt zum Flughafen für die eigene Familie. Aufenthalt und Unterkunftsplan folgen dem Flug.</p>
+        <div><button class="btn sm fs-item" onclick={() => openFlightSearch({ itemId: item.id })}>✈ Eigenen Flug suchen und vergleichen</button></div>
+      {/if}
+    </div>
+  {/if}
+
+  {#if isFlight && opt && !main}
     <div class="ed-sec">
       <span class="dlabel">Flugzeiten</span>
       {#each [["out", "Hinflug"], ["back", "Rückflug"]] as [dir, l] (dir)}
@@ -112,7 +137,7 @@
     </div>
   {/if}
 
-  {#if opt}
+  {#if opt && !main}
     <div class="ed-sec">
       <div class="ed-row">
         <label class="f grow">Angebot<input bind:value={opt.label} placeholder="Anbieter, Tarif" /></label>

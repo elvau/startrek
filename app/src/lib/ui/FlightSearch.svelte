@@ -3,13 +3,13 @@
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
    * feste Daten (± Tage) oder flexibler Zeitraum mit „spätestens zuhause“ und Nächten per Schieberegler.
    */
-  import { app } from "../store.svelte";
+  import { app, calc } from "../store.svelte";
   import { eur } from "../calc";
   import { airportsOf } from "../calc/travel";
   import { dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
   import DualRange from "./DualRange.svelte";
-  import { FLIGHTS_URL, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import type { FlightScope } from "../flights/open.svelte";
   import type { FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
@@ -37,6 +37,16 @@
   const toggleHh = (h: string) => { const ids = act.filter(t => hhKey(t) === h).map(t => t.id); setWho(hhOn(h) ? whoIds.filter(id => !ids.includes(id)) : [...new Set([...(who || []), ...ids])]); };
   // bei „Alle“ nimmt ein Klick die Person heraus, sonst schaltet er sie dazu oder weg
   const togglePerson = (id: string) => setWho(!who ? whoIds.filter(x => x !== id) : who.includes(id) ? who.filter(x => x !== id) : [...who, id]);
+  // Mitfliegen: andere Flug-Posten, die diese Personen nicht schon enthalten
+  const mains = $derived(trip.items.filter(i => i.cat === "flights" && !i.follow && i.status !== "dropped" && i.id !== item?.id && i.participants && !whoIds.some(id => i.participants!.includes(id))));
+  function flyAlong(mainId: string) {
+    app.trip.detail ||= {};
+    app.trip.detail.flights = true;
+    followFlight(app.trip, mainId, whoIds);
+    onclose();
+  }
+  // bisher mitgeflogen: was das kostet (inkl. Anfahrt), zum Vergleich mit einem eigenen Flug
+  const alongCost = $derived(item?.follow ? calc.T.items[item.id]?.net ?? null : null);
   const base = defaultQuery(trip, "", start.ids ?? item?.participants ?? defaultFlyers(trip));
   const known = airportsOf(trip);
   // Abflughäfen: eigene Auswahl (gemerkt) oder die 4 nächsten zum Wohnort
@@ -185,6 +195,12 @@
         <div class="chips">{#each act as t (t.id)}<button type="button" class="chip sm" class:on={whoIds.includes(t.id)} aria-pressed={whoIds.includes(t.id)} onclick={() => togglePerson(t.id)}>{t.name}</button>{/each}</div>
       </details>
       {#if hhs.length > 1 && !who}<p class="muted small">Tipp wie im Artefakt: je Familie suchen, dann gelten eigene Abflughäfen und die eigene Anfahrt.</p>{/if}
+      {#if who && mains.length && !item}
+        <div class="chips fs-along"><span class="muted small">Oder mitfliegen, gleicher Flug:</span>
+          {#each mains as mm (mm.id)}<button type="button" class="chip sm" onclick={() => flyAlong(mm.id)}>Wie {mm.name}</button>{/each}
+        </div>
+      {/if}
+      {#if alongCost != null}<p class="muted small">Bisher: mitfliegen wie „{trip.items.find(i => i.id === item?.follow)?.name}“ für {eur(alongCost)} inkl. Anfahrt. Die Treffer zeigen den Unterschied; „Übernehmen“ macht daraus einen eigenen Flug.</p>{/if}
     </div>
     <div>
       <span class="dlabel">Abflughäfen (werden einzeln abgefragt und verglichen)</span>
@@ -295,6 +311,7 @@
               <b class="num fs-price">{eur(o.total)}</b>
               <span class="fs-badge">{o.sourceName}</span>
             </div>
+            {#if alongCost != null && Math.abs(o.total - alongCost) >= 1}<p class="st-diff fs-sub" class:good={o.total < alongCost}>{o.total < alongCost ? `${eur(alongCost - o.total)} günstiger` : `${eur(o.total - alongCost)} teurer`} als mitfliegen</p>{/if}
             <p class="muted small fs-sub">Flug {eur(o.price)}{withAccess && o.access ? ` + Anfahrt ${eur(o.access)}` : ""}{n > 1 ? ` · ${eur(o.total / n)} p. P.` : ""}{o.baggage ? ` · ${o.baggage.checked} Koffer` : ""}</p>
             <div class="fs-pills">
               {#if o.nights != null}<span class="pill-n">{o.nights} Nächte vor Ort</span>{/if}
