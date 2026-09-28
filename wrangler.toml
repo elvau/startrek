@@ -1,0 +1,15 @@
+# Such-Dienst der Reisekasse (Cloudflare Worker „startrek“). Code in worker/, Anleitung in docs/FLUGSUCHE.md.
+# Liegt bewusst im Hauptordner: Cloudflare baut mit Root directory „/“ und findet so direkt den Dienst
+# (ohne diese Datei erkennt Wrangler den Ordner app/ als statische Seite und lädt dessen Quelldateien hoch).
+name = "startrek"
+main = "worker/src/index.ts"
+compatibility_date = "2026-09-01"
+
+[observability]
+enabled = true
+
+[vars]
+ALLOWED_ORIGINS = "https://elvau.github.io,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
+
+# Schlüssel der Anbieter (später) als Secrets im Cloudflare-Dashboard, nicht hier:
+#   DUFFEL_TOKEN, TRAVELPAYOUTS_TOKEN
