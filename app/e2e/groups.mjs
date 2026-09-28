@@ -32,7 +32,8 @@ try {
   const a = await page("Anna");
   await a.goto(URL);
   await a.locator(".modal h3", { hasText: "Willkommen" }).waitFor();
-  await a.keyboard.press("Escape");
+  if (!(await a.locator(".modal .who-b.on").textContent()).includes("solo")) fail("solo nicht vorausgewählt");
+  await a.locator(".modal .btn", { hasText: "Los geht's" }).click();
   const solo = await a.locator(".person:not(.add) b").allTextContents();
   if (solo.join() !== "Reh") fail("Start ohne anonymes Reh: " + solo);
   log("Erster Start: 1-Personen-Reise mit anonymem Reh");

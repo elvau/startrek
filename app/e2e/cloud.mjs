@@ -47,7 +47,7 @@ try {
   const anna = await person("Anna");
   await anna.goto(URL);
   // erster Besuch: Willkommen, Anna schaut sich das Beispiel an
-  await anna.locator(".modal .welcome .btn", { hasText: "Beispielreise ansehen" }).click();
+  await anna.locator(".modal .welcome .linkbtn", { hasText: "Beispielreise ansehen" }).click();
   await until(async () => (await anna.locator(".hero h1").textContent()).includes("Makarska"), "Beispielreise offen");
   if ((await anna.locator(".hero .tm-btn").first().click(), await anna.locator(".tm-trip").count()) !== 1) fail("leere Reise nicht weggeräumt");
   await anna.keyboard.press("Escape");
