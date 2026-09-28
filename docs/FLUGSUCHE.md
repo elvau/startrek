@@ -57,7 +57,8 @@ Sobald ein Secret da ist, taucht der Anbieter in der Suche als „eingerichtet�
 
 1. Auf <https://www.travelpayouts.com> kostenlos anmelden, dort das Programm **Aviasales** hinzufügen.
 2. Unter **Profil → API-Token** den Token kopieren, die Partnerkennung (**Marker**, eine Zahl) steht daneben.
-3. Im Worker zwei Einträge anlegen: `TRAVELPAYOUTS_TOKEN` (Typ „Secret“) und `TRAVELPAYOUTS_MARKER` (Typ „Text“).
+3. Im Worker `TRAVELPAYOUTS_TOKEN` anlegen, unbedingt als Typ **„Secret“**: Einträge vom Typ „Text“ können beim
+   Veröffentlichen verloren gehen. Die Partnerkennung (`TRAVELPAYOUTS_MARKER`, 783080) steht bereits in `wrangler.toml`.
 4. Danach sucht die Flugsuche Kiwi.com und Travelpayouts gleichzeitig. Die Links führen zu Aviasales mit
    deiner Partnerkennung (Provision bei Buchung).
 

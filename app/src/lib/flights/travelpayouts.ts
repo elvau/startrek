@@ -9,18 +9,35 @@ export const TP_URL = "https://api.travelpayouts.com/aviasales/v3/prices_for_dat
 
 const iata = (s: string) => /^[A-Za-z]{3}$/.test(s.trim()) ? s.trim().toUpperCase() : null;
 
-/** Anfrage: feste Daten genau, flexibel ganze Monate (gefiltert wird danach in search.ts) */
-export function tpParams(q: FlightQuery, marker?: string): URLSearchParams {
+const month = (iso: string) => iso.slice(0, 7);
+const nextMonth = (m: string) => { const [y, mo] = m.split("-").map(Number); return mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, "0")}`; };
+
+/**
+ * Welche Monate abgefragt werden. Feste Daten: genau die Tage.
+ * Flexibel: jeder mögliche Hinflug-Monat, jeweils mit Rückflug im selben und im nächsten Monat
+ * (sonst kämen nur „Anfang hin, Ende zurück“ und damit zu viele Nächte heraus). Höchstens 6 Anfragen.
+ */
+export function tpPairs(q: FlightQuery): [string, string | undefined][] {
+  if (!q.latest) return [[q.depart, q.ret]];
+  const lastDep = month(new Date(Date.parse(q.latest) - (q.nightsMin || 1) * 86400000).toISOString());
+  const lastRet = month(q.latest);
+  const out: [string, string][] = [];
+  for (let m = month(q.depart); m <= lastDep && out.length < 6; m = nextMonth(m)) {
+    for (const r of [m, nextMonth(m)]) if (r <= lastRet && out.length < 6) out.push([m, r]);
+  }
+  return out.length ? out : [[month(q.depart), lastRet]];
+}
+
+/** eine Anfrage für ein Paar aus Hinflug- und Rückflug-Datum bzw. -Monat */
+export function tpParams(q: FlightQuery, marker?: string, pair: [string, string | undefined] = tpPairs(q)[0]): URLSearchParams {
   const from = iata(q.from), to = iata(q.to);
   if (!from || !to) throw new Error("Travelpayouts braucht Flughafencodes (z. B. DUS → SPU)");
-  const flex = !!q.latest;
   const p = new URLSearchParams({
     origin: from, destination: to,
-    departure_at: flex ? q.depart.slice(0, 7) : q.depart,
+    departure_at: pair[0],
     sorting: "price", unique: "false", currency: (q.currency || "EUR").toLowerCase(), limit: "30", page: "1"
   });
-  const ret = flex ? q.latest : q.ret;
-  if (ret) p.set("return_at", flex ? ret.slice(0, 7) : ret);
+  if (pair[1]) p.set("return_at", pair[1]);
   else p.set("one_way", "true");
   if (q.maxStops === 0) p.set("direct", "true");
   if (marker) p.set("marker", marker);
@@ -60,8 +77,18 @@ export function fromTravelpayouts(data: any, q: FlightQuery, marker?: string): F
 const nightsBetween = (o: FlightOffer) => Math.round((Date.parse(o.back!.dep.slice(0, 10)) - Date.parse(o.out.arr.slice(0, 10))) / 86400000);
 
 export async function searchTravelpayouts(q: FlightQuery, token: string, f: typeof fetch = fetch, marker?: string): Promise<FlightOffer[]> {
+  // flexibel mehrere Monate gleichzeitig; ein Fehler zählt nur, wenn keine Anfrage durchkommt
+  const pairs = tpPairs(q);
+  const res = await Promise.allSettled(pairs.map(pair => tpFetch(q, token, f, marker, pair)));
+  const ok = res.filter((r): r is PromiseFulfilledResult<FlightOffer[]> => r.status === "fulfilled");
+  if (!ok.length) throw (res[0] as PromiseRejectedResult).reason;
+  const seen = new Set<string>();
+  return ok.flatMap(r => r.value).filter(o => (seen.has(o.id) ? false : (seen.add(o.id), true))).sort((a, b) => a.price - b.price);
+}
+
+async function tpFetch(q: FlightQuery, token: string, f: typeof fetch, marker: string | undefined, pair: [string, string | undefined]): Promise<FlightOffer[]> {
   // Token im Kopf statt in der Adresse, damit er in keinem Protokoll landet
-  const res = await f(`${TP_URL}?${tpParams(q, marker)}`, { headers: { accept: "application/json", "x-access-token": token } });
+  const res = await f(`${TP_URL}?${tpParams(q, marker, pair)}`, { headers: { accept: "application/json", "x-access-token": token } });
   if (!res.ok) {
     // Begründung aus der Antwort mitgeben (z. B. welches Feld nicht passt), sonst nur der Status
     const body = await res.text().catch(() => "");
