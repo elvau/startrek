@@ -85,7 +85,12 @@ export function parseQuery(b: unknown): FlightQuery | string {
   const adults = o.adults ?? 1, children = o.children ?? 0, infants = o.infants ?? 0;
   if (!int(adults, 1, 9) || !int(children, 0, 8) || !int(infants, 0, 4)) return "Personen: 1–9 Erwachsene, bis 8 Kinder, bis 4 Babys";
   if ((infants as number) > (adults as number)) return "Höchstens ein Baby pro Erwachsenem";
+  const opt: Pick<FlightQuery, "flexDays" | "maxStops" | "bags" | "selfTransfer"> = {};
+  if (o.flexDays != null) { if (!int(o.flexDays, 0, 3)) return "± Tage: 0 bis 3"; if (!latest) opt.flexDays = o.flexDays as number; }
+  if (o.maxStops != null) { if (!int(o.maxStops, 0, 2)) return "Umstiege: 0 bis 2"; opt.maxStops = o.maxStops as number; }
+  if (o.bags != null) { if (typeof o.bags !== "boolean") return "Koffer: ja oder nein"; opt.bags = o.bags; }
+  if (o.selfTransfer != null) { if (typeof o.selfTransfer !== "boolean") return "Self-Transfer: ja oder nein"; opt.selfTransfer = o.selfTransfer; }
   const currency = str("currency") || "EUR";
   if (!/^[A-Z]{3}$/.test(currency)) return "Währung ungültig";
-  return { from, to, depart, ret: flex.latest ? undefined : ret || undefined, ...flex, adults: adults as number, children: children as number, infants: infants as number, currency };
+  return { from, to, depart, ret: flex.latest ? undefined : ret || undefined, ...flex, ...opt, adults: adults as number, children: children as number, infants: infants as number, currency };
 }

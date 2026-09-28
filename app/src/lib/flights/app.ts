@@ -2,6 +2,7 @@
 import { ageClass } from "../calc";
 import { hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Trip } from "../model";
 import { nights } from "../format";
+import { accessFor, airportsOf, roadKm } from "../calc/travel";
 import type { FlightOffer, FlightQuery, OfferLeg, SearchResult } from "./types";
 
 /** Adresse des Such-Dienstes (Cloudflare Worker); leer: noch nicht eingerichtet */
@@ -66,4 +67,73 @@ export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promi
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Such-Dienst antwortet mit ${res.status}`);
   return data as SearchResult;
+}
+
+/* ---------- Mehrere Abflughäfen vergleichen (wie im Artefakt) ---------- */
+
+/** Standard-Auswahl: die n nächsten Flughäfen zum Wohnort der ersten Familie, sonst die ersten der Liste */
+export function nearestAirports(trip: Trip, n = 4): string[] {
+  const aps = airportsOf(trip);
+  const first = trip.travelers.find(isActive);
+  const geo = first ? trip.households?.[hhKey(first)]?.geo : undefined;
+  if (!geo) return aps.slice(0, n).map(a => a.code);
+  return [...aps].sort((a, b) => (roadKm(geo, a) ?? 0) - (roadKm(geo, b) ?? 0)).slice(0, n).map(a => a.code);
+}
+
+/** Minuten seit Epoche für eine lokale Zeit (ohne Zeitzone) */
+export const tMin = (iso: string) => {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?/);
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)) / 60000 : NaN;
+};
+/** Gepäck und Weg zum Auto oder Bahnsteig nach der Landung */
+export const EXIT_H = 0.75;
+
+export interface Rated extends FlightOffer {
+  /** Abflughafen der Suche */
+  origin: string;
+  access: number;
+  accessHours: number;
+  /** Flug plus Anfahrt (wenn eingerechnet) */
+  total: number;
+  /** wieder zu Hause (Minuten seit Epoche), nur mit Rückflug */
+  home: number;
+  nights: number | null;
+}
+
+/** Anfahrt aller Familien zum Flughafen (hin und zurück, Parken für die Reisetage), dazu „zuhause ca.“ */
+export function rate(trip: Trip, o: FlightOffer, origin: string, withAccess: boolean): Rated {
+  const ap = airportsOf(trip).find(a => a.code === (o.out.from || origin)) ?? airportsOf(trip).find(a => a.code === origin);
+  const counts: Record<string, number> = {};
+  trip.travelers.filter(isActive).forEach(t => (counts[hhKey(t)] = (counts[hhKey(t)] || 0) + 1));
+  const days = o.back ? Math.max(1, nights(o.out.dep.slice(0, 10), o.back.arr.slice(0, 10)) + 1) : Math.max(1, nights(trip.from, trip.to) + 1);
+  let cost = 0, hours = 0;
+  if (ap) for (const hh in counts) { const a = accessFor(hh, ap, counts[hh], days, trip); cost += a.cost; hours = Math.max(hours, a.hours); }
+  return {
+    ...o, origin, access: Math.round(cost), accessHours: hours, total: o.price + (withAccess ? Math.round(cost) : 0),
+    home: o.back ? tMin(o.back.arr) + Math.round((hours + EXIT_H) * 60) : NaN,
+    nights: o.back ? nights(o.out.arr.slice(0, 10), o.back.dep.slice(0, 10)) : null
+  };
+}
+
+/** spätestens zu Hause: Datum und Uhrzeit als Minuten */
+export const deadline = (date?: string, clock = "22:00") => (date ? tMin(`${date}T${/^\d{2}:\d{2}$/.test(clock) ? clock : "22:00"}`) : NaN);
+
+export interface CompareRow { code: string; price: number; access: number; total: number; hours: number; direct: number | null; count: number; error?: string }
+
+/** Vergleich je Flughafen: günstigster Treffer, Anfahrt, gesamt, Reisezeit (Flug + 2 × Anfahrt), günstigster Direktflug */
+export function compareRow(code: string, list: Rated[], error?: string): CompareRow {
+  if (!list.length) return { code, price: 0, access: 0, total: 0, hours: 0, direct: null, count: 0, error: error || "keine Verbindung gefunden" };
+  const cheap = list.reduce((a, b) => (b.total < a.total ? b : a));
+  const dir = list.filter(o => !o.out.stops && !o.back?.stops);
+  const flightH = (cheap.out.minutes + (cheap.back?.minutes || 0)) / 60;
+  return {
+    code, price: cheap.price, access: cheap.access, total: cheap.total, hours: flightH + 2 * cheap.accessHours,
+    direct: dir.length ? dir.reduce((a, b) => (b.total < a.total ? b : a)).total : null, count: list.length
+  };
+}
+
+/** Wochentag, Datum, Uhrzeit aus Minuten, z. B. „Mo 29.07. 18:10“ */
+export function fmtMin(mins: number): string {
+  const d = new Date(mins * 60000), p = (n: number) => String(n).padStart(2, "0");
+  return `${["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][d.getUTCDay()]} ${p(d.getUTCDate())}.${p(d.getUTCMonth() + 1)}. ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
 }
