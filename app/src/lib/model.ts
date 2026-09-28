@@ -181,6 +181,17 @@ export interface Settings {
   airports?: Airport[];
 }
 
+/** Anlass mit fester Zeit (Spiel, Konzert): daraus werden Reisevorschläge; Ort der Reise ist place/country */
+export interface TripEvent {
+  name: string;
+  /** Stadion, Halle, Adresse (für Hinweise und Karte) */
+  venue?: string;
+  /** Beginn, lokal, z. B. 2027-05-15T18:00 */
+  start: string;
+  /** Dauer in Stunden (Standard 3) */
+  hours?: number;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -192,6 +203,7 @@ export interface Trip {
   from?: string;
   to?: string;
   home?: string;
+  event?: TripEvent;
   travelers: Traveler[];
   households?: Record<string, Household>;
   items: Item[];

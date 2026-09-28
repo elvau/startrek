@@ -4,6 +4,7 @@
   import { app, openSample, startWith } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import Modal from "./Modal.svelte";
+  import { openEventPlanner } from "../event/open.svelte";
   import WhoPicker, { newWho, whoName, whoTravelers } from "./WhoPicker.svelte";
 
   let who = $state(newWho());
@@ -20,6 +21,7 @@
   <div class="welcome">
     <WhoPicker bind:who />
     <button class="btn primary go" onclick={start}>{t("welcome.go")}</button>
+    <button class="btn ev-start" onclick={() => { start(); openEventPlanner(); }}>🎟 {t("ev.welcome")}</button>
     <div class="welcome-more">
       <button class="linkbtn" onclick={() => { openSample(); close(); }}>{t("sample.open")}</button>
       {#if cloud.configured}

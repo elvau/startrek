@@ -460,3 +460,14 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .fs-ad{margin-inline-start:6px;font-size:10.5px;opacity:.7;font-weight:600}
 .note .legal{margin-inline-start:10px;white-space:nowrap}
 .note .legal a{color:inherit}
+/* Reise zu einem Event */
+.ev-form .ev-grow{flex:1;min-width:180px}
+.ev-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
+.ev-card{border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;background:var(--paper)}
+.ev-card.best{border-color:var(--a);box-shadow:0 0 0 1px var(--a)}
+.ev-card header{display:flex;flex-direction:column;gap:2px}
+.ev-line{margin:0;font-size:13.5px;display:flex;flex-direction:column;gap:2px}
+.ev-card footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ev-done{color:#1F8A70;font-weight:600}
+.ev-hero{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;font-size:14px;font-weight:600}
+.ev-hero .linkbtn{color:inherit;text-decoration:underline}
