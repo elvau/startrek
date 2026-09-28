@@ -84,7 +84,7 @@ body[data-ch="transport"] .amb-transport,body[data-ch="attractions"] .amb-attrac
 }
 /* Wolken (Flug + Start) */
 .cloud{position:absolute;fill:#fff;opacity:.85;will-change:transform}
-.amb-flights .cloud{transform:translateX(calc(var(--p,0) * var(--dx,-120px)))}
+
 /* Flugbahn */
 .fpath{position:absolute;left:0;right:0;top:12%;height:60%;width:100%}
 .fpath path.trail{fill:none;stroke:#fff;stroke-width:2.5;stroke-dasharray:8 10;opacity:.9}
@@ -102,7 +102,7 @@ body[data-ch="transport"] .amb-transport,body[data-ch="attractions"] .amb-attrac
 .rails{position:absolute;left:-5%;right:-5%;bottom:14%;height:120px;opacity:.5}
 .rails path{fill:none;stroke:var(--c-transport);stroke-width:3}
 .rails .tie{stroke-width:2;stroke-dasharray:3 16}
-.tram{position:absolute;bottom:calc(14% + 34px);left:0;width:120px;height:44px;transform:translateX(calc(var(--p,0) * 100vw - 120px));color:var(--c-transport);opacity:.8}
+.tram{position:absolute;bottom:calc(14% + 34px);left:0;width:120px;height:44px;transform:translateX(-130px);transition:transform .2s linear;color:var(--c-transport);opacity:.8}
 /* Konfetti (Attraktionen) */
 .conf{position:absolute;width:10px;height:14px;border-radius:2px;opacity:.55;transform:translateY(calc(var(--p,0) * var(--dy,80px))) rotate(calc(var(--p,0) * var(--r,90deg)))}
 /* Sonne (Start) */

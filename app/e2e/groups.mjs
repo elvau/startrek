@@ -31,6 +31,8 @@ const menu = async p => { await p.evaluate(() => scrollTo(0, 0)); await p.locato
 try {
   const a = await page("Anna");
   await a.goto(URL);
+  await a.locator(".modal h3", { hasText: "Willkommen" }).waitFor();
+  await a.keyboard.press("Escape");
 
   // Gruppen und Personen anlegen
   await menu(a);
@@ -62,10 +64,19 @@ try {
   // Neue Reise für die Kegelgruppe, einfacher Modus
   await menu(a);
   await a.locator(".tm-act", { hasText: "+ Neue Reise" }).click();
-  await a.locator(".newtrip input").first().fill("Kegeltour Mosel");
+  await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Mosel");
+  await a.locator(".newtrip label", { hasText: "Von" }).locator("input").fill("2027-05-06");
+  await a.locator(".newtrip label", { hasText: "Bis" }).locator("input").fill("2027-05-09");
   await a.locator(".newtrip .grp-chip", { hasText: "Kegeln" }).click();
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
-  await until(async () => (await a.locator(".hero h1").textContent()).includes("Kegeltour"), "neue Reise offen");
+  await until(async () => (await a.locator(".hero h1").textContent()).includes("Mosel"), "neue Reise offen");
+  const tname = await a.locator(".hero .tm-name").first().textContent();
+  if (tname !== "Mosel · Mai 2027 · 4 Tage") fail("Name: " + tname);
+  await menu(a);
+  const listed = await a.locator(".tm-trip").allInnerTexts();
+  if (listed.length !== 1) fail("leere Reise nicht weggeräumt: " + listed.join(" | "));
+  await a.keyboard.press("Escape");
+  log("Name aus Ziel und Zeitraum:", tname, "· leere Startreise weggeräumt");
   const names = (await a.locator(".person:not(.add) b").allTextContents()).join(", ");
   if (names !== "Monika Klein, Uwe Schmitz") fail("Reisende: " + names);
   if ((await a.locator(".simple-card").count()) !== 5) fail("nicht alle Bereiche einfach");
@@ -91,8 +102,11 @@ try {
 
   // Flüge auf detailliert und zurück, ohne dass sich die Summe ändert
   await a.locator("#flights .mode button", { hasText: "Detailliert" }).click();
-  await a.locator("#flights .card[data-item]").waitFor();
+  await a.locator("#flights .card.edit").waitFor();
   if ((await total(a)) !== "1.500 €") fail("Summe nach Umschalten: " + await total(a));
+  const ppIn = await a.locator("#flights .card.edit input[inputmode=decimal]").evaluateAll(xs => xs.map(x => x.value));
+  if (!ppIn.some(v => v.startsWith("300"))) fail("Preis pro Person nicht 300: " + ppIn);
+  log("Detailliert: neuer Posten offen, 600 € als 300 € pro Person");
   await a.locator("#flights .mode button", { hasText: "Einfach" }).click();
   await a.locator("#flights .simple-hidden").waitFor();
   if ((await total(a)) !== "1.500 €") fail("Summe nach Zurückschalten: " + await total(a));
@@ -101,6 +115,7 @@ try {
   await a.locator("#flights .mode button", { hasText: "Detailliert" }).click();
   await a.locator("#flights .card[data-item]").waitFor();
   if ((await a.locator("#flights .card[data-item]").count()) !== 1) fail("Posten doppelt nach Wiederherstellen");
+  if (await a.locator("#flights .card.edit").count()) fail("beim Wiederherstellen sollte die Liste kommen, kein Editor");
   await a.locator("#flights .mode button", { hasText: "Einfach" }).click();
   await a.locator("#flights .simple-hidden").waitFor();
   log("Flüge detailliert und zurück: Betrag wird Posten und umgekehrt, Summe bleibt 1.500 €");
@@ -114,7 +129,7 @@ try {
   await new Promise(r => setTimeout(r, 2000));
   const b = await page("Anna2");
   await b.goto(URL);
-  await b.locator(".hero .acct .tm-btn", { hasText: "Anmelden" }).click();
+  await b.locator(".modal .welcome .linkbtn", { hasText: "schon ein Konto" }).click();
   await b.locator(".login .test input").fill("Anna");
   await b.locator(".login .test button").click();
   await b.locator(".hero .acct-btn").waitFor();

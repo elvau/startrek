@@ -21,6 +21,7 @@
   import { reveal } from "./lib/ui/reveal";
   import PresencePlan from "./lib/ui/PresencePlan.svelte";
   import Split from "./lib/ui/Split.svelte";
+  import Welcome from "./lib/ui/Welcome.svelte";
 
   let sheet = $state(false);
 
@@ -28,7 +29,7 @@
     try { const t = localStorage.getItem("rk-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
     const off = initScroll();
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { app.editing = null; sheet = false; } };
-    const outside = (e: MouseEvent) => { if (app.editing && !(e.target as HTMLElement).closest(".card, .add")) app.editing = null; };
+    const outside = (e: MouseEvent) => { if (app.editing && !(e.target as HTMLElement).closest(".card, .add, .mode")) app.editing = null; };
     addEventListener("keydown", esc);
     addEventListener("click", outside);
     return () => { off(); removeEventListener("keydown", esc); removeEventListener("click", outside); };
@@ -57,7 +58,7 @@
       <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn && det ? `${nn} Nächte` : ch.sub}
         onadd={access.readonly || !det ? undefined : () => addItem(ch.k)}
         onreset={items.length ? () => { if (confirm(`Alle ${items.length} Posten bei „${ch.label}“ löschen?`)) discardDetails(ch.k); } : undefined}
-        mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on)}>
+        mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if !det}
           <SimpleCard cat={ch.k} label={ch.label} />
         {:else}
@@ -94,3 +95,4 @@
   </div>
 {/if}
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
+{#if app.welcome && !cloud.user}<Welcome />{/if}

@@ -30,3 +30,11 @@ export function duration(a: string, b: string): string {
 
 /** "Juli 2027" */
 export const monthYear = (iso: string) => { const x = d(iso); return `${MONTHS[x.getMonth()]} ${x.getFullYear()}`; };
+
+/** Name aus Ziel und Zeitraum, z. B. "Mosel · Juli 2027 · 4 Tage"; ohne Ziel und Daten null */
+export function autoName(t: { place?: string; from?: string; to?: string }): string | null {
+  const place = t.place?.trim();
+  if (!place && !t.from) return null;
+  const n = nights(t.from, t.to);
+  return [place || "Reise", t.from ? monthYear(t.from) : "", n ? `${n + 1} Tage` : ""].filter(Boolean).join(" · ");
+}

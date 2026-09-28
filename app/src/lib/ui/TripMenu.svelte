@@ -1,7 +1,7 @@
 <script lang="ts">
   import { access, allTrips, app, deleteTrip, duplicateTrip, moveToCloud, switchTrip } from "../store.svelte";
   import { cloud, cloudTrip } from "../cloud/cloud.svelte";
-  import { monthYear } from "../format";
+  import { monthYear, nights } from "../format";
   import ShareDialog from "./ShareDialog.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
@@ -17,6 +17,13 @@
   const cur = $derived(cloudTrip(app.trip.id));
   const isOwner = $derived(!!cur && cur.owner === cloud.user?.uid);
   const R = { owner: "", editor: "plant mit", viewer: "nur ansehen" };
+  /** Ziel, Monat, Dauer, Personen; was schon im Namen steht, nicht noch einmal */
+  function sub(m: (typeof trips)[number]): string {
+    const n = nights(m.from, m.to);
+    const info = [m.place, m.from ? monthYear(m.from) : "", n ? `${n + 1} Tage` : ""].filter(x => x && !m.name.includes(x));
+    return [...info, m.people ? `${m.people} ${m.people === 1 ? "Person" : "Personen"}` : "", m.role ? R[m.role] : "", m.shared ? "geteilt" : "",
+      !m.cloud && cloud.user ? "nur auf diesem Gerät" : ""].filter(Boolean).join(" · ");
+  }
 
   $effect(() => {
     if (!open) return;
@@ -45,8 +52,8 @@
       <div class="tm-h">Meine Reisen</div>
       {#each trips as m (m.id)}
         <button role="menuitemradio" aria-checked={m.id === app.trip.id} class="tm-trip" class:on={m.id === app.trip.id} onclick={() => act(() => switchTrip(m.id))}>
-          <b>{m.cloud ? "☁ " : ""}{m.name || "Ohne Namen"}</b>
-          <small>{[m.place, m.from ? monthYear(m.from) : "", m.role ? R[m.role] : "", m.shared ? "geteilt" : "", !m.cloud && cloud.user ? "nur auf diesem Gerät" : ""].filter(Boolean).join(" · ")}</small>
+          <b>{m.cloud ? "☁ " : ""}{m.name || "Ohne Namen"}{#if m.id === app.trip.id} <span class="tm-cur">geöffnet</span>{/if}</b>
+          <small>{sub(m)}</small>
         </button>
       {/each}
       <div class="tm-sep"></div>

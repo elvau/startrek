@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app } from "../store.svelte";
-  import { nights } from "../format";
+  import { autoName, nights } from "../format";
 
   let { onclose }: { onclose: () => void } = $props();
   const trip = $derived(app.trip);
@@ -9,7 +9,10 @@
 
 <div class="trip-ed">
   <div class="ed-row">
-    <label class="f grow">Name der Reise<input bind:value={trip.name} placeholder="z. B. Sommer in Kroatien" /></label>
+    <label class="f grow">Name der Reise
+      <!-- leer lassen: Name kommt aus Ort und Zeitraum -->
+      <input value={trip.autoName ? "" : trip.name} placeholder={trip.autoName ? trip.name : "z. B. Sommer in Kroatien"}
+        oninput={e => { const v = e.currentTarget.value; if (v.trim()) { trip.name = v; trip.autoName = false; } else { trip.autoName = true; trip.name = autoName(trip) || trip.name; } }} /></label>
   </div>
   <div class="ed-row">
     <label class="f grow">Ort<input bind:value={trip.place} placeholder="z. B. Makarska" /></label>
