@@ -1,0 +1,49 @@
+name: Such-Dienst veröffentlichen
+
+# Veröffentlicht worker/ als Cloudflare Worker, sobald CLOUDFLARE_API_TOKEN und
+# CLOUDFLARE_ACCOUNT_ID als Repository-Secrets hinterlegt sind (siehe docs/FLUGSUCHE.md).
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", "app/src/lib/flights/**", ".github/workflows/worker.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+    steps:
+      - name: Zugangsdaten fehlen
+        if: env.HAS_TOKEN != 'true'
+        run: echo "::notice::CLOUDFLARE_API_TOKEN oder CLOUDFLARE_ACCOUNT_ID fehlt. Der Such-Dienst wird nicht veröffentlicht, siehe docs/FLUGSUCHE.md."
+      - uses: actions/checkout@v4
+        if: env.HAS_TOKEN == 'true'
+      - uses: actions/setup-node@v4
+        if: env.HAS_TOKEN == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - name: Abhängigkeiten
+        if: env.HAS_TOKEN == 'true'
+        working-directory: worker
+        run: npm ci
+      - name: Typprüfung
+        if: env.HAS_TOKEN == 'true'
+        working-directory: worker
+        run: npx tsc --noEmit
+      - name: Veröffentlichen
+        if: env.HAS_TOKEN == 'true'
+        working-directory: worker
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

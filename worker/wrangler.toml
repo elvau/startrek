@@ -1,0 +1,11 @@
+# Such-Dienst der Reisekasse. Veröffentlichen: siehe docs/FLUGSUCHE.md
+name = "reisekasse-suche"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://elvau.github.io,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
+
+# Schlüssel der Anbieter (später) als Secrets, nicht hier:
+#   npx wrangler secret put DUFFEL_TOKEN
+#   npx wrangler secret put TRAVELPAYOUTS_TOKEN
