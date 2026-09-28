@@ -6,7 +6,7 @@
   import GroupsDialog from "./GroupsDialog.svelte";
   import { autoName, nights } from "../format";
   import QuickFamilies from "./QuickFamilies.svelte";
-  import { placeholderTravelers, type FamilyRow } from "../placeholders";
+  import { placeholderTravelers, soloTraveler, type FamilyRow } from "../placeholders";
 
   let { onclose }: { onclose: () => void } = $props();
   let name = $state("");
@@ -15,7 +15,9 @@
   let to = $state("");
   const auto = $derived(autoName({ place, from, to }));
   const nn = $derived(nights(from, to));
-  let fams = $state<FamilyRow[]>([]);
+  // wer fährt mit: allein als anonymes Reh (Standard), als Rudel (Platzhalter-Familien) oder aus gespeicherten Gruppen
+  let mode = $state<"solo" | "pack" | "saved">("solo");
+  let fams = $state<FamilyRow[]>([{ animal: "Reh", adults: 2, kids: 0, infants: 0 }]);
   const famCount = $derived(fams.reduce((a, r) => a + r.adults + r.kids + (r.infants || 0), 0));
   let picked = $state<string[]>([]);
   let groups = $state(false);
@@ -28,8 +30,8 @@
 
   function create(e: Event) {
     e.preventDefault();
-    const people = travelersFrom(picked);
-    newTrip({ name, place, from, to, travelers: [...people, ...placeholderTravelers(fams, people.length)] });
+    const travelers = mode === "solo" ? [soloTraveler()] : mode === "pack" ? placeholderTravelers(fams) : travelersFrom(picked);
+    newTrip({ name, place, from, to, travelers });
     onclose();
   }
 </script>
@@ -50,7 +52,23 @@
       <label class="f">Name (optional)<input bind:value={name} placeholder={auto || "wird aus Ziel und Zeitraum gebildet"} /></label>
       <div class="ed-sec">
         <span class="dlabel">Wer fährt mit?</span>
-        {#if dir.groups.length || dir.people.length}
+        <div class="who" role="radiogroup" aria-label="Wer fährt mit">
+          <button type="button" role="radio" aria-checked={mode === "solo"} class="who-b" class:on={mode === "solo"} onclick={() => (mode = "solo")}>
+            <span class="who-i">🦌</span><b>Anonymes Reh</b><small>nur ich</small></button>
+          <button type="button" role="radio" aria-checked={mode === "pack"} class="who-b" class:on={mode === "pack"} onclick={() => (mode = "pack")}>
+            <span class="who-i">🐺</span><b>Rudel</b><small>Familien, anonym</small></button>
+          {#if dir.groups.length || dir.people.length}
+            <button type="button" role="radio" aria-checked={mode === "saved"} class="who-b" class:on={mode === "saved"} onclick={() => (mode = "saved")}>
+              <span class="who-i">👥</span><b>Gespeichert</b><small>Gruppen, Personen</small></button>
+          {/if}
+        </div>
+        {#if mode === "solo"}
+          <p class="muted small">Eine Person ohne Namen. Weitere kannst du jederzeit in der Reise ergänzen.</p>
+        {:else if mode === "pack"}
+          <p class="muted small">Familien als Platzhalter, z. B. „Familie Reh: 2 Erwachsene, 2 Kinder, 1 Kleinkind“. Sie gelten nur für diese Reise; echte Namen kannst du später eintragen.</p>
+          <QuickFamilies bind:rows={fams} />
+          {#if famCount}<p class="muted small">Zusammen {famCount} {famCount === 1 ? "Person" : "Personen"}.</p>{/if}
+        {:else}
           <div class="chips">
             {#each dir.groups as g (g.id)}
               {@const on = g.memberIds.length > 0 && g.memberIds.every(id => picked.includes(id))}
@@ -63,13 +81,7 @@
             {/each}
           </div>
           <p class="muted small">{picked.length} {picked.length === 1 ? "Person" : "Personen"} ausgewählt. Einzelne kannst du später für diese Reise auf „nicht dabei“ stellen.</p>
-        {:else}
-          <p class="muted small">Noch keine gespeicherten Gruppen. Du kannst die Personen auch später in der Reise eintragen.</p>
         {/if}
-        <span class="dlabel">Oder schnell, ohne Namen</span>
-        <p class="muted small">Familien als Platzhalter, z. B. „Familie Reh: 2 Erwachsene, 2 Kinder, 1 Kleinkind“. Sie gelten nur für diese Reise; echte Namen kannst du später eintragen.</p>
-        <QuickFamilies bind:rows={fams} />
-        {#if picked.length || famCount}<p class="muted small">Zusammen {picked.length + famCount} {picked.length + famCount === 1 ? "Person" : "Personen"}.</p>{/if}
         <button type="button" class="linkbtn" onclick={() => (groups = true)}>Gruppen und Personen verwalten</button>
       </div>
       <div class="ed-foot"><span class="muted small">Startet im einfachen Modus: ein Betrag je Bereich.</span><button class="btn primary">Reise anlegen</button></div>

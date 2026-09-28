@@ -2,7 +2,7 @@
   /* Bearbeiten eines Postens im Fokusmodus: Status, Angebote, Preis, Beteiligte */
   import { isActive, uid, type FlightLeg, type Item, type Status } from "../model";
   import { app, removeItem } from "../store.svelte";
-  import { activeOption } from "../calc";
+  import { activeOption, ageClass } from "../calc";
 
   let { item }: { item: Item } = $props();
   const STATUS: [Status, string][] = [["idea", "Idee"], ["chosen", "Gewählt"], ["booked", "Gebucht"], ["paid", "Bezahlt"], ["dropped", "Verworfen"]];
@@ -156,7 +156,8 @@
     <div class="chips">
       <button class="chip" class:on={all} onclick={() => (item.participants = undefined)}>Alle</button>
       {#each people as t (t.id)}
-        <button class="chip" class:on={all || item.participants?.includes(t.id)} onclick={() => togglePerson(t.id)}>{t.name || "Ohne Namen"}</button>
+        {@const cls = ageClass(t.age, app.trip.settings, t.kind)}
+        <button class="chip" class:on={all || item.participants?.includes(t.id)} onclick={() => togglePerson(t.id)}>{t.name || "Ohne Namen"}{#if cls !== "adult"} <em class="age-pill {cls}">{cls === "child" ? "Kind" : "Kleinkind"}</em>{/if}</button>
       {/each}
     </div>
   </div>

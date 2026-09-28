@@ -33,6 +33,9 @@ try {
   await a.goto(URL);
   await a.locator(".modal h3", { hasText: "Willkommen" }).waitFor();
   await a.keyboard.press("Escape");
+  const solo = await a.locator(".person:not(.add) b").allTextContents();
+  if (solo.join() !== "Reh") fail("Start ohne anonymes Reh: " + solo);
+  log("Erster Start: 1-Personen-Reise mit anonymem Reh");
 
   // Gruppen und Personen anlegen
   await menu(a);
@@ -67,6 +70,8 @@ try {
   await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Mosel");
   await a.locator(".newtrip label", { hasText: "Von" }).locator("input").fill("2027-05-06");
   await a.locator(".newtrip label", { hasText: "Bis" }).locator("input").fill("2027-05-09");
+  if ((await a.locator(".newtrip .who-b.on").textContent()).includes("Reh") !== true) fail("Reh nicht vorausgewählt");
+  await a.locator(".newtrip .who-b", { hasText: "Gespeichert" }).click();
   await a.locator(".newtrip .grp-chip", { hasText: "Kegeln" }).click();
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
   await until(async () => (await a.locator(".hero h1").textContent()).includes("Mosel"), "neue Reise offen");
@@ -124,8 +129,8 @@ try {
   await menu(a);
   await a.locator(".tm-act", { hasText: "+ Neue Reise" }).click();
   await a.locator(".newtrip label", { hasText: "Wohin" }).locator("input").fill("Ostsee");
+  await a.locator(".newtrip .who-b", { hasText: "Rudel" }).click();
   const qf = a.locator(".newtrip .qf");
-  await qf.locator(".linkbtn").click();
   await qf.locator(".linkbtn").click();
   // Reh: 2 Erwachsene, 3 Kinder; Bär: 2 Erwachsene, 2 Kinder, 1 Kleinkind
   for (let k = 0; k < 3; k++) await qf.locator(".qf-row").nth(0).locator('[aria-label="Kinder mehr"]').click();

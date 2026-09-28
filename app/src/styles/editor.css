@@ -285,3 +285,18 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .pick.repl-pick{flex-direction:column;align-items:flex-start;gap:8px}
 .repl-acts{display:flex;gap:16px}
 .person .repl{font-size:12.5px;margin-top:2px}
+.who{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;align-self:stretch}
+.who-b{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 8px;border-radius:16px;border:1.5px solid var(--line);background:var(--paper-2);color:var(--ink)}
+.who-b.on{border-color:var(--a);background:var(--a-soft);box-shadow:0 0 0 2px var(--a) inset}
+.who-i{font-size:28px;line-height:1.1}
+.who-b b{font-size:14px}
+.who-b small{font-size:11.5px;color:var(--ink-2)}
+/* Kinder erkennbar: kleinerer Avatar, farbige Marke */
+.person.kid .av{width:44px;height:44px;font-size:18px;margin:6px 0}
+.person.kid .av.emoji{font-size:19px}
+.age-pill{display:inline-block;font-style:normal;font-weight:700;font-size:11px;line-height:1;padding:3px 7px;border-radius:99px;background:#FDE7C8;color:#9A5B00}
+.age-pill.infant{background:#F6D9EA;color:#9B2C6E}
+.chip .age-pill{margin-left:4px;padding:2px 6px;font-size:10.5px}
+:root[data-theme="dark"] .age-pill{background:#4A3413;color:#FFD08A}
+:root[data-theme="dark"] .age-pill.infant{background:#4A1F38;color:#F5A8D2}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .age-pill{background:#4A3413;color:#FFD08A}:root:not([data-theme="light"]) .age-pill.infant{background:#4A1F38;color:#F5A8D2}}

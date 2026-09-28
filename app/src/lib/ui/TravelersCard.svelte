@@ -72,7 +72,8 @@
 <div class="people">
   {#each app.trip.travelers as t, i (t.id)}
     {@const emoji = t.placeholder ? animalEmoji(t.household) : null}
-    <div class="person" class:off={!isActive(t)}>
+    {@const cls = ageClass(t.age, app.trip.settings, t.kind)}
+    <div class="person" class:off={!isActive(t)} class:kid={cls !== "adult"}>
       <span class="av" class:emoji style:--ring={t.color || COLORS[i % COLORS.length]} style:background={emoji ? null : t.color || COLORS[i % COLORS.length]}>{emoji || (t.name || "?")[0]}</span>
       {#if edit}
         <!-- ein echter Name macht aus dem Platzhalter eine Person -->
@@ -82,7 +83,7 @@
         <button class="linkbtn danger" onclick={() => (app.trip.travelers = app.trip.travelers.filter(x => x.id !== t.id))}>Entfernen</button>
       {:else}
         <b>{t.placeholder ? t.name : `${t.name || "Ohne Namen"} ${t.household}`}</b>
-        <span>{t.age != null && String(t.age) !== "" ? `${t.age} Jahre · ` : ""}{L[ageClass(t.age, app.trip.settings, t.kind)]}</span>
+        <span>{t.age != null && String(t.age) !== "" ? `${t.age} Jahre · ` : ""}{#if cls === "adult"}{L[cls]}{:else}<em class="age-pill {cls}">{L[cls]}</em>{/if}</span>
         <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
           onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? "✓ dabei" : "nicht dabei"}</button>
         {#if t.placeholder && !access.readonly}

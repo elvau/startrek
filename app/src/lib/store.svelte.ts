@@ -3,6 +3,7 @@ import { totals } from "./calc";
 import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type Traveler, type Trip } from "./model";
 import { sampleTrip } from "./seed";
 import { autoName, dateDE } from "./format";
+import { soloTraveler } from "./placeholders";
 import { cloud, cloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
@@ -35,13 +36,16 @@ function emptyTrip(o: { name?: string; place?: string; from?: string; to?: strin
   return {
     id: uid(), name: own || auto || `Neue Reise vom ${dateDE(new Date().toISOString().slice(0, 10))}`, autoName: !own,
     place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
-    travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
+    // Standard: eine Person, anonym als Reh
+    travelers: [soloTraveler()], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
   };
 }
 
 /** Noch nichts eingetragen: so eine Reise verschwindet, sobald man woanders hinwechselt */
 function pristine(t: Trip): boolean {
-  return !t.travelers.length && !t.items.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
+  // höchstens das anonyme Reh vom Start, sonst nichts eingetragen
+  const onlySolo = t.travelers.length <= 1 && t.travelers.every(x => x.placeholder);
+  return onlySolo && !t.items.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
     && (!t.place.trim() || t.place === "Neue Reise") && (!!t.autoName || t.name === "Neue Reise");
 }
 
@@ -312,7 +316,7 @@ export function newTrip(opts: { name?: string; place?: string; from?: string; to
   const prev = app.trip;
   open({
     ...emptyTrip(opts),
-    travelers: opts.travelers || [],
+    travelers: opts.travelers ?? [soloTraveler()],
     // Wohnorte und Anreise je Familie aus der bisherigen Reise übernehmen, das spart Tipparbeit
     households: JSON.parse(JSON.stringify(prev.households || {}))
   });
