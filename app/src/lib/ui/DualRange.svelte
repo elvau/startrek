@@ -16,7 +16,7 @@
 
 <div class="dual-wrap">
   <div class="dual-head"><span class="dlabel">{label}</span><b class="num">{lo === hi ? lo : t("range.fromTo", { a: lo, b: hi })}{unit ? ` ${unit}` : ""}</b></div>
-  <div class="dual">
+  <div class="dual" dir="ltr">
     <div class="dual-track"></div>
     <div class="dual-fill" style:left="{pct(lo)}%" style:right="{100 - pct(hi)}%"></div>
     <input type="range" {min} {max} step="1" value={lo} aria-label="{label}: {t('range.from')}"
@@ -24,5 +24,5 @@
     <input type="range" {min} {max} step="1" value={hi} aria-label="{label}: {t('range.to')}"
       oninput={e => (hi = Math.max(+e.currentTarget.value, lo))} />
   </div>
-  <div class="dual-axis"><span>{min}</span><span>{maxNote || max}</span></div>
+  <div class="dual-axis" dir="ltr"><span>{min}</span><span>{maxNote || max}</span></div>
 </div>

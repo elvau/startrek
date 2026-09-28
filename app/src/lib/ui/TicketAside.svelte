@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t, tn } from "../i18n/index.svelte";
+  import { arrow, t, tn } from "../i18n/index.svelte";
   import { app, calc } from "../store.svelte";
   import { cloud, isCloud } from "../cloud/cloud.svelte";
   import { activeOption, eur } from "../calc";
@@ -57,10 +57,10 @@
           {#each Object.entries(T.byHousehold) as [h, v] (h)}
             <a class="fam-l" href="#hh-{h}"><span>{h}</span><b class="num">{eur(v)}</b></a>
           {/each}
-          <a class="fam-more" href="#split">{t("aside.whoPays")} →</a>
+          <a class="fam-more" href="#split">{t("aside.whoPays")} {arrow()}</a>
         </div>
       {:else}
-        <a class="fam-more" href="#split">{t("aside.split")} →</a>
+        <a class="fam-more" href="#split">{t("aside.split")} {arrow()}</a>
       {/if}
       {#if nn && n}<div class="pp"><span>{t("aside.perNight")}</span><b class="num">{eur(T.total / n / nn)}</b></div>{/if}
       {#if anyDetail}<div class="pp"><span>{t("aside.paid")}</span><b class="num">{eur(T.paid)}</b></div>{/if}

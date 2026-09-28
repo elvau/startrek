@@ -5,6 +5,11 @@
  */
 import { de } from "./de";
 import { en } from "./en";
+import { es } from "./es";
+import { fr } from "./fr";
+import { pl } from "./pl";
+import { ru } from "./ru";
+import { ar } from "./ar";
 
 export type Key = keyof typeof de & string;
 /** Wörterbuch einer Sprache; zusätzliche Mehrzahlformen (few, many …) auch für Schlüssel, die Deutsch nicht braucht */
@@ -22,7 +27,7 @@ export const LANGS = [
 export type Lang = (typeof LANGS)[number]["code"];
 
 /** Wörterbücher; weitere Sprachen kommen hier dazu (fehlende Texte: Englisch, dann Deutsch) */
-const DICTS: Partial<Record<Lang, Dict>> = { de, en };
+const DICTS: Partial<Record<Lang, Dict>> = { de, en, es, fr, pl, ru, ar };
 /** Sprachen mit (zumindest teilweiser) Übersetzung, für die Auswahl */
 export const available = () => LANGS.filter(l => DICTS[l.code]);
 
@@ -77,3 +82,6 @@ export function tn(key: string, n: number, p?: Record<string, string | number>):
   const s = raw(`${key}.${cat}`) ?? raw(`${key}.other`) ?? key;
   return fill(s, { n: new Intl.NumberFormat(loc).format(n), ...p });
 }
+
+/** Pfeil in Leserichtung (Zeiten „10:00 → 12:00“, „weiter →“); zwischen lateinischen Codes bleibt → */
+export const arrow = () => ("rtl" in langInfo() ? "←" : "→");

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t, tn } from "../i18n/index.svelte";
+  import { arrow, t, tn } from "../i18n/index.svelte";
   /*
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
    * feste Daten (± Tage) oder flexibler Zeitraum mit „spätestens zuhause“ und Nächten per Schieberegler.
@@ -286,7 +286,7 @@
 {#snippet legRow(dir: string, l: OfferLeg)}
   <div class="fs-leg">
     <span class="fs-dir">{dir}</span>
-    <span><b>{dayShort(l.dep)} {time(l.dep)} → {time(l.arr)}</b> · {dur(l.minutes)} · {stopsText(l.stops)}</span>
+    <span><b>{dayShort(l.dep)} {time(l.dep)} {arrow()} {time(l.arr)}</b> · {dur(l.minutes)} · {stopsText(l.stops)}</span>
     <span class="muted">{l.route.join(" → ")} · {l.carriers.join(" / ")}</span>
   </div>
 {/snippet}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t, tn } from "../i18n/index.svelte";
+  import { arrow, t, tn } from "../i18n/index.svelte";
   import { hhKey, isActive, type Item } from "../model";
   import { access, app, calc } from "../store.svelte";
   import { calcOption, eur } from "../calc";
@@ -51,10 +51,10 @@
         </div>
       {/if}
       <div class="bp-legs">
-        <div class="bp-leg"><b>{t("fl.out")} · {dayShort(out.dep)}</b><span>{time(out.dep)} → {time(out.arr)}</span></div>
+        <div class="bp-leg"><b>{t("fl.out")} · {dayShort(out.dep)}</b><span>{time(out.dep)} {arrow()} {time(out.arr)}</span></div>
         <!-- Rundreise: weitere Flüge dazwischen -->
-        {#each vias as v, i (i)}<div class="bp-leg"><b>{v.from} → {v.to} · {dayShort(v.dep)}</b><span>{time(v.dep)} → {time(v.arr)}</span></div>{/each}
-        {#if back}<div class="bp-leg"><b>{t("fl.back")}{vias.length ? ` ${back.from} → ${back.to}` : ""} · {dayShort(back.dep)}</b><span>{time(back.dep)} → {time(back.arr)}</span></div>{/if}
+        {#each vias as v, i (i)}<div class="bp-leg"><b>{v.from} → {v.to} · {dayShort(v.dep)}</b><span>{time(v.dep)} {arrow()} {time(v.arr)}</span></div>{/each}
+        {#if back}<div class="bp-leg"><b>{t("fl.back")}{vias.length ? ` ${back.from} → ${back.to}` : ""} · {dayShort(back.dep)}</b><span>{time(back.dep)} {arrow()} {time(back.arr)}</span></div>{/if}
       </div>
     {:else}
       <h3 class="bp-name">{item.name || t("fl.new")}</h3>
@@ -74,7 +74,7 @@
       {@const lo = o.legs?.find(l => l.dir === "out")}
       <button class="opt" class:sel={o.id === opt?.id} onclick={e => choose(o.id, e)}>
         <i></i>
-        <span>{o.label}<small>{lo ? `${time(lo.dep)} → ${time(lo.arr)} · ${duration(lo.dep, lo.arr)}` : ""}{o.detail ? ` · ${o.detail}` : ""}{c.access?.cost ? ` · ${t("fl.inclAccess", { v: eur(c.access.cost) })}` : ""}</small></span>
+        <span>{o.label}<small>{lo ? `${time(lo.dep)} ${arrow()} ${time(lo.arr)} · ${duration(lo.dep, lo.arr)}` : ""}{o.detail ? ` · ${o.detail}` : ""}{c.access?.cost ? ` · ${t("fl.inclAccess", { v: eur(c.access.cost) })}` : ""}</small></span>
         <span class="num">{eur(c.net)} {#if o.id !== opt?.id && Math.round(diff)}<span class="d" class:down={diff < 0} class:up={diff > 0}>{diff > 0 ? "+" : "−"}{Math.abs(Math.round(diff))}</span>{/if}</span>
       </button>
     {/each}

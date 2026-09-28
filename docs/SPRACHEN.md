@@ -12,7 +12,13 @@ Datum und Beträge folgen der Sprache (Intl), Arabisch schaltet die Seite auf re
 ## Neuer Text
 
 1. In `de.ts` einen Schlüssel anlegen, im Code `t("schlüssel")` verwenden.
-2. Denselben Schlüssel in `en.ts` (Pflicht, ein Test prüft Vollständigkeit und Platzhalter) und nach Möglichkeit in den anderen Sprachen.
+2. Denselben Schlüssel in allen Sprachen anlegen (en, es, fr, pl, ru, ar); ein Test prüft Vollständigkeit und Platzhalter.
+
+## Rechts nach links
+
+- CSS mit logischen Angaben schreiben (`margin-inline-start`, `inset-inline-end`, `text-align:start`) statt left/right.
+- Pfeile in Leserichtung mit `arrow()`; zwischen lateinischen Codes (FRA → SPU) bleibt →.
+- Der Zeit-Schieberegler bleibt links nach rechts.
 
 ## Mehrzahl
 
