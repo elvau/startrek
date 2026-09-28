@@ -10,6 +10,7 @@
   const opt = $derived(r?.option);
   const out = $derived(opt?.legs?.find(l => l.dir === "out"));
   const back = $derived(opt?.legs?.find(l => l.dir === "back"));
+  const vias = $derived(opt?.legs?.filter(l => l.dir === "via") ?? []);
   const pp = $derived(r && r.n ? r.net / r.n : 0);
   // Städte nur aus Namen wie „Flug Düsseldorf – Split“
   const cities = $derived(item.name.match(/^Flug\s+(.+?)\s+[–-]\s+(.+)$/));
@@ -50,7 +51,9 @@
       {/if}
       <div class="bp-legs">
         <div class="bp-leg"><b>Hin · {dayShort(out.dep)}</b><span>{time(out.dep)} → {time(out.arr)}</span></div>
-        {#if back}<div class="bp-leg"><b>Zurück · {dayShort(back.dep)}</b><span>{time(back.dep)} → {time(back.arr)}</span></div>{/if}
+        <!-- Rundreise: weitere Flüge dazwischen -->
+        {#each vias as v, i (i)}<div class="bp-leg"><b>{v.from} → {v.to} · {dayShort(v.dep)}</b><span>{time(v.dep)} → {time(v.arr)}</span></div>{/each}
+        {#if back}<div class="bp-leg"><b>Zurück{vias.length ? ` ${back.from} → ${back.to}` : ""} · {dayShort(back.dep)}</b><span>{time(back.dep)} → {time(back.arr)}</span></div>{/if}
       </div>
     {:else}
       <h3 class="bp-name">{item.name || "Neuer Flug"}</h3>

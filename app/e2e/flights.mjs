@@ -26,6 +26,15 @@ const RESULT = {
   ]
 };
 
+/** nur Hinflug im Zeitfenster: jeden Tag ein Direktflug, jeder Tag 10 € teurer */
+function oneWay(q) {
+  const from = q.fromAirports?.[0] || q.from, to = q.toAirports?.[0] || q.to, offers = [];
+  for (let d = q.depart, i = 0; d <= q.departTo; d = new Date(Date.parse(d) + 86400000).toISOString().slice(0, 10), i++)
+    offers.push({ id: `kiwi:${from}${to}${d}`, source: "kiwi", sourceName: "Kiwi.com", price: 300 + 10 * i, currency: "EUR", url: `https://kiwi.com/u/${from}${to}`,
+      out: { ...leg(from, to, `${d}T10:00:00`, `${d}T20:00:00`, 600, [`XX${i}${from}`], ["Test Air"], [from, to]), fromCity: from, toCity: to } });
+  return { offers, sources: RESULT.sources.map(s => (s.id === "kiwi" ? { ...s, count: offers.length } : s)) };
+}
+
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4175", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
 await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
@@ -35,9 +44,10 @@ try {
   p.on("pageerror", e => errors.push(e.message));
   const asked = [];
   await p.route("https://flights.test/flights/search", async r => {
-    asked.push(JSON.parse(r.request().postData()));
+    const body = JSON.parse(r.request().postData());
+    asked.push(body);
     await new Promise(res => setTimeout(res, 200));
-    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(RESULT) });
+    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body.departTo ? oneWay(body) : RESULT) });
   });
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
@@ -252,6 +262,52 @@ try {
   await p.locator("#flights .card[data-item]", { hasText: "Hase · 3 Pers." }).waitFor();
   if (await p.locator("#flights .card[data-item]", { hasText: "wie Flug Klein" }).count()) fail("fliegt nach Übernehmen noch mit");
   log("Eigenen Flug gesucht: Treffer mit „günstiger/teurer als mitfliegen“, übernommen → Hase fliegt selbst");
+
+  // nur Hinflug mit Zeitfenster (z. B. erst mal nach Rio)
+  await p.locator("#flights .fs-open").click();
+  await m.locator(".fs-kind .chip", { hasText: "Nur Hinflug" }).click();
+  await m.locator(".fs-mode .chip", { hasText: "Flexibler Zeitraum" }).click();
+  const nach = m.locator("label.f", { hasText: "Nach" }).locator("input");
+  await nach.fill("GIG");
+  await m.locator(".lp-list li", { hasText: "GIG" }).first().click();
+  await m.locator("label", { hasText: "Früheste Abreise" }).locator("input").fill("2027-03-01");
+  await m.locator("label", { hasText: "Späteste Abreise" }).locator("input").fill("2027-03-05");
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().waitFor();
+  const ow = asked.at(-1);
+  if (ow.departTo !== "2027-03-05" || ow.depart !== "2027-03-01" || ow.ret || ow.latest || ow.to !== "GIG") fail("Anfrage nur Hinflug: " + JSON.stringify(ow));
+  if (await m.locator(".fs-res .fs-leg", { hasText: "Rück" }).count()) fail("nur Hinflug zeigt Rückflug");
+  log("Nur Hinflug: nach GIG, Abflug irgendwann 01.03. bis 05.03., ohne Rückflug");
+
+  // Rundreise: DUS → Rio (5–7 Nächte) → Buenos Aires (3–4 Nächte) → zurück
+  await m.locator(".fs-kind .chip", { hasText: "Rundreise" }).click();
+  await m.locator("label", { hasText: "Abflug frühestens" }).locator("input").fill("2027-03-01");
+  await m.locator("label", { hasText: "spätestens" }).locator("input").first().fill("2027-03-03");
+  const st1 = m.locator(".fs-station").nth(0);
+  if (!(await st1.locator("input").first().inputValue()).startsWith("GIG")) fail("erste Station übernimmt das Ziel nicht: " + await st1.locator("input").first().inputValue());
+  await st1.locator("label", { hasText: "Nächte von" }).locator("input").fill("5");
+  await st1.locator("label", { hasText: "bis" }).last().locator("input").fill("7");
+  await m.locator(".fs-addst").click();
+  const st2 = m.locator(".fs-station").nth(1);
+  await st2.locator("input").first().fill("EZE");
+  await m.locator(".lp-list li", { hasText: "EZE" }).first().click();
+  await st2.locator("label", { hasText: "Nächte von" }).locator("input").fill("3");
+  await st2.locator("label", { hasText: "bis" }).last().locator("input").fill("4");
+  const before2 = asked.length;
+  await m.locator(".fs-form .btn.primary", { hasText: "Rundreise suchen" }).click();
+  await m.locator(".fs-round").first().waitFor();
+  const rq = asked.slice(before2);
+  if (rq[0].to !== "GIG" || rq[0].departTo !== "2027-03-03" || rq[0].fromAirports?.length < 1) fail("1. Strecke: " + JSON.stringify(rq[0]));
+  if (!rq.some(x => x.from === "GIG" && x.to === "EZE" && x.depart === "2027-03-06" && x.departTo === "2027-03-08")) fail("2. Strecke: " + JSON.stringify(rq.map(x => [x.from, x.to, x.depart, x.departTo])));
+  if (!rq.some(x => x.from === "EZE" && x.toAirports?.includes("DUS"))) fail("Rückflug nach Hause fehlt");
+  const r0 = await m.locator(".fs-round").first().textContent();
+  if (!r0.includes("3 Flüge") || !r0.includes("GIG: 5 Nächte") || !r0.includes("EZE: 3 Nächte")) fail("Rundreise-Treffer: " + r0.slice(0, 300));
+  if ((await m.locator(".fs-round").first().locator(".fs-leg").count()) !== 3) fail("drei Flüge erwartet");
+  await m.locator(".fs-round").first().locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.keyboard.press("Escape");
+  const rc = p.locator("#flights .card[data-item]", { hasText: "GIG → EZE" });
+  await rc.waitFor();
+  log("Rundreise: DUS → GIG (5 Nächte) → EZE (3 Nächte) → zurück, Strecke für Strecke gesucht, als ein Posten mit 3 Flügen übernommen");
 
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");

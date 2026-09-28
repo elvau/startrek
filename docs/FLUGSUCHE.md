@@ -84,6 +84,16 @@ Eine Auswahl ist ein Name mit einer Liste von Codes:
 
 Treffer an anderen Flughäfen fallen raus.
 
+## Nur Hinflug und Rundreise
+
+- **Nur Hinflug**: fester Tag (± Tage) oder Zeitfenster („irgendwann 1.–10. März nach Rio“, höchstens 2 Monate).
+  Kiwi sucht das Fenster in einer Anfrage, Travelpayouts je Monat.
+- **Rundreise**: Stationen mit Nächten von–bis, am Ende optional zurück nach Hause. Die App sucht Strecke für Strecke als
+  Hinflug mit Zeitfenster: erst die erste Strecke, dann je Ankunftstag der günstigsten Kombinationen (höchstens drei)
+  die nächste. Gebucht wird jeder Flug einzeln (getrennte Tickets). Im Plan wird daraus ein Posten mit Hinflug,
+  Zwischenflügen und Rückflug; die Anwesenheit reicht vom ersten Hinflug bis zum Rückflug, auch wenn Hin- und
+  Rückflug in getrennten Posten stehen.
+
 ## Unterkünfte
 
 - **Trivago** vergleicht viele Portale (Airbnb, CHECK24, Booking.com, Hotelseiten …) und läuft über den

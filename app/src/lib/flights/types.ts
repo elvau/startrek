@@ -17,6 +17,8 @@ export interface FlightQuery {
   depart: string;
   /** fehlt: nur Hinflug */
   ret?: string;
+  /** nur Hinflug mit Zeitfenster: Abflug zwischen depart und departTo (JJJJ-MM-TT) */
+  departTo?: string;
   /**
    * Flexibel statt fester Daten: depart ist die früheste Abreise, latest die späteste Rückkehr (wieder zu Hause),
    * dazwischen nightsMin bis nightsMax Nächte am Ziel. ret wird dann nicht benutzt.

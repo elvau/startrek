@@ -123,3 +123,19 @@ describe("Städte mit mehreren Flughäfen", () => {
     expect(parseQuery({ ...b, toCityCode: "Tokyo" })).toBe("Stadt-Code ungültig");
   });
 });
+
+describe("Nur Hinflug mit Zeitfenster", () => {
+  it("Kiwi: Abflug zwischen zwei Tagen, ohne Rückflug", () => {
+    const a = kiwiArgs({ ...q, ret: undefined, depart: "2027-03-01", departTo: "2027-03-10" });
+    expect(a).toMatchObject({ departureDate: "01/03/2027", departureDateTo: "10/03/2027" });
+    expect(a).not.toHaveProperty("returnDate");
+  });
+  it("prüft das Fenster", () => {
+    const b = { from: "DUS", to: "GIG", depart: "2027-03-01" };
+    expect(parseQuery({ ...b, departTo: "2027-03-10" })).toMatchObject({ departTo: "2027-03-10" });
+    expect(parseQuery({ ...b, departTo: "2027-02-10" })).toBe("Zeitfenster endet vor dem Anfang");
+    expect(parseQuery({ ...b, departTo: "2027-06-10" })).toBe("Zeitfenster höchstens 2 Monate");
+    // mit Rückflug zählt das Fenster nicht
+    expect(parseQuery({ ...b, ret: "2027-03-20", departTo: "2027-03-10" })).not.toHaveProperty("departTo");
+  });
+});

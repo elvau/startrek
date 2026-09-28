@@ -18,6 +18,12 @@ const nextMonth = (m: string) => { const [y, mo] = m.split("-").map(Number); ret
  * (sonst kämen nur „Anfang hin, Ende zurück“ und damit zu viele Nächte heraus). Höchstens 6 Anfragen.
  */
 export function tpPairs(q: FlightQuery): [string, string | undefined][] {
+  // nur Hinflug im Zeitfenster: jeder Monat des Fensters (höchstens 6)
+  if (!q.latest && q.departTo && !q.ret) {
+    const out: [string, undefined][] = [];
+    for (let m = month(q.depart); m <= month(q.departTo) && out.length < 6; m = nextMonth(m)) out.push([m, undefined]);
+    return out;
+  }
   if (!q.latest) return [[q.depart, q.ret]];
   const lastDep = month(new Date(Date.parse(q.latest) - (q.nightsMin || 1) * 86400000).toISOString());
   const lastRet = month(q.latest);
@@ -70,7 +76,8 @@ export function fromTravelpayouts(data: any, q: FlightQuery, marker?: string): F
       source: "travelpayouts", sourceName: "Travelpayouts", price: Math.round(x.price * pax), currency: (data.currency || q.currency || "EUR").toUpperCase(),
       url, out, back
     };
-  }).filter((o: FlightOffer) => q.maxStops == null || (o.out.stops <= q.maxStops && (!o.back || o.back.stops <= q.maxStops)))
+  }).filter((o: FlightOffer) => !q.departTo || q.latest || (o.out.dep.slice(0, 10) >= q.depart && o.out.dep.slice(0, 10) <= q.departTo))
+    .filter((o: FlightOffer) => q.maxStops == null || (o.out.stops <= q.maxStops && (!o.back || o.back.stops <= q.maxStops)))
     .filter((o: FlightOffer) => !q.latest || !o.back || !q.nightsMin || nightsBetween(o) >= q.nightsMin && nightsBetween(o) <= (q.nightsMax ?? q.nightsMin));
 }
 

@@ -4,7 +4,7 @@
  */
 import { hhKey, isActive, type Item, type Traveler, type Trip } from "../model";
 import { activeOption, participantsOf, presences } from "../calc";
-import { addDays, flightFor, needs, nightsList, okDate, type Presence } from "../calc/travel";
+import { addDays, flightLegs, needs, nightsList, okDate, type Presence } from "../calc/travel";
 import { dayShort, time } from "../format";
 
 /** Personen mit gleicher An- und Abreise in einem Haushalt */
@@ -27,9 +27,7 @@ const stayItems = (trip: Trip) =>
 
 /** Landung und Rückflug einer Person aus ihrem Flug */
 function flightTimes(t: Traveler, trip: Trip): Pick<Arrival, "arr" | "dep" | "arrAp" | "depAp"> {
-  const it = flightFor(t, trip);
-  const o = it && activeOption(it, trip);
-  const out = o?.legs?.find(l => l.dir === "out"), back = o?.legs?.find(l => l.dir === "back");
+  const { out, back } = flightLegs(t, trip, it => activeOption(it, trip));
   return { arr: out?.arr || undefined, dep: back?.dep || undefined, arrAp: out?.to || undefined, depAp: back?.from || undefined };
 }
 

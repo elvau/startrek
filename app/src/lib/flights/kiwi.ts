@@ -22,11 +22,12 @@ export function kiwiArgs(q: FlightQuery) {
   const flex = q.latest && q.nightsMin
     ? { departureDateTo: kiwiDate(addDays(q.latest, -q.nightsMin)), nights_in_dst_from: q.nightsMin, nights_in_dst_to: q.nightsMax ?? q.nightsMin }
     : null;
-  const fixedFlex = !flex && q.flexDays ? { departureDateFlexDays: q.flexDays, ...(q.ret ? { returnDateFlexDays: q.flexDays } : {}) } : {};
+  const window = !flex && q.departTo && !q.ret ? { departureDateTo: kiwiDate(q.departTo) } : null;
+  const fixedFlex = !flex && !window && q.flexDays ? { departureDateFlexDays: q.flexDays, ...(q.ret ? { returnDateFlexDays: q.flexDays } : {}) } : {};
   const adults = Math.max(1, q.adults);
   return {
     flyFrom: kiwiPlace(q.from, q.fromAirports), flyTo: kiwiPlace(q.to, q.toAirports), departureDate: kiwiDate(q.depart),
-    ...(flex ?? (q.ret ? { returnDate: kiwiDate(q.ret) } : {})), ...fixedFlex,
+    ...(flex ?? window ?? (q.ret ? { returnDate: kiwiDate(q.ret) } : {})), ...fixedFlex,
     ...(q.maxStops != null ? { max_sector_stopovers: q.maxStops } : {}),
     ...(q.selfTransfer != null ? { allow_self_transfer: q.selfTransfer } : {}),
     ...(q.bags ? { adults_hold_bags: Array(adults).fill(1), ...(q.children ? { children_hold_bags: Array(q.children).fill(1) } : {}) } : {}),

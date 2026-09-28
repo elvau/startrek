@@ -80,7 +80,8 @@ export interface Price {
 }
 
 export interface FlightLeg {
-  dir: "out" | "back";
+  /** Hinflug, weiterer Flug einer Rundreise, Rückflug */
+  dir: "out" | "via" | "back";
   from: string;
   to: string;
   /** ISO lokal, z. B. 2027-07-18T06:10 */

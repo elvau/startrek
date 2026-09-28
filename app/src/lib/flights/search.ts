@@ -92,7 +92,14 @@ export function parseQuery(b: unknown): FlightQuery | string {
   const adults = o.adults ?? 1, children = o.children ?? 0, infants = o.infants ?? 0;
   if (!int(adults, 1, 9) || !int(children, 0, 8) || !int(infants, 0, 4)) return "Personen: 1–9 Erwachsene, bis 8 Kinder, bis 4 Babys";
   if ((infants as number) > (adults as number)) return "Höchstens ein Baby pro Erwachsenem";
-  const opt: Pick<FlightQuery, "flexDays" | "maxStops" | "bags" | "selfTransfer"> = {};
+  const opt: Pick<FlightQuery, "flexDays" | "maxStops" | "bags" | "selfTransfer" | "departTo"> = {};
+  const departTo = str("departTo");
+  if (departTo) {
+    if (!DATE.test(departTo)) return "Datum im Format JJJJ-MM-TT";
+    if (departTo < depart) return "Zeitfenster endet vor dem Anfang";
+    if (addDays(depart, 62) < departTo) return "Zeitfenster höchstens 2 Monate";
+    if (!ret && !latest) opt.departTo = departTo;
+  }
   if (o.flexDays != null) { if (!int(o.flexDays, 0, 3)) return "± Tage: 0 bis 3"; if (!latest) opt.flexDays = o.flexDays as number; }
   if (o.maxStops != null) { if (!int(o.maxStops, 0, 2)) return "Umstiege: 0 bis 2"; opt.maxStops = o.maxStops as number; }
   if (o.bags != null) { if (typeof o.bags !== "boolean") return "Koffer: ja oder nein"; opt.bags = o.bags; }

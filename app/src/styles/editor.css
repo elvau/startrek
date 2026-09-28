@@ -446,3 +446,12 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .fs-add.lp{width:190px}
 .fs-add.lp .f{gap:0}
 .fs-add .lp-list{min-width:min(320px,80vw)}
+/* Rundreise */
+.fs-kind{margin-top:4px}
+.fs-stations{display:flex;flex-direction:column;gap:8px}
+.fs-station{display:grid;grid-template-columns:minmax(0,1fr) 92px 70px 34px;gap:8px;align-items:end}
+.fs-station .f input{width:100%}
+.fs-del{height:36px}
+.fs-addst{align-self:flex-start}
+.fs-legsrc{margin:-2px 0 4px 44px}
+@media (max-width:560px){.fs-station{grid-template-columns:1fr 1fr 34px}.fs-station .lp{grid-column:1/-1}}
