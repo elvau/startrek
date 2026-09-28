@@ -4,9 +4,9 @@
  */
 
 type WorldCity = [string, number, number, string?, string?];
-interface WorldCountry { k: string; l: string; en: string; cities: WorldCity[]; aps?: [string, string, number, number, string?][] }
-interface PackCity { n: string; en?: string; lat: number; lon: number; alias?: string[]; top?: number }
-interface Pack { k: string; airports: { iata: string; n: string; lat: number; lon: number }[]; cities: PackCity[] }
+interface WorldCountry { k: string; l: string; en: string; cities: WorldCity[]; aps?: [string, string, number, number, string?][]; cur?: string; rate?: number; pli?: number }
+interface PackCity { n: string; en?: string; lat: number; lon: number; alias?: string[]; top?: number; food?: number }
+interface Pack { k: string; cur?: string; airports: { iata: string; n: string; lat: number; lon: number }[]; cities: PackCity[]; food?: Record<string, number>; foodNote?: Record<string, string> }
 
 export interface GeoData {
   world: WorldCountry[];

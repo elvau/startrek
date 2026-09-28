@@ -423,3 +423,11 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .fs-who details .chips{margin-top:6px}
 .bp-who{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--paper-2);color:var(--ink-2)}
 .fs-along{align-items:center;margin-top:2px}
+.fs-direct{margin:0}
+.fs-direct a{color:var(--a);font-weight:700;text-decoration:none}
+.search-row.fs-direct{display:block;line-height:1.7}
+/* Verpflegung */
+.food-rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.food-rows li{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
+.food-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.food-h b.num{margin-left:auto}

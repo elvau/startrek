@@ -91,6 +91,9 @@ try {
   await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
   await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
   await m.locator("label", { hasText: "± Tage" }).locator("select").selectOption("2");
+  const sky = await m.locator(".fs-direct a", { hasText: "Skyscanner" }).getAttribute("href");
+  if (!/\/flights\/[a-z]{3}\/spu\/270718\/270729\//.test(sky)) fail("Skyscanner-Link: " + sky);
+  if (!(await m.locator(".fs-direct a", { hasText: "Google Flüge" }).count())) fail("Google-Flüge-Link fehlt");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   const f = asked.at(-1);

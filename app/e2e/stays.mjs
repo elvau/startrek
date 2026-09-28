@@ -49,6 +49,11 @@ try {
   await m.locator("label.f", { hasText: "Check-in" }).locator("input").fill("2027-07-18");
   await m.locator("label.f", { hasText: "Check-out" }).locator("input").fill("2027-07-25");
   if (!(await m.locator("p", { hasText: "7 Nächte" }).count())) fail("Nächte nicht angezeigt");
+  const bk = await m.locator(".fs-direct a", { hasText: "Booking.com" }).getAttribute("href");
+  if (!bk.includes("ss=Split") || !bk.includes("checkin=2027-07-18") || !bk.includes("checkout=2027-07-25")) fail("Booking-Link: " + bk);
+  log("Direkt-Link zu Booking.com mit Ort und Daten");
+  const gyg = p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" });
+  if (await gyg.count()) fail("Erlebnis-Links ohne Reiseziel");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   const q = asked[0];
@@ -94,6 +99,9 @@ try {
   };
   await p.evaluate(t => { localStorage.setItem("rk2-t:k1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k1", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k1"); }, TRIP);
   await p.reload();
+  const gl = await p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" }).getAttribute("href");
+  if (!gl.includes("q=Split") || !gl.includes("date_from=2027-07-18")) fail("GetYourGuide-Link: " + gl);
+  log("Erlebnisse: Links zu GetYourGuide (mit Reisezeitraum), Viator und Tiqets");
   const gap = p.locator("#stay .pl-notes li.crit", { hasText: "ohne Unterkunft" });
   await gap.first().waitFor();
   const gt = await gap.first().textContent();
@@ -156,6 +164,22 @@ try {
   if (q3.place !== "Trogir" || q3.country !== "Croatia" || q3.checkin !== "2027-07-28" || q3.checkout !== "2027-07-29") fail("Anfrage am Flughafen: " + JSON.stringify(q3));
   log("Suche am Flughafen: Trogir, Croatia, eine Nacht 28.07. bis 29.07.");
   await m.locator(".x").click();
+
+  // Verpflegung wie im Artefakt: Essensstil, Tage je Familie, automatische Posten; Restaurants und Supermärkte als Links
+  await p.locator("#misc .food .btn", { hasText: "Verpflegung einrechnen" }).scrollIntoViewIfNeeded();
+  await p.locator("#misc .food .btn", { hasText: "Verpflegung einrechnen" }).click();
+  const fr = p.locator("#misc .food-rows li", { hasText: "Klein" });
+  await fr.waitFor();
+  const ft = await fr.textContent();
+  if (!ft.includes("12 Tage")) fail("Verpflegung Klein: " + ft);
+  await p.locator("#misc .card[data-item]", { hasText: "Verpflegung Klein" }).waitFor();
+  const before = await fr.locator("b.num").textContent();
+  await p.locator("#misc .food .chip", { hasText: "Genießer" }).first().click();
+  await p.waitForTimeout(200);
+  if ((await fr.locator("b.num").textContent()) === before) fail("Stil ändert den Betrag nicht");
+  const rl = await p.locator("#misc .fs-direct a", { hasText: "Restaurants" }).getAttribute("href");
+  if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
+  log("Verpflegung: Klein 12 Tage, Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nUnterkunftssuche: alles in Ordnung");
