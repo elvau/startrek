@@ -1,15 +1,15 @@
 <script lang="ts">
   /* Erster Besuch: solo oder im Rudel loslegen, Beispiel ansehen oder anmelden */
-  import { app, openSample } from "../store.svelte";
+  import { app, openSample, startWith } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import Modal from "./Modal.svelte";
-  import WhoPicker, { newWho, whoTravelers } from "./WhoPicker.svelte";
+  import WhoPicker, { newWho, whoName, whoTravelers } from "./WhoPicker.svelte";
 
   let who = $state(newWho());
   const close = () => (app.welcome = false);
   // die Startreise bekommt die gewählten Reisenden; Ziel und Zeitraum trägt man später in der Reise ein
   function start() {
-    app.trip.travelers = whoTravelers(who);
+    startWith(whoTravelers(who), whoName(who));
     close();
   }
 </script>

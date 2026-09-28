@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import { travelersFrom } from "../directory.svelte";
+  import { dir, travelersFrom } from "../directory.svelte";
   import { animalEmoji, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler, type FamilyRow } from "../placeholders";
   import type { Traveler } from "../model";
 
@@ -10,11 +10,30 @@
     partner: string;
     fams: FamilyRow[];
     group: { adults: number; kids: number };
+    /** Tier im Namen der Gruppenreise */
+    mascot: string;
     picked: string[];
   }
   /** Startauswahl: solo, mit zufälligen Tieren */
   export function newWho(): Who {
-    return { mode: "solo", solo: nextAnimal(), partner: nextAnimal(), fams: [{ animal: nextAnimal(), adults: 2, kids: 0, infants: 0 }], group: { adults: 6, kids: 0 }, picked: [] };
+    return { mode: "solo", solo: nextAnimal(), partner: nextAnimal(), fams: [{ animal: nextAnimal(), adults: 2, kids: 0, infants: 0 }], group: { adults: 6, kids: 0 }, mascot: nextAnimal(), picked: [] };
+  }
+  /** Art der Reise für den vorläufigen Namen, z. B. „Solo Pinguin“, „Gruppenreise Zebra“ */
+  export function whoName(w: Who): string {
+    switch (w.mode) {
+      case "solo": return `Solo ${w.solo}`;
+      case "partner": return `Partnerreise ${w.partner}`;
+      case "family": {
+        const a = w.fams.map(f => f.animal);
+        return `Familienreise ${a.length > 2 ? `${a.slice(0, 2).join(" & ")} u. a.` : a.join(" & ")}`;
+      }
+      case "group": return `Gruppenreise ${w.mascot}`;
+      default: {
+        // genau eine gespeicherte Gruppe gewählt: deren Name
+        const g = dir.groups.find(g => g.memberIds.length && g.memberIds.length === w.picked.length && g.memberIds.every(id => w.picked.includes(id)));
+        return g ? g.name : "Reise";
+      }
+    }
   }
   /** Reisende nach der Auswahl */
   export function whoTravelers(w: Who): Traveler[] {
@@ -30,7 +49,6 @@
 
 <script lang="ts">
   /* Wer fährt mit: Solo, Partner, Familie, Gruppe (oder gespeicherte Gruppen) */
-  import { dir } from "../directory.svelte";
   import QuickFamilies from "./QuickFamilies.svelte";
 
   let { who = $bindable() }: { who: Who } = $props();
@@ -125,6 +143,7 @@
     <QuickFamilies bind:rows={who.fams} />
     {#if famCount}<p class="muted small">Zusammen {famCount} {famCount === 1 ? "Person" : "Personen"}.</p>{/if}
   {:else if who.mode === "group"}
+    <p class="small">Die Reise heißt vorerst <b>Gruppenreise {animalEmoji(who.mascot)} {who.mascot}</b>. <button type="button" class="linkbtn" onclick={() => (who.mascot = other(who.mascot))}>Anderes Tier</button></p>
     <p class="muted small">Jede Person rechnet für sich ab, z. B. Mannschaft, Verein oder Kegelclub.</p>
     <div class="qf-counts grp-counts">
       {#each [["adults", "Erw.", "Erwachsene"], ["kids", "Kinder", "Kinder"]] as [k, l, full] (k)}

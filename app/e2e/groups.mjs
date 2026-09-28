@@ -73,7 +73,7 @@ try {
   await a.locator(".newtrip .who-b", { hasText: "Gespeichert" }).click();
   await a.locator(".newtrip .grp-chip", { hasText: "Kegeln" }).click();
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
-  await until(async () => (await a.locator(".hero h1").textContent()).includes("Neue Reise vom"), "neue Reise offen");
+  await until(async () => /^Kegeln \(\d\d\.\d\d\.\)/.test(await a.locator(".hero h1").textContent()), "neue Reise „Kegeln (TT.MM.)“ offen");
   // Ort und Zeitraum oben in der Reise: der Name bildet sich daraus
   await a.locator(".hero-edit").click();
   await a.locator(".trip-ed label", { hasText: "Ort" }).locator("input").fill("Mosel");
@@ -88,6 +88,15 @@ try {
   if (listed.length !== 1) fail("leere Reise nicht weggeräumt: " + listed.join(" | "));
   await a.keyboard.press("Escape");
   log("Name aus Ziel und Zeitraum:", tname, "· leere Startreise weggeräumt");
+
+  // Umbenennen direkt an der Überschrift: eigener Name steht groß, Ort wandert in die Zeile darunter
+  await a.locator(".hero .h1-edit").click();
+  await a.locator(".hero .h1-in").fill("Kegeltour 2027");
+  await a.keyboard.press("Enter");
+  await until(async () => (await a.locator(".hero h1").textContent()).startsWith("Kegeltour 2027"), "eigener Name");
+  if ((await a.locator(".hero .tm-name").first().textContent()) !== "Kegeltour 2027") fail("Name oben nicht übernommen");
+  if (!(await a.locator(".hero .meta").textContent()).startsWith("Mosel")) fail("Ort nicht unter dem Namen");
+  log("Umbenannt per ✎: „Kegeltour 2027“, darunter Mosel");
   const names = (await a.locator(".person:not(.add) b").allTextContents()).join(", ");
   if (names !== "Monika Klein, Uwe Schmitz") fail("Reisende: " + names);
   if ((await a.locator(".simple-card").count()) !== 5) fail("nicht alle Bereiche einfach");

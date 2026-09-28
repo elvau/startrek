@@ -4,7 +4,7 @@
   import { cloud } from "../cloud/cloud.svelte";
   import Account from "./Account.svelte";
   import ModeSwitch from "./ModeSwitch.svelte";
-  import { setAllDetailed, tripMode } from "../store.svelte";
+  import { renameTrip, setAllDetailed, tripMode } from "../store.svelte";
   import { eur } from "../calc";
   import { nights, range } from "../format";
   import TripMenu from "./TripMenu.svelte";
@@ -12,6 +12,15 @@
   import TripEditor from "./TripEditor.svelte";
 
   let editing = $state(false);
+  // Überschrift: eigener Name, sonst Ort (mit Land) oder der vorläufige Name
+  const custom = $derived(!app.trip.autoName && !!app.trip.name && app.trip.name !== app.trip.place);
+  const title = $derived(custom ? app.trip.name : app.trip.place || app.trip.name);
+  const where = $derived(custom && app.trip.place ? [app.trip.place, app.trip.country].filter(Boolean).join(", ") : "");
+  let naming = $state(false);
+  let draft = $state("");
+  function startNaming() { draft = custom || !app.trip.place ? app.trip.name : ""; naming = true; }
+  function saveName() { if (naming) { renameTrip(draft); naming = false; } }
+  const focus = (el: HTMLInputElement) => { el.focus(); el.select(); };
 
   const trip = $derived(app.trip);
   let shown = $state(0);
@@ -49,8 +58,13 @@
       <TripEditor onclose={() => (editing = false)} />
     {:else}
       {#if trip.kicker}<span class="kick">☀️ {trip.kicker}</span>{/if}
-      <h1>{trip.place || trip.name}{#if trip.country},<br />{trip.country}{/if}</h1>
-      <div class="meta">{[range(trip.from, trip.to), nights(trip.from, trip.to) ? `${nights(trip.from, trip.to)} Nächte` : "", n ? `${n} ${n === 1 ? "Person" : "Personen"}` : "noch niemand dabei"].filter(Boolean).join(" · ")}</div>
+      {#if naming}
+        <input class="h1-in" bind:value={draft} use:focus aria-label="Name der Reise" placeholder="Name der Reise"
+          onkeydown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") naming = false; }} onblur={saveName} />
+      {:else}
+        <h1>{title}{#if !custom && trip.place && trip.country},<br />{trip.country}{/if}{#if !access.readonly}<button class="h1-edit" onclick={startNaming} aria-label="Reise umbenennen" title="Umbenennen">✎</button>{/if}</h1>
+      {/if}
+      <div class="meta">{[where, range(trip.from, trip.to), nights(trip.from, trip.to) ? `${nights(trip.from, trip.to)} Nächte` : "", n ? `${n} ${n === 1 ? "Person" : "Personen"}` : "noch niemand dabei"].filter(Boolean).join(" · ")}</div>
     {/if}
     {#if !access.readonly}
       <div class="hero-mode"><ModeSwitch value={tripMode()} onchange={setAllDetailed} label="Ganze Reise: einfach oder detailliert" />{#if tripMode() === "mixed"}<span class="muted small">gemischt</span>{/if}</div>
