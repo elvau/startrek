@@ -49,6 +49,9 @@ try {
   await m.locator("label.f", { hasText: "Check-in" }).locator("input").fill("2027-07-18");
   await m.locator("label.f", { hasText: "Check-out" }).locator("input").fill("2027-07-25");
   if (!(await m.locator("p", { hasText: "7 Nächte" }).count())) fail("Nächte nicht angezeigt");
+  const bk = await m.locator(".fs-direct a", { hasText: "Booking.com" }).getAttribute("href");
+  if (!bk.includes("ss=Split") || !bk.includes("checkin=2027-07-18") || !bk.includes("checkout=2027-07-25")) fail("Booking-Link: " + bk);
+  log("Direkt-Link zu Booking.com mit Ort und Daten");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   const q = asked[0];

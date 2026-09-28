@@ -423,3 +423,5 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .fs-who details .chips{margin-top:6px}
 .bp-who{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--paper-2);color:var(--ink-2)}
 .fs-along{align-items:center;margin-top:2px}
+.fs-direct{margin:0}
+.fs-direct a{color:var(--a);font-weight:700;text-decoration:none}

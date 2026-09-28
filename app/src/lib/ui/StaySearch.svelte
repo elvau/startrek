@@ -16,6 +16,7 @@
   import type { StayScope } from "../stays/open.svelte";
   import type { StayOffer, StayQuery, StayType } from "../stays/types";
   import type { SourceStatus } from "../flights/types";
+  import { airbnbLink, bookingLink } from "../links";
 
   let { onclose, scope = {} }: { onclose: () => void; scope?: StayScope } = $props();
 
@@ -170,6 +171,10 @@
     </p>
     {#if !FLIGHTS_URL}<p class="warnline small">Der Such-Dienst ist noch nicht eingerichtet. Anleitung: docs/FLUGSUCHE.md im Projekt.</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `Suche bei ${SOURCES.filter(s => use.includes(s.id)).map(s => s.name).join(" und ")}…` : "Unterkünfte suchen"}</button>
+    {#if place.trim() && nn > 0}
+      {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)) }}
+      <p class="muted small fs-direct">Direkt beim Anbieter suchen: <a href={bookingLink(lq)} target="_blank" rel="noopener noreferrer">Booking.com ↗</a> · <a href={airbnbLink(lq)} target="_blank" rel="noopener noreferrer">Airbnb ↗</a></p>
+    {/if}
   </form>
 
   {#if error}<p class="err small">{error}</p>{/if}

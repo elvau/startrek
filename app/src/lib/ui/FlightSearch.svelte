@@ -12,6 +12,7 @@
   import { FLIGHTS_URL, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import type { FlightScope } from "../flights/open.svelte";
+  import { googleFlightsLink, skyscannerLink } from "../links";
   import type { FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
 
   let { onclose, scope = {} }: { onclose: () => void; scope?: FlightScope } = $props();
@@ -257,6 +258,11 @@
     <p class="muted small">{people}{who ? ` (${[...new Set(flyers(trip, who).map(hhKey))].join(", ")})` : " (alle aus „Wer fährt mit“)"}. Preise gelten für alle zusammen, die Anfahrt {who ? ([...new Set(flyers(trip, who).map(hhKey))].length === 1 ? "nur für diese Familie" : "nur für diese Familien") : "für alle Familien"}.</p>
     {#if !FLIGHTS_URL}<p class="warnline small">Der Such-Dienst ist noch nicht eingerichtet. Anleitung: docs/FLUGSUCHE.md im Projekt.</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `Suche läuft… ${progress}` : aps.length > 1 ? `${aps.length} Flughäfen vergleichen` : "Suchen"}</button>
+    {#if to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
+      {@const lq = { from: aps[0], to: to.trim(), depart: mode === "flex" ? rFrom : out, ret: mode === "flex" ? rTo || undefined : ret || undefined, ...pax }}
+      {@const sky = skyscannerLink(lq)}
+      <p class="muted small fs-direct">Direkt beim Anbieter suchen (ab {aps[0]}): <a href={googleFlightsLink(lq)} target="_blank" rel="noopener noreferrer">Google Flüge ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
+    {/if}
   </form>
 
   {#if error}<p class="err small">{error}</p>{/if}
