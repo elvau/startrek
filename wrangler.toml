@@ -11,5 +11,6 @@ enabled = true
 [vars]
 ALLOWED_ORIGINS = "https://elvau.github.io,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
 
-# Schlüssel der Anbieter (später) als Secrets im Cloudflare-Dashboard, nicht hier:
-#   DUFFEL_TOKEN, TRAVELPAYOUTS_TOKEN
+# Gleiche Einstellungen stehen in worker/wrangler.toml (für Vorschau-Builds mit Root „worker“), bitte gleich halten.
+# Schlüssel der Anbieter als Secrets im Cloudflare-Dashboard, nicht hier:
+#   TRAVELPAYOUTS_TOKEN (dazu Text TRAVELPAYOUTS_MARKER), später DUFFEL_TOKEN
