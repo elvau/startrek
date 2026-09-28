@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromTravelpayouts, searchTravelpayouts, tpParams } from "./travelpayouts";
+import { fromTravelpayouts, searchTravelpayouts, tpPairs, tpParams } from "./travelpayouts";
 import { searchAll } from "./search";
 import type { FlightQuery } from "./types";
 
@@ -21,7 +21,7 @@ describe("Travelpayouts", () => {
     expect(Object.fromEntries(p)).toMatchObject({ origin: "DUS", destination: "SPU", departure_at: "2027-07-18", return_at: "2027-07-29", direct: "true", currency: "eur", marker: "m123" });
     expect(p.has("token")).toBe(false);
     expect(tpParams({ ...q, ret: undefined }).get("one_way")).toBe("true");
-    expect(tpParams({ ...q, latest: "2027-08-02", nightsMin: 7 }).get("return_at")).toBe("2027-08");
+    expect(tpParams({ ...q, latest: "2027-08-02", nightsMin: 7 }).get("return_at")).toBe("2027-07");
     expect(() => tpParams({ ...q, to: "Split" })).toThrow(/Flughafencodes/);
   });
   it("Antwort: Preis pro Person mal Reisende, Ankunft aus Flugdauer, Link mit Partnerkennung", () => {
@@ -53,5 +53,28 @@ describe("Travelpayouts: Fehlermeldungen", () => {
     await expect(searchTravelpayouts(q, "x", bad)).rejects.toThrow("Travelpayouts antwortet mit 400: return_at must be after departure_at");
     const plain = (async () => new Response("Bad Request", { status: 400 })) as typeof fetch;
     await expect(searchTravelpayouts(q, "x", plain)).rejects.toThrow("Travelpayouts antwortet mit 400: Bad Request");
+  });
+});
+
+describe("Travelpayouts: flexibler Zeitraum", () => {
+  it("jeder Hinflug-Monat mit Rückflug im selben und im nächsten Monat, höchstens 6", () => {
+    // Fall aus der App: 29.09. bis 28.11., 7 bis 14 Nächte
+    expect(tpPairs({ ...q, depart: "2026-09-29", latest: "2026-11-28", nightsMin: 7, nightsMax: 14 })).toEqual([
+      ["2026-09", "2026-09"], ["2026-09", "2026-10"], ["2026-10", "2026-10"], ["2026-10", "2026-11"], ["2026-11", "2026-11"]
+    ]);
+    expect(tpPairs({ ...q, depart: "2027-01-01", latest: "2027-12-31", nightsMin: 7 })).toHaveLength(6);
+    expect(tpPairs(q)).toEqual([["2027-07-18", "2027-07-29"]]);
+  });
+  it("fragt alle Monate, führt zusammen; ein Fehler zählt nur, wenn alles scheitert", async () => {
+    const asked: string[] = [];
+    const f = (async (u: RequestInfo | URL) => {
+      const p = new URL(String(u)).searchParams;
+      asked.push(`${p.get("departure_at")}/${p.get("return_at")}`);
+      return p.get("departure_at") === "2027-07" ? new Response("", { status: 500 }) : new Response(JSON.stringify(sample));
+    }) as typeof fetch;
+    const r = await searchTravelpayouts({ ...q, ret: undefined, depart: "2027-07-10", latest: "2027-08-20", nightsMin: 7, nightsMax: 14 }, "t", f);
+    expect(asked).toEqual(["2027-07/2027-07", "2027-07/2027-08", "2027-08/2027-08"]);
+    expect(r.length).toBeGreaterThan(0);
+    expect(new Set(r.map(o => o.id)).size).toBe(r.length);
   });
 });
