@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { householdShares, totals } from "./index";
+import { eurPP, householdShares, totals } from "./index";
 import { DEFAULT_SETTINGS, isDetailed, type Trip } from "../model";
 
 const trip = (): Trip => ({
@@ -61,11 +61,43 @@ describe("Einfacher Modus", () => {
     expect(klein.total).toBeCloseTo(1100);
     expect(klein.cats.find(c => c.cat === "flights")!.lines[0]).toMatchObject({ label: "Gesamtbetrag, gleich verteilt", v: 400, who: 2 });
   });
+  it("einzelne Einträge: nur auf die Beteiligten verteilt, zusätzlich zum Betrag für alle", () => {
+    const t = trip();
+    t.lines = [
+      { id: "a", cat: "attractions", label: "Stadionführung", amount: 50, who: ["d", "u"] },
+      { id: "b", cat: "attractions", label: "Abendessen", amount: 90 },
+      // Karl ist nicht dabei: zählt nicht mit, Monika trägt allein
+      { id: "c", cat: "attractions", label: "Museum", amount: 40, who: ["m", "k"] },
+      // nur Karl: niemand Aktives, zählt nicht
+      { id: "e", cat: "attractions", label: "Golf", amount: 70, who: ["k"] }
+    ];
+    const T = totals(t);
+    expect(T.byCat.attractions).toBe(180);
+    expect(T.total).toBe(1650 + 180);
+    expect(T.byPerson.d).toBeCloseTo(550 + 25 + 30);
+    expect(T.byPerson.m).toBeCloseTo(550 + 30 + 40);
+    expect(T.byPerson.u).toBeCloseTo(550 + 25 + 30);
+    expect(T.byPerson.k).toBe(0);
+    const klein = householdShares(t, T).find(h => h.name === "Klein")!;
+    expect(klein.cats.find(c => c.cat === "attractions")!.lines.map(l => [l.label, Math.round(l.v), l.who])).toEqual([["Stadionführung", 25, 1], ["Abendessen", 60, 2], ["Museum", 40, 1]]);
+    expect(klein.total).toBeCloseTo(T.byHousehold.Klein);
+  });
+  it("Einträge eines detaillierten Bereichs zählen nicht", () => {
+    const t = trip();
+    t.detail = { attractions: true };
+    t.lines = [{ id: "a", cat: "attractions", label: "Führung", amount: 50 }];
+    expect(totals(t).byCat.attractions).toBe(0);
+  });
   it("ohne Aktive wird nichts verteilt", () => {
     const t = trip();
     t.travelers.forEach(x => (x.active = false));
     const T = totals(t);
     expect(T.active).toBe(0);
     expect(Object.values(T.byPerson).every(v => v === 0)).toBe(true);
+  });
+  it("Anteil pro Person mit Cent, wenn er nicht glatt aufgeht", () => {
+    expect(eurPP(20 / 3)).toBe("6,67 €");
+    expect(eurPP(30 / 3)).toBe("10 €");
+    expect(eurPP(1234.5)).toBe("1.234,50 €");
   });
 });

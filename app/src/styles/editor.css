@@ -235,7 +235,19 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .simple-eur{font:800 28px "Bricolage Grotesque Variable",sans-serif;color:var(--ink-2)}
 .simple-out{display:flex;flex-direction:column;align-items:flex-end;text-align:end;font-size:13px;color:var(--ink-2)}
 .simple-out b{font:800 24px "Bricolage Grotesque Variable",sans-serif;color:var(--ink)}
-.simple-hidden{flex-basis:100%;margin:0}
+.simple-hidden{flex-basis:100%;margin:0;order:4}
+/* einfacher Modus: einzelne Einträge unter Betrag und Summe */
+.sls{order:3;flex-basis:100%;min-width:0;display:flex;flex-direction:column;gap:10px}
+.sl{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper-2);min-width:0}
+.sl-top{display:flex;align-items:center;gap:8px;min-width:0}
+.sl-t{flex:1 1 auto;min-width:0}
+.sl-v{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--ink-2)}
+.sl-v input{width:96px;text-align:end;font-weight:700;font-variant-numeric:tabular-nums}
+.sl-x{flex:none}
+.sl-who{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sl-pp{margin-inline-start:auto}
+.sl-add{align-self:flex-start}
+@media (max-width:640px){.sl{padding:10px}.sl-v input{width:72px}.simple-in input{max-width:180px}}
 @media (max-width:640px){.simple-out{align-items:flex-start;text-align:start}}
 
 /* Reisende, Gruppen */

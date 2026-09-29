@@ -216,6 +216,8 @@ export interface Trip {
   items: Item[];
   /** Einfacher Modus: ein Betrag je Bereich, gleich auf alle Aktiven verteilt */
   simple?: Partial<Record<CatKey, number>>;
+  /** Einfacher Modus: einzelne Einträge mit Text, Betrag und wer dabei ist (zusätzlich zum Betrag für alle) */
+  lines?: SimpleLine[];
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
   detail?: Partial<Record<CatKey, boolean>>;
   tiers: Partial<Record<CatKey, Tier[]>>;
@@ -241,6 +243,16 @@ export interface WatchHit {
 export interface TripWatch { at: string; items: Record<string, WatchHit> }
 
 /** Selbstversorgung, gemischt, auswärts, Genießer, Halbpension, All-inclusive */
+/** Eintrag im einfachen Modus, z. B. „Stadionführung 50 € · Daniel, Henning“; gleich auf die Beteiligten verteilt */
+export interface SimpleLine {
+  id: string;
+  cat: CatKey;
+  label: string;
+  amount: number;
+  /** fehlt: alle, die dabei sind */
+  who?: string[];
+}
+
 export type FoodStyle = "self" | "mix" | "out" | "treat" | "hb" | "ai";
 export interface FoodCfg { on?: boolean; style?: FoodStyle; hh?: Record<string, FoodStyle>; child?: number; infant?: number }
 

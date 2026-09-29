@@ -1,7 +1,7 @@
 /* App-Zustand: mehrere Reisen, lokal gespeichert. Später hinter einem Speicher-Adapter (Firebase). */
 import { t as tr, type Key } from "./i18n/index.svelte";
 import { totals } from "./calc";
-import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type Traveler, type Trip } from "./model";
+import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type SimpleLine, type Traveler, type Trip } from "./model";
 import { sampleTrip } from "./seed";
 import { autoName, dateDE } from "./format";
 import { soloTraveler } from "./placeholders";
@@ -49,7 +49,7 @@ function emptyTrip(o: NewOpts = {}): Trip {
 function pristine(t: Trip): boolean {
   // höchstens das anonyme Reh vom Start, sonst nichts eingetragen
   const onlySolo = t.travelers.length <= 1 && t.travelers.every(x => x.placeholder);
-  return onlySolo && !t.items.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
+  return onlySolo && !t.items.length && !t.lines?.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
     && (!t.place.trim() || t.place === "Neue Reise") && (!!t.autoName || t.name === "Neue Reise");
 }
 
@@ -436,7 +436,20 @@ export function setDetailed(cat: CatKey, on: boolean, edit = false) {
   trip.detail ||= {};
   if (on) {
     trip.detail[cat] = true;
-    if (has) return;
+    // einzelne Einträge werden Posten mit denselben Beteiligten (Pauschale, gleich verteilt)
+    const mine = (trip.lines || []).filter(l => l.cat === cat);
+    for (const l of mine) {
+      if (!(l.amount > 0) && !l.label.trim()) continue;
+      trip.items.push({ id: uid(), cat, name: l.label.trim() || CAT_NAMES(cat), status: "chosen", ...(l.who ? { participants: [...l.who] } : {}),
+        options: [{ id: uid(), label: "", price: { mode: "unit", currency: "EUR", unit: Math.max(0, l.amount) } }], ...(cat === "flights" ? { access: false } : {}) });
+    }
+    if (mine.length) trip.lines = (trip.lines || []).filter(l => l.cat !== cat);
+    if (has || mine.length) {
+      // der Betrag für alle kommt als eigener Posten dazu, damit die Summe gleich bleibt
+      const v = !has ? trip.simple?.[cat] || 0 : 0;
+      if (v > 0) trip.items.push({ id: uid(), cat, name: CAT_NAMES(cat), status: "chosen", options: [{ id: uid(), label: "", price: { mode: "unit", currency: "EUR", unit: v } }], ...(cat === "flights" ? { access: false } : {}) });
+      return;
+    }
     const v = trip.simple?.[cat] || 0;
     const n = calc.T.active;
     if (v > 0) {
@@ -470,6 +483,27 @@ export function setAllDetailed(on: boolean) { CAT_KEYS.forEach(c => setDetailed(
 export function tripMode(): "simple" | "detail" | "mixed" {
   const d = CAT_KEYS.map(c => isDetailed(app.trip, c));
   return d.every(Boolean) ? "detail" : d.some(Boolean) ? "mixed" : "simple";
+}
+
+/** einfacher Modus: neuer Eintrag, alle sind dabei */
+export function addLine(cat: CatKey): SimpleLine {
+  const l: SimpleLine = { id: uid(), cat, label: "", amount: 0 };
+  app.trip.lines ||= [];
+  app.trip.lines.push(l);
+  // den Eintrag aus dem Zustand zurückgeben, damit Änderungen daran gespeichert werden
+  return app.trip.lines[app.trip.lines.length - 1];
+}
+
+export function removeLine(id: string) {
+  app.trip.lines = (app.trip.lines || []).filter(l => l.id !== id);
+}
+
+/** Person im Eintrag an- oder abwählen; sind wieder alle dabei, fällt die Auswahl weg */
+export function toggleLineWho(l: SimpleLine, id: string) {
+  const all = app.trip.travelers.filter(t => t.active !== false).map(t => t.id);
+  const cur = l.who ? l.who.filter(x => all.includes(x)) : all;
+  const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+  l.who = all.every(x => next.includes(x)) ? undefined : next;
 }
 
 export function setSimple(cat: CatKey, v: number | undefined) {

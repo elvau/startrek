@@ -2,7 +2,7 @@
   import { arrow, t, tn } from "../i18n/index.svelte";
   import { app, calc } from "../store.svelte";
   import { cloud, isCloud } from "../cloud/cloud.svelte";
-  import { activeOption, eur } from "../calc";
+  import { activeOption, eur, eurPP } from "../calc";
   import { isDetailed } from "../model";
   import { CAT_CHAPTERS } from "../chapters";
   import { nights } from "../format";
@@ -33,7 +33,7 @@
     <div class="tk-top">
       <small>{t("total")}</small>
       <b class="num">{eur(T.total)}</b>
-      <span>{n ? `${t("perPerson", { v: eur(T.total / n) })} · ${tn("n.persons", n)}` : t("nobody")}</span>
+      <span>{n ? `${t("perPerson", { v: eurPP(T.total / n) })} · ${tn("n.persons", n)}` : t("nobody")}</span>
     </div>
     <div class="tk-b">
       {#if anyDetail}<div class="fix">

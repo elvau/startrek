@@ -6,7 +6,7 @@
   import Account from "./Account.svelte";
   import ModeSwitch from "./ModeSwitch.svelte";
   import { goHome, renameTrip, setAllDetailed, tripMode } from "../store.svelte";
-  import { eur } from "../calc";
+  import { eur, eurPP } from "../calc";
   import { dayShort, nights, range } from "../format";
   import { openEventPlanner } from "../event/open.svelte";
   import TripMenu from "./TripMenu.svelte";
@@ -107,7 +107,7 @@
     {/if}
     <div class="total">
       <b class="num">{eur(value)}</b>
-      <span>{n ? t("perPerson", { v: eur(calc.T.total / n) }) : t("nobody")}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
+      <span>{n ? t("perPerson", { v: eurPP(calc.T.total / n) }) : t("nobody")}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
     </div>
   </div>
   <div class="hint"><i></i>{t("hero.discover")}</div>
