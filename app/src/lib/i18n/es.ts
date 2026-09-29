@@ -47,7 +47,7 @@ export const es: Dict = {
   "ai.login": "Iniciar sesión",
   "ai.needLogin": "Durante la beta, el planificador IA es para usuarios registrados, 5 consultas al día.",
   "ai.none": "Esta vez la IA no encontró nada adecuado. Prueba con otras palabras o fechas.",
-  "ai.note": "Propuestas de Gemini (Google), precios de nuestra búsqueda",
+  "ai.note": "Propuestas de Gemini (Google), precios de nuestra búsqueda. No introduzcas datos personales: en el plan gratuito Google puede usar lo que escribes.",
   "ai.open": "Abrir asistente IA",
   "ai.ph": "p. ej. 4 amigos, principios de mayo, 3 noches en algún lugar cálido junto al mar, máx. 500 € por persona",
   "ai.refine": "Puedes afinar, p. ej. «mejor en junio» o «más barato».",

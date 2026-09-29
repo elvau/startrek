@@ -51,7 +51,7 @@ export const pl: Dict = {
   "ai.login": "Zaloguj się",
   "ai.needLogin": "W wersji beta planer AI jest dla zalogowanych użytkowników, 5 zapytań dziennie.",
   "ai.none": "Tym razem AI nie znalazła nic odpowiedniego. Spróbuj innymi słowami lub datami.",
-  "ai.note": "Propozycje od Gemini (Google), ceny z naszej wyszukiwarki",
+  "ai.note": "Propozycje od Gemini (Google), ceny z naszej wyszukiwarki. Nie wpisuj danych osobowych: w darmowym planie Google może wykorzystywać wpisy.",
   "ai.open": "Otwórz asystenta AI",
   "ai.ph": "np. 4 przyjaciół, początek maja, 3 noce gdzieś w cieple nad morzem, maks. 500 € na osobę",
   "ai.refine": "Możesz doprecyzować, np. „raczej w czerwcu” albo „taniej”.",

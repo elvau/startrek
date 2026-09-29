@@ -45,7 +45,7 @@ export const de = {
   "ai.login": "Anmelden",
   "ai.needLogin": "Der KI-Planer ist in der Beta für angemeldete Nutzer, 5 Anfragen pro Tag.",
   "ai.none": "Die KI hat diesmal nichts Passendes gefunden. Probier es mit anderen Worten oder Daten.",
-  "ai.note": "Vorschläge von Gemini (Google), Preise aus unserer Suche",
+  "ai.note": "Vorschläge von Gemini (Google), Preise aus unserer Suche. Bitte keine persönlichen Daten eingeben: Google darf Eingaben im kostenlosen Tarif auswerten.",
   "ai.open": "KI-Assistent öffnen",
   "ai.ph": "z. B. 4 Freunde, Anfang Mai, 3 Nächte irgendwo warm am Meer, höchstens 500 € pro Person",
   "ai.refine": "Du kannst nachschärfen, z. B. „lieber im Juni“ oder „günstiger“.",

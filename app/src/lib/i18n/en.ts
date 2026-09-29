@@ -47,7 +47,7 @@ export const en: Dict = {
   "ai.login": "Sign in",
   "ai.needLogin": "During the beta the AI planner is for signed-in users, 5 requests per day.",
   "ai.none": "The AI found nothing suitable this time. Try different words or dates.",
-  "ai.note": "Suggestions by Gemini (Google), prices from our search",
+  "ai.note": "Suggestions by Gemini (Google), prices from our search. Please don’t enter personal data: on the free tier Google may use your input.",
   "ai.open": "Open AI assistant",
   "ai.ph": "e.g. 4 friends, early May, 3 nights somewhere warm by the sea, max €500 per person",
   "ai.refine": "You can refine, e.g. “rather in June” or “cheaper”.",
