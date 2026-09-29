@@ -7,10 +7,21 @@ import { parseQuery, searchAll, type FlightEnv } from "../../app/src/lib/flights
 import { parseStayQuery, searchStays, type StayEnv } from "../../app/src/lib/stays/search";
 import type { FlightQuery } from "../../app/src/lib/flights/types";
 import type { StayQuery } from "../../app/src/lib/stays/types";
+import { runAgent } from "../../app/src/lib/agent/agent";
+import { verifyIdToken } from "../../app/src/lib/agent/auth";
+import { parseAgentRequest } from "../../app/src/lib/agent/types";
 
 interface Env extends FlightEnv, StayEnv {
   /** erlaubte Herkünfte, kommagetrennt */
   ALLOWED_ORIGINS?: string;
+  /** KI-Reiseplaner: Schlüssel aus Google AI Studio (Secret); fehlt er, ist der Planer aus */
+  GEMINI_API_KEY?: string;
+  GEMINI_MODEL?: string;
+  /** Anfragen pro Nutzer und Tag (Standard 5) */
+  AGENT_DAILY?: string;
+  FIREBASE_PROJECT_ID?: string;
+  /** optional: KV-Speicher für das Tageslimit; ohne ihn zählt der Zwischenspeicher je Rechenzentrum */
+  AGENT_KV?: KVNamespace;
 }
 
 const DEFAULT_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https://www.splitandfly.com,https://startrek-1b6a7.web.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173";
@@ -18,7 +29,7 @@ const DEFAULT_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https:/
 function cors(origin: string | null, env: Env): Record<string, string> {
   const allowed = (env.ALLOWED_ORIGINS || DEFAULT_ORIGINS).split(",").map(s => s.trim());
   if (!origin || !allowed.includes(origin)) return {};
-  return { "access-control-allow-origin": origin, "access-control-allow-methods": "POST, GET, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "86400", vary: "origin" };
+  return { "access-control-allow-origin": origin, "access-control-allow-methods": "POST, GET, OPTIONS", "access-control-allow-headers": "content-type, authorization", "access-control-max-age": "86400", vary: "origin" };
 }
 
 const json = (body: unknown, status: number, headers: Record<string, string>) =>
@@ -57,6 +68,65 @@ export default {
       return json(result, 200, { ...h, "x-cache": "miss" });
     }
 
+    if (url.pathname === "/agent" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      return agent(req, env, h);
+    }
+
     return json({ error: "Nicht gefunden" }, 404, h);
   }
 };
+
+/* ---------- KI-Reiseplaner (Gemini) ---------- */
+
+const DEFAULT_MODEL = "gemini-2.5-flash";
+
+/** Tageszähler je Nutzer: im KV-Speicher, sonst im Zwischenspeicher des Rechenzentrums */
+async function countToday(env: Env, uid: string): Promise<{ used: number; bump: () => Promise<void> }> {
+  const day = new Date().toISOString().slice(0, 10);
+  if (env.AGENT_KV) {
+    const k = `agent:${uid}:${day}`;
+    const used = Number(await env.AGENT_KV.get(k)) || 0;
+    return { used, bump: () => env.AGENT_KV!.put(k, String(used + 1), { expirationTtl: 2 * 86400 }) };
+  }
+  const k = new Request(`https://quota.splitandfly/${encodeURIComponent(uid)}/${day}`);
+  const hit = await caches.default.match(k);
+  const used = hit ? Number(await hit.text()) || 0 : 0;
+  return { used, bump: () => caches.default.put(k, new Response(String(used + 1), { headers: { "cache-control": "max-age=172800" } })) };
+}
+
+async function agent(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
+  if (!env.GEMINI_API_KEY) return json({ error: "Der KI-Planer ist noch nicht eingerichtet" }, 503, h);
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return json({ error: "Bitte anmelden, um den KI-Planer zu nutzen" }, 401, h);
+  let uid: string;
+  try { uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); }
+  catch (e) { return json({ error: (e as Error).message }, 401, h); }
+
+  let body: unknown;
+  try { body = await req.json(); } catch { return json({ error: "Anfrage ist kein JSON" }, 400, h); }
+  const r = parseAgentRequest(body);
+  if (typeof r === "string") return json({ error: r }, 400, h);
+
+  const limit = Number(env.AGENT_DAILY) || 5;
+  const quota = await countToday(env, uid);
+  if (quota.used >= limit) return json({ error: `Tageslimit erreicht (${limit} Anfragen). Morgen geht es weiter.`, remaining: 0 }, 429, h);
+  await quota.bump();
+
+  const model = env.GEMINI_MODEL || DEFAULT_MODEL;
+  const gemini = async (payload: object) => {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY! }, body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    if (res.status === 429) throw new Error("Die KI ist gerade ausgelastet. Bitte in ein paar Minuten noch einmal versuchen.");
+    if (!res.ok) throw new Error(`KI-Fehler ${res.status}${data.error?.message ? `: ${data.error.message}` : ""}`);
+    return data;
+  };
+  try {
+    const result = await runAgent(r, { gemini, flights: q => searchAll(q, env), stays: q => searchStays(q, env) });
+    return json({ ...result, remaining: Math.max(0, limit - quota.used - 1) }, 200, h);
+  } catch (e) {
+    return json({ error: (e as Error).message, remaining: Math.max(0, limit - quota.used - 1) }, 502, h);
+  }
+}

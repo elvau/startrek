@@ -475,3 +475,8 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .ev-done{color:#1F8A70;font-weight:600}
 .ev-hero{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;font-size:14px;font-weight:600}
 .ev-hero .linkbtn{color:inherit;text-decoration:underline}
+/* KI-Planer */
+.ai-in{font:inherit;font-size:14px;font-weight:500;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;resize:vertical;min-height:70px}
+.ai-ex .chip{text-align:start;white-space:normal}
+.ai-sum{color:var(--ink-2)}
+.ai-login{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
