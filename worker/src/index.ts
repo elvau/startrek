@@ -99,7 +99,8 @@ export default {
 
 /* ---------- KI-Reiseplaner (Gemini) ---------- */
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+// ältere Modelle (gemini-2.5-flash) gibt Google neuen Konten nicht mehr; mit GEMINI_MODEL überschreibbar
+const DEFAULT_MODEL = "gemini-3.8-flash";
 
 /** Tageszähler je Nutzer: im KV-Speicher, sonst im Zwischenspeicher des Rechenzentrums */
 async function countToday(env: Env, uid: string, kind = "agent"): Promise<{ used: number; bump: () => Promise<void> }> {
@@ -155,8 +156,8 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   } catch (e) {
     // in den Workers-Logs sichtbar (Observability), die App zeigt nur eine übersetzte Meldung
     console.log(JSON.stringify({ at: "agent", model, error: (e as Error).message }));
-    await quota.bump();
-    return json({ error: (e as Error).message, remaining: Math.max(0, limit - quota.used - 1) }, 502, h);
+    // Fehler auf unserer Seite oder bei Gemini zählen nicht gegen das Tageslimit
+    return json({ error: (e as Error).message, remaining: Math.max(0, limit - quota.used) }, 502, h);
   }
 }
 

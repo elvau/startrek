@@ -18,7 +18,7 @@ Gemini sucht über unsere Flug- und Unterkunftssuche und schlägt 2–3 Reisen v
 2. **Cloudflare:** Workers & Pages → **startrek** → Settings → Variables and Secrets → Add → Typ **Secret**,
    Name `GEMINI_API_KEY`, Wert = Schlüssel. Ohne Schlüssel meldet der Planer „noch nicht eingerichtet“.
 3. Optional als Variablen (Typ Text):
-   - `GEMINI_MODEL` – Modell, Standard `gemini-2.5-flash` (bei Google nachsehen, welche Modelle aktuell sind)
+   - `GEMINI_MODEL` – Modell, Standard `gemini-3.8-flash` (bei Google nachsehen, welche Modelle aktuell sind; ältere wie `gemini-2.5-flash` gibt es für neue Konten nicht mehr)
    - `AGENT_DAILY` – Anfragen pro Nutzer und Tag, Standard 5
 4. Optional **KV-Speicher** für ein genaues Tageslimit: ohne ihn zählt der Such-Dienst je Cloudflare-Rechenzentrum
    (reicht für die Beta). Mit KV: Namespace anlegen, als Binding `AGENT_KV` in `wrangler.toml` und `worker/wrangler.toml` eintragen.
