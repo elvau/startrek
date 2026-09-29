@@ -3,7 +3,7 @@
  * eine Flugsuche braucht bis zu 9 (Kiwi 3, Travelpayouts je Flughafenpaar 1), eine Unterkunftssuche 3.
  * Für Gemini bleibt immer `reserve` frei, sonst bricht die ganze Anfrage ab.
  */
-export function agentBudget(max = 48, reserve = 6, perSearch = 9, f: typeof fetch = fetch) {
+export function agentBudget(max = 48, reserve = 8, perSearch = 9, f: typeof fetch = fetch) {
   const b = {
     /** 1 für die Schlüssel der Anmeldeprüfung */
     used: 1,

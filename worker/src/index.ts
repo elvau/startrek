@@ -14,6 +14,7 @@ import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
+import { callGemini } from "./gemini";
 
 interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv {
   /** erlaubte Herkünfte, kommagetrennt */
@@ -21,6 +22,8 @@ interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv {
   /** KI-Reiseplaner: Schlüssel aus Google AI Studio (Secret); fehlt er, ist der Planer aus */
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
+  /** optional: springt ein, wenn GEMINI_MODEL überlastet ist */
+  GEMINI_FALLBACK_MODEL?: string;
   /** Anfragen pro Nutzer und Tag (Standard 5) */
   AGENT_DAILY?: string;
   FIREBASE_PROJECT_ID?: string;
@@ -137,16 +140,8 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   // Cloudflare (kostenloser Tarif): höchstens 50 ausgehende Anfragen pro Aufruf. Eine Flugsuche braucht bis zu 9
   // (Kiwi 3, Travelpayouts je Flughafenpaar 1), eine Unterkunftssuche 3; für Gemini bleiben immer RESERVE frei.
   const budget = agentBudget();
-  const gemini = async (payload: object) => {
-    budget.used++;
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY! }, body: JSON.stringify(payload)
-    });
-    const data = await res.json().catch(() => ({})) as { error?: { message?: string } };
-    if (res.status === 429) throw new Error("Die KI ist gerade ausgelastet. Bitte in ein paar Minuten noch einmal versuchen.");
-    if (!res.ok) throw new Error(`KI-Fehler ${res.status}${data.error?.message ? `: ${data.error.message}` : ""}`);
-    return data;
-  };
+  // überlastet: kurz warten und wiederholen, dann das Ausweichmodell
+  const gemini = (payload: object) => callGemini(payload, { key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], onCall: () => { budget.used++; } });
   try {
     const result = await runAgent(r, { gemini, flights: q => searchAll(q, env, budget.fetch), stays: q => searchStays(q, env, budget.fetch), canSearch: budget.canSearch });
     // eine Rückfrage zählt nicht gegen das Tageslimit, erst die Suche danach
