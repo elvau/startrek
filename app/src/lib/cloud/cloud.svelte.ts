@@ -197,6 +197,8 @@ export async function kick(id: string, uid: string) { const f = await load(); aw
 
 export async function loginGoogle() { cloud.error = ""; try { await (await load()).loginGoogle(); } catch (e) { cloud.error = message(e); } }
 export async function loginEmail(email: string) { cloud.error = ""; await (await load()).sendLoginLink(email); }
+/** Anmelde-Nachweis für den Such-Dienst (KI-Planer); ohne Anmeldung null */
+export async function idToken(): Promise<string | null> { return fbUser ? fbUser.getIdToken() : null; }
 export async function logout() { await (await load()).logout(); }
 export async function loginTest(email: string, name: string) { if (emulator) await (await load()).loginTest(email, name); }
 

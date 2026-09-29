@@ -9,6 +9,7 @@
   import { eur } from "../calc";
   import { dayShort, nights, range } from "../format";
   import { openEventPlanner } from "../event/open.svelte";
+  import { openAgentPlanner } from "../agent/open.svelte";
   import TripMenu from "./TripMenu.svelte";
   import GroupsButton from "./GroupsButton.svelte";
   import TripEditor from "./TripEditor.svelte";
@@ -84,6 +85,9 @@
           {#if !access.readonly}<button class="linkbtn ev-open" onclick={openEventPlanner}>{t("ev.go")}</button>{/if}</div>
       {:else if !access.readonly}
         <div class="ev-hero"><button class="linkbtn ev-open" onclick={openEventPlanner}>🎟 {t("ev.cta")}</button></div>
+      {/if}
+      {#if cloud.configured && !access.readonly}
+        <div class="ev-hero"><button class="linkbtn ai-open" onclick={openAgentPlanner}>✨ {t("ai.cta")}</button></div>
       {/if}
     {/if}
     {#if !access.readonly}
