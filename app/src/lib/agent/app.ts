@@ -6,6 +6,7 @@ import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
 import type { Trip } from "../model";
 import type { AgentRequest, AgentResult, AgentTrip } from "./types";
+import { noteError } from "../bugs/log";
 
 /** Wunsch plus Reisende, Abflughäfen und was über die Reise schon feststeht */
 export function agentRequest(trip: Trip, prompt: string): AgentRequest {
@@ -38,7 +39,10 @@ export async function askAgent(r: AgentRequest, signal?: AbortSignal): Promise<A
     method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(r), signal
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(agentError(res.status, data.error)), { remaining: data.remaining as number | undefined });
+  if (!res.ok) {
+    noteError(`KI ${res.status}: ${data.error || "ohne Meldung"}`);
+    throw Object.assign(new Error(agentError(res.status, data.error)), { remaining: data.remaining as number | undefined });
+  }
   return data as AgentResult;
 }
 

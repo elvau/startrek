@@ -120,7 +120,7 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   if (!token) return json({ error: "Bitte anmelden, um den KI-Planer zu nutzen" }, 401, h);
   let uid: string;
   try { uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); }
-  catch (e) { return json({ error: (e as Error).message }, 401, h); }
+  catch (e) { console.log(JSON.stringify({ at: "agent", status: 401, error: (e as Error).message })); return json({ error: (e as Error).message }, 401, h); }
 
   let body: unknown;
   try { body = await req.json(); } catch { return json({ error: "Anfrage ist kein JSON" }, 400, h); }
@@ -146,6 +146,8 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
     const result = await runAgent(r, { gemini, flights: q => searchAll(q, env), stays: q => searchStays(q, env) });
     return json({ ...result, remaining: Math.max(0, limit - quota.used - 1) }, 200, h);
   } catch (e) {
+    // in den Workers-Logs sichtbar (Observability), die App zeigt nur eine übersetzte Meldung
+    console.log(JSON.stringify({ at: "agent", model, error: (e as Error).message }));
     return json({ error: (e as Error).message, remaining: Math.max(0, limit - quota.used - 1) }, 502, h);
   }
 }
