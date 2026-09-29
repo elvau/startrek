@@ -6,7 +6,7 @@
  */
 import { i18n, locale, t, type Key } from "../i18n/index.svelte";
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
-import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Item, type Option, type Settings, type Tier, type Traveler, type Trip } from "../model";
+import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number | null | undefined, s: Settings, kind?: AgeClass): AgeClass {
   // ohne Altersangabe: angegebene Klasse (Platzhalter), sonst erwachsen
@@ -29,6 +29,9 @@ export const participantsOf = (it: Item, trip: Trip): Traveler[] =>
   trip.travelers.filter(t => isActive(t) && (!it.participants || it.participants.includes(t.id)));
 
 export const activeTravelers = (trip: Trip) => trip.travelers.filter(isActive);
+
+/** Beteiligte eines einfachen Eintrags, die dabei sind (fehlt die Auswahl: alle) */
+export const lineWho = (l: SimpleLine, trip: Trip): Traveler[] => activeTravelers(trip).filter(t => !l.who || l.who.includes(t.id));
 
 const rateOf = (cur: string, s: Settings) => (cur === "EUR" ? 1 : s.rates[cur] || 1);
 
@@ -226,10 +229,20 @@ export function totals(trip: Trip): Totals {
     // einfacher Modus: ein Betrag, gleich auf alle Aktiven verteilt
     const v = Math.max(0, trip.simple?.[cat] || 0);
     simple[cat] = v;
-    if (!v) continue;
-    total += v;
-    byCat[cat] += v;
-    act.forEach(t => (byPerson[t.id] += v / act.length));
+    if (v) {
+      total += v;
+      byCat[cat] += v;
+      act.forEach(t => (byPerson[t.id] += v / act.length));
+    }
+    // einzelne Einträge: nur auf die Beteiligten verteilt
+    for (const l of trip.lines || []) {
+      if (l.cat !== cat || !(l.amount > 0)) continue;
+      const who = lineWho(l, trip);
+      if (!who.length) continue;
+      total += l.amount;
+      byCat[cat] += l.amount;
+      who.forEach(t => (byPerson[t.id] += l.amount / who.length));
+    }
   }
   for (const it of trip.items) {
     const r = calcItem(it, trip);
@@ -274,9 +287,23 @@ export const eur = (v: number) => {
   return cur.get(l)!.format(Math.round(v || 0));
 };
 
+const fmt2 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const cur2 = new Map<string, Intl.NumberFormat>();
+/** Anteil pro Person: unter 100 € mit Cent, wenn er nicht glatt aufgeht (20 € für 3 → „6,67 €“ statt „7 €“) */
+export const eurPP = (v: number) => {
+  v = v || 0;
+  if (Math.abs(v) >= 100 || Math.abs(v - Math.round(v)) < 0.005) return eur(v);
+  if (i18n.lang === "de") return fmt2.format(v) + " €";
+  const l = locale();
+  if (!cur2.has(l)) cur2.set(l, new Intl.NumberFormat(l, { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  return cur2.get(l)!.format(v);
+};
+
 /* ---------- Abrechnung pro Haushalt ---------- */
 
 export interface ShareLine {
+  /** eindeutig je Zeile (Posten, einfacher Betrag, einfacher Eintrag) */
+  key: string;
   /** fehlt bei einfachen Beträgen */
   item?: Item;
   label: string;
@@ -307,7 +334,14 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
       const lines: ShareLine[] = [];
       const sv = T.simple[cat];
       if (sv && T.active) {
-        lines.push({ label: t("split.simpleLine"), v: (sv / T.active) * ms.length, who: ms.length, detail: t("perPerson", { v: eur(sv / T.active) }), fixed: false });
+        lines.push({ key: "simple", label: t("split.simpleLine"), v: (sv / T.active) * ms.length, who: ms.length, detail: t("perPerson", { v: eurPP(sv / T.active) }), fixed: false });
+      }
+      if (!isDetailed(trip, cat)) for (const l of trip.lines || []) {
+        if (l.cat !== cat || !(l.amount > 0)) continue;
+        const who = lineWho(l, trip);
+        const inn = ms.filter(t => who.includes(t));
+        if (!inn.length) continue;
+        lines.push({ key: "line:" + l.id, label: l.label || t("trav.noName"), v: (l.amount / who.length) * inn.length, who: inn.length, detail: t("perPerson", { v: eurPP(l.amount / who.length) }), fixed: false });
       }
       for (const it of trip.items) {
         if (it.cat !== cat) continue;
@@ -323,7 +357,7 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
         const detail = differ && keys.length > 1 && new Set(keys.map(c => grp[c]!.v)).size > 1
           ? keys.map(c => `${grp[c]!.n} × ${AGE_L(c)} ${eur(grp[c]!.v)}`).join(" · ")
           : "";
-        lines.push({ item: it, label: it.name || t("trav.noName"), v, who: inn.length, detail, fixed: FIXED.includes(it.status) });
+        lines.push({ key: it.id, item: it, label: it.name || t("trav.noName"), v, who: inn.length, detail, fixed: FIXED.includes(it.status) });
       }
       return { cat, sum: lines.reduce((a, l) => a + l.v, 0), lines };
     }).filter(c => c.lines.length);

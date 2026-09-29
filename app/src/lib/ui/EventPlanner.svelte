@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { arrow, t, tn, type Key } from "../i18n/index.svelte";
+  import { arrow, locale, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Reise zu einem Event: Was, wo, wann. Daraus bis zu drei Vorschläge (ohne Nacht, eine Nacht, ab Vortag),
    * je mit dem günstigsten passenden Flug (inkl. Anfahrt) und einer gut bewerteten Unterkunft.
@@ -14,7 +14,9 @@
   import { areaAround, countryName, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
-  import { DEFAULT_H, fits, pickStay, takePlan, variants, type Variant } from "../event/plan";
+  import { DEFAULT_H, fits, km, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
+  import { cityFromAddress, searchEventsRemote } from "../events/app";
+  import type { EventHit } from "../events/types";
   import type { StayOffer, StayQuery } from "../stays/types";
 
   let { onclose }: { onclose: () => void } = $props();
@@ -29,6 +31,36 @@
   let clock = $state(ev0?.start.slice(11, 16) || "18:00");
   let hours = $state(ev0?.hours || DEFAULT_H);
   void Promise.all([ensureGeo(trip), ensureAirports()]);
+
+  // Event suchen: Treffer füllt Name, Ort, Stadion, Datum und Uhrzeit aus
+  let eq = $state("");
+  let evBusy = $state(false);
+  let evErr = $state("");
+  let hits = $state<EventHit[] | null>(null);
+  let picked = $state<EventHit | null>(null);
+  async function find(e: Event) {
+    e.preventDefault();
+    evErr = ""; hits = null;
+    if (eq.trim().length < 2) return;
+    evBusy = true;
+    try {
+      const res = await searchEventsRemote({ q: eq.trim() });
+      if (!res.sources.some(s => s.configured)) { evErr = t("evs.notReady"); return; }
+      hits = res.events;
+      if (!hits.length && res.sources.every(s => !s.ok)) evErr = res.sources.find(s => s.error)?.error || t("evs.none");
+    } catch (err) { evErr = (err as Error).message; }
+    finally { evBusy = false; }
+  }
+  async function pick(h: EventHit) {
+    await ensureAirports();
+    picked = h; hits = null;
+    name = h.name;
+    date = h.start.slice(0, 10);
+    if (h.start.length > 10) clock = h.start.slice(11, 16);
+    venue = h.venue || "";
+    loc = null;
+    place = h.city || (h.address ? cityFromAddress(airportData, h.address, h.cc) : null) || "";
+  }
 
   const aps = nearestAirports(trip);
   const people = flyers(trip);
@@ -66,7 +98,11 @@
     const city = dest.kind === "airport" ? dest.city : (loc?.city || place.split(",")[0].trim());
 
     // Anlass und Ort in der Reise merken; der Name folgt dem Anlass, solange man keinen eigenen vergeben hat
-    const ev = { name: name.trim(), start: `${date}T${clock}`, hours: Number(hours) || DEFAULT_H, ...(venue.trim() ? { venue: venue.trim() } : {}) };
+    const same = picked && picked.name === name.trim() && picked.start.slice(0, 10) === date;
+    const ev = {
+      name: name.trim(), start: `${date}T${clock}`, hours: Number(hours) || DEFAULT_H, ...(venue.trim() ? { venue: venue.trim() } : {}),
+      ...(same && picked!.lat != null ? { lat: picked!.lat, lon: picked!.lon } : {}), ...(same && picked!.url ? { url: picked!.url } : {})
+    };
     trip.event = ev;
     if (trip.place !== city) { trip.place = city; if (dest.cc) trip.country = countryName(dest.cc); }
     if (trip.autoName !== false) { trip.name = ev.name; trip.autoName = false; }
@@ -91,7 +127,7 @@
         ]);
         const flights = fl.status === "fulfilled" ? fl.value.offers.filter(o => fits(o, v)).map(o => rate(trip, o, o.out.from, true)) : [];
         const flight = flights.length ? flights.reduce((a, b) => (b.total < a.total ? b : a)) : null;
-        const stay = st.status === "fulfilled" && st.value ? pickStay(st.value.offers) : null;
+        const stay = st.status === "fulfilled" && st.value ? pickStayNear(st.value.offers, ev) : null;
         const error = fl.status === "rejected" ? (fl.reason as Error).message : undefined;
         return { v, flight, stay, stayQ: v.nights ? q : null, total: (flight?.total || 0) + (stay ? Math.round(stay.total) : 0), error };
       }));
@@ -109,11 +145,30 @@
   const n = people.length || 1;
   const found = $derived(rows?.filter(r => r.flight) ?? []);
   const cheapest = $derived(found.length ? Math.min(...found.map(r => r.total)) : null);
+  const at = $derived(trip.event?.lat != null ? { lat: trip.event.lat, lon: trip.event.lon! } : null);
+  const dist = (o: StayOffer) => (at && o.lat != null && o.lon != null ? km(at, { lat: o.lat, lon: o.lon }) : null);
   const mapLink = $derived(venue.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue.trim()}, ${place.split(",")[0].trim()}`)}` : "");
 </script>
 
 <Modal title={t("ev.title")} {onclose} wide>
   <p class="muted">{t("ev.lead")}</p>
+  <form class="ev-find" onsubmit={find}>
+    <label class="f ev-grow">{t("evs.label")}<input bind:value={eq} placeholder={t("evs.ph")} /></label>
+    <button class="btn" disabled={evBusy}>{evBusy ? t("evs.busy") : t("evs.go")}</button>
+  </form>
+  {#if evErr}<p class="warnline">{evErr}</p>{/if}
+  {#if hits}
+    {#if !hits.length}<p class="muted small">{t("evs.none")}</p>{/if}
+    <div class="ev-hits">
+      {#each hits as h (h.id)}
+        <button type="button" class="ev-hit" onclick={() => pick(h)}>
+          <b>{h.name}</b>
+          <span class="muted small">{dayShort(h.start.slice(0, 10))}{h.start.length > 10 ? ` ${time(h.start)}` : ""}{h.venue ? ` · ${h.venue}` : ""}{h.city ? `, ${h.city}` : ""}{h.category ? ` · ${h.category}` : ""}</span>
+        </button>
+      {/each}
+    </div>
+  {/if}
+  <p class="muted small ev-or">{t("evs.or")}</p>
   <form class="fs-form ev-form" onsubmit={go}>
     <div class="ed-row">
       <label class="f ev-grow">{t("ev.name")}<input bind:value={name} placeholder={t("ev.namePh")} required /></label>
@@ -154,7 +209,8 @@
           {/if}
           {#if r.v.nights}
             {#if r.stay}
-              <p class="ev-line">🛏 {r.stay.name}{r.stay.score ? ` · ${r.stay.score.toFixed(1)}` : ""} <small class="muted">{eur(Math.round(r.stay.total))}{r.stay.place ? ` · ${r.stay.place}` : ""}</small></p>
+              {@const d = dist(r.stay)}
+              <p class="ev-line">🛏 {r.stay.name}{r.stay.score ? ` · ${r.stay.score.toFixed(1)}` : ""} <small class="muted">{eur(Math.round(r.stay.total))}{d != null ? ` · ${t("evs.km", { n: new Intl.NumberFormat(locale(), { maximumFractionDigits: d < 10 ? 1 : 0 }).format(d) })}` : r.stay.place ? ` · ${r.stay.place}` : ""}</small></p>
             {:else}
               <p class="ev-line muted">🛏 {t("ev.noStay")}</p>
             {/if}
@@ -170,6 +226,9 @@
         </article>
       {/each}
     </div>
-    {#if mapLink}<p class="muted small"><a href={mapLink} target="_blank" rel="noopener noreferrer">{t("ev.map", { venue: venue.trim() })} ↗</a></p>{/if}
+    {#if mapLink || trip.event?.url}<p class="muted small">
+      {#if mapLink}<a href={mapLink} target="_blank" rel="noopener noreferrer">{t("ev.map", { venue: venue.trim() })} ↗</a>{/if}
+      {#if trip.event?.url}{mapLink ? " · " : ""}<a class="ev-tickets" href={trip.event.url} target="_blank" rel="noopener noreferrer">{t("evs.tickets")} ↗</a>{/if}
+    </p>{/if}
   {/if}
 </Modal>

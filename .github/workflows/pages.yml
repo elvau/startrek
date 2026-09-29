@@ -1,13 +1,11 @@
 name: Testumgebung (GitHub Pages)
 
+# Jeder Push auf einen Feature-Branch: prüfen und, wenn grün, auf die Testumgebung (elvau.github.io/startrek/).
+# main geht nicht hierher, sondern nach splitandfly.com (release.yml). Anleitung: docs/RELEASE.md
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches-ignore: [main]
   workflow_dispatch:
-  # jede Woche neu bauen, damit die Flughafendaten aktuell bleiben
-  schedule:
-    - cron: "17 3 * * 1"
 
 permissions:
   contents: read
@@ -89,6 +87,10 @@ jobs:
     if: github.event_name != 'pull_request'
     needs: [build, cloud]
     runs-on: ubuntu-latest
+    # mehrere Branches: nacheinander veröffentlichen, der zuletzt gepushte steht am Ende auf der Testumgebung
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

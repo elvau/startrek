@@ -37,7 +37,8 @@ try {
   for (const f of ["world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   await p.goto(URL);
-  await p.locator(".modal .btn", { hasText: "Los geht's" }).click();
+  await p.locator(".start .home-new").click();
+  await p.locator(".modal .newtrip .btn.primary").click();
   await p.locator("#stay .st-open").scrollIntoViewIfNeeded();
   await p.locator("#stay .st-open").click();
   const m = p.locator(".modal");
@@ -97,8 +98,10 @@ try {
     ],
     tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }
   };
+  await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
   await p.evaluate(t => { localStorage.setItem("rk2-t:k1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k1", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k1"); }, TRIP);
   await p.reload();
+  await p.locator(".start .home-trip").first().click();
   const gl = await p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" }).getAttribute("href");
   if (!gl.includes("q=Split") || !gl.includes("date_from=2027-07-18")) fail("GetYourGuide-Link: " + gl);
   log("Erlebnisse: Links zu GetYourGuide (mit Reisezeitraum), Viator und Tiqets");
@@ -145,8 +148,10 @@ try {
   early.place = "Makarska";
   early.items[0].options[0].legs[1].dep = "2027-07-29T06:30";
   early.items.push({ id: "s2", cat: "stay", name: "Villa 2", status: "idea", from: "2027-07-25", to: "2027-07-29", participants: ["a", "b"], options: [{ id: "v2", label: "Villa 2", price: { mode: "unit", currency: "EUR", unit: 800, basis: "stay" } }] });
+  await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
   await p.evaluate(t => localStorage.setItem("rk2-t:k1", JSON.stringify(t)), early);
   await p.reload();
+  await p.locator(".start .home-trip").first().click();
   const apn = p.locator("#stay .pl-notes li", { hasText: "Letzte Nacht näher am Flughafen?" });
   await apn.waitFor();
   const at = await apn.textContent();
@@ -187,6 +192,7 @@ try {
   if ((await p.evaluate(() => document.documentElement.lang)) !== "en") fail("html lang nicht en");
   if (!(await p.locator(".top .nav").textContent()).includes("Flights")) fail("Kapitel nicht übersetzt");
   await p.reload();
+  await p.locator(".start .home-trip").first().click();
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
   await p.locator(".hero .lang-sel").selectOption("de");
   await p.locator("#stay .st-open", { hasText: "Unterkunft suchen" }).waitFor();

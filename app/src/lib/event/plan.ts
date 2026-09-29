@@ -64,6 +64,23 @@ export function pickStay(offers: StayOffer[]): StayOffer | null {
   return cheap(good.length ? good : offers);
 }
 
+/** Entfernung in km (Luftlinie) */
+export function km(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+/** in der Nähe des Veranstaltungsorts: bis zu dieser Entfernung bevorzugt */
+export const NEAR_KM = 5;
+
+/** Unterkunft wie pickStay, aber wenn der Veranstaltungsort bekannt ist, zuerst unter denen in der Nähe */
+export function pickStayNear(offers: StayOffer[], at?: { lat?: number; lon?: number }): StayOffer | null {
+  if (at?.lat == null || at.lon == null) return pickStay(offers);
+  const p = { lat: at.lat, lon: at.lon };
+  const near = offers.filter(o => o.lat != null && o.lon != null && km(p, { lat: o.lat, lon: o.lon }) <= NEAR_KM);
+  return pickStay(near.length ? near : offers);
+}
+
 /** Vorschlag übernehmen: Reisedaten setzen, Flug und Unterkunft als Posten anlegen */
 export function takePlan(trip: Trip, v: Variant, flight: FlightOffer | null, stay: StayOffer | null, q: StayQuery | null, ids?: string[]) {
   trip.from = v.out;

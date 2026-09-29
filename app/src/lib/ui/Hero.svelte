@@ -5,20 +5,25 @@
   import { cloud } from "../cloud/cloud.svelte";
   import Account from "./Account.svelte";
   import ModeSwitch from "./ModeSwitch.svelte";
-  import { renameTrip, setAllDetailed, tripMode } from "../store.svelte";
-  import { eur } from "../calc";
+  import { goHome, renameTrip, setAllDetailed, tripMode } from "../store.svelte";
+  import { eur, eurPP } from "../calc";
   import { dayShort, nights, range } from "../format";
   import { openEventPlanner } from "../event/open.svelte";
-  import { openAgentPlanner } from "../agent/open.svelte";
   import TripMenu from "./TripMenu.svelte";
   import GroupsButton from "./GroupsButton.svelte";
   import TripEditor from "./TripEditor.svelte";
   import LangSelect from "./LangSelect.svelte";
+  import { potential, watchable } from "../watch";
+  import { runWatch, watchRun } from "../watch.svelte";
+  import { FLIGHTS_URL } from "../flights/app";
 
   let editing = $state(false);
   // Überschrift: eigener Name, sonst Ort (mit Land) oder der vorläufige Name
   const custom = $derived(!app.trip.autoName && !!app.trip.name && app.trip.name !== app.trip.place);
-  const title = $derived(custom ? app.trip.name : app.trip.place || app.trip.name);
+  const named = $derived(custom ? app.trip.name : app.trip.place || app.trip.name);
+  // noch ohne Ziel und Namen: „Neue Reise“ (blasser, zum Überschreiben)
+  const untitled = $derived(!named);
+  const title = $derived(named || t("trip.untitled"));
   // darunter: Ort und Land, wenn die Überschrift ein eigener Name ist, sonst nur das Land
   const where = $derived(custom ? [app.trip.place, app.trip.country].filter(Boolean).join(", ") : app.trip.country);
   // Überschrift direkt überschreiben: hineinklicken, tippen, Enter oder wegklicken speichert, Esc bricht ab
@@ -55,7 +60,10 @@
 
 <section class="hero" id="hero" data-ch="hero">
   <div class="hero-bar">
-    <TripMenu />
+    <div class="hero-l">
+      <button class="hero-home" onclick={goHome} aria-label={t("home.back")} title={t("home.back")}><span aria-hidden="true">⌂</span></button>
+      <TripMenu />
+    </div>
     <div class="hero-r">
       {#if !access.readonly}<button class="hero-edit" onclick={() => (editing = !editing)} aria-expanded={editing} aria-label={editing ? t("close") : t("hero.edit")}><span class="ico" aria-hidden="true">{editing ? "×" : "✎"}</span><span class="lbl">{editing ? t("close") : t("hero.edit")}</span></button>{/if}
       <GroupsButton />
@@ -73,21 +81,25 @@
       {#if trip.kicker}<span class="kick">☀️ {trip.kicker}</span>{/if}
       {#key `${rev}|${title}`}
         {#if access.readonly}
-          <h1>{title}</h1>
+          <h1 class:untitled>{title}</h1>
         {:else}
-          <h1 class="h1-name" contenteditable="true" spellcheck="false" aria-label={t("hero.renameAria")}
+          <h1 class="h1-name" class:untitled contenteditable="true" spellcheck="false" aria-label={t("hero.renameAria")}
             title={t("hero.rename")} onkeydown={nameKey} onblur={e => saveName(e.currentTarget)}>{title}</h1>
         {/if}
       {/key}
       <div class="meta">{[where, range(trip.from, trip.to), nights(trip.from, trip.to) ? tn("n.nights", nights(trip.from, trip.to)) : "", n ? tn("n.persons", n) : t("nobody")].filter(Boolean).join(" · ")}</div>
       {#if trip.event}
-        <div class="ev-hero">🎟 {[trip.event.name !== trip.name ? trip.event.name : "", `${dayShort(trip.event.start.slice(0, 10))} ${trip.event.start.slice(11, 16)}`, trip.event.venue].filter(Boolean).join(" · ")}
-          {#if !access.readonly}<button class="linkbtn ev-open" onclick={openEventPlanner}>{t("ev.go")}</button>{/if}</div>
-      {:else if !access.readonly}
-        <div class="ev-hero"><button class="linkbtn ev-open" onclick={openEventPlanner}>🎟 {t("ev.cta")}</button></div>
+        <div class="ev-hero">🎟 {[trip.event.name !== trip.name ? trip.event.name : "", `${dayShort(trip.event.start.slice(0, 10))} ${trip.event.start.slice(11, 16)}`, trip.event.venue].filter(Boolean).join(" · ")}</div>
       {/if}
-      {#if cloud.configured && !access.readonly}
-        <div class="ev-hero"><button class="linkbtn ai-open" onclick={openAgentPlanner}>✨ {t("ai.cta")}</button></div>
+      {#if !access.readonly}
+        <div class="hero-acts"><button class="pill-btn ev-open" onclick={openEventPlanner}><span aria-hidden="true">🎟</span> {trip.event ? t("ev.go") : t("ev.btn")}</button>
+          {#if FLIGHTS_URL && !access.readonly && watchable(trip).length}
+            {@const pot = potential(trip)}
+            <button class="pill-btn watch-btn" class:good={pot > 0} disabled={watchRun.busy} title={t("watch.lead")} onclick={runWatch}>
+              <span aria-hidden="true" class:spin={watchRun.busy}>🔄</span> {watchRun.busy ? t("watch.checking", { n: watchRun.done, of: watchRun.of }) : pot > 0 ? t("watch.btnSave", { v: eur(pot) }) : t("watch.check")}
+            </button>
+          {/if}
+        </div>
       {/if}
     {/if}
     {#if !access.readonly}
@@ -95,7 +107,7 @@
     {/if}
     <div class="total">
       <b class="num">{eur(value)}</b>
-      <span>{n ? t("perPerson", { v: eur(calc.T.total / n) }) : t("nobody")}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
+      <span>{n ? t("perPerson", { v: eurPP(calc.T.total / n) }) : t("nobody")}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
     </div>
   </div>
   <div class="hint"><i></i>{t("hero.discover")}</div>

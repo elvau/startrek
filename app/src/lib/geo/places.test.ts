@@ -18,6 +18,10 @@ describe("Orte und Flughäfen", () => {
     expect(ccOf(g, "Croatia")).toBe("HR");
     expect(ccOf(g, "")).toBeNull();
   });
+  it("Land auch aus Namen in den anderen Sprachen der App", () => {
+    expect(["Croacia", "Croatie", "Chorwacja", "Хорватия"].map(n => ccOf(g, n))).toEqual(["HR", "HR", "HR", "HR"]);
+    expect(ccOf(g, "Atlantis")).toBeNull();
+  });
   it("Orte am Flughafen Split, nächste zuerst, höchstens 40 km", () => {
     const l = placesNear(g, airportOf(g, "SPU")!, 5);
     expect(l.length).toBeGreaterThan(2);

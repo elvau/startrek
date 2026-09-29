@@ -7,5 +7,8 @@ export default defineConfig({
   plugins: [svelte()],
   // Firebase liegt in einem eigenen Paket und wird nur mit Konfiguration geladen
   build: { chunkSizeWarningLimit: 700 },
-  test: { include: ["src/**/*.test.ts"] }
+  // Tests der App und des Such-Dienstes (worker/src)
+  test: { include: ["src/**/*.test.ts", "../worker/src/**/*.test.ts"] },
+  // App-Stand für Fehlermeldungen: Commit aus GitHub Actions, lokal „dev“
+  define: { __APP_VERSION__: JSON.stringify((process.env.GITHUB_SHA || "dev").slice(0, 7)) }
 });

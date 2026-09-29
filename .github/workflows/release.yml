@@ -1,11 +1,14 @@
 name: Release (splitandfly.com)
 
-# Produktion: nur ein veröffentlichter GitHub-Release landet auf splitandfly.com (Firebase Hosting).
-# Jeder Merge in main geht weiterhin nur in die Testumgebung (pages.yml). Anleitung: docs/RELEASE.md
+# Produktion: jeder Push auf main (Merge eines Feature-Branches) landet auf splitandfly.com (Firebase Hosting).
+# Feature-Branches gehen nur in die Testumgebung (pages.yml). Anleitung: docs/RELEASE.md
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
+  # jede Woche neu bauen, damit die Flughafendaten aktuell bleiben
+  schedule:
+    - cron: "17 3 * * 1"
 
 permissions:
   contents: read

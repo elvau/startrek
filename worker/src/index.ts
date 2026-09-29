@@ -10,8 +10,11 @@ import type { StayQuery } from "../../app/src/lib/stays/types";
 import { runAgent } from "../../app/src/lib/agent/agent";
 import { verifyIdToken } from "../../app/src/lib/agent/auth";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
+import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
+import type { EventEnv } from "../../app/src/lib/events/types";
+import { bugImage, reportBug, type BugEnv } from "./bugs";
 
-interface Env extends FlightEnv, StayEnv {
+interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv {
   /** erlaubte Herkünfte, kommagetrennt */
   ALLOWED_ORIGINS?: string;
   /** KI-Reiseplaner: Schlüssel aus Google AI Studio (Secret); fehlt er, ist der Planer aus */
@@ -68,10 +71,26 @@ export default {
       return json(result, 200, { ...h, "x-cache": "miss" });
     }
 
+    if (url.pathname === "/events/search" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      let body: unknown;
+      try { body = await req.json(); } catch { return json({ error: "Anfrage ist kein JSON" }, 400, h); }
+      const q = parseEventQuery(body);
+      if (typeof q === "string") return json({ error: q }, 400, h);
+      const result = await cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, fetch, cachedJson), r => r.events.length > 0, ctx);
+      return json(result, 200, h);
+    }
+
     if (url.pathname === "/agent" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
       return agent(req, env, h);
     }
+
+    if (url.pathname === "/bug" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      return reportBug(req, env, h, json, (uid, kind) => countToday(env, uid, kind));
+    }
+    if (url.pathname.startsWith("/bug-image/") && req.method === "GET") return bugImage(url.pathname, env);
 
     return json({ error: "Nicht gefunden" }, 404, h);
   }
@@ -82,14 +101,14 @@ export default {
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
 /** Tageszähler je Nutzer: im KV-Speicher, sonst im Zwischenspeicher des Rechenzentrums */
-async function countToday(env: Env, uid: string): Promise<{ used: number; bump: () => Promise<void> }> {
+async function countToday(env: Env, uid: string, kind = "agent"): Promise<{ used: number; bump: () => Promise<void> }> {
   const day = new Date().toISOString().slice(0, 10);
   if (env.AGENT_KV) {
-    const k = `agent:${uid}:${day}`;
+    const k = `${kind}:${uid}:${day}`;
     const used = Number(await env.AGENT_KV.get(k)) || 0;
     return { used, bump: () => env.AGENT_KV!.put(k, String(used + 1), { expirationTtl: 2 * 86400 }) };
   }
-  const k = new Request(`https://quota.splitandfly/${encodeURIComponent(uid)}/${day}`);
+  const k = new Request(`https://quota.splitandfly/${kind === "agent" ? "" : kind + "/"}${encodeURIComponent(uid)}/${day}`);
   const hit = await caches.default.match(k);
   const used = hit ? Number(await hit.text()) || 0 : 0;
   return { used, bump: () => caches.default.put(k, new Response(String(used + 1), { headers: { "cache-control": "max-age=172800" } })) };
@@ -129,4 +148,17 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   } catch (e) {
     return json({ error: (e as Error).message, remaining: Math.max(0, limit - quota.used - 1) }, 502, h);
   }
+}
+
+/** JSON im Zwischenspeicher des Rechenzentrums (z. B. Mannschaftslisten für eine Woche) */
+async function cachedJson<T>(key: string, ttlSec: number, load: () => Promise<T>, keep: (v: T) => boolean = () => true, ctx?: ExecutionContext): Promise<T> {
+  const k = new Request(`https://cache.splitandfly/${key}`);
+  const hit = await caches.default.match(k);
+  if (hit) return (await hit.json()) as T;
+  const v = await load();
+  if (keep(v)) {
+    const put = caches.default.put(k, new Response(JSON.stringify(v), { headers: { "content-type": "application/json", "cache-control": `max-age=${ttlSec}` } }));
+    if (ctx) ctx.waitUntil(put); else await put;
+  }
+  return v;
 }

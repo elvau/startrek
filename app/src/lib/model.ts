@@ -102,6 +102,8 @@ export interface Option {
   source?: { name: string; at?: string; url?: string };
   legs?: FlightLeg[];
   stay?: { stars?: number; rating?: number; nights?: number; facts?: string[] };
+  /** Unterkunft aus der Suche: Anfrage, mit der sie gefunden wurde (für die Reisebeobachtung) */
+  query?: { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number };
 }
 
 export interface Payment {
@@ -190,6 +192,11 @@ export interface TripEvent {
   start: string;
   /** Dauer in Stunden (Standard 3) */
   hours?: number;
+  /** Veranstaltungsort, falls bekannt (für Unterkünfte in der Nähe) */
+  lat?: number;
+  lon?: number;
+  /** Seite des Anbieters (Tickets) */
+  url?: string;
 }
 
 export interface Trip {
@@ -209,15 +216,44 @@ export interface Trip {
   items: Item[];
   /** Einfacher Modus: ein Betrag je Bereich, gleich auf alle Aktiven verteilt */
   simple?: Partial<Record<CatKey, number>>;
+  /** Einfacher Modus: einzelne Einträge mit Text, Betrag und wer dabei ist (zusätzlich zum Betrag für alle) */
+  lines?: SimpleLine[];
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
   detail?: Partial<Record<CatKey, boolean>>;
   tiers: Partial<Record<CatKey, Tier[]>>;
   settings: Settings;
   /** Verpflegung wie im Artefakt: Essensstil für alle oder je Familie, Kinder und Babys in Prozent */
   food?: FoodCfg;
+  /** Reisebeobachtung: letzter Preisvergleich der Posten */
+  watch?: TripWatch;
 }
 
-export type FoodStyle = "self" | "mix" | "out" | "treat";
+/** Ergebnis der Nachsuche für einen Posten, Beträge für den ganzen Posten */
+export interface WatchHit {
+  /** Preis beim Übernehmen */
+  was: number;
+  /** dasselbe Angebot heute, falls wiedergefunden */
+  now?: number;
+  /** günstigeres Angebot für dieselbe Reise */
+  best?: number;
+  bestOpt?: Option;
+  /** nicht prüfbar oder Suche fehlgeschlagen */
+  err?: string;
+}
+export interface TripWatch { at: string; items: Record<string, WatchHit> }
+
+/** Selbstversorgung, gemischt, auswärts, Genießer, Halbpension, All-inclusive */
+/** Eintrag im einfachen Modus, z. B. „Stadionführung 50 € · Daniel, Henning“; gleich auf die Beteiligten verteilt */
+export interface SimpleLine {
+  id: string;
+  cat: CatKey;
+  label: string;
+  amount: number;
+  /** fehlt: alle, die dabei sind */
+  who?: string[];
+}
+
+export type FoodStyle = "self" | "mix" | "out" | "treat" | "hb" | "ai";
 export interface FoodCfg { on?: boolean; style?: FoodStyle; hh?: Record<string, FoodStyle>; child?: number; infant?: number }
 
 export const uid = () => Math.random().toString(36).slice(2, 10);

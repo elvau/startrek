@@ -47,7 +47,7 @@ try {
   const anna = await person("Anna");
   await anna.goto(URL);
   // erster Besuch: Willkommen, Anna schaut sich das Beispiel an
-  await anna.locator(".modal .welcome .linkbtn", { hasText: "Beispielreise ansehen" }).click();
+  await anna.locator(".start .linkbtn", { hasText: "Beispielreise ansehen" }).click();
   await until(async () => (await anna.locator(".hero-in").textContent()).includes("Makarska"), "Beispielreise offen");
   if ((await anna.locator(".hero .tm-btn").first().click(), await anna.locator(".tm-trip").count()) !== 1) fail("leere Reise nicht weggeräumt");
   await anna.keyboard.press("Escape");
@@ -118,7 +118,7 @@ try {
   mal.on("dialog", d => d.accept());
   await mal.locator(".hero .tm-btn").first().click();
   await mal.locator(".tm-act", { hasText: "Diese Reise löschen" }).click();
-  await until(async () => (await mal.locator(".hero h1").textContent()).startsWith("Solo "), "leere Reise nach dem Löschen");
+  await until(async () => (await mal.locator(".hero h1").textContent()).startsWith("Neue Reise"), "leere Reise nach dem Löschen");
   await until(async () => (await mal.locator(".hero .tm-btn").first().textContent()).includes("☁"), "leere Reise liegt im Konto");
   await mal.locator(".hero .acct-btn").click();
   if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("Hinweis auf Gerät-Reise bleibt");
@@ -128,6 +128,7 @@ try {
   // Neu laden: Anna hat die Reise weiter im Konto
   await dbState("vor Neuladen");
   await anna.reload();
+  await anna.locator(".start .home-trip").first().click();
   await until(async () => (await anna.locator(".hero .tm-btn").first().textContent()).includes("☁"), "nach Neuladen im Konto");
   await until(async () => (await total(anna)) === omaTotal, "nach Neuladen gleiche Summe").catch(async e => {
     console.log("Anna nach Neuladen:", await total(anna), await anna.evaluate(() => [localStorage.getItem("rk2-current"), document.querySelector(".banner")?.textContent]));

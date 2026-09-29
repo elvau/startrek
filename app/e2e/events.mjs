@@ -28,9 +28,19 @@ function flights(q) {
 const STAYS = {
   offers: [
     { id: "b:1", source: "booking", sourceName: "Booking.com", name: "Billig Inn", total: 90, currency: "EUR", score: 6.1 },
-    { id: "b:2", source: "booking", sourceName: "Booking.com", name: "Highbury Rooms", total: 160, currency: "EUR", score: 8.6, place: "Islington, London" }
+    { id: "b:3", source: "booking", sourceName: "Booking.com", name: "Airport Lodge", total: 130, currency: "EUR", score: 8.9, lat: 51.47, lon: -0.45 },
+    { id: "b:2", source: "booking", sourceName: "Booking.com", name: "Highbury Rooms", total: 160, currency: "EUR", score: 8.6, place: "Islington, London", lat: 51.558, lon: -0.103 }
   ],
   sources: [{ id: "booking", name: "Booking.com", configured: true, ok: true, count: 2, ms: 800 }]
+};
+
+const EVENTS = {
+  events: [
+    { id: "fd:1", source: "footballdata", sourceName: "football-data.org", name: "Arsenal – Bayern", start: "2027-05-15T15:30", venue: "Emirates Stadium", cc: "GB",
+      address: "75 Drayton Park London N5 1BU", category: "UEFA Champions League", lat: 51.555, lon: -0.108, url: "https://tickets.example/ars-fcb" },
+    { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal", start: "2027-05-22T17:30", venue: "Stamford Bridge", cc: "GB", category: "Premier League" }
+  ],
+  sources: [{ id: "footballdata", name: "football-data.org", configured: true, ok: true, count: 2 }]
 };
 
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4177", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
@@ -51,20 +61,30 @@ try {
     stays.push(JSON.parse(r.request().postData()));
     await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(STAYS) });
   });
+  const evAsked = [];
+  await p.route("https://flights.test/events/search", async r => {
+    evAsked.push(JSON.parse(r.request().postData()));
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(EVENTS) });
+  });
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   await p.goto(URL);
 
   // Start mit „Zu einem Event“: legt die Reise an und öffnet den Planer
-  await p.locator(".modal .ev-start").click();
+  await p.locator(".start .home-event").click();
   const m = p.locator(".modal");
   await m.locator(".ev-form").waitFor();
-  await m.locator("label.f", { hasText: "Was?" }).locator("input").fill("Arsenal – Bayern");
-  await m.locator(".lp input").fill("London");
-  await m.locator(".lp-list li", { hasText: "London" }).first().click();
-  await m.locator("label.f", { hasText: "Wo genau?" }).locator("input").fill("Emirates Stadium");
-  await m.locator("label.f", { hasText: "Datum" }).locator("input").fill("2027-05-15");
-  await m.locator("label.f", { hasText: "Beginn" }).locator("input").fill("15:30");
+  // Event suchen und auswählen: Name, Stadt (aus der Anschrift), Stadion, Datum, Uhrzeit werden ausgefüllt
+  await m.locator(".ev-find input").fill("Arsenal");
+  await m.locator(".ev-find .btn").click();
+  await m.locator(".ev-hit").first().waitFor();
+  if (evAsked[0]?.q !== "Arsenal") fail("Event-Suche: " + JSON.stringify(evAsked));
+  if ((await m.locator(".ev-hit").count()) !== 2) fail("nicht zwei Termine");
+  await m.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
+  const val = async label => m.locator("label.f", { hasText: label }).locator("input").inputValue();
+  if (await val("Was?") !== "Arsenal – Bayern" || await val("Wo genau?") !== "Emirates Stadium" || await val("Datum") !== "2027-05-15" || await val("Beginn") !== "15:30") fail("Felder nicht ausgefüllt");
+  if (!(await m.locator(".lp input").inputValue()).startsWith("London")) fail("Stadt nicht aus der Anschrift: " + await m.locator(".lp input").inputValue());
+  log("Event gesucht und übernommen: Name, Stadt, Stadion, Datum, Uhrzeit");
   await m.locator("label.f", { hasText: "Dauer" }).locator("input").fill("2");
   await m.locator(".ev-form .btn.primary").click();
   await m.locator(".ev-card").first().waitFor();
@@ -85,7 +105,9 @@ try {
   const relaxed = cards.filter({ hasText: "Entspannt ab Vortag" });
   if (!(await relaxed.locator(".ev-line", { hasText: "12:00" }).count())) fail("ab Vortag: günstigerer Flug fehlt");
   const short = cards.filter({ hasText: "Mit einer Nacht" });
-  if (!(await short.locator(".ev-line", { hasText: "Highbury Rooms" }).count())) fail("Unterkunft nicht die gut bewertete");
+  if (!(await short.locator(".ev-line", { hasText: "Highbury Rooms" }).count())) fail("Unterkunft nicht die nahe gut bewertete");
+  if (!(await short.locator(".ev-line", { hasText: "km zum Veranstaltungsort" }).count())) fail("Entfernung zum Stadion fehlt");
+  if (!(await m.locator("a.ev-tickets").count())) fail("Ticket-Link fehlt");
   log("Passende Flüge je Vorschlag, gut bewertete Unterkunft");
 
   // übernehmen: Reise heißt wie das Event, Daten gesetzt, Flug und Unterkunft angelegt

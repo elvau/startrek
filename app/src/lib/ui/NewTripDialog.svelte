@@ -1,10 +1,10 @@
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
   /* Neue Reise: nur wer mitfährt; Ort und Zeitraum kommen später in der Reise dazu (Name bildet sich daraus) */
-  import { newTrip } from "../store.svelte";
+  import { startTrip } from "../store.svelte";
   import Modal from "./Modal.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
-  import WhoPicker, { newWho, whoName, whoTravelers } from "./WhoPicker.svelte";
+  import WhoPicker, { newWho, whoTravelers } from "./WhoPicker.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
   let who = $state(newWho());
@@ -12,7 +12,7 @@
 
   function create(e: Event) {
     e.preventDefault();
-    newTrip({ travelers: whoTravelers(who), base: whoName(who) });
+    startTrip(whoTravelers(who));
     onclose();
   }
 </script>

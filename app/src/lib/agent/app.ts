@@ -1,5 +1,5 @@
 /* KI-Planer in der App: Anfrage aus der Reise bauen, an den Such-Dienst schicken, Vorschlag übernehmen */
-import { i18n, t } from "../i18n/index.svelte";
+import { i18n, t, type Key } from "../i18n/index.svelte";
 import { ageClass } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
@@ -23,6 +23,13 @@ export function agentRequest(trip: Trip, prompt: string): AgentRequest {
   };
 }
 
+/** Meldung des Such-Dienstes in der gewählten Sprache (der Dienst antwortet auf Deutsch) */
+export function agentError(status: number, msg?: string): string {
+  const k = ({ 400: "ai.err.input", 401: "ai.err.login", 429: "ai.err.limit", 502: "ai.err.busy", 503: "ai.err.setup" } as Record<number, Key>)[status];
+  if (k) return t(k);
+  return i18n.lang === "de" && msg ? msg : t("search.status", { s: status });
+}
+
 export async function askAgent(r: AgentRequest, signal?: AbortSignal): Promise<AgentResult> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   const token = await idToken();
@@ -31,7 +38,7 @@ export async function askAgent(r: AgentRequest, signal?: AbortSignal): Promise<A
     method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(r), signal
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error || t("search.status", { s: res.status })), { remaining: data.remaining as number | undefined });
+  if (!res.ok) throw Object.assign(new Error(agentError(res.status, data.error)), { remaining: data.remaining as number | undefined });
   return data as AgentResult;
 }
 

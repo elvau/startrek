@@ -2,7 +2,7 @@
   import { t, tn } from "../i18n/index.svelte";
   /* Wer zahlt was: pro Familie Summe, fest und offen, Mitglieder und alle Posten */
   import { app, calc } from "../store.svelte";
-  import { eur, householdShares } from "../calc";
+  import { eur, eurPP, householdShares } from "../calc";
   import { CAT_CHAPTERS } from "../chapters";
   import { reveal } from "./reveal";
   import Icon from "./Icon.svelte";
@@ -23,7 +23,7 @@
     <div class="sh-head">
       <div>
         <h3>{h.name}</h3>
-        <span class="muted">{tn("n.persons", h.members.length)} · {t("perPerson", { v: eur(h.members.length ? h.total / h.members.length : 0) })}</span>
+        <span class="muted">{tn("n.persons", h.members.length)} · {t("perPerson", { v: eurPP(h.members.length ? h.total / h.members.length : 0) })}</span>
       </div>
       <div class="sh-tot"><b class="num">{eur(h.total)}</b><span>{t("split.share", { p: calc.T.total ? Math.round((h.total / calc.T.total) * 100) : 0 })}</span></div>
     </div>
@@ -39,7 +39,7 @@
         <details open>
           <summary style="--cc:var(--c-{c.cat})"><i></i><Icon name={label(c.cat).icon} size={16} /><span>{label(c.cat).label}</span><b class="num">{eur(c.sum)}</b></summary>
           <ul>
-            {#each c.lines as l (l.item?.id || "simple")}
+            {#each c.lines as l (l.key)}
               <li>
                 <button class="sh-l" onclick={() => (l.item ? jump(l.item.id) : document.getElementById(c.cat)?.scrollIntoView({ behavior: "smooth" }))}>
                   <span class="sh-n">{l.label}<small>{[l.detail, l.who < h.members.length ? t("split.who", { a: l.who, b: h.members.length }) : "", l.item ? ST(l.item.status) : ""].filter(Boolean).join(" · ")}</small></span>

@@ -235,7 +235,19 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .simple-eur{font:800 28px "Bricolage Grotesque Variable",sans-serif;color:var(--ink-2)}
 .simple-out{display:flex;flex-direction:column;align-items:flex-end;text-align:end;font-size:13px;color:var(--ink-2)}
 .simple-out b{font:800 24px "Bricolage Grotesque Variable",sans-serif;color:var(--ink)}
-.simple-hidden{flex-basis:100%;margin:0}
+.simple-hidden{flex-basis:100%;margin:0;order:4}
+/* einfacher Modus: einzelne Einträge unter Betrag und Summe */
+.sls{order:3;flex-basis:100%;min-width:0;display:flex;flex-direction:column;gap:10px}
+.sl{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper-2);min-width:0}
+.sl-top{display:flex;align-items:center;gap:8px;min-width:0}
+.sl-t{flex:1 1 auto;min-width:0}
+.sl-v{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--ink-2)}
+.sl-v input{width:96px;text-align:end;font-weight:700;font-variant-numeric:tabular-nums}
+.sl-x{flex:none}
+.sl-who{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sl-pp{margin-inline-start:auto}
+.sl-add{align-self:flex-start}
+@media (max-width:640px){.sl{padding:10px}.sl-v input{width:72px}.simple-in input{max-width:180px}}
 @media (max-width:640px){.simple-out{align-items:flex-start;text-align:start}}
 
 /* Reisende, Gruppen */
@@ -326,8 +338,12 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .who-d p{margin:0}
 .grp-counts{grid-template-columns:repeat(2,minmax(0,150px))}
 /* schmale Bildschirme: die Reise-Auswahl links gibt Platz ab, rechts bleibt alles ganz */
-.hero-bar>.tmenu{min-width:0;flex:0 1 auto}
-.hero-bar>.tmenu .tm-btn{min-width:0}
+.hero-l{display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto}
+.hero-l .tmenu{min-width:0}
+.hero-l .tm-btn{min-width:0}
+.hero-home{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:99px;border:1px solid var(--glass-line);background:rgba(255,255,255,.55);backdrop-filter:blur(8px);color:inherit;font-size:18px;line-height:1}
+:root[data-theme="dark"] .hero-home{background:rgba(10,25,45,.5)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .hero-home{background:rgba(10,25,45,.5)}}
 .hero-r{flex:none}
 @media (max-width:640px){.hero .tm-btn{max-width:100%}.hero-r{gap:6px}.hero .acct .tm-btn{padding:6px 11px}}
 :root[data-theme="dark"] .who-art{filter:brightness(.85)}
@@ -480,3 +496,119 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .ai-ex .chip{text-align:start;white-space:normal}
 .ai-sum{color:var(--ink-2)}
 .ai-login{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ev-find{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:6px}
+.ev-hits{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:260px;overflow:auto}
+.ev-hit{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:start;border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:8px 12px;font-size:14px}
+.ev-hit:hover{border-color:var(--a)}
+.ev-or{margin:10px 0 0}
+
+/* Kopf der Reise: Event als Knopf, Überschrift ohne Namen blasser */
+.hero-acts{margin-top:14px;display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
+.pill-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:99px;border:1px solid var(--glass-line);background:rgba(255,255,255,.7);backdrop-filter:blur(8px);color:inherit;font-weight:700;font-size:14px;box-shadow:0 10px 26px -14px rgba(14,36,56,.45);transition:transform .15s,background .15s}
+.pill-btn:hover{background:#fff;transform:translateY(-1px)}
+:root[data-theme="dark"] .pill-btn{background:rgba(10,25,45,.55)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .pill-btn{background:rgba(10,25,45,.55)}}
+.hero h1.untitled{opacity:.5}
+.brand-btn{border:0;background:none;padding:0;color:inherit;cursor:pointer}
+
+/* Startseite */
+.start{position:relative;z-index:1;min-height:100svh;padding:16px 16px 48px;color:#0E2438}
+.home-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;max-width:1180px;margin:0 auto}
+.home-brand{font-size:18px}
+.home-in{max-width:960px;margin:0 auto;padding-top:clamp(40px,12vh,120px);text-align:center}
+.home-title{font:800 clamp(40px,8vw,88px)/1 "Bricolage Grotesque Variable",sans-serif;margin:0 0 14px}
+.home-lead{font-size:17px;font-weight:500;opacity:.8;margin:0 auto 30px;max-width:560px}
+.home-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.home-act,.home-trip{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:start;border:1px solid var(--glass-line);background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border-radius:22px;padding:20px 22px;color:var(--ink);box-shadow:0 20px 50px -24px rgba(14,36,56,.45);transition:transform .15s,box-shadow .15s}
+.home-act:hover,.home-trip:hover{transform:translateY(-2px);box-shadow:0 24px 50px -20px rgba(14,36,56,.5)}
+.home-act b{font-size:18px}
+.home-act small,.home-trip small{color:var(--ink-2);font-size:13px}
+.home-ico{font-size:30px;line-height:1;margin-bottom:6px}
+.home-h{font:800 22px "Bricolage Grotesque Variable",sans-serif;margin:40px 0 12px;text-align:start}
+.home-trips{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.home-trip{padding:14px 18px;border-radius:16px}
+.home-trip b{font-size:15px}
+.home-more{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 20px;margin:28px 0 6px}
+.home-legal{font-size:12px;opacity:.75}
+.home-legal a{color:inherit}
+:root[data-theme="dark"] .start{color:#EAF3FB}
+:root[data-theme="dark"] .home-act,:root[data-theme="dark"] .home-trip{background:rgba(22,30,42,.75);color:#EAF3FB}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .start{color:#EAF3FB}:root:not([data-theme="light"]) .home-act,:root:not([data-theme="light"]) .home-trip{background:rgba(22,30,42,.75);color:#EAF3FB}}
+
+/* KI-Assistent: runder Knopf und Chatfenster unten rechts */
+.ai-fab{position:fixed;inset-inline-end:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:99px;padding:13px 20px;background:var(--a);color:#fff;font-weight:700;font-size:14px;box-shadow:0 14px 34px -12px rgba(14,36,56,.55);transition:transform .15s}
+.ai-fab:hover{transform:translateY(-2px)}
+.ai-fab>span:first-child{font-size:18px;line-height:1}
+.ai-chat{position:fixed;inset-inline-end:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:90;width:min(410px,calc(100vw - 32px));height:min(660px,calc(100svh - 100px));display:flex;flex-direction:column;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden;animation:fadeIn .2s}
+.ai-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px 12px 16px;border-bottom:1px solid var(--line)}
+.ai-head small{font-weight:600}
+.ai-msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.ai-msg{align-self:flex-start;max-width:92%;margin:0;padding:9px 13px;border-radius:16px 16px 16px 4px;background:var(--paper-2);font-size:14px;display:flex;flex-direction:column;gap:8px;white-space:pre-line}
+.ai-msg.me{align-self:flex-end;background:var(--a);color:#fff;border-radius:16px 16px 4px 16px}
+.ai-msgs .ai-ex{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.ai-card{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:var(--paper);border:1px solid var(--line);white-space:normal}
+.ai-card footer{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px}
+.ai-busy{opacity:.75;animation:aiPulse 1.4s ease-in-out infinite}
+@keyframes aiPulse{50%{opacity:.4}}
+.ai-bar{display:flex;gap:8px;padding:10px 12px 6px;border-top:1px solid var(--line)}
+.ai-bar textarea{flex:1;font:inherit;font-size:14px;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;resize:none}
+.ai-foot{font-size:11px;margin:0;padding:0 14px 10px}
+@media (max-width:900px){.ai-fab{bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
+/* Beta: Fehler melden, unten links */
+.bug-fab{position:fixed;inset-inline-start:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;width:46px;height:46px;border-radius:50%;border:0;background:#D93025;color:#fff;font-size:22px;line-height:1;display:grid;place-items:center;box-shadow:0 12px 28px -10px rgba(140,20,10,.6);transition:transform .15s}
+.bug-fab:hover{transform:translateY(-2px) rotate(-8deg)}
+@media (max-width:900px){.bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));width:42px;height:42px;font-size:20px}}
+.bug{display:flex;flex-direction:column;gap:12px}
+.bug textarea{font:inherit;font-size:14px;width:100%;resize:vertical;min-height:110px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink)}
+.bug-img{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bug-img img{max-width:160px;max-height:120px;border-radius:10px;border:1px solid var(--line);object-fit:cover}
+.bug-file{cursor:pointer}
+.bug-acts{display:flex;justify-content:flex-end}
+.bug-done{font-weight:700;color:var(--good);margin:0}
+@media (max-width:640px){
+  .ai-fab{padding:0;width:54px;height:54px;justify-content:center}
+  .ai-fab-lbl{display:none}
+  .ai-chat{inset-inline:8px;bottom:8px;width:auto;height:min(80svh,calc(100svh - 16px))}
+}
+
+/* ---------- Startseite: Reisekarten mit Überblick ---------- */
+.home-trip{gap:6px;width:100%}
+.home-trip.past{opacity:.8}
+.ht-top{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%}
+.ht-tag{font-size:11.5px;font-weight:700;color:var(--good);background:var(--good-soft);border-radius:99px;padding:2px 9px;white-space:nowrap}
+.ht-where,.ht-when{font-size:13.5px;color:var(--ink-2)}
+.ht-where{font-weight:600;color:var(--ink)}
+.ht-facts{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--ink-2)}
+.ht-facts:empty,.ht-foot:empty{display:none}
+.ht-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;width:100%;margin-top:4px;padding-top:8px;border-top:1px solid var(--line)}
+.ht-total{font-weight:800;font-size:15px}
+.ht-save{font-weight:700;font-size:12.5px;color:var(--good)}
+.home-past{margin-top:8px}
+.home-past summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
+.home-past summary::-webkit-details-marker{display:none}
+.home-past summary::before{content:"▸";font-size:14px;transition:transform .15s}
+.home-past[open] summary::before{transform:rotate(90deg)}
+.home-past summary .muted{font-size:15px;font-weight:600}
+
+/* ---------- Reisebeobachtung ---------- */
+.pill-btn:disabled{opacity:.75;cursor:default;transform:none}
+.watch-btn.good{color:var(--good);border-color:var(--good)}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wb{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 22px 12px;border-top:1px dashed var(--line);font-size:13px}
+.wb-up,.wb-down,.wb-err{font-weight:800;border-radius:99px;padding:2px 10px;white-space:nowrap}
+.wb-up{color:#C62828;background:#FDECEC}
+.wb-down{color:var(--good);background:var(--good-soft)}
+.wb-err{color:var(--warn);background:var(--warn-soft)}
+.wb-what{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+.watch{margin-top:28px;padding:22px 24px;cursor:default}
+.watch-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.watch-head h3{margin:0 0 4px}
+.watch-head p{margin:0;max-width:520px}
+.watch-sum{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 28px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.watch-pot small,.watch-rise small{display:block;font-size:12px;color:var(--ink-2)}
+.watch-pot b,.watch-rise b{font:800 24px "Bricolage Grotesque Variable",sans-serif}
+.watch-pot.good b{color:var(--good)}
+.watch-rise b{color:#C62828}
+.watch-at{margin:0 0 0 auto}
+@media (max-width:640px){.watch-run{width:100%}.watch-at{margin:0}}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fits, pickStay, takePlan, variants } from "./plan";
+import { fits, km, pickStay, pickStayNear, takePlan, variants } from "./plan";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import type { StayOffer } from "../stays/types";
@@ -38,6 +38,15 @@ describe("Reise zu einem Anlass", () => {
     expect(pickStay([stay("A", 90, 6.5), stay("B", 140, 8.4), stay("C", 180, 9.1)])?.name).toBe("B");
     expect(pickStay([stay("A", 90, 6.5), stay("B", 140)])?.name).toBe("A");
     expect(pickStay([])).toBeNull();
+  });
+
+  it("Unterkunft nahe am Veranstaltungsort bevorzugt", () => {
+    const at = { lat: 51.555, lon: -0.108 };
+    const near = { ...stay("Nah", 220, 8.1), lat: 51.56, lon: -0.1 }, far = { ...stay("Weit", 120, 8.9), lat: 51.45, lon: -0.45 };
+    expect(Math.round(km(at, far))).toBeGreaterThan(20);
+    expect(pickStayNear([far, near], at)?.name).toBe("Nah");
+    expect(pickStayNear([far, near])?.name).toBe("Weit");
+    expect(pickStayNear([far], at)?.name).toBe("Weit");
   });
 
   it("Übernehmen setzt Daten und legt Flug und Unterkunft an", () => {

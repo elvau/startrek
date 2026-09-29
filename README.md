@@ -10,8 +10,8 @@ Ursprünglich als claude.ai-Artifact entstanden, hier als eigenständige Web-App
 
 | | Adresse | Wann |
 | --- | --- | --- |
-| **Produktion** | https://splitandfly.com | bei jedem veröffentlichten GitHub-Release |
-| **Testumgebung** | https://elvau.github.io/startrek/ | bei jedem Merge in `main` |
+| **Produktion** | https://splitandfly.com | bei jedem Push auf `main` |
+| **Testumgebung** | https://elvau.github.io/startrek/ | bei jedem Push auf einen Feature-Branch |
 
 Code der App in `app/` (Svelte, TypeScript, Vite), Daten und Rechtliches in `public/`.
 Ablauf und Einrichtung: [`docs/RELEASE.md`](docs/RELEASE.md). Plan und Anwendungsfälle: [`docs/KONZEPT.md`](docs/KONZEPT.md).
@@ -55,10 +55,10 @@ Konto und Teilen: Einrichtung in [`docs/FIREBASE.md`](docs/FIREBASE.md). Ohne Fi
 
 ## Veröffentlichen
 
-- **Testumgebung:** Bei jedem Push auf `main` prüft `.github/workflows/pages.yml` die App (Tests,
-  Typprüfung, Browser-Tests) und veröffentlicht sie auf GitHub Pages. Bei Pull Requests laufen nur die Prüfungen.
-- **Produktion:** Ein veröffentlichter Release startet `.github/workflows/release.yml` und bringt genau
-  diesen Stand auf splitandfly.com (Firebase Hosting). Siehe [`docs/RELEASE.md`](docs/RELEASE.md).
+- **Testumgebung:** Jeder Push auf einen Feature-Branch wird von `.github/workflows/pages.yml` geprüft (Tests, Typprüfung,
+  Browser-Tests) und bei Erfolg auf GitHub Pages veröffentlicht.
+- **Produktion:** Jeder Push auf `main` (Merge eines Feature-Branches) startet `.github/workflows/release.yml` und bringt den Stand
+  auf splitandfly.com (Firebase Hosting). Siehe [`docs/RELEASE.md`](docs/RELEASE.md).
 
 ## Roadmap
 

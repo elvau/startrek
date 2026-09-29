@@ -51,6 +51,7 @@ const blank = (it: Item) => it.options.length === 1 && !it.options[0].label && !
  */
 export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, ids?: string[]): Item {
   const opt = stayToOption(o, q.adults + q.childAges.length);
+  opt.query = { place: q.place, country: q.country, checkin: q.checkin, checkout: q.checkout, adults: q.adults, childAges: [...q.childAges], rooms: q.rooms };
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   if (target) { target.options.push(opt); return target; }
   // nur ein Teil der Reisenden (z. B. eine Familie, die früher kommt)

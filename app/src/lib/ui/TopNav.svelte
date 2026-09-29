@@ -7,6 +7,7 @@
   import TripMenu from "./TripMenu.svelte";
   import Account from "./Account.svelte";
   import GroupsButton from "./GroupsButton.svelte";
+  import { goHome } from "../store.svelte";
 
   let nav: HTMLElement;
   let pill = $state({ left: 0, width: 0, show: false });
@@ -29,7 +30,7 @@
 
 <header class="top">
   <div class="top-in">
-    <span class="brand">Split<span class="brand-y">&amp;</span>Fly</span>
+    <button class="brand brand-btn" onclick={goHome} title={t("home.back")}>Split<span class="brand-y">&amp;</span>Fly</button>
     <TripMenu compact />
     <nav class="nav" bind:this={nav} aria-label={t("nav.chapters")}>
       <span class="pill" style:left="{pill.left}px" style:width="{pill.width}px" style:opacity={pill.show ? 1 : 0}></span>

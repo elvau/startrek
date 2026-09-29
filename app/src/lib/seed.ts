@@ -1,13 +1,17 @@
 import { DEFAULT_SETTINGS, uid, type Trip } from "./model";
+import { i18n, t } from "./i18n/index.svelte";
 
-/** Beispielreise für den ersten Start. Eigene ID, damit Beispiele verschiedener Personen im Konto nicht kollidieren. */
+/** Ländername in der gewählten Sprache (wird von der Ländererkennung in allen Sprachen verstanden) */
+const countryName = (cc: string) => { try { return new Intl.DisplayNames([i18n.lang], { type: "region" }).of(cc) || cc; } catch { return cc; } };
+
+/** Beispielreise für den ersten Start, in der gewählten Sprache. Eigene ID, damit Beispiele verschiedener Personen im Konto nicht kollidieren. */
 export function sampleTrip(): Trip {
   return {
     id: "b-" + uid(),
-    name: "Sommer in Kroatien",
+    name: t("seed.name"),
     place: "Makarska",
-    country: "Kroatien",
-    kicker: "Sommerferien 2027 · Familie Klein",
+    country: countryName("HR"),
+    kicker: t("seed.kicker"),
     from: "2027-07-18",
     to: "2027-07-29",
     travelers: [
@@ -23,19 +27,19 @@ export function sampleTrip(): Trip {
     settings: { ...DEFAULT_SETTINGS },
     items: [
       {
-        id: "flug", cat: "flights", name: "Flug Düsseldorf – Split", status: "idea", chosen: "ew",
+        id: "flug", cat: "flights", name: t("seed.flight"), status: "idea", chosen: "ew",
         options: [
           {
-            id: "ew", label: "Eurowings ab DUS, direkt", detail: "inkl. Koffer",
+            id: "ew", label: t("seed.ew"), detail: t("seed.ewDetail"),
             price: { mode: "person", currency: "EUR", adult: 389 },
-            source: { name: "Beispiel", at: "2026-09-27" },
+            source: { name: t("seed.source"), at: "2026-09-27" },
             legs: [
               { dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T06:10", arr: "2027-07-18T08:25", carrier: "Eurowings", stops: 0 },
               { dir: "back", from: "SPU", to: "DUS", dep: "2027-07-29T09:15", arr: "2027-07-29T11:35", carrier: "Eurowings", stops: 0 }
             ]
           },
           {
-            id: "fr", label: "Ryanair ab Weeze, direkt", detail: "+45 min Anreise, Gepäck extra",
+            id: "fr", label: t("seed.fr"), detail: t("seed.frDetail"),
             price: { mode: "person", currency: "EUR", adult: 274 },
             legs: [
               { dir: "out", from: "NRN", to: "SPU", dep: "2027-07-18T14:40", arr: "2027-07-18T16:50", carrier: "Ryanair", stops: 0 },
@@ -43,7 +47,7 @@ export function sampleTrip(): Trip {
             ]
           },
           {
-            id: "ou", label: "Croatia Airlines ab DUS, via Zagreb",
+            id: "ou", label: t("seed.ou"),
             price: { mode: "person", currency: "EUR", adult: 331 },
             legs: [
               { dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T07:05", arr: "2027-07-18T12:40", carrier: "Croatia Airlines", stops: 1 },
@@ -56,40 +60,40 @@ export function sampleTrip(): Trip {
         id: "villa", cat: "stay", name: "Villa Maslina, Makarska", status: "booked",
         from: "2027-07-18", to: "2027-07-29",
         booking: { provider: "Booking", cancelUntil: "2027-06-01" },
-        payments: [{ amount: 400, note: "Anzahlung" }],
+        payments: [{ amount: 400, note: t("seed.deposit") }],
         options: [{
-          id: "v", label: "Apartment, 2 Schlafzimmer",
+          id: "v", label: t("seed.apt"),
           price: { mode: "unit", currency: "EUR", unit: 148, basis: "night", capacity: 5 },
-          stay: { stars: 4, rating: 89, facts: ["2 Schlafzimmer", "350 m zum Strand"] }
+          stay: { stars: 4, rating: 89, facts: [t("seed.bedrooms"), t("seed.beach")] }
         }]
       },
       {
-        id: "auto", cat: "transport", name: "Mietwagen", icon: "car", status: "chosen",
-        note: "Kompaktklasse · 11 Tage · ab Flughafen Split",
-        options: [{ id: "m", label: "Kompaktklasse", price: { mode: "unit", currency: "EUR", unit: 35, qty: 11 } }]
+        id: "auto", cat: "transport", name: t("seed.car"), icon: "car", status: "chosen",
+        note: t("seed.carNote"),
+        options: [{ id: "m", label: t("seed.compact"), price: { mode: "unit", currency: "EUR", unit: 35, qty: 11 } }]
       },
       {
-        id: "faehre", cat: "transport", name: "Fähre nach Brač", icon: "ship", status: "idea",
-        note: "Makarska → Sumartin, hin und zurück, mit Auto",
+        id: "faehre", cat: "transport", name: t("seed.ferry"), icon: "ship", status: "idea",
+        note: t("seed.ferryNote"),
         options: [{ id: "f", label: "Jadrolinija", price: { mode: "unit", currency: "EUR", unit: 62 } }]
       },
       {
-        id: "krka", cat: "attractions", name: "Nationalpark Krka", icon: "ticket", status: "chosen",
-        options: [{ id: "k", label: "Tagesticket", price: { mode: "person", currency: "EUR", adult: 40, child: 15 } }]
+        id: "krka", cat: "attractions", name: t("seed.krka"), icon: "ticket", status: "chosen",
+        options: [{ id: "k", label: t("seed.dayTicket"), price: { mode: "person", currency: "EUR", adult: 40, child: 15 } }]
       },
       {
-        id: "boot", cat: "attractions", name: "Bootstour Blaue Grotte", icon: "ship", status: "idea",
-        options: [{ id: "b", label: "Ganztagestour", price: { mode: "person", currency: "EUR", adult: 75, child: 45 } }]
+        id: "boot", cat: "attractions", name: t("seed.boat"), icon: "ship", status: "idea",
+        options: [{ id: "b", label: t("seed.fullDay"), price: { mode: "person", currency: "EUR", adult: 75, child: 45 } }]
       },
       {
-        id: "essen", cat: "misc", name: "Verpflegung", icon: "food", status: "chosen",
-        note: "Gemischt · 28 € pro Person und Tag",
-        options: [{ id: "e", label: "Gemischt", estimate: true, price: { mode: "person", currency: "EUR", adult: 28, qty: 11 } }]
+        id: "essen", cat: "misc", name: t("seed.food"), icon: "food", status: "chosen",
+        note: t("seed.foodNote"),
+        options: [{ id: "e", label: t("seed.mixed"), estimate: true, price: { mode: "person", currency: "EUR", adult: 28, qty: 11 } }]
       },
       {
-        id: "vers", cat: "misc", name: "Reiseversicherung", icon: "shield", status: "paid",
-        note: "Familie · Rücktritt und Krankheit",
-        options: [{ id: "r", label: "Familientarif", price: { mode: "unit", currency: "EUR", unit: 89 } }]
+        id: "vers", cat: "misc", name: t("seed.insurance"), icon: "shield", status: "paid",
+        note: t("seed.insNote"),
+        options: [{ id: "r", label: t("seed.family"), price: { mode: "unit", currency: "EUR", unit: 89 } }]
       }
     ]
   };

@@ -3,9 +3,10 @@
   /* Einfacher Modus: ein Betrag für den ganzen Bereich, gleich auf alle Aktiven verteilt */
   import type { CatKey } from "../model";
   import type { Key } from "../i18n/index.svelte";
-  import { access, app, calc, discardDetails, setDetailed, setSimple } from "../store.svelte";
+  import { access, addLine, app, calc, discardDetails, setDetailed, setSimple } from "../store.svelte";
+  import SimpleLineRow from "./SimpleLineRow.svelte";
   import { calcItem } from "../calc";
-  import { eur, parseNum } from "../calc";
+  import { eur, eurPP, parseNum } from "../calc";
   import { reveal } from "./reveal";
 
   let { cat, label }: { cat: CatKey; label: string } = $props();
@@ -14,6 +15,9 @@
   const n = $derived(calc.T.active);
   const hiddenItems = $derived(app.trip.items.filter(i => i.cat === cat));
   const hidden = $derived(hiddenItems.length);
+  // einzelne Einträge (z. B. „Stadionführung 50 € · Daniel, Henning“), zusätzlich zum Betrag für alle
+  const lines = $derived((app.trip.lines || []).filter(l => l.cat === cat));
+  const sum = $derived(calc.T.byCat[cat]);
   // Summe der gespeicherten Posten, als wären sie aktiv
   const hiddenSum = $derived(hiddenItems.reduce((a, it) => a + (it.status === "dropped" ? 0 : calcItem(it, app.trip).net), 0));
   let text = $state("");
@@ -30,18 +34,26 @@
 
 <article class="card simple-card" use:reveal>
   <label class="simple-l">
-    <span class="simple-t">{t("simple.total", { label })}</span>
+    <span class="simple-t">{lines.length ? t("simple.rest") : t("simple.total", { label })}</span>
     <span class="simple-in">
       <input inputmode="decimal" placeholder="0" value={text} oninput={input} onfocus={() => (focused = true)} onblur={() => (focused = false)} disabled={access.readonly} aria-label={t("simple.totalEur", { label })} />
       <span class="simple-eur">€</span>
     </span>
-    <span class="muted">{HINT(cat)}</span>
+    <span class="muted">{lines.length ? t("simple.restHint") : HINT(cat)}</span>
   </label>
+  {#if lines.length || !access.readonly}
+    <div class="sls">
+      {#each lines as l (l.id)}<SimpleLineRow line={l} ph={t(`simple.linePh.${cat}` as Key)} />{/each}
+      {#if !access.readonly}<button class="add sl-add" onclick={() => addLine(cat)}>+ {t("simple.addLine")}</button>{/if}
+    </div>
+  {/if}
   <div class="simple-out">
     {#if !n}
       <span class="warnline">{t("simple.nobody")}</span>
+    {:else if lines.length}
+      <b class="num">{eur(sum)}</b><span> {t("simple.together")}</span>
     {:else if v}
-      <b class="num">{eur(v / n)}</b><span> {t("simple.perPerson")} · {tn("n.persons", n)}</span>
+      <b class="num">{eurPP(v / n)}</b><span> {t("simple.perPerson")} · {tn("n.persons", n)}</span>
     {:else}
       <span class="muted">{t("simple.split", { p: tn("n.persons", n) })}</span>
     {/if}

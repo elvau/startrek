@@ -14,3 +14,8 @@ enabled = true
 ALLOWED_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https://www.splitandfly.com,https://startrek-1b6a7.web.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
 # Partnerkennung bei Travelpayouts (öffentlich, steht ohnehin in jedem Aviasales-Link)
 TRAVELPAYOUTS_MARKER = "783080"
+
+# Bildspeicher für Fehlermeldungen, wie in ../wrangler.toml
+[[r2_buckets]]
+binding = "BUG_BUCKET"
+bucket_name = "splitandfly-bugs"
