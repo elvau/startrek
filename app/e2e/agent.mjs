@@ -8,6 +8,7 @@ import { spawn } from "node:child_process";
 const URL = "http://127.0.0.1:4178/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+const until = async (fn, what, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
 const leg = (from, to, dep, arr) => ({ from, to, fromCity: from, toCity: to, dep, arr, minutes: 150, stops: 0, route: [from, to], carriers: ["Sun Air"], flights: ["SA1"] });
 const RESULT = {
   remaining: 4,
@@ -37,43 +38,67 @@ try {
     await new Promise(res => setTimeout(res, 300));
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(RESULT) });
   });
+  // Bildschirmfotos zur Sichtprüfung: SHOTS=<Ordner> node e2e/agent.mjs
+  const shot = async (name, w = 1280, h = 900) => {
+    if (!process.env.SHOTS) return;
+    await p.setViewportSize({ width: w, height: h }); await p.waitForTimeout(400);
+    await p.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+    await p.setViewportSize({ width: 1280, height: 900 });
+  };
   await p.goto(URL);
-  await p.locator(".modal .btn", { hasText: "Los geht's" }).click();
 
-  // ohne Anmeldung: nur der Hinweis mit Anmelde-Knopf
-  await p.locator(".hero .ai-open").click();
-  const m = p.locator(".modal");
-  await m.locator(".ai-login").waitFor();
-  if (await m.locator(".ai-form").count()) fail("Formular ohne Anmeldung sichtbar");
-  await m.locator(".ai-login .btn").click();
+  // Startseite: KI-Knopf unten rechts; ohne Anmeldung nur der Hinweis mit Anmelde-Knopf
+  await p.locator(".start .home-title").waitFor();
+  await shot("home");
+  await p.locator(".ai-fab").click();
+  const c = p.locator(".ai-chat");
+  await c.locator(".ai-login").waitFor();
+  if (await c.locator(".ai-bar").count()) fail("Eingabe ohne Anmeldung sichtbar");
+  await c.locator(".ai-login .btn").click();
   await p.locator(".login .test input").fill("Kira");
   await p.locator(".login .test button").click();
-  await p.locator(".hero .acct-btn").waitFor({ timeout: 15000 });
-  log("Ohne Anmeldung nur Hinweis, Anmeldung über den Planer");
+  await p.locator(".start .acct-btn").waitFor({ timeout: 15000 });
+  log("Chat unten rechts: ohne Anmeldung nur Hinweis, Anmeldung daraus");
 
-  // Wunsch schicken: Beispiel übernehmen, Anfrage mit Anmelde-Nachweis und Reisenden
-  await p.locator(".hero .ai-open").click();
-  await m.locator(".ai-ex .chip").first().click();
-  if (!(await m.locator(".ai-in").inputValue()).includes("Wochenende")) fail("Beispiel nicht übernommen");
-  await m.locator(".ai-form .btn.primary").click();
-  await m.locator(".ai-card").first().waitFor();
+  // Beispiel antippen schickt den Wunsch; Anfrage mit Anmelde-Nachweis und Reisenden
+  await c.locator(".ai-ex .chip").first().click();
+  await c.locator(".ai-card").first().waitFor();
   const a = asked[0];
   if (!a.auth.startsWith("Bearer ") || a.auth.length < 30) fail("kein Anmelde-Nachweis mitgeschickt");
-  if (a.body.lang !== "de" || a.body.adults !== 1 || !a.body.origins.length || !/^\d{4}-\d{2}-\d{2}$/.test(a.body.today)) fail("Anfrage falsch: " + JSON.stringify(a.body));
-  if ((await m.locator(".ai-card").count()) !== 2) fail("nicht zwei Vorschläge");
-  if (!(await m.locator("p", { hasText: "noch 4 Anfragen heute" }).count())) fail("verbleibende Anfragen fehlen");
-  log("Anfrage mit Anmeldung und Reisenden, zwei Vorschläge, 4 Anfragen übrig");
+  if (!a.body.prompt.includes("Wochenende") || a.body.lang !== "de" || a.body.adults !== 1 || !a.body.origins.length || !/^\d{4}-\d{2}-\d{2}$/.test(a.body.today)) fail("Anfrage falsch: " + JSON.stringify(a.body));
+  if ((await c.locator(".ai-card").count()) !== 2) fail("nicht zwei Vorschläge");
+  if (!(await c.locator(".ai-foot", { hasText: "noch 4 Anfragen heute" }).count())) fail("verbleibende Anfragen fehlen");
+  log("Wunsch per Beispiel, Anfrage mit Anmeldung und Reisenden, zwei Vorschläge, 4 Anfragen übrig");
 
-  // übernehmen: Ziel, Daten, Name, Flug und Unterkunft
-  await m.locator(".ai-card", { hasText: "Sonne in Palma" }).locator(".btn", { hasText: "Übernehmen" }).click();
-  await m.locator(".ev-done").waitFor();
-  await m.locator(".x").first().click();
+  // nachschärfen: der frühere Wunsch geht als Zusammenhang mit
+  await c.locator(".ai-bar textarea").fill("lieber günstiger bitte");
+  await c.locator(".ai-bar textarea").press("Enter");
+  await until(() => asked.length === 2 && c.locator(".ai-msg.me").count().then(n => n === 2), "zweite Anfrage");
+  await until(() => c.locator(".ai-card").count().then(n => n === 4), "zweite Antwort");
+  const p2 = asked[1].body.prompt;
+  if (!p2.includes("Bisherige Wünsche") || !p2.includes("Wochenende") || !p2.includes("lieber günstiger")) fail("Zusammenhang fehlt: " + p2);
+  log("Nachschärfen im Chat mit Zusammenhang");
+  await shot("chat");
+  await shot("chat-m", 390, 844);
+
+  // von der Startseite übernehmen: neue Reise mit Ziel, Daten, Name, Flug und Unterkunft; Chat schließt
+  await c.locator(".ai-card", { hasText: "Sonne in Palma" }).last().locator(".btn", { hasText: "Übernehmen" }).click();
   await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
+  await shot("trip");
+  await shot("trip-m", 390, 844);
+  if (await p.locator(".ai-chat").count()) fail("Chat nicht geschlossen");
   const meta = await p.locator(".hero .meta").innerText();
   if (!meta.includes("Palma") || !meta.includes("3 Nächte")) fail("Kopf: " + meta);
   if (!(await p.locator("#flights .card", { hasText: "Sun Air" }).count())) fail("Flug nicht übernommen");
   if (!(await p.locator("#stay .card", { hasText: "Casa Palma" }).count())) fail("Unterkunft nicht übernommen");
-  log("Vorschlag übernommen: Name, Ziel, Daten, Flug und Unterkunft");
+  log("Vorschlag von der Startseite übernommen: neue Reise mit Flug und Unterkunft");
+
+  // zurück zur Startseite: die Reise steht unter „Deine Reisen“
+  await p.locator(".hero .hero-home").click();
+  await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).waitFor();
+  await shot("home-trips");
+  await shot("home-m", 390, 844);
+  log("Übersicht zeigt die neue Reise");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");

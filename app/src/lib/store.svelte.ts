@@ -30,20 +30,16 @@ function normalize(t: Trip): Trip {
   return t;
 }
 
-/** Vorläufiger Name aus der Art der Reise und dem heutigen Tag, z. B. „Solo Pinguin (28.09.)“ */
-export const startName = (base: string) => `${base} (${dateDE(new Date().toISOString().slice(0, 10))})`;
+type NewOpts = { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[] };
 
-type NewOpts = { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[]; base?: string };
-
-/** Leere Reise; der vorläufige Name weicht, sobald Ort oder Zeitraum da sind oder man selbst einen vergibt */
+/** Leere Reise; ohne Namen heißt sie „Neue Reise“, bis Ort oder Zeitraum da sind oder man selbst einen vergibt */
 function emptyTrip(o: NewOpts = {}): Trip {
   const own = o.name?.trim();
   const auto = autoName(o);
   // Standard: eine Person als Tier
   const travelers = o.travelers ?? [soloTraveler()];
-  const base = o.base || (travelers.length === 1 && travelers[0].placeholder ? tr("who.nameSolo", { a: travelers[0].household }) : tr("trip"));
   return {
-    id: uid(), name: own || auto || startName(base), autoName: !own,
+    id: uid(), name: own || auto || "", autoName: !own,
     place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
     travelers, items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
   };
@@ -57,7 +53,6 @@ function pristine(t: Trip): boolean {
     && (!t.place.trim() || t.place === "Neue Reise") && (!!t.autoName || t.name === "Neue Reise");
 }
 
-let firstRun = false;
 /** schon ins Konto übernommen, die Liste im Konto kennt sie aber vielleicht noch nicht */
 const uploaded = new Set<string>();
 
@@ -66,11 +61,10 @@ function boot(): { index: TripMeta[]; trip: Trip } {
   let index: TripMeta[] = [];
   try { index = JSON.parse(get(K_INDEX) || "[]"); } catch {}
   if (!index.length) {
-    // erster Start: leere Reise und Willkommen (oder Stand aus der ersten Vorschau)
+    // erster Start: leere Reise im Hintergrund (oder Stand aus der ersten Vorschau)
     let first: Trip | null = null;
     try { const old = get(K_OLD); if (old) first = JSON.parse(old); } catch {}
-    // über einen Einladungslink gekommen: die Reise kommt gleich, kein Willkommen
-    if (!first) { first = emptyTrip(); firstRun = !location.search.includes("join="); }
+    if (!first) first = emptyTrip();
     first = normalize(first);
     put(K_TRIP(first.id), JSON.stringify(first));
     index = [meta(first)];
@@ -101,8 +95,8 @@ export const app = $state({
   /** Karte im Fokusmodus */
   editing: null as string | null,
   saved: true,
-  /** erster Besuch: Auswahl zwischen eigener Reise und Beispiel */
-  welcome: firstRun
+  /** Startseite: bei jedem Besuch, außer man kommt über einen Einladungslink */
+  home: typeof location === "undefined" || !location.search.includes("join=")
 });
 
 const t = $derived.by(() => totals(app.trip));
@@ -209,19 +203,19 @@ $effect.root(() => {
     if (checked || !first || !cloud.user) return;
     checked = true;
     if (!isCloud(app.trip.id) && pristine(app.trip) && !uploaded.has(app.trip.id)) {
-      app.welcome = false;
       switchTrip(first.id);
     }
   });
   // nach dem Beitreten die Reise öffnen
-  $effect(() => { const j = cloud.joined; if (j && isCloud(j)) { cloud.joined = null; switchTrip(j); } });
+  $effect(() => { const j = cloud.joined; if (j && isCloud(j)) { cloud.joined = null; switchTrip(j); app.home = false; } });
 });
 
 /** Alle Reisen: im Konto und nur auf diesem Gerät */
 export function allTrips(): TripEntry[] {
-  // Ziel und Zeitraum stehen nur in der Reise selbst; aus der Kopie auf dem Gerät ergänzen, falls vorhanden
+  // Ziel und Zeitraum stehen nur in der Reise selbst; aus der Kopie auf dem Gerät ergänzen, falls vorhanden.
+  // Der Name der offenen Reise ist frischer als der im Konto (dort erst nach dem verzögerten Speichern)
   const local = (id: string) => { const t = id === app.trip.id ? app.trip : readTrip(id); return t ? meta(t) : null; };
-  const c: TripEntry[] = cloud.trips.map(t => ({ place: "", ...local(t.id), id: t.id, name: t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1 }));
+  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1 }; });
   const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, ...(m.id === app.trip.id ? meta(app.trip) : {}), cloud: false }));
   return [...c, ...l];
 }
@@ -371,10 +365,35 @@ export function removeItem(id: string) {
   if (app.editing === id) app.editing = null;
 }
 
-/** Erster Start: die gewählten Reisenden in die Startreise, mit passendem vorläufigen Namen */
-export function startWith(travelers: Traveler[], base: string) {
-  app.trip.travelers = travelers;
-  if (app.trip.autoName && !autoName(app.trip)) app.trip.name = startName(base);
+/* ---------- Startseite ---------- */
+
+const isPristine = (id: string) => { const t = id === app.trip.id ? app.trip : readTrip(id); return !t || pristine(t); };
+
+/** Reisen für die Startseite: zuletzt geöffnete zuerst, leere Entwürfe nicht */
+export function homeTrips(): TripEntry[] {
+  const cur = get(K_CUR);
+  return allTrips().filter(m => m.cloud || !isPristine(m.id)).sort((a, b) => Number(b.id === cur) - Number(a.id === cur));
+}
+
+/** Reise öffnen und Startseite verlassen */
+export function openTrip(id: string) {
+  switchTrip(id);
+  app.home = false;
+  scrollTo({ top: 0 });
+}
+
+/** neue Reise mit diesen Reisenden (Standard: eine Person) und direkt hinein */
+export function startTrip(travelers?: Traveler[]) {
+  newTrip(travelers ? { travelers } : {});
+  app.home = false;
+  scrollTo({ top: 0 });
+}
+
+export function goHome() {
+  flush();
+  app.editing = null;
+  app.home = true;
+  scrollTo({ top: 0 });
 }
 
 /** Reise selbst benennen; leer: Name folgt wieder Ort und Zeitraum */
@@ -391,6 +410,7 @@ export function openSample() {
   const s = sampleTrip();
   open({ ...s, id: uid(), name: tr("store.sampleName", { name: s.name }) });
   dropIfPristine(prev);
+  app.home = false;
   if (cloud.user) void moveToCloud(app.trip.id);
 }
 

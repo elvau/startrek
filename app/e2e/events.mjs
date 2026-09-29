@@ -71,7 +71,7 @@ try {
   await p.goto(URL);
 
   // Start mit „Zu einem Event“: legt die Reise an und öffnet den Planer
-  await p.locator(".modal .ev-start").click();
+  await p.locator(".start .home-event").click();
   const m = p.locator(".modal");
   await m.locator(".ev-form").waitFor();
   // Event suchen und auswählen: Name, Stadt (aus der Anschrift), Stadion, Datum, Uhrzeit werden ausgefüllt

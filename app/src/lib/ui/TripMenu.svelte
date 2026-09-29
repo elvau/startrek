@@ -37,7 +37,7 @@
 
 <div class="tmenu" class:compact>
   <button class="tm-btn" aria-haspopup="dialog" onclick={() => (open = true)} title={t("tm.manage")}>
-    <span class="tm-ico" aria-hidden="true">🧳</span>{#if cur}<span aria-hidden="true">☁</span>{/if}<span class="tm-name">{app.trip.name || t("trip")}</span>
+    <span class="tm-ico" aria-hidden="true">🧳</span>{#if cur}<span aria-hidden="true">☁</span>{/if}<span class="tm-name">{app.trip.name || app.trip.place || t("trip.untitled")}</span>
   </button>
   <button class="tm-plus" onclick={() => (creating = true)} aria-label={t("newtrip.title")} title={t("newtrip.title")}>+</button>
 </div>
@@ -47,7 +47,7 @@
     <div class="tm-list">
       {#each trips as m (m.id)}
         <button class="tm-trip" class:on={m.id === app.trip.id} aria-current={m.id === app.trip.id} onclick={() => act(() => switchTrip(m.id))}>
-          <b>{m.cloud ? "☁ " : ""}{m.name || t("trav.noName")}{#if m.id === app.trip.id} <span class="tm-cur">{t("tm.open")}</span>{/if}</b>
+          <b>{m.cloud ? "☁ " : ""}{m.name || m.place || t("trip.untitled")}{#if m.id === app.trip.id} <span class="tm-cur">{t("tm.open")}</span>{/if}</b>
           <small>{sub(m)}</small>
         </button>
       {/each}

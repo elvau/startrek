@@ -53,7 +53,8 @@ try {
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   await p.goto(URL);
-  await p.locator(".modal .btn", { hasText: "Los geht's" }).click();
+  await p.locator(".start .home-new").click();
+  await p.locator(".modal .newtrip .btn.primary").click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   const m = p.locator(".modal");
@@ -167,6 +168,7 @@ try {
   };
   await p.evaluate(t => { localStorage.removeItem("rk-flight-search"); localStorage.setItem("rk2-t:k2", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k2", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k2"); }, TWO);
   await p.reload();
+  await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   if (!(await m.locator(".fs-who .chip.on", { hasText: "Klein (2)" }).count())) fail("Vorschlag erste Familie ohne Flug fehlt");
@@ -231,6 +233,7 @@ try {
   // wie im Artefakt: Hase fliegt mit Klein mit („Wie Flug Klein“), danach Vergleich mit einem eigenen Flug
   await p.evaluate(t => { localStorage.setItem("rk-flight-search", JSON.stringify({ mode: "fixed" })); localStorage.setItem("rk2-t:k2", JSON.stringify(t)); }, TWO);
   await p.reload();
+  await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");

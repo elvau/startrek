@@ -22,13 +22,12 @@
   import { reveal } from "./lib/ui/reveal";
   import PresencePlan from "./lib/ui/PresencePlan.svelte";
   import Split from "./lib/ui/Split.svelte";
-  import Welcome from "./lib/ui/Welcome.svelte";
+  import Home from "./lib/ui/Home.svelte";
+  import AgentChat from "./lib/ui/AgentChat.svelte";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
   import StaySearch from "./lib/ui/StaySearch.svelte";
   import EventPlanner from "./lib/ui/EventPlanner.svelte";
   import { eventPlanner } from "./lib/event/open.svelte";
-  import AgentPlanner from "./lib/ui/AgentPlanner.svelte";
-  import { agentPlanner } from "./lib/agent/open.svelte";
   import FoodCard from "./lib/ui/FoodCard.svelte";
   import { getYourGuideLink, tiqetsLink, viatorLink } from "./lib/links";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
@@ -58,6 +57,9 @@
 
 <Sprite />
 <Ambience />
+{#if app.home}
+<Home />
+{:else}
 <TopNav />
 <Hero />
 
@@ -122,9 +124,9 @@
     </div>
   </div>
 {/if}
+{/if}
+{#if cloud.configured}<AgentChat />{/if}
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
-{#if app.welcome && !cloud.user}<Welcome />{/if}
 {#if flightSearch.open}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/if}
-{#if agentPlanner.open}<AgentPlanner onclose={() => (agentPlanner.open = false)} />{/if}
 {#if eventPlanner.open}<EventPlanner onclose={() => (eventPlanner.open = false)} />{/if}
 {#if staySearch.open}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/if}

@@ -31,9 +31,9 @@ const menu = async p => { await p.evaluate(() => scrollTo(0, 0)); await p.locato
 try {
   const a = await page("Anna");
   await a.goto(URL);
-  await a.locator(".modal h3", { hasText: "Willkommen" }).waitFor();
+  await a.locator(".start .home-new").click();
   if (!(await a.locator(".modal .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
-  await a.locator(".modal .btn", { hasText: "Los geht's" }).click();
+  await a.locator(".modal .newtrip .btn.primary").click();
   const solo = await a.locator(".person:not(.add) b").allTextContents();
   if (solo.length !== 1 || solo[0].includes(" ")) fail("Start nicht mit einem Tier: " + solo);
   log("Erster Start: 1-Personen-Reise als", solo[0]);
@@ -73,7 +73,7 @@ try {
   await a.locator(".newtrip .who-b", { hasText: "Gespeichert" }).click();
   await a.locator(".newtrip .grp-chip", { hasText: "Kegeln" }).click();
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
-  await until(async () => /^Kegeln \(\d\d\.\d\d\.\)/.test(await a.locator(".hero h1").textContent()), "neue Reise „Kegeln (TT.MM.)“ offen");
+  await until(async () => (await a.locator(".hero h1").textContent()).startsWith("Neue Reise"), "neue Reise offen");
   // Ort und Zeitraum oben in der Reise: der Name bildet sich daraus
   await a.locator(".hero-edit").click();
   await a.locator(".trip-ed label", { hasText: "Ort" }).locator("input").fill("Mosel");
@@ -190,11 +190,11 @@ try {
   await new Promise(r => setTimeout(r, 2000));
   const b = await page("Anna2");
   await b.goto(URL);
-  await b.locator(".modal .welcome .linkbtn", { hasText: "schon ein Konto" }).click();
+  await b.locator(".start .linkbtn", { hasText: "schon ein Konto" }).click();
   await b.locator(".login .test input").fill("Anna");
   await b.locator(".login .test button").click();
-  await b.locator(".hero .acct-btn").waitFor();
-  await b.locator(".hero .grp-btn").click();
+  await b.locator(".start .acct-btn").waitFor();
+  await b.locator(".start .grp-btn").click();
   await until(async () => (await b.locator(".modal .grp-h").count()) === 2, "Gruppen auf zweitem Gerät");
   log("Gruppen sind nach der Anmeldung auf dem zweiten Gerät da");
 
