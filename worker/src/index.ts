@@ -13,6 +13,7 @@ import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
+import { agentBudget } from "./budget";
 
 interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv {
   /** erlaubte Herkünfte, kommagetrennt */
@@ -130,10 +131,13 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   const limit = Number(env.AGENT_DAILY) || 5;
   const quota = await countToday(env, uid);
   if (quota.used >= limit) return json({ error: `Tageslimit erreicht (${limit} Anfragen). Morgen geht es weiter.`, remaining: 0 }, 429, h);
-  await quota.bump();
 
   const model = env.GEMINI_MODEL || DEFAULT_MODEL;
+  // Cloudflare (kostenloser Tarif): höchstens 50 ausgehende Anfragen pro Aufruf. Eine Flugsuche braucht bis zu 9
+  // (Kiwi 3, Travelpayouts je Flughafenpaar 1), eine Unterkunftssuche 3; für Gemini bleiben immer RESERVE frei.
+  const budget = agentBudget();
   const gemini = async (payload: object) => {
+    budget.used++;
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY! }, body: JSON.stringify(payload)
     });
@@ -143,11 +147,15 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
     return data;
   };
   try {
-    const result = await runAgent(r, { gemini, flights: q => searchAll(q, env), stays: q => searchStays(q, env) });
+    const result = await runAgent(r, { gemini, flights: q => searchAll(q, env, budget.fetch), stays: q => searchStays(q, env, budget.fetch), canSearch: budget.canSearch });
+    // eine Rückfrage zählt nicht gegen das Tageslimit, erst die Suche danach
+    if (result.question) return json({ ...result, remaining: Math.max(0, limit - quota.used) }, 200, h);
+    await quota.bump();
     return json({ ...result, remaining: Math.max(0, limit - quota.used - 1) }, 200, h);
   } catch (e) {
     // in den Workers-Logs sichtbar (Observability), die App zeigt nur eine übersetzte Meldung
     console.log(JSON.stringify({ at: "agent", model, error: (e as Error).message }));
+    await quota.bump();
     return json({ error: (e as Error).message, remaining: Math.max(0, limit - quota.used - 1) }, 502, h);
   }
 }

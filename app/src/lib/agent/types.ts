@@ -16,7 +16,16 @@ export interface AgentRequest {
   infants: number;
   /** schon Bekanntes aus der Reise */
   trip?: { place?: string; from?: string; to?: string };
+  /** Wohnort bekannt (sonst sind origins nur die Standard-Flughäfen und die KI fragt nach dem Abflugort) */
+  originsKnown?: boolean;
+  /** Reisende eingetragen (sonst nimmt die KI Anzahl und Alter aus dem Wunsch oder fragt nach) */
+  travelersKnown?: boolean;
+  /** die KI hat in diesem Gespräch schon nachgefragt: jetzt nicht noch einmal, sondern suchen */
+  asked?: boolean;
 }
+
+/** Reisende, mit denen gesucht wurde (wenn die KI sie aus dem Wunsch oder der Antwort genommen hat) */
+export interface AgentParty { adults: number; childAges: number[]; infants: number }
 
 /** ein fertiger Vorschlag; Flug und Unterkunft stammen immer aus echten Suchergebnissen */
 export interface AgentTrip {
@@ -32,10 +41,15 @@ export interface AgentTrip {
   stayQuery?: StayQuery;
   /** Flug + Unterkunft für alle, ohne Anreise zum Flughafen */
   total: number;
+  /** mit diesen Reisenden gesucht (nur, wenn die App keine kannte) */
+  party?: AgentParty;
 }
 
 export interface AgentResult {
   trips: AgentTrip[];
+  /** Rückfrage der KI statt Vorschlägen, mit Antworten zum Antippen */
+  question?: string;
+  options?: string[];
   /** verbleibende Anfragen heute */
   remaining?: number;
 }
@@ -60,6 +74,7 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   const trip = { place: s(t.place, 80), from: s(t.from, 10), to: s(t.to, 10) };
   return {
     prompt, lang, today, origins, adults: adults as number, childAges: childAges as number[], infants: infants as number,
-    ...(trip.place || trip.from || trip.to ? { trip } : {})
+    ...(trip.place || trip.from || trip.to ? { trip } : {}),
+    originsKnown: o.originsKnown !== false, travelersKnown: o.travelersKnown !== false, asked: o.asked === true
   };
 }

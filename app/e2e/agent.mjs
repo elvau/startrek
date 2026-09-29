@@ -34,9 +34,14 @@ try {
   const asked = [];
   await p.route("https://flights.test/agent", async r => {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" } });
-    asked.push({ auth: r.request().headers()["authorization"] || "", body: JSON.parse(r.request().postData()) });
+    const body = JSON.parse(r.request().postData());
+    asked.push({ auth: r.request().headers()["authorization"] || "", body });
     await new Promise(res => setTimeout(res, 300));
-    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(RESULT) });
+    // Strandurlaub mit Kindern: erst eine Rückfrage, nach der Antwort Vorschläge für die Familie
+    const beach = body.prompt.includes("Strandurlaub");
+    const out = beach && !body.asked ? { trips: [], question: "Von wo fliegt ihr los und wie alt sind die Kinder?", options: ["Köln, Kinder 5 und 8", "Düsseldorf, Kinder 3 und 10"], remaining: 3 }
+      : beach ? { ...RESULT, remaining: 2, trips: RESULT.trips.map(x => ({ ...x, party: { adults: 2, childAges: [5, 8], infants: 0 } })) } : RESULT;
+    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(out) });
   });
   // Bildschirmfotos zur Sichtprüfung: SHOTS=<Ordner> node e2e/agent.mjs
   const shot = async (name, w = 1280, h = 900) => {
@@ -99,6 +104,29 @@ try {
   await shot("home-trips");
   await shot("home-m", 390, 844);
   log("Übersicht zeigt die neue Reise");
+
+  // Rückfrage: Strandurlaub mit Kindern ohne Abflugort und Alter → KI fragt nach, Antwort antippen, dann Vorschläge
+  await p.locator(".ai-fab").click();
+  const c2 = p.locator(".ai-chat");
+  await c2.locator(".ai-bar textarea").fill("Eine Woche Strandurlaub mit Kindern in den Sommerferien");
+  await c2.locator(".ai-bar textarea").press("Enter");
+  await c2.locator(".ai-msg.ai-q", { hasText: "Von wo fliegt ihr los" }).waitFor();
+  await shot("ai-q");
+  const q1 = asked.at(-1).body;
+  if (q1.asked || q1.travelersKnown !== false || q1.originsKnown !== false) fail("erste Anfrage: " + JSON.stringify(q1));
+  const cardsBefore = await c2.locator(".ai-card").count();
+  await c2.locator(".ai-opts .chip", { hasText: "Köln, Kinder 5 und 8" }).click();
+  await until(() => c2.locator(".ai-card").count().then(n => n === cardsBefore + 2), "Vorschläge nach der Antwort");
+  const q2 = asked.at(-1).body;
+  if (!q2.asked || !q2.prompt.includes("Rückfrage: Von wo fliegt ihr los") || !q2.prompt.includes("Köln, Kinder 5 und 8")) fail("Antwort ohne Zusammenhang: " + JSON.stringify(q2));
+  if (await c2.locator(".ai-opts").count()) fail("Antworten nach dem Antippen noch sichtbar");
+  if (!(await c2.locator(".ai-card").last().innerText()).includes("pro Person")) fail("pro Person für die Familie fehlt");
+  log("Rückfrage mit Antworten zum Antippen, Antwort mit Zusammenhang, danach keine zweite Rückfrage");
+  await c2.locator(".ai-card", { hasText: "Sonne in Palma" }).last().locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
+  const who = await p.locator(".hero .meta").innerText();
+  if (!who.includes("4 Personen")) fail("Reisende aus der Antwort nicht angelegt: " + who);
+  log("Übernommen: neue Reise mit 2 Erwachsenen und 2 Kindern aus der Antwort");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
