@@ -22,7 +22,7 @@ export interface AgentDeps {
 }
 
 /** Obergrenzen je Anfrage (Kosten, Wartezeit, Cloudflare-Limit für ausgehende Anfragen) */
-export const LIMITS = { rounds: 8, flights: 4, stays: 3, trips: 3, shown: 6 };
+export const LIMITS = { rounds: 8, flights: 4, stays: 4, trips: 3, shown: 6, extras: 3 };
 
 const S = (description: string) => ({ type: "STRING", description });
 const codes = (description: string) => ({ type: "ARRAY", items: { type: "STRING" }, description });
@@ -89,7 +89,7 @@ export function toolsFor(r: Pick<AgentRequest, "asked" | "travelersKnown">) {
 const PROPOSE =
     {
       name: "propose_trips",
-      description: "Final answer: 2-3 distinct trip proposals. Reference only offer ids returned by the searches.",
+      description: "Final answer: 2-3 distinct, complete trip proposals (flight AND accommodation each, plus estimated local costs). Reference only offer ids returned by the searches.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -104,10 +104,20 @@ const PROPOSE =
                 country: S("Country"),
                 from: S("Arrival date YYYY-MM-DD"),
                 to: S("Departure date YYYY-MM-DD"),
-                flightId: S("id of the chosen flight offer (optional)"),
-                stayId: S("id of the chosen accommodation offer (optional)")
+                flightId: S("id of the chosen flight offer"),
+                stayId: S("id of the chosen accommodation offer"),
+                board: { type: "STRING", enum: ["self", "breakfast", "half", "full", "all"], description: "Meals included in the accommodation (from its facts; 'self' if unknown or self-catering)" },
+                transport: {
+                  type: "OBJECT", description: "Estimated local transport for the whole group and stay (airport transfers, rental car or public transport)",
+                  properties: { label: S("e.g. 'Rental car 7 days' or 'Airport transfer'"), eur: { type: "NUMBER", description: "Estimated total in EUR for all travelers" } },
+                  required: ["label", "eur"]
+                },
+                extras: {
+                  type: "ARRAY", description: "Up to 3 activities or events that fit the wish, with estimated total price for all travelers",
+                  items: { type: "OBJECT", properties: { name: S("Activity or event"), eur: { type: "NUMBER", description: "Estimated total in EUR for all travelers" } }, required: ["name", "eur"] }
+                }
               },
-              required: ["title", "summary", "place", "from", "to"]
+              required: ["title", "summary", "place", "from", "to", "flightId", "stayId"]
             }
           }
         },
@@ -117,6 +127,8 @@ const PROPOSE =
 
 /** alle Werkzeuge (Rückfrage erlaubt, Reisende bekannt) */
 export const TOOLS = toolsFor({ asked: false, travelersKnown: true });
+
+const BOARDS = ["self", "breakfast", "half", "full", "all"];
 
 const LANGS: Record<string, string> = { de: "German", en: "English", es: "Spanish", fr: "French", pl: "Polish", ru: "Russian", ar: "Arabic" };
 
@@ -135,8 +147,9 @@ export function systemPrompt(r: AgentRequest): string {
       : r.origins.length ? `Home airports (nearest first): ${r.origins.join(", ")}.` : "Home airports are unknown; pick plausible airports from the request.",
     r.asked
       ? "You already asked a clarifying question; the user's answer is in the text. Do not ask again: search now, assuming sensible defaults for anything still open."
-      : `Before searching, check whether essential details are missing: the departure city (if the home town is unknown and the wish names none), the number and ages of children (if the wish mentions children but the ages are unknown), or any rough travel time. If so, call ask_user once, in ${lang}, with one short question covering all missing points and 2-4 tappable answers. Do not ask about anything you can reasonably assume (budget, exact dates, hotel type). If nothing essential is missing, search right away.`,
+      : `Before searching, check whether essential details are missing: the departure city (if the home town is unknown and the wish names none), the number and ages of children (if the wish mentions children but the ages are unknown), the travel period (month, holidays or dates) and the trip length or maximum number of nights. If any of these is missing, call ask_user once, in ${lang}, with one short question covering all missing points and 2-4 tappable answers. Do not ask about anything you can reasonably assume (budget, hotel type). If nothing essential is missing, search right away.`,
     "Use search_flights and search_stays to find real offers. Never invent prices, flights or hotels.",
+    "Every proposal is a complete package: a real flight AND a real accommodation for the same destination and dates (search both for each destination), plus your estimates for local transport (transfers, rental car or public transport) and up to 3 fitting activities or events. Set board from the accommodation's facts (all-inclusive, half board …) so the app can add meal costs. Estimates are rough totals in EUR for the whole group.",
     `Be economical: at most ${LIMITS.flights} flight searches and ${LIMITS.stays} accommodation searches in total.`,
     "Match the request (budget, season, length, interests). Budget amounts are per person unless stated otherwise.",
     `Then call propose_trips exactly once with 2-${LIMITS.trips} clearly different trips, using offer ids from the search results.`,
@@ -231,10 +244,27 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
         ...(flight ? { flight } : {}),
         ...(st ? { stay: st.offer, stayQuery: st.q } : {}),
         total: Math.round((flight?.price || 0) + (st?.offer.total || 0)),
-        ...(partyFromAi ? { party: { ...party, childAges: [...party.childAges] } } : {})
+        ...(partyFromAi ? { party: { ...party, childAges: [...party.childAges] } } : {}),
+        ...extrasOf(t)
       });
     }
     return { trips };
+  }
+
+  /** Schätzungen der KI: Verpflegung laut Unterkunft, Transport vor Ort, Erlebnisse (Beträge für alle, gedeckelt) */
+  function extrasOf(t: any): Pick<AgentTrip, "board" | "transport" | "extras"> {
+    const eur = (v: unknown) => (typeof v === "number" && isFinite(v) && v > 0 ? Math.min(20000, Math.round(v)) : 0);
+    const board = BOARDS.includes(t.board) ? t.board as AgentTrip["board"] : undefined;
+    const tr = t.transport && eur(t.transport.eur) ? { label: String(t.transport.label || "").slice(0, 60), eur: eur(t.transport.eur) } : undefined;
+    const ex = (Array.isArray(t.extras) ? t.extras : []).filter((x: any) => x && String(x.name || "").trim() && eur(x.eur))
+      .slice(0, LIMITS.extras).map((x: any) => ({ name: String(x.name).slice(0, 60), eur: eur(x.eur) }));
+    return { ...(board ? { board } : {}), ...(tr ? { transport: tr } : {}), ...(ex.length ? { extras: ex } : {}) };
+  }
+
+  /** Vorschläge ohne echte Unterkunft oder ohne echten Flug (Titel), solange noch gesucht werden kann */
+  function incomplete(a: any): string[] {
+    const list = Array.isArray(a?.trips) ? a.trips.slice(0, LIMITS.trips) : [];
+    return list.filter((t: any) => !stays.has(t?.stayId) || !flights.has(t?.flightId)).map((t: any) => `${t?.title || t?.place || "?"} (${t?.place || ""}, ${t?.from || ""} – ${t?.to || ""})`);
   }
 
   /** Rückfrage: Text und bis zu 4 kurze Antworten */
@@ -245,6 +275,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
   }
 
   const contents: any[] = [{ role: "user", parts: [{ text: userText(r) }] }];
+  let retried = false;
   for (let round = 0; round < LIMITS.rounds; round++) {
     const last = round === LIMITS.rounds - 1;
     const res = await deps.gemini({
@@ -259,7 +290,17 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     const calls = (content?.parts || []).filter((p: any) => p.functionCall).map((p: any) => p.functionCall);
     if (!calls.length) throw new Error("Die KI hat keinen Vorschlag gemacht. Bitte anders formulieren.");
     const done = calls.find((c: any) => c.name === "propose_trips");
-    if (done) return finish(done.args);
+    // unvollständige Vorschläge einmal zurückschicken, solange Runden und Suchen reichen
+    const missing = done && !retried && round < LIMITS.rounds - 2 && nStays < LIMITS.stays && (!deps.canSearch || deps.canSearch()) ? incomplete(done.args) : [];
+    if (done && !missing.length) return finish(done.args);
+    if (done) {
+      retried = true;
+      contents.push(content);
+      contents.push({ role: "user", parts: calls.map((c: any) => ({ functionResponse: { name: c.name, response: { result: c.name === "propose_trips"
+        ? { error: `Each trip needs a real flight AND a real accommodation from the searches. Missing for: ${missing.join("; ")}. Search what is missing (same destination and dates), then call propose_trips again.` }
+        : { error: "Not executed" } } } })) });
+      continue;
+    }
     // Rückfrage nur vor der ersten Suche und nur einmal im Gespräch
     const ask = calls.find((c: any) => c.name === "ask_user");
     if (ask && !r.asked && round === 0 && String(ask.args?.question || "").trim()) return question(ask.args);

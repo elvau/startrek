@@ -24,6 +24,8 @@ export interface TripSummary {
   /** Reisebeobachtung: mögliche Ersparnis */
   potential: number;
   state: TripState;
+  /** vom KI-Assistenten vorgeschlagen */
+  ai: boolean;
 }
 
 /** Länder der Flugziele (Hinflug und weitere Flüge), in Reihenfolge; braucht die Weltdaten */
@@ -63,6 +65,7 @@ export function summarize(trip: Trip, today: string, g?: GeoData, lang = "de"): 
     food: trip.food?.on ? (styles.size > 1 ? "hh" : cfg.style) : null,
     total: totals(trip).total,
     potential: potential(trip),
-    state: end && end < today ? "past" : isBooked(trip) ? "booked" : "planned"
+    state: end && end < today ? "past" : isBooked(trip) ? "booked" : "planned",
+    ai: !!trip.ai
   };
 }

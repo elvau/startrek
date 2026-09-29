@@ -1,17 +1,21 @@
 <script lang="ts">
-  import { arrow, t, tn } from "../i18n/index.svelte";
+  import { arrow, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * KI-Assistent (Beta) als Chat unten rechts: Wunsch schreiben, nachschärfen („lieber im Juni“, „günstiger“),
    * Vorschläge direkt übernehmen. Frühere Wünsche gehen als Zusammenhang mit, damit Nachfragen funktionieren.
    * Nur für angemeldete Nutzer, begrenzt pro Tag (Such-Dienst).
    */
   import { tick } from "svelte";
-  import { app, startTrip } from "../store.svelte";
+  import { app, goHome, startTrip } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { eur } from "../calc";
   import { dayShort, nights, range, time } from "../format";
   import { flyers } from "../flights/app";
-  import { agentRequest, askAgent, takeAgentTrip } from "../agent/app";
+  import { agentRequest, askAgent, previewTrip, takeAgentTrip } from "../agent/app";
+  import { totals } from "../calc";
+  import { syncFood } from "../food";
+  import { geo } from "../geo/geo.svelte";
+  import { loadGeo } from "../geo/places";
   import { soloTraveler } from "../placeholders";
   import { agentChat, openChat } from "../agent/open.svelte";
   import type { AgentTrip } from "../agent/types";
@@ -74,8 +78,30 @@
     // von der Startseite aus: neue Reise anlegen, sonst in die offene Reise
     if (app.home) startTrip();
     takeAgentTrip(app.trip, a);
+    if (geo.world.length) syncFood(app.trip, geo);
     msgs.push({ me: false, text: t("ai.taken") });
     agentChat.open = false;
+  }
+
+  /** alle Vorschläge als eigene Reisen anlegen und auf der Startseite vergleichen */
+  function takeAll(list: AgentTrip[]) {
+    for (const a of list) {
+      startTrip();
+      takeAgentTrip(app.trip, a);
+      if (geo.world.length) syncFood(app.trip, geo);
+    }
+    goHome();
+    msgs.push({ me: false, text: tn("ai.takenAll", list.length) });
+    agentChat.open = false;
+  }
+
+  // Länderdaten für die Verpflegung im Gesamtpreis der Vorschläge
+  $effect(() => { if (agentChat.open) void loadGeo(geo, []); });
+  /** Gesamtpreis wie nach dem Übernehmen: Flug mit Anreise, Unterkunft, vor Ort, Erlebnisse, Verpflegung */
+  function preview(a: AgentTrip) {
+    void geo.world.length;
+    const T = totals(previewTrip(base(), a, geo));
+    return { total: T.total, access: T.byCat.flights - (a.flight?.price || 0), food: T.byCat.misc, people: T.active };
   }
 
   function key(e: KeyboardEvent) {
@@ -118,18 +144,27 @@
               {@const f = a.flight}
               {@const nn = nights(a.from, a.to)}
               {@const pn = a.party ? a.party.adults + a.party.childAges.length + a.party.infants : n}
+              {@const pv = preview(a)}
+              {@const pp = Math.max(1, pv.people || pn)}
               <article class="ai-card">
                 <b>{a.title}</b>
                 <small class="muted">{a.place}{a.country ? `, ${a.country}` : ""} · {range(a.from, a.to)}{nn ? ` · ${tn("n.nights", nn)}` : ""}</small>
                 <span class="ai-sum">{a.summary}</span>
-                {#if f}<small>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {f.out.carriers.join(" / ")} · {eur(f.price)}</small>{/if}
-                {#if a.stay}<small>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""} · {eur(Math.round(a.stay.total))}</small>{/if}
+                <ul class="ai-parts">
+                  {#if f}<li>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {f.out.carriers.join(" / ")}<b>{eur(f.price)}</b></li>{/if}
+                  {#if pv.access > 0.5}<li>🚆 {t("ai.access")}<b>≈ {eur(pv.access)}</b></li>{/if}
+                  {#if a.stay}<li>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{a.board ? ` · ${t(`ai.board.${a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
+                  {#if a.transport}<li>🚗 {a.transport.label}<b>≈ {eur(a.transport.eur)}</b></li>{/if}
+                  {#if a.extras?.length}<li>🎟 {a.extras.map(x => x.name).join(", ")}<b>≈ {eur(a.extras.reduce((s, x) => s + x.eur, 0))}</b></li>{/if}
+                  {#if pv.food > 0.5}<li>🍽 {t("ai.food")}<b>≈ {eur(pv.food)}</b></li>{/if}
+                </ul>
                 <footer>
-                  <span><b class="num">{eur(a.total)}</b>{#if pn > 1} <small class="muted">{t("perPerson", { v: eur(a.total / pn) })}</small>{/if}</span>
+                  <span><small class="muted">{t("ai.total")}</small> <b class="num">{eur(pv.total)}</b>{#if pp > 1} <small class="muted">{t("perPerson", { v: eur(pv.total / pp) })}</small>{/if}</span>
                   <button class="btn sm primary" onclick={() => take(a)}>{t("ev.take")}</button>
                 </footer>
               </article>
             {/each}
+            {#if m.trips.length > 1}<button class="btn sm ai-all" onclick={() => takeAll(m.trips!)}>＋ {tn("ai.takeAll", m.trips.length)}</button>{/if}
             <small class="muted">{t("ai.refine")}</small>
           {/if}
         </div>

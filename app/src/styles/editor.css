@@ -548,6 +548,12 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .ai-msgs .ai-ex{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
 .ai-card{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:var(--paper);border:1px solid var(--line);white-space:normal}
 .ai-card footer{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px}
+/* Vorschlag als ganze Reise: Posten mit Betrag rechtsbündig, Schätzungen mit ≈ */
+.ai-parts{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:12.5px}
+.ai-parts li{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.ai-parts b{white-space:nowrap;font-weight:700}
+.ai-all{align-self:flex-start;margin:6px 0 4px}
+.ht-ai{font-size:11.5px;font-weight:700;color:var(--idea);background:var(--idea-soft);border-radius:99px;padding:2px 9px;white-space:nowrap}
 .ai-busy{opacity:.75;animation:aiPulse 1.4s ease-in-out infinite}
 @keyframes aiPulse{50%{opacity:.4}}
 .ai-bar{display:flex;gap:8px;padding:10px 12px 6px;border-top:1px solid var(--line)}

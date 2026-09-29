@@ -215,9 +215,10 @@ $effect.root(() => {
 /** Alle Reisen: im Konto und nur auf diesem Gerät */
 export function allTrips(): TripEntry[] {
   // Ziel und Zeitraum stehen nur in der Reise selbst; aus der Kopie auf dem Gerät ergänzen, falls vorhanden.
-  // Der Name der offenen Reise ist frischer als der im Konto (dort erst nach dem verzögerten Speichern)
+  // Der Name der offenen Reise ist frischer als der im Konto (dort erst nach dem verzögerten Speichern); steht im Konto
+  // noch der Platzhalter „Reise“ (gerade angelegt, Name noch nicht gespeichert), gilt der Name der Kopie auf dem Gerät
   const local = (id: string) => { const t = id === app.trip.id ? app.trip : readTrip(id); return t ? meta(t) : null; };
-  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1 }; });
+  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1 }; });
   const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, ...(m.id === app.trip.id ? meta(app.trip) : {}), cloud: false }));
   return [...c, ...l];
 }

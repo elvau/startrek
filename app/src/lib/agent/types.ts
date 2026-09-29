@@ -43,6 +43,12 @@ export interface AgentTrip {
   total: number;
   /** mit diesen Reisenden gesucht (nur, wenn die App keine kannte) */
   party?: AgentParty;
+  /** Verpflegung laut Unterkunft (Selbstversorgung, Frühstück, Halbpension, Vollpension, All-inclusive) */
+  board?: "self" | "breakfast" | "half" | "full" | "all";
+  /** Schätzung der KI: Transport vor Ort für alle */
+  transport?: { label: string; eur: number };
+  /** Schätzung der KI: Erlebnisse und Events für alle */
+  extras?: { name: string; eur: number }[];
 }
 
 export interface AgentResult {

@@ -72,7 +72,7 @@
           {#each g.list as m (m.id)}
             {@const x = m.s}
             <button class="home-trip" class:past={g.k === "past"} onclick={() => openTrip(m.id)}>
-              <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{m.name || m.place || t("trip.untitled")}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{/if}</span>
+              <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{m.name || m.place || t("trip.untitled")}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai">✨ {t("home.aiTag")}</span>{/if}</span>
               {#if x}
                 {#if x.where}<span class="ht-where">{x.round ? `🔁 ${t("home.round")}: ` : "📍 "}{x.where}</span>{/if}
                 {#if m.from}<span class="ht-when">📅 {range(m.from, m.to)}{x.nights ? ` · ${tn("n.nights", x.nights)}` : ""}</span>{/if}
