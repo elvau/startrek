@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
-// BASE wird beim Deploy gesetzt (z. B. /startrek/neu/), lokal reicht "/"
+// BASE wird beim Deploy gesetzt (Testumgebung /startrek/, splitandfly.com /), lokal reicht "/"
 export default defineConfig({
   base: process.env.BASE || "/",
   plugins: [svelte()],

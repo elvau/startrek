@@ -1,10 +1,10 @@
 {
-  "name": "reisekasse",
+  "name": "splitandfly",
   "version": "0.1.0",
   "private": true,
-  "description": "Reisekostenrechner: Reisen planen, pro Person, pro Haushalt und gesamt.",
+  "description": "Split&Fly: Reisen gemeinsam planen und Kosten fair aufteilen.",
   "scripts": {
-    "start": "npx --yes http-server public -p 8080 -c-1",
-    "dev": "npx --yes http-server public -p 8080 -c-1 -o"
+    "start": "npm --prefix app run dev",
+    "build": "npm --prefix app run build"
   }
 }

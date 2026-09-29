@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Testumgebung (GitHub Pages)
 
 on:
   push:
@@ -42,21 +42,18 @@ jobs:
       - name: Such-Dienst prüfen
         working-directory: worker
         run: npm ci && npx tsc --noEmit && npx wrangler deploy --config ../wrangler.toml --dry-run --outdir /tmp/worker-dist && npx wrangler deploy --dry-run --outdir /tmp/worker-dist-preview
-      - name: Neue App bauen
+      - name: App bauen
         working-directory: app
         run: npm run build
         env:
-          BASE: /${{ github.event.repository.name }}/neu/
+          # Testumgebung: elvau.github.io/startrek/ (splitandfly.com kommt aus release.yml)
+          BASE: /${{ github.event.repository.name }}/
           # Firebase-Konfiguration kommt aus app/.env.production
       - name: Flughafendaten aktualisieren
         # neue Daten von OurAirports; klappt das nicht, bleibt public/airports.json aus dem Projekt
         run: node scripts/airports.mjs || echo "::warning::Flughafendaten nicht aktualisiert, alte Datei bleibt"
       - name: Seite zusammenstellen
-        run: |
-          mkdir -p _site
-          cp -r public/. _site/
-          mkdir -p _site/neu
-          cp -r app/dist/. _site/neu/
+        run: scripts/site.sh _site
       - uses: actions/configure-pages@v5
         if: github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v3

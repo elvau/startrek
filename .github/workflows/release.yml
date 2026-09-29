@@ -1,0 +1,60 @@
+name: Release (splitandfly.com)
+
+# Produktion: nur ein veröffentlichter GitHub-Release landet auf splitandfly.com (Firebase Hosting).
+# Jeder Merge in main geht weiterhin nur in die Testumgebung (pages.yml). Anleitung: docs/RELEASE.md
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: produktion
+      url: https://splitandfly.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Zugang zu Firebase vorhanden?
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "::error::Secret FIREBASE_SERVICE_ACCOUNT fehlt (siehe docs/RELEASE.md)"; exit 1; fi
+      - name: Abhängigkeiten
+        working-directory: app
+        run: npm ci
+      - name: Tests
+        working-directory: app
+        run: npm test
+      - name: Typprüfung
+        working-directory: app
+        run: npm run check
+      - name: App bauen
+        working-directory: app
+        run: npm run build
+        env:
+          BASE: /
+      - name: Flughafendaten aktualisieren
+        run: node scripts/airports.mjs || echo "::warning::Flughafendaten nicht aktualisiert, alte Datei bleibt"
+      - name: Seite zusammenstellen
+        run: scripts/site.sh app/_hosting
+      - name: Auf splitandfly.com veröffentlichen
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: startrek-1b6a7
+          channelId: live
+          entryPoint: app

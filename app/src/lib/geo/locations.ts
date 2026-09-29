@@ -139,7 +139,7 @@ export function areaAround(d: AirportData, place: { name: string; lat: number; l
 
 let loading: Promise<void> | undefined;
 export function loadAirports(d: AirportData, fetchFn: typeof fetch = fetch): Promise<void> {
-  const b = ((import.meta.env?.BASE_URL as string | undefined) || "/").replace(/neu\/?$/, "");
+  const b = (import.meta.env?.BASE_URL as string | undefined) || "/";
   loading ??= fetchFn(b + "airports.json").then(r => (r.ok ? r.json() : null)).then((j: AirportData | null) => {
     if (j?.airports) { d.airports = j.airports; d.cities = j.cities || []; d.asOf = j.asOf; }
   }).catch(() => { loading = undefined; });
