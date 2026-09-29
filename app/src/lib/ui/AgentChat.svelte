@@ -12,10 +12,12 @@
   import { dayShort, nights, range, time } from "../format";
   import { flyers } from "../flights/app";
   import { agentRequest, askAgent, takeAgentTrip } from "../agent/app";
+  import { soloTraveler } from "../placeholders";
   import { agentChat, openChat } from "../agent/open.svelte";
   import type { AgentTrip } from "../agent/types";
 
-  interface Msg { me: boolean; text: string; trips?: AgentTrip[] }
+  /** Nachricht; bei einer Rückfrage der KI mit Antworten zum Antippen */
+  interface Msg { me: boolean; text: string; trips?: AgentTrip[]; question?: boolean; options?: string[] }
   const EXAMPLES = ["ai.ex1", "ai.ex2", "ai.ex3"] as const;
   let msgs = $state<Msg[]>([]);
   let input = $state("");
@@ -30,23 +32,36 @@
   function withContext(text: string): string {
     const before = msgs.filter(m => m.me).map(m => m.text).slice(-3);
     if (!before.length) return text;
-    const ctx = `${t("ai.ctxBefore")}: ${before.join(" / ")}\n${t("ai.ctxNow")}: `;
+    // letzte Rückfrage der KI dazu, damit die Antwort („aus Köln, Kinder 5 und 8“) verstanden wird
+    const q = pendingQuestion();
+    const ctx = `${t("ai.ctxBefore")}: ${before.join(" / ")}\n${q ? `${t("ai.ctxQuestion")}: ${q}\n` : ""}${t("ai.ctxNow")}: `;
     return (ctx + text).slice(-1000);
+  }
+  /** die KI hat zuletzt nachgefragt (dann ist die nächste Nachricht die Antwort) */
+  const pendingQuestion = () => { const last = msgs.at(-1); return last && !last.me && last.question ? last.text : ""; };
+  /** schon nachgefragt in diesem Gespräch: die KI darf nicht noch einmal fragen */
+  const askedBefore = () => msgs.some(m => m.question);
+  /** auf der Startseite entsteht beim Übernehmen eine neue Reise: Anfrage ohne die zuletzt offene Reise */
+  function base() {
+    if (!app.home) return app.trip;
+    return { ...app.trip, place: "", country: "", from: undefined, to: undefined, travelers: [soloTraveler()], households: {}, items: [] };
   }
 
   async function send(text = input) {
     const w = text.trim();
     if (w.length < 5) { msgs.push({ me: false, text: t("ai.tooShort") }); void scrollDown(); return; }
     const prompt = withContext(w);
+    const asked = askedBefore();
     msgs.push({ me: true, text: w });
     input = "";
     busy = true;
     void scrollDown();
     ctrl?.abort(); ctrl = new AbortController();
     try {
-      const res = await askAgent(agentRequest(app.trip, prompt), ctrl.signal);
+      const res = await askAgent(agentRequest(base(), prompt, asked), ctrl.signal);
       remaining = res.remaining ?? remaining;
-      msgs.push(res.trips.length ? { me: false, text: t("ai.here"), trips: res.trips } : { me: false, text: t("ai.none") });
+      msgs.push(res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
+        : res.trips.length ? { me: false, text: t("ai.here"), trips: res.trips } : { me: false, text: t("ai.none") });
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       const r = (err as { remaining?: number }).remaining;
@@ -91,12 +106,18 @@
         </div>
       {/if}
       {#each msgs as m, i (i)}
-        <div class="ai-msg" class:me={m.me}>
+        <div class="ai-msg" class:me={m.me} class:ai-q={m.question}>
           {m.text}
+          {#if m.question && m.options?.length && i === msgs.length - 1 && !busy}
+            <div class="chips ai-opts">
+              {#each m.options as o (o)}<button class="chip" onclick={() => send(o)}>{o}</button>{/each}
+            </div>
+          {/if}
           {#if m.trips}
             {#each m.trips as a, j (j)}
               {@const f = a.flight}
               {@const nn = nights(a.from, a.to)}
+              {@const pn = a.party ? a.party.adults + a.party.childAges.length + a.party.infants : n}
               <article class="ai-card">
                 <b>{a.title}</b>
                 <small class="muted">{a.place}{a.country ? `, ${a.country}` : ""} · {range(a.from, a.to)}{nn ? ` · ${tn("n.nights", nn)}` : ""}</small>
@@ -104,7 +125,7 @@
                 {#if f}<small>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {f.out.carriers.join(" / ")} · {eur(f.price)}</small>{/if}
                 {#if a.stay}<small>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""} · {eur(Math.round(a.stay.total))}</small>{/if}
                 <footer>
-                  <span><b class="num">{eur(a.total)}</b>{#if n > 1} <small class="muted">{t("perPerson", { v: eur(a.total / n) })}</small>{/if}</span>
+                  <span><b class="num">{eur(a.total)}</b>{#if pn > 1} <small class="muted">{t("perPerson", { v: eur(a.total / pn) })}</small>{/if}</span>
                   <button class="btn sm primary" onclick={() => take(a)}>{t("ev.take")}</button>
                 </footer>
               </article>

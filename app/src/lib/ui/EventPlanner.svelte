@@ -10,7 +10,7 @@
   import Modal from "./Modal.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
-  import { ccOf, findCity, searchParts } from "../geo/places";
+  import { ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
@@ -52,14 +52,17 @@
     finally { evBusy = false; }
   }
   async function pick(h: EventHit) {
-    await ensureAirports();
     picked = h; hits = null;
     name = h.name;
     date = h.start.slice(0, 10);
     if (h.start.length > 10) clock = h.start.slice(11, 16);
     venue = h.venue || "";
     loc = null;
-    place = h.city || (h.address ? cityFromAddress(airportData, h.address, h.cc) : null) || "";
+    place = h.city || "";
+    if (h.city || !h.address) return;
+    // Stadt aus der Anschrift: Flughafenliste und die Orte des Landes (für Städte ohne Flughafen, z. B. Mönchengladbach)
+    await Promise.all([ensureAirports(), h.cc ? loadGeo(geo, [h.cc]) : null]);
+    if (picked === h && !place) place = cityFromAddress(airportData, h.address, h.cc, geo) || "";
   }
 
   const aps = nearestAirports(trip);

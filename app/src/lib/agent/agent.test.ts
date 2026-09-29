@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LIMITS, runAgent } from "./agent";
+import { LIMITS, runAgent, systemPrompt } from "./agent";
 import { parseAgentRequest } from "./types";
 import type { AgentRequest } from "./types";
 import type { FlightOffer, FlightQuery } from "../flights/types";
@@ -78,5 +78,52 @@ describe("KI-Reiseplaner", () => {
     expect(parseAgentRequest({ prompt: "Wochenende in Rom", adults: 20 })).toMatch(/Personen/);
     const ok = parseAgentRequest({ prompt: "Wochenende in Rom", origins: ["DUS", "xx", "CGN"], lang: "en", adults: 2, childAges: [5], trip: { place: "Rom" } });
     expect(ok).toMatchObject({ origins: ["DUS", "CGN"], lang: "en", childAges: [5], trip: { place: "Rom" } });
+  });
+
+  it("fragt einmal nach, wenn Abflugort und Kinderalter fehlen; Rückfrage mit Antworten", async () => {
+    const r: AgentRequest = { ...req, prompt: "Eine Woche Strandurlaub mit Kindern", adults: 1, originsKnown: false, travelersKnown: false };
+    const f = fake([call("ask_user", { question: "Von wo fliegt ihr los und wie alt sind die Kinder?", options: ["Düsseldorf, 5 und 8", "Köln, 3 und 10", " ", "a", "b", "c"] })]);
+    const res = await runAgent(r, f.deps);
+    expect(res).toMatchObject({ trips: [], question: "Von wo fliegt ihr los und wie alt sind die Kinder?" });
+    expect(res.options).toEqual(["Düsseldorf, 5 und 8", "Köln, 3 und 10", "a", "b"]);
+    const names = f.asked.bodies[0].tools[0].functionDeclarations.map((d: any) => d.name);
+    expect(names).toContain("ask_user");
+    expect(f.asked.bodies[0].systemInstruction.parts[0].text).toContain("home town is unknown");
+    expect(f.asked.flights).toHaveLength(0);
+  });
+
+  it("nach der Antwort keine zweite Rückfrage: Werkzeug fehlt, eine Rückfrage würde ignoriert", async () => {
+    const r: AgentRequest = { ...req, asked: true };
+    expect(systemPrompt(r)).toContain("Do not ask again");
+    const f = fake([
+      call("ask_user", { question: "Noch was?" }),
+      call("propose_trips", { trips: [] })
+    ]);
+    const res = await runAgent(r, f.deps);
+    expect(res.question).toBeUndefined();
+    expect(f.asked.bodies[0].tools[0].functionDeclarations.map((d: any) => d.name)).not.toContain("ask_user");
+  });
+
+  it("Reisende aus der Antwort: Suche und Vorschlag mit 2 Erwachsenen, Kindern 5 und 8 und einem Baby", async () => {
+    const r: AgentRequest = { ...req, adults: 1, travelersKnown: false, asked: true };
+    const f = fake([
+      call("search_flights", { from: ["CGN"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 2, childAges: [5, 8, 1] }),
+      call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13" }),
+      call("propose_trips", { trips: [{ title: "Mallorca", summary: "Strand", place: "Palma", from: "2027-05-10", to: "2027-05-13", flightId: "f1", stayId: "s1" }] })
+    ]);
+    const res = await runAgent(r, f.deps);
+    expect(f.asked.flights[0]).toMatchObject({ adults: 2, children: 2, infants: 1 });
+    expect(f.asked.stays[0]).toMatchObject({ adults: 2, childAges: [5, 8, 1] });
+    expect(res.trips[0].party).toEqual({ adults: 2, childAges: [5, 8], infants: 1 });
+  });
+
+  it("eingetragene Reisende bleiben: Angaben der KI zählen dann nicht", async () => {
+    const f = fake([
+      call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 9 }),
+      call("propose_trips", { trips: [{ title: "x", summary: "y", place: "Palma", from: "2027-05-10", to: "2027-05-13", flightId: "f1" }] })
+    ]);
+    const res = await runAgent(req, f.deps);
+    expect(f.asked.flights[0].adults).toBe(4);
+    expect(res.trips[0].party).toBeUndefined();
   });
 });

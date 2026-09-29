@@ -83,6 +83,8 @@ try {
   await m.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
   const val = async label => m.locator("label.f", { hasText: label }).locator("input").inputValue();
   if (await val("Was?") !== "Arsenal – Bayern" || await val("Wo genau?") !== "Emirates Stadium" || await val("Datum") !== "2027-05-15" || await val("Beginn") !== "15:30") fail("Felder nicht ausgefüllt");
+  // Stadt kommt nach dem Laden der Orte aus der Anschrift
+  for (let i = 0; i < 40 && !(await m.locator(".lp input").inputValue()).startsWith("London"); i++) await p.waitForTimeout(150);
   if (!(await m.locator(".lp input").inputValue()).startsWith("London")) fail("Stadt nicht aus der Anschrift: " + await m.locator(".lp input").inputValue());
   log("Event gesucht und übernommen: Name, Stadt, Stadion, Datum, Uhrzeit");
   await m.locator("label.f", { hasText: "Dauer" }).locator("input").fill("2");

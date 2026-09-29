@@ -4,11 +4,13 @@ import { ageClass } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
-import type { Trip } from "../model";
+import { hhKey, type Trip } from "../model";
+import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
 import type { AgentRequest, AgentResult, AgentTrip } from "./types";
+import { noteError } from "../bugs/log";
 
 /** Wunsch plus Reisende, Abflughäfen und was über die Reise schon feststeht */
-export function agentRequest(trip: Trip, prompt: string): AgentRequest {
+export function agentRequest(trip: Trip, prompt: string, asked = false): AgentRequest {
   const pax = passengers(trip);
   // Kinder mit Alter (ohne Babys auf dem Schoß); ohne Alter: 8
   const childAges = flyers(trip)
@@ -19,8 +21,23 @@ export function agentRequest(trip: Trip, prompt: string): AgentRequest {
   return {
     prompt: prompt.trim(), lang: i18n.lang, today: new Date().toISOString().slice(0, 10),
     origins: nearestAirports(trip, 3), adults: pax.adults, childAges, infants: pax.infants,
-    ...(known.place || known.from || known.to ? { trip: known } : {})
+    ...(known.place || known.from || known.to ? { trip: known } : {}),
+    originsKnown: flyers(trip).some(p => !!trip.households?.[hhKey(p)]?.geo),
+    travelersKnown: travelersKnown(trip), asked
   };
+}
+
+/** Reisende eingetragen? Eine neue Reise hat nur das Tier vom Start, dann nimmt die KI Anzahl und Alter aus dem Wunsch */
+export const travelersKnown = (trip: Trip) => trip.travelers.length > 1 || trip.travelers.some(p => !p.placeholder);
+
+/** Reisende aus dem Vorschlag übernehmen, wenn die Reise noch keine hat: „Fuchs Erw. 1“, „Fuchs Kind 1 (8)“ … */
+export function takeParty(trip: Trip, a: AgentTrip) {
+  if (!a.party || travelersKnown(trip)) return;
+  const animal = trip.travelers[0]?.household ? ANIMALS.find(([n]) => animalName(n) === trip.travelers[0].household)?.[0] : undefined;
+  const list = placeholderTravelers([{ animal: animal || nextAnimal(), adults: a.party.adults, kids: a.party.childAges.length, infants: a.party.infants }]);
+  let k = 0;
+  for (const p of list) if (p.kind === "child") p.age = a.party.childAges[k++];
+  trip.travelers = list;
 }
 
 /** Meldung des Such-Dienstes in der gewählten Sprache (der Dienst antwortet auf Deutsch) */
@@ -38,12 +55,17 @@ export async function askAgent(r: AgentRequest, signal?: AbortSignal): Promise<A
     method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(r), signal
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(agentError(res.status, data.error)), { remaining: data.remaining as number | undefined });
+  if (!res.ok) {
+    noteError(`KI ${res.status}: ${data.error || "ohne Meldung"}`);
+    throw Object.assign(new Error(agentError(res.status, data.error)), { remaining: data.remaining as number | undefined });
+  }
   return data as AgentResult;
 }
 
 /** Vorschlag übernehmen: Ziel und Daten setzen, Flug und Unterkunft als Posten anlegen */
 export function takeAgentTrip(trip: Trip, a: AgentTrip) {
+  // erst die Reisenden, damit Flug und Unterkunft für die richtigen Personen gelten
+  takeParty(trip, a);
   trip.place = a.place;
   if (a.country) trip.country = a.country;
   trip.from = a.from;

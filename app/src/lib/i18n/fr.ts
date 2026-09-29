@@ -32,6 +32,7 @@ export const fr: Dict = {
   "ai.chat": "Assistant IA",
   "ai.ctxBefore": "Souhaits précédents",
   "ai.ctxNow": "Maintenant",
+  "ai.ctxQuestion": "Question",
   "ai.err.busy": "L’IA est occupée ou n’a pas trouvé de proposition. Réessaie dans quelques minutes.",
   "ai.err.input": "La demande ne passe pas. Décris le voyage plus brièvement ou autrement.",
   "ai.err.limit": "Limite quotidienne atteinte. Tu pourras continuer demain.",

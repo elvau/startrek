@@ -7,17 +7,10 @@ import { FLIGHTS_URL } from "../flights/app";
 import { idToken } from "../cloud/cloud.svelte";
 import { app, calc, tripMode } from "../store.svelte";
 import type { BugReport } from "./types";
+import { recentErrors } from "./log";
 
 export const bugDialog = $state({ open: false });
 
-/** letzte Fehler im Browser (höchstens 10), damit sie der Meldung beiliegen */
-const recent: string[] = [];
-const keep = (s: string) => { recent.push(`${new Date().toISOString().slice(11, 19)} ${s}`.slice(0, 500)); if (recent.length > 10) recent.shift(); };
-if (typeof addEventListener !== "undefined") {
-  addEventListener("error", e => keep(`${e.message}${e.filename ? ` (${e.filename.split("/").pop()}:${e.lineno})` : ""}`));
-  addEventListener("unhandledrejection", e => keep(`Promise: ${(e.reason as Error)?.message || String(e.reason)}`));
-}
-export const recentErrors = () => [...recent];
 
 /** Ansicht ohne persönliche Daten: Startseite oder Reise, Modus, Personen, Zahl der Posten */
 function view(): string {
