@@ -226,6 +226,8 @@ export interface Trip {
   food?: FoodCfg;
   /** Reisebeobachtung: letzter Preisvergleich der Posten */
   watch?: TripWatch;
+  /** vom KI-Assistenten vorgeschlagen (Kennzeichnung in der Übersicht) */
+  ai?: { at: string };
 }
 
 /** Ergebnis der Nachsuche für einen Posten, Beträge für den ganzen Posten */

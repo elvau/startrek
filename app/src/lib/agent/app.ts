@@ -4,7 +4,9 @@ import { ageClass } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
-import { hhKey, type Trip } from "../model";
+import { hhKey, uid, type FoodStyle, type Item, type Trip } from "../model";
+import { syncFood } from "../food";
+import type { GeoData } from "../geo/places";
 import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
 import type { AgentRequest, AgentResult, AgentTrip } from "./types";
 import { noteError } from "../bugs/log";
@@ -74,4 +76,29 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   trip.detail ||= {};
   if (a.flight) { trip.detail.flights = true; takeOffer(trip, a.flight); }
   if (a.stay && a.stayQuery) { trip.detail.stay = true; takeStay(trip, a.stay, a.stayQuery); }
+  trip.ai = { at: new Date().toISOString() };
+  // Verpflegung passend zur Unterkunft (die Beträge rechnet die App je Land, siehe food.ts)
+  trip.food = { ...(trip.food || {}), on: true, style: BOARD_FOOD[a.board || "self"] };
+  // Schätzungen der KI als Posten, als Richtwert markiert
+  const est = (cat: Item["cat"], name: string, eur: number): Item => ({
+    id: uid(), cat, name, status: "idea",
+    options: [{ id: uid(), label: "", estimate: true, source: { name: t("ai.estimate") }, price: { mode: "unit", currency: "EUR", unit: eur } }]
+  });
+  if (a.transport) { trip.detail.transport = true; trip.items.push(est("transport", a.transport.label || t("ai.transport"), a.transport.eur)); }
+  if (a.extras?.length) { trip.detail.attractions = true; a.extras.forEach(x => trip.items.push(est("attractions", x.name, x.eur))); }
+}
+
+/** Verpflegung laut Unterkunft → Essensstil der App (Frühstück allein: gemischt) */
+const BOARD_FOOD: Record<NonNullable<AgentTrip["board"]>, FoodStyle> = { self: "mix", breakfast: "mix", half: "hb", full: "ai", all: "ai" };
+
+/**
+ * Vorschlag als fertige Reise, ohne etwas zu speichern: so, wie sie beim Übernehmen entsteht (mit Verpflegung und
+ * Anreise zum Flughafen). Für den Gesamtpreis auf der Karte; ohne Orts- und Länderdaten ohne Verpflegung.
+ */
+export function previewTrip(base: Trip, a: AgentTrip, g?: GeoData): Trip {
+  const trip: Trip = JSON.parse(JSON.stringify(base));
+  trip.items = [];
+  takeAgentTrip(trip, a);
+  if (g?.world.length) syncFood(trip, g);
+  return trip;
 }

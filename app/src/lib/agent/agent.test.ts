@@ -126,4 +126,18 @@ describe("KI-Reiseplaner", () => {
     expect(f.asked.flights[0].adults).toBe(4);
     expect(res.trips[0].party).toBeUndefined();
   });
+
+  it("Vorschlag ohne Unterkunft geht einmal zurück, dann ganze Reise mit Schätzungen", async () => {
+    const f = fake([
+      call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13" }),
+      call("propose_trips", { trips: [{ title: "Mallorca", summary: "x", place: "Palma", from: "2027-05-10", to: "2027-05-13", flightId: "f1" }] }),
+      call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13" }),
+      call("propose_trips", { trips: [{ title: "Mallorca", summary: "x", place: "Palma", from: "2027-05-10", to: "2027-05-13", flightId: "f1", stayId: "s1",
+        board: "half", transport: { label: "Mietwagen 3 Tage", eur: 120.4 }, extras: [{ name: "Bootstour", eur: 160 }, { name: "", eur: 5 }, { name: "Gratis", eur: 0 }] }] })
+    ]);
+    const res = await runAgent(req, f.deps);
+    // die zweite Gemini-Runde nach dem ersten Vorschlag bekam den Hinweis auf die fehlende Unterkunft
+    expect(JSON.stringify(f.asked.bodies[2].contents.at(-1))).toContain("needs a real flight AND a real accommodation");
+    expect(res.trips[0]).toMatchObject({ board: "half", transport: { label: "Mietwagen 3 Tage", eur: 120 }, extras: [{ name: "Bootstour", eur: 160 }], stay: { name: "Hotel s1" } });
+  });
 });

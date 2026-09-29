@@ -17,7 +17,8 @@ const RESULT = {
       flight: { id: "kiwi:x1", source: "kiwi", sourceName: "Kiwi.com", price: 480, currency: "EUR", url: "https://kiwi.com/u/x1",
         out: leg("DUS", "PMI", "2027-05-07T08:00:00", "2027-05-07T10:30:00"), back: leg("PMI", "DUS", "2027-05-10T18:00:00", "2027-05-10T20:30:00") },
       stay: { id: "b:1", source: "booking", sourceName: "Booking.com", name: "Casa Palma", total: 600, currency: "EUR", score: 8.7, place: "Altstadt" },
-      stayQuery: { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 1, childAges: [], rooms: 1, type: "all", currency: "EUR" } },
+      stayQuery: { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 1, childAges: [], rooms: 1, type: "all", currency: "EUR" },
+      board: "half", transport: { label: "Mietwagen 3 Tage", eur: 120 }, extras: [{ name: "Bootstour", eur: 80 }] },
     { title: "Lissabon", summary: "Stadt am Meer.", place: "Lissabon", from: "2027-05-14", to: "2027-05-17", total: 350,
       flight: { id: "kiwi:x2", source: "kiwi", sourceName: "Kiwi.com", price: 350, currency: "EUR",
         out: leg("DUS", "LIS", "2027-05-14T07:00:00", "2027-05-14T09:30:00"), back: leg("LIS", "DUS", "2027-05-17T19:00:00", "2027-05-17T23:00:00") } }
@@ -31,6 +32,7 @@ const errors = [];
 try {
   const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
   p.on("pageerror", e => errors.push(e.message));
+  for (const f of ["world.json", "packs.json", "airports.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   const asked = [];
   await p.route("https://flights.test/agent", async r => {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" } });
@@ -92,6 +94,8 @@ try {
   await shot("trip");
   await shot("trip-m", 390, 844);
   if (await p.locator(".ai-chat").count()) fail("Chat nicht geschlossen");
+  if (!(await p.locator("#transport .card", { hasText: "Mietwagen 3 Tage" }).count())) fail("Transport vor Ort nicht übernommen");
+  if (!(await p.locator("#attractions .card", { hasText: "Bootstour" }).count())) fail("Erlebnis nicht übernommen");
   const meta = await p.locator(".hero .meta").innerText();
   if (!meta.includes("Palma") || !meta.includes("3 Nächte")) fail("Kopf: " + meta);
   if (!(await p.locator("#flights .card", { hasText: "Sun Air" }).count())) fail("Flug nicht übernommen");
@@ -127,6 +131,20 @@ try {
   const who = await p.locator(".hero .meta").innerText();
   if (!who.includes("4 Personen")) fail("Reisende aus der Antwort nicht angelegt: " + who);
   log("Übernommen: neue Reise mit 2 Erwachsenen und 2 Kindern aus der Antwort");
+
+  // ganze Reise auf der Karte: Posten, Schätzungen mit ≈, Gesamtpreis; alle Vorschläge als Reisen anlegen
+  await p.locator(".hero .hero-home").click();
+  await p.locator(".ai-fab").click();
+  const card = p.locator(".ai-card", { hasText: "Sonne in Palma" }).last();
+  const ct = await card.innerText();
+  for (const x of ["Halbpension", "Mietwagen 3 Tage", "Bootstour", "Verpflegung", "ca."]) if (!ct.includes(x)) fail(`Karte ohne „${x}“: ${ct}`);
+  await card.scrollIntoViewIfNeeded(); await shot("ai-card");
+  await p.locator(".ai-all").last().click();
+  await p.locator(".start .home-title").waitFor();
+  await until(() => p.locator(".start .home-trip", { hasText: "KI-Vorschlag" }).count().then(n => n >= 3), "KI-Reisen gekennzeichnet");
+  if (!(await p.locator(".start .home-trip", { hasText: "Lissabon" }).count())) fail("Lissabon nicht angelegt");
+  await p.locator(".start .home-h").first().scrollIntoViewIfNeeded(); await shot("ai-home");
+  log("Karte als ganze Reise (Halbpension, Mietwagen, Bootstour, Verpflegung, Gesamtpreis); alle angelegt und mit ✨ KI-Vorschlag gekennzeichnet");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
