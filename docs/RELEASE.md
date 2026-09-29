@@ -16,7 +16,11 @@ Die frühere Adresse `…/neu/` leitet auf die App weiter (auch Einladungslinks 
 2. **Ausprobieren** auf https://elvau.github.io/startrek/.
 3. **Release:** den Pull Request des Feature-Branches nach `main` mergen. Der Push auf `main` bringt den Stand nach 2–3 Minuten
    auf splitandfly.com (Actions → „Release (splitandfly.com)“). Wöchentlich wird `main` zusätzlich neu gebaut (Flughafendaten).
-4. Optional ein Tag/Release auf GitHub als Versionsnummer, das löst aber nichts mehr aus.
+4. **Version:** Jeder Release-PR hebt die Version in `app/package.json` an (`npm version 0.3.0 --no-git-tag-version` in `app/`):
+   neue Funktionen → mittlere Stelle (0.2.0 → 0.3.0), nur Fehlerbehebungen → letzte Stelle (0.3.0 → 0.3.1).
+   Nach dem Veröffentlichen legt der Workflow den Tag `v0.3.0` und eine Release-Seite mit den Änderungen an
+   (https://github.com/elvau/startrek/releases). Die Version steht in der App unten neben Impressum und Datenschutz
+   und in jeder Fehlermeldung (🐞). Bleibt die Version gleich, wird nur veröffentlicht, ohne neues Release.
 
 **Such-Dienst (Cloudflare):** wird nur beim Push auf `main` neu veröffentlicht. Neue Such-Funktionen (neue Endpunkte) gehen deshalb
 erst mit dem Release; auf der Testumgebung antwortet bis dahin noch der alte Such-Dienst.

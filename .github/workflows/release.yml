@@ -11,7 +11,8 @@ on:
     - cron: "17 3 * * 1"
 
 permissions:
-  contents: read
+  # write: Tag und Release-Seite für die neue Version anlegen
+  contents: write
 
 concurrency:
   group: release
@@ -61,3 +62,16 @@ jobs:
           projectId: startrek-1b6a7
           channelId: live
           entryPoint: app
+      # neue Version in app/package.json → Tag vX.Y.Z und Release-Seite mit den Änderungen seit der letzten Version.
+      # Gleiche Version wie beim letzten Mal (z. B. wöchentlicher Neubau): nichts zu tun.
+      - name: Version als Tag und Release
+        if: github.event_name != 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V="v$(node -p "require('./app/package.json').version")"
+          if gh release view "$V" >/dev/null 2>&1; then
+            echo "$V gibt es schon, kein neues Release"
+          else
+            gh release create "$V" --target "$GITHUB_SHA" --title "Split&Fly ${V#v} (Beta)" --generate-notes --prerelease
+          fi
