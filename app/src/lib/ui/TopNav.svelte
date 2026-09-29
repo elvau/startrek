@@ -29,7 +29,7 @@
 
 <header class="top">
   <div class="top-in">
-    <span class="brand">vaca<span class="brand-y">Y</span>tion</span>
+    <span class="brand">Split<span class="brand-y">&amp;</span>Fly</span>
     <TripMenu compact />
     <nav class="nav" bind:this={nav} aria-label={t("nav.chapters")}>
       <span class="pill" style:left="{pill.left}px" style:width="{pill.width}px" style:opacity={pill.show ? 1 : 0}></span>
