@@ -14,7 +14,7 @@ import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
-import { callGemini } from "./gemini";
+import { geminiCaller } from "./gemini";
 
 interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv {
   /** erlaubte Herkünfte, kommagetrennt */
@@ -141,7 +141,7 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   // (Kiwi 3, Travelpayouts je Flughafenpaar 1), eine Unterkunftssuche 3; für Gemini bleiben immer RESERVE frei.
   const budget = agentBudget();
   // überlastet: kurz warten und wiederholen, dann das Ausweichmodell
-  const gemini = (payload: object) => callGemini(payload, { key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], onCall: () => { budget.used++; } });
+  const gemini = geminiCaller({ key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], onCall: () => { budget.used++; } });
   try {
     const result = await runAgent(r, { gemini, flights: q => searchAll(q, env, budget.fetch), stays: q => searchStays(q, env, budget.fetch), canSearch: budget.canSearch });
     // eine Rückfrage zählt nicht gegen das Tageslimit, erst die Suche danach
