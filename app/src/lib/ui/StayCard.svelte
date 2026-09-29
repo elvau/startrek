@@ -21,12 +21,15 @@
     if (!o) return;
     o.stay = { ...(o.stay || {}), board: b || undefined };
   }
+  let imgFailed = $state(false);
   let shown = $state(false);
   $effect(() => { const tm = setTimeout(() => (shown = true), 300); return () => clearTimeout(tm); });
 </script>
 
 <div class="stay">
   <div class="stay-img" aria-hidden="true">
+    <!-- Bild der Unterkunft vom Anbieter (Trivago), sonst die Zeichnung -->
+    {#if s?.image && !imgFailed}<img class="stay-photo" src={s.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={() => (imgFailed = true)} />{/if}
     <svg viewBox="0 0 220 200" preserveAspectRatio="xMidYMax slice"><circle cx="160" cy="60" r="22" fill="#FFE7B0" opacity=".9" /><path d="M0 150 Q 60 120 120 140 T 220 130 V200 H0z" fill="#2B6F8F" opacity=".75" /><rect x="40" y="80" width="70" height="80" rx="4" fill="#F7EDE2" /><rect x="52" y="94" width="14" height="14" fill="#E9A15A" /><rect x="84" y="94" width="14" height="14" fill="#E9A15A" /><rect x="52" y="120" width="14" height="14" fill="#E9A15A" /><rect x="84" y="120" width="14" height="14" fill="#E9A15A" /><path d="M34 82 L75 58 L116 82z" fill="#C4513C" /></svg>
   </div>
   <div class="stay-b">

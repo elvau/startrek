@@ -101,7 +101,7 @@ export interface Option {
   /** Herkunft und Stand des Preises */
   source?: { name: string; at?: string; url?: string };
   legs?: FlightLeg[];
-  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board };
+  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string };
   /** Unterkunft aus der Suche: Anfrage, mit der sie gefunden wurde (für die Reisebeobachtung) */
   query?: { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number };
 }
