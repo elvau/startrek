@@ -19,8 +19,8 @@ App-Stand (Commit), Art der Ansicht (ohne Namen) und die letzten 10 Fehlermeldun
    - optional `BUG_DAILY` (Meldungen pro Person und Tag, Standard 5)
 4. **Bildspeicher**: Cloudflare → R2 → Create bucket `splitandfly-bugs`.
    Im Bucket → Settings → Object lifecycle rules → Regel „Delete objects“ nach **30 Tagen** für alle Objekte.
-   Danach in `wrangler.toml` **und** `worker/wrangler.toml` den Block `[[r2_buckets]]` einkommentieren
-   (vorher nicht, sonst schlägt das Veröffentlichen fehl, weil der Bucket fehlt).
+   `wrangler.toml` **und** `worker/wrangler.toml` binden den Bucket als `BUG_BUCKET` ein; fehlt er,
+   schlägt das Veröffentlichen des Such-Dienstes fehl.
 
 Ohne Schritt 1–3 antwortet der Dienst „noch nicht eingerichtet“. Ohne Schritt 4 kommen Meldungen ohne Bild an
 (im Issue steht dann, dass ein Bild mitgeschickt wurde).

@@ -15,7 +15,7 @@ ALLOWED_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https://www.s
 # Partnerkennung bei Travelpayouts (öffentlich, steht ohnehin in jedem Aviasales-Link)
 TRAVELPAYOUTS_MARKER = "783080"
 
-# Bildspeicher für Fehlermeldungen, wie in ../wrangler.toml erst nach Anlegen des R2-Buckets einschalten:
-# [[r2_buckets]]
-# binding = "BUG_BUCKET"
-# bucket_name = "splitandfly-bugs"
+# Bildspeicher für Fehlermeldungen, wie in ../wrangler.toml
+[[r2_buckets]]
+binding = "BUG_BUCKET"
+bucket_name = "splitandfly-bugs"
