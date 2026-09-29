@@ -51,7 +51,7 @@
   const households = $derived(Object.keys(calc.T.byHousehold).length);
   const nn = $derived(nights(app.trip.from, app.trip.to));
   // Impressum und Datenschutz liegen neben der App (…/startrek/impressum.html)
-  const LEGAL = ((import.meta.env.BASE_URL as string) || "/").replace(/neu\/?$/, "");
+  const LEGAL = (import.meta.env.BASE_URL as string) || "/";
 </script>
 
 <Sprite />

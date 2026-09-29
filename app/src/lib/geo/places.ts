@@ -107,11 +107,8 @@ export const travelHours = (km: number) => (km <= 100 ? 0.4 + km / 70 : 0.6 + km
 
 /* ---------- Laden (einmal pro Sitzung, Orte nur für das gebrauchte Land) ---------- */
 
-const base = () => {
-  const b = (import.meta.env?.BASE_URL as string | undefined) || "/";
-  // die neue App liegt unter …/neu/, die Daten des Artefakts eine Ebene höher
-  return b.replace(/neu\/?$/, "");
-};
+/** Daten liegen neben der App (world.json, packs.json, places/) */
+const base = () => (import.meta.env?.BASE_URL as string | undefined) || "/";
 const bucket = (cc: string) => ((cc.charCodeAt(0) * 31 + cc.charCodeAt(1)) % 16).toString(16);
 const cache: { core?: Promise<void>; buckets: Record<string, Promise<void>> } = { buckets: {} };
 

@@ -1,4 +1,4 @@
-/* Design-System der Reisekasse, aus dem Prototyp public/design/ übernommen */
+/* Design-System der App, aus dem Prototyp docs/design/prototyp.html übernommen */
 /* ---------- Tokens ---------- */
 @property --a { syntax: "<color>"; inherits: true; initial-value: #2F6FDB; }
 @property --a-soft { syntax: "<color>"; inherits: true; initial-value: #E4EDFB; }

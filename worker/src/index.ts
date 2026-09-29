@@ -13,7 +13,7 @@ interface Env extends FlightEnv, StayEnv {
   ALLOWED_ORIGINS?: string;
 }
 
-const DEFAULT_ORIGINS = "https://elvau.github.io,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173";
+const DEFAULT_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https://www.splitandfly.com,https://startrek-1b6a7.web.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173";
 
 function cors(origin: string | null, env: Env): Record<string, string> {
   const allowed = (env.ALLOWED_ORIGINS || DEFAULT_ORIGINS).split(",").map(s => s.trim());

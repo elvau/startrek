@@ -1,6 +1,6 @@
 /*
  * Rechenkern. Reine Funktionen ohne Oberfläche.
- * Übernimmt das Verhalten der bisherigen App (public/index.html, calcItem und totals):
+ * Übernimmt das Verhalten der früheren Reisekasse (calcItem und totals, siehe Git-Verlauf von public/index.html):
  * Altersklassen, Kinder- und Kleinkindpreise, Gruppenrabatt-Stufen, Verteilung auf
  * Beteiligte, Währungsumrechnung.
  */

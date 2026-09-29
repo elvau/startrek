@@ -6,16 +6,15 @@ gesamt, mit Gruppenrabatten, Mehrwährung, Karte, Reiseplan und PDF-Export.
 
 Ursprünglich als claude.ai-Artifact entstanden, hier als eigenständige Web-App (PWA).
 
-## Zwei Apps nebeneinander
+## Umgebungen
 
-| | Adresse | Ordner |
+| | Adresse | Wann |
 | --- | --- | --- |
-| **Split&Fly** (im Aufbau) | `/neu/` | `app/` (Svelte, TypeScript, Vite) |
-| Bisherige Reisekasse | `/` | `public/` |
-| Designprototyp | `/design/` | `public/design/` |
+| **Produktion** | https://splitandfly.com | bei jedem veröffentlichten GitHub-Release |
+| **Testumgebung** | https://elvau.github.io/startrek/ | bei jedem Merge in `main` |
 
-Die bisherige App bleibt online, bis die neue alles kann, was man täglich braucht.
-Plan und Anwendungsfälle: [`docs/KONZEPT.md`](docs/KONZEPT.md).
+Code der App in `app/` (Svelte, TypeScript, Vite), Daten und Rechtliches in `public/`.
+Ablauf und Einrichtung: [`docs/RELEASE.md`](docs/RELEASE.md). Plan und Anwendungsfälle: [`docs/KONZEPT.md`](docs/KONZEPT.md).
 
 ## Neue App entwickeln
 
@@ -40,44 +39,26 @@ npm run check    # Typprüfung
 
 Konto und Teilen: Einrichtung in [`docs/FIREBASE.md`](docs/FIREBASE.md). Ohne Firebase läuft die App nur lokal.
 
-## Bisherige App starten
-
-```bash
-npm start        # http://localhost:8080
-```
-
-Kein Build-Schritt: alles in `public/` wird direkt ausgeliefert.
-
 ## Aufbau
 
 | Pfad | Inhalt |
 | --- | --- |
-| `public/index.html` | die App (HTML, CSS, JS in einer Datei) |
-| `public/claude-shim.js` | Ersatz für die claude.ai-Laufzeit (`window.claude.use`) |
-| `public/sw.js`, `manifest.webmanifest`, `icons/` | PWA: installierbar, offline nutzbar |
-| `public/packs.json` | Länderpakete (Preise, Orte, Verbindungen, Attraktionen) |
-| `public/world.json` | Länder, Städte, Flughäfen weltweit |
-| `public/geo/` | Küstenlinien für die Karte |
+| `app/` | die App (Svelte, TypeScript, Vite) |
+| `worker/` | Such-Dienst für Flüge und Unterkünfte (Cloudflare Worker) |
+| `public/airports.json` | Flughäfen und Städte (OurAirports, bei jedem Deploy erneuert) |
+| `public/packs.json`, `public/world.json` | Länder, Städte, Richtwerte |
 | `public/places/` | Orte ab 2000 Einwohnern (GeoNames), nach Land verteilt |
-| `public/plz.txt` | deutsche Postleitzahlen für die Anreise zum Flughafen |
-
-## Unterschiede zur claude.ai-Version
-
-| Funktion | claude.ai | eigenständig |
-| --- | --- | --- |
-| Speichern | geteilte Datenbank, alle Mitreisenden sehen denselben Stand | nur auf diesem Gerät (localStorage) |
-| Flugsuche (Kiwi.com) | über MCP | noch nicht verfügbar |
-| Unterkunftssuche (Booking.com, Trivago) | über MCP | noch nicht verfügbar |
-| PDF | Speichern-Dialog | normaler Download |
+| `public/impressum.html`, `public/datenschutz.html` | Rechtliches |
+| `public/neu/` | Weiterleitung von der früheren Adresse `/neu/` |
+| `public/sw.js` | räumt den Service Worker der früheren Reisekasse auf |
+| `docs/design/prototyp.html` | ursprünglicher Designprototyp |
 
 ## Veröffentlichen
 
-Bei jedem Push auf `main` prüft `.github/workflows/pages.yml` die neue App (Tests,
-Typprüfung), baut sie nach `/neu/` und veröffentlicht alles auf GitHub Pages. Bei Pull
-Requests laufen nur die Prüfungen. Einmalig einschalten: *Settings → Pages → Source: GitHub Actions*.
-
-Nach Änderungen an der App in `public/sw.js` die `VERSION` hochzählen, damit
-installierte Apps das Update laden.
+- **Testumgebung:** Bei jedem Push auf `main` prüft `.github/workflows/pages.yml` die App (Tests,
+  Typprüfung, Browser-Tests) und veröffentlicht sie auf GitHub Pages. Bei Pull Requests laufen nur die Prüfungen.
+- **Produktion:** Ein veröffentlichter Release startet `.github/workflows/release.yml` und bringt genau
+  diesen Stand auf splitandfly.com (Firebase Hosting). Siehe [`docs/RELEASE.md`](docs/RELEASE.md).
 
 ## Roadmap
 
