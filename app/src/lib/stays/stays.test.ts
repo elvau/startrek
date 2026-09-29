@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import trivago from "./trivago.fixture.json";
 import booking from "./booking.fixture.json";
-import { bookingArgs, fromBooking, fromTrivago, priceNum, searchTrivago, trivagoArgs } from "./providers";
+import { boardOf, bookingArgs, fromBooking, fromTrivago, priceNum, searchTrivago, trivagoArgs } from "./providers";
 import { mergeStays, parseStayQuery, searchStays } from "./search";
 import { defaultStayQuery, guests, stayToOption, takeStay } from "./app";
 import type { StayOffer, StayQuery } from "./types";
@@ -144,3 +144,18 @@ describe("Unterkunftssuche in der App", () => {
     expect(t.items.filter(x => x.cat === "stay")).toHaveLength(2);
   });
 });
+
+describe("Verpflegung aus den Merkmalen der Unterkunft", () => {
+  it("erkennt All-inclusive, Halbpension, Vollpension; Frühstück nur, wenn inklusive", () => {
+    expect(boardOf(["Pool", "All Inclusive"])).toBe("all");
+    expect(boardOf([], "Hotel Sol All-Inklusive")).toBe("all");
+    expect(boardOf(["Halbpension"])).toBe("half");
+    expect(boardOf(["Halbpension möglich", "Frühstück gegen Aufpreis"])).toBeUndefined();
+    expect(boardOf(["Full board"])).toBe("full");
+    expect(boardOf(["Frühstück inklusive"])).toBe("breakfast");
+    expect(boardOf(["Breakfast included", "WLAN"])).toBe("breakfast");
+    expect(boardOf(["Frühstück", "Parkplatz"])).toBeUndefined();
+    expect(boardOf(["Küche"])).toBeUndefined();
+  });
+});
+

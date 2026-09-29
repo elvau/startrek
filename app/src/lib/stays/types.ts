@@ -45,6 +45,8 @@ export interface StayOffer {
   image?: string;
   /** wenige Merkmale, z. B. Küche, Pool */
   facts?: string[];
+  /** Verpflegung, falls der Anbieter sie nennt */
+  board?: "self" | "breakfast" | "half" | "full" | "all";
   /** direkt in der App buchbar (später) */
   bookable?: boolean;
 }

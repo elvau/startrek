@@ -23,6 +23,17 @@ export function factsOf(list: string[]): string[] {
   return FACTS.filter(([, re]) => list.some(f => re.test(f))).map(([l]) => l).slice(0, 4);
 }
 
+/** Verpflegung aus Merkmalen oder Name („All Inclusive“, „Halbpension“, „Frühstück inklusive“); Frühstück nur, wenn inklusive */
+export function boardOf(list: string[], name = ""): StayOffer["board"] {
+  // nur buchbar, nicht inklusive: zählt nicht
+  const all = [...list, name].filter(x => !/möglich|zubuchbar|optional|available|on request|gegen aufpreis|surcharge/i.test(x)).join(" | ");
+  if (/all[\s-]?inclusive|all[\s-]?inklusive|alles inklusive|todo incluido|tout compris/i.test(all)) return "all";
+  if (/vollpension|full board|pensión completa|pension complète/i.test(all)) return "full";
+  if (/halbpension|half board|media pensión|demi-pension/i.test(all)) return "half";
+  if (/(frühstück|breakfast|desayuno|petit[\s-]déjeuner)[^|]*(inkl|inclu|gratis|free)|(inkl|inclu|gratis|free)[^|]*(frühstück|breakfast)/i.test(all)) return "breakfast";
+  return undefined;
+}
+
 const place = (...p: unknown[]) => p.filter(x => typeof x === "string" && x).join(", ") || undefined;
 const num = (v: unknown) => (typeof v === "number" && isFinite(v) ? v : v != null && v !== "" && isFinite(+v!) ? +v! : undefined);
 
@@ -46,7 +57,7 @@ export function fromBooking(data: any, currency = "EUR"): StayOffer[] {
     score: num(a.rating?.review_score), reviews: num(a.rating?.number_of_reviews), stars: num(a.rating?.stars) || undefined,
     place: place(a.location?.district_name, a.location?.city_name),
     lat: num(a.location?.coordinates?.latitude), lon: num(a.location?.coordinates?.longitude),
-    facts: factsOf(a.facilities || [])
+    facts: factsOf(a.facilities || []), board: boardOf([...(a.facilities || []), ...(a.meal_plan ? [String(a.meal_plan)] : [])], a.name)
   })).filter((o: StayOffer) => o.total > 0);
 }
 
@@ -74,7 +85,7 @@ export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[]
       name: a.accommodation_name || "?", total: priceNum(a.price_per_stay), currency: a.currency || "EUR", url: a.accommodation_url,
       score: num(a.review_rating), reviews: num(priceNum(a.review_count)), stars: num(a.hotel_rating) || undefined,
       place: a.distance || a.country_city || undefined, lat: num(a.latitude), lon: num(a.longitude), image: a.main_image || undefined,
-      facts: factsOf(amen), kind
+      facts: factsOf(amen), board: boardOf(amen, a.accommodation_name), kind
     };
     return o;
   }).filter((o: StayOffer & { kind?: string }) => o.total > 0 && !(q?.type === "whole" && o.kind === "hotel") && !(q?.type === "hotel" && o.kind === "whole"))

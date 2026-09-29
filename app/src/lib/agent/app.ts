@@ -4,7 +4,7 @@ import { ageClass } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
-import { hhKey, uid, type FoodStyle, type Item, type Trip } from "../model";
+import { hhKey, uid, type Item, type Trip } from "../model";
 import { syncFood } from "../food";
 import type { GeoData } from "../geo/places";
 import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
@@ -75,10 +75,15 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   if (trip.autoName !== false) { trip.name = a.title; trip.autoName = false; }
   trip.detail ||= {};
   if (a.flight) { trip.detail.flights = true; takeOffer(trip, a.flight); }
-  if (a.stay && a.stayQuery) { trip.detail.stay = true; takeStay(trip, a.stay, a.stayQuery); }
+  if (a.stay && a.stayQuery) {
+    trip.detail.stay = true;
+    const it = takeStay(trip, a.stay, a.stayQuery);
+    // Verpflegung an der Unterkunft: aus der Suche, sonst laut KI; die Verpflegung unter „Sonstiges“ richtet sich danach
+    const o = it.options.at(-1);
+    if (o && !o.stay?.board && a.board) o.stay = { ...(o.stay || {}), board: a.board };
+  }
   trip.ai = { at: new Date().toISOString() };
-  // Verpflegung passend zur Unterkunft (die Beträge rechnet die App je Land, siehe food.ts)
-  trip.food = { ...(trip.food || {}), on: true, style: BOARD_FOOD[a.board || "self"] };
+  trip.food = { ...(trip.food || {}), on: true };
   // Schätzungen der KI als Posten, als Richtwert markiert
   const est = (cat: Item["cat"], name: string, eur: number): Item => ({
     id: uid(), cat, name, status: "idea",
@@ -88,8 +93,6 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   if (a.extras?.length) { trip.detail.attractions = true; a.extras.forEach(x => trip.items.push(est("attractions", x.name, x.eur))); }
 }
 
-/** Verpflegung laut Unterkunft → Essensstil der App (Frühstück allein: gemischt) */
-const BOARD_FOOD: Record<NonNullable<AgentTrip["board"]>, FoodStyle> = { self: "mix", breakfast: "mix", half: "hb", full: "ai", all: "ai" };
 
 /**
  * Vorschlag als fertige Reise, ohne etwas zu speichern: so, wie sie beim Übernehmen entsteht (mit Verpflegung und

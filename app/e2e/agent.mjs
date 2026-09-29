@@ -96,6 +96,20 @@ try {
   if (await p.locator(".ai-chat").count()) fail("Chat nicht geschlossen");
   if (!(await p.locator("#transport .card", { hasText: "Mietwagen 3 Tage" }).count())) fail("Transport vor Ort nicht übernommen");
   if (!(await p.locator("#attractions .card", { hasText: "Bootstour" }).count())) fail("Erlebnis nicht übernommen");
+  // Verpflegung an der Unterkunft: Halbpension von der KI, Verpflegung unter „Sonstiges“ folgt; auf der Karte änderbar
+  const board = p.locator("#stay .card", { hasText: "Casa Palma" }).locator(".board-fact select");
+  if ((await board.inputValue()) !== "half") fail("Halbpension nicht an der Unterkunft");
+  await p.locator("#misc .food-board", { hasText: "Halbpension" }).waitFor();
+  const before = await p.locator("#misc .ch-sum b").innerText();
+  await board.selectOption("all");
+  await p.locator("#misc .food-board", { hasText: "All-inclusive" }).waitFor();
+  await until(async () => (await p.locator("#misc .ch-sum b").innerText()) !== before, "Verpflegung günstiger bei All-inclusive");
+  if (process.env.SHOTS) {
+    for (const [sel, name] of [["#stay .card:has-text('Casa Palma')", "board-stay"], ["#misc .plan-card", "board-food"]]) {
+      await p.locator(sel).first().scrollIntoViewIfNeeded(); await p.waitForTimeout(1200);
+      await p.locator(sel).first().screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+    }
+  }
   const meta = await p.locator(".hero .meta").innerText();
   if (!meta.includes("Palma") || !meta.includes("3 Nächte")) fail("Kopf: " + meta);
   if (!(await p.locator("#flights .card", { hasText: "Sun Air" }).count())) fail("Flug nicht übernommen");

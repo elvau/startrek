@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { t, tn } from "../i18n/index.svelte";
-  import type { Item } from "../model";
-  import { app, calc } from "../store.svelte";
+  import { t, tn, type Key } from "../i18n/index.svelte";
+  import { BOARDS, type Board, type Item } from "../model";
+  import { access, app, calc } from "../store.svelte";
   import { eur } from "../calc";
   import { dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
@@ -15,6 +15,12 @@
   const partial = $derived(sc ? Object.entries(sc.w).filter(([, w]) => w < sc.nights.length).map(([id, w]) => `${app.trip.travelers.find(x => x.id === id)?.name || "?"} ${tn("n.nights", w)}`) : []);
   const absent = $derived(sc ? sc.nights.filter(x => !sc.occ[x]).length : 0);
   const pct = $derived(r && r.net ? Math.min(100, (r.paid / r.net) * 100) : 0);
+  /** Verpflegung am gewählten Angebot setzen (die Verpflegung unter „Sonstiges“ folgt automatisch) */
+  function setBoard(b: Board | "") {
+    const o = item.options.find(x => x.id === r?.option?.id);
+    if (!o) return;
+    o.stay = { ...(o.stay || {}), board: b || undefined };
+  }
   let shown = $state(false);
   $effect(() => { const tm = setTimeout(() => (shown = true), 300); return () => clearTimeout(tm); });
 </script>
@@ -35,6 +41,15 @@
       {#if s?.stars}<span class="fact">{"★".repeat(s.stars)}</span>{/if}
       {#if s?.rating}<span class="fact">{t("stay.rating", { p: s.rating })}</span>{/if}
       {#each s?.facts || [] as f}<span class="fact">{f}</span>{/each}
+      {#if r?.option}
+        <!-- Verpflegung der Unterkunft: danach richtet sich die Verpflegung unter „Sonstiges“ -->
+        <label class="fact board-fact" class:unknown={!s?.board} title={t("board.title")}>🍽
+          <select value={s?.board || ""} disabled={access.readonly} aria-label={t("board.title")} onchange={e => setBoard(e.currentTarget.value as Board | "")}>
+            {#if !s?.board}<option value="">{t("board.unknown")}</option>{/if}
+            {#each BOARDS as b (b)}<option value={b}>{t(`board.${b}` as Key)}</option>{/each}
+          </select>
+        </label>
+      {/if}
     </div>
     {#if nn}
       <div class="nights" class:in={shown}>

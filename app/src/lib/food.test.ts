@@ -46,4 +46,25 @@ describe("Verpflegung wie im Artefakt", () => {
     expect(syncFood(t, g)).toBe(true);
     expect(t.items).toHaveLength(0);
   });
+
+  it("richtet sich nach der Verpflegung der Unterkunft; eigene Wahl der Familie geht vor", () => {
+    const t = trip();
+    t.food = { on: true, style: "mix", hh: { Hase: "treat" } };
+    t.detail = { misc: true, stay: true };
+    const stay = (board?: "breakfast" | "half" | "all") => ({ id: "s", cat: "stay" as const, name: "Hotel", status: "chosen" as const, from: "2027-07-18", to: "2027-07-25",
+      options: [{ id: "o", label: "Hotel", price: { mode: "unit" as const, currency: "EUR", unit: 1000, basis: "stay" as const }, stay: board ? { board } : {} }] });
+    t.items = [stay("half")];
+    let rows = foodPlan(t, g);
+    expect(rows.map(r => [r.hh, r.style, r.board])).toEqual([["Klein", "hb", "half"], ["Hase", "treat", undefined]]);
+    t.items = [stay("all")];
+    expect(foodPlan(t, g)[0].style).toBe("ai");
+    // Frühstück: gleicher Stil, gut ein Fünftel weniger
+    const mix = foodPlan({ ...t, items: [stay()] }, g)[0].eur;
+    t.items = [stay("breakfast")];
+    rows = foodPlan(t, g);
+    expect(rows[0]).toMatchObject({ style: "mix", board: "breakfast", eur: Math.round(mix * 0.8) });
+    // Posten sagt, woher die Verpflegung kommt
+    syncFood(t, g);
+    expect(t.items.find(i => i.hh === "Klein")!.options[0].detail).toContain("Verpflegung laut Unterkunft: Frühstück");
+  });
 });

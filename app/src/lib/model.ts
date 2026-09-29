@@ -101,7 +101,7 @@ export interface Option {
   /** Herkunft und Stand des Preises */
   source?: { name: string; at?: string; url?: string };
   legs?: FlightLeg[];
-  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[] };
+  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board };
   /** Unterkunft aus der Suche: Anfrage, mit der sie gefunden wurde (für die Reisebeobachtung) */
   query?: { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number };
 }
@@ -245,6 +245,10 @@ export interface WatchHit {
 export interface TripWatch { at: string; items: Record<string, WatchHit> }
 
 /** Selbstversorgung, gemischt, auswärts, Genießer, Halbpension, All-inclusive */
+/** Verpflegung in der Unterkunft: ohne, Frühstück, Halbpension, Vollpension, All-inclusive */
+export type Board = "self" | "breakfast" | "half" | "full" | "all";
+export const BOARDS: Board[] = ["self", "breakfast", "half", "full", "all"];
+
 /** Eintrag im einfachen Modus, z. B. „Stadionführung 50 € · Daniel, Henning“; gleich auf die Beteiligten verteilt */
 export interface SimpleLine {
   id: string;

@@ -560,6 +560,11 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .ai-bar textarea{flex:1;font:inherit;font-size:14px;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;resize:none}
 .ai-foot{font-size:11px;margin:0;padding:0 14px 10px}
 @media (max-width:900px){.ai-fab{bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
+/* Verpflegung an der Unterkunft (auf der Karte wählbar) */
+.board-fact{display:inline-flex;align-items:center;gap:4px;cursor:pointer}
+.board-fact select{font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer}
+.board-fact.unknown{border-style:dashed;opacity:.8}
+.food-board{margin:2px 0 4px;color:var(--ink-2)}
 /* KI-Rückfrage mit Antworten zum Antippen */
 .ai-opts{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
 .ai-opts .chip{background:var(--paper);cursor:pointer}
