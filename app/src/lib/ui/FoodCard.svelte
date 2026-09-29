@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t, tn } from "../i18n/index.svelte";
+  import { t, tn, type Key } from "../i18n/index.svelte";
   /* Verpflegung wie im Artefakt: Essensstil für alle oder je Familie, Tagessatz aus den Länderdaten, dazu Restaurants und Supermärkte */
   import { access, app, calc, setDetailed } from "../store.svelte";
   import { eur } from "../calc";
@@ -44,6 +44,7 @@
         {@const it = app.trip.items.find(i => i.auto === "food" && i.hh === r.hh)}
         <li>
           <div class="food-h"><b>{r.hh}</b><span class="muted small">{t("food.row", { p: r.ids.length, d: tn("n.days", r.days), a: eur(r.eur), c: eur(Math.round(r.eur * cfg.child / 100)) })}{r.est ? ` (${t("food.est")})` : ""}</span><b class="num">{eur(it ? calc.T.items[it.id]?.net || 0 : 0)}</b></div>
+          {#if r.board}<div class="food-board small">🛏 {t("food.byStay", { b: t(`board.${r.board}` as Key) })}</div>{/if}
           {#if rows.length > 1 && !access.readonly}
             <div class="chips">
               <button class="chip sm" class:on={!r.own} onclick={() => setHh(r.hh, null)}>{t("food.likeAll")}</button>

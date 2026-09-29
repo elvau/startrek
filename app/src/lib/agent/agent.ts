@@ -149,7 +149,7 @@ export function systemPrompt(r: AgentRequest): string {
       ? "You already asked a clarifying question; the user's answer is in the text. Do not ask again: search now, assuming sensible defaults for anything still open."
       : `Before searching, check whether essential details are missing: the departure city (if the home town is unknown and the wish names none), the number and ages of children (if the wish mentions children but the ages are unknown), the travel period (month, holidays or dates) and the trip length or maximum number of nights. If any of these is missing, call ask_user once, in ${lang}, with one short question covering all missing points and 2-4 tappable answers. Do not ask about anything you can reasonably assume (budget, hotel type). If nothing essential is missing, search right away.`,
     "Use search_flights and search_stays to find real offers. Never invent prices, flights or hotels.",
-    "Every proposal is a complete package: a real flight AND a real accommodation for the same destination and dates (search both for each destination), plus your estimates for local transport (transfers, rental car or public transport) and up to 3 fitting activities or events. Set board from the accommodation's facts (all-inclusive, half board …) so the app can add meal costs. Estimates are rough totals in EUR for the whole group.",
+    "Every proposal is a complete package: a real flight AND a real accommodation for the same destination and dates (search both for each destination), plus your estimates for local transport (transfers, rental car or public transport) and up to 3 fitting activities or events. Set board from the accommodation's board or facts (all-inclusive, half board …); if unknown, use 'self'. The app then adds only the meals not covered by the accommodation. Estimates are rough totals in EUR for the whole group.",
     `Be economical: at most ${LIMITS.flights} flight searches and ${LIMITS.stays} accommodation searches in total.`,
     "Match the request (budget, season, length, interests). Budget amounts are per person unless stated otherwise.",
     `Then call propose_trips exactly once with 2-${LIMITS.trips} clearly different trips, using offer ids from the search results.`,
@@ -172,7 +172,7 @@ const flightBrief = (o: FlightOffer) => ({
   out: `${hm(o.out.dep)} → ${hm(o.out.arr)}, ${o.out.stops} stop(s), ${o.out.carriers.join("/")}`,
   back: o.back ? `${hm(o.back.dep)} → ${hm(o.back.arr)}, ${o.back.stops} stop(s)` : undefined
 });
-const stayBrief = (o: StayOffer) => ({ id: o.id, name: o.name, totalPrice: Math.round(o.total), currency: o.currency, rating: o.score, stars: o.stars, area: o.place });
+const stayBrief = (o: StayOffer) => ({ id: o.id, name: o.name, totalPrice: Math.round(o.total), currency: o.currency, rating: o.score, stars: o.stars, area: o.place, ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {}) });
 
 export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentResult> {
   const flights = new Map<string, FlightOffer>();

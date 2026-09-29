@@ -4,8 +4,8 @@
  * Die Posten „Verpflegung …“ im Kapitel Sonstiges werden daraus automatisch gesetzt.
  */
 import { t, type Key } from "./i18n/index.svelte";
-import { hhKey, isActive, uid, type FoodCfg, type FoodStyle, type Item, type Trip } from "./model";
-import { presences } from "./calc";
+import { hhKey, isActive, isDetailed, uid, type Board, type FoodCfg, type FoodStyle, type Item, type Trip } from "./model";
+import { activeOption, presences } from "./calc";
 import { nightsList, okDate } from "./calc/travel";
 import { ccOf, findCity, type GeoData } from "./geo/places";
 
@@ -37,7 +37,27 @@ export function foodRate(g: GeoData, trip: Trip, k: FoodStyle): { eur: number; n
   return { eur: Math.round(FOOD_DE[k] * Math.pow(w?.pli || 1, 0.7)), note: style.d, est: true };
 }
 
-export interface FoodRow { hh: string; ids: string[]; days: number; style: FoodStyle; own: boolean; eur: number; note: string; est: boolean }
+export interface FoodRow {
+  hh: string; ids: string[]; days: number; style: FoodStyle; own: boolean; eur: number; note: string; est: boolean;
+  /** Verpflegung laut Unterkunft, nach der sich der Stil richtet (ohne eigene Wahl der Familie) */
+  board?: Board;
+}
+
+/** Unterkunft mit Verpflegung → Stil: Halbpension nur noch mittags, Voll/All-inclusive nur Kleinigkeiten */
+const BOARD_STYLE: Partial<Record<Board, FoodStyle>> = { half: "hb", full: "ai", all: "ai" };
+/** Frühstück inklusive: gut ein Fünftel weniger */
+const BREAKFAST = 0.8;
+
+/** Verpflegung der Unterkunft, in der diese Familie schläft (erste passende, gewählte Unterkunft) */
+export function boardFor(trip: Trip, ids: string[]): Board | undefined {
+  if (!isDetailed(trip, "stay")) return undefined;
+  for (const it of trip.items) {
+    if (it.cat !== "stay" || it.status === "dropped" || (it.participants && !it.participants.some(id => ids.includes(id)))) continue;
+    const b = activeOption(it, trip)?.stay?.board;
+    if (b) return b;
+  }
+  return undefined;
+}
 
 /** je Familie: Tage vor Ort (Anreise bis Abreise, beide Tage zählen), sonst Reisetage */
 export function foodPlan(trip: Trip, g: GeoData): FoodRow[] {
@@ -50,8 +70,12 @@ export function foodPlan(trip: Trip, g: GeoData): FoodRow[] {
     const ds = ids.map(id => pres[id]).filter(p => !!p).map(p => nightsList(p!.a, p!.d).length + 1);
     const days = ds.length ? Math.max(...ds) : tripDays;
     const own = !!cfg.hh?.[hh];
-    const style = cfg.hh?.[hh] || cfg.style;
-    return { hh, ids, days, style, own, ...foodRate(g, trip, style) };
+    // eigene Wahl der Familie > Verpflegung der Unterkunft > Stil für alle
+    const board = own ? undefined : boardFor(trip, ids);
+    const style = cfg.hh?.[hh] || (board && BOARD_STYLE[board]) || cfg.style;
+    const rate = foodRate(g, trip, style);
+    if (board === "breakfast") rate.eur = Math.round(rate.eur * BREAKFAST);
+    return { hh, ids, days, style, own, ...rate, ...(board && board !== "self" ? { board } : {}) };
   }).filter(r => r.days > 0);
 }
 
@@ -70,7 +94,7 @@ export function syncFood(trip: Trip, g: GeoData): boolean {
     const style = FOOD_STYLES.find(s => s.k === r.style)!;
     const want = {
       name: t("food.itemName", { hh: r.hh }), participants: r.ids,
-      label: style.l, detail: `${r.note}. ${r.est ? t("food.detailEst", { c: cfg.child, i: cfg.infant }) : t("food.detail", { c: cfg.child, i: cfg.infant })}`,
+      label: style.l, detail: `${r.board ? `${t("food.byStay", { b: t(`board.${r.board}` as Key) })}. ` : ""}${r.note}. ${r.est ? t("food.detailEst", { c: cfg.child, i: cfg.infant }) : t("food.detail", { c: cfg.child, i: cfg.infant })}`,
       price: { mode: "person" as const, currency: "EUR", adult: r.eur, child: Math.round(r.eur * cfg.child / 100), infant: Math.round(r.eur * cfg.infant / 100), qty: r.days }
     };
     if (!it) {

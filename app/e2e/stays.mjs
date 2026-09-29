@@ -130,7 +130,8 @@ try {
   log("Übernommen: Posten nur für Klein, 25.07. bis 29.07., Lücke weg");
 
   // Suche aus dem Posten heraus: Vergleich zum bisherigen Preis
-  await p.locator("#stay .card:not(.plan-card)", { hasText: "Villa" }).click();
+  // auf den Titel tippen (die Verpflegung auf der Karte ist ein eigenes Auswahlfeld)
+  await p.locator("#stay .card:not(.plan-card)", { hasText: "Villa" }).locator("h3").click();
   await p.locator(".st-item").click();
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();

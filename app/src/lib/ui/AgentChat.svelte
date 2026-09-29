@@ -153,7 +153,7 @@
                 <ul class="ai-parts">
                   {#if f}<li>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {f.out.carriers.join(" / ")}<b>{eur(f.price)}</b></li>{/if}
                   {#if pv.access > 0.5}<li>🚆 {t("ai.access")}<b>≈ {eur(pv.access)}</b></li>{/if}
-                  {#if a.stay}<li>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{a.board ? ` · ${t(`ai.board.${a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
+                  {#if a.stay}<li>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{(a.stay.board || a.board) ? ` · ${t(`board.${a.stay.board || a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
                   {#if a.transport}<li>🚗 {a.transport.label}<b>≈ {eur(a.transport.eur)}</b></li>{/if}
                   {#if a.extras?.length}<li>🎟 {a.extras.map(x => x.name).join(", ")}<b>≈ {eur(a.extras.reduce((s, x) => s + x.eur, 0))}</b></li>{/if}
                   {#if pv.food > 0.5}<li>🍽 {t("ai.food")}<b>≈ {eur(pv.food)}</b></li>{/if}
