@@ -19,7 +19,7 @@ Gemini sucht über unsere Flug- und Unterkunftssuche und schlägt 2–3 Reisen v
    Name `GEMINI_API_KEY`, Wert = Schlüssel. Ohne Schlüssel meldet der Planer „noch nicht eingerichtet“.
 3. Optional als Variablen (Typ Text):
    - `GEMINI_MODEL` – Modell, Standard `gemini-3.8-flash` (bei Google nachsehen, welche Modelle aktuell sind; ältere wie `gemini-2.5-flash` gibt es für neue Konten nicht mehr)
-   - `GEMINI_FALLBACK_MODEL` – optional: Ausweichmodell, falls das erste überlastet ist (Google meldet 503). Vorher wird nach 1 und 3 Sekunden wiederholt.
+   - `GEMINI_FALLBACK_MODEL` – optional: Ausweichmodell, falls das erste überlastet ist (Google meldet 503). Vorher wird nach 1 und 3 Sekunden wiederholt. Ohne diese Variable sucht sich der Such-Dienst selbst ein anderes Flash-Modell aus der Liste, die Google für den Schlüssel anbietet; weitere Runden derselben Anfrage bleiben beim Modell, das geantwortet hat.
    - `AGENT_DAILY` – Anfragen pro Nutzer und Tag, Standard 5
 4. Optional **KV-Speicher** für ein genaues Tageslimit: ohne ihn zählt der Such-Dienst je Cloudflare-Rechenzentrum
    (reicht für die Beta). Mit KV: Namespace anlegen, als Binding `AGENT_KV` in `wrangler.toml` und `worker/wrangler.toml` eintragen.

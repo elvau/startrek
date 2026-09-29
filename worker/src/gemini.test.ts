@@ -1,6 +1,6 @@
 /* Läuft mit den Tests der App (cd app && npx vitest run) */
 import { describe, expect, it } from "vitest";
-import { callGemini } from "./gemini";
+import { callGemini, geminiCaller, pickModels } from "./gemini";
 
 /** Antworten der Reihe nach; merkt sich Modell und Wartezeiten */
 function net(statuses: number[]) {
@@ -33,6 +33,26 @@ describe("Gemini-Aufruf mit Wiederholung", () => {
     await callGemini({}, { key: "k", models: ["alt", "neu"], f: n.f, sleep: n.sleep });
     expect(n.seen).toEqual(["alt", "neu"]);
     await expect(callGemini({}, { key: "k", models: ["alt", ""], f: net([404]).f, sleep: n.sleep })).rejects.toThrow("KI-Fehler 404 (alt): Fehler 404");
+  });
+  it("alle genannten überlastet: weiteres Flash-Modell aus Googles Liste; nächste Runde gleich dieses", async () => {
+    const n = net([503, 503, 503, 200, 200]);
+    const call = geminiCaller({ key: "k", models: ["a", ""], f: n.f, sleep: n.sleep, discover: async () => ["b"] });
+    await call({});
+    expect(n.seen).toEqual(["a", "a", "a", "b"]);
+    await call({});
+    expect(n.seen.at(-1)).toBe("b");
+    expect(n.seen).toHaveLength(5);
+  });
+  it("Auswahl aus Googles Liste: nur Text-Flash-Modelle, neueste zuerst, ohne das überlastete", () => {
+    const list = [
+      { name: "models/gemini-3.8-flash", supportedGenerationMethods: ["generateContent"] },
+      { name: "models/gemini-3.5-flash", supportedGenerationMethods: ["generateContent"] },
+      { name: "models/gemini-3.8-flash-lite", supportedGenerationMethods: ["generateContent"] },
+      { name: "models/gemini-3.8-flash-image", supportedGenerationMethods: ["generateContent"] },
+      { name: "models/gemini-3.8-pro", supportedGenerationMethods: ["generateContent"] },
+      { name: "models/text-embedding-9", supportedGenerationMethods: ["embedContent"] }
+    ];
+    expect(pickModels(list, ["gemini-3.8-flash"])).toEqual(["gemini-3.8-flash-lite", "gemini-3.5-flash"]);
   });
   it("anderer Fehler (z. B. Schlüssel ungültig): sofort abbrechen", async () => {
     const n = net([400, 200]);
