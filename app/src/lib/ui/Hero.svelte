@@ -7,7 +7,8 @@
   import ModeSwitch from "./ModeSwitch.svelte";
   import { renameTrip, setAllDetailed, tripMode } from "../store.svelte";
   import { eur } from "../calc";
-  import { nights, range } from "../format";
+  import { dayShort, nights, range } from "../format";
+  import { openEventPlanner } from "../event/open.svelte";
   import TripMenu from "./TripMenu.svelte";
   import GroupsButton from "./GroupsButton.svelte";
   import TripEditor from "./TripEditor.svelte";
@@ -78,6 +79,12 @@
         {/if}
       {/key}
       <div class="meta">{[where, range(trip.from, trip.to), nights(trip.from, trip.to) ? tn("n.nights", nights(trip.from, trip.to)) : "", n ? tn("n.persons", n) : t("nobody")].filter(Boolean).join(" · ")}</div>
+      {#if trip.event}
+        <div class="ev-hero">🎟 {[trip.event.name !== trip.name ? trip.event.name : "", `${dayShort(trip.event.start.slice(0, 10))} ${trip.event.start.slice(11, 16)}`, trip.event.venue].filter(Boolean).join(" · ")}
+          {#if !access.readonly}<button class="linkbtn ev-open" onclick={openEventPlanner}>{t("ev.go")}</button>{/if}</div>
+      {:else if !access.readonly}
+        <div class="ev-hero"><button class="linkbtn ev-open" onclick={openEventPlanner}>🎟 {t("ev.cta")}</button></div>
+      {/if}
     {/if}
     {#if !access.readonly}
       <div class="hero-mode"><ModeSwitch value={tripMode()} onchange={setAllDetailed} label={t("hero.mode")} />{#if tripMode() === "mixed"}<span class="muted small">{t("hero.mixed")}</span>{/if}</div>

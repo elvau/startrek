@@ -1,4 +1,4 @@
-# Reisekasse
+# vacaYtion (vormals Reisekasse)
 
 Reisekostenrechner für Gruppenreisen: Reisende und Haushalte, Flüge, Unterkünfte,
 Transport vor Ort, Attraktionen und Sonstiges. Rechnet pro Person, pro Haushalt und
@@ -10,7 +10,7 @@ Ursprünglich als claude.ai-Artifact entstanden, hier als eigenständige Web-App
 
 | | Adresse | Ordner |
 | --- | --- | --- |
-| **Neue Reisekasse** (im Aufbau) | `/neu/` | `app/` (Svelte, TypeScript, Vite) |
+| **vacaYtion** (im Aufbau) | `/neu/` | `app/` (Svelte, TypeScript, Vite) |
 | Bisherige Reisekasse | `/` | `public/` |
 | Designprototyp | `/design/` | `public/design/` |
 
