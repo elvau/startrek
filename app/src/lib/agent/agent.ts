@@ -252,8 +252,8 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
       contents,
       tools: toolsFor(r),
       // immer ein Werkzeug aufrufen; in der letzten Runde nur noch den Vorschlag
-      toolConfig: { functionCallingConfig: { mode: "ANY", ...(last ? { allowedFunctionNames: ["propose_trips"] } : {}) } },
-      generationConfig: { temperature: 0.4 }
+      // Temperatur nicht setzen: Gemini 3 ist auf den Standard (1,0) abgestimmt, niedrigere Werte führen zu Schleifen
+      toolConfig: { functionCallingConfig: { mode: "ANY", ...(last ? { allowedFunctionNames: ["propose_trips"] } : {}) } }
     });
     const content = res?.candidates?.[0]?.content;
     const calls = (content?.parts || []).filter((p: any) => p.functionCall).map((p: any) => p.functionCall);

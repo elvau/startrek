@@ -36,7 +36,7 @@
   }
 </script>
 
-<button class="bug-fab" onclick={() => (bugDialog.open = true)} title={t("bug.open")} aria-label={t("bug.open")}><span aria-hidden="true">🐞</span></button>
+<button class="bug-fab" onclick={() => (bugDialog.open = true)} title={t("bug.open")}><span aria-hidden="true">🐞</span><span class="bug-lbl">{t("bug.title")}</span></button>
 
 {#if bugDialog.open}
   <Modal title={t("bug.title")} onclose={close}>

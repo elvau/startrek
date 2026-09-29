@@ -21,7 +21,7 @@ function view(): string {
 export function collect(text: string): BugReport {
   return {
     text, page: location.href.split("#")[0], lang: i18n.lang, ua: navigator.userAgent,
-    screen: `${innerWidth}×${innerHeight}`, version: __APP_VERSION__, errors: recentErrors(), view: view()
+    screen: `${innerWidth}×${innerHeight}`, version: `v${__APP_VERSION__} (${__APP_COMMIT__})`, errors: recentErrors(), view: view()
   };
 }
 
