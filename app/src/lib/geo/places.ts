@@ -46,7 +46,23 @@ export function ccOf(g: GeoData, country?: string): string | null {
   if (!country) return null;
   const n = norm(country);
   if (/^[a-z]{2}$/.test(n)) return n.toUpperCase();
-  return g.world.find(w => norm(w.l) === n || norm(w.en) === n)?.k ?? null;
+  return g.world.find(w => norm(w.l) === n || norm(w.en) === n)?.k ?? localNames(g).get(n) ?? null;
+}
+
+/** Ländernamen in den Sprachen der App („Croacia“, „Chorwacja“, „Хорватия“ → HR), aus Intl.DisplayNames */
+const LANGS = ["de", "en", "es", "fr", "pl", "ru", "ar"];
+let names: { n: number; map: Map<string, string> } | null = null;
+function localNames(g: GeoData): Map<string, string> {
+  if (names?.n === g.world.length) return names.map;
+  const map = new Map<string, string>();
+  try {
+    for (const l of LANGS) {
+      const dn = new Intl.DisplayNames([l], { type: "region" });
+      for (const w of g.world) { const x = dn.of(w.k); if (x && x !== w.k) map.set(norm(x), w.k); }
+    }
+  } catch { /* ältere Browser ohne DisplayNames: nur deutsch und englisch */ }
+  names = { n: g.world.length, map };
+  return map;
 }
 
 /** alle bekannten Orte eines Landes (Pakete mit englischem Namen zuerst, dann Weltdaten, dann kleinere Orte) */
