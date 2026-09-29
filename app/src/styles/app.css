@@ -45,7 +45,7 @@ body[data-ch="attractions"]{--a:var(--c-attractions);--a-soft:var(--c-attraction
 body[data-ch="misc"]{--a:var(--c-misc);--a-soft:var(--c-misc-s)}
 
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:84px}
+html{scroll-behavior:smooth;scroll-padding-top:84px;overflow-x:clip}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Figtree Variable",system-ui,sans-serif;transition:--a .8s ease,--a-soft .8s ease;overflow-x:hidden}
 h1,h2,h3{font-family:"Bricolage Grotesque Variable","Figtree Variable",sans-serif;margin:0;letter-spacing:-.01em;text-wrap:balance}
 .num{font-variant-numeric:tabular-nums}

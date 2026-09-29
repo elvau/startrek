@@ -325,7 +325,11 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .who-d{display:flex;flex-direction:column;gap:6px;align-items:flex-start;align-self:stretch}
 .who-d p{margin:0}
 .grp-counts{grid-template-columns:repeat(2,minmax(0,150px))}
-@media (max-width:640px){.hero .tm-btn{max-width:calc(100vw - 250px)}.hero-r{gap:6px}.hero .acct .tm-btn{padding:6px 11px}}
+/* schmale Bildschirme: die Reise-Auswahl links gibt Platz ab, rechts bleibt alles ganz */
+.hero-bar>.tmenu{min-width:0;flex:0 1 auto}
+.hero-bar>.tmenu .tm-btn{min-width:0}
+.hero-r{flex:none}
+@media (max-width:640px){.hero .tm-btn{max-width:100%}.hero-r{gap:6px}.hero .acct .tm-btn{padding:6px 11px}}
 :root[data-theme="dark"] .who-art{filter:brightness(.85)}
 /* Flugsuche */
 .fs-form{display:flex;flex-direction:column;gap:10px}
