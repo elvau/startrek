@@ -480,3 +480,8 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .ai-ex .chip{text-align:start;white-space:normal}
 .ai-sum{color:var(--ink-2)}
 .ai-login{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ev-find{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:6px}
+.ev-hits{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:260px;overflow:auto}
+.ev-hit{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:start;border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:8px 12px;font-size:14px}
+.ev-hit:hover{border-color:var(--a)}
+.ev-or{margin:10px 0 0}

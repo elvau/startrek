@@ -190,6 +190,11 @@ export interface TripEvent {
   start: string;
   /** Dauer in Stunden (Standard 3) */
   hours?: number;
+  /** Veranstaltungsort, falls bekannt (für Unterkünfte in der Nähe) */
+  lat?: number;
+  lon?: number;
+  /** Seite des Anbieters (Tickets) */
+  url?: string;
 }
 
 export interface Trip {

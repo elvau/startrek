@@ -17,5 +17,5 @@ TRAVELPAYOUTS_MARKER = "783080"
 
 # Gleiche Einstellungen stehen in worker/wrangler.toml (für Vorschau-Builds mit Root „worker“), bitte gleich halten.
 # Schlüssel der Anbieter als Secrets im Cloudflare-Dashboard, nicht hier:
-#   TRAVELPAYOUTS_TOKEN, GEMINI_API_KEY (KI-Planer), später DUFFEL_TOKEN (immer Typ „Secret“, sonst löscht ein neues Veröffentlichen sie)
+#   TRAVELPAYOUTS_TOKEN, GEMINI_API_KEY (KI-Planer), TICKETMASTER_KEY, FOOTBALL_DATA_KEY (Event-Suche), später DUFFEL_TOKEN (immer Typ „Secret“, sonst löscht ein neues Veröffentlichen sie)
 # KI-Planer optional: GEMINI_MODEL (Standard gemini-2.5-flash), AGENT_DAILY (Anfragen pro Tag, Standard 5)
