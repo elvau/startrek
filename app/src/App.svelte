@@ -23,6 +23,7 @@
   import PresencePlan from "./lib/ui/PresencePlan.svelte";
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
+  import WatchPanel from "./lib/ui/WatchPanel.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
   import StaySearch from "./lib/ui/StaySearch.svelte";
@@ -104,6 +105,7 @@
     <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.total)} sub={tn("n.families", households)}>
       <Split />
     </Chapter>
+    <WatchPanel />
   </main>
   <TicketAside />
 </div>

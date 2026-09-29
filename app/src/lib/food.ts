@@ -13,10 +13,11 @@ import { ccOf, findCity, type GeoData } from "./geo/places";
 const style = (k: FoodStyle) => ({ k, get l() { return t(`food.style.${k}.l` as Key); }, get d() { return t(`food.style.${k}.d` as Key); } });
 
 export const FOOD_STYLES: { k: FoodStyle; readonly l: string; readonly d: string }[] = [
-  style("self"), style("mix"), style("out"), style("treat")
+  style("self"), style("mix"), style("out"), style("treat"), style("hb"), style("ai")
 ];
 /** Deutschland als Maßstab (Preisniveau 1), € pro Erwachsenem und Tag */
-export const FOOD_DE: Record<FoodStyle, number> = { self: 20, mix: 35, out: 55, treat: 85 };
+/** Halbpension: nur Mittagessen und Kleinigkeiten, All-inclusive: nur Kleinigkeiten unterwegs (Rest steckt in der Unterkunft) */
+export const FOOD_DE: Record<FoodStyle, number> = { self: 20, mix: 35, out: 55, treat: 85, hb: 15, ai: 5 };
 
 export const foodCfg = (trip: Trip): Required<Pick<FoodCfg, "style" | "child" | "infant">> & FoodCfg =>
   ({ style: "mix", child: 50, infant: 25, ...(trip.food || {}) });

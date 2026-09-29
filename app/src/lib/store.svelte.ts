@@ -147,6 +147,8 @@ function flush() {
   put(K_TRIP(app.trip.id), json);
   if (pending && isCloud(app.trip.id)) void push(app.trip, json);
 }
+// Neuladen oder Schließen kurz nach einer Änderung: nicht auf das verzögerte Speichern warten
+if (typeof addEventListener !== "undefined") addEventListener("pagehide", () => { if (timer) flush(); });
 
 /* ---------- Konto: Reisen im Konto, Änderungen von anderen ---------- */
 
@@ -367,7 +369,9 @@ export function removeItem(id: string) {
 
 /* ---------- Startseite ---------- */
 
-const isPristine = (id: string) => { const t = id === app.trip.id ? app.trip : readTrip(id); return !t || pristine(t); };
+/** Reise zum Anzeigen: die offene oder die Kopie auf dem Gerät (Konto-Reisen, die hier nie offen waren: null) */
+export const tripFor = (id: string): Trip | null => (id === app.trip.id ? app.trip : readTrip(id));
+const isPristine = (id: string) => { const t = tripFor(id); return !t || pristine(t); };
 
 /** Reisen für die Startseite: zuletzt geöffnete zuerst, leere Entwürfe nicht */
 export function homeTrips(): TripEntry[] {

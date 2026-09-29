@@ -5,6 +5,7 @@
   import StayCard from "./StayCard.svelte";
   import ItemRow from "./ItemRow.svelte";
   import ItemEditor from "./ItemEditor.svelte";
+  import WatchBadge from "./WatchBadge.svelte";
   import { reveal } from "./reveal";
 
   let { item, icon }: { item: Item; icon: string } = $props();
@@ -31,5 +32,6 @@
   {:else}
     <ItemRow {item} {icon} />
   {/if}
+  <WatchBadge {item} />
   {#if editing}<ItemEditor {item} />{/if}
 </article>

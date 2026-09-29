@@ -13,6 +13,9 @@
   import GroupsButton from "./GroupsButton.svelte";
   import TripEditor from "./TripEditor.svelte";
   import LangSelect from "./LangSelect.svelte";
+  import { potential, watchable } from "../watch";
+  import { runWatch, watchRun } from "../watch.svelte";
+  import { FLIGHTS_URL } from "../flights/app";
 
   let editing = $state(false);
   // Überschrift: eigener Name, sonst Ort (mit Land) oder der vorläufige Name
@@ -89,7 +92,14 @@
         <div class="ev-hero">🎟 {[trip.event.name !== trip.name ? trip.event.name : "", `${dayShort(trip.event.start.slice(0, 10))} ${trip.event.start.slice(11, 16)}`, trip.event.venue].filter(Boolean).join(" · ")}</div>
       {/if}
       {#if !access.readonly}
-        <div class="hero-acts"><button class="pill-btn ev-open" onclick={openEventPlanner}><span aria-hidden="true">🎟</span> {trip.event ? t("ev.go") : t("ev.btn")}</button></div>
+        <div class="hero-acts"><button class="pill-btn ev-open" onclick={openEventPlanner}><span aria-hidden="true">🎟</span> {trip.event ? t("ev.go") : t("ev.btn")}</button>
+          {#if FLIGHTS_URL && !access.readonly && watchable(trip).length}
+            {@const pot = potential(trip)}
+            <button class="pill-btn watch-btn" class:good={pot > 0} disabled={watchRun.busy} title={t("watch.lead")} onclick={runWatch}>
+              <span aria-hidden="true" class:spin={watchRun.busy}>🔄</span> {watchRun.busy ? t("watch.checking", { n: watchRun.done, of: watchRun.of }) : pot > 0 ? t("watch.btnSave", { v: eur(pot) }) : t("watch.check")}
+            </button>
+          {/if}
+        </div>
       {/if}
     {/if}
     {#if !access.readonly}

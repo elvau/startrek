@@ -98,6 +98,7 @@ try {
     ],
     tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }
   };
+  await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
   await p.evaluate(t => { localStorage.setItem("rk2-t:k1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k1", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k1"); }, TRIP);
   await p.reload();
   await p.locator(".start .home-trip").first().click();
@@ -147,6 +148,7 @@ try {
   early.place = "Makarska";
   early.items[0].options[0].legs[1].dep = "2027-07-29T06:30";
   early.items.push({ id: "s2", cat: "stay", name: "Villa 2", status: "idea", from: "2027-07-25", to: "2027-07-29", participants: ["a", "b"], options: [{ id: "v2", label: "Villa 2", price: { mode: "unit", currency: "EUR", unit: 800, basis: "stay" } }] });
+  await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
   await p.evaluate(t => localStorage.setItem("rk2-t:k1", JSON.stringify(t)), early);
   await p.reload();
   await p.locator(".start .home-trip").first().click();
