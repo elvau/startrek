@@ -25,6 +25,8 @@
   import Home from "./lib/ui/Home.svelte";
   import WatchPanel from "./lib/ui/WatchPanel.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
+  import BugButton from "./lib/ui/BugButton.svelte";
+  import { FLIGHTS_URL } from "./lib/flights/app";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
   import StaySearch from "./lib/ui/StaySearch.svelte";
   import EventPlanner from "./lib/ui/EventPlanner.svelte";
@@ -128,6 +130,7 @@
 {/if}
 {/if}
 {#if cloud.configured}<AgentChat />{/if}
+{#if cloud.configured && FLIGHTS_URL}<BugButton />{/if}
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
 {#if flightSearch.open}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/if}
 {#if eventPlanner.open}<EventPlanner onclose={() => (eventPlanner.open = false)} />{/if}

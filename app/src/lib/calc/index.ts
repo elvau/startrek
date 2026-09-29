@@ -289,10 +289,10 @@ export const eur = (v: number) => {
 
 const fmt2 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const cur2 = new Map<string, Intl.NumberFormat>();
-/** Anteil pro Person: mit Cent, wenn er nicht glatt aufgeht (20 € für 3 → „6,67 €“ statt „7 €“) */
+/** Anteil pro Person: unter 100 € mit Cent, wenn er nicht glatt aufgeht (20 € für 3 → „6,67 €“ statt „7 €“) */
 export const eurPP = (v: number) => {
   v = v || 0;
-  if (Math.abs(v - Math.round(v)) < 0.005) return eur(v);
+  if (Math.abs(v) >= 100 || Math.abs(v - Math.round(v)) < 0.005) return eur(v);
   if (i18n.lang === "de") return fmt2.format(v) + " €";
   const l = locale();
   if (!cur2.has(l)) cur2.set(l, new Intl.NumberFormat(l, { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }));

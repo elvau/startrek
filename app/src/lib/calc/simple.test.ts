@@ -95,9 +95,10 @@ describe("Einfacher Modus", () => {
     expect(T.active).toBe(0);
     expect(Object.values(T.byPerson).every(v => v === 0)).toBe(true);
   });
-  it("Anteil pro Person mit Cent, wenn er nicht glatt aufgeht", () => {
+  it("Anteil pro Person unter 100 € mit Cent, wenn er nicht glatt aufgeht", () => {
     expect(eurPP(20 / 3)).toBe("6,67 €");
     expect(eurPP(30 / 3)).toBe("10 €");
-    expect(eurPP(1234.5)).toBe("1.234,50 €");
+    expect(eurPP(99.5)).toBe("99,50 €");
+    expect(eurPP(1362.94)).toBe("1.363 €");
   });
 });

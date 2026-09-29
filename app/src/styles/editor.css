@@ -554,6 +554,17 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .ai-bar textarea{flex:1;font:inherit;font-size:14px;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;resize:none}
 .ai-foot{font-size:11px;margin:0;padding:0 14px 10px}
 @media (max-width:900px){.ai-fab{bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
+/* Beta: Fehler melden, unten links */
+.bug-fab{position:fixed;inset-inline-start:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:60;width:46px;height:46px;border-radius:50%;border:0;background:#D93025;color:#fff;font-size:22px;line-height:1;display:grid;place-items:center;box-shadow:0 12px 28px -10px rgba(140,20,10,.6);transition:transform .15s}
+.bug-fab:hover{transform:translateY(-2px) rotate(-8deg)}
+@media (max-width:900px){.bug-fab{bottom:calc(92px + env(safe-area-inset-bottom,0px));width:42px;height:42px;font-size:20px}}
+.bug{display:flex;flex-direction:column;gap:12px}
+.bug textarea{font:inherit;font-size:14px;width:100%;resize:vertical;min-height:110px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink)}
+.bug-img{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bug-img img{max-width:160px;max-height:120px;border-radius:10px;border:1px solid var(--line);object-fit:cover}
+.bug-file{cursor:pointer}
+.bug-acts{display:flex;justify-content:flex-end}
+.bug-done{font-weight:700;color:var(--good);margin:0}
 @media (max-width:640px){
   .ai-fab{padding:0;width:54px;height:54px;justify-content:center}
   .ai-fab-lbl{display:none}

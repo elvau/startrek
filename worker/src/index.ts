@@ -12,8 +12,9 @@ import { verifyIdToken } from "../../app/src/lib/agent/auth";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
+import { bugImage, reportBug, type BugEnv } from "./bugs";
 
-interface Env extends FlightEnv, StayEnv, EventEnv {
+interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv {
   /** erlaubte Herkünfte, kommagetrennt */
   ALLOWED_ORIGINS?: string;
   /** KI-Reiseplaner: Schlüssel aus Google AI Studio (Secret); fehlt er, ist der Planer aus */
@@ -85,6 +86,12 @@ export default {
       return agent(req, env, h);
     }
 
+    if (url.pathname === "/bug" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      return reportBug(req, env, h, json, (uid, kind) => countToday(env, uid, kind));
+    }
+    if (url.pathname.startsWith("/bug-image/") && req.method === "GET") return bugImage(url.pathname, env);
+
     return json({ error: "Nicht gefunden" }, 404, h);
   }
 };
@@ -94,14 +101,14 @@ export default {
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
 /** Tageszähler je Nutzer: im KV-Speicher, sonst im Zwischenspeicher des Rechenzentrums */
-async function countToday(env: Env, uid: string): Promise<{ used: number; bump: () => Promise<void> }> {
+async function countToday(env: Env, uid: string, kind = "agent"): Promise<{ used: number; bump: () => Promise<void> }> {
   const day = new Date().toISOString().slice(0, 10);
   if (env.AGENT_KV) {
-    const k = `agent:${uid}:${day}`;
+    const k = `${kind}:${uid}:${day}`;
     const used = Number(await env.AGENT_KV.get(k)) || 0;
     return { used, bump: () => env.AGENT_KV!.put(k, String(used + 1), { expirationTtl: 2 * 86400 }) };
   }
-  const k = new Request(`https://quota.splitandfly/${encodeURIComponent(uid)}/${day}`);
+  const k = new Request(`https://quota.splitandfly/${kind === "agent" ? "" : kind + "/"}${encodeURIComponent(uid)}/${day}`);
   const hit = await caches.default.match(k);
   const used = hit ? Number(await hit.text()) || 0 : 0;
   return { used, bump: () => caches.default.put(k, new Response(String(used + 1), { headers: { "cache-control": "max-age=172800" } })) };

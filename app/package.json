@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:rules": "firebase emulators:exec --only firestore --project demo-reisekasse \"vitest run --config vitest.rules.config.ts\"",
     "build:emu": "VITE_FIREBASE_EMULATOR=1 VITE_FLIGHTS_URL=https://flights.test vite build --outDir dist-emu",
-    "test:cloud": "npm run build:emu && firebase emulators:exec --only auth,firestore --project demo-reisekasse \"node e2e/cloud.mjs && node e2e/groups.mjs && node e2e/flights.mjs && node e2e/stays.mjs && node e2e/events.mjs && node e2e/agent.mjs && node e2e/watch.mjs && node e2e/simple.mjs\""
+    "test:cloud": "npm run build:emu && firebase emulators:exec --only auth,firestore --project demo-reisekasse \"node e2e/cloud.mjs && node e2e/groups.mjs && node e2e/flights.mjs && node e2e/stays.mjs && node e2e/events.mjs && node e2e/agent.mjs && node e2e/watch.mjs && node e2e/simple.mjs && node e2e/bug.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
