@@ -160,6 +160,39 @@ try {
   await p.locator(".start .home-h").first().scrollIntoViewIfNeeded(); await shot("ai-home");
   log("Karte als ganze Reise (Halbpension, Mietwagen, Bootstour, Verpflegung, Gesamtpreis); alle angelegt und mit ✨ KI-Vorschlag gekennzeichnet");
 
+  // Vorlieben: „Ich“ mit Wohnort, gesperrtes Land, Umstiege, Reisestil → gehen ohne Namen an den KI-Planer
+  await p.keyboard.press("Escape");
+  await p.locator(".start .grp-btn").click();
+  const gd = p.locator(".modal");
+  const pform = gd.locator("form", { hasText: "Vorname" });
+  await pform.locator("input").nth(0).fill("Dani");
+  await pform.locator("input").nth(1).fill("Klein");
+  await pform.locator("button").click();
+  await gd.locator('.pmore[aria-label="Details zu Dani"]').click();
+  await gd.locator(".pdet label", { hasText: "Wohnort" }).locator("input").fill("41236");
+  await until(async () => (await gd.locator(".pdet label", { hasText: "Wohnort" }).locator("input").inputValue()).includes("Mönchengladbach"), "Wohnort Dani");
+  await gd.locator(".pr-toggle", { hasText: "Meine Vorlieben" }).click();
+  const pe = gd.locator(".prefs");
+  await pe.locator("label", { hasText: "Ich bin" }).locator("select").selectOption({ label: "Dani Klein" });
+  await pe.locator('input[placeholder^="Land hinzufügen"]').fill("Türk");
+  await pe.locator(".sugg button", { hasText: "Türkei" }).click();
+  await pe.locator("label", { hasText: "Umstiege max." }).locator("select").selectOption("0");
+  await pe.locator(".chip", { hasText: "Strand" }).click();
+  await gd.locator(".modal-h .x").click();
+  const stored = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}"));
+  if (!stored.me || stored.prefs?.avoid?.join() !== "TR" || stored.prefs?.maxStops !== 0) fail("Vorlieben nicht gespeichert: " + JSON.stringify(stored.prefs));
+  await p.locator(".ai-fab").click();
+  const c3 = p.locator(".ai-chat");
+  const before3 = asked.length;
+  await c3.locator(".ai-bar textarea").fill("Ein langes Wochenende irgendwo in der Sonne");
+  await c3.locator(".ai-bar textarea").press("Enter");
+  await until(() => asked.length > before3, "Anfrage mit Vorlieben");
+  const q3 = asked.at(-1).body;
+  if (q3.prefs?.avoid?.join() !== "TR" || q3.prefs?.maxStops !== 0 || q3.prefs?.styles?.join() !== "beach") fail("Vorlieben fehlen in der Anfrage: " + JSON.stringify(q3.prefs));
+  if (q3.originsKnown === false || !q3.origins.includes("DUS")) fail("Wohnort von „Ich“ nicht genutzt: " + JSON.stringify({ o: q3.origins, k: q3.originsKnown }));
+  if (JSON.stringify(q3).includes("Dani") || JSON.stringify(q3).includes("Klein")) fail("Name in der KI-Anfrage");
+  log("Vorlieben: Ich = Dani (Mönchengladbach), Türkei gesperrt, 0 Umstiege, Strand → KI-Anfrage mit Vorlieben und Abflug ab DUS, ohne Namen");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
 } finally { await browser.close(); server.kill(); }

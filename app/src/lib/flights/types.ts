@@ -40,6 +40,10 @@ export interface FlightQuery {
   bags?: boolean;
   /** Verbindungen aus getrennten Tickets („Self-Transfer“) erlauben */
   selfTransfer?: boolean;
+  /** gesperrte Länder (ISO): dort nicht umsteigen */
+  avoidCountries?: string[];
+  /** höchstens so viele Stunden Flugzeit je Richtung */
+  maxHours?: number;
   adults: number;
   children: number;
   infants: number;

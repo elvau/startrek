@@ -10,6 +10,8 @@
   import { dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
+  import { dir } from "../directory.svelte";
+  import { prefsFor, touchesAvoided } from "../prefs";
   import DualRange from "./DualRange.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
@@ -64,7 +66,9 @@
     ...(hadOut ? { to: hadOut.to, depart: hadOut.dep.slice(0, 10), ...(hadBack ? { ret: hadBack.dep.slice(0, 10), latest: hadBack.arr.slice(0, 10) } : {}) } : {}) };
   const known = airportsOf(trip);
   // Abflughäfen: eigene Auswahl (gemerkt) oder die 4 nächsten zum Wohnort
-  const savedAps = Array.isArray(saved.aps) && (saved.aps as string[]).length ? (saved.aps as string[]) : null;
+  const prefs = prefsFor(trip, dir);
+  // eigene Auswahl aus der letzten Suche, sonst die bevorzugten Abflughäfen aus den Vorlieben
+  const savedAps = Array.isArray(saved.aps) && (saved.aps as string[]).length ? (saved.aps as string[]) : prefs.airports?.length ? prefs.airports : null;
   let custom = $state(!!savedAps);
   let aps = $state<string[]>(savedAps ?? nearestAirports(trip, 4, start.ids ?? item?.participants ?? defaultFlyers(trip)));
   const allCodes = $derived([...new Set([...known.map(a => a.code), ...aps])]);
@@ -128,8 +132,12 @@
   let ret = $state(base.ret || "");
   let flexDays = $state(Number(saved.flexDays ?? 0));
   // für beide
-  let maxStops = $state(Number(saved.maxStops ?? 1));
-  let bags = $state(saved.bags !== false);
+  // Vorlieben (Konto und Gruppe) belegen vor; gesperrte Länder filtern
+  let maxStops = $state(Number(prefs.maxStops ?? saved.maxStops ?? 1));
+  let bags = $state(prefs.bags ?? saved.bags !== false);
+  const avoid = prefs.avoid || [];
+  const ccOfAp = (c: string) => locOf(airportData, c, "airport")?.cc;
+  let avoidedOut = $state(0);
   let noSelf = $state(saved.noSelf !== false);
   let withAccess = $state(saved.withAccess !== false);
 
@@ -170,7 +178,7 @@
 
   async function search(e: Event) {
     e.preventDefault();
-    error = ""; list = null; rows = []; sources = []; lateOut = 0; rounds = null; roundErrors = [];
+    error = ""; list = null; rows = []; sources = []; lateOut = 0; avoidedOut = 0; rounds = null; roundErrors = [];
     if (!aps.length) { error = t("fs.errAirport"); return; }
     if (kind === "round") return roundSearch();
     if (kind === "oneway") {
@@ -194,7 +202,7 @@
 
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
-    const common = { ...toQ, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" };
+    const common = { ...toQ, ...pax, maxStops, bags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
     const q: Omit<FlightQuery, "from"> = kind === "oneway"
       ? mode === "flex" ? { ...common, depart: rFrom, departTo: wTo } : { ...common, depart: out, flexDays }
       : mode === "flex" ? { ...common, depart: rFrom, latest: rTo, nightsMin: lo, nightsMax: hi } : { ...common, depart: out, ret: ret || undefined, flexDays };
@@ -207,7 +215,9 @@
         try {
           const r = await searchFlights({ ...q, ...fromQ(code) }, ctrl.signal);
           r.sources.forEach(s => { const p = src.get(s.id); src.set(s.id, p ? { ...p, ok: p.ok || s.ok, count: p.count + s.count, error: p.ok ? p.error : s.error } : { ...s }); });
-          let rated = r.offers.map(o => rate(trip, o, code, withAccess, who));
+          const ok = r.offers.filter(o => !touchesAvoided(o, avoid, ccOfAp));
+          avoidedOut += r.offers.length - ok.length;
+          let rated = ok.map(o => rate(trip, o, code, withAccess, who));
           if (!isNaN(dl)) { const before = rated.length; rated = rated.filter(o => !isNaN(o.home) && o.home <= dl); late += before - rated.length; }
           all.push(...rated);
           // Fehler nur zeigen, wenn keine Quelle geantwortet hat; sonst gab es schlicht keine passende Verbindung
@@ -250,14 +260,17 @@
     ctrl?.abort(); ctrl = new AbortController();
     const signal = ctrl.signal;
     try {
-      const plan = { from, stops, home, depart: rFrom, departTo: wTo, ...pax, maxStops, bags, selfTransfer: !noSelf, currency: "EUR" };
+      const plan = { from, stops, home, depart: rFrom, departTo: wTo, ...pax, maxStops, bags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
       const run = (p: typeof plan, what: string) => searchRound(p, q => searchFlights(q, signal), (k, of) => (progress = `${what}${t("fs.leg", { k, n: of })}`));
       // getrennte Flüge; kurze Stationen (unter 48 h) zusätzlich als Gabelflug mit langem Umstieg auf einem Ticket
       const res = [await run(plan, "")];
       const short = stops.slice(0, home ? stops.length : -1).some(isShort);
       if (short) res.push(await run({ ...plan, stops: stops.map(s => (isShort(s) ? { ...s, via: true } : s)) }, `${t("fs.openJaw")}: `));
       const seen = new Set<string>();
-      rounds = res.flatMap(r => r.trips).filter(rt => (seen.has(rt.id) ? false : (seen.add(rt.id), true)))
+      const allRt = res.flatMap(r => r.trips);
+      const okRt = allRt.filter(rt => !rt.legs.some(l => touchesAvoided(l, avoid, ccOfAp)));
+      avoidedOut = allRt.length - okRt.length;
+      rounds = okRt.filter(rt => (seen.has(rt.id) ? false : (seen.add(rt.id), true)))
         .map(rt => ({ rt, r: rateRound(trip, rt, home, withAccess, who) })).sort((a, b) => a.r.total - b.r.total).slice(0, 30);
       const srcs = new Map<string, SourceStatus>();
       res.flatMap(r => r.sources).forEach(s => { const o = srcs.get(s.id); srcs.set(s.id, o ? { ...o, ok: o.ok || s.ok, count: o.count + s.count } : { ...s }); });
@@ -512,6 +525,7 @@
       <p class="muted small">{t("fs.roundNone")}</p>
     {/if}
     {#each roundErrors as e (e)}<p class="muted small">{e}</p>{/each}
+    {#if avoidedOut}<p class="muted small">{tn("fs.avoidedOut", avoidedOut)}</p>{/if}
   {/if}
 
   {#if list}
@@ -548,6 +562,7 @@
       <p class="muted small">{withAccess ? t("fs.cmpNoteIncl") : t("fs.cmpNoteExcl")}</p>
     {/if}
     {#if lateOut}<p class="muted small">{tn("fs.lateOut", lateOut)}</p>{/if}
+    {#if avoidedOut}<p class="muted small">{tn("fs.avoidedOut", avoidedOut)}</p>{/if}
 
     {#if list.length}
       <div class="chips fs-sort" role="radiogroup" aria-label={t("search.sort")}>

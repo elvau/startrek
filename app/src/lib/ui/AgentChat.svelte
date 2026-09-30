@@ -17,6 +17,8 @@
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
   import { soloTraveler } from "../placeholders";
+  import { dir } from "../directory.svelte";
+  import { agentPrefs, myHome, prefsFor } from "../prefs";
   import { agentChat, openChat } from "../agent/open.svelte";
   import type { AgentTrip } from "../agent/types";
 
@@ -48,7 +50,10 @@
   /** auf der Startseite entsteht beim Übernehmen eine neue Reise: Anfrage ohne die zuletzt offene Reise */
   function base() {
     if (!app.home) return app.trip;
-    return { ...app.trip, place: "", country: "", from: undefined, to: undefined, travelers: [soloTraveler()], households: {}, items: [] };
+    // Startseite: neue Reise; Wohnort von „Ich“ (Gruppen und Personen), damit die KI nicht nach dem Abflugort fragt
+    const solo = soloTraveler(), home = myHome(dir);
+    const households = home ? { [solo.household]: { plz: home.plz, geo: { lat: home.lat, lon: home.lon, ort: home.ort } } } : {};
+    return { ...app.trip, place: "", country: "", from: undefined, to: undefined, travelers: [solo], households, items: [] };
   }
 
   async function send(text = input) {
@@ -62,7 +67,8 @@
     void scrollDown();
     ctrl?.abort(); ctrl = new AbortController();
     try {
-      const res = await askAgent(agentRequest(base(), prompt, asked), ctrl.signal);
+      const b = base();
+      const res = await askAgent(agentRequest(b, prompt, asked, agentPrefs(prefsFor(app.home ? null : b, dir))), ctrl.signal);
       remaining = res.remaining ?? remaining;
       msgs.push(res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
         : res.trips.length ? { me: false, text: t("ai.here"), trips: res.trips } : { me: false, text: t("ai.none") });

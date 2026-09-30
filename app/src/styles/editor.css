@@ -675,3 +675,9 @@ body[data-ch="split"] .amb-split{opacity:1}
 .st-stations .chip small{opacity:.7;margin-inline-start:4px}
 .st-placef{position:relative}
 .st-placef .sugg small{margin-inline-start:6px}
+.prefs{display:flex;flex-direction:column;gap:12px;width:100%;padding:6px 0}
+.pr-sec{display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
+.pr-sec .ed-row{width:100%}
+.prefs textarea{width:100%;resize:vertical;font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink)}
+.chip.locked{opacity:.6;cursor:default}
+.pr-toggle{align-self:flex-start}

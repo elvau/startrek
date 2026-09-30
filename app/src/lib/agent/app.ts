@@ -4,7 +4,7 @@ import { ageClass } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
-import { hhKey, uid, type Item, type Trip } from "../model";
+import { hhKey, uid, type Item, type Prefs, type Trip } from "../model";
 import { syncFood } from "../food";
 import type { GeoData } from "../geo/places";
 import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
@@ -12,7 +12,7 @@ import type { AgentRequest, AgentResult, AgentTrip } from "./types";
 import { noteError } from "../bugs/log";
 
 /** Wunsch plus Reisende, Abflughäfen und was über die Reise schon feststeht */
-export function agentRequest(trip: Trip, prompt: string, asked = false): AgentRequest {
+export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: Prefs): AgentRequest {
   const pax = passengers(trip);
   // Kinder mit Alter (ohne Babys auf dem Schoß); ohne Alter: 8
   const childAges = flyers(trip)
@@ -25,7 +25,7 @@ export function agentRequest(trip: Trip, prompt: string, asked = false): AgentRe
     origins: nearestAirports(trip, 3), adults: pax.adults, childAges, infants: pax.infants,
     ...(known.place || known.from || known.to ? { trip: known } : {}),
     originsKnown: flyers(trip).some(p => !!trip.households?.[hhKey(p)]?.geo),
-    travelersKnown: travelersKnown(trip), asked
+    travelersKnown: travelersKnown(trip), asked, ...(prefs ? { prefs } : {})
   };
 }
 

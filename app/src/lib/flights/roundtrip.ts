@@ -39,6 +39,8 @@ export interface RoundPlan {
   maxStops?: number;
   bags?: boolean;
   selfTransfer?: boolean;
+  avoidCountries?: string[];
+  maxHours?: number;
   currency?: string;
 }
 
@@ -94,7 +96,8 @@ export function legQuery(p: RoundPlan, from: RoundPlace, to: RoundPlace, depart:
     depart, ...(departTo > depart ? { departTo } : {}),
     adults: p.adults, children: p.children, infants: p.infants,
     ...(p.maxStops != null ? { maxStops: p.maxStops } : {}), ...(p.bags != null ? { bags: p.bags } : {}),
-    ...(p.selfTransfer != null ? { selfTransfer: p.selfTransfer } : {}), currency: p.currency || "EUR"
+    ...(p.selfTransfer != null ? { selfTransfer: p.selfTransfer } : {}),
+    ...(p.avoidCountries?.length ? { avoidCountries: p.avoidCountries } : {}), ...(p.maxHours ? { maxHours: p.maxHours } : {}), currency: p.currency || "EUR"
   };
 }
 

@@ -32,6 +32,8 @@ export function kiwiArgs(q: FlightQuery) {
     ...(q.maxStops != null ? { max_sector_stopovers: q.via?.length ? Math.max(1, q.maxStops) : q.maxStops } : {}),
     ...(q.via?.length ? { stopover_airports: q.via.join(","), stopover_from: q.viaHours?.[0] ?? 8, stopover_to: q.viaHours?.[1] ?? 48 } : {}),
     ...(q.selfTransfer != null ? { allow_self_transfer: q.selfTransfer } : {}),
+    ...(q.avoidCountries?.length ? { exclude_stopover_countries: q.avoidCountries.join(",") } : {}),
+    ...(q.maxHours ? { max_fly_duration: q.maxHours } : {}),
     ...(q.bags ? { adults_hold_bags: Array(adults).fill(1), ...(q.children ? { children_hold_bags: Array(q.children).fill(1) } : {}) } : {}),
     adults, children: q.children, infants: q.infants,
     currency: q.currency || "EUR", locale: "de", sort: "price"

@@ -92,7 +92,13 @@ export function parseQuery(b: unknown): FlightQuery | string {
   const adults = o.adults ?? 1, children = o.children ?? 0, infants = o.infants ?? 0;
   if (!int(adults, 1, 9) || !int(children, 0, 8) || !int(infants, 0, 4)) return "Personen: 1–9 Erwachsene, bis 8 Kinder, bis 4 Babys";
   if ((infants as number) > (adults as number)) return "Höchstens ein Baby pro Erwachsenem";
-  const opt: Pick<FlightQuery, "flexDays" | "maxStops" | "bags" | "selfTransfer" | "departTo" | "via" | "viaHours"> = {};
+  const opt: Pick<FlightQuery, "flexDays" | "maxStops" | "bags" | "selfTransfer" | "departTo" | "via" | "viaHours" | "avoidCountries" | "maxHours"> = {};
+  if (o.avoidCountries != null) {
+    const v = o.avoidCountries;
+    if (!Array.isArray(v) || v.length > 30 || !v.every(x => typeof x === "string" && /^[A-Z]{2}$/.test(x))) return "Gesperrte Länder: bis zu 30 Ländercodes";
+    if (v.length) opt.avoidCountries = v as string[];
+  }
+  if (o.maxHours != null) { if (!int(o.maxHours, 1, 48)) return "Flugzeit: 1 bis 48 Stunden"; opt.maxHours = o.maxHours as number; }
   if (o.via != null) {
     const v = o.via, h = o.viaHours;
     if (!Array.isArray(v) || !v.length || v.length > 8 || !v.every(x => typeof x === "string" && /^[A-Z]{3}$/.test(x))) return "Umstieg: bis zu 8 Codes";
