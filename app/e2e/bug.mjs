@@ -98,9 +98,9 @@ try {
   await p.locator(".login .test button").click();
   await p.locator(".start .acct-btn").click();
   await p.locator(".acct-usage").click();
-  await p.locator(".modal .usage tr[data-id=workers].lv-high").waitFor();
+  await p.locator(".modal .usage .usage-card[data-id=workers].lv-high .barrel").waitFor();
   const text = await p.locator(".modal .usage").innerText();
-  for (const s of ["95.000", "100.000 pro Tag", "Ticketmaster", "5.000 pro Tag", "Flugsuche", "aus dem Zwischenspeicher: 2", "Firestore"]) if (!text.includes(s)) fail(`Admin-Ansicht ohne „${s}“: ${text}`);
+  for (const s of ["95\u2009%", "95.000", "100.000 pro Tag", "fast ausgeschöpft", "Ticketmaster", "5.000 pro Tag", "Flugsuche", "aus dem Zwischenspeicher: 2", "Firestore"]) if (!text.includes(s)) fail(`Admin-Ansicht ohne „${s}“: ${text}`);
   await p.keyboard.press("Escape");
   log("Admin-Ansicht: Eintrag nur mit Freigabe, Worker-Aufrufe über 90 % rot, Anbieter mit Grenze, Treffer im Zwischenspeicher");
 
