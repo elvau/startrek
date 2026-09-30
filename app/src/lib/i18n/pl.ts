@@ -55,7 +55,7 @@ export const pl: Dict = {
   "adm.sec.manual": "Tylko w konsoli dostawcy",
   "adm.sec.routes": "Funkcje",
   "adm.setup": "Konfiguracja: docs/NUTZUNG.md",
-  "adm.stand": "Stan {t} · dni w UTC",
+  "adm.stand": "Stan na {t} · dni w UTC",
   "adm.title": "Użycie darmowych limitów",
   "adm.today": "dziś",
   "adm.workers": "Wywołania Workera (całe konto)",

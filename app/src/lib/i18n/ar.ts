@@ -56,7 +56,7 @@ export const ar: Dict = {
   "adm.sec.manual": "فقط في لوحة تحكم المزوّد",
   "adm.sec.routes": "الميزات",
   "adm.setup": "الإعداد: docs/NUTZUNG.md",
-  "adm.stand": "حتى {t} · الأيام بتوقيت UTC",
+  "adm.stand": "آخر تحديث: {t} · الأيام بتوقيت UTC",
   "adm.title": "استخدام الحصص المجانية",
   "adm.today": "اليوم",
   "adm.workers": "طلبات Worker (الحساب كله)",
