@@ -42,6 +42,33 @@ export function flightLegs(t: Traveler, trip: Trip, pick: (it: Item) => Option |
   return { out: by("out")[0], back: by("back").at(-1) };
 }
 
+/** alle Flüge einer Person in zeitlicher Reihenfolge (wie flightLegs: eigene Posten, sonst die für alle) */
+function allLegs(t: Traveler, trip: Trip, pick: (it: Item) => Option | null): FlightLeg[] {
+  const fl = trip.items.filter(it => it.cat === "flights" && it.status !== "dropped" && (it.follow || it.options.some(o => o.legs?.length)));
+  const mine = fl.filter(it => it.participants?.includes(t.id));
+  return (mine.length ? mine : fl.filter(it => !it.participants)).flatMap(it => pick(it)?.legs || [])
+    .filter(l => okDate(l.dep) && okDate(l.arr)).sort((a, b) => a.dep.localeCompare(b.dep));
+}
+
+/** Station zwischen zwei Flügen: gelandet in ap, übernachtet von from bis to (Abreisetag) */
+export interface Stop { ap: string; city?: string; from: string; to: string }
+
+/** Stationen einer Person aus ihren Flügen (Rundreise: jede Stadt; normale Reise: das Ziel); ohne Übernachtung keine Station */
+export function stopsOf(t: Traveler, trip: Trip, pick: (it: Item) => Option | null): Stop[] {
+  const legs = allLegs(t, trip, pick);
+  const out: Stop[] = [];
+  for (let i = 0; i + 1 < legs.length; i++) {
+    const a = legs[i], b = legs[i + 1], from = a.arr.slice(0, 10), to = b.dep.slice(0, 10);
+    if (to > from) out.push({ ap: a.to, ...(a.toCity ? { city: a.toCity } : {}), from, to });
+  }
+  return out;
+}
+
+/** Nächte im Flugzeug: Abflug an einem Tag, Landung an einem späteren (z. B. 23:25 → 07:00) */
+export function airNights(t: Traveler, trip: Trip, pick: (it: Item) => Option | null): Set<string> {
+  return new Set(allLegs(t, trip, pick).flatMap(l => nightsList(l.dep.slice(0, 10), l.arr.slice(0, 10))));
+}
+
 export function presenceOf(t: Traveler, trip: Trip, pick: (it: Item) => Option | null): Presence | null {
   const h = trip.households?.[hhKey(t)];
   if (okDate(h?.arrive) && okDate(h?.depart) && h!.depart! > h!.arrive!) return { a: h!.arrive!, d: h!.depart!, src: "manual" };

@@ -123,6 +123,7 @@ body.editing .chapter.on .add{opacity:.35}
 .pl-seg{height:24px;border-radius:7px;background:color-mix(in srgb,var(--sc) 30%,var(--paper));border:1px solid color-mix(in srgb,var(--sc) 60%,transparent);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;padding:0 4px;color:var(--ink)}
 .pl-seg.gap{background:repeating-linear-gradient(135deg,var(--paper) 0 5px,color-mix(in srgb,#C4452E 25%,var(--paper)) 5px 10px);border-color:#C4452E;color:#C4452E}
 .pl-seg.dbl{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.pl-seg.air{background:var(--paper-2);border:1px dashed var(--line);color:var(--ink-3);display:grid;place-items:center}
 .pl-seg.unk{background:var(--paper-2);border:1px dashed var(--line)}
 .pl-notes{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px;font-size:13px}
 .pl-notes li{color:var(--ink-2);padding-inline-start:16px;position:relative}
@@ -670,3 +671,5 @@ body[data-ch="split"] .amb-split{opacity:1}
 /* Posten nach dem Übernehmen kurz hervorheben */
 .card.flash{animation:flash 2s ease-out}
 @keyframes flash{0%,35%{box-shadow:0 0 0 3px var(--a),var(--shadow)}100%{box-shadow:var(--shadow)}}
+.st-stations{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.st-stations .chip small{opacity:.7;margin-inline-start:4px}

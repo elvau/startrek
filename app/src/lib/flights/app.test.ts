@@ -35,8 +35,8 @@ describe("Flugsuche in der App", () => {
     const o = offerToOption(fromKiwi(fixture)[0]);
     expect(o).toMatchObject({ label: "Eurowings ab DUS, direkt", price: { mode: "unit", unit: 989 }, source: { name: "Kiwi.com", url: "https://kiwi.com/u/uqukjx" } });
     expect(o.legs).toEqual([
-      { dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T06:10", arr: "2027-07-18T08:05", carrier: "Eurowings", stops: 0 },
-      { dir: "back", from: "SPU", to: "DUS", dep: "2027-07-29T14:25", arr: "2027-07-29T16:25", carrier: "Eurowings", stops: 0 }
+      { dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T06:10", arr: "2027-07-18T08:05", carrier: "Eurowings", stops: 0, toCity: "Split" },
+      { dir: "back", from: "SPU", to: "DUS", dep: "2027-07-29T14:25", arr: "2027-07-29T16:25", carrier: "Eurowings", stops: 0, toCity: "Düsseldorf" }
     ]);
   });
   it("erster Treffer legt einen Posten an, weitere kommen als Angebote dazu; die Summe stimmt", () => {

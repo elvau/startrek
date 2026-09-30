@@ -10,10 +10,12 @@
   import { dateDE, dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
+  import { untrack } from "svelte";
+  import { stationName } from "../stays/stationName";
   import { FLIGHTS_URL } from "../flights/app";
   import { guests, searchStaysRemote, takeStay } from "../stays/app";
-  import { arrivals, guestsIn, hints, stayWindow } from "../stays/presence";
-  import { ensureGeo, geo } from "../geo/geo.svelte";
+  import { arrivals, gaps, guestsIn, hints, stations, stayWindow } from "../stays/presence";
+  import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { airportOf, ccOf, cityForAirport, placesNear, searchParts, stayNear } from "../geo/places";
   import type { StayScope } from "../stays/open.svelte";
   import type { StayOffer, StayQuery, StayType } from "../stays/types";
@@ -36,9 +38,25 @@
 
   // am Posten erneut geöffnet: Ort und Daten der Suche, mit der die Unterkunft gefunden wurde
   const had = item?.options.find(o => o.query)?.query;
-  let place = $state(start.place || had?.place || trip.place || "");
-  let checkin = $state(start.from || item?.from || had?.checkin || win?.from || "");
-  let checkout = $state(start.to || item?.to || had?.checkout || win?.to || "");
+  // Rundreise: Stationen aus den Flügen; ohne Vorgabe die erste Lücke (Stadt und Nächte) statt der ganzen Reise
+  const sts = stations(trip).filter(s => !ids || s.ids.some(id => ids.includes(id)));
+  const firstGap = !start.from && !item && sts.length > 1 ? gaps(trip).find(g => g.ap && (!ids || g.ids.some(id => ids.includes(id)))) : undefined;
+  let place = $state(start.place || had?.place || (firstGap ? untrack(() => stationName(geo, airportData, firstGap.ap, firstGap.city)) : "") || trip.place || "");
+  let checkin = $state(start.from || item?.from || had?.checkin || firstGap?.from || win?.from || "");
+  let checkout = $state(start.to || item?.to || had?.checkout || firstGap?.to || win?.to || "");
+  // ohne Stadt im Flug: Name erst, wenn die Ortsdaten geladen sind
+  // Name der Station verbessert sich, sobald Flughafen- und Ortsdaten da sind (solange man den Ort nicht selbst geändert hat)
+  let auto: string | null = firstGap ? untrack(() => place) : null;
+  $effect(() => { void ensureAirports(); });
+  $effect(() => {
+    if (!firstGap || place !== auto) return;
+    const n = stationName(geo, airportData, firstGap.ap, firstGap.city);
+    if (n !== place) { place = n; auto = n; }
+  });
+  function pickStation(s: (typeof sts)[number]) {
+    place = stationName(geo, airportData, s.ap, s.city);
+    checkin = s.from; checkout = s.to;
+  }
   let rooms = $state(1);
   let type = $state<StayType>((["whole", "hotel", "all"] as const).find(t => t === saved.type) || "whole");
   let use = $state<string[]>(Array.isArray(saved.sources) && (saved.sources as string[]).length ? (saved.sources as string[]) : SOURCES.map(s => s.id));
@@ -146,6 +164,15 @@
       <label class="f">{t("st.checkout")}<input type="date" bind:value={checkout} min={checkin} required /></label>
       <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(10, g.adults)} bind:value={rooms} /></label>
     </div>
+    {#if sts.length > 1}
+      <div class="st-stations">
+        <span class="muted small">{t("st.stations")}</span>
+        {#each sts as s (s.ap + s.from)}
+          {@const nm = stationName(geo, airportData, s.ap, s.city)}
+          <button type="button" class="chip sm" class:on={place === nm && checkin === s.from && checkout === s.to} onclick={() => pickStation(s)}>{nm} <small>{dayShort(s.from)}–{dayShort(s.to)} · {tn("n.nights", nights(s.from, s.to))}</small></button>
+        {/each}
+      </div>
+    {/if}
     {#if near.length || trip.place}
       <div class="st-near">
         {#if trip.place}<span class="muted small">{t("st.dest")}</span><button type="button" class="chip sm" class:on={place === trip.place} onclick={() => (place = trip.place)}>{trip.place}</button>{/if}

@@ -113,6 +113,8 @@ export interface FlightLeg {
   arr: string;
   carrier?: string;
   stops?: number;
+  /** Stadt am Ziel des Flugs (für Unterkünfte je Station einer Rundreise) */
+  toCity?: string;
 }
 
 export interface Option {
