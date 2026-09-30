@@ -105,9 +105,9 @@ export const logout = () => signOut(start().auth);
 
 const tripRef = (id: string) => doc(start().db, "trips", id);
 
-export function watchMyTrips(uid: string, fn: (list: (TripDoc & { id: string })[]) => void, err: (e: Error) => void): Unsubscribe {
+export function watchMyTrips(uid: string, fn: (list: (TripDoc & { id: string })[], fromCache: boolean) => void, err: (e: Error) => void): Unsubscribe {
   const q = query(collection(start().db, "trips"), where("memberIds", "array-contains", uid));
-  return onSnapshot(q, s => fn(s.docs.map(d => ({ id: d.id, ...(d.data() as TripDoc) }))), err);
+  return onSnapshot(q, { includeMetadataChanges: true }, s => fn(s.docs.map(d => ({ id: d.id, ...(d.data() as TripDoc) })), s.metadata.fromCache), err);
 }
 
 export function watchTrip(id: string, fn: (d: (TripDoc & { id: string }) | null, pending: boolean) => void, err: (e: Error) => void): Unsubscribe {

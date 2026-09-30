@@ -65,11 +65,51 @@ export interface Group {
   id: string;
   name: string;
   memberIds: string[];
+  /** Vorlieben der Gruppe: überschreiben einzelne Punkte der eigenen Vorlieben */
+  prefs?: Prefs;
+}
+
+export type TravelStyle = "beach" | "city" | "nature" | "culture" | "party" | "wellness" | "ski" | "roadtrip";
+export const STYLES: TravelStyle[] = ["beach", "city", "nature", "culture", "party", "wellness", "ski", "roadtrip"];
+
+/**
+ * Vorlieben für Suchen und KI (im Konto, je Gruppe überschreibbar). Alles optional: fehlt = keine Vorgabe.
+ * Belegen Such-Formulare und KI nur vor; gesperrte Länder filtern (kein Ziel, kein Umstieg).
+ */
+export interface Prefs {
+  /** gesperrte Länder (ISO, z. B. „EG“): nicht als Ziel, nicht zum Umsteigen */
+  avoid?: string[];
+  /** Flüge */
+  airports?: string[];
+  maxStops?: number;
+  bags?: boolean;
+  /** längste Flugzeit je Richtung in Stunden */
+  maxHours?: number;
+  /** Anfahrt zum Flughafen */
+  access?: "car" | "train";
+  /** Unterkunft */
+  stayType?: "whole" | "hotel" | "all";
+  minStars?: number;
+  board?: Board;
+  /** Reisestil */
+  styles?: TravelStyle[];
+  budget?: "low" | "mid" | "high";
+  /** was die KI sonst wissen soll (ohne Namen) */
+  note?: string;
+  /** Reisezeiten: Bundesland für Schulferien, bevorzugte Monate (1–12), übliche Nächte */
+  holidays?: string;
+  months?: number[];
+  nightsMin?: number;
+  nightsMax?: number;
 }
 
 export interface Directory {
   people: Person[];
   groups: Group[];
+  /** die gespeicherte Person, die man selbst ist (Wohnort für die KI auf der Startseite) */
+  me?: string;
+  /** eigene Vorlieben */
+  prefs?: Prefs;
 }
 
 export interface Tier {

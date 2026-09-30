@@ -5,6 +5,7 @@
   import { isActive, isDetailed, uid } from "../model";
   import { dir, saveAsGroup, travelersFrom } from "../directory.svelte";
   import { applyPeople, personAge } from "../people";
+  import { prefsFor } from "../prefs";
   import Households from "./Households.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
   import QuickFamilies from "./QuickFamilies.svelte";
@@ -52,6 +53,9 @@
     if (access.readonly) return;
     JSON.stringify(dir.people); app.trip.from; app.trip.travelers.length;
     applyPeople(app.trip, dir.people);
+    // Vorliebe „Anfahrt mit der Bahn“: für Familien ohne eigene Wahl
+    const acc = prefsFor(app.trip, dir).access;
+    if (acc === "train") for (const [k, h] of Object.entries(app.trip.households || {})) if (h.geo && !h.mode) app.trip.households![k] = { ...h, mode: "train" };
   });
 
   const missing = (s: string) => !s || !s.trim();

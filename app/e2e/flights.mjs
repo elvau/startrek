@@ -372,6 +372,29 @@ try {
   await p.keyboard.press("Escape");
   log("Kurzer Aufenthalt in GIG (0–1 Nacht): auch als Gabelflug DUS → EZE mit 20 h Umstieg gesucht, günstigster Treffer mit 2 statt 3 Tickets");
 
+  // Vorlieben: 0 Umstiege vorbelegt, Kroatien gesperrt → an den Such-Dienst und Treffer dorthin ausgeblendet
+  await p.waitForTimeout(600);
+  await p.evaluate(t => {
+    localStorage.setItem("rk-flight-search", JSON.stringify({ mode: "fixed" }));
+    localStorage.setItem("rk2-t:k2", JSON.stringify(t));
+    localStorage.setItem("rk2-dir", JSON.stringify({ people: [], groups: [], prefs: { maxStops: 0, avoid: ["HR"] } }));
+  }, TWO);
+  await p.reload();
+  await p.locator(".start .home-trip").first().click();
+  await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
+  await p.locator("#flights .fs-open").click();
+  if ((await m.locator("label", { hasText: "Umstiege max." }).locator("select").inputValue()) !== "0") fail("Umstiege nicht aus den Vorlieben");
+  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
+  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
+  const beforeP = asked.length;
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator("p", { hasText: "über gesperrte Länder ausgeblendet" }).waitFor();
+  const qp = asked.slice(beforeP)[0];
+  if (qp.maxStops !== 0 || qp.avoidCountries?.join() !== "HR") fail("Vorlieben nicht an den Such-Dienst: " + JSON.stringify(qp));
+  if (await m.locator(".fs-res").count()) fail("Flüge nach Kroatien nicht ausgeblendet");
+  await p.keyboard.press("Escape");
+  log("Vorlieben: 0 Umstiege vorbelegt, Kroatien gesperrt → an den Such-Dienst, Treffer nach Split ausgeblendet mit Hinweis");
+
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");
 } finally {

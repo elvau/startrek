@@ -29,7 +29,9 @@ export const cloud = $state({
   joined: null as string | null,
   showLogin: false,
   /** Reisen, deren aktueller Stand aus dem Konto schon da ist */
-  loaded: {} as Record<string, boolean>
+  loaded: {} as Record<string, boolean>,
+  /** Liste im Konto ist vom Server (nicht nur aus dem Zwischenspeicher des Browsers) */
+  fresh: false
 });
 
 let fb: FB | null = null;
@@ -66,14 +68,17 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
   f.onUser(u => {
     fbUser = u;
     unTrips?.(); unTrips = null;
-    if (!u) { cloud.user = null; cloud.trips = []; cloud.loaded = {}; synced.clear(); cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
+    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
     cloud.user = { uid: u.uid, name: f.displayName(u), email: u.email || "" };
     cloud.showLogin = false;
-    unTrips = f.watchMyTrips(u.uid, list => {
-      cloud.trips = list.map(d => ({
+    unTrips = f.watchMyTrips(u.uid, (list, fromCache) => {
+      const next = list.map(d => ({
         id: d.id, name: d.name, role: d.members[u.uid], owner: d.owner, members: d.members,
         memberNames: d.memberNames || {}, invite: d.invite ?? null
       })).sort((a, b) => a.name.localeCompare(b.name, "de"));
+      // auch bei reinen Statusänderungen (Zwischenspeicher → Server) gemeldet: Liste nur bei echter Änderung ersetzen
+      if (JSON.stringify(next) !== JSON.stringify($state.snapshot(cloud.trips))) cloud.trips = next;
+      cloud.fresh = !fromCache;
       cloud.ready = true;
       if (cloud.status === "local") cloud.status = "saved";
     }, e => { cloud.error = message(e); cloud.status = "error"; cloud.ready = true; });

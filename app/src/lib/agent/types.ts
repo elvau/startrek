@@ -1,6 +1,7 @@
 /* KI-Reiseplaner: gemeinsame Typen für App und Such-Dienst (worker/) */
 import type { FlightOffer } from "../flights/types";
 import type { StayOffer, StayQuery } from "../stays/types";
+import { BOARDS, STYLES, type Prefs } from "../model";
 
 /** Was die App schickt: Wunsch in eigenen Worten und was über die Reisenden bekannt ist */
 export interface AgentRequest {
@@ -22,6 +23,8 @@ export interface AgentRequest {
   travelersKnown?: boolean;
   /** die KI hat in diesem Gespräch schon nachgefragt: jetzt nicht noch einmal, sondern suchen */
   asked?: boolean;
+  /** Vorlieben aus Konto und Gruppe (ohne Namen) */
+  prefs?: Prefs;
 }
 
 /** Reisende, mit denen gesucht wurde (wenn die KI sie aus dem Wunsch oder der Antwort genommen hat) */
@@ -78,9 +81,33 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   const t = (o.trip || {}) as Record<string, unknown>;
   const s = (v: unknown, n: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : undefined);
   const trip = { place: s(t.place, 80), from: s(t.from, 10), to: s(t.to, 10) };
+  const prefs = parsePrefs(o.prefs);
   return {
+    ...(prefs ? { prefs } : {}),
     prompt, lang, today, origins, adults: adults as number, childAges: childAges as number[], infants: infants as number,
     ...(trip.place || trip.from || trip.to ? { trip } : {}),
     originsKnown: o.originsKnown !== false, travelersKnown: o.travelersKnown !== false, asked: o.asked === true
   };
+}
+
+/** Vorlieben prüfen: nur bekannte Felder in erlaubten Grenzen, alles andere fällt weg */
+export function parsePrefs(v: unknown): Prefs | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>, p: Prefs = {};
+  const codes = (x: unknown, re: RegExp, n: number) => (Array.isArray(x) ? [...new Set(x.filter(c => typeof c === "string" && re.test(c)))].slice(0, n) as string[] : []);
+  const avoid = codes(o.avoid, /^[A-Z]{2}$/, 30); if (avoid.length) p.avoid = avoid;
+  if (int(o.maxStops, 0, 2)) p.maxStops = o.maxStops as number;
+  if (typeof o.bags === "boolean") p.bags = o.bags;
+  if (int(o.maxHours, 1, 48)) p.maxHours = o.maxHours as number;
+  if (o.stayType === "whole" || o.stayType === "hotel" || o.stayType === "all") p.stayType = o.stayType;
+  if (int(o.minStars, 1, 5)) p.minStars = o.minStars as number;
+  if (typeof o.board === "string" && (BOARDS as string[]).includes(o.board)) p.board = o.board as Prefs["board"];
+  const styles = codes(o.styles, /^[a-z]+$/, 8).filter(x => (STYLES as string[]).includes(x)); if (styles.length) p.styles = styles as Prefs["styles"];
+  if (o.budget === "low" || o.budget === "mid" || o.budget === "high") p.budget = o.budget;
+  if (typeof o.note === "string" && o.note.trim()) p.note = o.note.trim().slice(0, 300);
+  if (typeof o.holidays === "string" && /^[A-Z]{2}$/.test(o.holidays)) p.holidays = o.holidays;
+  const months = Array.isArray(o.months) ? [...new Set(o.months.filter(m => int(m, 1, 12)))] as number[] : []; if (months.length) p.months = months;
+  if (int(o.nightsMin, 1, 60)) p.nightsMin = o.nightsMin as number;
+  if (int(o.nightsMax, 1, 60) && (p.nightsMin == null || (o.nightsMax as number) >= p.nightsMin)) p.nightsMax = o.nightsMax as number;
+  return Object.keys(p).length ? p : undefined;
 }

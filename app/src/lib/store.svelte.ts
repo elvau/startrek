@@ -1,4 +1,5 @@
 /* App-Zustand: mehrere Reisen, lokal gespeichert. Später hinter einem Speicher-Adapter (Firebase). */
+import { untrack } from "svelte";
 import { t as tr, type Key } from "./i18n/index.svelte";
 import { totals } from "./calc";
 import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type SimpleLine, type Traveler, type Trip } from "./model";
@@ -6,11 +7,14 @@ import { sampleTrip } from "./seed";
 import { autoName, dateDE } from "./format";
 import { soloTraveler } from "./placeholders";
 import { cloud, cloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
+import { pruneIndex } from "./cloud/prune";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
 export interface TripEntry extends TripMeta { cloud: boolean; role?: Role; shared?: boolean }
 
 const K_INDEX = "rk2-index", K_CUR = "rk2-current", K_TRIP = (id: string) => "rk2-t:" + id, K_OLD = "rk2-trip";
+/** Konto-Reisen, die dieses Gerät zuletzt in der Liste gesehen hat (je Konto) */
+const K_SEEN = (uid: string) => "rk2-cloud-seen:" + uid;
 
 const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const put = (k: string, v: string) => { try { localStorage.setItem(k, v); return true; } catch { return false; } };
@@ -207,6 +211,19 @@ $effect.root(() => {
     if (!isCloud(app.trip.id) && pristine(app.trip) && !uploaded.has(app.trip.id)) {
       switchTrip(first.id);
     }
+  });
+  // Verzeichnis mit der Liste im Konto abgleichen: Konto-Reisen raus, woanders gelöschte Konto-Reisen weg (nur mit Stand vom Server)
+  $effect(() => {
+    const u = cloud.user;
+    if (!u || !cloud.fresh) return;
+    const ids = cloud.trips.map(t => t.id);
+    const key = K_SEEN(u.uid);
+    let seen: string[] = [];
+    try { seen = JSON.parse(get(key) || "[]"); } catch {}
+    const { index, gone } = pruneIndex(untrack(() => app.index), ids, seen, untrack(() => app.trip.id));
+    gone.forEach(id => del(K_TRIP(id)));
+    if (index.length !== untrack(() => app.index.length)) { app.index = index; put(K_INDEX, JSON.stringify(index)); }
+    put(key, JSON.stringify(ids));
   });
   // nach dem Beitreten die Reise öffnen
   $effect(() => { const j = cloud.joined; if (j && isCloud(j)) { cloud.joined = null; switchTrip(j); app.home = false; } });

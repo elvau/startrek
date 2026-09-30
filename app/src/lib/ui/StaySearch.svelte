@@ -10,6 +10,8 @@
   import { dateDE, dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
+  import { dir } from "../directory.svelte";
+  import { prefsFor } from "../prefs";
   import { untrack } from "svelte";
   import { stationName } from "../stays/stationName";
   import { FLIGHTS_URL } from "../flights/app";
@@ -58,7 +60,15 @@
     checkin = s.from; checkout = s.to;
   }
   let rooms = $state(1);
-  let type = $state<StayType>((["whole", "hotel", "all"] as const).find(t => t === saved.type) || "whole");
+  // Vorlieben (Konto und Gruppe) belegen die Art der Unterkunft vor
+  const prefs = prefsFor(trip, dir);
+  let type = $state<StayType>(prefs.stayType || (["whole", "hotel", "all"] as const).find(t => t === saved.type) || "whole");
+  // Ort in einem gesperrten Land: nur Hinweis, suchen darf man trotzdem
+  const blocked = $derived.by(() => {
+    if (!prefs.avoid?.length || !place.trim()) return "";
+    const k = ccOf(geo, searchParts(geo, place.trim(), ccOf(geo, trip.country)).country || "");
+    return k && prefs.avoid.includes(k) ? k : "";
+  });
   let use = $state<string[]>(Array.isArray(saved.sources) && (saved.sources as string[]).length ? (saved.sources as string[]) : SOURCES.map(s => s.id));
   const nn = $derived(checkin && checkout ? nights(checkin, checkout) : 0);
 
@@ -178,6 +188,7 @@
       <label class="f">{t("st.checkout")}<input type="date" bind:value={checkout} min={checkin} required /></label>
       <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(10, g.adults)} bind:value={rooms} /></label>
     </div>
+    {#if blocked}<p class="warnline">{t("st.avoided")}</p>{/if}
     {#if sts.length > 1}
       <div class="st-stations">
         <span class="muted small">{t("st.stations")}</span>
