@@ -713,3 +713,38 @@ body[data-ch="split"] .amb-split{opacity:1}
 .barrel-wave{fill:var(--lv);opacity:.9;animation:barrel-wave 2.6s linear infinite}
 @keyframes barrel-wave{to{transform:translateX(90px)}}
 @media (prefers-reduced-motion:reduce){.barrel-wave{animation:none}.barrel-liquid{transition:none}}
+/* Neue Reise: Weg bei Familie und Gruppe */
+.who-src{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.who-src{grid-template-columns:1fr}}
+.src-b{position:relative;display:flex;align-items:center;gap:10px;text-align:start;padding:12px;border-radius:14px;border:1.5px solid var(--line);background:var(--paper-2);color:var(--ink)}
+.src-b.on{border-color:var(--a);background:var(--a-soft);box-shadow:0 0 0 2px var(--a) inset}
+.src-b[disabled]{opacity:.5;cursor:default}
+.src-ico{font-size:22px;line-height:1}
+.src-t{display:flex;flex-direction:column;gap:1px;min-width:0}
+.src-t b{font-size:13.5px}
+.src-t small{font-size:11.5px;color:var(--ink-2)}
+.src-check{position:absolute;top:6px;inset-inline-end:8px;font-style:normal;font-size:12px;font-weight:800;color:var(--a);opacity:0}
+.src-b.on .src-check{opacity:1}
+.sg-list{display:flex;flex-direction:column;gap:8px}
+.sg{border:1.5px solid var(--line);border-radius:14px;background:var(--paper);padding:10px 12px}
+.sg.on{border-color:var(--a);background:var(--a-soft)}
+.sg-h{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:0;text-align:start;color:var(--ink)}
+.sg-box{flex:none;display:grid;place-items:center;width:22px;height:22px;border-radius:7px;border:2px solid var(--line);font-style:normal;font-weight:800;font-size:13px;color:#fff}
+.sg.on .sg-box{background:var(--a);border-color:var(--a)}
+.sg-t{display:flex;flex-direction:column}
+.sg-t small{color:var(--ink-2);font-size:12px}
+.sg-names{display:block;margin:4px 0 0 32px;font-size:12px}
+.sg-people{margin:8px 0 0 32px}
+.ng-zone{border:2px dashed var(--line);border-radius:14px;padding:10px 12px;min-height:58px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,background .15s}
+.ng-zone.over{border-color:var(--a);background:var(--a-soft)}
+.ng-lbl{font-size:12px;font-weight:700;color:var(--ink-2)}
+.ng-chip{display:inline-flex;align-items:center;gap:4px;padding-inline-end:4px}
+.ng-x{border:0;background:none;color:inherit;font-size:16px;line-height:1;padding:0 4px;border-radius:99px}
+.ng-drag{cursor:grab}
+.ng-drag:active{cursor:grabbing}
+.ng-add{flex-wrap:wrap;align-items:flex-end}
+.ng-add .f{flex:1;min-width:110px}
+.ng-add .f:has(.n){flex:0 0 70px;min-width:70px}
+.who-sum{margin:0}
+.who-d>.who-src,.who-d>.sg-list,.who-d>.ng-zone,.who-d>.ng-add,.who-d>.f:has(.ng-name){align-self:stretch}
+.who-d .dlabel{margin-top:6px}
