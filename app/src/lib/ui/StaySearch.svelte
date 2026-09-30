@@ -9,6 +9,7 @@
   import { activeOption, eur } from "../calc";
   import { dateDE, dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
+  import { showItem } from "./showItem";
   import { FLIGHTS_URL } from "../flights/app";
   import { guests, searchStaysRemote, takeStay } from "../stays/app";
   import { arrivals, guestsIn, hints, stayWindow } from "../stays/presence";
@@ -33,9 +34,11 @@
   const ids = start.ids ?? item?.participants;
   const win = stayWindow(trip, ids);
 
-  let place = $state(start.place || trip.place || "");
-  let checkin = $state(start.from || item?.from || win?.from || "");
-  let checkout = $state(start.to || item?.to || win?.to || "");
+  // am Posten erneut geöffnet: Ort und Daten der Suche, mit der die Unterkunft gefunden wurde
+  const had = item?.options.find(o => o.query)?.query;
+  let place = $state(start.place || had?.place || trip.place || "");
+  let checkin = $state(start.from || item?.from || had?.checkin || win?.from || "");
+  let checkout = $state(start.to || item?.to || had?.checkout || win?.to || "");
   let rooms = $state(1);
   let type = $state<StayType>((["whole", "hotel", "all"] as const).find(t => t === saved.type) || "whole");
   let use = $state<string[]>(Array.isArray(saved.sources) && (saved.sources as string[]).length ? (saved.sources as string[]) : SOURCES.map(s => s.id));
@@ -110,6 +113,9 @@
     app.trip.detail.stay = true;
     into = takeStay(app.trip, o, asked, into, ids ?? who.map(x => x.t.id)).id;
     taken[o.id] = true;
+    // Suche schließen und den Posten zeigen; weitere Angebote: Suche am Posten erneut öffnen
+    onclose();
+    showItem(into);
   }
 </script>
 

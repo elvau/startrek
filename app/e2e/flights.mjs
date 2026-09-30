@@ -8,6 +8,11 @@ import { spawn } from "node:child_process";
 const URL = "http://127.0.0.1:4175/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+async function until(fn, what, ms = 10000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
+  fail("Zeitüberschreitung: " + what);
+}
 const leg = (from, to, dep, arr, min, flights, carriers, route) => ({ from, to, fromCity: from === "DUS" ? "Düsseldorf" : "Split", toCity: to === "SPU" ? "Split" : "Düsseldorf", dep, arr, minutes: min, stops: route.length - 2, route, carriers, flights });
 const RESULT = {
   offers: [
@@ -149,10 +154,18 @@ try {
   if ((await m.locator(".fs-res").count()) !== 2) fail("Filter direkt (je Flughafen einer)");
   await m.locator(".chip", { hasText: "Günstigste" }).click();
   await m.locator(".fs-res").nth(0).locator(".btn", { hasText: "Übernehmen" }).click();
-  await m.locator(".fs-cmp .btn", { hasText: "Wählen" }).nth(1).click();
-  await p.keyboard.press("Escape");
+  // Übernehmen schließt die Suche und zeigt den Posten
+  await m.waitFor({ state: "detached" });
   const card = p.locator("#flights .card[data-item]");
   await card.first().waitFor();
+  await until(async () => (await card.first().getAttribute("class")).includes("flash"), "Posten hervorgehoben");
+  // zweites Angebot: Suche am Posten erneut öffnen
+  await card.first().click();
+  await p.locator("#flights .fs-item").first().click();
+  if ((await m.locator("label", { hasText: "Hin am" }).locator("input").inputValue()) !== "2027-07-18") fail("Datum beim erneuten Öffnen nicht aus dem Flug");
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-cmp .btn", { hasText: "Wählen" }).nth(1).click();
+  await m.waitFor({ state: "detached" });
   if ((await card.count()) !== 1) fail("ein Posten erwartet");
   const txt = await card.textContent();
   if (!txt.includes("Eurowings") || !txt.includes("2 Angebote")) fail("Posten: " + txt.slice(0, 200));

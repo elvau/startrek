@@ -9,6 +9,7 @@
   import { airportsOf } from "../calc/travel";
   import { dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
+  import { showItem } from "./showItem";
   import DualRange from "./DualRange.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
@@ -55,7 +56,12 @@
   }
   // bisher mitgeflogen: was das kostet (inkl. Anfahrt), zum Vergleich mit einem eigenen Flug
   const alongCost = $derived(item?.follow ? calc.T.items[item.id]?.net ?? null : null);
-  const base = defaultQuery(trip, "", start.ids ?? item?.participants ?? defaultFlyers(trip));
+  // am Posten erneut geöffnet: Ziel und Daten aus dem schon übernommenen Flug (weitere Angebote für denselben Posten)
+  const had = (item?.options.find(o => o.id === item.chosen) ?? item?.options.find(o => o.legs?.length))?.legs;
+  const hadOut = had && !had.some(l => l.dir === "via") ? had.find(l => l.dir === "out") : undefined;
+  const hadBack = hadOut ? [...had!].reverse().find(l => l.dir === "back") : undefined;
+  const base = { ...defaultQuery(trip, "", start.ids ?? item?.participants ?? defaultFlyers(trip)),
+    ...(hadOut ? { to: hadOut.to, depart: hadOut.dep.slice(0, 10), ...(hadBack ? { ret: hadBack.dep.slice(0, 10), latest: hadBack.arr.slice(0, 10) } : {}) } : {}) };
   const known = airportsOf(trip);
   // Abflughäfen: eigene Auswahl (gemerkt) oder die 4 nächsten zum Wohnort
   const savedAps = Array.isArray(saved.aps) && (saved.aps as string[]).length ? (saved.aps as string[]) : null;
@@ -281,6 +287,9 @@
     app.trip.detail.flights = true;
     into = takeRound(app.trip, rt, home, into, who).id;
     taken[rt.id] = true;
+    // Suche schließen und den Posten zeigen; weitere Angebote: Suche am Posten erneut öffnen
+    onclose();
+    showItem(into);
   }
 
   function take(o: Rated) {
@@ -289,6 +298,8 @@
     app.trip.detail.flights = true;
     into = takeOffer(app.trip, o, into, who).id;
     taken[o.id + o.origin] = true;
+    onclose();
+    showItem(into);
   }
   function takeCheapest(code: string) {
     const o = list?.filter(x => x.origin === code).sort((a, b) => a.total - b.total)[0];

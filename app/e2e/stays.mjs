@@ -76,9 +76,13 @@ try {
 
   // zwei übernehmen → ein Posten mit 2 Angeboten, Preis für den ganzen Aufenthalt
   await m.locator(".fs-res", { hasText: "Ferienwohnung Klara" }).locator(".btn", { hasText: "Übernehmen" }).click();
+  // Übernehmen schließt die Suche; zweites Angebot über die Suche am Posten
+  await m.waitFor({ state: "detached" });
+  await p.locator("#stay .card", { hasText: "Unterkunft in Split" }).first().click();
+  await p.locator("#stay .st-item").first().click();
+  await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res", { hasText: "Rooms Šećer" }).locator(".btn", { hasText: "Übernehmen" }).click();
-  if ((await m.locator(".btn", { hasText: "✓ Übernommen" }).count()) !== 2) fail("Übernommen-Markierung");
-  await m.locator(".x").click();
+  await m.waitFor({ state: "detached" });
   const cards = p.locator("#stay .card", { hasText: "Unterkunft in Split" });
   if ((await cards.count()) !== 1) fail("Posten nicht angelegt");
   const c = await cards.textContent();
@@ -124,7 +128,7 @@ try {
   const q2 = asked.at(-1);
   if (q2.checkin !== "2027-07-25" || q2.checkout !== "2027-07-29" || q2.adults !== 1 || q2.childAges.join() !== "9") fail("Anfrage aus der Lücke: " + JSON.stringify(q2));
   await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
-  await m.locator(".x").click();
+  await m.waitFor({ state: "detached" });
   await p.locator("#stay .pl-ok, #stay .pl-notes").first().waitFor();
   if ((await p.locator("#stay .pl-notes li.crit", { hasText: "Klein" }).count())) fail("Lücke für Klein noch da");
   log("Übernommen: Posten nur für Klein, 25.07. bis 29.07., Lücke weg");
