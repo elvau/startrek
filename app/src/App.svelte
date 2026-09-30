@@ -86,18 +86,17 @@
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button></div>
         {:else if ch.k === "attractions"}
+          {@const aq = { place: app.trip.place, from: app.trip.from, to: app.trip.to }}
           {#if app.trip.place && !access.readonly && FLIGHTS_URL}
             <div class="search-row">
               <button class="btn primary xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>
               <button class="btn xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>
             </div>
-          {:else}
-            {@const aq = { place: app.trip.place, from: app.trip.from, to: app.trip.to }}
-            <p class="search-row muted small fs-direct">
-              {#if app.trip.place}{t("att.find", { place: app.trip.place })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <a href={viatorLink(aq)} target="_blank" rel="noopener noreferrer">Viator ↗</a> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
-              {:else}{t("att.noPlace")}{/if}
-            </p>
           {/if}
+          <p class="search-row muted small fs-direct">
+            {#if app.trip.place}{t("att.find", { place: app.trip.place })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <a href={viatorLink(aq)} target="_blank" rel="noopener noreferrer">Viator ↗</a> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
+            {:else}{t("att.noPlace")}{/if}
+          </p>
         {:else if ch.k === "stay" && !access.readonly}
           <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 {t("st.open")}</button></div>
         {/if}
