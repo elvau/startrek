@@ -1,4 +1,5 @@
 /* Flugsuche in der App: Anfrage aus der Reise, Ergebnis als Angebot in einen Flug-Posten */
+import { noteError } from "../bugs/log";
 import { t, tn } from "../i18n/index.svelte";
 import { ageClass } from "../calc";
 import { hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Trip } from "../model";
@@ -128,12 +129,25 @@ export function rateRound(trip: Trip, rt: RoundTrip, home: boolean, withAccess: 
   return rate(trip, { ...first, id: rt.id, price: rt.price, back: home ? last.out : undefined }, first.out.from, withAccess, ids);
 }
 
+/**
+ * Keine Flüge, aber eine Quelle ist erst nach einer Weile gescheitert (z. B. Kiwi überlastet oder zu langsam):
+ * lohnt einen zweiten Versuch. Sofortige Absagen (fehlende Flughafencodes u. Ä., ms 0) ändern sich dadurch nicht.
+ */
+export const worthRetry = (r: SearchResult) => !r.offers?.length && !!r.sources?.some(s => s.configured && !s.ok && (s.ms || 0) > 0);
+
 export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promise<SearchResult> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
-  const res = await fetch(`${FLIGHTS_URL}/flights/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || t("search.status", { s: res.status }));
-  return data as SearchResult;
+  let data: SearchResult | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(`${FLIGHTS_URL}/flights/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || t("search.status", { s: res.status }));
+    data = body as SearchResult;
+    if (!worthRetry(data)) break;
+    // für Fehlermeldungen: welche Quelle woran gescheitert ist
+    noteError(`Flugsuche ${q.from}→${q.to}${attempt ? "" : " (neuer Versuch)"}: ${data.sources.filter(s => s.configured && !s.ok).map(s => `${s.id} ${s.error || "ohne Antwort"} (${s.ms} ms)`).join(", ")}`);
+  }
+  return data!;
 }
 
 /* ---------- Mehrere Abflughäfen vergleichen (wie im Artefakt) ---------- */

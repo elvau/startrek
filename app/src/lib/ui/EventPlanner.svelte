@@ -12,7 +12,7 @@
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
-  import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
   import { DEFAULT_H, fits, km, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
   import { cityFromAddress, searchEventsRemote } from "../events/app";
@@ -136,7 +136,8 @@
         const flights = fl.status === "fulfilled" ? fl.value.offers.filter(o => fits(o, v)).map(o => rate(trip, o, o.out.from, true)) : [];
         const flight = flights.length ? flights.reduce((a, b) => (b.total < a.total ? b : a)) : null;
         const stay = st.status === "fulfilled" && st.value ? pickStayNear(st.value.offers, ev) : null;
-        const error = fl.status === "rejected" ? (fl.reason as Error).message : undefined;
+        // Quelle auch nach dem zweiten Versuch ohne Antwort: nicht als „kein Flug“ ausgeben
+        const error = fl.status === "rejected" ? (fl.reason as Error).message : worthRetry(fl.value) ? t("ev.flightsDown") : undefined;
         return { v, flight, stay, stayQ: v.nights ? q : null, total: (flight?.total || 0) + (stay ? Math.round(stay.total) : 0), error };
       }));
     } catch (err) {

@@ -228,6 +228,7 @@ export const es: Dict = {
   "ev.date": "Fecha",
   "ev.errFields": "Indica qué, en qué ciudad, qué día y a qué hora.",
   "ev.errPlace": "No se encontró «{q}». Elige una ciudad de la lista.",
+  "ev.flightsDown": "La búsqueda de vuelos no está disponible ahora, vuelve a intentarlo.",
   "ev.from": "Salida desde {aps} para {p}.",
   "ev.go": "Proponer viajes",
   "ev.hours": "Duración (horas)",

@@ -236,6 +236,7 @@ export const pl: Dict = {
   "ev.date": "Data",
   "ev.errFields": "Podaj, co, w jakim mieście, którego dnia i o której godzinie.",
   "ev.errPlace": "Nie znaleziono „{q}”. Wybierz miasto z listy.",
+  "ev.flightsDown": "Wyszukiwarka lotów jest chwilowo niedostępna, spróbuj ponownie.",
   "ev.from": "Wylot z {aps} dla: {p}.",
   "ev.go": "Zaproponuj podróże",
   "ev.hours": "Czas trwania (godziny)",

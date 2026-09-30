@@ -226,6 +226,7 @@ export const de = {
   "ev.date": "Datum",
   "ev.errFields": "Bitte angeben, was, in welcher Stadt, an welchem Tag und um wie viel Uhr.",
   "ev.errPlace": "„{q}“ nicht gefunden. Bitte eine Stadt aus der Liste wählen.",
+  "ev.flightsDown": "Flugsuche gerade nicht erreichbar, bitte noch einmal suchen.",
   "ev.from": "Abflug ab {aps} für {p}.",
   "ev.go": "Reisen vorschlagen",
   "ev.hours": "Dauer (Stunden)",
