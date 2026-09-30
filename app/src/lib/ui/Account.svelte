@@ -2,13 +2,13 @@
   import { t, tn } from "../i18n/index.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import type { Key } from "../i18n/index.svelte";
-  import { app, logout, moveAllToCloud } from "../store.svelte";
+  import { localTrips, logout, moveAllToCloud } from "../store.svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
   let open = $state(false);
   let busy = $state(false);
   let root = $state<HTMLDivElement>();
-  const local = $derived(app.index.filter(m => !cloud.trips.some(t => t.id === m.id)).length);
+  const local = $derived(localTrips().length);
   const STATUS = (s: string) => t(`acct.st.${s}` as Key);
 
   $effect(() => {
