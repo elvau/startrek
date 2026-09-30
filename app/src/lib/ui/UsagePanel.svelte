@@ -31,7 +31,7 @@
   const PROJECT = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
 
   const sections = $derived(report ? [
-    { key: "adm.sec.cf" as Key, rows: cloudflareRows(report), err: report.errors.worker || report.errors.r2 },
+    { key: "adm.sec.cf" as Key, rows: cloudflareRows(report), err: [report.errors.worker && `Worker: ${report.errors.worker}`, report.errors.r2 && `R2: ${report.errors.r2}`].filter(Boolean).join(" · ") },
     { key: "adm.sec.api" as Key, rows: providerRows(report, Number(report.config.geminiPerDay) || 0), err: report.errors.own },
     { key: "adm.sec.routes" as Key, rows: routeRows(report), err: "" }
   ] : []);

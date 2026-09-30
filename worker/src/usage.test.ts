@@ -71,6 +71,8 @@ group("Bericht", () => {
         { sum: { requests: 50, errors: 0, subrequests: 10 }, dimensions: { date: "2026-09-30" } },
         { sum: { requests: 7, errors: 0, subrequests: 1 }, dimensions: { date: "2026-09-24" } }
       ] }] } } });
+      // sortieren geht nur nach einer abgefragten Dimension
+      expect(q).toMatch(/orderBy: \[datetime_DESC\]\) \{ max \{[^}]*\} dimensions \{ datetime \} \}/);
       return ok({ data: { viewer: { accounts: [{
         r2StorageAdaptiveGroups: [{ max: { payloadSize: 1000, metadataSize: 24, objectCount: 3 } }],
         r2OperationsAdaptiveGroups: [{ sum: { requests: 5 }, dimensions: { actionType: "PutObject" } }, { sum: { requests: 9 }, dimensions: { actionType: "GetObject" } }]
