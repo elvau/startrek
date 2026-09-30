@@ -16,7 +16,7 @@
   import { guests, searchStaysRemote, takeStay } from "../stays/app";
   import { arrivals, gaps, guestsIn, hints, stations, stayWindow } from "../stays/presence";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
-  import { airportOf, ccOf, cityForAirport, placesNear, searchParts, stayNear } from "../geo/places";
+  import { airportOf, ccOf, cityForAirport, placesNear, searchParts, stayNear, suggestCities, type CityHit } from "../geo/places";
   import type { StayScope } from "../stays/open.svelte";
   import type { StayOffer, StayQuery, StayType } from "../stays/types";
   import type { SourceStatus } from "../flights/types";
@@ -78,6 +78,15 @@
     }));
   });
   $effect(() => { if (!place && near[0]?.city) place = near[0].city.name; });
+  // Stadtsuche im Ort-Feld: Länder der Reise zuerst, dann bekannte Städte weltweit
+  let placeFocus = $state(false);
+  const prefer = $derived([...new Set([ccOf(geo, trip.country), ...near.map(n => n.ap.cc), ...sts.map(s => airportOf(geo, s.ap)?.cc)].filter((x): x is string => !!x))]);
+  const citySugg = $derived(placeFocus ? suggestCities(geo, place, prefer).filter(h => `${h.name}, ${h.land}` !== place.trim() && h.name !== place.trim()) : []);
+  function pickCity(h: CityHit) {
+    // mit Land, damit die Anbieter die richtige Stadt finden (gleichnamige Orte)
+    place = prefer.includes(h.cc) ? h.name : `${h.name}, ${h.land}`;
+    placeFocus = false;
+  }
 
   let busy = $state(false);
   let error = $state("");
@@ -159,7 +168,12 @@
 
   <form class="fs-form" onsubmit={search}>
     <div class="ed-row">
-      <label class="f grow">{t("te.place")}<input bind:value={place} placeholder={t("st.placePh")} required /></label>
+      <label class="f grow st-placef">{t("te.place")}<input bind:value={place} placeholder={t("st.placePh")} required autocomplete="off"
+          onfocus={() => (placeFocus = true)} onblur={() => setTimeout(() => (placeFocus = false), 150)} oninput={() => (placeFocus = true)} />
+        {#if citySugg.length}
+          <div class="sugg">{#each citySugg as h (h.cc + h.name)}<button type="button" onmousedown={e => e.preventDefault()} onclick={() => pickCity(h)}>{h.name} <small class="muted">{h.land}</small></button>{/each}</div>
+        {/if}
+      </label>
       <label class="f">{t("st.checkin")}<input type="date" bind:value={checkin} required /></label>
       <label class="f">{t("st.checkout")}<input type="date" bind:value={checkout} min={checkin} required /></label>
       <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(10, g.adults)} bind:value={rooms} /></label>

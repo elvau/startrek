@@ -673,3 +673,5 @@ body[data-ch="split"] .amb-split{opacity:1}
 @keyframes flash{0%,35%{box-shadow:0 0 0 3px var(--a),var(--shadow)}100%{box-shadow:var(--shadow)}}
 .st-stations{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .st-stations .chip small{opacity:.7;margin-inline-start:4px}
+.st-placef{position:relative}
+.st-placef .sugg small{margin-inline-start:6px}

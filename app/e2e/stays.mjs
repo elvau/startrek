@@ -239,6 +239,19 @@ try {
   // Kapitel-Knopf ohne Vorgabe: erste Station statt ganzer Reise
   await p.locator("#stay .st-open").click();
   if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Quito" || (await m.locator("label.f", { hasText: "Check-out" }).locator("input").inputValue()) !== "2027-04-14") fail("Suche ohne Vorgabe: nicht die erste Station");
+  // echte Stadtsuche: Cusco (Land der Reise, ohne Land), Bogotá (anderes Land, mit Land; an die Anbieter englisch)
+  const pf = m.locator("label.f", { hasText: "Ort" }).locator("input");
+  await pf.fill("Cus");
+  await m.locator(".st-placef .sugg button", { hasText: "Cusco" }).first().click();
+  if ((await pf.inputValue()) !== "Cusco") fail("Stadtsuche Cusco: " + await pf.inputValue());
+  await pf.fill("Bogo");
+  await m.locator(".st-placef .sugg button", { hasText: "Bogotá" }).first().click();
+  if ((await pf.inputValue()) !== "Bogotá, Kolumbien") fail("Stadtsuche Bogotá: " + await pf.inputValue());
+  await m.locator(".fs-form .btn.primary").click();
+  await until(async () => asked.at(-1)?.checkin === "2027-04-07", "Suche mit Bogotá");
+  const qb = asked.at(-1);
+  if (qb.country !== "Colombia" || !/^Bogot/.test(qb.place)) fail("Anfrage Bogotá: " + JSON.stringify(qb));
+  log("Stadtsuche: „Cus“ → Cusco, „Bogo“ → Bogotá, Kolumbien; an die Anbieter " + qb.place + ", " + qb.country);
   await m.locator(".modal-h .x").click();
   log("Suche je Station: aus der Lücke Lima 14.–20.04., Auswahl der Stationen, ohne Vorgabe Quito 07.–14.04.");
 
