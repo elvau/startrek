@@ -4,7 +4,7 @@
    * Startseite bei jedem Besuch: Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { homeTrips, openSample, openTrip, startTrip, tripFor, type TripEntry } from "../store.svelte";
+  import { deleteTrip, homeTrips, openSample, openTrip, startTrip, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { FOOD_STYLES } from "../food";
   import { summarize, type TripState, type TripSummary } from "../overview";
@@ -36,6 +36,12 @@
   // Impressum und Datenschutz liegen neben der App
   const LEGAL = (import.meta.env.BASE_URL as string) || "/";
   function event() { startTrip(); openEventPlanner(); }
+  /** Reise direkt von der Startseite löschen (bzw. verlassen, wenn sie jemand anderem gehört) */
+  function remove(m: TripEntry, name: string, leave: boolean) {
+    const q = leave ? t("tm.leaveConfirm", { name })
+      : [t("tm.deleteConfirm", { name }), m.shared ? t("tm.deleteAll") : "", t("tm.noUndo")].filter(Boolean).join(" ");
+    if (confirm(q)) deleteTrip(m.id).catch(e => console.warn(e));
+  }
 </script>
 
 <section class="start" data-ch="hero">
@@ -71,8 +77,11 @@
         <div class="home-trips">
           {#each g.list as m (m.id)}
             {@const x = m.s}
+            {@const nm = m.name || m.place || t("trip.untitled")}
+            {@const leave = !!m.role && m.role !== "owner"}
+            <div class="ht-wrap">
             <button class="home-trip" class:past={g.k === "past"} onclick={() => openTrip(m.id)}>
-              <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{m.name || m.place || t("trip.untitled")}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai">✨ {t("home.aiTag")}</span>{/if}</span>
+              <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai">✨ {t("home.aiTag")}</span>{/if}</span>
               {#if x}
                 {#if x.where}<span class="ht-where">{x.round ? `🔁 ${t("home.round")}: ` : "📍 "}{x.where}</span>{/if}
                 {#if m.from}<span class="ht-when">📅 {range(m.from, m.to)}{x.nights ? ` · ${tn("n.nights", x.nights)}` : ""}</span>{/if}
@@ -89,6 +98,8 @@
                 <small>{t("home.noDetails")}</small>
               {/if}
             </button>
+            <button class="ht-del" title={leave ? t("home.leaveTrip", { name: nm }) : t("home.deleteTrip", { name: nm })} aria-label={leave ? t("home.leaveTrip", { name: nm }) : t("home.deleteTrip", { name: nm })} onclick={() => remove(m, nm, leave)}>{leave ? "⇥" : "🗑"}</button>
+            </div>
           {/each}
         </div>
       {/snippet}
