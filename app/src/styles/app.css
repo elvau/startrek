@@ -136,12 +136,22 @@ body.scrolled .top{transform:none}
 .hero .total{margin-top:28px;display:inline-flex;flex-direction:column;align-items:center;padding:18px 28px;border-radius:22px;background:rgba(255,255,255,.6);backdrop-filter:blur(10px);box-shadow:0 20px 50px -20px rgba(14,36,56,.4)}
 .hero .total b{font:800 clamp(38px,6vw,56px) "Bricolage Grotesque Variable",sans-serif}
 .hero .total span{font-size:13px;opacity:.75}
-.hint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:600;opacity:.7}
-.hint i{width:22px;height:34px;border:2px solid currentColor;border-radius:12px;position:relative}
-.hint i::after{content:"";position:absolute;left:50%;top:6px;width:4px;height:7px;margin-inline-start:-2px;border-radius:2px;background:currentColor;animation:wheel 1.8s ease-in-out infinite}
-@keyframes wheel{60%{transform:translateY(10px);opacity:0}}
-.hint{opacity:calc(.7 - var(--hp,0) * 3)}
+.hint{position:absolute;bottom:calc(28px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 16px 8px 12px;border:1px solid rgba(255,255,255,.6);border-radius:99px;background:rgba(255,255,255,.7);backdrop-filter:blur(10px);box-shadow:0 12px 30px -12px rgba(14,36,56,.45);color:#0E2438;font-size:14px;font-weight:700;cursor:pointer;animation:hintBob 2.2s ease-in-out infinite}
+.hint i{width:18px;height:28px;border:2px solid currentColor;border-radius:10px;position:relative;flex:none}
+.hint i::after{content:"";position:absolute;left:50%;top:5px;width:4px;height:6px;margin-inline-start:-2px;border-radius:2px;background:currentColor;animation:wheel 1.8s ease-in-out infinite}
+.hint-arrow{width:18px;height:18px;flex:none}
+body.scrolled .hint{pointer-events:none}
+@keyframes wheel{60%{transform:translateY(9px);opacity:0}}
+@keyframes hintBob{50%{transform:translateX(-50%) translateY(6px)}}
+.hint{opacity:calc(1 - var(--hp,0) * 3)}
+/* Touch: Pfeil statt Maus, höher über den runden Knöpfen unten */
+@media (pointer:coarse),(max-width:640px){
+  .hint i{display:none}
+  .hint{bottom:calc(96px + env(safe-area-inset-bottom));padding:10px 18px}
+}
 .hero-in{transform:translateY(calc(var(--hp,0) * -80px));opacity:calc(1 - var(--hp,0) * 1.2)}
+:root[data-theme="dark"] .hint{background:rgba(10,25,45,.7);color:#EAF3FB;border-color:rgba(255,255,255,.15)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .hint{background:rgba(10,25,45,.7);color:#EAF3FB;border-color:rgba(255,255,255,.15)}}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .hero{color:#EAF3FB}:root:not([data-theme="light"]) .hero .kick,:root:not([data-theme="light"]) .hero .total{background:rgba(10,25,45,.5)}}
 :root[data-theme="dark"] .hero{color:#EAF3FB}
 :root[data-theme="dark"] .hero .kick,:root[data-theme="dark"] .hero .total{background:rgba(10,25,45,.5)}
@@ -321,3 +331,5 @@ body.editing .aside{opacity:.5}
 .lang-sel{border:0;background:transparent;color:var(--ink-2);font:700 12px/1 inherit;padding:6px 2px;border-radius:10px;width:auto;cursor:pointer}
 .lang-sel:hover{background:var(--paper-2)}
 .lang-sel.long{background:var(--glass);border:1px solid var(--glass-line);padding:7px 8px;font-weight:600;color:var(--ink)}
+
+.ph-note{margin:12px 2px 0;line-height:1.45}

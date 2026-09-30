@@ -106,6 +106,7 @@
   {#if !access.readonly}<button class="person add" onclick={add}><span class="av plus">+</span><b>{t("trav.person")}</b></button>{/if}
 </div>
 
+{#if !access.readonly && !edit && app.trip.travelers.some(x => x.placeholder)}<p class="muted small ph-note">{t("trav.phNote")}</p>{/if}
 {#if !access.readonly}
   <div class="home trav-acts">
     <button class="linkbtn" onclick={e => { e.stopPropagation(); edit = !edit; }}>{edit ? t("done") : t("trav.edit")}</button>

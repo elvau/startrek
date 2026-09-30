@@ -110,5 +110,7 @@
       <span>{n ? t("perPerson", { v: eurPP(calc.T.total / n) }) : t("nobody")}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
     </div>
   </div>
-  <div class="hint"><i></i>{t("hero.discover")}</div>
+  <button class="hint" onclick={() => document.getElementById("trav")?.scrollIntoView({ behavior: "smooth", block: "start" })} aria-label={t("hero.discoverAria")}>
+    <i aria-hidden="true"></i><span>{t("hero.discover")}</span><svg class="hint-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
 </section>
