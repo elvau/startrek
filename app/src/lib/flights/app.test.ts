@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi } from "./kiwi";
-import { compareRow, covered, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
+import { worthRetry, compareRow, covered, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
 import { activeOption, totals } from "../calc";
 import { presences } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
@@ -144,5 +144,17 @@ describe("Flüge je Familie oder Person (wie im Artefakt)", () => {
     expect(hase.follow).toBeUndefined();
     expect(hase.options).toHaveLength(1);
     expect(activeOption(hase, t)?.price.mode).toBe("unit");
+  });
+});
+
+describe("Flugsuche wiederholen", () => {
+  const src = (p: object) => ({ id: "kiwi", name: "Kiwi.com", configured: true, ok: false, count: 0, ...p });
+  it("nur ohne Angebote und wenn eine Quelle nach einer Weile gescheitert ist", () => {
+    expect(worthRetry({ offers: [], sources: [src({ ms: 8000, error: "keine Antwort nach 25 s" })] } as never)).toBe(true);
+    // sofortige Absage (fehlende Flughafencodes) ändert sich beim zweiten Versuch nicht
+    expect(worthRetry({ offers: [], sources: [src({ id: "travelpayouts", ms: 0, error: "braucht Flughafencodes" })] } as never)).toBe(false);
+    // keine Flüge, aber alle Quellen haben geantwortet
+    expect(worthRetry({ offers: [], sources: [src({ ok: true, ms: 3000 })] } as never)).toBe(false);
+    expect(worthRetry({ offers: [{}], sources: [src({ ms: 8000 })] } as never)).toBe(false);
   });
 });

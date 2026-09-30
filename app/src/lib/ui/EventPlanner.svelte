@@ -12,10 +12,12 @@
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
-  import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
   import { DEFAULT_H, fits, km, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
   import { cityFromAddress, searchEventsRemote } from "../events/app";
+  import { uniqueById } from "../events/search";
+  import { noteError } from "../bugs/log";
   import type { EventHit } from "../events/types";
   import type { StayOffer, StayQuery } from "../stays/types";
 
@@ -46,9 +48,12 @@
     try {
       const res = await searchEventsRemote({ q: eq.trim() });
       if (!res.sources.some(s => s.configured)) { evErr = t("evs.notReady"); return; }
-      hits = res.events;
-      if (!hits.length && res.sources.every(s => !s.ok)) evErr = res.sources.find(s => s.error)?.error || t("evs.none");
-    } catch (err) { evErr = (err as Error).message; }
+      hits = uniqueById(res.events || []);
+      if (!hits.length && res.sources.every(s => !s.ok)) {
+        evErr = res.sources.find(s => s.error)?.error || t("evs.none");
+        noteError(`Event-Suche: ${res.sources.map(s => `${s.id} ${s.error || (s.ok ? "ok" : "aus")}`).join(", ")}`);
+      }
+    } catch (err) { evErr = (err as Error).message; noteError(`Event-Suche: ${evErr}`); }
     finally { evBusy = false; }
   }
   async function pick(h: EventHit) {
@@ -131,7 +136,8 @@
         const flights = fl.status === "fulfilled" ? fl.value.offers.filter(o => fits(o, v)).map(o => rate(trip, o, o.out.from, true)) : [];
         const flight = flights.length ? flights.reduce((a, b) => (b.total < a.total ? b : a)) : null;
         const stay = st.status === "fulfilled" && st.value ? pickStayNear(st.value.offers, ev) : null;
-        const error = fl.status === "rejected" ? (fl.reason as Error).message : undefined;
+        // Quelle auch nach dem zweiten Versuch ohne Antwort: nicht als „kein Flug“ ausgeben
+        const error = fl.status === "rejected" ? (fl.reason as Error).message : worthRetry(fl.value) ? t("ev.flightsDown") : undefined;
         return { v, flight, stay, stayQ: v.nights ? q : null, total: (flight?.total || 0) + (stay ? Math.round(stay.total) : 0), error };
       }));
     } catch (err) {
@@ -156,7 +162,7 @@
 <Modal title={t("ev.title")} {onclose} wide>
   <p class="muted">{t("ev.lead")}</p>
   <form class="ev-find" onsubmit={find}>
-    <label class="f ev-grow">{t("evs.label")}<input bind:value={eq} placeholder={t("evs.ph")} /></label>
+    <label class="f ev-grow">{t("evs.label")}<input type="search" enterkeyhint="search" bind:value={eq} placeholder={t("evs.ph")} /></label>
     <button class="btn" disabled={evBusy}>{evBusy ? t("evs.busy") : t("evs.go")}</button>
   </form>
   {#if evErr}<p class="warnline">{evErr}</p>{/if}

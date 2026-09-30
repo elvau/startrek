@@ -1,73 +1,82 @@
 <script module lang="ts">
   import { t, tn } from "../i18n/index.svelte";
-  import { dir, travelersFrom } from "../directory.svelte";
-  import { animalEmoji, animalName, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler, type FamilyRow } from "../placeholders";
+  import { addGroup, addPerson, dir, travelersFrom } from "../directory.svelte";
+  import { animalEmoji, animalName, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler } from "../placeholders";
+  import { addToNew, dropFromNew, toggleSavedGroup, togglePicked, whoCount, type Who, type WhoMode, type WhoSrc } from "../who";
   import type { Traveler } from "../model";
 
-  export type WhoMode = "solo" | "partner" | "family" | "group" | "saved";
-  export interface Who {
-    mode: WhoMode;
-    solo: string;
-    partner: string;
-    fams: FamilyRow[];
-    group: { adults: number; kids: number };
-    /** Tier im Namen der Gruppenreise */
-    mascot: string;
-    picked: string[];
-  }
-  /** Startauswahl: solo, mit zufälligen Tieren */
+  export type { Who };
+  /** Startauswahl: solo; bei Familie und Gruppe ist noch kein Weg gewählt */
   export function newWho(): Who {
-    return { mode: "solo", solo: nextAnimal(), partner: nextAnimal(), fams: [{ animal: nextAnimal(), adults: 2, kids: 0, infants: 0 }], group: { adults: 6, kids: 0 }, mascot: nextAnimal(), picked: [] };
+    return {
+      mode: "solo", src: "", solo: nextAnimal(), partner: nextAnimal(), fams: [{ animal: nextAnimal(), adults: 2, kids: 0, infants: 0 }],
+      group: { adults: 6, kids: 0 }, mascot: nextAnimal(), groups: [], picked: [], ng: { name: "", ids: [], drafts: [] }
+    };
   }
-  /** Art der Reise für den vorläufigen Namen, z. B. „Solo Pinguin“, „Gruppenreise Zebra“ */
-  export function whoName(w: Who): string {
-    switch (w.mode) {
-      case "solo": return t("who.nameSolo", { a: animalName(w.solo) });
-      case "partner": return t("who.namePartner", { a: animalName(w.partner) });
-      case "family": {
-        const a = w.fams.map(f => animalName(f.animal));
-        return t("who.nameFamily", { a: a.length > 2 ? t("who.andOthers", { a: a.slice(0, 2).join(" & ") }) : a.join(" & ") });
-      }
-      case "group": return t("who.nameGroup", { a: animalName(w.mascot) });
-      default: {
-        // genau eine gespeicherte Gruppe gewählt: deren Name
-        const g = dir.groups.find(g => g.memberIds.length && g.memberIds.length === w.picked.length && g.memberIds.every(id => w.picked.includes(id)));
-        return g ? g.name : t("trip");
-      }
-    }
-  }
-  /** Reisende nach der Auswahl */
+  /** Reisende nach der Auswahl; eine neue Gruppe wird dabei mit ihren neuen Personen gespeichert */
   export function whoTravelers(w: Who): Traveler[] {
-    switch (w.mode) {
-      case "solo": return [soloTraveler(w.solo)];
-      case "partner": return placeholderTravelers([{ animal: w.partner, adults: 2, kids: 0 }]);
-      case "family": return placeholderTravelers(w.fams);
-      case "group": return groupTravelers(w.group.adults, w.group.kids);
-      default: return travelersFrom(w.picked);
+    if (w.mode === "solo") return [soloTraveler(w.solo)];
+    if (w.mode === "partner") return placeholderTravelers([{ animal: w.partner, adults: 2, kids: 0 }]);
+    if (w.src === "saved") return travelersFrom(w.picked);
+    if (w.src === "new") {
+      const ids = [...w.ng.ids, ...w.ng.drafts.map(d => addPerson(d.first, d.last, d.age).id)];
+      addGroup(w.ng.name, ids);
+      return travelersFrom(ids);
     }
+    return w.mode === "family" ? placeholderTravelers(w.fams) : groupTravelers(w.group.adults, w.group.kids);
   }
 </script>
 
 <script lang="ts">
-  /* Wer fährt mit: Solo, Partner, Familie, Gruppe (oder gespeicherte Gruppen) */
+  /* Wer fährt mit: Solo, Partner, Familie, Gruppe; bei Familie und Gruppe danach der Weg (gespeichert, neu, Tiere) */
   import QuickFamilies from "./QuickFamilies.svelte";
+  import { uid } from "../model";
 
   let { who = $bindable() }: { who: Who } = $props();
-  const famCount = $derived(who.fams.reduce((a, r) => a + r.adults + r.kids + (r.infants || 0), 0));
   const OPTS = $derived<{ k: WhoMode; t: string; s: string }[]>([
     { k: "solo", t: t("who.solo"), s: t("who.soloSub") },
     { k: "partner", t: t("who.partner"), s: t("who.partnerSub") },
     { k: "family", t: t("family"), s: t("who.familySub") },
     { k: "group", t: t("who.group"), s: t("who.groupSub") }
   ]);
+  const hasSaved = $derived(dir.groups.some(g => g.memberIds.length) || dir.people.length > 0);
+  const SRCS = $derived<{ k: WhoSrc; ico: string; t: string; s: string; off?: boolean }[]>([
+    { k: "saved", ico: "👥", t: t("who.src.saved"), s: hasSaved ? t("who.src.savedSub") : t("who.src.savedNone"), off: !hasSaved },
+    { k: "new", ico: "➕", t: t("who.src.new"), s: t("who.src.newSub") },
+    { k: "animals", ico: "🦊", t: t("who.src.animals"), s: t("who.src.animalsSub") }
+  ]);
   const other = (cur: string) => nextAnimal([cur]);
   const step = (k: "adults" | "kids", d: number) => (who.group[k] = Math.max(k === "adults" ? 1 : 0, Math.min(40, who.group[k] + d)));
+  const byId = (id: string) => dir.people.find(p => p.id === id);
+  const pname = (id: string) => { const p = byId(id); return p ? `${p.first} ${p.last}`.trim() : "?"; };
 
-  const toggleGroup = (ids: string[]) => {
-    const all = ids.every(id => who.picked.includes(id));
-    who.picked = all ? who.picked.filter(id => !ids.includes(id)) : [...new Set([...who.picked, ...ids])];
-  };
-  const toggle = (id: string) => (who.picked = who.picked.includes(id) ? who.picked.filter(x => x !== id) : [...who.picked, id]);
+  // gespeichert: Personen, die in keiner gewählten Gruppe sind
+  const inChosen = $derived(new Set(dir.groups.filter(g => who.groups.includes(g.id)).flatMap(g => g.memberIds)));
+  const loose = $derived(dir.people.filter(p => !inChosen.has(p.id)));
+  let moreOpen = $state(false);
+
+  // neue Gruppe: vorhandene Personen ziehen oder antippen, neue eintragen
+  const pool = $derived(dir.people.filter(p => !who.ng.ids.includes(p.id)));
+  let first = $state(""), last = $state(""), age = $state<number | undefined>();
+  let dragOver = $state(false);
+  /** Nachname aus „Familie Müller“ vorschlagen */
+  const famLast = $derived(who.mode === "family" ? who.ng.name.trim().replace(/^(Familie|Family|Familia|Famille|Rodzina|Семья|عائلة)\s+/i, "") : "");
+  function addDraft(e: Event) {
+    e.preventDefault();
+    const l = last.trim() || famLast;
+    if (!first.trim() || !l) return;
+    who.ng.drafts = [...who.ng.drafts, { key: uid(), first: first.trim(), last: l, ...(age ? { age } : {}) }];
+    first = ""; age = undefined;
+    if (!last.trim()) last = "";
+  }
+  function drop(e: DragEvent) {
+    e.preventDefault();
+    dragOver = false;
+    const id = e.dataTransfer?.getData("text/plain");
+    if (id && byId(id)) addToNew(who, id);
+  }
+  const drag = (id: string) => (e: DragEvent) => { e.dataTransfer?.setData("text/plain", id); if (e.dataTransfer) e.dataTransfer.effectAllowed = "move"; };
+  const phName = $derived(who.mode === "family" ? t("who.ngNamePhFamily") : t("who.ngNamePhGroup"));
 </script>
 
 <!-- kleine Szenen: Figuren mit Haut, Haar, Oberteil; Kinder kleiner -->
@@ -126,10 +135,6 @@
     <button type="button" role="radio" aria-checked={who.mode === o.k} class="who-b who-{o.k}" class:on={who.mode === o.k} onclick={() => (who.mode = o.k)}>
       <span class="who-art">{@render fig(o.k)}</span><b>{o.t}</b><small>{o.s}</small></button>
   {/each}
-  {#if dir.groups.length || dir.people.length}
-    <button type="button" role="radio" aria-checked={who.mode === "saved"} class="who-b who-saved" class:on={who.mode === "saved"} onclick={() => (who.mode = "saved")}>
-      <span class="who-art">{@render fig("saved")}</span><b>{t("who.saved")}</b><small>{t("who.savedSub")}</small></button>
-  {/if}
 </div>
 
 <div class="who-d">
@@ -139,35 +144,96 @@
   {:else if who.mode === "partner"}
     <p class="small">{t("who.partnerAs")} <b>{animalEmoji(who.partner)} {t("family.named", { name: animalName(who.partner) })}</b>. <button type="button" class="linkbtn" onclick={() => (who.partner = other(who.partner))}>{t("who.otherAnimal")}</button></p>
     <p class="muted small">{t("who.partnerHint")}</p>
-  {:else if who.mode === "family"}
-    <p class="muted small">{t("who.familyHint")}</p>
-    <QuickFamilies bind:rows={who.fams} />
-    {#if famCount}<p class="muted small">{t("who.together", { p: tn("n.persons", famCount) })}</p>{/if}
-  {:else if who.mode === "group"}
-    <p class="small">{t("who.groupAs")} <b>{t("who.nameGroup", { a: `${animalEmoji(who.mascot)} ${animalName(who.mascot)}` })}</b>. <button type="button" class="linkbtn" onclick={() => (who.mascot = other(who.mascot))}>{t("who.otherAnimal")}</button></p>
-    <p class="muted small">{t("who.groupHint")}</p>
-    <div class="qf-counts grp-counts">
-      {#each [["adults", t("age.adultShort"), t("age.adults")], ["kids", t("age.kids"), t("age.kids")]] as [k, l, full] (k)}
-        <span class="qf-step" role="group" aria-label={full}>
-          <button type="button" onclick={() => step(k as "adults", -1)} aria-label={t("step.less", { what: full })}>−</button>
-          <b>{who.group[k as "adults"]}</b><small>{l}</small>
-          <button type="button" onclick={() => step(k as "adults", 1)} aria-label={t("step.more", { what: full })}>+</button>
-        </span>
-      {/each}
-    </div>
-    <p class="muted small">{t("who.together", { p: tn("n.persons", who.group.adults + who.group.kids) })}</p>
   {:else}
-    <div class="chips">
-      {#each dir.groups as g (g.id)}
-        {@const on = g.memberIds.length > 0 && g.memberIds.every(id => who.picked.includes(id))}
-        <button type="button" class="chip grp-chip" class:on aria-pressed={on} onclick={() => toggleGroup(g.memberIds)}>{g.name} <small>{g.memberIds.length}</small></button>
+    <span class="dlabel">{t("who.howStart")}</span>
+    <div class="who-src" role="radiogroup" aria-label={t("who.howStart")}>
+      {#each SRCS as o (o.k)}
+        <button type="button" role="radio" aria-checked={who.src === o.k} class="src-b src-{o.k}" class:on={who.src === o.k} disabled={o.off} onclick={() => (who.src = o.k)}>
+          <span class="src-ico" aria-hidden="true">{o.ico}</span><span class="src-t"><b>{o.t}</b><small>{o.s}</small></span>
+          <i class="src-check" aria-hidden="true">✓</i>
+        </button>
       {/each}
     </div>
-    <div class="chips">
-      {#each dir.people as p (p.id)}
-        <button type="button" class="chip" class:on={who.picked.includes(p.id)} aria-pressed={who.picked.includes(p.id)} onclick={() => toggle(p.id)}>{p.first} {p.last}</button>
-      {/each}
-    </div>
-    <p class="muted small">{t("who.picked", { p: tn("n.persons", who.picked.length) })}</p>
+
+    {#if who.src === "saved"}
+      <p class="muted small">{t("who.pickGroups")}</p>
+      <div class="sg-list">
+        {#each dir.groups.filter(g => g.memberIds.length) as g (g.id)}
+          {@const on = who.groups.includes(g.id)}
+          <div class="sg" class:on>
+            <button type="button" class="sg-h" aria-pressed={on} onclick={() => toggleSavedGroup(who, dir, g.id)}>
+              <i class="sg-box" aria-hidden="true">{on ? "✓" : ""}</i>
+              <span class="sg-t"><b>{g.name}</b><small>{tn("n.persons", g.memberIds.length)}</small></span>
+            </button>
+            {#if on}
+              <div class="chips sg-people">
+                {#each g.memberIds as id (id)}
+                  <button type="button" class="chip" class:on={who.picked.includes(id)} aria-pressed={who.picked.includes(id)} onclick={() => togglePicked(who, id)}>{who.picked.includes(id) ? "✓ " : ""}{pname(id)}</button>
+                {/each}
+              </div>
+            {:else}
+              <small class="sg-names muted">{g.memberIds.map(id => byId(id)?.first || "?").join(" · ")}</small>
+            {/if}
+          </div>
+        {/each}
+      </div>
+      {#if loose.length}
+        <button type="button" class="linkbtn" aria-expanded={moreOpen} onclick={() => (moreOpen = !moreOpen)}>+ {t("who.morePeople")} {moreOpen ? "▴" : "▾"}</button>
+        {#if moreOpen}
+          <div class="chips">
+            {#each loose as p (p.id)}
+              <button type="button" class="chip" class:on={who.picked.includes(p.id)} aria-pressed={who.picked.includes(p.id)} onclick={() => togglePicked(who, p.id)}>{who.picked.includes(p.id) ? "✓ " : ""}{p.first} {p.last}</button>
+            {/each}
+          </div>
+        {/if}
+      {/if}
+    {:else if who.src === "new"}
+      <label class="f">{t("who.ngName")}<input class="ng-name" bind:value={who.ng.name} placeholder={phName} /></label>
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="ng-zone" class:over={dragOver} ondragover={e => { e.preventDefault(); dragOver = true; }} ondragleave={() => (dragOver = false)} ondrop={drop}>
+        <span class="ng-lbl">{t("who.ngIn")}</span>
+        <div class="chips">
+          {#each who.ng.ids as id (id)}
+            <span class="chip on ng-chip">{pname(id)}<button type="button" class="ng-x" aria-label={t("who.ngRemove", { name: pname(id) })} onclick={() => dropFromNew(who, id)}>×</button></span>
+          {/each}
+          {#each who.ng.drafts as d (d.key)}
+            <span class="chip on ng-chip">{d.first} {d.last} <small>{t("who.ngNew")}</small><button type="button" class="ng-x" aria-label={t("who.ngRemove", { name: d.first })} onclick={() => (who.ng.drafts = who.ng.drafts.filter(x => x.key !== d.key))}>×</button></span>
+          {/each}
+          {#if !who.ng.ids.length && !who.ng.drafts.length}<span class="muted small">{pool.length ? t("who.ngDrop") : t("who.ngEmpty")}</span>{/if}
+        </div>
+      </div>
+      {#if pool.length}
+        <span class="ng-lbl">{t("who.ngPool")}</span>
+        <div class="chips ng-pool">
+          {#each pool as p (p.id)}
+            <button type="button" class="chip ng-drag" draggable="true" ondragstart={drag(p.id)} onclick={() => addToNew(who, p.id)}>+ {p.first} {p.last}</button>
+          {/each}
+        </div>
+      {/if}
+      <div class="ed-row ng-add">
+        <label class="f">{t("trav.first")}<input bind:value={first} placeholder={t("grp.firstPh")} onkeydown={e => { if (e.key === "Enter") addDraft(e); }} /></label>
+        <label class="f">{t("trav.last")}<input bind:value={last} placeholder={famLast || t("grp.lastPh")} onkeydown={e => { if (e.key === "Enter") addDraft(e); }} /></label>
+        <label class="f">{t("trav.age")}<input class="n sm" type="number" min="0" max="120" bind:value={age} /></label>
+        <button type="button" class="btn" disabled={!first.trim() || !(last.trim() || famLast)} onclick={addDraft}>{t("who.ngAddBtn")}</button>
+      </div>
+    {:else if who.src === "animals"}
+      {#if who.mode === "family"}
+        <p class="muted small">{t("who.familyHint")}</p>
+        <QuickFamilies bind:rows={who.fams} />
+      {:else}
+        <p class="small">{t("who.groupAs")} <b>{t("who.nameGroup", { a: `${animalEmoji(who.mascot)} ${animalName(who.mascot)}` })}</b>. <button type="button" class="linkbtn" onclick={() => (who.mascot = other(who.mascot))}>{t("who.otherAnimal")}</button></p>
+        <p class="muted small">{t("who.groupHint")}</p>
+        <div class="qf-counts grp-counts">
+          {#each [["adults", t("age.adultShort"), t("age.adults")], ["kids", t("age.kids"), t("age.kids")]] as [k, l, full] (k)}
+            <span class="qf-step" role="group" aria-label={full}>
+              <button type="button" onclick={() => step(k as "adults", -1)} aria-label={t("step.less", { what: full })}>−</button>
+              <b>{who.group[k as "adults"]}</b><small>{l}</small>
+              <button type="button" onclick={() => step(k as "adults", 1)} aria-label={t("step.more", { what: full })}>+</button>
+            </span>
+          {/each}
+        </div>
+      {/if}
+    {/if}
+    {#if who.src && whoCount(who)}<p class="muted small who-sum">{t("who.together", { p: tn("n.persons", whoCount(who)) })}</p>{/if}
   {/if}
 </div>

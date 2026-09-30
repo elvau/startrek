@@ -38,7 +38,9 @@ const EVENTS = {
   events: [
     { id: "fd:1", source: "footballdata", sourceName: "football-data.org", name: "Arsenal – Bayern", start: "2027-05-15T15:30", venue: "Emirates Stadium", cc: "GB",
       address: "75 Drayton Park London N5 1BU", category: "UEFA Champions League", lat: 51.555, lon: -0.108, url: "https://tickets.example/ars-fcb" },
-    { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal", start: "2027-05-22T17:30", venue: "Stamford Bridge", cc: "GB", category: "Premier League" }
+    { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal", start: "2027-05-22T17:30", venue: "Stamford Bridge", cc: "GB", category: "Premier League" },
+    // gleiche ID doppelt (älterer Such-Dienst): die Liste darf nicht leer bleiben
+    { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal (VIP)", start: "2027-05-23T17:30", cc: "GB" }
   ],
   sources: [{ id: "footballdata", name: "football-data.org", configured: true, ok: true, count: 2 }]
 };
@@ -52,10 +54,15 @@ try {
   p.on("pageerror", e => errors.push(e.message));
   const asked = [], stays = [];
   const cors = { "access-control-allow-origin": "*" };
+  // die erste Flugsuche scheitert bei Kiwi (überlastet): die App versucht es einmal neu
+  let kiwiDown = true;
   await p.route("https://flights.test/flights/search", async r => {
     const q = JSON.parse(r.request().postData());
     asked.push(q);
-    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(flights(q)) });
+    const down = { offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: false, count: 0, ms: 8000, error: "keine Antwort nach 25 s" }] };
+    const body = kiwiDown ? down : flights(q);
+    kiwiDown = false;
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
   });
   await p.route("https://flights.test/stays/search", async r => {
     stays.push(JSON.parse(r.request().postData()));
@@ -75,9 +82,14 @@ try {
   const m = p.locator(".modal");
   await m.locator(".ev-form").waitFor();
   // Event suchen und auswählen: Name, Stadt (aus der Anschrift), Stadion, Datum, Uhrzeit werden ausgefüllt
+  // auf einem kleinen Handy: die Treffer müssen sichtbar sein (die Liste wurde im Fenster auf 0 zusammengedrückt)
+  await p.setViewportSize({ width: 406, height: 761 });
   await m.locator(".ev-find input").fill("Arsenal");
   await m.locator(".ev-find .btn").click();
   await m.locator(".ev-hit").first().waitFor();
+  const box = await m.locator(".ev-hits").boundingBox();
+  if (!box || box.height < 100) fail("Treffer auf dem Handy nicht sichtbar, Höhe " + box?.height);
+  await p.setViewportSize({ width: 1280, height: 900 });
   if (evAsked[0]?.q !== "Arsenal") fail("Event-Suche: " + JSON.stringify(evAsked));
   if ((await m.locator(".ev-hit").count()) !== 2) fail("nicht zwei Termine");
   await m.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
@@ -94,11 +106,12 @@ try {
   // drei Vorschläge: ohne Nacht, eine Nacht, ab Vortag; je eine Flug- und (mit Nacht) eine Unterkunftssuche
   const cards = m.locator(".ev-card");
   if ((await cards.count()) !== 3) fail("nicht drei Vorschläge: " + (await cards.count()));
-  const dates = asked.map(q => `${q.depart}/${q.ret}`).sort();
+  if (asked.length !== 4) fail("gescheiterte Flugsuche nicht wiederholt: " + asked.length);
+  const dates = [...new Set(asked.map(q => `${q.depart}/${q.ret}`))].sort();
   if (dates.join() !== "2027-05-14/2027-05-16,2027-05-15/2027-05-15,2027-05-15/2027-05-16") fail("Flugsuchen: " + dates);
   if (!asked.every(q => q.toAirports.includes("LHR") && q.fromAirports.length && !q.bags)) fail("Anfrage falsch: " + JSON.stringify(asked[0]));
   if (stays.length !== 2 || !stays.every(s => s.place === "London" && s.type === "all")) fail("Unterkunftssuche: " + JSON.stringify(stays));
-  log("Drei Vorschläge aus drei Flug- und zwei Unterkunftssuchen");
+  log("Drei Vorschläge aus drei Flug- und zwei Unterkunftssuchen, gescheiterte Flugsuche (Kiwi) einmal wiederholt");
 
   // am Spieltag nur der frühe Flug (landet 08:15), ab Vortag der günstigere; Unterkunft: gut bewertet
   const day = cards.filter({ hasText: "Tagesausflug" });
