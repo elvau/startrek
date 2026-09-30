@@ -47,10 +47,11 @@ const PROVIDERS: Record<string, { name: string; limit?: number; per?: Per }> = {
   "api.github.com": { name: "GitHub (Fehlerberichte)" },
   "mcp.kiwi.com": { name: "Kiwi.com" },
   "api.travelpayouts.com": { name: "Travelpayouts" },
-  "mcp.trivago.com": { name: "trivago" }
+  "mcp.trivago.com": { name: "trivago" },
+  "api.viator.com": { name: "Viator" }
 };
 
-export const ROUTES = ["flights", "stays", "events", "agent", "bug"] as const;
+export const ROUTES = ["flights", "stays", "events", "activities", "agent", "bug"] as const;
 
 export function level(share: number | null): Level {
   if (share == null) return "ok";

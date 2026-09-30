@@ -2,8 +2,14 @@
 import type { SourceStatus } from "../flights/types";
 
 export interface EventQuery {
-  /** Mannschaft, Künstler, Festival … */
+  /** Mannschaft, Künstler, Festival …; leer, wenn nach Ort gesucht wird */
   q: string;
+  /** „Was läuft vor Ort“: Stadt der Reise (auch englisch, z. B. „Mailand“/„Milan“), Land, Mitte; dann ist q optional */
+  city?: string;
+  cityEn?: string;
+  cc?: string;
+  lat?: number;
+  lon?: number;
   /** Zeitraum JJJJ-MM-TT (fehlt: ab heute, ein Jahr) */
   from?: string;
   to?: string;
@@ -27,6 +33,8 @@ export interface EventHit {
   url?: string;
   /** z. B. Premier League, Musik */
   category?: string;
+  /** Ticketpreise, soweit die Quelle sie nennt */
+  price?: { min: number; max?: number; currency: string };
 }
 
 export interface EventSearchResult {

@@ -750,3 +750,18 @@ body[data-ch="split"] .amb-split{opacity:1}
 .who-sum{margin:0}
 .who-d>.who-src,.who-d>.sg-list,.who-d>.ng-zone,.who-d>.ng-add,.who-d>.f:has(.ng-name){align-self:stretch}
 .who-d .dlabel{margin-top:6px}
+/* Erlebnisse finden: Events vor Ort, Touren & Tickets */
+.xp{display:flex;flex-direction:column;gap:10px}
+.xp-where{margin:0}
+.xp-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line)}
+.xp-tab{border:0;background:none;padding:8px 12px;font-weight:700;font-size:14px;color:var(--ink-2);border-bottom:2.5px solid transparent;margin-bottom:-1px}
+.xp-tab.on{color:var(--a);border-bottom-color:var(--a)}
+.xp-list{display:flex;flex-direction:column;gap:8px}
+.xp-card{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:10px 12px}
+.xp-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.xp-b b{font-size:14px;overflow-wrap:anywhere}
+.xp-price{font-size:13px;font-weight:700;color:var(--ink)}
+.xp-acts{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
+.xp-img{flex:none;width:84px;height:64px;object-fit:cover;border-radius:10px}
+.xp-more{margin:4px 0 0}
+@media (max-width:520px){.xp-card{flex-wrap:wrap}.xp-acts{flex-direction:row;align-items:center;width:100%;justify-content:space-between}}

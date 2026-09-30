@@ -75,8 +75,27 @@ export function fromMatches(data: any, teams: Map<number, FdTeam>, q: EventQuery
     });
 }
 
+/** Mannschaften mit Stadion in dieser Stadt (Anschrift enthält den Ortsnamen), z. B. alle Londoner Vereine */
+export function teamsInCity(teams: FdTeam[], city: string, cc?: string): FdTeam[] {
+  const c = norm(city).trim();
+  if (c.length < 3) return [];
+  return teams.filter(t => (!cc || !t.cc || t.cc === cc) && t.address && ` ${norm(t.address)} `.includes(` ${c} `));
+}
+
+/** Heimspiele der Vereine einer Stadt im Zeitraum (höchstens vier Vereine, das kostenlose Kontingent ist klein) */
+async function homeMatchesIn(q: EventQuery, teams: FdTeam[], key: string, f: typeof fetch, cached: Cached): Promise<EventHit[]> {
+  const local = [...new Set([...teamsInCity(teams, q.city!, q.cc), ...(q.cityEn ? teamsInCity(teams, q.cityEn, q.cc) : [])])].slice(0, 4);
+  if (!local.length) return [];
+  const byId = new Map(teams.map(t => [t.id, t]));
+  const range = q.from ? `&dateFrom=${q.from}&dateTo=${q.to || q.from}` : "";
+  const lists = await Promise.all(local.map(t => cached(`fd:h:${t.id}:${q.from || ""}:${q.to || ""}`, 6 * 3600, () => get(`/teams/${t.id}/matches?status=SCHEDULED&venue=HOME${range}`, key, f))
+    .then(d => fromMatches({ matches: (d?.matches || []).filter((m: any) => m.homeTeam?.id === t.id) }, byId, q))));
+  return lists.flat().sort((a, b) => a.start.localeCompare(b.start));
+}
+
 export async function searchFootballData(q: EventQuery, key: string, f: typeof fetch = fetch, cached: Cached = noCache): Promise<EventHit[]> {
   const teams = await fdTeams(key, f, cached);
+  if (!q.q && q.city) return homeMatchesIn(q, teams, key, f, cached);
   const hits = matchTeams(teams, q.q).slice(0, 2);
   if (!hits.length) return [];
   const byId = new Map(teams.map(t => [t.id, t]));

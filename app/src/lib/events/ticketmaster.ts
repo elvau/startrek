@@ -5,7 +5,12 @@ export const TM_URL = "https://app.ticketmaster.com/discovery/v2/events.json";
 
 export function tmParams(q: EventQuery, key: string, today: string): URLSearchParams {
   const from = q.from || today;
-  const p = new URLSearchParams({ apikey: key, keyword: q.q, size: "30", sort: "date,asc", locale: "*", startDateTime: `${from}T00:00:00Z` });
+  const p = new URLSearchParams({ apikey: key, size: "30", sort: "date,asc", locale: "*", startDateTime: `${from}T00:00:00Z` });
+  if (q.q) p.set("keyword", q.q);
+  // vor Ort: Umkreis um die Stadtmitte (Ortsnamen schreibt Ticketmaster je Land anders), sonst der Name
+  if (q.lat != null && q.lon != null) { p.set("latlong", `${q.lat},${q.lon}`); p.set("radius", "30"); p.set("unit", "km"); }
+  else if (q.city) p.set("city", q.cityEn || q.city);
+  if (q.city && q.cc) p.set("countryCode", q.cc);
   if (q.to) p.set("endDateTime", `${q.to}T23:59:59Z`);
   return p;
 }
@@ -18,6 +23,7 @@ export function fromTicketmaster(data: any): EventHit[] {
     const d = e.dates?.start || {};
     const lat = Number(v.location?.latitude), lon = Number(v.location?.longitude);
     const cls = e.classifications?.[0];
+    const pr = (e.priceRanges || []).find((x: any) => isFinite(Number(x?.min)) && x?.currency);
     return {
       id: `tm:${e.id}`, source: "ticketmaster", sourceName: "Ticketmaster", name: String(e.name || ""),
       start: d.localDate ? (d.localTime ? `${d.localDate}T${String(d.localTime).slice(0, 5)}` : d.localDate) : "",
@@ -25,6 +31,7 @@ export function fromTicketmaster(data: any): EventHit[] {
       ...(v.country?.countryCode ? { cc: v.country.countryCode } : {}),
       ...(isFinite(lat) && isFinite(lon) && (lat || lon) ? { lat, lon } : {}),
       ...(e.url ? { url: e.url } : {}),
+      ...(pr ? { price: { min: Number(pr.min), ...(isFinite(Number(pr.max)) ? { max: Number(pr.max) } : {}), currency: String(pr.currency) } } : {}),
       ...(cls?.genre?.name || cls?.segment?.name ? { category: cls.genre?.name && cls.genre.name !== "Undefined" ? cls.genre.name : cls.segment?.name } : {})
     };
   }).filter(e => e.name && e.start);

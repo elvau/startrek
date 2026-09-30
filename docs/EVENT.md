@@ -44,3 +44,21 @@ Mannschaftslisten 7 Tage).
 
 - weitere Quellen (z. B. Eventim, TheSportsDB), Veranstaltungsort per Karte bestimmen, wenn keine Koordinaten kommen
 - Der KI-Agent (Premium) kann dieselben Vorschläge nutzen
+
+## Erlebnisse finden (in der Reise)
+
+Im Kapitel „Erlebnisse“ öffnen **🎟 Events vor Ort** und **🎡 Touren & Tickets** denselben Dialog (`app/src/lib/ui/ExploreDialog.svelte`).
+
+- **Events vor Ort:** sucht ohne Stichwort, was im Reisezeitraum am Reiseort läuft (optional mit Stichwort). Ticketmaster im Umkreis
+  von 30 km um die Stadtmitte, football-data.org: Heimspiele der Vereine mit Stadion in der Stadt (höchstens vier Vereine).
+  Such-Dienst `POST /events/search` mit `city`, `cityEn`, `cc`, `lat`, `lon`, `from`, `to` (`q` darf dann leer sein).
+- **Touren & Tickets:** Viator-Partner-API (Freitext-Suche, Preis ab, Bewertung, Bild, Dauer), gut und oft bewertet zuerst.
+  Such-Dienst `POST /activities/search` (`place`, `from`, `to`, `lang`), 6 Stunden zwischengespeichert. Code: `app/src/lib/activities/`.
+- **Übernehmen** legt einen Posten in „Erlebnisse“ an (Preis ab pro Person, Termin und Ort als Notiz, Link zur Buchung).
+  Preise in anderen Währungen als Euro werden nicht übernommen (ohne Kurs würden sie als Euro zählen), die trägt man selbst ein.
+
+Viator einrichten:
+1. viator.com/partner → als **Affiliate-Partner** anmelden (kostenlos), nach der Freischaltung unter *API* den Schlüssel (Production) holen.
+2. Cloudflare → Workers & Pages → **startrek** → Einstellungen → Variablen und Geheimnisse → **Secret** `VIATOR_API_KEY`.
+3. Ohne Schlüssel zeigt der Reiter „noch nicht eingerichtet“ und die Links zu GetYourGuide, Viator und Tiqets.
+

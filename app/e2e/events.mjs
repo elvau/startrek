@@ -70,8 +70,19 @@ try {
   });
   const evAsked = [];
   await p.route("https://flights.test/events/search", async r => {
-    evAsked.push(JSON.parse(r.request().postData()));
-    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(EVENTS) });
+    const q = JSON.parse(r.request().postData());
+    evAsked.push(q);
+    // „Events vor Ort“: nach Stadt und Zeitraum, mit Ticketpreis
+    const body = q.city ? { events: [{ id: "tm:77", source: "ticketmaster", sourceName: "Ticketmaster", name: "Coldplay", start: "2027-05-15T20:00", venue: "Wembley Stadium", city: "London", cc: "GB", url: "https://tickets.example/coldplay", price: { min: 89, max: 250, currency: "EUR" } }],
+      sources: [{ id: "ticketmaster", name: "Ticketmaster", configured: true, ok: true, count: 1 }] } : EVENTS;
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
+  });
+  const tourAsked = [];
+  await p.route("https://flights.test/activities/search", async r => {
+    tourAsked.push(JSON.parse(r.request().postData()));
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ activities: [
+      { id: "viator:1", source: "viator", sourceName: "Viator", title: "Tower of London: Kronjuwelen", rating: 4.7, reviews: 5210, minutes: 180, price: 42, currency: "EUR", url: "https://www.viator.com/t/1" }
+    ], sources: [{ id: "viator", name: "Viator", configured: true, ok: true, count: 1 }] }) });
   });
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
@@ -136,6 +147,28 @@ try {
   if (!(await p.locator("#flights .card", { hasText: "Test Air" }).count())) fail("Flug nicht übernommen");
   if (!(await p.locator("#stay .card", { hasText: "Highbury Rooms" }).count())) fail("Unterkunft nicht übernommen");
   log("Vorschlag übernommen: Name, Daten, Flug und Unterkunft");
+
+  // Erlebnisse finden: was am Reiseort im Reisezeitraum läuft, Touren; Übernehmen legt Posten an
+  await p.locator("#attractions .xp-open").click();
+  const x = p.locator(".modal .xp");
+  await x.locator(".xp-ev").first().waitFor();
+  const eq = evAsked[evAsked.length - 1];
+  if (eq.city !== "London" || eq.from !== "2027-05-15" || eq.to !== "2027-05-16" || eq.q !== "" || eq.lat == null) fail("Events vor Ort: " + JSON.stringify(eq));
+  if (!(await x.locator(".xp-ev", { hasText: "ab 89" }).count())) fail("Ticketpreis fehlt");
+  await x.locator(".xp-ev", { hasText: "Coldplay" }).locator(".xp-take").click();
+  await x.locator(".xp-ev .xp-take", { hasText: "In der Reise" }).waitFor();
+  await x.locator(".xp-tab", { hasText: "Touren" }).click();
+  await x.locator(".xp-tour").first().waitFor();
+  if (tourAsked[0]?.place !== "London" || tourAsked[0]?.lang !== "de" || tourAsked[0]?.from !== "2027-05-15") fail("Touren-Anfrage: " + JSON.stringify(tourAsked));
+  await x.locator(".xp-tour .xp-take").click();
+  await p.keyboard.press("Escape");
+  const att = p.locator("#attractions");
+  await att.locator(".card", { hasText: "Coldplay" }).waitFor();
+  if (!(await att.locator(".card", { hasText: "Tower of London" }).count())) fail("Tour nicht übernommen");
+  const prices = () => p.evaluate(() => { const t = JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current"))); return t.items.filter(i => i.cat === "attractions").map(i => i.options[0].price.adult).join(); });
+  for (let i = 0; i < 20 && (await prices()) !== "89,42"; i++) await p.waitForTimeout(150);
+  if ((await prices()) !== "89,42") fail("Preise der Erlebnisse: " + await prices());
+  log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €) als Posten übernommen");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Event-Reise ok");
