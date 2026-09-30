@@ -16,8 +16,18 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [ ] **Firebase-Schlüssel beschränken:** Google Cloud Console → APIs & Dienste → Anmeldedaten → Browser-Schlüssel auf
       splitandfly.com, elvau.github.io und startrek-1b6a7.web.app beschränken.
 - [ ] **Gewerbe anmelden** (Affiliate-Provisionen), Kleinunternehmerregelung gilt über die PV-Anlage mit.
+- [x] **Domains** splitandfly.de, split-and-fly.com, splitfly.de gekauft (Squarespace, 30.09.2026) und per 301 auf
+      splitandfly.com weitergeleitet. Offen: E-Mail-Bestätigung für split-and-fly.com (sonst Sperre nach 15 Tagen),
+      splitfly.de stand noch auf „ausstehend“ – kurz prüfen.
+- [ ] **Social-Media-Namen** @splitandfly anlegen (Instagram, TikTok, Facebook, X, YouTube, LinkedIn) mit der splitandfly-Adresse.
+- [ ] **Marke „Split&Fly“ anmelden** (nach der Gewerbeanmeldung, spätestens bevor die App beworben wird / Geld verdient):
+      Wortmarke beim DPMA (DPMAdirektWeb, ca. 290 € für bis zu 3 Klassen, 10 Jahre), Klassen 9 (App), 39 (Reisevermittlung),
+      42 (Online-Dienst), evtl. 35. Anmelder: Dani persönlich. Schreibweise genau „Split&Fly“.
+      Recherche 09/2026 (DPMAregister, TMview): kein Konflikt gefunden; einziger Treffer „split fly stop“ (Türkei, 1995,
+      Mückenschutz, erloschen) ist unkritisch. Vor der Anmeldung noch ähnliche Namen prüfen (Splitfly, Split Fly, Fly&Split,
+      Splyt) und Handelsregister. Später evtl. EU-Marke (EUIPO) und Bildmarke fürs Logo.
 
 ## Für Claude
 
 - [ ] Nach Teil 2 oben: `VITE_FIREBASE_AUTH_DOMAIN=splitandfly.com` nur im Release-Build (release.yml), Testumgebung bleibt.
-- [ ] Mengenbegrenzung pro IP für die Suchen im Such-Dienst (z. B. 30 Suchen pro Minute), gegen Missbrauch des Kontingents.
+- [x] Mengenbegrenzung pro IP für die Suchen (60 pro Minute, 600 pro Stunde; v0.9.1).

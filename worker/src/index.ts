@@ -18,8 +18,9 @@ import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller } from "./gemini";
 import { isAdmin, meter, noteRoute, usageReport, type UsageEnv } from "./usage";
+import { checkLimit, searchWindows, type LimitEnv } from "./ratelimit";
 
-interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv {
+interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv {
   /** erlaubte Herkünfte, kommagetrennt */
   ALLOWED_ORIGINS?: string;
   /** KI-Reiseplaner: Schlüssel aus Google AI Studio (Secret); fehlt er, ist der Planer aus */
@@ -35,6 +36,8 @@ interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEn
   /** optional: KV-Speicher für das Tageslimit; ohne ihn zählt der Zwischenspeicher je Rechenzentrum */
   AGENT_KV?: KVNamespace;
 }
+
+const SEARCHES = new Set(["/flights/search", "/stays/search", "/events/search", "/activities/search"]);
 
 const DEFAULT_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https://www.splitandfly.com,https://startrek-1b6a7.web.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173";
 
@@ -56,6 +59,15 @@ export default {
 
     if (url.pathname === "/" || url.pathname === "/health") {
       return json({ ok: true, dienst: "Reisekasse Flugsuche" }, 200, h);
+    }
+
+    // Suchen: höchstens so viele pro IP und Minute bzw. Stunde (schützt die Kontingente der Anbieter)
+    if (req.method === "POST" && SEARCHES.has(url.pathname) && h["access-control-allow-origin"]) {
+      const lim = await checkLimit(caches.default, req.headers.get("cf-connecting-ip"), searchWindows(env));
+      if (!lim.ok) {
+        noteRoute(env, "blocked");
+        return json({ error: "Zu viele Suchen in kurzer Zeit, bitte kurz warten.", retryAfter: lim.retryAfter }, 429, { ...h, "retry-after": String(lim.retryAfter) });
+      }
     }
 
     const route = url.pathname === "/flights/search" ? "flights" : url.pathname === "/stays/search" ? "stays" : null;

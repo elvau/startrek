@@ -89,7 +89,7 @@ export function toolsFor(r: Pick<AgentRequest, "asked" | "travelersKnown">) {
 const PROPOSE =
     {
       name: "propose_trips",
-      description: "Final answer: 2-3 distinct, complete trip proposals (flight AND accommodation each, plus estimated local costs). Reference only offer ids returned by the searches.",
+      description: "Final answer: 2-3 distinct, complete trip proposals (accommodation plus flight, or plus ownArrival when the travelers arrive on their own; plus estimated local costs). Reference only offer ids returned by the searches.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -104,7 +104,12 @@ const PROPOSE =
                 country: S("Country"),
                 from: S("Arrival date YYYY-MM-DD"),
                 to: S("Departure date YYYY-MM-DD"),
-                flightId: S("id of the chosen flight offer"),
+                flightId: S("id of the chosen flight offer (omit when the travelers arrive on their own)"),
+                ownArrival: {
+                  type: "OBJECT", description: "Only when the travelers arrive on their own (car, train, bus) instead of flying: how, and a rough round-trip total in EUR for the whole group (car: about 0.30 EUR per km plus tolls)",
+                  properties: { label: S("e.g. 'Own arrival by car, 2 × 650 km'"), eur: { type: "NUMBER", description: "Estimated round-trip total in EUR for all travelers" } },
+                  required: ["label", "eur"]
+                },
                 stayId: S("id of the chosen accommodation offer"),
                 board: { type: "STRING", enum: ["self", "breakfast", "half", "full", "all"], description: "Meals included in the accommodation (from its facts; 'self' if unknown or self-catering)" },
                 transport: {
@@ -117,7 +122,7 @@ const PROPOSE =
                   items: { type: "OBJECT", properties: { name: S("Activity or event"), eur: { type: "NUMBER", description: "Estimated total in EUR for all travelers" } }, required: ["name", "eur"] }
                 }
               },
-              required: ["title", "summary", "place", "from", "to", "flightId", "stayId"]
+              required: ["title", "summary", "place", "from", "to", "stayId"]
             }
           }
         },
@@ -150,7 +155,8 @@ export function systemPrompt(r: AgentRequest): string {
       : `Before searching, check whether essential details are missing: the departure city (if the home town is unknown and the wish names none), the number and ages of children (if the wish mentions children but the ages are unknown), the travel period (month, holidays or dates) and the trip length or maximum number of nights. If any of these is missing, call ask_user once, in ${lang}, with one short question covering all missing points and 2-4 tappable answers. Do not ask about anything you can reasonably assume (budget, hotel type). If nothing essential is missing, search right away.`,
     ...prefsLines(r),
     "Use search_flights and search_stays to find real offers. Never invent prices, flights or hotels.",
-    "Every proposal is a complete package: a real flight AND a real accommodation for the same destination and dates (search both for each destination), plus your estimates for local transport (transfers, rental car or public transport) and up to 3 fitting activities or events. Set board from the accommodation's board or facts (all-inclusive, half board …); if unknown, use 'self'. The app then adds only the meals not covered by the accommodation. Estimates are rough totals in EUR for the whole group.",
+    "If the travelers say they arrive on their own (by car, train or bus, \"we drive\", \"no flight\", \"Anreise selbst\" …), do not search flights: propose destinations within reach, each with a real accommodation and ownArrival (how, rough round-trip cost for the group), no flightId.",
+    "Otherwise every proposal is a complete package: a real flight AND a real accommodation for the same destination and dates (search both for each destination), plus your estimates for local transport (transfers, rental car or public transport) and up to 3 fitting activities or events. Set board from the accommodation's board or facts (all-inclusive, half board …); if unknown, use 'self'. The app then adds only the meals not covered by the accommodation. Estimates are rough totals in EUR for the whole group.",
     `Be economical: at most ${LIMITS.flights} flight searches and ${LIMITS.stays} accommodation searches in total.`,
     "Match the request (budget, season, length, interests). Budget amounts are per person unless stated otherwise.",
     `Then call propose_trips exactly once with 2-${LIMITS.trips} clearly different trips, using offer ids from the search results.`,
@@ -273,6 +279,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
         ...(st ? { stay: st.offer, stayQuery: st.q } : {}),
         total: Math.round((flight?.price || 0) + (st?.offer.total || 0)),
         ...(partyFromAi ? { party: { ...party, childAges: [...party.childAges] } } : {}),
+        ...(!flight && own(t) ? { arrival: own(t)! } : {}),
         ...extrasOf(t)
       });
     }
@@ -289,10 +296,16 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     return { ...(board ? { board } : {}), ...(tr ? { transport: tr } : {}), ...(ex.length ? { extras: ex } : {}) };
   }
 
-  /** Vorschläge ohne echte Unterkunft oder ohne echten Flug (Titel), solange noch gesucht werden kann */
+  /** eigene Anreise laut KI (Auto, Bahn), gedeckelt; ohne Betrag keine */
+  function own(t: any): AgentTrip["arrival"] | undefined {
+    const v = t?.ownArrival, eur = typeof v?.eur === "number" && isFinite(v.eur) && v.eur > 0 ? Math.min(20000, Math.round(v.eur)) : 0;
+    return eur ? { label: String(v.label || "").slice(0, 60), eur } : undefined;
+  }
+
+  /** Vorschläge ohne echte Unterkunft oder ohne echten Flug bzw. eigene Anreise (Titel), solange noch gesucht werden kann */
   function incomplete(a: any): string[] {
     const list = Array.isArray(a?.trips) ? a.trips.slice(0, LIMITS.trips) : [];
-    return list.filter((t: any) => !stays.has(t?.stayId) || !flights.has(t?.flightId)).map((t: any) => `${t?.title || t?.place || "?"} (${t?.place || ""}, ${t?.from || ""} – ${t?.to || ""})`);
+    return list.filter((t: any) => !stays.has(t?.stayId) || (!flights.has(t?.flightId) && !own(t))).map((t: any) => `${t?.title || t?.place || "?"} (${t?.place || ""}, ${t?.from || ""} – ${t?.to || ""})`);
   }
 
   /** Rückfrage: Text und bis zu 4 kurze Antworten */
@@ -325,7 +338,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
       retried = true;
       contents.push(content);
       contents.push({ role: "user", parts: calls.map((c: any) => ({ functionResponse: { name: c.name, response: { result: c.name === "propose_trips"
-        ? { error: `Each trip needs a real flight AND a real accommodation from the searches. Missing for: ${missing.join("; ")}. Search what is missing (same destination and dates), then call propose_trips again.` }
+        ? { error: `Each trip needs a real accommodation and a real flight from the searches (or ownArrival if the travelers arrive on their own). Missing for: ${missing.join("; ")}. Search what is missing (same destination and dates), then call propose_trips again.` }
         : { error: "Not executed" } } } })) });
       continue;
     }

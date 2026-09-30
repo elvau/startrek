@@ -137,7 +137,37 @@ describe("KI-Reiseplaner", () => {
     ]);
     const res = await runAgent(req, f.deps);
     // die zweite Gemini-Runde nach dem ersten Vorschlag bekam den Hinweis auf die fehlende Unterkunft
-    expect(JSON.stringify(f.asked.bodies[2].contents.at(-1))).toContain("needs a real flight AND a real accommodation");
+    expect(JSON.stringify(f.asked.bodies[2].contents.at(-1))).toContain("needs a real accommodation and a real flight");
     expect(res.trips[0]).toMatchObject({ board: "half", transport: { label: "Mietwagen 3 Tage", eur: 120 }, extras: [{ name: "Bootstour", eur: 160 }], stay: { name: "Hotel s1" } });
   });
+
+  it("eigene Anreise: keine Flugsuche nötig, Vorschlag mit Unterkunft und geschätzter Anreise", async () => {
+    const f = fake([
+      call("search_stays", { place: "Sylt", country: "Germany", checkin: "2027-05-10", checkout: "2027-05-13" }),
+      call("propose_trips", { trips: [{ title: "Sylt", summary: "Mit dem Auto an die Nordsee", place: "Westerland", from: "2027-05-10", to: "2027-05-13", stayId: "s1",
+        ownArrival: { label: "Auto, 2 × 560 km", eur: 380 } }] })
+    ]);
+    const res = await runAgent({ ...req, prompt: "Wir fahren selbst mit dem Auto, Nordsee im Mai" }, f.deps);
+    expect(f.asked.flights).toHaveLength(0);
+    // kein zweiter Anlauf: ohne Flug ist der Vorschlag vollständig
+    expect(f.asked.bodies).toHaveLength(2);
+    expect(res.trips).toHaveLength(1);
+    expect(res.trips[0]).toMatchObject({ place: "Westerland", arrival: { label: "Auto, 2 × 560 km", eur: 380 }, total: 600 });
+    expect(res.trips[0].flight).toBeUndefined();
+    expect(systemPrompt(req)).toMatch(/arrive on their own/);
+  });
+
+  it("ohne Flug und ohne eigene Anreise geht der Vorschlag einmal zurück; mit Flug zählt keine eigene Anreise", async () => {
+    const f = fake([
+      call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13" }),
+      call("propose_trips", { trips: [{ title: "A", summary: "b", place: "Palma", from: "2027-05-10", to: "2027-05-13", stayId: "s1" }] }),
+      call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13" }),
+      call("propose_trips", { trips: [{ title: "A", summary: "b", place: "Palma", from: "2027-05-10", to: "2027-05-13", stayId: "s1", flightId: "f1", ownArrival: { label: "Auto", eur: 300 } }] })
+    ]);
+    const res = await runAgent(req, f.deps);
+    expect(JSON.stringify(f.asked.bodies[2].contents)).toMatch(/ownArrival/);
+    expect(res.trips[0].flight?.id).toBe("f1");
+    expect(res.trips[0].arrival).toBeUndefined();
+  });
 });
+
