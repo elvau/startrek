@@ -95,6 +95,7 @@ export const fr: Dict = {
   "ai.none": "L’IA n’a rien trouvé d’adapté cette fois. Essaie avec d’autres mots ou dates.",
   "ai.note": "Propositions de Gemini (Google), prix de notre recherche. N’indique pas de données personnelles : avec l’offre gratuite, Google peut exploiter tes saisies.",
   "ai.open": "Ouvrir l’assistant IA",
+  "ai.ownArrival": "Trajet par ses propres moyens",
   "ai.ph": "p. ex. 4 amis, début mai, 3 nuits au chaud au bord de la mer, 500 € max par personne",
   "ai.refine": "Tu peux affiner, p. ex. « plutôt en juin » ou « moins cher ».",
   "ai.send": "Envoyer",

@@ -89,6 +89,7 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
     id: uid(), cat, name, status: "idea",
     options: [{ id: uid(), label: "", estimate: true, source: { name: t("ai.estimate") }, price: { mode: "unit", currency: "EUR", unit: eur } }]
   });
+  if (a.arrival) { trip.detail.transport = true; trip.items.push(est("transport", a.arrival.label || t("ai.ownArrival"), a.arrival.eur)); }
   if (a.transport) { trip.detail.transport = true; trip.items.push(est("transport", a.transport.label || t("ai.transport"), a.transport.eur)); }
   if (a.extras?.length) { trip.detail.attractions = true; a.extras.forEach(x => trip.items.push(est("attractions", x.name, x.eur))); }
 }

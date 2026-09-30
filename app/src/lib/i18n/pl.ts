@@ -99,6 +99,7 @@ export const pl: Dict = {
   "ai.none": "Tym razem AI nie znalazła nic odpowiedniego. Spróbuj innymi słowami lub datami.",
   "ai.note": "Propozycje od Gemini (Google), ceny z naszej wyszukiwarki. Nie wpisuj danych osobowych: w darmowym planie Google może wykorzystywać wpisy.",
   "ai.open": "Otwórz asystenta AI",
+  "ai.ownArrival": "Dojazd we własnym zakresie",
   "ai.ph": "np. 4 przyjaciół, początek maja, 3 noce gdzieś w cieple nad morzem, maks. 500 € na osobę",
   "ai.refine": "Możesz doprecyzować, np. „raczej w czerwcu” albo „taniej”.",
   "ai.send": "Wyślij",

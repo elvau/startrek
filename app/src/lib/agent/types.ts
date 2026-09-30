@@ -48,6 +48,8 @@ export interface AgentTrip {
   party?: AgentParty;
   /** Verpflegung laut Unterkunft (Selbstversorgung, Frühstück, Halbpension, Vollpension, All-inclusive) */
   board?: "self" | "breakfast" | "half" | "full" | "all";
+  /** Schätzung der KI: eigene Anreise (Auto, Bahn) für alle, statt Flug */
+  arrival?: { label: string; eur: number };
   /** Schätzung der KI: Transport vor Ort für alle */
   transport?: { label: string; eur: number };
   /** Schätzung der KI: Erlebnisse und Events für alle */

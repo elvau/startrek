@@ -30,4 +30,4 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 ## Für Claude
 
 - [ ] Nach Teil 2 oben: `VITE_FIREBASE_AUTH_DOMAIN=splitandfly.com` nur im Release-Build (release.yml), Testumgebung bleibt.
-- [ ] Mengenbegrenzung pro IP für die Suchen im Such-Dienst (z. B. 30 Suchen pro Minute), gegen Missbrauch des Kontingents.
+- [x] Mengenbegrenzung pro IP für die Suchen (60 pro Minute, 600 pro Stunde; v0.9.1).

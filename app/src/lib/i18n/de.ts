@@ -93,6 +93,7 @@ export const de = {
   "ai.none": "Die KI hat diesmal nichts Passendes gefunden. Probier es mit anderen Worten oder Daten.",
   "ai.note": "Vorschläge von Gemini (Google), Preise aus unserer Suche. Bitte keine persönlichen Daten eingeben: Google darf Eingaben im kostenlosen Tarif auswerten.",
   "ai.open": "KI-Assistent öffnen",
+  "ai.ownArrival": "Eigene Anreise",
   "ai.ph": "z. B. 4 Freunde, Anfang Mai, 3 Nächte irgendwo warm am Meer, höchstens 500 € pro Person",
   "ai.refine": "Du kannst nachschärfen, z. B. „lieber im Juni“ oder „günstiger“.",
   "ai.send": "Senden",
