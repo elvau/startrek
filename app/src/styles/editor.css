@@ -136,7 +136,22 @@ body.editing .chapter.on .add{opacity:.35}
 :root[data-theme="dark"]{--c-split:#EE9A7C;--c-split-s:#3A2219}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--c-split:#EE9A7C;--c-split-s:#3A2219}}
 body[data-ch="split"]{--a:var(--c-split);--a-soft:var(--c-split-s)}
-body[data-ch="split"] .amb-trav{opacity:1}
+body[data-ch="split"] .amb-split{opacity:1}
+.amb-split{background:radial-gradient(900px 500px at 85% 15%,#FBE0C6,transparent 60%),linear-gradient(180deg,#FAEFE4 0%,#F6EDE3 60%,#F4F2EE 100%)}
+:root[data-theme="dark"] .amb-split{background:radial-gradient(900px 500px at 85% 15%,#3A2419,transparent 60%),linear-gradient(180deg,#1A1512,#0D131C)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .amb-split{background:radial-gradient(900px 500px at 85% 15%,#3A2419,transparent 60%),linear-gradient(180deg,#1A1512,#0D131C)}}
+/* Münzen (Wer zahlt was) */
+.coin{position:absolute;width:34px;height:12px;border-radius:50%;background:linear-gradient(180deg,#FFD66B,#E0A21E);box-shadow:inset 0 -2px 0 #B97E0C,0 1px 2px rgba(0,0,0,.15)}
+.coin.fall{width:30px;height:30px;opacity:.6;display:grid;place-items:center;font:700 15px/1 system-ui,sans-serif;font-style:normal;color:#B37A0E;background:radial-gradient(circle at 35% 35%,#FFE59A,#E8AE2A 70%);box-shadow:inset 0 0 0 3px #D39A1C;transform:translateY(calc(var(--p,0) * var(--dy,120px))) rotate(calc(var(--p,0) * var(--r,180deg)))}
+.stack{position:absolute;bottom:15%;width:34px;height:80px}
+.stack .coin{left:0;opacity:0;transform:translateY(-40px);transition:opacity .35s,transform .35s cubic-bezier(.3,1.4,.6,1)}
+.stack .coin.on{opacity:.9;transform:none}
+/* € auf fallenden Münzen */
+.coin.fall::after{content:"€"}
+/* schwebende Dinge (Alles andere) */
+.flo{position:absolute;color:var(--c-misc);opacity:.35;transform:translateY(calc(var(--p,0) * -1 * var(--dy,120px))) rotate(calc(var(--p,0) * var(--r,10deg)))}
+.flo svg{width:100%;height:100%}
+@media (max-width:640px){.stack{bottom:4%;transform:scale(.8)}.flo{opacity:.22}}
 .share{cursor:default;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
 .sh-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
 .sh-head h3{font-size:24px}
@@ -597,6 +612,10 @@ body[data-ch="split"] .amb-trav{opacity:1}
 /* ---------- Startseite: Reisekarten mit Überblick ---------- */
 .home-trip{gap:6px;width:100%}
 .home-trip.past{opacity:.8}
+.ht-wrap{position:relative}
+.ht-wrap .home-trip{padding-inline-end:52px}
+.ht-del{position:absolute;top:10px;inset-inline-end:10px;width:36px;height:36px;border-radius:10px;border:1px solid transparent;background:transparent;font-size:16px;line-height:1;opacity:.55;transition:opacity .15s,background .15s}
+.ht-del:hover,.ht-del:focus-visible{opacity:1;background:rgba(224,96,94,.14);border-color:rgba(224,96,94,.35)}
 .ht-top{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%}
 .ht-tag{font-size:11.5px;font-weight:700;color:var(--good);background:var(--good-soft);border-radius:99px;padding:2px 9px;white-space:nowrap}
 .ht-where,.ht-when{font-size:13.5px;color:var(--ink-2)}

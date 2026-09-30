@@ -3,8 +3,9 @@
   import { onMount } from "svelte";
   import { view } from "../scroll.svelte";
 
-  let fp: SVGPathElement, fmp: SVGPathElement, plane: SVGSVGElement, tram: SVGSVGElement, flights: HTMLDivElement, town: SVGSVGElement, stay: HTMLDivElement, fun: HTMLDivElement;
+  let fp: SVGPathElement, fmp: SVGPathElement, plane: SVGSVGElement, tram: SVGSVGElement, flights: HTMLDivElement, town: SVGSVGElement, stay: HTMLDivElement, fun: HTMLDivElement, misc: HTMLDivElement, split: HTMLDivElement;
   let windows: SVGRectElement[] = [];
+  let coins: HTMLElement[] = [];
 
   // gleichbleibender Zufall, damit die Stadt immer gleich aussieht
   const rng = (s: number) => () => (s = (s * 9301 + 49297) % 233280) / 233280;
@@ -33,6 +34,37 @@
       c.style.setProperty("--dy", 40 + rnd() * 160 + "px"); c.style.setProperty("--r", rnd() * 360 - 180 + "deg");
       fun.appendChild(c);
     }
+    // Alles andere: Essen, Einkäufe, Versicherung, Parken steigen beim Scrollen auf
+    const icons = ["i-food", "i-bag", "i-shield", "i-park", "i-food", "i-bag"];
+    for (let i = 0; i < 16; i++) {
+      const f = document.createElement("span");
+      f.className = "flo";
+      const size = 26 + rnd() * 30;
+      Object.assign(f.style, { left: (i % 2 ? 60 : 2) + rnd() * 38 + "%", top: 25 + rnd() * 80 + "%", width: size + "px", height: size + "px" });
+      f.style.setProperty("--dy", 120 + rnd() * 220 + "px");
+      f.style.setProperty("--r", rnd() * 40 - 20 + "deg");
+      f.innerHTML = `<svg viewBox="0 0 24 24"><use href="#${icons[i % icons.length]}"/></svg>`;
+      misc.appendChild(f);
+    }
+    // Wer zahlt was: Münzen fallen und stapeln sich je Familie
+    for (let i = 0; i < 10; i++) {
+      const c = document.createElement("i");
+      c.className = "coin fall";
+      c.style.left = (i % 2 ? 72 : 3) + rnd() * 24 + "%"; c.style.top = -10 + rnd() * 40 + "%";
+      c.style.setProperty("--dy", 160 + rnd() * 260 + "px"); c.style.setProperty("--r", 180 + rnd() * 360 + "deg");
+      split.appendChild(c);
+    }
+    [6, 14, 84, 92].forEach((x, k) => {
+      const st = document.createElement("div");
+      st.className = "stack"; st.style.left = x + "%";
+      const n = 5 + ((k * 3) % 5);
+      for (let j = 0; j < n; j++) {
+        const c = document.createElement("i");
+        c.className = "coin"; c.dataset.t = String((j + 1) / (n + 1)); c.style.bottom = j * 7 + "px";
+        st.appendChild(c); coins.push(c);
+      }
+      split.appendChild(st);
+    });
   });
 
   $effect(() => {
@@ -58,6 +90,7 @@
       const e = 1 - (1 - q) ** 2;
       tram.style.transform = `translateX(${-130 + e * (innerWidth - 40)}px)`;
     }
+    if (a === "split") coins.forEach(c => c.classList.toggle("on", +c.dataset.t! < p * 1.1));
     if (a === "stay") windows.forEach(w => w.classList.toggle("on", +w.dataset.t! < p * 0.9));
   });
 </script>
@@ -103,5 +136,6 @@
     </svg>
   </div>
   <div class="amb-attractions" bind:this={fun}></div>
-  <div class="amb-misc"></div>
+  <div class="amb-misc" bind:this={misc}></div>
+  <div class="amb-split" bind:this={split}></div>
 </div>

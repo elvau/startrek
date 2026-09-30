@@ -263,6 +263,18 @@ try {
   if (JSON.stringify(await tripData()).includes("1975-03-10")) fail("Geburtsdatum in der Reise");
   log("Reise ab 1. März 2027: Uwe ist 51, Familie Schmitz fährt ab Mönchengladbach (Geburtsdatum selbst nicht in der Reise)");
 
+  // Startseite: Reise direkt löschen (Konto-Reise, eigene)
+  await b.evaluate(() => scrollTo(0, 0));
+  await b.locator(".hero-home").click();
+  await until(async () => (await b.locator(".ht-wrap").count()) > 0, "Reisen auf der Startseite");
+  const n0 = await b.locator(".ht-wrap").count();
+  const victim = await b.locator(".ht-wrap .home-trip b").first().textContent();
+  await b.locator(".ht-wrap .ht-del").first().click();
+  await until(async () => (await b.locator(".ht-wrap").count()) === n0 - 1, "Reise von der Startseite gelöscht");
+  await new Promise(r => setTimeout(r, 1500));
+  if ((await b.locator(".ht-wrap").count()) !== n0 - 1) fail("nach dem Löschen taucht eine Reise auf: " + await b.locator(".ht-wrap .home-trip b").allTextContents());
+  log(`Startseite: „${victim.replace("☁ ", "")}“ mit 🗑 gelöscht (${n0} → ${n0 - 1} Reisen)`);
+
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");
 } finally {

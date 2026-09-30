@@ -287,7 +287,8 @@ function openFirst() {
   }
   const empty = emptyTrip();
   open(empty);
-  if (cloud.user) void moveToCloud(empty.id);
+  // auf der Startseite (dort gelöscht) keine leere Reise ins Konto legen; sie entsteht erst, wenn man sie nutzt
+  if (cloud.user && !app.home) void moveToCloud(empty.id);
 }
 
 function open(trip: Trip) {

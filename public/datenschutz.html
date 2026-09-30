@@ -20,6 +20,7 @@
 
 <h2>2. Kurz gesagt</h2>
 <ul>
+  <li>Die Seite wird über Google Firebase Hosting ausgeliefert.</li>
   <li>Ohne Konto bleiben eure Reisen <strong>nur in eurem Browser</strong>. Ich sehe sie nicht.</li>
   <li>Mit Konto liegen Reisen in Google Firebase, damit ihr sie auf mehreren Geräten und mit anderen teilen könnt.</li>
   <li>Für Flug- und Unterkunftssuchen gehen nur <strong>Orte, Daten und die Anzahl der Personen</strong> an die
@@ -30,21 +31,32 @@
   <li>Es gibt keine Werbe-Tracker, keine Analyse-Werkzeuge und keine Cookies von mir. Schriften kommen von dieser Seite.</li>
 </ul>
 
-<h2>3. Bereitstellung der Seite (GitHub Pages)</h2>
+<h2>3. Bereitstellung der Seite (Google Firebase Hosting)</h2>
 <p>
-  Die Seite liegt bei GitHub Pages (GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA). Beim Aufruf
-  verarbeitet GitHub technisch notwendige Daten wie IP-Adresse, Zeitpunkt und aufgerufene Datei, um die Seite
-  auszuliefern und vor Angriffen zu schützen. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse am
-  sicheren Betrieb). Die Übermittlung in die USA stützt sich auf das EU-US Data Privacy Framework bzw.
-  Standardvertragsklauseln. Datenschutzhinweise von GitHub:
+  Split&amp;Fly unter <strong>www.splitandfly.com</strong> wird über Firebase Hosting bereitgestellt
+  (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland; Mutterkonzern Google LLC, USA). Beim Aufruf
+  verarbeitet Google technisch notwendige Daten wie IP-Adresse, Zeitpunkt, aufgerufene Datei und Browserkennung, um die
+  Seite über sein weltweites Servernetz auszuliefern und vor Angriffen zu schützen. Eine Auswertung zu Statistik- oder
+  Werbezwecken findet nicht statt. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse am sicheren
+  Betrieb). Die Übermittlung in die USA stützt sich auf das EU-US Data Privacy Framework bzw. Standardvertragsklauseln.
+  Mehr: <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase und Datenschutz</a>.
+</p>
+<p>
+  Eine Testversion, auf der ich neue Funktionen vor der Veröffentlichung ausprobiere, liegt bei GitHub Pages
+  (elvau.github.io/startrek; GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA). Dort verarbeitet
+  GitHub beim Aufruf dieselben technisch notwendigen Daten. Für die Testversion gilt diese Erklärung entsprechend. Mehr:
   <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener noreferrer">GitHub-Datenschutzerklärung</a>.
 </p>
 
 <h2>4. Speicherung im Browser</h2>
 <p>
-  Reisen, Einstellungen und zuletzt genutzte Suchoptionen speichert die App im Speicher eures Browsers (localStorage),
-  damit sie beim nächsten Besuch wieder da sind. Das ist für die gewünschte Funktion unbedingt erforderlich
-  (§ 25 Abs. 2 Nr. 2 TDDDG). Ihr könnt die Daten jederzeit über die Browser-Einstellungen löschen.
+  Reisen, gespeicherte Personen und Gruppen, Einstellungen (z. B. Sprache, helle oder dunkle Ansicht) und zuletzt
+  genutzte Suchoptionen speichert die App im Speicher eures Browsers (localStorage), damit sie beim nächsten Besuch
+  wieder da sind. Mit Konto legt Firebase zusätzlich die Anmeldung und eine Kopie eurer Reisen im Browser ab
+  (IndexedDB), damit die App auch offline funktioniert; bei der Anmeldung per E-Mail-Link merkt sich die App die
+  E-Mail-Adresse, bis ihr den Link öffnet. Buchungsdaten werden nicht im Browser gespeichert (siehe Abschnitt 5).
+  Das alles ist für die gewünschte Funktion unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG). Ihr könnt die Daten
+  jederzeit über die Browser-Einstellungen löschen.
 </p>
 
 <h2>5. Konto und Teilen (Google Firebase)</h2>
@@ -56,7 +68,8 @@
 <ul>
   <li>für die Anmeldung: E-Mail-Adresse bzw. Google-Konto (Name, E-Mail, Profilbild), Zeitpunkt der Anmeldung, IP-Adresse;</li>
   <li>für gespeicherte Reisen: die Reisedaten, die ihr eintragt (z. B. Namen und Alter der Mitreisenden, Postleitzahl
-    und Ort des Wohnorts, Beträge), sowie wer eine Reise sehen oder bearbeiten darf.</li>
+    und Ort des Wohnorts, Beträge), sowie wer eine Reise sehen oder bearbeiten darf;</li>
+  <li>für gespeicherte Personen und Gruppen: die Angaben unten (nur für euch selbst lesbar).</li>
 </ul>
 <p>
   Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Bereitstellung der gewünschten Funktion). Wer Mitreisende einträgt,
@@ -140,15 +153,16 @@
 
 <h2>8. Fehler melden (Beta)</h2>
 <p>
-  Über den roten Knopf 🐞 könnt ihr angemeldet Fehler melden. Dabei gehen an meinen Such-Dienst bei Cloudflare: eure
+  Über den roten Knopf „🐞 Fehler melden“ könnt ihr angemeldet Fehler melden. Dabei gehen an meinen Such-Dienst bei Cloudflare: eure
   Beschreibung, ein Bild, falls ihr eines anhängt, sowie die aufgerufene Seite (ohne Einladungscode), Sprache, Browser
   und Gerät, Bildschirmgröße, App-Stand, die letzten Fehlermeldungen im Browser und die Art der Ansicht (z. B. „Reise,
   3 Personen“, ohne Namen oder Reisedaten). Der Such-Dienst prüft eure Anmeldung und zählt die Meldungen pro Tag
   (Nutzerkennung und Datum, nach zwei Tagen gelöscht).
 </p>
 <p>
-  Die Meldung wird als Eintrag in einem nicht öffentlichen Projekt bei GitHub gespeichert (GitHub Inc., siehe oben),
-  zusammen mit einer gekürzten Nutzerkennung, damit ich bei Rückfragen das Konto zuordnen kann. Bilder liegen im
+  Die Meldung wird als Eintrag in einem nicht öffentlichen Projekt bei GitHub gespeichert,
+  zusammen mit einer gekürzten Nutzerkennung, damit ich bei Rückfragen das Konto zuordnen kann (GitHub Inc., 88 Colin P.
+  Kelly Jr. Street, San Francisco, CA 94107, USA; Übermittlung nach dem EU-US Data Privacy Framework). Bilder liegen im
   Speicher von Cloudflare (R2) und werden nach 30 Tagen automatisch gelöscht; Meldungen lösche ich, sobald der Fehler
   erledigt ist. Achtet bitte darauf, dass auf Bildschirmfotos keine Daten anderer Personen zu sehen sind, die ihr nicht
   teilen möchtet. Rechtsgrundlage: Art. 6 Abs. 1 lit. a und f DSGVO (ihr schickt die Meldung freiwillig; mein
