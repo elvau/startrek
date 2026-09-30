@@ -261,8 +261,13 @@ function dropIfPristine(t: Trip) {
   del(K_TRIP(t.id));
 }
 
+/** Reisen, die nur auf diesem Gerät liegen: wie auf der Startseite ohne leere Entwürfe und Einträge ohne gespeicherte Reise */
+export function localTrips(): TripEntry[] {
+  return allTrips().filter(m => !m.cloud && !isPristine(m.id));
+}
+
 export async function moveAllToCloud() {
-  for (const m of [...app.index]) await moveToCloud(m.id);
+  for (const m of localTrips()) await moveToCloud(m.id);
 }
 
 export async function logout() {
@@ -344,6 +349,9 @@ export async function deleteTrip(id: string) {
   if (isCloud(id)) {
     await removeCloudTrip(id);
     del(K_TRIP(id));
+    // kann beim Start ins Verzeichnis geraten sein, bevor die Liste im Konto da war
+    app.index = app.index.filter(x => x.id !== id);
+    put(K_INDEX, JSON.stringify(app.index));
     if (id === app.trip.id) openFirst();
     return;
   }

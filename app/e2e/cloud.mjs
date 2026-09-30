@@ -125,6 +125,18 @@ try {
   await mal.keyboard.press("Escape");
   log("Letzte Reise gelöscht: leere Reise im Konto, kein Beispiel");
 
+  // Verzeichniseintrag ohne gespeicherte Reise (z. B. gelöschte Konto-Reise) zählt nicht als Reise auf dem Gerät
+  await mal.evaluate(() => {
+    const ix = JSON.parse(localStorage.getItem("rk2-index") || "[]");
+    localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "verwaist", name: "Alt", place: "" }]));
+  });
+  await mal.reload();
+  await mal.locator(".start .acct-btn").click();
+  await mal.locator(".acct-pop").waitFor();
+  if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("verwaister Eintrag zählt als Reise auf dem Gerät");
+  await mal.keyboard.press("Escape");
+  log("Verwaiste Einträge zählen nicht als Reisen auf dem Gerät");
+
   // Neu laden: Anna hat die Reise weiter im Konto
   await dbState("vor Neuladen");
   await anna.reload();
