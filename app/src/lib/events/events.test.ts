@@ -75,6 +75,9 @@ describe("Event-Suche", () => {
     const b = { id: "tm:9", source: "ticketmaster", sourceName: "tm", name: "Arsenal v Bayern", start: "2027-05-15T20:00", city: "London", lat: 51.5, lon: -0.1 };
     const m = mergeEvents([[a], [b]]);
     expect(m).toHaveLength(1);
+    // dieselbe ID zweimal (anderer Name oder Tag): nur einmal, sonst bricht die Liste in der App ab
+    const twice = mergeEvents([[b, { ...b, name: "VIP: Arsenal v Bayern", start: "2027-05-16T20:00" }]]);
+    expect(twice.map(e => e.id)).toEqual(["tm:9"]);
     expect(m[0]).toMatchObject({ id: "fd:1", venue: "Emirates Stadium", city: "London", lat: 51.5 });
     const res = await searchEvents({ q: "Arsenal" }, {});
     expect(res.events).toEqual([]);

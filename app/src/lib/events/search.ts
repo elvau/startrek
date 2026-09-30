@@ -29,7 +29,13 @@ export function mergeEvents(lists: EventHit[][]): EventHit[] {
     // erster Treffer bleibt, fehlende Angaben kommen vom zweiten
     out.set(k, cur ? { ...e, ...cur, city: cur.city ?? e.city, venue: cur.venue ?? e.venue, lat: cur.lat ?? e.lat, lon: cur.lon ?? e.lon, url: cur.url ?? e.url } : e);
   }
-  return [...out.values()].sort((a, b) => a.start.localeCompare(b.start)).slice(0, 40);
+  return uniqueById([...out.values()]).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 40);
+}
+
+/** jede ID nur einmal (Ticketmaster liefert dasselbe Event manchmal doppelt; die Liste in der App braucht eindeutige IDs) */
+export function uniqueById<T extends { id: string }>(list: T[]): T[] {
+  const seen = new Set<string>();
+  return list.filter(e => !seen.has(e.id) && !!seen.add(e.id));
 }
 
 export async function searchEvents(q: EventQuery, env: EventEnv = {}, f: typeof fetch = fetch, cached?: Cached, timeoutMs = 20000): Promise<EventSearchResult> {

@@ -38,7 +38,9 @@ const EVENTS = {
   events: [
     { id: "fd:1", source: "footballdata", sourceName: "football-data.org", name: "Arsenal – Bayern", start: "2027-05-15T15:30", venue: "Emirates Stadium", cc: "GB",
       address: "75 Drayton Park London N5 1BU", category: "UEFA Champions League", lat: 51.555, lon: -0.108, url: "https://tickets.example/ars-fcb" },
-    { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal", start: "2027-05-22T17:30", venue: "Stamford Bridge", cc: "GB", category: "Premier League" }
+    { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal", start: "2027-05-22T17:30", venue: "Stamford Bridge", cc: "GB", category: "Premier League" },
+    // gleiche ID doppelt (älterer Such-Dienst): die Liste darf nicht leer bleiben
+    { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal (VIP)", start: "2027-05-23T17:30", cc: "GB" }
   ],
   sources: [{ id: "footballdata", name: "football-data.org", configured: true, ok: true, count: 2 }]
 };
