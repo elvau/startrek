@@ -3,13 +3,33 @@
   /* Gespeicherte Gruppen und Personen verwalten. Eine Person kann in mehreren Gruppen sein. */
   import { addGroup, addPerson, dir, removeGroup, removePerson, toggleMember } from "../directory.svelte";
   import { cloud } from "../cloud/cloud.svelte";
+  import { personAge } from "../people";
+  import { deleteAllDocs, docs, hasDoc, loadDocs, removeDoc, saveDocsNow } from "../traveldocs.svelte";
   import Modal from "./Modal.svelte";
+  import PersonDetails from "./PersonDetails.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
   let first = $state(""), last = $state(""), age = $state<number | undefined>();
   let gname = $state("");
   let err = $state("");
   let open = $state<string | null>(dir.groups[0]?.id ?? null);
+  let det = $state<string | null>(null);
+  function close() { void saveDocsNow(); onclose(); }
+  function delPerson(id: string, name: string) {
+    if (!confirm(t("grp.deletePersonConfirm", { name }))) return;
+    removePerson(id);
+    // Buchungsdaten der Person mit löschen (auch wenn sie noch nicht geladen waren)
+    if (cloud.user) void loadDocs().then(() => removeDoc(id));
+    if (det === id) det = null;
+  }
+  async function delAll() {
+    if (!confirm(t("per.docsDeleteAllConfirm"))) return;
+    try { await deleteAllDocs(); } catch (e) { console.warn(e); }
+  }
+  const summary = (p: (typeof dir.people)[number]) => {
+    const a = personAge(p);
+    return [a != null ? t("trav.ageYears", { n: a }) : "", p.home ? `📍 ${p.home.ort}` : "", hasDoc(p.id) ? "🔒" : ""].filter(Boolean).join(" · ");
+  };
 
   function newPerson(e: Event) {
     e.preventDefault();
@@ -27,7 +47,7 @@
   }
 </script>
 
-<Modal title={t("groups.title")} {onclose}>
+<Modal title={t("groups.title")} onclose={close}>
   <div class="groups-d">
     <p class="muted small">{cloud.user ? t("grp.inAccount") : t("grp.inBrowser")}</p>
 
@@ -65,11 +85,14 @@
       <span class="dlabel">{t("grp.people")}</span>
       <ul class="plist">
         {#each dir.people as p (p.id)}
-          <li>
+          <li class:open={det === p.id}>
             <input class="inp" class:need={!p.first.trim()} bind:value={p.first} aria-label={t("trav.first")} />
             <input class="inp" class:need={!p.last.trim()} bind:value={p.last} aria-label={t("trav.last")} />
-            <input class="inp num" type="number" min="0" max="120" placeholder={t("trav.age")} bind:value={p.age} aria-label={t("trav.age")} />
-            <button class="x" aria-label={t("grp.deletePerson", { name: p.first })} onclick={() => { if (confirm(t("grp.deletePersonConfirm", { name: `${p.first} ${p.last}` }))) removePerson(p.id); }}>×</button>
+            <button class="pmore" aria-expanded={det === p.id} aria-label={t("per.more", { name: p.first })} onclick={() => (det = det === p.id ? null : p.id)}>
+              <span class="muted small">{summary(p)}</span><span aria-hidden="true">{det === p.id ? "▴" : "▾"}</span>
+            </button>
+            <button class="x" aria-label={t("grp.deletePerson", { name: p.first })} onclick={() => delPerson(p.id, `${p.first} ${p.last}`)}>×</button>
+            {#if det === p.id}<PersonDetails {p} />{/if}
           </li>
         {/each}
       </ul>
@@ -80,6 +103,9 @@
         <button class="btn">{open && dir.groups.find(x => x.id === open) ? t("grp.addTo", { name: dir.groups.find(x => x.id === open)?.name || "" }) : t("grp.addPerson")}</button>
       </form>
       {#if err}<p class="err">{err}</p>{/if}
+      {#if cloud.user && docs.status === "ready" && Object.keys(docs.map).some(hasDoc)}
+        <button class="linkbtn danger" onclick={delAll}>{t("per.docsDeleteAll")}</button>
+      {/if}
     </div>
   </div>
 </Modal>

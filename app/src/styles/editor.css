@@ -268,7 +268,15 @@ body[data-ch="split"] .amb-trav{opacity:1}
 .grp-b{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
 .grp-name{font-weight:700}
 .plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.plist li{display:grid;grid-template-columns:1fr 1fr 80px 34px;gap:6px;align-items:center}
+.plist li{display:grid;grid-template-columns:1fr 1fr minmax(0,1.2fr) 34px;gap:6px;align-items:center}
+.plist li.open{padding-bottom:6px;border-bottom:1px solid var(--line)}
+.pmore{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:38px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:transparent;text-align:start;overflow:hidden}
+.pmore .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdet{grid-column:1/-1;display:flex;flex-direction:column;gap:8px;padding:6px 2px}
+.pdet .small{margin:0}
+.pdocs{display:flex;flex-direction:column;gap:8px;align-items:flex-start;padding-top:4px}
+.pdocs .ed-row{width:100%}
+@media (max-width:640px){.plist li{grid-template-columns:1fr 1fr 34px}.plist li .pmore{grid-column:1/3;grid-row:2}.plist li .x{grid-row:1;grid-column:3}}
 .plist .inp{width:100%}
 .grp-chip{font-weight:700}
 .add-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
