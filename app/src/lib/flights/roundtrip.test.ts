@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isShort, legQuery, nightsBetween, roundLegs, searchRound, viaHours, type RoundPlan } from "./roundtrip";
+import { alternatives, isShort, legQuery, nightsBetween, roundLegs, searchRound, swapLeg, viaHours, type RoundPlan } from "./roundtrip";
 import { roundToOption } from "./app";
 import type { FlightOffer, FlightQuery, SearchResult } from "./types";
 
@@ -136,5 +136,32 @@ describe("Gabelflug: kurze Station als langer Umstieg auf einem Ticket", () => {
     const t = res.trips[0];
     expect(t.legs).toHaveLength(2);
     expect(t.stays).toEqual([{ name: "DOH", hours: 21 }, { name: "BKK", nights: 5 }]);
+  });
+
+  it("Andere Flüge je Strecke: passen zu den Nächten davor und danach, Tausch rechnet neu", async () => {
+    const res = await searchRound(plan, fake([]));
+    const rt = res.trips[0];
+    // mittlere Strecke: muss zu beiden Nachbarn passen
+    for (const o of alternatives(rt, 1)) {
+      const before = nightsBetween(rt.legs[0].out.arr, o.out.dep), after = nightsBetween(o.out.arr, rt.legs[2].out.dep);
+      expect(before).toBeGreaterThanOrEqual(5); expect(before).toBeLessThanOrEqual(7);
+      expect(after).toBeGreaterThanOrEqual(3); expect(after).toBeLessThanOrEqual(4);
+    }
+    // letzte Strecke: 3–4 Nächte nach der Ankunft in EZE
+    const alts = alternatives(rt, 2);
+    expect(alts.length).toBeGreaterThan(0);
+    expect(alts.some(o => o.id === rt.legs[2].id)).toBe(false);
+    for (const o of alts) { const n = nightsBetween(rt.legs[1].out.arr, o.out.dep); expect(n).toBeGreaterThanOrEqual(3); expect(n).toBeLessThanOrEqual(4); }
+    expect(alts.map(o => o.price)).toEqual([...alts.map(o => o.price)].sort((a, b) => a - b));
+    const sw = swapLeg(rt, 2, alts[0]);
+    expect(sw.legs[2].id).toBe(alts[0].id);
+    expect(sw.price).toBe(rt.price - rt.legs[2].price + alts[0].price);
+    expect(sw.stays.find(x => x.name === "EZE")?.nights).toBe(nightsBetween(rt.legs[1].out.arr, alts[0].out.dep));
+    expect(sw.id).not.toBe(rt.id);
+    // erste Strecke: alles aus dem Startfenster, das zur zweiten passt
+    for (const o of alternatives(rt, 0)) {
+      const n = nightsBetween(o.out.arr, rt.legs[1].out.dep);
+      expect(n).toBeGreaterThanOrEqual(5); expect(n).toBeLessThanOrEqual(7);
+    }
   });
 });

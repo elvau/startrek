@@ -497,6 +497,18 @@ body[data-ch="split"] .amb-split{opacity:1}
 .fs-del{height:36px}
 .fs-addst{align-self:flex-start}
 .fs-legsrc{margin:-2px 0 4px 44px}
+.fs-altbtn{display:block;text-align:start;margin:-2px 0 6px 44px;font-size:13px}
+.fs-alts{margin:0 0 8px 44px;padding:8px 10px;border-radius:12px;background:var(--paper-2);display:flex;flex-direction:column;gap:6px}
+.fs-alts>p{margin:0}
+.fs-alt{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
+.fs-alt:first-of-type{border-top:0}
+.fs-alt .fs-leg{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.fs-alt .fs-dir{display:none}
+.fs-alt-r{display:flex;align-items:center;gap:8px;flex:none}
+.fs-alt-r .up{color:var(--danger,#C0392B)}
+.fs-alt-r .down{color:#1F8A70}
+.fs-swapped{margin:0 0 4px 44px}
+@media (max-width:640px){.fs-altbtn,.fs-alts,.fs-swapped{margin-inline-start:0}.fs-alt{flex-direction:column;align-items:stretch}.fs-alt-r{justify-content:space-between}}
 @media (max-width:560px){.fs-station{grid-template-columns:1fr 1fr 34px}.fs-station .lp{grid-column:1/-1}}
 .fs-short{margin:-2px 0 2px}
 /* Kennzeichnung Partner-Links, Fuß mit Impressum */

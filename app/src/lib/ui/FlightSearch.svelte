@@ -15,12 +15,12 @@
   import { ccOf, findCity } from "../geo/places";
   import { airportsNear, areaAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { addDays } from "../flights/kiwi";
-  import { isShort, searchRound, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
+  import { alternatives, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
   import { FLIGHTS_URL, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import type { FlightScope } from "../flights/open.svelte";
   import { googleFlightsLink, skyscannerLink } from "../links";
-  import type { FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
+  import type { FlightOffer, FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
 
   let { onclose, scope = {} }: { onclose: () => void; scope?: FlightScope } = $props();
 
@@ -263,6 +263,19 @@
     } finally { busy = false; progress = ""; }
   }
 
+  /** „Andere Flüge“ je Strecke: offen als „Karten-ID:Strecke“ */
+  let altOpen = $state<string | null>(null);
+  let swapped = $state<Record<string, number>>({});
+  function swap(idx: number, i: number, o: FlightOffer) {
+    if (!rounds) return;
+    const rt = swapLeg(rounds[idx].rt, i, o);
+    // dieselbe Kombination kann schon als eigene Karte in der Liste stehen: dann nur einmal (an dieser Stelle)
+    rounds = rounds.map((y, k) => (k === idx ? { rt, r: rateRound(trip, rt, home, withAccess, who) } : y)).filter((y, k) => k === idx || y.rt.id !== rt.id);
+    swapped[rt.id] = i + 1;
+    altOpen = null;
+  }
+  const signed = (v: number) => (v > 0 ? `+${eur(v)}` : v < 0 ? `−${eur(-v)}` : "±0 €");
+
   function takeR(rt: RoundTrip) {
     app.trip.detail ||= {};
     app.trip.detail.flights = true;
@@ -437,7 +450,7 @@
     {#if rounds.length}
       <p class="muted small">{tn("n.rounds", rounds.length)} · {withAccess ? t("fs.cheapestInclAccess") : t("fs.cheapestFirst")} · {t("persShort", { n })} · {t("fs.ticketsSeparate")}</p>
       <div class="fs-list">
-        {#each rounds as x (x.rt.id)}
+        {#each rounds as x, idx (x.rt.id)}
           <article class="fs-res fs-round">
             <div class="fs-top">
               <span class="pill-ap">{t("fs.from", { ap: x.rt.legs[0].out.from })}</span>
@@ -453,9 +466,29 @@
               {#if !isNaN(x.r.home)}<span class="pill-h">{t("fs.homeAt", { t: fmtMin(x.r.home) })}</span>{/if}
             </div>
             {#each x.rt.legs as l, i (i)}
+              {@const alts = alternatives(x.rt, i)}
+              {@const key = `${x.rt.id}:${i}`}
               {@render legRow(`${i + 1}.`, l.out)}
               <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<a href={l.url} target="_blank" rel={l.source === "travelpayouts" ? "noopener noreferrer sponsored" : "noopener noreferrer"}>{t("search.atProvider")} ↗</a>{#if l.source === "travelpayouts"} <small>{t("fs.partner")}*</small>{/if}{/if}</p>
+              {#if alts.length}
+                <button type="button" class="linkbtn fs-altbtn" aria-expanded={altOpen === key} onclick={() => (altOpen = altOpen === key ? null : key)}>{altOpen === key ? t("fs.altHide") : t("fs.altShow", { n: alts.length })} {altOpen === key ? "▴" : "▾"}</button>
+                {#if altOpen === key}
+                  <div class="fs-alts">
+                    <p class="muted small">{t("fs.altHint")}</p>
+                    {#each alts as o (o.id)}
+                      <div class="fs-alt">
+                        {@render legRow("", o.out)}
+                        <div class="fs-alt-r">
+                          <b class="num" class:up={o.price > l.price} class:down={o.price < l.price}>{signed(o.price - l.price)}</b>
+                          <button type="button" class="btn sm" onclick={() => swap(idx, i, o)}>{t("fs.altPick")}</button>
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                {/if}
+              {/if}
             {/each}
+            {#if swapped[x.rt.id]}<p class="muted small fs-swapped">✓ {t("fs.altSwapped", { k: swapped[x.rt.id] })}</p>{/if}
             <div class="fs-acts">
               <button class="btn primary sm" disabled={taken[x.rt.id]} onclick={() => takeR(x.rt)}>{taken[x.rt.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
             </div>
