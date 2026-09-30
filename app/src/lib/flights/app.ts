@@ -141,7 +141,7 @@ export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promi
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await fetch(`${FLIGHTS_URL}/flights/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error || t("search.status", { s: res.status }));
+    if (!res.ok) throw new Error(res.status === 429 ? t("search.tooMany") : body.error || t("search.status", { s: res.status }));
     data = body as SearchResult;
     if (!worthRetry(data)) break;
     // für Fehlermeldungen: welche Quelle woran gescheitert ist

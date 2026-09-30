@@ -10,7 +10,7 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   const res = await fetch(`${FLIGHTS_URL}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || t("search.status", { s: res.status }));
+  if (!res.ok) throw new Error(res.status === 429 ? t("search.tooMany") : data.error || t("search.status", { s: res.status }));
   return data as T;
 }
 
