@@ -46,7 +46,7 @@
 
 <section class="start" data-ch="hero">
   <div class="home-bar">
-    <span class="brand home-brand">Split<span class="brand-y">&amp;</span>Fly</span>
+    <span class="brand home-brand"><img class="brand-ico" src="icon.svg" alt="" width="28" height="28">Split<span class="brand-y">&amp;</span>Fly</span>
     <div class="hero-r">
       <GroupsButton />
       {#if cloud.configured}<Account />{/if}

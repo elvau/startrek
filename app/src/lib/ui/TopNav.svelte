@@ -30,7 +30,7 @@
 
 <header class="top">
   <div class="top-in">
-    <button class="brand brand-btn" onclick={goHome} title={t("home.back")}>Split<span class="brand-y">&amp;</span>Fly</button>
+    <button class="brand brand-btn" onclick={goHome} title={t("home.back")}><img class="brand-ico" src="icon.svg" alt="" width="22" height="22">Split<span class="brand-y">&amp;</span>Fly</button>
     <TripMenu compact />
     <nav class="nav" bind:this={nav} aria-label={t("nav.chapters")}>
       <span class="pill" style:left="{pill.left}px" style:width="{pill.width}px" style:opacity={pill.show ? 1 : 0}></span>
