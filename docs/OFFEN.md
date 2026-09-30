@@ -16,8 +16,9 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [ ] **Firebase-Schlüssel beschränken:** Google Cloud Console → APIs & Dienste → Anmeldedaten → Browser-Schlüssel auf
       splitandfly.com, elvau.github.io und startrek-1b6a7.web.app beschränken.
 - [ ] **Gewerbe anmelden** (Affiliate-Provisionen), Kleinunternehmerregelung gilt über die PV-Anlage mit.
-- [ ] **Domains sichern** und auf splitandfly.com weiterleiten: splitandfly.de, splitandfly.eu, evtl. split-and-fly.com
-      (Verfügbarkeit noch nicht geprüft).
+- [x] **Domains** splitandfly.de, split-and-fly.com, splitfly.de gekauft (Squarespace, 30.09.2026) und per 301 auf
+      splitandfly.com weitergeleitet. Offen: E-Mail-Bestätigung für split-and-fly.com (sonst Sperre nach 15 Tagen),
+      splitfly.de stand noch auf „ausstehend“ – kurz prüfen.
 - [ ] **Social-Media-Namen** @splitandfly anlegen (Instagram, TikTok, Facebook, X, YouTube, LinkedIn) mit der splitandfly-Adresse.
 - [ ] **Marke „Split&Fly“ anmelden** (nach der Gewerbeanmeldung, spätestens bevor die App beworben wird / Geld verdient):
       Wortmarke beim DPMA (DPMAdirektWeb, ca. 290 € für bis zu 3 Klassen, 10 Jahre), Klassen 9 (App), 39 (Reisevermittlung),
