@@ -137,6 +137,28 @@ try {
   await mal.keyboard.press("Escape");
   log("Verwaiste Einträge zählen nicht als Reisen auf dem Gerät");
 
+  // Konto-Reise, die dieses Gerät kannte, wurde auf einem anderen Gerät gelöscht: Eintrag und Kopie verschwinden
+  // (sonst erschiene sie als „nur auf diesem Gerät“ und „Ins Konto übernehmen“ holte sie zurück)
+  await mal.evaluate(() => {
+    const uid = Object.keys(localStorage).find(k => k.startsWith("rk2-cloud-seen:"))?.split(":")[1];
+    if (!uid) throw new Error("keine gesehene Konto-Liste");
+    const seen = JSON.parse(localStorage.getItem("rk2-cloud-seen:" + uid) || "[]");
+    localStorage.setItem("rk2-cloud-seen:" + uid, JSON.stringify([...seen, "woanders-weg"]));
+    const ix = JSON.parse(localStorage.getItem("rk2-index") || "[]");
+    localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "woanders-weg", name: "Rom", place: "Rom" }]));
+    localStorage.setItem("rk2-t:woanders-weg", JSON.stringify({ id: "woanders-weg", name: "Rom", place: "Rom", country: "", travelers: [{ id: "x", name: "Mal", household: "M" }],
+      items: [{ id: "i", cat: "misc", name: "Eis", status: "idea", options: [{ id: "o", label: "Eis", price: { mode: "unit", currency: "EUR", unit: 10 } }] }], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } }));
+  });
+  await mal.reload();
+  await until(async () => !(await mal.evaluate(() => localStorage.getItem("rk2-t:woanders-weg"))), "Kopie der woanders gelöschten Reise weg");
+  if (await mal.locator(".home-trip", { hasText: "Rom" }).count()) fail("woanders gelöschte Reise auf der Startseite");
+  await mal.locator(".start .acct-btn").click();
+  await mal.locator(".acct-pop").waitFor();
+  if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("woanders gelöschte Reise zählt als Reise auf dem Gerät");
+  await mal.keyboard.press("Escape");
+  if ((await mal.evaluate(() => localStorage.getItem("rk2-index") || "")).includes("woanders-weg")) fail("Verzeichniseintrag bleibt");
+  log("Woanders gelöschte Konto-Reise: Eintrag und Kopie auf dem Gerät weggeräumt, kein „nur auf diesem Gerät“");
+
   // Neu laden: Anna hat die Reise weiter im Konto
   await dbState("vor Neuladen");
   await anna.reload();
