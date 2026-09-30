@@ -681,3 +681,23 @@ body[data-ch="split"] .amb-split{opacity:1}
 .prefs textarea{width:100%;resize:vertical;font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink)}
 .chip.locked{opacity:.6;cursor:default}
 .pr-toggle{align-self:flex-start}
+
+/* Admin: Nutzung der kostenlosen Kontingente */
+.usage h4{margin:18px 0 6px;font-size:14px}
+.usage-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.usage-t{width:100%;border-collapse:collapse;font-size:13px}
+.usage-t th,.usage-t td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:start;vertical-align:middle}
+.usage-t thead th{font-weight:500;color:var(--ink-3);font-size:12px}
+.usage-t tbody th{font-weight:600}
+.usage-t tbody th small{display:block;font-weight:400;color:var(--ink-2)}
+.usage-v{white-space:nowrap}
+.usage-bar{display:block;width:72px;height:5px;border-radius:3px;background:var(--paper-2);margin-top:4px;overflow:hidden}
+.usage-bar i{display:block;height:100%;background:var(--good)}
+.lv-warn .usage-bar i{background:var(--warn)}
+.lv-high .usage-bar i{background:#C4452E}
+.lv-high .usage-v b{color:#C4452E}
+.usage-week{display:inline-flex;align-items:flex-end;gap:2px;height:22px}
+.usage-week i{width:6px;border-radius:2px 2px 0 0;background:var(--a)}
+.usage-links{margin:0;padding-inline-start:18px;font-size:13px;line-height:1.8}
+.usage-cfg{margin-top:10px}
+@media (max-width:560px){.usage-t td:last-child,.usage-t th:last-child{display:none}}

@@ -30,7 +30,7 @@ export function sniff(b: Uint8Array): string | null {
   return null;
 }
 
-export async function reportBug(req: Request, env: BugEnv, h: Record<string, string>, json: Json, count: Count): Promise<Response> {
+export async function reportBug(req: Request, env: BugEnv, h: Record<string, string>, json: Json, count: Count, f: typeof fetch = fetch): Promise<Response> {
   if (!env.GITHUB_TOKEN || !env.BUG_REPO) return json({ error: "Fehlermeldungen sind noch nicht eingerichtet" }, 503, h);
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Bitte anmelden" }, 401, h);
@@ -65,7 +65,7 @@ export async function reportBug(req: Request, env: BugEnv, h: Record<string, str
     } else imageNote = "\n\n_Ein Bild wurde mitgeschickt, aber der Bildspeicher ist nicht eingerichtet._";
   }
 
-  const res = await fetch(`https://api.github.com/repos/${env.BUG_REPO}/issues`, {
+  const res = await f(`https://api.github.com/repos/${env.BUG_REPO}/issues`, {
     method: "POST",
     headers: { authorization: `Bearer ${env.GITHUB_TOKEN}`, accept: "application/vnd.github+json", "user-agent": "splitandfly-bugs", "x-github-api-version": "2022-11-28", "content-type": "application/json" },
     body: JSON.stringify({ title: bugTitle(r), body: bugBody(r, image, `Konto ${uid.slice(0, 8)}…`) + imageNote })

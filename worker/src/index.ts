@@ -15,8 +15,9 @@ import type { EventEnv } from "../../app/src/lib/events/types";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller } from "./gemini";
+import { isAdmin, meter, noteRoute, usageReport, type UsageEnv } from "./usage";
 
-interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv {
+interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv, UsageEnv {
   /** erlaubte Herkünfte, kommagetrennt */
   ALLOWED_ORIGINS?: string;
   /** KI-Reiseplaner: Schlüssel aus Google AI Studio (Secret); fehlt er, ist der Planer aus */
@@ -24,6 +25,8 @@ interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv {
   GEMINI_MODEL?: string;
   /** optional: springt ein, wenn GEMINI_MODEL überlastet ist */
   GEMINI_FALLBACK_MODEL?: string;
+  /** optional: Tagesgrenze des Gemini-Modells laut AI Studio, nur für die Admin-Ansicht */
+  GEMINI_RPD?: string;
   /** Anfragen pro Nutzer und Tag (Standard 5) */
   AGENT_DAILY?: string;
   FIREBASE_PROJECT_ID?: string;
@@ -66,9 +69,11 @@ export default {
       const key = new Request(`https://cache.reisekasse/${route}?` + encodeURIComponent(JSON.stringify(q)));
       const cache = caches.default;
       const hit = await cache.match(key);
+      noteRoute(env, route, !!hit);
       if (hit) return json(await hit.json(), 200, { ...h, "x-cache": "hit" });
 
-      const result = route === "flights" ? await searchAll(q as FlightQuery, env) : await searchStays(q as StayQuery, env);
+      const net = meter(env);
+      const result = route === "flights" ? await searchAll(q as FlightQuery, env, net) : await searchStays(q as StayQuery, env, net);
       if (result.offers.length) {
         ctx.waitUntil(cache.put(key, new Response(JSON.stringify(result), { headers: { "content-type": "application/json", "cache-control": "max-age=600" } })));
       }
@@ -81,18 +86,26 @@ export default {
       try { body = await req.json(); } catch { return json({ error: "Anfrage ist kein JSON" }, 400, h); }
       const q = parseEventQuery(body);
       if (typeof q === "string") return json({ error: q }, 400, h);
-      const result = await cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, fetch, cachedJson), r => r.events.length > 0, ctx);
+      noteRoute(env, "events");
+      const result = await cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, meter(env), cachedJson), r => r.events.length > 0, ctx);
       return json(result, 200, h);
     }
 
     if (url.pathname === "/agent" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      noteRoute(env, "agent");
       return agent(req, env, h);
     }
 
     if (url.pathname === "/bug" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
-      return reportBug(req, env, h, json, (uid, kind) => countToday(env, uid, kind));
+      noteRoute(env, "bug");
+      return reportBug(req, env, h, json, (uid, kind) => countToday(env, uid, kind), meter(env));
+    }
+
+    if (url.pathname === "/admin/usage" && req.method === "GET") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      return admin(req, env, h);
     }
     if (url.pathname.startsWith("/bug-image/") && req.method === "GET") return bugImage(url.pathname, env);
 
@@ -139,9 +152,10 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   const model = env.GEMINI_MODEL || DEFAULT_MODEL;
   // Cloudflare (kostenloser Tarif): höchstens 50 ausgehende Anfragen pro Aufruf. Eine Flugsuche braucht bis zu 9
   // (Kiwi 3, Travelpayouts je Flughafenpaar 1), eine Unterkunftssuche 3; für Gemini bleiben immer RESERVE frei.
-  const budget = agentBudget();
+  const net = meter(env);
+  const budget = agentBudget(48, 8, 9, net);
   // überlastet: kurz warten und wiederholen, dann das Ausweichmodell
-  const gemini = geminiCaller({ key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], onCall: () => { budget.used++; } });
+  const gemini = geminiCaller({ key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], f: net, onCall: () => { budget.used++; } });
   try {
     const result = await runAgent(r, { gemini, flights: q => searchAll(q, env, budget.fetch), stays: q => searchStays(q, env, budget.fetch), canSearch: budget.canSearch });
     // eine Rückfrage zählt nicht gegen das Tageslimit, erst die Suche danach
@@ -154,6 +168,27 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
     // Fehler auf unserer Seite oder bei Gemini zählen nicht gegen das Tageslimit
     return json({ error: (e as Error).message, remaining: Math.max(0, limit - quota.used) }, 502, h);
   }
+}
+
+/* ---------- Admin: Nutzung der kostenlosen Kontingente ---------- */
+
+async function admin(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return json({ error: "Bitte anmelden" }, 401, h);
+  let uid: string;
+  try { uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); }
+  catch (e) { return json({ error: (e as Error).message }, 401, h); }
+  if (!isAdmin(env, uid)) return json({ error: "Kein Zugriff" }, 403, h);
+  // nur prüfen, ob der Eintrag im Kontomenü erscheint
+  if (new URL(req.url).searchParams.has("check")) return json({ admin: true }, 200, h);
+  // Stellschrauben, ohne Schlüssel: nur ob sie gesetzt sind
+  const config = {
+    agentDaily: Number(env.AGENT_DAILY) || 5, bugDaily: Number(env.BUG_DAILY) || 5,
+    model: env.GEMINI_MODEL || DEFAULT_MODEL, fallback: env.GEMINI_FALLBACK_MODEL || "", geminiPerDay: Number(env.GEMINI_RPD) || 0,
+    gemini: !!env.GEMINI_API_KEY, travelpayouts: !!env.TRAVELPAYOUTS_TOKEN, ticketmaster: !!env.TICKETMASTER_KEY,
+    footballData: !!env.FOOTBALL_DATA_KEY, bugs: !!(env.GITHUB_TOKEN && env.BUG_REPO), bugImages: !!env.BUG_BUCKET, kv: !!env.AGENT_KV
+  };
+  return json(await usageReport(env, config), 200, { ...h, "cache-control": "no-store" });
 }
 
 /** JSON im Zwischenspeicher des Rechenzentrums (z. B. Mannschaftslisten für eine Woche) */

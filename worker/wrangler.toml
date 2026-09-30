@@ -19,3 +19,8 @@ TRAVELPAYOUTS_MARKER = "783080"
 [[r2_buckets]]
 binding = "BUG_BUCKET"
 bucket_name = "splitandfly-bugs"
+
+# Nutzung für die Admin-Ansicht, wie in ../wrangler.toml
+[[analytics_engine_datasets]]
+binding = "USAGE"
+dataset = "splitandfly_usage"

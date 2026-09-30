@@ -24,3 +24,9 @@ TRAVELPAYOUTS_MARKER = "783080"
 [[r2_buckets]]
 binding = "BUG_BUCKET"
 bucket_name = "splitandfly-bugs"
+
+# Nutzung der kostenlosen Kontingente für die Admin-Ansicht (worker/src/usage.ts): anonyme Zählung in Analytics Engine.
+# Lesen braucht Variable CF_ACCOUNT_ID, Secret CF_API_TOKEN (nur „Account Analytics: Read“), Variable ADMIN_UIDS (Firebase-UIDs).
+[[analytics_engine_datasets]]
+binding = "USAGE"
+dataset = "splitandfly_usage"
