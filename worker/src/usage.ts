@@ -101,7 +101,7 @@ async function r2Stats(env: UsageEnv, f: typeof fetch, now: number) {
   const d0 = new Date(now);
   const month = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1)).toISOString();
   const q = `query($a: String!, $from: Time!, $to: Time!) { viewer { accounts(filter: { accountTag: $a }) {
-    r2StorageAdaptiveGroups(limit: 1, filter: { datetime_geq: $from, datetime_leq: $to }, orderBy: [datetime_DESC]) { max { payloadSize metadataSize objectCount } }
+    r2StorageAdaptiveGroups(limit: 1, filter: { datetime_geq: $from, datetime_leq: $to }, orderBy: [datetime_DESC]) { max { payloadSize metadataSize objectCount } dimensions { datetime } }
     r2OperationsAdaptiveGroups(limit: 1000, filter: { datetime_geq: $from, datetime_leq: $to }) { sum { requests } dimensions { actionType } }
   } } }`;
   const d = await graphql<Accounts<{
