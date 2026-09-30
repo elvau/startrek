@@ -5,7 +5,7 @@
 import { t } from "../i18n/index.svelte";
 import { hhKey, isActive, type Item, type Traveler, type Trip } from "../model";
 import { activeOption, participantsOf, presences } from "../calc";
-import { addDays, flightLegs, needs, nightsList, okDate, type Presence } from "../calc/travel";
+import { addDays, airNights, flightLegs, needs, nightsList, okDate, stopsOf, type Presence, type Stop } from "../calc/travel";
 import { dayShort, time } from "../format";
 
 /** Personen mit gleicher An- und Abreise in einem Haushalt */
@@ -79,7 +79,26 @@ export function guestsIn(trip: Trip, from: string, to: string, ids?: string[]): 
     .filter(g => g.nights > 0);
 }
 
-export interface Gap { from: string; to: string; nights: number; ids: string[]; who: string }
+export interface Gap {
+  from: string; to: string; nights: number; ids: string[]; who: string;
+  /** Station einer Rundreise (Flughafen und Stadt), in der die Lücke liegt */
+  ap?: string; city?: string;
+}
+
+const pickOf = (trip: Trip) => (it: Item) => activeOption(it, trip);
+
+/** Stationen aller Reisenden (gleiche Station und Zeitraum zusammengefasst), in Reihenfolge */
+export function stations(trip: Trip): (Stop & { ids: string[] })[] {
+  const map = new Map<string, Stop & { ids: string[] }>();
+  for (const t of trip.travelers.filter(isActive)) {
+    for (const s of stopsOf(t, trip, pickOf(trip))) {
+      const k = `${s.ap}|${s.from}|${s.to}`;
+      if (!map.has(k)) map.set(k, { ...s, ids: [] });
+      map.get(k)!.ids.push(t.id);
+    }
+  }
+  return [...map.values()].sort((a, b) => a.from.localeCompare(b.from));
+}
 
 /** Nächte ohne Unterkunft, zusammengefasst nach gleichem Zeitraum (nur wer bekannte Anwesenheit hat) */
 export function gaps(trip: Trip): Gap[] {
@@ -90,20 +109,24 @@ export function gaps(trip: Trip): Gap[] {
   for (const t of act) {
     const p = pres[t.id];
     if (!p) continue;
-    let start = "";
-    const ns = nightsList(p.a, p.d);
-    ns.forEach((x, i) => {
-      const covered = stays.some(s => s.from! <= x && x < s.to! && participantsOf(s, trip).some(g => g.id === t.id));
-      if (!covered && !start) start = x;
-      const endHere = start && (covered || i === ns.length - 1);
-      if (endHere) {
-        const to = covered ? x : addDays(x, 1);
-        const k = start + "|" + to;
-        if (!map.has(k)) map.set(k, { from: start, to, nights: nightsList(start, to).length, ids: [], who: "" });
-        map.get(k)!.ids.push(t.id);
-        start = "";
-      }
-    });
+    // Nächte im Flugzeug brauchen kein Bett; eine Lücke endet, wo die Station (Stadt der Rundreise) wechselt
+    const air = p.src === "flight" ? airNights(t, trip, pickOf(trip)) : new Set<string>();
+    const stops = p.src === "flight" ? stopsOf(t, trip, pickOf(trip)) : [];
+    const stopAt = (x: string) => stops.find(s => s.from <= x && x < s.to);
+    let start = "", cur: Stop | undefined;
+    const close = (to: string) => {
+      const k = `${start}|${to}|${cur?.ap || ""}`;
+      if (!map.has(k)) map.set(k, { from: start, to, nights: nightsList(start, to).length, ids: [], who: "", ...(cur ? { ap: cur.ap, ...(cur.city ? { city: cur.city } : {}) } : {}) });
+      map.get(k)!.ids.push(t.id);
+      start = "";
+    };
+    for (const x of nightsList(p.a, p.d)) {
+      const covered = air.has(x) || stays.some(s => s.from! <= x && x < s.to! && participantsOf(s, trip).some(g => g.id === t.id));
+      const st = stopAt(x);
+      if (start && (covered || st !== cur)) close(x);
+      if (!covered && !start) { start = x; cur = st; }
+    }
+    if (start) close(p.d);
   }
   const size = (h: string) => act.filter(t => hhKey(t) === h).length;
   return [...map.values()].map(g => {

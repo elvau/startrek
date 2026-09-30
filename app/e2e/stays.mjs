@@ -8,6 +8,11 @@ import { spawn } from "node:child_process";
 const URL = "http://127.0.0.1:4176/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+async function until(fn, what, ms = 10000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
+  fail("Zeitüberschreitung: " + what);
+}
 const RESULT = {
   offers: [
     { id: "booking:496993", source: "booking", sourceName: "Booking.com", name: "Rooms Šećer", total: 720, currency: "EUR", url: "https://www.booking.com/hotel/hr/sobe-a-eaer.html", score: 9.4, reviews: 416, stars: 1, place: "Split Stadtzentrum, Split", facts: ["Parkplatz", "Familienzimmer"] },
@@ -34,7 +39,7 @@ try {
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(RESULT) });
   });
   // Orts- und Flughafendaten des Artefakts (liegen auf der Seite eine Ebene über der App)
-  for (const f of ["world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+  for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   await p.goto(URL);
   await p.locator(".start .home-new").click();
@@ -76,9 +81,13 @@ try {
 
   // zwei übernehmen → ein Posten mit 2 Angeboten, Preis für den ganzen Aufenthalt
   await m.locator(".fs-res", { hasText: "Ferienwohnung Klara" }).locator(".btn", { hasText: "Übernehmen" }).click();
+  // Übernehmen schließt die Suche; zweites Angebot über die Suche am Posten
+  await m.waitFor({ state: "detached" });
+  await p.locator("#stay .card", { hasText: "Unterkunft in Split" }).first().click();
+  await p.locator("#stay .st-item").first().click();
+  await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res", { hasText: "Rooms Šećer" }).locator(".btn", { hasText: "Übernehmen" }).click();
-  if ((await m.locator(".btn", { hasText: "✓ Übernommen" }).count()) !== 2) fail("Übernommen-Markierung");
-  await m.locator(".x").click();
+  await m.waitFor({ state: "detached" });
   const cards = p.locator("#stay .card", { hasText: "Unterkunft in Split" });
   if ((await cards.count()) !== 1) fail("Posten nicht angelegt");
   const c = await cards.textContent();
@@ -124,7 +133,7 @@ try {
   const q2 = asked.at(-1);
   if (q2.checkin !== "2027-07-25" || q2.checkout !== "2027-07-29" || q2.adults !== 1 || q2.childAges.join() !== "9") fail("Anfrage aus der Lücke: " + JSON.stringify(q2));
   await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
-  await m.locator(".x").click();
+  await m.waitFor({ state: "detached" });
   await p.locator("#stay .pl-ok, #stay .pl-notes").first().waitFor();
   if ((await p.locator("#stay .pl-notes li.crit", { hasText: "Klein" }).count())) fail("Lücke für Klein noch da");
   log("Übernommen: Posten nur für Klein, 25.07. bis 29.07., Lücke weg");
@@ -198,6 +207,53 @@ try {
   await p.locator(".hero .lang-sel").selectOption("de");
   await p.locator("#stay .st-open", { hasText: "Unterkunft suchen" }).waitFor();
   log("Sprache: Englisch gewählt, Oberfläche übersetzt, bleibt nach dem Neuladen; zurück auf Deutsch");
+
+  // Rundreise wie bei Eduard: Quito → Lima → Rio, Nachtflug nach Rio; Lücken und Suche je Stadt statt „alles in Quito“
+  const leg = (dir, from, to, dep, arr, toCity) => ({ dir, from, to, dep, arr, ...(toCity ? { toCity } : {}) });
+  const RT = {
+    id: "r1", name: "Südamerika", place: "", country: "", from: "2027-04-07", to: "2027-04-23", detail: { flights: true, stay: true },
+    travelers: [{ id: "e", name: "Eduard", household: "Malenki", age: 40 }], households: {},
+    items: [{ id: "rf", cat: "flights", name: "Rundreise", status: "idea", options: [{ id: "ro", label: "Rundreise", price: { mode: "unit", currency: "EUR", unit: 2175 }, legs: [
+      leg("out", "DUS", "UIO", "2027-04-07T06:20", "2027-04-07T16:10", "Quito"), leg("via", "UIO", "LIM", "2027-04-14T16:49", "2027-04-14T19:05", "Lima"),
+      leg("via", "LIM", "GIG", "2027-04-20T23:25", "2027-04-21T07:00"), leg("back", "GIG", "DUS", "2027-04-22T15:35", "2027-04-23T12:25")] }] }],
+    tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }
+  };
+  await p.waitForTimeout(600);
+  await p.evaluate(t => { localStorage.setItem("rk2-t:r1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "r1", name: t.name, place: "" }])); localStorage.setItem("rk2-current", "r1"); }, RT);
+  await p.reload();
+  await p.locator(".start .home-trip").first().click();
+  const rgaps = p.locator("#stay .pl-notes li.crit", { hasText: "ohne Unterkunft" });
+  await rgaps.first().waitFor();
+  await until(async () => (await rgaps.nth(2).textContent().catch(() => "")).includes("Rio de Janeiro"), "Station Rio aus dem Flughafen GIG");
+  const gtexts = await rgaps.allTextContents();
+  if (gtexts.length !== 3 || !gtexts[0].includes("Quito") || !gtexts[0].includes("7 Nächte") || !gtexts[1].includes("Lima") || !gtexts[1].includes("6 Nächte") || !gtexts[2].includes("Mi 21.04.")) fail("Lücken je Station: " + gtexts.join(" | "));
+  if (!(await p.locator("#stay .pl-seg.air").count())) fail("Nacht im Flugzeug nicht markiert");
+  log("Rundreise: Lücken je Stadt (Quito 7, Lima 6, Rio 1 Nacht), Nachtflug nach Rio als ✈ statt Lücke");
+  await rgaps.nth(1).locator(".linkbtn", { hasText: "Unterkunft suchen" }).click();
+  if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Lima") fail("Ort aus der Station");
+  if ((await m.locator("label.f", { hasText: "Check-in" }).locator("input").inputValue()) !== "2027-04-14" || (await m.locator("label.f", { hasText: "Check-out" }).locator("input").inputValue()) !== "2027-04-20") fail("Daten aus der Station");
+  if ((await m.locator(".st-stations .chip").count()) !== 3) fail("Stationen als Auswahl");
+  await m.locator(".st-stations .chip", { hasText: "Rio de Janeiro" }).click();
+  if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Rio de Janeiro" || (await m.locator("label.f", { hasText: "Check-in" }).locator("input").inputValue()) !== "2027-04-21") fail("Station Rio gewählt");
+  await m.locator(".modal-h .x").click();
+  // Kapitel-Knopf ohne Vorgabe: erste Station statt ganzer Reise
+  await p.locator("#stay .st-open").click();
+  if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Quito" || (await m.locator("label.f", { hasText: "Check-out" }).locator("input").inputValue()) !== "2027-04-14") fail("Suche ohne Vorgabe: nicht die erste Station");
+  // echte Stadtsuche: Cusco (Land der Reise, ohne Land), Bogotá (anderes Land, mit Land; an die Anbieter englisch)
+  const pf = m.locator("label.f", { hasText: "Ort" }).locator("input");
+  await pf.fill("Cus");
+  await m.locator(".st-placef .sugg button", { hasText: "Cusco" }).first().click();
+  if ((await pf.inputValue()) !== "Cusco") fail("Stadtsuche Cusco: " + await pf.inputValue());
+  await pf.fill("Bogo");
+  await m.locator(".st-placef .sugg button", { hasText: "Bogotá" }).first().click();
+  if ((await pf.inputValue()) !== "Bogotá, Kolumbien") fail("Stadtsuche Bogotá: " + await pf.inputValue());
+  await m.locator(".fs-form .btn.primary").click();
+  await until(async () => asked.at(-1)?.checkin === "2027-04-07", "Suche mit Bogotá");
+  const qb = asked.at(-1);
+  if (qb.country !== "Colombia" || !/^Bogot/.test(qb.place)) fail("Anfrage Bogotá: " + JSON.stringify(qb));
+  log("Stadtsuche: „Cus“ → Cusco, „Bogo“ → Bogotá, Kolumbien; an die Anbieter " + qb.place + ", " + qb.country);
+  await m.locator(".modal-h .x").click();
+  log("Suche je Station: aus der Lücke Lima 14.–20.04., Auswahl der Stationen, ohne Vorgabe Quito 07.–14.04.");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nUnterkunftssuche: alles in Ordnung");

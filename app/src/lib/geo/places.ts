@@ -109,12 +109,40 @@ export function findCity(g: GeoData, name: string, cc?: string | null): Omit<Pla
   return null;
 }
 
+/** Vorschlag der Stadtsuche: Ort mit Land (deutscher Name zur Anzeige, englischer für die Suche) */
+export interface CityHit { name: string; en?: string; cc: string; land: string; landEn: string; lat: number; lon: number; top: boolean }
+
+/**
+ * Stadtsuche für Unterkünfte: Orte, deren Name (deutsch oder englisch) mit der Eingabe beginnt.
+ * Zuerst die Länder der Reise (dort auch kleinere Orte), dann bekannte Städte weltweit; größere vor kleineren.
+ */
+export function suggestCities(g: GeoData, q: string, prefer: string[] = [], max = 8): CityHit[] {
+  const s = norm(q.split(",")[0]);
+  if (s.length < 2) return [];
+  const out: (CityHit & { rank: number })[] = [], seen = new Set<string>();
+  const hit = (p: Omit<Place, "km">, rank: number) => {
+    const n = norm(p.name), e = norm(p.en || "");
+    if (!n.startsWith(s) && !e.startsWith(s)) return;
+    const k = `${p.cc}|${n}`;
+    if (seen.has(k)) return;
+    seen.add(k);
+    const w = g.world.find(x => x.k === p.cc);
+    out.push({ name: p.name, ...(p.en ? { en: p.en } : {}), cc: p.cc, land: w?.l || p.cc, landEn: w?.en || p.cc, lat: p.lat, lon: p.lon, top: !!p.top,
+      rank: rank * 2 + (p.top ? 0 : 1) - (n === s || e === s ? 0.5 : 0) });
+  };
+  for (const cc of prefer) citiesOf(g, cc).forEach(p => hit(p, 0));
+  for (const w of g.world) if (!prefer.includes(w.k)) w.cities.forEach(c => hit({ name: c[0], en: c[3] || undefined, lat: c[1], lon: c[2], cc: w.k, top: true }, 1));
+  return out.sort((a, b) => a.rank - b.rank || a.name.length - b.name.length).slice(0, max).map(({ rank: _r, ...h }) => h);
+}
+
 /** Suchbegriff für Booking.com und Trivago wie im Artefakt: englischer Ortsname und Land („Split“, „Croatia“) */
 export function searchParts(g: GeoData, place: string, cc?: string | null): { place: string; country?: string } {
   const [name, given] = place.split(",").map(x => x.trim());
-  const c = findCity(g, name, cc);
-  const k = c?.cc || cc;
-  const land = given || (k ? g.world.find(w => w.k === k)?.en : undefined);
+  // Land dazugeschrieben (aus der Stadtsuche, auch deutsch: „Cusco, Peru“, „Rio de Janeiro, Brasilien“): dort suchen, englisch weitergeben
+  const gk = given ? ccOf(g, given) : null;
+  const c = findCity(g, name, gk || cc);
+  const k = c?.cc || gk || cc;
+  const land = (gk ? g.world.find(w => w.k === gk)?.en : given) || (k ? g.world.find(w => w.k === k)?.en : undefined);
   return { place: c?.en || name, ...(land ? { country: land } : {}) };
 }
 

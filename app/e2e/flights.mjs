@@ -8,6 +8,11 @@ import { spawn } from "node:child_process";
 const URL = "http://127.0.0.1:4175/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+async function until(fn, what, ms = 10000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
+  fail("Zeitüberschreitung: " + what);
+}
 const leg = (from, to, dep, arr, min, flights, carriers, route) => ({ from, to, fromCity: from === "DUS" ? "Düsseldorf" : "Split", toCity: to === "SPU" ? "Split" : "Düsseldorf", dep, arr, minutes: min, stops: route.length - 2, route, carriers, flights });
 const RESULT = {
   offers: [
@@ -149,10 +154,18 @@ try {
   if ((await m.locator(".fs-res").count()) !== 2) fail("Filter direkt (je Flughafen einer)");
   await m.locator(".chip", { hasText: "Günstigste" }).click();
   await m.locator(".fs-res").nth(0).locator(".btn", { hasText: "Übernehmen" }).click();
-  await m.locator(".fs-cmp .btn", { hasText: "Wählen" }).nth(1).click();
-  await p.keyboard.press("Escape");
+  // Übernehmen schließt die Suche und zeigt den Posten
+  await m.waitFor({ state: "detached" });
   const card = p.locator("#flights .card[data-item]");
   await card.first().waitFor();
+  await until(async () => (await card.first().getAttribute("class")).includes("flash"), "Posten hervorgehoben");
+  // zweites Angebot: Suche am Posten erneut öffnen
+  await card.first().click();
+  await p.locator("#flights .fs-item").first().click();
+  if ((await m.locator("label", { hasText: "Hin am" }).locator("input").inputValue()) !== "2027-07-18") fail("Datum beim erneuten Öffnen nicht aus dem Flug");
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-cmp .btn", { hasText: "Wählen" }).nth(1).click();
+  await m.waitFor({ state: "detached" });
   if ((await card.count()) !== 1) fail("ein Posten erwartet");
   const txt = await card.textContent();
   if (!txt.includes("Eurowings") || !txt.includes("2 Angebote")) fail("Posten: " + txt.slice(0, 200));
@@ -309,11 +322,26 @@ try {
   const r0 = await m.locator(".fs-round").first().textContent();
   if (!r0.includes("3 Tickets") || !r0.includes("GIG: 5 Nächte") || !r0.includes("EZE: 3 Nächte")) fail("Rundreise-Treffer: " + r0.slice(0, 300));
   if ((await m.locator(".fs-round").first().locator(".fs-leg").count()) !== 3) fail("drei Flüge erwartet");
-  await m.locator(".fs-round").first().locator(".btn", { hasText: "Übernehmen" }).click();
+  // Andere Flüge für die letzte Strecke: 3–4 Nächte in EZE, günstigste zuerst; Tausch rechnet den Preis neu
+  const rcard = m.locator(".fs-round").first();
+  const flightsOf = async c => Number((await c.locator(".fs-sub").textContent()).match(/Flüge ([\d.]+) €/)[1].replace(/\./g, ""));
+  const price0 = await flightsOf(rcard);
+  await rcard.locator(".fs-altbtn").last().click();
+  const alts = rcard.locator(".fs-alt");
+  if ((await alts.count()) < 1) fail("keine anderen Flüge für die letzte Strecke");
+  const delta = await alts.first().locator(".fs-alt-r b").textContent();
+  await alts.first().locator(".btn", { hasText: "Diesen nehmen" }).click();
+  const card2 = m.locator(".fs-round", { hasText: "Strecke 3 getauscht" });
+  await card2.waitFor();
+  const price1 = await flightsOf(card2);
+  if (price1 - price0 !== Number(delta.replace("−", "-").replace(/[^\d-]/g, ""))) fail(`Flugpreis nach Tausch: ${price0} ${delta} → ${price1}`);
+  if (!(await card2.textContent()).includes("EZE: 4 Nächte")) fail("Nächte nach Tausch: " + (await card2.textContent()).slice(0, 200));
+  log(`Andere Flüge: letzte Strecke getauscht (${delta}), Flüge ${price0} € → ${price1} €, EZE jetzt 4 Nächte`);
+  await card2.locator(".btn", { hasText: "Übernehmen" }).click();
   await p.keyboard.press("Escape");
   const rc = p.locator("#flights .card[data-item]", { hasText: "GIG → EZE" });
   await rc.waitFor();
-  log("Rundreise: DUS → GIG (5 Nächte) → EZE (3 Nächte) → zurück, Strecke für Strecke gesucht, als ein Posten mit 3 Flügen übernommen");
+  log("Rundreise: DUS → GIG (5 Nächte) → EZE → zurück, Strecke für Strecke gesucht, als ein Posten mit 3 Flügen übernommen");
 
   // kurzer Aufenthalt (0–1 Nacht in Rio): zusätzlich als Gabelflug, ein Ticket DUS → EZE mit langem Umstieg in GIG
   await p.locator("#flights .fs-open").click();

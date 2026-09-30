@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arrivals, gaps, guestsIn, hints, stayWindow } from "./presence";
+import { arrivals, gaps, guestsIn, hints, stations, stayWindow } from "./presence";
 import { takeStay } from "./app";
 import type { Trip } from "../model";
 import type { StayOffer } from "./types";
@@ -45,7 +45,7 @@ describe("Unterkunft aus der Anwesenheit", () => {
   it("Lücken: nach gleichem Zeitraum zusammengefasst, mit Namen der Familie", () => {
     expect(gaps(trip())).toEqual([
       { from: "2027-07-25", to: "2027-07-27", nights: 2, ids: ["c", "d"], who: "Hase" },
-      { from: "2027-07-25", to: "2027-07-29", nights: 4, ids: ["a", "b"], who: "Klein" }
+      { from: "2027-07-25", to: "2027-07-29", nights: 4, ids: ["a", "b"], who: "Klein", ap: "SPU" }
     ]);
   });
   it("Lücke füllen: neuer Posten nur für die Betroffenen, danach keine Lücke mehr für sie", () => {
@@ -54,5 +54,22 @@ describe("Unterkunft aus der Anwesenheit", () => {
     const it = takeStay(t, o, { place: "Split", checkin: "2027-07-25", checkout: "2027-07-29", adults: 1, childAges: [9], rooms: 1, type: "all" }, undefined, ["a", "b"]);
     expect(it).toMatchObject({ from: "2027-07-25", to: "2027-07-29", participants: ["a", "b"] });
     expect(gaps(t).map(g => g.who)).toEqual(["Hase"]);
+  });
+
+  it("Rundreise (wie Eduard): Stationen Quito, Lima, Rio; Lücken je Stadt, Nacht im Flugzeug zählt nicht", () => {
+    const leg = (dir: "out" | "via" | "back", from: string, to: string, dep: string, arr: string, toCity?: string) => ({ dir, from, to, dep, arr, ...(toCity ? { toCity } : {}) });
+    const t: Trip = { ...trip(), place: "", travelers: [{ id: "e", name: "Eduard", household: "Klein", age: 40 }], households: {},
+      items: [{ id: "r", cat: "flights", name: "Rundreise", status: "idea", options: [{ id: "o", label: "", price: { mode: "unit", currency: "EUR", unit: 2175 }, legs: [
+        leg("out", "DUS", "UIO", "2027-04-07T06:20", "2027-04-07T16:10", "Quito"),
+        leg("via", "UIO", "LIM", "2027-04-14T16:49", "2027-04-14T19:05", "Lima"),
+        leg("via", "LIM", "GIG", "2027-04-20T23:25", "2027-04-21T07:00"),
+        leg("back", "GIG", "DUS", "2027-04-22T15:35", "2027-04-23T12:25", "Düsseldorf")] }] }] };
+    expect(stations(t).map(s => [s.ap, s.city, s.from, s.to])).toEqual([
+      ["UIO", "Quito", "2027-04-07", "2027-04-14"], ["LIM", "Lima", "2027-04-14", "2027-04-20"], ["GIG", undefined, "2027-04-21", "2027-04-22"]
+    ]);
+    // 20.04. im Flugzeug: keine Lücke; drei Lücken, je eine Stadt
+    expect(gaps(t).map(g => [g.from, g.to, g.nights, g.ap, g.city])).toEqual([
+      ["2027-04-07", "2027-04-14", 7, "UIO", "Quito"], ["2027-04-14", "2027-04-20", 6, "LIM", "Lima"], ["2027-04-21", "2027-04-22", 1, "GIG", undefined]
+    ]);
   });
 });

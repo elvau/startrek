@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import world from "../../../../public/world.json";
 import packs from "../../../../public/packs.json";
 import places from "../../../../public/places/pa.json";
-import { airportOf, ccOf, cityForAirport, findCity, placesNear, searchParts, type GeoData } from "./places";
+import { airportOf, ccOf, cityForAirport, findCity, placesNear, searchParts, suggestCities, type GeoData } from "./places";
 
 // echte Daten des Artefakts (public/ im Hauptordner)
 const g = { world: world.countries, packs, places } as unknown as GeoData;
@@ -37,5 +37,15 @@ describe("Orte und Flughäfen", () => {
     expect(searchParts(g, "Plitvicer Seen", "HR")).toEqual({ place: "Plitvice Lakes", country: "Croatia" });
     expect(searchParts(g, "Trogir", "HR")).toEqual({ place: "Trogir", country: "Croatia" });
     expect(searchParts(g, "Irgendwo, Spain", "HR")).toEqual({ place: "Irgendwo", country: "Spain" });
+  });
+  it("Stadtsuche: deutsch oder englisch, Länder der Reise zuerst, mit Land", () => {
+    const cu = suggestCities(g, "Cuz");
+    expect(cu[0]).toMatchObject({ name: "Cusco", cc: "PE", land: "Peru", landEn: "Peru" });
+    expect(suggestCities(g, "cusco")[0].name).toBe("Cusco");
+    // Land der Reise zuerst (dort auch kleinere Orte)
+    const tr = suggestCities(g, "Tro", ["HR"]);
+    expect(tr[0]).toMatchObject({ name: "Trogir", cc: "HR" });
+    expect(suggestCities(g, "x")).toEqual([]);
+    expect(suggestCities(g, "Rio de", [], 3).some(h => h.name === "Rio de Janeiro" && h.cc === "BR")).toBe(true);
   });
 });

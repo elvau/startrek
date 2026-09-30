@@ -42,6 +42,14 @@ export interface RoundPlan {
   currency?: string;
 }
 
+/**
+ * Alle gefundenen Flüge einer Suche je Strecke, damit man einzelne Strecken tauschen kann.
+ * Klasse statt einfachem Objekt: Svelte macht daraus keinen tiefen Zustand (die Liste kann groß sein).
+ */
+export class RoundPool {
+  constructor(readonly legs: RoundLeg[], readonly offers: FlightOffer[][]) {}
+}
+
 export interface RoundTrip {
   id: string;
   legs: FlightOffer[];
@@ -50,6 +58,8 @@ export interface RoundTrip {
   nights: number[];
   /** jede Station in Reihenfolge: Nächte (eigene Flüge) oder Stunden (Umstieg auf einem Ticket) */
   stays: { name: string; nights?: number; hours?: number }[];
+  /** gefundene Flüge je Strecke (für „Andere Flüge“) */
+  pool?: RoundPool;
 }
 
 /** eine Strecke der Suche; after: Station davor (Nächte von–bis), via: Station als Umstieg */
@@ -101,6 +111,7 @@ export async function searchRound(p: RoundPlan, search: (q: FlightQuery) => Prom
   const errors: string[] = [];
   const note = (r: SearchResult) => r.sources.forEach(s => { const o = sources.get(s.id); sources.set(s.id, o ? { ...o, ok: o.ok || s.ok, count: o.count + s.count, error: o.ok ? o.error : s.error } : { ...s }); });
   let partial: { legs: FlightOffer[]; price: number }[] = [{ legs: [], price: 0 }];
+  const pool = new RoundPool(legs, []);
 
   for (const [k, { from, to, after, via }] of legs.entries()) {
     progress?.(k + 1, legs.length);
@@ -116,6 +127,7 @@ export async function searchRound(p: RoundPlan, search: (q: FlightQuery) => Prom
     const byId = new Map<string, FlightOffer>();
     found.flat().forEach(o => { if (!byId.has(o.id)) byId.set(o.id, o); });
     const offers = [...byId.values()];
+    pool.offers.push(offers);
     const next: typeof partial = [];
     for (const x of partial) {
       const last = x.legs.at(-1);
@@ -135,15 +147,49 @@ export async function searchRound(p: RoundPlan, search: (q: FlightQuery) => Prom
       break;
     }
   }
-  const trips = partial.filter(x => x.legs.length === legs.length).slice(0, 20).map(x => {
-    const nights = x.legs.slice(1).map((l, i) => nightsBetween(x.legs[i].out.arr, l.out.dep));
-    // Stationen in Reihenfolge: Umstieg (Stunden aus dem Flug) vor dem Ziel der Strecke, dann das Ziel mit Nächten
-    const stays: RoundTrip["stays"] = [];
-    legs.forEach((lg, i) => {
-      if (lg.via) stays.push({ name: lg.via.place.name, hours: x.legs[i].out.layovers?.find(l => lg.via!.place.airports.includes(l.at))?.hours });
-      if (i < nights.length) stays.push({ name: lg.to.name, nights: nights[i] });
-    });
-    return { id: x.legs.map(l => l.id).join("+"), legs: x.legs, price: x.price, nights, stays };
-  });
+  const trips = partial.filter(x => x.legs.length === legs.length).slice(0, 20).map(x => makeTrip(pool, x.legs));
   return { trips, sources: [...sources.values()], errors };
+}
+
+/** Rundreise aus gewählten Flügen je Strecke: Preis, Nächte und Stationen */
+export function makeTrip(pool: RoundPool, chosen: FlightOffer[]): RoundTrip {
+  const legs = pool.legs;
+  const nights = chosen.slice(1).map((l, i) => nightsBetween(chosen[i].out.arr, l.out.dep));
+  // Stationen in Reihenfolge: Umstieg (Stunden aus dem Flug) vor dem Ziel der Strecke, dann das Ziel mit Nächten
+  const stays: RoundTrip["stays"] = [];
+  legs.forEach((lg, i) => {
+    if (lg.via) stays.push({ name: lg.via.place.name, hours: chosen[i].out.layovers?.find(l => lg.via!.place.airports.includes(l.at))?.hours });
+    if (i < nights.length) stays.push({ name: lg.to.name, nights: nights[i] });
+  });
+  return { id: chosen.map(l => l.id).join("+"), legs: chosen, price: chosen.reduce((a, l) => a + l.price, 0), nights, stays, pool };
+}
+
+/** passt Flug b nach Flug a, mit so vielen Nächten dazwischen, wie die Station erlaubt? */
+const fits = (a: FlightOffer, b: FlightOffer, stop?: RoundStop) => {
+  if (!stop) return true;
+  const n = nightsBetween(a.out.arr, b.out.dep);
+  return n >= stop.min && n <= stop.max && b.out.dep > a.out.arr;
+};
+
+/**
+ * Andere gefundene Flüge für Strecke i, die zu den Flügen davor und danach passen (Nächte an den Stationen),
+ * günstigste zuerst; derselbe Flug (Zeit und Airline) nur einmal.
+ */
+export function alternatives(rt: RoundTrip, i: number, max = 8): FlightOffer[] {
+  const p = rt.pool;
+  if (!p || !p.offers[i]) return [];
+  const prev = rt.legs[i - 1], next = rt.legs[i + 1], cur = rt.legs[i];
+  const key = (o: FlightOffer) => `${o.out.dep}|${o.out.arr}|${o.out.carriers.join(",")}|${o.out.route.join("-")}`;
+  const seen = new Set([key(cur)]);
+  return p.offers[i]
+    .filter(o => o.id !== cur.id && (!prev || fits(prev, o, p.legs[i].after)) && (!next || fits(o, next, p.legs[i + 1]?.after)))
+    .sort((a, b) => a.price - b.price)
+    .filter(o => (seen.has(key(o)) ? false : (seen.add(key(o)), true)))
+    .slice(0, max);
+}
+
+/** Rundreise mit einem anderen Flug auf Strecke i */
+export function swapLeg(rt: RoundTrip, i: number, o: FlightOffer): RoundTrip {
+  if (!rt.pool) return rt;
+  return makeTrip(rt.pool, rt.legs.map((l, k) => (k === i ? o : l)));
 }

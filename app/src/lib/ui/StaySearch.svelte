@@ -9,11 +9,14 @@
   import { activeOption, eur } from "../calc";
   import { dateDE, dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
+  import { showItem } from "./showItem";
+  import { untrack } from "svelte";
+  import { stationName } from "../stays/stationName";
   import { FLIGHTS_URL } from "../flights/app";
   import { guests, searchStaysRemote, takeStay } from "../stays/app";
-  import { arrivals, guestsIn, hints, stayWindow } from "../stays/presence";
-  import { ensureGeo, geo } from "../geo/geo.svelte";
-  import { airportOf, ccOf, cityForAirport, placesNear, searchParts, stayNear } from "../geo/places";
+  import { arrivals, gaps, guestsIn, hints, stations, stayWindow } from "../stays/presence";
+  import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
+  import { airportOf, ccOf, cityForAirport, placesNear, searchParts, stayNear, suggestCities, type CityHit } from "../geo/places";
   import type { StayScope } from "../stays/open.svelte";
   import type { StayOffer, StayQuery, StayType } from "../stays/types";
   import type { SourceStatus } from "../flights/types";
@@ -33,9 +36,27 @@
   const ids = start.ids ?? item?.participants;
   const win = stayWindow(trip, ids);
 
-  let place = $state(start.place || trip.place || "");
-  let checkin = $state(start.from || item?.from || win?.from || "");
-  let checkout = $state(start.to || item?.to || win?.to || "");
+  // am Posten erneut geöffnet: Ort und Daten der Suche, mit der die Unterkunft gefunden wurde
+  const had = item?.options.find(o => o.query)?.query;
+  // Rundreise: Stationen aus den Flügen; ohne Vorgabe die erste Lücke (Stadt und Nächte) statt der ganzen Reise
+  const sts = stations(trip).filter(s => !ids || s.ids.some(id => ids.includes(id)));
+  const firstGap = !start.from && !item && sts.length > 1 ? gaps(trip).find(g => g.ap && (!ids || g.ids.some(id => ids.includes(id)))) : undefined;
+  let place = $state(start.place || had?.place || (firstGap ? untrack(() => stationName(geo, airportData, firstGap.ap, firstGap.city)) : "") || trip.place || "");
+  let checkin = $state(start.from || item?.from || had?.checkin || firstGap?.from || win?.from || "");
+  let checkout = $state(start.to || item?.to || had?.checkout || firstGap?.to || win?.to || "");
+  // ohne Stadt im Flug: Name erst, wenn die Ortsdaten geladen sind
+  // Name der Station verbessert sich, sobald Flughafen- und Ortsdaten da sind (solange man den Ort nicht selbst geändert hat)
+  let auto: string | null = firstGap ? untrack(() => place) : null;
+  $effect(() => { void ensureAirports(); });
+  $effect(() => {
+    if (!firstGap || place !== auto) return;
+    const n = stationName(geo, airportData, firstGap.ap, firstGap.city);
+    if (n !== place) { place = n; auto = n; }
+  });
+  function pickStation(s: (typeof sts)[number]) {
+    place = stationName(geo, airportData, s.ap, s.city);
+    checkin = s.from; checkout = s.to;
+  }
   let rooms = $state(1);
   let type = $state<StayType>((["whole", "hotel", "all"] as const).find(t => t === saved.type) || "whole");
   let use = $state<string[]>(Array.isArray(saved.sources) && (saved.sources as string[]).length ? (saved.sources as string[]) : SOURCES.map(s => s.id));
@@ -57,6 +78,15 @@
     }));
   });
   $effect(() => { if (!place && near[0]?.city) place = near[0].city.name; });
+  // Stadtsuche im Ort-Feld: Länder der Reise zuerst, dann bekannte Städte weltweit
+  let placeFocus = $state(false);
+  const prefer = $derived([...new Set([ccOf(geo, trip.country), ...near.map(n => n.ap.cc), ...sts.map(s => airportOf(geo, s.ap)?.cc)].filter((x): x is string => !!x))]);
+  const citySugg = $derived(placeFocus ? suggestCities(geo, place, prefer).filter(h => `${h.name}, ${h.land}` !== place.trim() && h.name !== place.trim()) : []);
+  function pickCity(h: CityHit) {
+    // mit Land, damit die Anbieter die richtige Stadt finden (gleichnamige Orte)
+    place = prefer.includes(h.cc) ? h.name : `${h.name}, ${h.land}`;
+    placeFocus = false;
+  }
 
   let busy = $state(false);
   let error = $state("");
@@ -110,6 +140,9 @@
     app.trip.detail.stay = true;
     into = takeStay(app.trip, o, asked, into, ids ?? who.map(x => x.t.id)).id;
     taken[o.id] = true;
+    // Suche schließen und den Posten zeigen; weitere Angebote: Suche am Posten erneut öffnen
+    onclose();
+    showItem(into);
   }
 </script>
 
@@ -135,11 +168,25 @@
 
   <form class="fs-form" onsubmit={search}>
     <div class="ed-row">
-      <label class="f grow">{t("te.place")}<input bind:value={place} placeholder={t("st.placePh")} required /></label>
+      <label class="f grow st-placef">{t("te.place")}<input bind:value={place} placeholder={t("st.placePh")} required autocomplete="off"
+          onfocus={() => (placeFocus = true)} onblur={() => setTimeout(() => (placeFocus = false), 150)} oninput={() => (placeFocus = true)} />
+        {#if citySugg.length}
+          <div class="sugg">{#each citySugg as h (h.cc + h.name)}<button type="button" onmousedown={e => e.preventDefault()} onclick={() => pickCity(h)}>{h.name} <small class="muted">{h.land}</small></button>{/each}</div>
+        {/if}
+      </label>
       <label class="f">{t("st.checkin")}<input type="date" bind:value={checkin} required /></label>
       <label class="f">{t("st.checkout")}<input type="date" bind:value={checkout} min={checkin} required /></label>
       <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(10, g.adults)} bind:value={rooms} /></label>
     </div>
+    {#if sts.length > 1}
+      <div class="st-stations">
+        <span class="muted small">{t("st.stations")}</span>
+        {#each sts as s (s.ap + s.from)}
+          {@const nm = stationName(geo, airportData, s.ap, s.city)}
+          <button type="button" class="chip sm" class:on={place === nm && checkin === s.from && checkout === s.to} onclick={() => pickStation(s)}>{nm} <small>{dayShort(s.from)}–{dayShort(s.to)} · {tn("n.nights", nights(s.from, s.to))}</small></button>
+        {/each}
+      </div>
+    {/if}
     {#if near.length || trip.place}
       <div class="st-near">
         {#if trip.place}<span class="muted small">{t("st.dest")}</span><button type="button" class="chip sm" class:on={place === trip.place} onclick={() => (place = trip.place)}>{trip.place}</button>{/if}

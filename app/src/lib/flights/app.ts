@@ -60,7 +60,7 @@ export function defaultQuery(trip: Trip, lastFrom = "", ids?: string[]): FlightQ
   };
 }
 
-const legOf = (dir: FlightLeg["dir"], l: OfferLeg): FlightLeg => ({ dir, from: l.from, to: l.to, dep: l.dep.slice(0, 16), arr: l.arr.slice(0, 16), carrier: l.carriers.join(" / "), stops: l.stops });
+const legOf = (dir: FlightLeg["dir"], l: OfferLeg): FlightLeg => ({ dir, from: l.from, to: l.to, dep: l.dep.slice(0, 16), arr: l.arr.slice(0, 16), carrier: l.carriers.join(" / "), stops: l.stops, ...(l.toCity ? { toCity: l.toCity } : {}) });
 
 export const stopsText = (n: number) => (n ? tn("n.stops", n) : t("fs.th.direct"));
 
