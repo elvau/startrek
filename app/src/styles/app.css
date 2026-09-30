@@ -228,6 +228,8 @@ body.editing .aside{opacity:.5}
 .stay{display:grid;grid-template-columns:220px minmax(0,1fr);overflow:hidden}
 .stay-img{position:relative;min-height:200px;background:linear-gradient(160deg,#F5C58E,#E07A7A 55%,#6A3F72)}
 .stay-img svg{position:absolute;inset:0;width:100%;height:100%}
+/* Bild der Unterkunft liegt über der Zeichnung */
+.stay-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
 .stay-b{padding:18px 20px;display:flex;flex-direction:column;gap:10px}
 .stay-b h3{font-size:22px}
 .facts{display:flex;flex-wrap:wrap;gap:8px}

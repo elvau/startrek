@@ -159,3 +159,12 @@ describe("Verpflegung aus den Merkmalen der Unterkunft", () => {
   });
 });
 
+describe("Bild der Unterkunft", () => {
+  it("wird beim Übernehmen mitgenommen, nur über https", () => {
+    const base = { id: "t:1", source: "trivago", sourceName: "Trivago", name: "Casa", total: 300, currency: "EUR" };
+    expect(stayToOption({ ...base, image: "https://imgcy.trivago.com/a.jpeg" }, 2).stay?.image).toBe("https://imgcy.trivago.com/a.jpeg");
+    expect(stayToOption({ ...base, image: "javascript:alert(1)" }, 2).stay?.image).toBeUndefined();
+    expect(stayToOption(base, 2).stay?.image).toBeUndefined();
+  });
+});
+
