@@ -196,7 +196,7 @@ try {
   await new Promise(r => setTimeout(r, 2000));
   const b = await page("Anna2");
   await b.goto(URL);
-  await b.locator(".start .linkbtn", { hasText: "schon ein Konto" }).click();
+  await b.locator(".start .linkbtn", { hasText: "Konto anlegen" }).click();
   await b.locator(".login .test input").fill("Anna");
   await b.locator(".login .test button").click();
   await b.locator(".start .acct-btn").waitFor();

@@ -967,7 +967,7 @@ export const de = {
   "watch.title": "Reisebeobachtung",
   "watch.up": "{v} teurer",
   "watch.upTip": "Dasselbe Angebot kostet heute mehr als beim Übernehmen",
-  "welcome.haveAccount": "Ich habe schon ein Konto",
+  "welcome.haveAccount": "Anmelden oder Konto anlegen",
   "who.andOthers": "{a} u. a.",
   "who.createWith": "Reise mit {name} anlegen ({p})",
   "who.familyHint": "Eine oder mehrere Familien, jede als Tier, z. B. „Familie Fuchs: 2 Erwachsene, 2 Kinder“. Echte Namen kannst du später eintragen.",

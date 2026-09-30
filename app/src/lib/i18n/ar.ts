@@ -1050,7 +1050,7 @@ export const ar: Dict = {
   "watch.title": "مراقبة الرحلة",
   "watch.up": "أغلى بـ {v}",
   "watch.upTip": "العرض نفسه يكلف اليوم أكثر مما كان عند إضافته",
-  "welcome.haveAccount": "لدي حساب بالفعل",
+  "welcome.haveAccount": "تسجيل الدخول أو إنشاء حساب",
   "who.andOthers": "{a} وآخرون",
   "who.createWith": "إنشاء رحلة مع {name} ({p})",
   "who.familyHint": "عائلة أو أكثر، كل واحدة باسم حيوان، مثل «عائلة الثعلب: 2 بالغان، 2 طفلان». يمكنك إدخال الأسماء الحقيقية لاحقًا.",

@@ -969,7 +969,7 @@ export const fr: Dict = {
   "watch.title": "Suivi du voyage",
   "watch.up": "{v} plus cher",
   "watch.upTip": "La même offre coûte plus cher aujourd’hui qu’à l’ajout",
-  "welcome.haveAccount": "J’ai déjà un compte",
+  "welcome.haveAccount": "Se connecter ou créer un compte",
   "who.andOthers": "{a} et autres",
   "who.createWith": "Créer le voyage avec {name} ({p})",
   "who.familyHint": "Une ou plusieurs familles, chacune sous forme d’animal, p. ex. « Famille Renard : 2 adultes, 2 enfants ». Tu pourras saisir les vrais noms plus tard.",

@@ -969,7 +969,7 @@ export const en: Dict = {
   "watch.title": "Trip watch",
   "watch.up": "{v} pricier",
   "watch.upTip": "The same offer costs more today than when you added it",
-  "welcome.haveAccount": "I already have an account",
+  "welcome.haveAccount": "Sign in or create an account",
   "who.andOthers": "{a} and others",
   "who.createWith": "Create trip with {name} ({p})",
   "who.familyHint": "One or more families, each as an animal, e.g. “Fox family: 2 adults, 2 children”. You can add real names later.",
