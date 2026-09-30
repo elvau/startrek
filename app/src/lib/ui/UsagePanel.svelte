@@ -4,6 +4,7 @@
   import { admin, fetchUsage } from "../admin/app.svelte";
   import { cloudflareRows, consoleLinks, fmtBytes, providerRows, routeRows, type Row, type UsageReport } from "../admin/usage";
   import Modal from "./Modal.svelte";
+  import UsageBarrel from "./UsageBarrel.svelte";
 
   let report = $state<UsageReport | null>(null);
   let err = $state("");
@@ -27,6 +28,9 @@
     const n = r.bytes ? fmtBytes(r.limit, locale()) : num(r.limit);
     return r.per === "day" ? t("adm.perDay", { n }) : r.per === "month" ? t("adm.perMonth", { n }) : r.per === "min" ? t("adm.perMin", { n }) : n;
   }
+  // kleine, aber vorhandene Nutzung nicht als „0 %“ zeigen
+  const pct = (r: Row) => (r.value > 0 && r.share! < 0.005 ? "<\u20091\u2009%" : `${Math.round(r.share! * 100)}\u2009%`);
+  const LV_ICON = { ok: "✓", warn: "!", high: "‼" } as const;
   const max = (w: number[]) => Math.max(1, ...w);
   const PROJECT = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
 
@@ -50,28 +54,30 @@
       <h4>{t(s.key)}</h4>
       {#if s.err}<p class="err small">{t("adm.missing", { e: s.err })}</p>{/if}
       {#if s.rows.length}
-        <table class="usage-t">
-          <thead><tr><th></th><th>{t("adm.today")}</th><th>{t("adm.days7")}</th><th></th></tr></thead>
-          <tbody>
-            {#each s.rows as r (r.id)}
-              <tr class="lv-{r.level}" data-id={r.id}>
-                <th scope="row">{label(r.label)}{#if r.note}<small>{t(r.note.key as Key, { n: num(r.note.n) })}</small>{/if}</th>
-                <td class="usage-v">
-                  <b>{val(r, r.value)}</b>
-                  {#if r.share != null}<span class="usage-bar" title="{Math.round(r.share * 100)} %"><i style="width:{Math.min(100, r.share * 100)}%"></i></span>{/if}
-                </td>
-                <td>
-                  {#if r.week}
-                    <span class="usage-week" aria-label={r.week.map(num).join(", ")}>
-                      {#each r.week as n, i (i)}<i style="height:{Math.max(n ? 8 : 2, (n / max(r.week)) * 100)}%" title="{report?.days[i]}: {num(n)}"></i>{/each}
-                    </span>
-                  {:else}<span class="muted small">{t("adm.month")}</span>{/if}
-                </td>
-                <td class="muted small">{limitText(r)}{#if r.share != null} · {Math.round(r.share * 100)} %{/if}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+        <div class="usage-cards">
+          {#each s.rows as r (r.id)}
+            <article class="usage-card lv-{r.level}" class:gauge={r.share != null} data-id={r.id}>
+              {#if r.share != null}<UsageBarrel share={r.share} level={r.level} id={r.id} />{/if}
+              <div class="usage-body">
+                <h5>{label(r.label)}</h5>
+                {#if r.share != null}
+                  <div class="usage-pct">{pct(r)}</div>
+                  <div class="usage-of"><b>{val(r, r.value)}</b> / {limitText(r)}</div>
+                  <span class="usage-chip"><i aria-hidden="true">{LV_ICON[r.level]}</i>{t(`adm.lv.${r.level}` as Key)}</span>
+                {:else}
+                  <div class="usage-pct">{val(r, r.value)}</div>
+                  <div class="usage-of">{r.week ? t("adm.today") : t("adm.month")} · {limitText(r)}</div>
+                {/if}
+                {#if r.note}<small class="usage-note">{t(r.note.key as Key, { n: num(r.note.n) })}</small>{/if}
+                {#if r.week}
+                  <div class="usage-week" role="img" aria-label="{t('adm.days7')}: {r.week.map(num).join(', ')}">
+                    {#each r.week as n, i (i)}<i class:today={i === r.week.length - 1} style="height:{Math.max(n ? 10 : 3, (n / max(r.week)) * 100)}%" title="{report?.days[i]}: {num(n)}"></i>{/each}
+                  </div>
+                {/if}
+              </div>
+            </article>
+          {/each}
+        </div>
       {:else if !s.err}<p class="muted small">{t("adm.none")}</p>{/if}
     {/each}
 
