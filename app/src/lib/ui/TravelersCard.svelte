@@ -4,6 +4,7 @@
   import { ageClass } from "../calc";
   import { isActive, isDetailed, uid } from "../model";
   import { dir, saveAsGroup, travelersFrom } from "../directory.svelte";
+  import { applyPeople, personAge } from "../people";
   import Households from "./Households.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
   import QuickFamilies from "./QuickFamilies.svelte";
@@ -33,16 +34,25 @@
     const free = dir.people.filter(p => !app.trip.travelers.some(t => t.personId === p.id));
     // passende Altersklasse zuerst (ohne Alter gespeichert zählt als passend)
     const fits = (a?: number | null) => a == null || ageClass(a, app.trip.settings) === want;
-    return [...free.filter(p => fits(p.age)), ...free.filter(p => !fits(p.age))];
+    const day = app.trip.from || undefined;
+    return [...free.filter(p => fits(personAge(p, day))), ...free.filter(p => !fits(personAge(p, day)))];
   });
   function replaceWith(pid: string) {
     const p = dir.people.find(x => x.id === pid);
     if (!repl || !p) return;
     Object.assign(repl, { name: p.first, household: p.last, personId: p.id, placeholder: undefined });
     // bekanntes Alter gilt, sonst bleibt die Altersklasse des Platzhalters
-    if (p.age != null) { repl.age = p.age; repl.kind = undefined; }
+    const age = personAge(p, app.trip.from || undefined);
+    if (age != null) { repl.age = age; repl.kind = undefined; }
     replacing = null;
   }
+
+  // Geburtsdatum und Wohnort der gespeicherten Personen übernehmen (Alter zum Reisebeginn, Anfahrt zum Flughafen)
+  $effect(() => {
+    if (access.readonly) return;
+    JSON.stringify(dir.people); app.trip.from; app.trip.travelers.length;
+    applyPeople(app.trip, dir.people);
+  });
 
   const missing = (s: string) => !s || !s.trim();
   const incomplete = $derived(app.trip.travelers.some(t => missing(t.name) || missing(t.household)));
@@ -54,7 +64,7 @@
     edit = true;
   }
   function addFrom(ids: string[]) {
-    app.trip.travelers.push(...travelersFrom(ids, app.trip.travelers));
+    app.trip.travelers.push(...travelersFrom(ids, app.trip.travelers, app.trip.from || undefined));
     pick = false;
   }
   function saveGroup() {
@@ -64,7 +74,7 @@
     if (!real.length) { saved = t("trav.noPlaceholders"); return; }
     const name = prompt(t("trav.groupPrompt"), app.trip.name);
     if (!name?.trim()) return;
-    const g = saveAsGroup(name, real);
+    const g = saveAsGroup(name, real, app.trip.households);
     saved = t("trav.savedGroup", { name: g.name, p: tn("n.persons", g.memberIds.length) });
     setTimeout(() => (saved = ""), 4000);
   }

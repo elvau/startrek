@@ -164,3 +164,43 @@ export function watchProfile(uid: string, fn: (data: string | null, pending: boo
 }
 
 export const saveProfile = (uid: string, data: string) => setDoc(profileRef(uid), { data, updatedAt: serverTimestamp() });
+
+/* ---------- Buchungsdaten (travelDocs/{uid}) ----------
+ * Bewusst über die REST-Schnittstelle statt über den Firestore-Client: der legt eine Kopie im Browser (IndexedDB) ab,
+ * die Buchungsdaten sollen aber nur im Konto liegen.
+ */
+
+function docsUrl(uid: string) {
+  const base = emulator ? "http://127.0.0.1:8080/v1" : "https://firestore.googleapis.com/v1";
+  const pid = emulator ? "demo-reisekasse" : env.VITE_FIREBASE_PROJECT_ID;
+  return `${base}/projects/${pid}/databases/(default)/documents/travelDocs/${encodeURIComponent(uid)}`;
+}
+
+async function docsFetch(uid: string, init: RequestInit = {}) {
+  const u = start().auth.currentUser;
+  if (!u || u.uid !== uid) throw new Error("not signed in");
+  const token = await u.getIdToken();
+  return fetch(docsUrl(uid), { ...init, cache: "no-store", headers: { ...(init.headers || {}), Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
+}
+
+/** Buchungsdaten als Text (JSON), null wenn noch keine gespeichert sind */
+export async function loadTravelDocs(uid: string): Promise<string | null> {
+  const r = await docsFetch(uid);
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`travelDocs ${r.status}`);
+  const j = await r.json();
+  return j?.fields?.data?.stringValue ?? null;
+}
+
+export async function saveTravelDocs(uid: string, data: string) {
+  const r = await docsFetch(uid, {
+    method: "PATCH",
+    body: JSON.stringify({ fields: { data: { stringValue: data }, updatedAt: { timestampValue: new Date().toISOString() } } })
+  });
+  if (!r.ok) throw new Error(`travelDocs ${r.status}`);
+}
+
+export async function deleteTravelDocs(uid: string) {
+  const r = await docsFetch(uid, { method: "DELETE" });
+  if (!r.ok && r.status !== 404) throw new Error(`travelDocs ${r.status}`);
+}

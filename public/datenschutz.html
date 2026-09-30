@@ -24,6 +24,7 @@
   <li>Mit Konto liegen Reisen in Google Firebase, damit ihr sie auf mehreren Geräten und mit anderen teilen könnt.</li>
   <li>Für Flug- und Unterkunftssuchen gehen nur <strong>Orte, Daten und die Anzahl der Personen</strong> an die
     Anbieter, keine Namen und keine E-Mail-Adressen.</li>
+  <li>Buchungsdaten (Ausweis, Reisepass) sind freiwillig, liegen nur in eurem Konto und gehen nirgendwo sonst hin.</li>
   <li>Den KI-Planer (Beta) gibt es nur mit Konto; euer Reisewunsch geht dafür an Google Gemini.</li>
   <li>Fehlermeldungen (Beta) landen in einem nicht öffentlichen Projekt bei GitHub, Bilder werden nach 30 Tagen gelöscht.</li>
   <li>Es gibt keine Werbe-Tracker, keine Analyse-Werkzeuge und keine Cookies von mir. Schriften kommen von dieser Seite.</li>
@@ -62,6 +63,36 @@
   sollte diese darüber informieren. Die Daten bleiben gespeichert, bis ihr die Reise oder euer Konto löscht; schreibt
   mir, wenn ich dabei helfen soll. Google ist nach dem EU-US Data Privacy Framework zertifiziert. Mehr:
   <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase und Datenschutz</a>.
+</p>
+
+<h3>Gespeicherte Personen und Buchungsdaten</h3>
+<p>
+  Unter „Gruppen und Personen“ könnt ihr für jede gespeicherte Person Name, Geburtsdatum oder Alter und einen
+  ungefähren Wohnort (Postleitzahl) eintragen. Daraus rechnet die App das Alter zum Reisebeginn und die Anfahrt zum
+  Flughafen. In Reisen landen nur das Alter und der Wohnort der Familie, nicht das Geburtsdatum. Ohne Konto bleibt das
+  in eurem Browser, mit Konto liegt es zusätzlich in Firestore, nur für euch lesbar.
+</p>
+<p>
+  Optional könnt ihr <strong>Buchungsdaten</strong> hinterlegen (Namen laut Ausweis, Geschlecht, Staatsangehörigkeit,
+  Personalausweis- und Reisepassnummer mit Gültigkeit, Ausstellungsland), damit spätere Buchungen schneller gehen.
+  Diese Angaben:
+</p>
+<ul>
+  <li>gibt es nur mit Konto; sie liegen getrennt von allem anderen in Firestore und nur ihr könnt sie lesen,
+    auch Mitreisende und Eingeladene nicht;</li>
+  <li>werden nicht im Browser gespeichert (weder im localStorage noch im Zwischenspeicher), sondern erst geladen, wenn
+    ihr sie öffnet;</li>
+  <li>gehen nicht in Reisen, nicht an den Such-Dienst, nicht an die Anbieter, nicht an den KI-Planer und nicht in
+    Fehlermeldungen;</li>
+  <li>könnt ihr jederzeit je Person oder komplett löschen („Alle Buchungsdaten löschen“); beim Löschen einer Person
+    werden sie mit gelöscht.</li>
+</ul>
+<p>
+  Technisch liegen die Daten bei Google (siehe oben) und sind für mich als Betreiber des Firebase-Projekts
+  grundsätzlich zugänglich. Ich sehe sie mir nicht an und nutze sie nur, um sie euch anzuzeigen.
+  Gebucht wird über Split&amp;Fly derzeit nichts; die Daten werden erst verwendet, wenn es eine Buchungsfunktion gibt
+  und ihr eine Buchung selbst auslöst. Rechtsgrundlage: Art. 6 Abs. 1 lit. a und b DSGVO (freiwillige Angabe für die
+  gewünschte Funktion). Tragt Daten anderer Personen nur mit deren Einverständnis ein.
 </p>
 
 <h2>6. Such-Dienst für Flüge und Unterkünfte (Cloudflare)</h2>

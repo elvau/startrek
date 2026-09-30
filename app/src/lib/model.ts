@@ -33,7 +33,31 @@ export interface Person {
   id: string;
   first: string;
   last: string;
+  /** Alter, falls kein Geburtsdatum bekannt ist */
   age?: number | null;
+  /** Geburtsdatum JJJJ-MM-TT: das Alter zum Reisebeginn rechnet die App selbst */
+  birth?: string;
+  /** ungefährer Wohnort für Anfahrt und Flughafensuche (deutsche PLZ) */
+  home?: { plz: string; ort: string; lat: number; lon: number };
+}
+
+/**
+ * Buchungsdaten einer Person (optional). Liegen nur im Konto (travelDocs/{uid}), nie im Browser, nie in Reisen,
+ * nie bei KI, Such-Dienst oder Fehlermeldungen.
+ */
+export interface TravelDoc {
+  /** Vornamen und Nachname wie im Ausweis, falls abweichend */
+  first?: string;
+  last?: string;
+  gender?: "f" | "m" | "x";
+  /** Staatsangehörigkeit, z. B. „deutsch“ */
+  nationality?: string;
+  idNo?: string;
+  idExpiry?: string;
+  passNo?: string;
+  passExpiry?: string;
+  /** Ausstellungsland des Reisepasses */
+  passCountry?: string;
 }
 
 /** Gespeicherte Gruppe, z. B. Familie oder Kegelclub. Eine Person kann in mehreren Gruppen sein. */

@@ -198,6 +198,71 @@ try {
   await until(async () => (await b.locator(".modal .grp-h").count()) === 2, "Gruppen auf zweitem Gerät");
   log("Gruppen sind nach der Anmeldung auf dem zweiten Gerät da");
 
+  // Details einer Person: Geburtsdatum, Wohnort, Buchungsdaten (nur im Konto)
+  const bd = b.locator(".modal");
+  await bd.locator('.pmore[aria-label="Details zu Uwe"]').click();
+  const det = bd.locator(".pdet");
+  await det.locator("label", { hasText: "Geburtsdatum" }).locator("input").fill("1975-03-10");
+  await det.locator("label", { hasText: "Wohnort" }).locator("input").fill("41236");
+  await until(async () => (await det.locator("label", { hasText: "Wohnort" }).locator("input").inputValue()) === "41236 Mönchengladbach", "Wohnort erkannt");
+  await det.locator(".pdocs .linkbtn", { hasText: "Buchungsdaten anzeigen" }).click();
+  await det.locator("label", { hasText: "Reisepass-Nr." }).locator("input").fill("C01X00T47");
+  await det.locator("label", { hasText: "Personalausweis-Nr." }).locator("input").fill("L01X00T47");
+  await det.locator("label", { hasText: "Vornamen laut Ausweis" }).locator("input").fill("Uwe Heinrich");
+  await det.locator(".pdocs", { hasText: "Im Konto gespeichert" }).waitFor();
+  const sum = await bd.locator('.pmore[aria-label="Details zu Uwe"]').textContent();
+  if (!sum.includes("Mönchengladbach") || !sum.includes("🔒")) fail("Übersicht der Person: " + sum);
+  // im Konto (Emulator, als Verwalter gelesen), aber nicht im Browser-Speicher
+  const docsIn = async () => {
+    const r = await fetch("http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/travelDocs", { headers: { Authorization: "Bearer owner" } });
+    return JSON.stringify(await r.json());
+  };
+  await until(async () => (await docsIn()).includes("C01X00T47"), "Buchungsdaten im Konto");
+  const stored = await b.evaluate(() => JSON.stringify(Object.fromEntries(Object.keys(localStorage).map(k => [k, localStorage.getItem(k)]))));
+  if (stored.includes("C01X00T47") || stored.includes("L01X00T47") || stored.includes("Heinrich")) fail("Buchungsdaten im localStorage");
+  if (!stored.includes("1975-03-10") || !stored.includes("41236")) fail("Geburtsdatum/Wohnort nicht bei der Person");
+  const idb = await b.evaluate(async () => {
+    const out = [];
+    for (const info of await indexedDB.databases()) {
+      const db = await new Promise((res, rej) => { const r = indexedDB.open(info.name); r.onsuccess = () => res(r.result); r.onerror = rej; });
+      for (const st of db.objectStoreNames) {
+        const all = await new Promise(res => { const r = db.transaction(st).objectStore(st).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => res([]); });
+        out.push(JSON.stringify(all));
+      }
+      db.close();
+    }
+    return out.join("");
+  });
+  if (idb.includes("C01X00T47")) fail("Buchungsdaten im Firestore-Zwischenspeicher des Browsers");
+  log("Uwe: Geburtsdatum und Wohnort bei der Person, Buchungsdaten nur im Konto (nicht im Browser-Speicher)");
+
+  // nach dem Neuladen wieder da, erst auf Wunsch geladen
+  await b.reload();
+  await b.locator(".start .grp-btn").click();
+  await until(async () => (await b.locator(".modal .grp-h").count()) === 2, "Gruppen nach Neuladen");
+  await b.locator('.modal .pmore[aria-label="Details zu Uwe"]').click();
+  await b.locator(".modal .pdocs .linkbtn", { hasText: "Buchungsdaten anzeigen" }).click();
+  await until(async () => (await b.locator(".modal .pdet label", { hasText: "Reisepass-Nr." }).locator("input").inputValue().catch(() => "")) === "C01X00T47", "Buchungsdaten geladen");
+  await b.locator(".modal .pdocs .linkbtn", { hasText: "Buchungsdaten dieser Person löschen" }).click();
+  await until(async () => !(await docsIn()).includes("C01X00T47"), "Buchungsdaten gelöscht");
+  log("Buchungsdaten nach Neuladen aus dem Konto geladen und wieder gelöscht");
+  await b.keyboard.press("Escape");
+
+  // Reise mit Uwe: Alter zum Reisebeginn aus dem Geburtsdatum, Wohnort für die Familie Schmitz
+  await b.locator(".start .home-new").click();
+  await b.locator(".newtrip .who-b", { hasText: "Gespeichert" }).click();
+  await b.locator(".newtrip .grp-chip", { hasText: "Kegeln" }).click();
+  await b.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
+  await until(async () => (await b.locator(".hero h1").textContent()).startsWith("Neue Reise"), "Reise mit Uwe offen");
+  await b.locator(".hero-edit").click();
+  await b.locator(".trip-ed label", { hasText: "Von" }).locator("input").fill("2027-03-01");
+  await b.locator(".trip-ed label", { hasText: "Bis" }).locator("input").fill("2027-03-05");
+  await b.locator(".trip-ed .btn", { hasText: "Fertig" }).click();
+  const tripData = () => b.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}"));
+  await until(async () => { const t = await tripData(); return t.travelers?.find(x => x.name === "Uwe")?.age === 51 && t.households?.Schmitz?.geo?.ort === "Mönchengladbach"; }, "Alter 51 und Wohnort in der Reise");
+  if (JSON.stringify(await tripData()).includes("1975-03-10")) fail("Geburtsdatum in der Reise");
+  log("Reise ab 1. März 2027: Uwe ist 51, Familie Schmitz fährt ab Mönchengladbach (Geburtsdatum selbst nicht in der Reise)");
+
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");
 } finally {

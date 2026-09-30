@@ -106,3 +106,17 @@ describe("Personen und Gruppen", () => {
   });
   it("nur erlaubte Felder", () => assertFails(setDoc(doc(db("anna"), "profiles/anna"), { ...prof, admin: true })));
 });
+
+describe("Buchungsdaten", () => {
+  const d = { data: '{"p1":{"passNo":"C01X00T47"}}' };
+  it("nur für einen selbst, auch nicht für Mitreisende", async () => {
+    await assertSucceeds(setDoc(doc(db("anna"), "travelDocs/anna"), d));
+    await assertSucceeds(getDoc(doc(db("anna"), "travelDocs/anna")));
+    await assertFails(getDoc(doc(db("ben"), "travelDocs/anna")));
+    await assertFails(getDoc(doc(db("vera"), "travelDocs/anna")));
+    await assertFails(setDoc(doc(db("ben"), "travelDocs/anna"), d));
+    await assertFails(getDoc(doc(db(), "travelDocs/anna")));
+    await assertSucceeds(deleteDoc(doc(db("anna"), "travelDocs/anna")));
+  });
+  it("nur erlaubte Felder", () => assertFails(setDoc(doc(db("anna"), "travelDocs/anna"), { ...d, x: 1 })));
+});
