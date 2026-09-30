@@ -77,9 +77,14 @@ try {
   const m = p.locator(".modal");
   await m.locator(".ev-form").waitFor();
   // Event suchen und auswählen: Name, Stadt (aus der Anschrift), Stadion, Datum, Uhrzeit werden ausgefüllt
+  // auf einem kleinen Handy: die Treffer müssen sichtbar sein (die Liste wurde im Fenster auf 0 zusammengedrückt)
+  await p.setViewportSize({ width: 406, height: 761 });
   await m.locator(".ev-find input").fill("Arsenal");
   await m.locator(".ev-find .btn").click();
   await m.locator(".ev-hit").first().waitFor();
+  const box = await m.locator(".ev-hits").boundingBox();
+  if (!box || box.height < 100) fail("Treffer auf dem Handy nicht sichtbar, Höhe " + box?.height);
+  await p.setViewportSize({ width: 1280, height: 900 });
   if (evAsked[0]?.q !== "Arsenal") fail("Event-Suche: " + JSON.stringify(evAsked));
   if ((await m.locator(".ev-hit").count()) !== 2) fail("nicht zwei Termine");
   await m.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();

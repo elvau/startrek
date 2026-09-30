@@ -224,6 +224,8 @@ body[data-ch="split"] .amb-split{opacity:1}
 .members select{font:inherit;font-size:13px;padding:5px 8px;border-radius:9px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink)}
 .btn[disabled],.tm-btn[disabled]{opacity:.55;cursor:default}
 .modal{text-align:start}
+/* das Fenster scrollt als Ganzes; Inhalte nie zusammendrücken (scrollbare Listen darin würden sonst auf 0 schrumpfen) */
+.modal>*{flex-shrink:0}
 .hero-edit .ico{display:none}
 @media (max-width:640px){
   .hero-bar{left:12px;right:12px;top:12px}
