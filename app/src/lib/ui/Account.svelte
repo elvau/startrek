@@ -3,6 +3,7 @@
   import { cloud } from "../cloud/cloud.svelte";
   import type { Key } from "../i18n/index.svelte";
   import { localTrips, logout, moveAllToCloud } from "../store.svelte";
+  import { admin, checkAdmin } from "../admin/app.svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
   let open = $state(false);
@@ -13,10 +14,13 @@
 
   $effect(() => {
     if (!open) return;
+    if (cloud.user) void checkAdmin(cloud.user.uid);
     const c = (e: MouseEvent) => { if (!root?.contains(e.target as Node)) open = false; };
     addEventListener("click", c, true);
     return () => removeEventListener("click", c, true);
   });
+  // abgemeldet: Admin-Freigabe bei der nächsten Anmeldung neu prüfen
+  $effect(() => { if (!cloud.user) { admin.uid = ""; admin.is = false; admin.open = false; } });
   async function moveAll() { busy = true; await moveAllToCloud(); busy = false; }
 </script>
 
@@ -38,6 +42,10 @@
             <div class="tm-sep"></div>
             <p class="muted small acct-p">{tn("acct.localTrips", local)}</p>
             <button class="tm-act" onclick={moveAll} disabled={busy}>{busy ? t("acct.moving") : t("acct.moveAll")}</button>
+          {/if}
+          {#if admin.is && admin.uid === cloud.user.uid}
+            <div class="tm-sep"></div>
+            <button class="tm-act acct-usage" onclick={() => { open = false; admin.open = true; }}>{t("adm.open")}</button>
           {/if}
           <div class="tm-sep"></div>
           <button class="tm-act" onclick={() => { open = false; void logout(); }}>{t("acct.logout")}</button>
