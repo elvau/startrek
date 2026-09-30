@@ -53,7 +53,23 @@ export async function searchEvents(q: EventQuery, env: EventEnv = {}, f: typeof 
     }
   }));
   sources.sort((a, b) => EVENT_PROVIDERS.findIndex(p => p.id === a.id) - EVENT_PROVIDERS.findIndex(p => p.id === b.id));
-  return { events: mergeEvents(lists), sources };
+  const events = mergeEvents(lists);
+  return { events: q.city ? events.filter(e => inCity(e, q)) : events, sources };
+}
+
+const plain = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const RADIUS_KM = 40;
+function km(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const r = Math.PI / 180, x = (b.lon - a.lon) * r * Math.cos(((a.lat + b.lat) / 2) * r), y = (b.lat - a.lat) * r;
+  return Math.sqrt(x * x + y * y) * 6371;
+}
+/** Treffer am Reiseort: im Umkreis, sonst Stadt gleich oder in der Anschrift (football-data hat nur die Anschrift) */
+export function inCity(e: EventHit, q: EventQuery): boolean {
+  if (e.lat != null && e.lon != null && q.lat != null && q.lon != null) return km(e as { lat: number; lon: number }, q as { lat: number; lon: number }) <= RADIUS_KM;
+  const names = [q.city, q.cityEn].filter((x): x is string => !!x).map(plain);
+  if (e.city) return names.includes(plain(e.city));
+  if (e.address) return names.some(n => plain(e.address!).includes(n));
+  return true;
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -62,9 +78,17 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 export function parseEventQuery(b: unknown): EventQuery | string {
   const o = (b || {}) as Record<string, unknown>;
   const q = typeof o.q === "string" ? o.q.trim() : "";
-  if (q.length < 2 || q.length > 80) return "Suchbegriff angeben (2 bis 80 Zeichen)";
+  const city = typeof o.city === "string" ? o.city.trim() : "";
+  const cc = typeof o.cc === "string" && /^[A-Z]{2}$/.test(o.cc) ? o.cc : undefined;
+  const cityEn = typeof o.cityEn === "string" && o.cityEn.trim().length <= 60 ? o.cityEn.trim() : "";
+  const lat = Number(o.lat), lon = Number(o.lon);
+  const at = o.lat != null && o.lon != null && isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat, lon } : {};
+  if (city.length > 60) return "Stadt zu lang";
+  // mit Stadt darf der Suchbegriff fehlen („Was läuft vor Ort“)
+  if ((q || !city) && (q.length < 2 || q.length > 80)) return "Suchbegriff angeben (2 bis 80 Zeichen)";
+  if (city && city.length < 2) return "Stadt angeben";
   const from = typeof o.from === "string" && o.from ? o.from : undefined, to = typeof o.to === "string" && o.to ? o.to : undefined;
   if ((from && !DATE.test(from)) || (to && !DATE.test(to))) return "Datum im Format JJJJ-MM-TT";
   if (from && to && to < from) return "Zeitraum endet vor dem Anfang";
-  return { q, ...(from ? { from } : {}), ...(to ? { to } : {}) };
+  return { q, ...(city ? { city, ...(cityEn ? { cityEn } : {}), ...(cc ? { cc } : {}), ...at } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) };
 }

@@ -12,12 +12,14 @@ import { verifyIdToken } from "../../app/src/lib/agent/auth";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
+import { parseActivityQuery, searchActivities } from "../../app/src/lib/activities/search";
+import type { ActivityEnv } from "../../app/src/lib/activities/types";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller } from "./gemini";
 import { isAdmin, meter, noteRoute, usageReport, type UsageEnv } from "./usage";
 
-interface Env extends FlightEnv, StayEnv, EventEnv, BugEnv, UsageEnv {
+interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv {
   /** erlaubte Herkünfte, kommagetrennt */
   ALLOWED_ORIGINS?: string;
   /** KI-Reiseplaner: Schlüssel aus Google AI Studio (Secret); fehlt er, ist der Planer aus */
@@ -88,6 +90,18 @@ export default {
       if (typeof q === "string") return json({ error: q }, 400, h);
       noteRoute(env, "events");
       const result = await cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, meter(env), cachedJson), r => r.events.length > 0, ctx);
+      return json(result, 200, h);
+    }
+
+    if (url.pathname === "/activities/search" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      let body: unknown;
+      try { body = await req.json(); } catch { return json({ error: "Anfrage ist kein JSON" }, 400, h); }
+      const q = parseActivityQuery(body);
+      if (typeof q === "string") return json({ error: q }, 400, h);
+      noteRoute(env, "activities");
+      // Touren ändern sich selten: 6 Stunden aus dem Zwischenspeicher
+      const result = await cachedJson(`activities/${encodeURIComponent(JSON.stringify(q))}`, 6 * 3600, () => searchActivities(q, env, meter(env)), r => r.activities.length > 0, ctx);
       return json(result, 200, h);
     }
 
@@ -185,7 +199,7 @@ async function admin(req: Request, env: Env, h: Record<string, string>): Promise
   const config = {
     agentDaily: Number(env.AGENT_DAILY) || 5, bugDaily: Number(env.BUG_DAILY) || 5,
     model: env.GEMINI_MODEL || DEFAULT_MODEL, fallback: env.GEMINI_FALLBACK_MODEL || "", geminiPerDay: Number(env.GEMINI_RPD) || 0,
-    gemini: !!env.GEMINI_API_KEY, travelpayouts: !!env.TRAVELPAYOUTS_TOKEN, ticketmaster: !!env.TICKETMASTER_KEY,
+    gemini: !!env.GEMINI_API_KEY, travelpayouts: !!env.TRAVELPAYOUTS_TOKEN, ticketmaster: !!env.TICKETMASTER_KEY, viator: !!env.VIATOR_API_KEY,
     footballData: !!env.FOOTBALL_DATA_KEY, bugs: !!(env.GITHUB_TOKEN && env.BUG_REPO), bugImages: !!env.BUG_BUCKET, kv: !!env.AGENT_KV
   };
   return json(await usageReport(env, config), 200, { ...h, "cache-control": "no-store" });
