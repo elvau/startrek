@@ -46,6 +46,12 @@ try {
       const edit = { reply: "Ich ersetze den Flug durch die Anreise mit dem Auto.", estimates: [{ cat: "transport", name: "Anreise mit dem Auto", eur: 300, replaces: fl?.id }] };
       return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], edit, remaining: 1 }) });
     }
+    // Mannschaftsfahrt: 10 Personen, Flüge in Buchungen zu 2 Plätzen
+    if (body.prompt.includes("Mannschaftsfahrt")) {
+      const t = RESULT.trips[0];
+      const trip = { ...t, title: "Mannschaftsfahrt Cala Rajada", party: { adults: 10, childAges: [], infants: 0 }, bookings: [{ offer: t.flight, seats: 2, travelers: 10 }], total: 2400 + 600 };
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [trip], remaining: 1 }) });
+    }
     const beach = body.prompt.includes("Strandurlaub");
     const out = beach && !body.asked ? { trips: [], question: "Von wo fliegt ihr los und wie alt sind die Kinder?", options: ["Köln, Kinder 5 und 8", "Düsseldorf, Kinder 3 und 10"], remaining: 3 }
       : beach ? { ...RESULT, remaining: 2, trips: RESULT.trips.map(x => ({ ...x, party: { adults: 2, childAges: [5, 8], infants: 0 } })) } : RESULT;
@@ -242,6 +248,21 @@ try {
   await p.locator(".start .home-trip", { hasText: "(KI-Vergleich)" }).first().waitFor();
   if (!(await p.locator(".start .home-trip", { hasText: tripName }).count())) fail("ursprüngliche Reise fehlt");
   log("Als KI-Vergleichsreise angelegt, ursprüngliche Reise unverändert");
+
+  // große Gruppe: 10 Personen, Flug in 5 Buchungen à 2 Plätze, jede ein eigener Posten
+  await p.locator(".ai-fab").click();
+  const c5 = p.locator(".ai-chat");
+  await c5.locator(".ai-bar textarea").fill("Mannschaftsfahrt mit 10 Männern nach Mallorca");
+  await c5.locator(".ai-bar textarea").press("Enter");
+  const gcard = c5.locator(".ai-card", { hasText: "Mannschaftsfahrt Cala Rajada" });
+  await gcard.waitFor();
+  if (!(await gcard.innerText()).includes("10 Pers. in 5 Buchungen à 2 Plätze")) fail("Buchungen nicht auf der Karte: " + await gcard.innerText());
+  await gcard.locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.locator(".hero h1", { hasText: "Mannschaftsfahrt" }).waitFor();
+  if (!(await p.locator(".hero .meta").innerText()).includes("10 Personen")) fail("nicht 10 Personen");
+  await until(() => p.locator("#flights .card").count().then(n => n === 5), "5 Flugposten");
+  if (!(await p.locator("#flights .card", { hasText: "(5/5)" }).count())) fail("Buchungen nicht nummeriert");
+  log("Mannschaftsfahrt: 10 Personen, Flug in 5 Buchungen à 2 Plätze als eigene Posten");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");

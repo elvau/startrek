@@ -1,14 +1,14 @@
 /* KI-Planer in der App: Anfrage aus der Reise bauen, an den Such-Dienst schicken, Vorschlag übernehmen */
 import { i18n, t, type Key } from "../i18n/index.svelte";
 import { ageClass, totals } from "../calc";
-import { FLIGHTS_URL, flyers, nearestAirports, passengers, takeOffer } from "../flights/app";
+import { FLIGHTS_URL, flyers, nearestAirports, offerToOption, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
 import { hhKey, uid, type AiMark, type Item, type Prefs, type Trip } from "../model";
 import { syncFood } from "../food";
 import type { GeoData } from "../geo/places";
 import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
-import type { AgentEdit, AgentRequest, AgentResult, AgentTrip, TripBrief } from "./types";
+import type { AgentEdit, AgentRequest, AgentResult, AgentTrip, FlightBooking, TripBrief } from "./types";
 import { noteError } from "../bugs/log";
 
 /** Wunsch plus Reisende, Abflughäfen und was über die Reise schon feststeht */
@@ -103,7 +103,11 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   trip.detail ||= {};
   const at = new Date().toISOString();
   // Flug und Unterkunft sind echte Angebote: „von der KI vorgeschlagen“
-  if (a.flight) { trip.detail.flights = true; takeOffer(trip, a.flight).ai = { at, kind: "suggested" }; }
+  if (a.bookings?.length) {
+    trip.detail.flights = true;
+    const seat = seatQueue(trip);
+    for (const b of a.bookings) takeBookings(trip, b, seat(b.travelers), { at, kind: "suggested" });
+  } else if (a.flight) { trip.detail.flights = true; takeOffer(trip, a.flight).ai = { at, kind: "suggested" }; }
   if (a.stay && a.stayQuery) {
     trip.detail.stay = true;
     const it = takeStay(trip, a.stay, a.stayQuery);
@@ -119,6 +123,31 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   if (a.arrival) { trip.detail.transport = true; trip.items.push(est("transport", a.arrival.label || t("ai.ownArrival"), a.arrival.eur)); }
   if (a.transport) { trip.detail.transport = true; trip.items.push(est("transport", a.transport.label || t("ai.transport"), a.transport.eur)); }
   if (a.extras?.length) { trip.detail.attractions = true; a.extras.forEach(x => trip.items.push(est("attractions", x.name, x.eur))); }
+}
+
+/** Reisende mit eigenem Sitz der Reihe nach verteilen (Babys fliegen bei einem Erwachsenen mit und zählen nicht) */
+function seatQueue(trip: Trip) {
+  const ids = flyers(trip).filter(p => !(p.age != null && (p.age as unknown) !== "" && p.age < 2) && p.kind !== "infant").map(p => p.id);
+  let k = 0;
+  return (n: number) => { const part = ids.slice(k, k + n); k += n; return part; };
+}
+
+/**
+ * Flug in kleinen Buchungen: je höchstens `seats` Reisende ein Flugposten mit ihnen als Teilnehmern,
+ * Preis pro Platz mal Personen. Name „Flug DUS – PMI (2/5)“.
+ */
+export function takeBookings(trip: Trip, b: FlightBooking, ids: string[], ai: AiMark): Item[] {
+  const o = b.offer, per = o.price / Math.max(1, b.seats);
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += Math.max(1, b.seats)) chunks.push(ids.slice(i, i + Math.max(1, b.seats)));
+  const base = t("fl.nameRoute", { a: o.out.fromCity || o.out.from, b: o.out.toCity || o.out.to });
+  return chunks.map((part, i) => {
+    const opt = offerToOption(o);
+    opt.price = { ...opt.price, unit: Math.round(per * part.length * 100) / 100 };
+    const item: Item = { id: uid(), cat: "flights", name: chunks.length > 1 ? `${base} (${i + 1}/${chunks.length})` : base, status: "idea", options: [opt], participants: part, ai: { ...ai } };
+    trip.items.push(item);
+    return item;
+  });
 }
 
 /** Schätzung der KI als Posten, als Richtwert markiert */
@@ -154,7 +183,20 @@ export function applyEdit(trip: Trip, e: AgentEdit) {
     trip.items.splice(k, 1, it);
     for (const x of trip.items) if (x.follow === old.id) x.follow = it.id;
   };
-  for (const f of e.flights || []) { trip.detail.flights = true; place(takeOffer(trip, f.offer), "suggested", f.replaces); }
+  const seat = seatQueue(trip);
+  for (const f of e.flights || []) {
+    trip.detail.flights = true;
+    if (!f.seats || !f.travelers) { place(takeOffer(trip, f.offer), "suggested", f.replaces); continue; }
+    // aufgeteilt: erste Buchung an die Stelle des ersetzten Postens, die weiteren direkt dahinter
+    const items = takeBookings(trip, { offer: f.offer, seats: f.seats, travelers: f.travelers }, seat(f.travelers), { at, kind: "suggested" });
+    place(items[0], "suggested", f.replaces);
+    let k = trip.items.indexOf(items[0]);
+    for (const it of items.slice(1)) {
+      trip.items = trip.items.filter(x => x !== it);
+      it.ai = { at, kind: items[0].ai!.kind };
+      trip.items.splice(++k, 0, it);
+    }
+  }
   for (const s of e.stays || []) {
     trip.detail.stay = true;
     // nicht in einen leeren Unterkunftsposten legen (takeStay tut das), damit „ersetzt“ eindeutig bleibt

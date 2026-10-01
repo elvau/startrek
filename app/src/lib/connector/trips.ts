@@ -76,22 +76,39 @@ const day = () => new Date().toISOString().slice(0, 10);
 
 const legOf = (dir: "out" | "back", l: OfferLeg) => ({ dir, from: l.from, to: l.to, dep: l.dep.slice(0, 16), arr: l.arr.slice(0, 16), carrier: l.carriers.join(" / "), stops: l.stops, ...(l.toCity ? { toCity: l.toCity } : {}) });
 
-/** Flug aus der Suche als Posten (Gesamtpreis für alle, gleich verteilt) */
-export function addFlight(trip: Trip, o: FlightOffer, lang: string): Item {
+/**
+ * Flug aus der Suche als Posten. Ohne seats: Gesamtpreis für alle, gleich verteilt. Mit seats (so viele Plätze hatte
+ * die Suche): für `travelers` Reisende, die noch keinen eigenen Flug haben, in Buchungen zu höchstens `seats` Plätzen,
+ * je Buchung ein Posten mit ihren Reisenden und Preis pro Platz mal Personen.
+ */
+export function addFlight(trip: Trip, o: FlightOffer, lang: string, split?: { seats: number; travelers?: number }): Item[] {
   const stops = o.out.stops ? trn(lang, "n.stops", o.out.stops) : tr(lang, "fs.th.direct");
-  const opt: Option = {
+  const opt = (unit: number): Option => ({
     id: uid(),
     label: `${o.out.carriers.join(" / ")} ${tr(lang, "fs.from", { ap: o.out.from })}, ${stops}`,
     detail: [o.out.route.join(" → "), o.back ? o.back.route.join(" → ") : ""].filter(Boolean).join(" · "),
-    price: { mode: "unit", currency: o.currency, unit: o.price },
+    price: { mode: "unit", currency: o.currency, unit },
     source: { name: o.sourceName, at: day(), ...(o.url ? { url: o.url } : {}) },
     legs: [legOf("out", o.out), ...(o.back ? [legOf("back", o.back)] : [])]
-  };
-  const item: Item = {
-    id: uid(), cat: "flights", status: "idea", options: [opt], ai: { at: at(), kind: "suggested" },
-    name: tr(lang, "fl.nameRoute", { a: o.out.fromCity || o.out.from, b: o.out.toCity || o.out.to })
-  };
-  return push(trip, item);
+  });
+  const name = tr(lang, "fl.nameRoute", { a: o.out.fromCity || o.out.from, b: o.out.toCity || o.out.to });
+  // Reisende mit eigenem Sitz, die noch in keinem Flug für einen Teil der Gruppe stecken
+  const taken = new Set(trip.items.filter(i => i.cat === "flights" && i.participants).flatMap(i => i.participants!));
+  const free = trip.travelers.filter(p => isActive(p) && ageClassOf(p.age, p.kind) !== "infant" && !taken.has(p.id)).map(p => p.id);
+  const seats = split ? Math.max(1, split.seats) : 0;
+  if (!split || (seats >= free.length && (split.travelers ?? free.length) >= free.length && !taken.size)) {
+    return [push(trip, { id: uid(), cat: "flights", status: "idea", options: [opt(o.price)], ai: { at: at(), kind: "suggested" }, name })];
+  }
+  const ids = free.slice(0, Math.max(1, split.travelers ?? free.length));
+  const per = o.price / seats, out: Item[] = [], n = Math.ceil(ids.length / seats);
+  for (let i = 0; i < ids.length; i += seats) {
+    const part = ids.slice(i, i + seats);
+    out.push(push(trip, {
+      id: uid(), cat: "flights", status: "idea", options: [opt(Math.round(per * part.length * 100) / 100)], participants: part,
+      ai: { at: at(), kind: "suggested" }, name: n > 1 ? `${name} (${out.length + 1}/${n})` : name
+    }));
+  }
+  return out;
 }
 
 /** Unterkunft aus der Suche als Posten mit Zeitraum (Preis für den ganzen Aufenthalt) */

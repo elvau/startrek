@@ -113,6 +113,8 @@ export const de = {
   "ai.phTrip": "z. B. günstigeres Hotel, wir fahren mit dem Auto, was fehlt noch?",
   "ai.refine": "Du kannst nachschärfen, z. B. „lieber im Juni“ oder „günstiger“.",
   "ai.send": "Senden",
+  "ai.split.one": "{p} Pers. in {n} Buchung",
+  "ai.split.other": "{p} Pers. in {n} Buchungen à {s} Plätze",
   "ai.takeAll.one": "Als Reise anlegen",
   "ai.takeAll.other": "Alle {n} als Reisen anlegen",
   "ai.taken": "Übernommen. Weitere Angebote findest du in der Flug- und Unterkunftssuche.",

@@ -75,7 +75,8 @@ describe("KI-Reiseplaner", () => {
 
   it("Anfrage wird geprüft", () => {
     expect(parseAgentRequest({ prompt: "hi" })).toMatch(/Worten/);
-    expect(parseAgentRequest({ prompt: "Wochenende in Rom", adults: 20 })).toMatch(/Personen/);
+    expect(parseAgentRequest({ prompt: "Wochenende in Rom", adults: 21 })).toMatch(/Personen/);
+    expect(parseAgentRequest({ prompt: "Mannschaftsfahrt", adults: 10 })).toMatchObject({ adults: 10 });
     const ok = parseAgentRequest({ prompt: "Wochenende in Rom", origins: ["DUS", "xx", "CGN"], lang: "en", adults: 2, childAges: [5], trip: { place: "Rom" } });
     expect(ok).toMatchObject({ origins: ["DUS", "CGN"], lang: "en", childAges: [5], trip: { place: "Rom" } });
   });
@@ -168,6 +169,26 @@ describe("KI-Reiseplaner", () => {
     expect(JSON.stringify(f.asked.bodies[2].contents)).toMatch(/ownArrival/);
     expect(res.trips[0].flight?.id).toBe("f1");
     expect(res.trips[0].arrival).toBeUndefined();
+  });
+
+  it("große Gruppe: Flüge in Buchungen zu 2 Plätzen, auch verschiedene Flüge; Zimmer nach Wunsch", async () => {
+    const r: AgentRequest = { ...req, prompt: "Mannschaftsfahrt, 10 Männer, Mallorca", adults: 10 };
+    const f = fake([
+      call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", seats: 2 }),
+      call("search_flights", { from: ["EIN"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13" }),
+      call("search_stays", { place: "Cala Rajada", checkin: "2027-05-10", checkout: "2027-05-13", rooms: 4 }),
+      call("propose_trips", { trips: [{ title: "Cala Rajada", summary: "x", place: "Cala Rajada", from: "2027-05-10", to: "2027-05-13", stayId: "s1",
+        flights: [{ flightId: "f1~2", travelers: 6 }, { flightId: "f2~9", travelers: 3 }] }] })
+    ]);
+    const res = await runAgent(r, f.deps);
+    // Suche mit 2 Plätzen; ohne Angabe höchstens 9 (eine Buchung fasst nicht mehr)
+    expect(f.asked.flights[0]).toMatchObject({ adults: 2, children: 0 });
+    expect(f.asked.flights[1]).toMatchObject({ adults: 9 });
+    expect(f.asked.stays[0]).toMatchObject({ adults: 10, rooms: 4 });
+    const t = res.trips[0];
+    // 6 im ersten Flug (Preis für 2 → 3 Buchungen), der Rest (4) im zweiten (Preis für 9 → pro Platz)
+    expect(t.bookings?.map(b => [b.offer.id, b.seats, b.travelers])).toEqual([["f1", 2, 6], ["f2", 9, 4]]);
+    expect(t.total).toBe(Math.round(480 / 2 * 6 + 520 / 9 * 4 + 600));
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runAgent, systemPrompt, toolsFor } from "./agent";
-import { applyEdit, hasPlan, tripBrief } from "./app";
+import { applyEdit, hasPlan, takeAgentTrip, tripBrief } from "./app";
 import { editCount, parseAgentRequest, type AgentRequest } from "./types";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, FlightQuery } from "../flights/types";
@@ -122,5 +122,28 @@ describe("KI zur offenen Reise", () => {
     expect(t.items[4].ai?.kind).toBe("created");
     expect(t.items[5].ai?.kind).toBe("created");
     expect(t.ai?.at).toBeTruthy();
+  });
+
+  it("große Gruppe: jede Buchung ein eigener Flugposten mit ihren Reisenden", () => {
+    const t: Trip = { ...trip(), items: [], travelers: Array.from({ length: 10 }, (_, k) => ({ id: `p${k}`, name: `P${k}`, household: "Team" })) };
+    takeAgentTrip(t, {
+      title: "Cala Rajada", summary: "", place: "Cala Rajada", from: "2027-05-10", to: "2027-05-13", total: 0, flight: flight("f1", 100),
+      bookings: [{ offer: flight("f1", 100), seats: 2, travelers: 6 }, { offer: flight("f2", 900), seats: 9, travelers: 4 }]
+    });
+    const fl = t.items.filter(i => i.cat === "flights");
+    expect(fl).toHaveLength(4);
+    expect(fl.map(i => i.participants)).toEqual([["p0", "p1"], ["p2", "p3"], ["p4", "p5"], ["p6", "p7", "p8", "p9"]]);
+    expect(fl.map(i => i.options[0].price.unit)).toEqual([100, 100, 100, 400]);
+    expect(fl[0].name).toMatch(/\(1\/3\)$/);
+    expect(fl.every(i => i.ai?.kind === "suggested")).toBe(true);
+  });
+
+  it("Änderung mit aufgeteiltem Flug: erste Buchung ersetzt den alten Flug, die weiteren direkt dahinter", () => {
+    const t = trip();
+    applyEdit(t, { reply: "", flights: [{ offer: flight("f1", 100), seats: 1, travelers: 2, replaces: "fl" }] });
+    expect(t.items.map(i => i.cat)).toEqual(["flights", "flights", "stay", "transport", "flights"]);
+    expect(t.items[0].participants).toEqual(["a"]);
+    expect(t.items[1].participants).toEqual(["b"]);
+    expect(t.items[1].ai?.kind).toBe("changed");
   });
 });

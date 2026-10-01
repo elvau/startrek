@@ -57,7 +57,7 @@ export interface AgentEdit {
   /** Posten entfernen (Kennungen aus TripBrief) */
   remove?: string[];
   /** echte Angebote aus den Suchen, optional statt eines bisherigen Postens */
-  flights?: { offer: FlightOffer; replaces?: string }[];
+  flights?: { offer: FlightOffer; replaces?: string; seats?: number; travelers?: number }[];
   stays?: { offer: StayOffer; q: StayQuery; replaces?: string }[];
   /** Schätzungen der KI (Beträge für alle) */
   estimates?: { cat: CatKey; name: string; eur: number; replaces?: string }[];
@@ -66,6 +66,19 @@ export interface AgentEdit {
 /** Anzahl der Änderungen (0: nur eine Antwort) */
 export const editCount = (e: AgentEdit) =>
   (e.trip ? Object.keys(e.trip).length : 0) + (e.remove?.length || 0) + (e.flights?.length || 0) + (e.stays?.length || 0) + (e.estimates?.length || 0);
+
+/**
+ * Flug für einen Teil der Gruppe oder in kleinen Buchungen: das Angebot gilt für `seats` Plätze (so gesucht),
+ * genommen für `travelers` Reisende, aufgeteilt in Buchungen zu höchstens `seats` (z. B. 10 Personen = 5 × 2 Plätze).
+ */
+export interface FlightBooking { offer: FlightOffer; seats: number; travelers: number }
+
+/** Flugpreis einer Buchung für ihre Reisenden (Preis pro Platz mal Reisende) */
+export const bookingPrice = (b: FlightBooking) => (b.offer.price / Math.max(1, b.seats)) * b.travelers;
+
+/** alle Flüge eines Vorschlags zusammen */
+export const flightTotal = (a: Pick<AgentTrip, "flight" | "bookings">) =>
+  a.bookings?.length ? a.bookings.reduce((s, b) => s + bookingPrice(b), 0) : a.flight?.price || 0;
 
 /** Reisende, mit denen gesucht wurde (wenn die KI sie aus dem Wunsch oder der Antwort genommen hat) */
 export interface AgentParty { adults: number; childAges: number[]; infants: number }
@@ -79,6 +92,8 @@ export interface AgentTrip {
   from: string;
   to: string;
   flight?: FlightOffer;
+  /** Flüge in mehreren Buchungen (große Gruppe, kleine Buchungen oder verschiedene Flüge); flight ist dann der erste */
+  bookings?: FlightBooking[];
   stay?: StayOffer;
   /** Anfrage, mit der die Unterkunft gefunden wurde (für „Übernehmen“) */
   stayQuery?: StayQuery;
@@ -120,8 +135,9 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   const today = typeof o.today === "string" && DATE.test(o.today) ? o.today : new Date().toISOString().slice(0, 10);
   const origins = Array.isArray(o.origins) ? o.origins.filter(x => typeof x === "string" && /^[A-Z]{3}$/.test(x)).slice(0, 6) as string[] : [];
   const adults = o.adults ?? 1, infants = o.infants ?? 0, childAges = o.childAges ?? [];
-  if (!int(adults, 1, 9) || !int(infants, 0, 4)) return "Personen: 1–9 Erwachsene, bis 4 Babys";
-  if (!Array.isArray(childAges) || childAges.length > 8 || !childAges.every(a => int(a, 0, 17))) return "Kinder: bis zu 8, Alter 0 bis 17";
+  // Gruppen bis 20 Erwachsene: Flüge sucht die KI dann in mehreren Buchungen (höchstens 9 Plätze je Buchung)
+  if (!int(adults, 1, 20) || !int(infants, 0, 4)) return "Personen: 1–20 Erwachsene, bis 4 Babys";
+  if (!Array.isArray(childAges) || childAges.length > 10 || !childAges.every(a => int(a, 0, 17))) return "Kinder: bis zu 10, Alter 0 bis 17";
   const t = (o.trip || {}) as Record<string, unknown>;
   const s = (v: unknown, n: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : undefined);
   const trip = { place: s(t.place, 80), from: s(t.from, 10), to: s(t.to, 10) };
