@@ -101,6 +101,7 @@ export const es: Dict = {
   "ai.err.limit": "Has alcanzado el límite diario. Mañana podrás seguir.",
   "ai.err.login": "Tu sesión ha caducado. Inicia sesión de nuevo.",
   "ai.err.setup": "El asistente IA aún no está configurado.",
+  "ai.err.reason": "(Motivo: {msg})",
   "ai.estimate": "Estimación de la IA",
   "ai.ex1": "Puente largo en mayo, escapada urbana, máx. 400 € por persona",
   "ai.ex2": "Una semana de playa con niños en vacaciones de verano",

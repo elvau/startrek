@@ -99,6 +99,7 @@ export const de = {
   "ai.err.limit": "Tageslimit erreicht. Morgen geht es weiter.",
   "ai.err.login": "Deine Anmeldung ist abgelaufen. Bitte melde dich neu an.",
   "ai.err.setup": "Der KI-Assistent ist noch nicht eingerichtet.",
+  "ai.err.reason": "(Grund: {msg})",
   "ai.estimate": "Schätzung der KI",
   "ai.ex1": "Verlängertes Wochenende im Mai, Städtereise, höchstens 400 € pro Person",
   "ai.ex2": "Eine Woche Strandurlaub mit Kindern in den Sommerferien",

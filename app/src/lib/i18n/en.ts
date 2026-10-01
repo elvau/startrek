@@ -101,6 +101,7 @@ export const en: Dict = {
   "ai.err.limit": "Daily limit reached. You can continue tomorrow.",
   "ai.err.login": "Your sign-in has expired. Please sign in again.",
   "ai.err.setup": "The AI assistant isn’t set up yet.",
+  "ai.err.reason": "(Reason: {msg})",
   "ai.estimate": "AI estimate",
   "ai.ex1": "Long weekend in May, city break, max €400 per person",
   "ai.ex2": "A week at the beach with kids in the summer holidays",
