@@ -31,3 +31,8 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 
 - [ ] Nach Teil 2 oben: `VITE_FIREBASE_AUTH_DOMAIN=splitandfly.com` nur im Release-Build (release.yml), Testumgebung bleibt.
 - [x] Mengenbegrenzung pro IP für die Suchen (60 pro Minute, 600 pro Stunde; v0.9.1).
+- [ ] Vergleichen von Reisen und/oder Posten (nächstes großes Feature; KI-Vergleichsreise aus v0.10.0 ist der Einstieg).
+- [ ] Konnektor (MCP-Server am Such-Dienst) für eigenes Claude: 1) Suchen mit persönlichem Schlüssel (Admin legt an,
+  gespeichert nur als Hash, sperrbar, Tageslimit je Schlüssel, Zählung in „Nutzung & Kontingente“; Claude Code mit Header),
+  2) Reisen im Konto anlegen/ergänzen (Schlüssel an Konto gebunden, nie Buchungsdaten), 3) OAuth über Firebase-Anmeldung
+  für die Claude-App. Vorher: Partnerbedingungen (Weitergabe der Suchergebnisse, Affiliate-Links), Datenschutz ergänzen.
