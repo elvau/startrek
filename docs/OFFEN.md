@@ -4,7 +4,7 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 
 ## Wartet auf Dani
 
-- [ ] **Viator-API-Schlüssel:** Partnerkonto ist freigeschaltet (10/2026), die Partnerkennung (pid/mcid) hängt schon an den
+- [x] **Viator-API-Schlüssel** (eingetragen 10/2026, Suche liefert Touren): Partnerkonto ist freigeschaltet (10/2026), die Partnerkennung (pid/mcid) hängt schon an den
       Viator-Links (bei `PARTNER_LINKS=on`). Fehlt noch: im Partnerkonto unter API den Schlüssel (Production) holen bzw.
       den API-Zugang anfragen und in Cloudflare als Secret `VIATOR_API_KEY` eintragen. Dann zeigt „Touren & Tickets“
       echte Touren (docs/EVENT.md). Danach einmal ausprobieren; hakt es, steht der Grund im Fehlerbericht (🐞).
