@@ -842,3 +842,16 @@ body[data-ch="split"] .amb-split{opacity:1}
 .tk-watch{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px 0 2px;border-top:1px dashed var(--line);margin-top:6px}
 .tk-watch .watch-res{color:var(--ink-2);font-size:12px}
 .wb-cheaper{margin-inline-start:auto;font-size:12.5px}
+/* Kopf der Reise: vier Kacheln als Einstieg und Mini-Übersicht */
+.hero-tiles{margin:16px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(560px,100%)}
+.ht-tile{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:10px;align-items:center;text-align:start;padding:12px 14px;border-radius:18px;border:1px solid var(--glass-line);background:rgba(255,255,255,.72);backdrop-filter:blur(8px);color:inherit;box-shadow:0 10px 26px -14px rgba(14,36,56,.45);transition:transform .15s,background .15s;cursor:pointer;min-width:0}
+.ht-tile:hover:not(:disabled){background:#fff;transform:translateY(-1px)}
+.ht-tile .ht-ico{grid-row:1/4;font-size:22px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--paper-2)}
+.ht-tile small{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.ht-tile b{font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ht-tile .ht-sub{font-size:12.5px;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ht-tile.empty b{color:var(--a)}
+:root[data-theme="dark"] .ht-tile{background:rgba(10,25,45,.6)}
+:root[data-theme="dark"] .ht-tile:hover:not(:disabled){background:rgba(10,25,45,.8)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ht-tile{background:rgba(10,25,45,.6)}:root:not([data-theme="light"]) .ht-tile:hover:not(:disabled){background:rgba(10,25,45,.8)}}
+@media (max-width:420px){.hero-tiles{gap:8px}.ht-tile{padding:10px;column-gap:8px}.ht-tile .ht-ico{width:30px;height:30px;font-size:17px}}

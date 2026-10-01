@@ -60,6 +60,14 @@ try {
   await p.goto(URL);
   await p.locator(".start .home-new").click();
   await p.locator(".modal .newtrip .btn.primary").click();
+  // Kopf der neuen Reise: vier Kacheln als Einstieg; „Zu den Flügen“ öffnet die Suche im Kapitel
+  const tiles = (await p.locator(".hero .ht-tile b").allInnerTexts()).join("|");
+  if (tiles !== "Zu den Flügen|Zu den Hotels|Event hinzufügen|Sonstige Kosten") fail("Kacheln im Kopf: " + tiles);
+  await p.locator(".hero .ht-fl").click();
+  await p.locator("#flights .modal.inline").waitFor();
+  await p.locator("#flights .modal.inline .x").click();
+  await p.locator("#flights .modal.inline").waitFor({ state: "detached" });
+  log("Kopf: Zu den Flügen, Zu den Hotels, Event hinzufügen, Sonstige Kosten; Flüge öffnet die Suche im Kapitel");
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   const m = p.locator(".modal");
