@@ -199,16 +199,23 @@ try {
   log("Verpflegung: Klein 12 Tage, Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
 
   // Sprache umschalten: Texte, Datums- und Betragsformat folgen, die Wahl bleibt nach dem Neuladen
-  await p.locator(".hero .lang-sel").selectOption("en");
+  await p.locator(".top .lang-sel").selectOption("en");
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
   if ((await p.evaluate(() => document.documentElement.lang)) !== "en") fail("html lang nicht en");
   if (!(await p.locator(".top .nav").textContent()).includes("Flights")) fail("Kapitel nicht übersetzt");
   await p.reload();
   await p.locator(".start .home-trip").first().click();
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
-  await p.locator(".hero .lang-sel").selectOption("de");
+  await p.locator(".top .lang-sel").selectOption("de");
   await p.locator("#stay .st-open", { hasText: "Unterkunft suchen" }).waitFor();
   log("Sprache: Englisch gewählt, Oberfläche übersetzt, bleibt nach dem Neuladen; zurück auf Deutsch");
+
+  // Leiste oben bleibt beim Scrollen, die Gesamtkosten rechts bleiben darunter im Blick
+  await p.evaluate(() => scrollTo({ top: 2500, behavior: "instant" }));
+  await p.waitForTimeout(500);
+  const sticky = await p.evaluate(() => ({ bar: document.querySelector(".top-in").getBoundingClientRect().bottom, aside: document.querySelector(".aside").getBoundingClientRect().top }));
+  if (sticky.bar <= 0 || sticky.bar > sticky.aside || sticky.aside > 120) fail("Leiste oder Gesamtkosten nicht im Blick: " + JSON.stringify(sticky));
+  log("Scrollen: Leiste oben sichtbar, Gesamtkosten rechts bleiben darunter stehen");
 
   // Rundreise wie bei Eduard: Quito → Lima → Rio, Nachtflug nach Rio; Lücken und Suche je Stadt statt „alles in Quito“
   const leg = (dir, from, to, dep, arr, toCity) => ({ dir, from, to, dep, arr, ...(toCity ? { toCity } : {}) });

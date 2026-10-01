@@ -49,20 +49,20 @@ try {
   // erster Besuch: Willkommen, Anna schaut sich das Beispiel an
   await anna.locator(".start .linkbtn", { hasText: "Beispielreise ansehen" }).click();
   await until(async () => (await anna.locator(".hero-in").textContent()).includes("Makarska"), "Beispielreise offen");
-  if ((await anna.locator(".hero .tm-btn").first().click(), await anna.locator(".tm-trip").count()) !== 1) fail("leere Reise nicht weggeräumt");
+  if ((await anna.locator(".top .tm-btn").first().click(), await anna.locator(".tm-trip").count()) !== 1) fail("leere Reise nicht weggeräumt");
   await anna.keyboard.press("Escape");
-  await anna.locator(".hero .acct .tm-btn", { hasText: "Anmelden" }).click();
+  await anna.locator(".top .acct .tm-btn", { hasText: "Anmelden" }).click();
   await login(anna, "Anna");
   log("Anna angemeldet");
-  await anna.locator(".hero .acct-btn").click();
+  await anna.locator(".top .acct-btn").click();
   await anna.locator(".tm-act", { hasText: "Ins Konto übernehmen" }).click();
-  await until(async () => (await anna.locator(".hero .tm-btn").textContent()).includes("☁"), "Reise im Konto");
+  await until(async () => (await anna.locator(".top .tm-btn").textContent()).includes("☁"), "Reise im Konto");
   const before = await total(anna);
   tripId = await anna.evaluate(() => localStorage.getItem("rk2-current"));
   log("Reise im Konto, Summe", before);
 
   // Anna erstellt einen Einladungslink
-  await anna.locator(".hero .tm-btn").first().click();
+  await anna.locator(".top .tm-btn").first().click();
   await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
   await anna.locator(".modal .btn", { hasText: "Link erstellen" }).click();
   const link = await anna.locator(".linkbox input").inputValue();
@@ -75,7 +75,7 @@ try {
   await oma.goto(link);
   await oma.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
   await login(oma, "Oma");
-  await until(async () => (await oma.locator(".hero .tm-btn").first().textContent()).includes("☁"), "Oma hat die Reise im Konto");
+  await until(async () => (await oma.locator(".top .tm-btn").first().textContent()).includes("☁"), "Oma hat die Reise im Konto");
   await until(async () => (await oma.locator(".hero-in").textContent()).includes("Makarska"), "Oma sieht die Reise");
   await until(async () => !(await oma.locator(".banner").count()), "Stand geladen");
   if ((await total(oma)) !== before) fail(`Oma sieht ${await total(oma)} statt ${before}`);
@@ -95,7 +95,7 @@ try {
   await dbState("danach");
 
   // Anna macht Oma zur Zuschauerin
-  await anna.locator(".hero .tm-btn").first().click();
+  await anna.locator(".top .tm-btn").first().click();
   await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
   await anna.locator(".members li", { hasText: "Oma" }).locator("select").selectOption("viewer");
   await until(async () => (await oma.locator(".banner", { hasText: "nur an" }).count()) > 0, "Oma ist nur noch Zuschauerin");
@@ -111,16 +111,16 @@ try {
   await mal.goto(link);
   await login(mal, "Mallory");
   await until(async () => (await mal.locator(".banner.err").count()) > 0, "Mallory wird abgewiesen");
-  if ((await mal.locator(".hero .tm-btn").first().textContent()).includes("☁")) fail("Mallory ist in der Reise");
+  if ((await mal.locator(".top .tm-btn").first().textContent()).includes("☁")) fail("Mallory ist in der Reise");
   log("Zurückgezogener Link funktioniert nicht mehr");
 
   // Mallory löscht ihre einzige Reise auf dem Gerät: danach eine leere Reise im Konto, kein Beispiel mehr
   mal.on("dialog", d => d.accept());
-  await mal.locator(".hero .tm-btn").first().click();
+  await mal.locator(".top .tm-btn").first().click();
   await mal.locator(".tm-act", { hasText: "Diese Reise löschen" }).click();
   await until(async () => (await mal.locator(".hero h1").textContent()).startsWith("Neue Reise"), "leere Reise nach dem Löschen");
-  await until(async () => (await mal.locator(".hero .tm-btn").first().textContent()).includes("☁"), "leere Reise liegt im Konto");
-  await mal.locator(".hero .acct-btn").click();
+  await until(async () => (await mal.locator(".top .tm-btn").first().textContent()).includes("☁"), "leere Reise liegt im Konto");
+  await mal.locator(".top .acct-btn").click();
   if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("Hinweis auf Gerät-Reise bleibt");
   await mal.keyboard.press("Escape");
   log("Letzte Reise gelöscht: leere Reise im Konto, kein Beispiel");
@@ -131,7 +131,7 @@ try {
     localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "verwaist", name: "Alt", place: "" }]));
   });
   await mal.reload();
-  await mal.locator(".start .acct-btn").click();
+  await mal.locator(".top .acct-btn").click();
   await mal.locator(".acct-pop").waitFor();
   if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("verwaister Eintrag zählt als Reise auf dem Gerät");
   await mal.keyboard.press("Escape");
@@ -155,7 +155,7 @@ try {
   // fertig aufgeräumt erst, wenn auch der Verzeichniseintrag weg ist (die Kopie kann vorher schon fehlen)
   await until(async () => await mal.evaluate(() => !localStorage.getItem("rk2-t:woanders-weg") && !(localStorage.getItem("rk2-index") || "").includes("woanders-weg")), "Kopie und Eintrag der woanders gelöschten Reise weg");
   if (await mal.locator(".home-trip", { hasText: "Rom" }).count()) fail("woanders gelöschte Reise auf der Startseite");
-  await mal.locator(".start .acct-btn").click();
+  await mal.locator(".top .acct-btn").click();
   await mal.locator(".acct-pop").waitFor();
   if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("woanders gelöschte Reise zählt als Reise auf dem Gerät");
   await mal.keyboard.press("Escape");
@@ -165,7 +165,7 @@ try {
   await dbState("vor Neuladen");
   await anna.reload();
   await anna.locator(".start .home-trip").first().click();
-  await until(async () => (await anna.locator(".hero .tm-btn").first().textContent()).includes("☁"), "nach Neuladen im Konto");
+  await until(async () => (await anna.locator(".top .tm-btn").first().textContent()).includes("☁"), "nach Neuladen im Konto");
   await until(async () => (await total(anna)) === omaTotal, "nach Neuladen gleiche Summe").catch(async e => {
     console.log("Anna nach Neuladen:", await total(anna), await anna.evaluate(() => [localStorage.getItem("rk2-current"), document.querySelector(".banner")?.textContent]));
     throw e;

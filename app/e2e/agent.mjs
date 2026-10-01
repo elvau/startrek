@@ -76,7 +76,7 @@ try {
   await c.locator(".ai-login .btn").click();
   await p.locator(".login .test input").fill("Kira");
   await p.locator(".login .test button").click();
-  await p.locator(".start .acct-btn").waitFor({ timeout: 15000 });
+  await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
   log("Chat unten rechts: ohne Anmeldung nur Hinweis, Anmeldung daraus");
 
   // Beispiel antippen schickt den Wunsch; Anfrage mit Anmelde-Nachweis und Reisenden
@@ -129,7 +129,7 @@ try {
   log("Vorschlag von der Startseite übernommen: neue Reise mit Flug und Unterkunft");
 
   // zurück zur Startseite: die Reise steht unter „Deine Reisen“
-  await p.locator(".hero .hero-home").click();
+  await p.locator(".top .brand-btn").click();
   await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).waitFor();
   await shot("home-trips");
   await shot("home-m", 390, 844);
@@ -159,7 +159,7 @@ try {
   log("Übernommen: neue Reise mit 2 Erwachsenen und 2 Kindern aus der Antwort");
 
   // ganze Reise auf der Karte: Posten, Schätzungen mit ≈, Gesamtpreis; alle Vorschläge als Reisen anlegen
-  await p.locator(".hero .hero-home").click();
+  await p.locator(".top .brand-btn").click();
   await p.locator(".ai-fab").click();
   const card = p.locator(".ai-card", { hasText: "Sonne in Palma" }).last();
   const ct = await card.innerText();
@@ -174,7 +174,7 @@ try {
 
   // Vorlieben: „Ich“ mit Wohnort, gesperrtes Land, Umstiege, Reisestil → gehen ohne Namen an den KI-Planer
   await p.keyboard.press("Escape");
-  await p.locator(".start .grp-btn").click();
+  await p.locator(".top .grp-btn").click();
   const gd = p.locator(".modal");
   const pform = gd.locator("form", { hasText: "Vorname" });
   await pform.locator("input").nth(0).fill("Dani");
@@ -244,7 +244,7 @@ try {
   await p.locator(".hero h1", { hasText: "(KI-Vergleich)" }).waitFor();
   if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Vergleichsreise mit Flug");
   await c4.locator(".ai-head .x").click();
-  await p.locator(".hero .hero-home").click();
+  await p.locator(".top .brand-btn").click();
   await p.locator(".start .home-trip", { hasText: "(KI-Vergleich)" }).first().waitFor();
   if (!(await p.locator(".start .home-trip", { hasText: tripName }).count())) fail("ursprüngliche Reise fehlt");
   log("Als KI-Vergleichsreise angelegt, ursprüngliche Reise unverändert");
@@ -262,10 +262,26 @@ try {
   if (!(await p.locator(".hero .meta").innerText()).includes("10 Personen")) fail("nicht 10 Personen");
   await until(() => p.locator("#flights .card").count().then(n => n === 5), "5 Flugposten");
   if (!(await p.locator("#flights .card", { hasText: "(5/5)" }).count())) fail("Buchungen nicht nummeriert");
+  // der übernommene Vorschlag liegt auch im Konto (nicht nur die leere Reise vom Anlegen)
+  const mfId = await p.evaluate(() => localStorage.getItem("rk2-current"));
+  const inDb = async () => {
+    const r = await fetch(`http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/${mfId}`, { headers: { Authorization: "Bearer owner" } });
+    const f = (await r.json()).fields || {};
+    const d = JSON.parse(f.data?.stringValue || "{}");
+    return f.name?.stringValue === "Mannschaftsfahrt Cala Rajada" && (d.items || []).filter(i => i.cat === "flights").length === 5 && d.travelers?.length === 10;
+  };
+  await until(inDb, "Vorschlag im Konto gespeichert");
+  // auch die mit „Alle übernehmen“ angelegten Reisen: keine bleibt als leere „Reise“ im Konto
+  const uid = await p.evaluate(() => Object.keys(localStorage).find(k => k.startsWith("rk2-cloud-seen:")).slice("rk2-cloud-seen:".length));
+  const names = async () => {
+    const r = await fetch("http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips?pageSize=300", { headers: { Authorization: "Bearer owner" } });
+    return ((await r.json()).documents || []).filter(d => d.fields?.owner?.stringValue === uid).map(d => d.fields?.name?.stringValue);
+  };
+  await until(async () => !(await names()).includes("Reise"), "alle KI-Reisen im Konto gespeichert, nicht leer");
   log("Mannschaftsfahrt: 10 Personen, Flug in 5 Buchungen à 2 Plätze als eigene Posten");
 
   // Startseite: sortieren (Preis, zuletzt bearbeitet, Land), Liste statt Kacheln, Wahl bleibt nach dem Neuladen
-  await p.locator(".hero .hero-home").click();
+  await p.locator(".top .brand-btn").click();
   await p.locator(".home-sort .chip", { hasText: "Preis" }).click();
   const prices = await p.locator(".home-trips").first().locator(".ht-total").allInnerTexts();
   const num = s => Number(s.replace(/[^\d,]/g, "").replace(",", "."));
@@ -303,6 +319,22 @@ try {
   if (!asked2.includes("Idee Lissabon")) fail("Rückfrage ohne Namen: " + asked2);
   if (!(await p.locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
   log("Aufräumen: unberührter Entwurf still gelöscht, „Idee Lissabon“ (ohne Kosten) nach Rückfrage, Reisen mit Kosten bleiben");
+
+  // „Zu einem Event“ direkt nach dem Laden, das Konto ist noch nicht da: Kommt es danach, bleibt die neue Reise offen
+  // (früher wurde sie gegen die erste Konto-Reise getauscht und der Event-Plan landete dort)
+  let release = () => {};
+  const gate = new Promise(r => (release = r));
+  await p.route("**/assets/firebase-*.js", async r => { await gate; await r.continue(); });
+  await p.reload();
+  await p.locator(".start .home-event").click();
+  await p.locator(".modal[aria-label='Reise zu einem Event']").waitFor();
+  release();
+  await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
+  await p.waitForTimeout(1500);
+  const opened = await p.locator(".top .tm-name").innerText();
+  if (opened !== "Neue Reise") fail("neue Reise gegen Konto-Reise getauscht: " + opened);
+  await p.unroute("**/assets/firebase-*.js");
+  log("Zu einem Event direkt nach dem Laden: neue Reise bleibt offen, auch wenn das Konto erst danach da ist");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");

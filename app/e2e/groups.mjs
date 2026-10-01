@@ -26,7 +26,7 @@ async function until(fn, what, ms = 15000) {
   fail("Zeitüberschreitung: " + what);
 }
 const total = p => p.locator(".tk-top b").textContent();
-const menu = async p => { await p.evaluate(() => scrollTo(0, 0)); await p.locator(".hero .tm-btn").first().click(); };
+const menu = async p => { await p.evaluate(() => scrollTo(0, 0)); await p.locator(".top .tm-btn").first().click(); };
 
 try {
   const a = await page("Anna");
@@ -40,7 +40,7 @@ try {
 
   // Gruppen und Personen anlegen
   await a.evaluate(() => scrollTo(0, 0));
-  await a.locator(".hero .grp-btn").click();
+  await a.locator(".top .grp-btn").click();
   const d = a.locator(".modal");
   await d.locator("form", { hasText: "Neue Gruppe" }).locator("input").fill("Familie Klein");
   await d.locator("form", { hasText: "Neue Gruppe" }).locator("button").click();
@@ -67,7 +67,7 @@ try {
 
   // Neue Reise für die Kegelgruppe, einfacher Modus
   await a.evaluate(() => scrollTo(0, 0));
-  await a.locator(".hero .tm-plus").click();
+  await a.locator(".top .tm-plus").click();
   if (await a.locator(".newtrip label", { hasText: "Wohin" }).count()) fail("Wohin noch im Dialog");
   if (!(await a.locator(".newtrip .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
   // Gruppe: erst der Weg (nichts vorausgewählt), dann die gespeicherte Gruppe antippen
@@ -79,13 +79,13 @@ try {
   await a.locator(".newtrip .btn.primary", { hasText: "Reise mit Kegeln anlegen (2 Personen)" }).click();
   await until(async () => (await a.locator(".hero h1").textContent()).startsWith("Neue Reise"), "neue Reise offen");
   // Ort und Zeitraum oben in der Reise: der Name bildet sich daraus
-  await a.locator(".hero-edit").click();
+  await a.locator(".top-edit").click();
   await a.locator(".trip-ed label", { hasText: "Ort" }).locator("input").fill("Mosel");
   await a.locator(".trip-ed label", { hasText: "Von" }).locator("input").fill("2027-05-06");
   await a.locator(".trip-ed label", { hasText: "Bis" }).locator("input").fill("2027-05-09");
   await a.locator(".trip-ed .btn", { hasText: "Fertig" }).click();
   await until(async () => (await a.locator(".hero h1").textContent()).includes("Mosel"), "Ort eingetragen");
-  const tname = await a.locator(".hero .tm-name").first().textContent();
+  const tname = await a.locator(".top .tm-name").first().textContent();
   if (tname !== "Mosel · Mai 2027 · 4 Tage") fail("Name: " + tname);
   await menu(a);
   const listed = await a.locator(".tm-trip").allInnerTexts();
@@ -99,7 +99,7 @@ try {
   await a.keyboard.type("Kegeltour 2027");
   await a.keyboard.press("Enter");
   await until(async () => (await a.locator(".hero h1").textContent()).startsWith("Kegeltour 2027"), "eigener Name");
-  if ((await a.locator(".hero .tm-name").first().textContent()) !== "Kegeltour 2027") fail("Name oben nicht übernommen");
+  if ((await a.locator(".top .tm-name").first().textContent()) !== "Kegeltour 2027") fail("Name oben nicht übernommen");
   if (!(await a.locator(".hero .meta").textContent()).startsWith("Mosel")) fail("Ort nicht unter dem Namen");
   log("Umbenannt direkt in der Überschrift: „Kegeltour 2027“, darunter Mosel");
   const names = (await a.locator(".person:not(.add) b").allTextContents()).join(", ");
@@ -147,7 +147,7 @@ try {
 
   // Schnell mit Platzhaltern: zwei Tierfamilien (zufällige Tiere)
   await a.evaluate(() => scrollTo(0, 0));
-  await a.locator(".hero .tm-plus").click();
+  await a.locator(".top .tm-plus").click();
   await a.locator(".newtrip .who-b", { hasText: "Familie" }).click();
   if (await a.locator(".newtrip .qf").count()) fail("Tiere vorausgewählt");
   await a.locator(".newtrip .src-b", { hasText: "Mit Platzhalter-Tieren" }).click();
@@ -189,18 +189,18 @@ try {
 
   // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da
   await a.evaluate(() => scrollTo(0, 0));
-  await a.locator(".hero .acct .tm-btn", { hasText: "Anmelden" }).click();
+  await a.locator(".top .acct .tm-btn", { hasText: "Anmelden" }).click();
   await a.locator(".login .test input").fill("Anna");
   await a.locator(".login .test button").click();
-  await a.locator(".hero .acct-btn").waitFor();
+  await a.locator(".top .acct-btn").waitFor();
   await new Promise(r => setTimeout(r, 2000));
   const b = await page("Anna2");
   await b.goto(URL);
   await b.locator(".start .linkbtn", { hasText: "Konto anlegen" }).click();
   await b.locator(".login .test input").fill("Anna");
   await b.locator(".login .test button").click();
-  await b.locator(".start .acct-btn").waitFor();
-  await b.locator(".start .grp-btn").click();
+  await b.locator(".top .acct-btn").waitFor();
+  await b.locator(".top .grp-btn").click();
   await until(async () => (await b.locator(".modal .grp-h").count()) === 2, "Gruppen auf zweitem Gerät");
   log("Gruppen sind nach der Anmeldung auf dem zweiten Gerät da");
 
@@ -244,7 +244,7 @@ try {
 
   // nach dem Neuladen wieder da, erst auf Wunsch geladen
   await b.reload();
-  await b.locator(".start .grp-btn").click();
+  await b.locator(".top .grp-btn").click();
   await until(async () => (await b.locator(".modal .grp-h").count()) === 2, "Gruppen nach Neuladen");
   await b.locator('.modal .pmore[aria-label="Details zu Uwe"]').click();
   await b.locator(".modal .pdocs .linkbtn", { hasText: "Buchungsdaten anzeigen" }).click();
@@ -261,7 +261,7 @@ try {
   await b.locator(".newtrip .sg-h", { hasText: "Kegeln" }).click();
   await b.locator(".newtrip .btn.primary", { hasText: "Reise mit Kegeln anlegen" }).click();
   await until(async () => (await b.locator(".hero h1").textContent()).startsWith("Neue Reise"), "Reise mit Uwe offen");
-  await b.locator(".hero-edit").click();
+  await b.locator(".top-edit").click();
   await b.locator(".trip-ed label", { hasText: "Von" }).locator("input").fill("2027-03-01");
   await b.locator(".trip-ed label", { hasText: "Bis" }).locator("input").fill("2027-03-05");
   await b.locator(".trip-ed .btn", { hasText: "Fertig" }).click();
@@ -272,7 +272,7 @@ try {
 
   // Startseite: Reise direkt löschen (Konto-Reise, eigene)
   await b.evaluate(() => scrollTo(0, 0));
-  await b.locator(".hero-home").click();
+  await b.locator(".top .brand-btn").click();
   await until(async () => (await b.locator(".ht-wrap").count()) > 0, "Reisen auf der Startseite");
   const n0 = await b.locator(".ht-wrap").count();
   const victim = await b.locator(".ht-wrap .home-trip b").first().textContent();

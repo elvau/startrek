@@ -106,10 +106,22 @@ try {
   await m.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
   const val = async label => m.locator("label.f", { hasText: label }).locator("input").inputValue();
   if (await val("Was?") !== "Arsenal – Bayern" || await val("Wo genau?") !== "Emirates Stadium" || await val("Datum") !== "2027-05-15" || await val("Beginn") !== "15:30") fail("Felder nicht ausgefüllt");
-  // Stadt kommt nach dem Laden der Orte aus der Anschrift
-  for (let i = 0; i < 40 && !(await m.locator(".lp input").inputValue()).startsWith("London"); i++) await p.waitForTimeout(150);
-  if (!(await m.locator(".lp input").inputValue()).startsWith("London")) fail("Stadt nicht aus der Anschrift: " + await m.locator(".lp input").inputValue());
-  log("Event gesucht und übernommen: Name, Stadt, Stadion, Datum, Uhrzeit");
+  // Stadt kommt nach dem Laden der Orte aus der Anschrift, das Ziel aus der Lage des Stadions: Flughäfen im Umkreis
+  const dest = m.locator(".ev-form .lp").first().locator("input");
+  for (let i = 0; i < 40 && !(await dest.inputValue()).startsWith("Umkreis London"); i++) await p.waitForTimeout(150);
+  if (!/^Umkreis London: .*LHR/.test(await dest.inputValue())) fail("Ziel nicht aus Stadt und Stadion: " + await dest.inputValue());
+  // antippen: Flughäfen rund ums Stadion zur Auswahl
+  await dest.focus();
+  if (!(await m.locator(".lp-list li", { hasText: "LCY" }).count())) fail("Flughäfen am Stadion nicht zur Auswahl");
+  await dest.press("Escape");
+  log("Event gesucht und übernommen: Name, Stadt, Stadion, Datum, Uhrzeit; Ziel aus der Lage des Stadions, Flughäfen dort zur Auswahl");
+  // Abflughäfen: vorausgewählte abwählen, weitere hinzufügen
+  const chips = m.locator(".ev-form .fs-aps .chip");
+  const first = (await chips.first().textContent()).trim();
+  await chips.first().click();
+  await m.locator(".ev-form .fs-add input").fill("AMS");
+  await m.locator(".lp-list li", { hasText: "AMS" }).first().click();
+  if (!(await m.locator(".ev-form .fs-aps .chip.on", { hasText: "AMS" }).count())) fail("AMS nicht hinzugefügt");
   await m.locator("label.f", { hasText: "Dauer" }).locator("input").fill("2");
   await m.locator(".ev-form .btn.primary").click();
   await m.locator(".ev-card").first().waitFor();
@@ -120,7 +132,7 @@ try {
   if (asked.length !== 4) fail("gescheiterte Flugsuche nicht wiederholt: " + asked.length);
   const dates = [...new Set(asked.map(q => `${q.depart}/${q.ret}`))].sort();
   if (dates.join() !== "2027-05-14/2027-05-16,2027-05-15/2027-05-15,2027-05-15/2027-05-16") fail("Flugsuchen: " + dates);
-  if (!asked.every(q => q.toAirports.includes("LHR") && q.fromAirports.length && !q.bags)) fail("Anfrage falsch: " + JSON.stringify(asked[0]));
+  if (!asked.every(q => q.toAirports.includes("LHR") && q.fromAirports.includes("AMS") && !q.fromAirports.includes(first) && !q.bags)) fail("Anfrage falsch: " + JSON.stringify(asked[0]));
   if (stays.length !== 2 || !stays.every(s => s.place === "London" && s.type === "all")) fail("Unterkunftssuche: " + JSON.stringify(stays));
   log("Drei Vorschläge aus drei Flug- und zwei Unterkunftssuchen, gescheiterte Flugsuche (Kiwi) einmal wiederholt");
 

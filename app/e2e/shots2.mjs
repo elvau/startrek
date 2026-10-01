@@ -23,7 +23,7 @@ try {
     }
     if (n === "d") {
       await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(400);
-      await p.locator(".hero .tm-btn").first().click(); await p.locator(".tm-act", { hasText: "+ Neue Reise" }).click();
+      await p.locator(".top .tm-btn").first().click(); await p.locator(".tm-act", { hasText: "+ Neue Reise" }).click();
       await p.locator(".newtrip .who-b", { hasText: "Gruppe" }).click();
       await p.locator(".newtrip .src-b", { hasText: "Aus meinen Gruppen" }).click();
       await p.locator(".newtrip .sg-h", { hasText: "Kegeln" }).click(); await p.waitForTimeout(300);

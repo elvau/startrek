@@ -71,7 +71,7 @@ try {
   await p.locator(".tm-btn", { hasText: "Anmelden" }).first().click();
   await p.locator(".login .test input").fill("Claudia");
   await p.locator(".login .test button").click();
-  await p.locator(".start .acct-btn").waitFor({ timeout: 15000 });
+  await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
 
   // Reise vom Konnektor: in der Liste, öffnen, Flug mit KI-Markierung, Platzhalter statt Namen
   await p.locator(".start .home-trip", { hasText: "Palma mit Claude" }).waitFor({ timeout: 15000 });
@@ -95,7 +95,7 @@ try {
 
   // Schlüssel im Kontomenü erzeugen: Anfrage angemeldet, Schlüssel und Befehl für Claude Code
   await p.evaluate(() => scrollTo(0, 0));
-  await p.locator(".hero .acct-btn").click();
+  await p.locator(".top .acct-btn").click();
   await p.locator(".acct-mcp").click();
   await p.locator(".modal .mcp-make").click();
   await p.locator(".modal .mcp-key").waitFor();
