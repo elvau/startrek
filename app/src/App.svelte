@@ -46,10 +46,11 @@
   import { explore, openExplore } from "./lib/activities/open.svelte";
   import { openEventPlanner } from "./lib/event/open.svelte";
   import { eventWindow } from "./lib/activities/window";
-  import { CAR_LINKS, INSURANCE_LINKS, carItem, carWindow, insuranceItem, kayakCarLink } from "./lib/extras";
+  import { CAR_LINKS, INSURANCE_LINKS, carItem, carPerDay, carWindow, insuranceItem, kayakCarLink } from "./lib/extras";
+  import { airportOf, ccOf } from "./lib/geo/places";
   import { showItem } from "./lib/ui/showItem";
   import { stationName } from "./lib/stays/stationName";
-  import { airportData, ensureAirports, geo } from "./lib/geo/geo.svelte";
+  import { airportData, ensureAirports, ensureGeo, geo } from "./lib/geo/geo.svelte";
 
   let sheet = $state(false);
 
@@ -80,10 +81,13 @@
   });
 
   // Mietwagen und Reiseversicherung als Richtwert-Posten
-  function addCar() {
+  async function addCar() {
+    await ensureGeo(app.trip).catch(() => {});
     const w = carWindow(app.trip) || { pick: "", drop: "", days: Math.max(1, nn || 1) };
     setDetailed("transport", true);
-    const it = carItem(w);
+    // Preisniveau des Ziellandes (Reise, sonst Land des Ankunftsflughafens)
+    const cc = ccOf(geo, app.trip.country) || ("ap" in w && w.ap ? airportOf(geo, w.ap)?.cc : undefined);
+    const it = carItem(w, carPerDay(geo.world.find(x => x.k === cc)?.pli));
     app.trip.items.push(it);
     showItem(it.id);
   }

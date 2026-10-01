@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { carItem, carWindow, insuranceEstimate, insuranceItem, kayakCarLink } from "./extras";
+import { carItem, carPerDay, carWindow, insuranceEstimate, insuranceItem, kayakCarLink } from "./extras";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
 const leg = (dir: "out" | "back", from: string, to: string, dep: string, arr: string) => ({ dir, from, to, dep, arr, stops: 0 });
@@ -19,6 +19,12 @@ describe("Mietwagen", () => {
     const it = carItem(w);
     expect(it).toMatchObject({ cat: "transport", icon: "car", options: [{ estimate: true, price: { mode: "unit", unit: 40, qty: 5 } }] });
     expect(it.note).toContain("PMI");
+  });
+  it("Tagespreis nach Preisniveau des Landes (Spanien günstiger, Island teurer), mindestens 15 €", () => {
+    expect(carPerDay()).toBe(40);
+    expect(carPerDay(0.8)).toBe(34);
+    expect(carPerDay(1.47)).toBe(52);
+    expect(carPerDay(0.1)).toBe(15);
   });
   it("ohne Flüge: Reisedaten, ohne Daten kein Zeitfenster", () => {
     const t = trip();

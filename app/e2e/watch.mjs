@@ -150,12 +150,13 @@ try {
   await p.locator("#transport .car-add").click();
   const car = p.locator("#transport .card", { hasText: "Mietwagen" });
   await car.waitFor();
-  if (!(await car.innerText()).includes("200")) fail("Mietwagen-Richtwert (5 Tage × 40 €): " + await car.innerText());
+  // Spanien: Preisniveau 0,8 → 34 € am Tag statt 40 €
+  if (!(await car.innerText()).includes("170")) fail("Mietwagen-Richtwert (5 Tage × 34 €): " + await car.innerText());
   await p.keyboard.press("Escape");
   await p.locator("#misc .ins-add").click();
   const ins = p.locator("#misc .card", { hasText: "Reiseversicherung" });
   await ins.waitFor();
-  log("Mietwagen: Abholung PMI 15.10. 13:20 bis 19.10. 16:00, Richtwert 5 × 40 €, KAYAK vorbefüllt; Reiseversicherung geschätzt");
+  log("Mietwagen: Abholung PMI 15.10. 13:20 bis 19.10. 16:00, Richtwert 5 × 34 € (Preisniveau Spanien), KAYAK vorbefüllt; Reiseversicherung geschätzt");
 
   // aufgeklappte Suche gehört zur Reise: nach dem Wechsel in eine andere Reise ist sie zu
   await p.locator("#flights .fs-open").click();
