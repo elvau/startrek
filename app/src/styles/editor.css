@@ -844,14 +844,27 @@ body[data-ch="split"] .amb-split{opacity:1}
 .wb-cheaper{margin-inline-start:auto;font-size:12.5px}
 /* Kopf der Reise: vier Kacheln als Einstieg und Mini-Übersicht */
 .hero-tiles{margin:16px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(560px,100%)}
-.ht-tile{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:10px;align-items:center;text-align:start;padding:12px 14px;border-radius:18px;border:1px solid var(--glass-line);background:rgba(255,255,255,.72);backdrop-filter:blur(8px);color:inherit;box-shadow:0 10px 26px -14px rgba(14,36,56,.45);transition:transform .15s,background .15s;cursor:pointer;min-width:0}
+.ht-tile{display:flex;gap:10px;align-items:flex-start;text-align:start;padding:12px 14px;border-radius:18px;border:1px solid var(--glass-line);background:rgba(255,255,255,.72);backdrop-filter:blur(8px);color:inherit;box-shadow:0 10px 26px -14px rgba(14,36,56,.45);transition:transform .15s,background .15s;cursor:pointer;min-width:0}
 .ht-tile:hover:not(:disabled){background:#fff;transform:translateY(-1px)}
-.ht-tile .ht-ico{grid-row:1/4;font-size:22px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--paper-2)}
+.ht-tile .ht-ico{flex:none;font-size:22px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--paper-2)}
 .ht-tile small{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
 .ht-tile b{font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ht-tile .ht-sub{font-size:12.5px;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ht-tile.empty b{color:var(--a)}
+.ht-tile.empty{align-items:center}
+.ht-b{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.ht-line{display:flex;gap:8px;justify-content:space-between;font-size:13.5px;font-weight:700;min-width:0}
+.ht-line span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ht-line i{font-style:normal;font-weight:600;color:var(--ink-2);white-space:nowrap}
 :root[data-theme="dark"] .ht-tile{background:rgba(10,25,45,.6)}
 :root[data-theme="dark"] .ht-tile:hover:not(:disabled){background:rgba(10,25,45,.8)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ht-tile{background:rgba(10,25,45,.6)}:root:not([data-theme="light"]) .ht-tile:hover:not(:disabled){background:rgba(10,25,45,.8)}}
-@media (max-width:420px){.hero-tiles{gap:8px}.ht-tile{padding:10px;column-gap:8px}.ht-tile .ht-ico{width:30px;height:30px;font-size:17px}}
+/* schmal: ohne Symbol, Namen dürfen zweizeilig werden, Preis darunter */
+@media (max-width:520px){
+  .hero-tiles{gap:8px}
+  .ht-tile{padding:10px 12px}
+  .ht-tile .ht-ico{display:none}
+  .ht-line{flex-direction:column;gap:0}
+  .ht-line span,.ht-tile b,.ht-tile .ht-sub{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .ht-line i{font-size:12.5px}
+}

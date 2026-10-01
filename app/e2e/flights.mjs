@@ -185,6 +185,13 @@ try {
   const txt = await card.textContent();
   if (!txt.includes("Eurowings") || !txt.includes("2 Angebote")) fail("Posten: " + txt.slice(0, 200));
   log("Feste Daten ± 2 Tage; zwei Treffer übernommen (Liste und „Wählen“ in der Tabelle): ein Flug-Posten mit 2 Angeboten");
+  // Kopf: Flug-Kachel mit Kurzfassung des Postens, Klick scrollt zum Posten
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  const flLine = await p.locator(".hero .ht-fl .ht-line").first().innerText();
+  if (!/→/.test(flLine) || !/€/.test(flLine)) fail("Flug-Kachel ohne Strecke und Preis: " + flLine);
+  await p.locator(".hero .ht-fl").click();
+  await until(() => p.locator("#flights [data-item]").first().evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }), "zum Flug-Posten gescrollt");
+  log("Kopf: Flug-Kachel zeigt " + flLine.replace(/\s+/g, " ") + ", Klick scrollt zum Posten");
 
   // wie im Artefakt: je Familie suchen und buchen (eigene Flughäfen, eigene Anfahrt, eigener Flug-Posten)
   const TWO = {
