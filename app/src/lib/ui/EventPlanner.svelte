@@ -178,7 +178,7 @@
 
   function take(r: Row) {
     // in die Reise, für die der Planer geöffnet wurde; wurde inzwischen eine andere geöffnet, zurück (oder neu, falls weg)
-    if (app.trip.id !== trip.id) { switchTrip(trip.id); if (app.trip.id !== trip.id) startTrip(); }
+    if (app.trip.id !== trip.id) { switchTrip(trip.id, "Event-Planer"); if (app.trip.id !== trip.id) startTrip(); }
     takePlan(app.trip, r.v, r.flight, r.stay, r.stayQ);
     done = true;
     rows = null;

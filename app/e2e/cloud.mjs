@@ -114,16 +114,16 @@ try {
   if ((await mal.locator(".top .tm-btn").first().textContent()).includes("☁")) fail("Mallory ist in der Reise");
   log("Zurückgezogener Link funktioniert nicht mehr");
 
-  // Mallory löscht ihre einzige Reise auf dem Gerät: danach eine leere Reise im Konto, kein Beispiel mehr
+  // Mallory löscht die offene Reise: danach die Startseite, keine andere Reise und keine leere im Konto (Fehlerbericht #13)
   mal.on("dialog", d => d.accept());
   await mal.locator(".top .tm-btn").first().click();
   await mal.locator(".tm-act", { hasText: "Diese Reise löschen" }).click();
-  await until(async () => (await mal.locator(".hero h1").textContent()).startsWith("Neue Reise"), "leere Reise nach dem Löschen");
-  await until(async () => (await mal.locator(".top .tm-btn").first().textContent()).includes("☁"), "leere Reise liegt im Konto");
+  await mal.locator(".start .home-title").waitFor();
+  if (await mal.locator(".home-cont").count()) fail("nach dem Löschen eine andere Reise zum Weiterplanen");
   await mal.locator(".top .acct-btn").click();
   if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("Hinweis auf Gerät-Reise bleibt");
   await mal.keyboard.press("Escape");
-  log("Letzte Reise gelöscht: leere Reise im Konto, kein Beispiel");
+  log("Offene Reise gelöscht: Startseite, keine andere Reise geöffnet, keine leere im Konto");
 
   // Verzeichniseintrag ohne gespeicherte Reise (z. B. gelöschte Konto-Reise) zählt nicht als Reise auf dem Gerät
   await mal.evaluate(() => {

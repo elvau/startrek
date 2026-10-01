@@ -57,8 +57,9 @@ try {
   if (!s.auth.startsWith("Bearer ") || s.auth.length < 30) fail("kein Anmelde-Nachweis");
   if (!s.report.text.startsWith("Bei 3 Personen") || s.report.lang !== "de" || s.report.view !== "Startseite" || !s.report.screen.includes("×") || !s.report.version) fail("Meldung: " + JSON.stringify(s.report));
   if (!s.report.errors.some(e => e.includes("Testfehler beim Rechnen"))) fail("letzter Fehler fehlt: " + JSON.stringify(s.report.errors));
+  if (!s.report.nav?.some(e => /^\d\d:\d\d:\d\d geladen: \w+/.test(e))) fail("Reisewechsel fehlen: " + JSON.stringify(s.report.nav));
   if (!s.img || s.img.type !== "image/jpeg" || s.img.head.join(",") !== "255,216,255") fail("Bild nicht als JPEG verkleinert: " + JSON.stringify(s.img));
-  log("Meldung gesendet: Text, Ansicht, Sprache, Bildschirm, App-Stand, letzter Fehler im Browser, Bild als JPEG; Danke mit Nummer #12");
+  log("Meldung gesendet: Text, Ansicht, Sprache, Bildschirm, App-Stand, letzter Fehler im Browser, Reisewechsel, Bild als JPEG; Danke mit Nummer #12");
 
   // schließen und neu: Formular ist leer
   await p.locator(".modal .bug .btn.primary").click();
