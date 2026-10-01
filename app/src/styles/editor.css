@@ -284,7 +284,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .pdocs .ed-row{width:100%}
 @media (max-width:640px){.plist li{grid-template-columns:1fr 1fr 34px}.plist li .pmore{grid-column:1/3;grid-row:2}.plist li .x{grid-row:1;grid-column:3}}
 .plist .inp{width:100%}
-.grp-chip{font-weight:700}
 .add-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
 .tm-cur{font-size:11px;font-weight:700;color:var(--a);margin-inline-start:4px}
 .welcome{display:flex;flex-direction:column;gap:10px}
@@ -328,7 +327,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 :root[data-theme="dark"] .age-pill.infant{background:#4A1F38;color:#F5A8D2}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .age-pill{background:#4A3413;color:#FFD08A}:root:not([data-theme="light"]) .age-pill.infant{background:#4A1F38;color:#F5A8D2}}
 .welcome .btn.go{align-items:center;font-size:16px;padding:13px 16px;align-self:stretch}
-.welcome-more{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 20px;margin-top:2px}
 /* Kopfzeile: Reisen + Neue Reise links, Gruppen rechts */
 .tmenu{display:inline-flex;align-items:center;gap:6px}
 .tm-ico{font-size:14px}
@@ -376,9 +374,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 :root[data-theme="dark"] .who-art{filter:brightness(.85)}
 /* Flugsuche */
 .fs-form{display:flex;flex-direction:column;gap:10px}
-.fs-route{flex-wrap:nowrap}
-.fs-swap{align-self:flex-end;margin-bottom:2px;font-size:16px}
-.fs-one{align-self:center;padding-top:14px;gap:6px;font-size:13.5px}
 .fs-src{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--ink-2)}
 .fs-src .ok{color:#1F8A70;font-weight:700}
 .fs-src .off{opacity:.7}
@@ -390,19 +385,12 @@ body[data-ch="split"] .amb-split{opacity:1}
 .fs-leg{display:grid;grid-template-columns:52px 1fr;gap:0 8px;font-size:13.5px}
 .fs-leg .muted{grid-column:2;font-size:12.5px}
 .fs-dir{grid-row:1/3;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);padding-top:2px}
-.fs-bag{margin:0}
 .fs-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .btn.sm{padding:6px 12px;font-size:13px;text-decoration:none;color:inherit}
 .btn.primary.sm{color:#fff}
 .btn.sm small{font-weight:600;opacity:.8}
 .search-row{display:flex;justify-content:flex-start;margin:-4px 0 14px}
-@media (max-width:520px){.fs-route{flex-wrap:wrap}.fs-swap{display:none}}
 .fs-mode{margin-bottom:-2px}
-.fs-nights{flex-direction:column;align-items:flex-start;gap:6px}
-.fs-nn-row{display:flex;align-items:center;gap:12px}
-.fs-nights .dlabel{margin:0}
-.fs-nights .inp.num{width:64px;text-align:center}
-.fs-nn{font-weight:700;color:var(--ink-2)}
 /* Doppel-Schieberegler */
 .dual-wrap{display:flex;flex-direction:column;gap:6px;align-self:stretch}
 .dual-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -529,7 +517,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .ev-hero{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;font-size:14px;font-weight:600}
 .ev-hero .linkbtn{color:inherit;text-decoration:underline}
 /* KI-Planer */
-.ai-in{font:inherit;font-size:14px;font-weight:500;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;resize:vertical;min-height:70px}
 .ai-ex .chip{text-align:start;white-space:normal}
 .ai-sum{color:var(--ink-2)}
 .ai-login{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -540,11 +527,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .ev-or{margin:10px 0 0}
 
 /* Kopf der Reise: Event als Knopf, Überschrift ohne Namen blasser */
-.hero-acts{margin-top:14px;display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
-.pill-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:99px;border:1px solid var(--glass-line);background:rgba(255,255,255,.7);backdrop-filter:blur(8px);color:inherit;font-weight:700;font-size:14px;box-shadow:0 10px 26px -14px rgba(14,36,56,.45);transition:transform .15s,background .15s}
-.pill-btn:hover{background:#fff;transform:translateY(-1px)}
-:root[data-theme="dark"] .pill-btn{background:rgba(10,25,45,.55)}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .pill-btn{background:rgba(10,25,45,.55)}}
 .hero h1.untitled{opacity:.5}
 .brand-btn{border:0;background:none;padding:0;color:inherit;cursor:pointer}
 
@@ -660,7 +642,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .home-past summary .muted{font-size:15px;font-weight:600}
 
 /* ---------- Reisebeobachtung ---------- */
-.pill-btn:disabled{opacity:.75;cursor:default;transform:none}
 .spin{display:inline-block;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .wb{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 22px 12px;border-top:1px dashed var(--line);font-size:13px}
@@ -669,7 +650,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .wb-down{color:var(--good);background:var(--good-soft)}
 .wb-err{color:var(--warn);background:var(--warn-soft)}
 .wb-what{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
-@media (max-width:640px){.watch-run{width:100%}.watch-at{margin:0}}
 
 /* Posten nach dem Übernehmen kurz hervorheben */
 .card.flash{animation:flash 2s ease-out}
@@ -683,7 +663,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .pr-sec .ed-row{width:100%}
 .prefs textarea{width:100%;resize:vertical;font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink)}
 .chip.locked{opacity:.6;cursor:default}
-.pr-toggle{align-self:flex-start}
 
 /* Admin: Nutzung der kostenlosen Kontingente */
 .usage h4{margin:20px 0 8px;font-size:14px}
