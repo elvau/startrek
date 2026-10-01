@@ -7,7 +7,7 @@ import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, ty
 import { sampleTrip } from "./seed";
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
-import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
+import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
@@ -261,7 +261,7 @@ export function allTrips(): TripEntry[] {
   // Ziel und Zeitraum stehen nur in der Reise selbst; aus der Kopie auf dem Gerät ergänzen, falls vorhanden.
   // Der Name der offenen Reise ist frischer als der im Konto (dort erst nach dem verzögerten Speichern); steht im Konto
   // noch der Platzhalter „Reise“ (gerade angelegt, Name noch nicht gespeichert), gilt der Name der Kopie auf dem Gerät
-  const local = (id: string) => { const t = id === app.trip.id ? app.trip : readTrip(id); return t ? meta(t) : null; };
+  const local = (id: string) => { const t = tripFor(id); return t ? meta(t) : null; };
   const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1, edited: later(editedAt[t.id], foreign(t)) }; });
   const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, ...(m.id === app.trip.id ? meta(app.trip) : {}), cloud: false, edited: editedAt[m.id] }));
   return [...c, ...l];
@@ -481,7 +481,17 @@ export function emptyTrips(): TripEntry[] {
 }
 
 /** Reise zum Anzeigen: die offene oder die Kopie auf dem Gerät (Konto-Reisen, die hier nie offen waren: null) */
-export const tripFor = (id: string): Trip | null => (id === app.trip.id ? app.trip : readTrip(id));
+/**
+ * Reise zum Anzeigen ohne sie zu öffnen (Startseite): die offene, bei Konto-Reisen der Stand aus dem Konto (auch wenn sie
+ * hier nie geöffnet wurde oder die Kopie auf dem Gerät älter ist), sonst die Kopie auf dem Gerät.
+ */
+const normalized = new WeakSet<Trip>();
+export function tripFor(id: string): Trip | null {
+  if (id === app.trip.id) return app.trip;
+  const r = isCloud(id) ? remoteTrip(id) : null;
+  if (r) { if (!normalized.has(r)) { normalize(r); normalized.add(r); } return r; }
+  return readTrip(id);
+}
 const isPristine = (id: string) => { const t = tripFor(id); return !t || pristine(t); };
 
 /** Reisen für die Startseite: zuletzt geöffnete zuerst, leere Entwürfe nicht */

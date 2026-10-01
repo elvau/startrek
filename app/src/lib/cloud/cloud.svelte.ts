@@ -53,6 +53,28 @@ const dbg = (...a: unknown[]) => { if (emulator) console.debug("[rk]", ...a); };
 /** Stand, der gerade aus dem Konto übernommen wurde, gilt als gespeichert (kein Zurückschicken) */
 export function markSynced(id: string, json: string) { synced.set(id, json); }
 
+/*
+ * Stand jeder Konto-Reise, wie ihn die Liste mitliefert: für die Startseite, auch wenn die Reise auf diesem Gerät nie
+ * geöffnet wurde (sonst stand sie dort mit 0 € und ohne Ziel, bis man sie öffnete).
+ */
+const remote = new Map<string, { json: string; trip?: Trip | null }>();
+const remoteRev = $state({ n: 0 });
+function keepRemote(list: { id: string; data?: string }[]) {
+  let changed = false;
+  const ids = new Set(list.map(d => d.id));
+  for (const id of [...remote.keys()]) if (!ids.has(id)) { remote.delete(id); changed = true; }
+  for (const d of list) if (typeof d.data === "string" && remote.get(d.id)?.json !== d.data) { remote.set(d.id, { json: d.data }); changed = true; }
+  if (changed) remoteRev.n++;
+}
+/** Stand der Konto-Reise aus der Liste (reaktiv), null wenn nicht bekannt */
+export function remoteTrip(id: string): Trip | null {
+  void remoteRev.n;
+  const r = remote.get(id);
+  if (!r) return null;
+  if (r.trip === undefined) { try { r.trip = JSON.parse(r.json) as Trip; } catch { r.trip = null; } }
+  return r.trip;
+}
+
 export function cloudTrip(id: string) { return cloud.trips.find(t => t.id === id) || null; }
 export const isCloud = (id: string) => !!cloudTrip(id);
 export const roleOf = (id: string): Role | null => cloudTrip(id)?.role || null;
@@ -74,7 +96,7 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
   f.onUser(u => {
     fbUser = u;
     unTrips?.(); unTrips = null;
-    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
+    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
     cloud.user = { uid: u.uid, name: f.displayName(u), email: u.email || "" };
     cloud.showLogin = false;
     unTrips = f.watchMyTrips(u.uid, (list, fromCache) => {
@@ -84,6 +106,7 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
       })).sort((a, b) => a.name.localeCompare(b.name, "de"));
       // auch bei reinen Statusänderungen (Zwischenspeicher → Server) gemeldet: Liste nur bei echter Änderung ersetzen
       if (JSON.stringify(next) !== JSON.stringify($state.snapshot(cloud.trips))) cloud.trips = next;
+      keepRemote(list);
       cloud.fresh = !fromCache;
       cloud.ready = true;
       if (cloud.status === "local") cloud.status = "saved";

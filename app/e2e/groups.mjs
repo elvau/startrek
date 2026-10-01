@@ -307,6 +307,23 @@ try {
   if (!saved || saved.length !== 3 || saved[2].first !== "Lea" || saved[2].last !== "Schmitz" || saved[2].age !== 8) fail("Gruppe nicht gespeichert: " + JSON.stringify(saved));
   log("Neue Gruppe beim Anlegen: Uwe gezogen, Monika angetippt, Lea neu; „Familie Schmitz“ gespeichert, Reise mit 3 Personen");
 
+  // Reise auf einem Gerät gefüllt, auf dem anderen nie geöffnet: Startseite zeigt sie trotzdem mit Ort und Betrag
+  await b.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  await b.locator(".hero h1").click();
+  await b.keyboard.press("ControlOrMeta+a");
+  await b.keyboard.type("Zweitgerät-Test");
+  await b.keyboard.press("Enter");
+  const bi = b.locator("#stay .simple-in input");
+  await bi.scrollIntoViewIfNeeded();
+  await bi.fill("840");
+  await b.waitForTimeout(2500);
+  await a.goto(URL);
+  const card = a.locator(".start .home-trip", { hasText: "Zweitgerät-Test" });
+  await card.waitFor();
+  await until(async () => (await card.innerText()).includes("840"), "Betrag der Reise vom anderen Gerät auf der Startseite", 10000)
+    .catch(async e => { console.log("Karte:", await card.innerText()); throw e; });
+  log("Auf einem Gerät gefüllt, auf dem anderen nie geöffnet: Startseite zeigt den Betrag (840 €) ohne Öffnen");
+
   console.log("\nAlle Schritte erfolgreich.");
 } finally {
   await browser.close();
