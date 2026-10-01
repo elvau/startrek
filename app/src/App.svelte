@@ -1,7 +1,7 @@
 <script lang="ts">
   import { applyDocument, t, tn } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
-  import { access, app, calc, addItem, discardDetails, openSample, setDetailed } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, setDetailed } from "./lib/store.svelte";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
   import { cloud } from "./lib/cloud/cloud.svelte";
@@ -23,6 +23,7 @@
   import PresencePlan from "./lib/ui/PresencePlan.svelte";
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
+  import AppFooter from "./lib/ui/AppFooter.svelte";
   import WatchPanel from "./lib/ui/WatchPanel.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
@@ -61,8 +62,6 @@
 
   const households = $derived(Object.keys(calc.T.byHousehold).length);
   const nn = $derived(nights(app.trip.from, app.trip.to));
-  // Impressum und Datenschutz liegen neben der App (…/startrek/impressum.html)
-  const LEGAL = (import.meta.env.BASE_URL as string) || "/";
 </script>
 
 <Sprite />
@@ -130,11 +129,7 @@
   <TicketAside />
 </div>
 
-<p class="note">
-  {cloud.user ? t("app.savedCloud") : t("app.savedLocal")}
-  <button class="linkbtn" onclick={() => { if (confirm(t("sample.confirm"))) openSample(); }}>{t("sample.open")}</button>
-  <span class="legal"><a href="{LEGAL}impressum.html">{t("legal.imprint")}</a> · <a href="{LEGAL}datenschutz.html">{t("legal.privacy")}</a> · <a class="app-version" href="https://github.com/elvau/startrek/releases" target="_blank" rel="noopener noreferrer" title={__APP_COMMIT__}>v{__APP_VERSION__}</a></span>
-</p>
+<AppFooter />
 
 <Dock onopen={() => (sheet = true)} />
 {#if sheet}

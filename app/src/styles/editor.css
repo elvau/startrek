@@ -51,7 +51,6 @@
 .person.add{border:1.5px dashed var(--line);background:transparent;justify-content:center;cursor:pointer;color:var(--ink-2)}
 .av.plus{background:var(--paper-2);color:var(--ink-2);border:1.5px dashed var(--line)}
 .home{justify-content:space-between;flex-wrap:wrap}
-.note .linkbtn{margin-inline-start:8px}
 
 /* Reisen wechseln */
 .tmenu{position:relative}
@@ -515,8 +514,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .fs-short{margin:-2px 0 2px}
 /* Kennzeichnung Partner-Links, Fuß mit Impressum */
 .fs-ad{margin-inline-start:6px;font-size:10.5px;opacity:.7;font-weight:600}
-.note .legal{margin-inline-start:10px;white-space:nowrap}
-.note .legal a{color:inherit}
 /* Reise zu einem Event */
 .ev-form .ev-grow{flex:1;min-width:180px}
 .ev-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px}
@@ -573,9 +570,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .home-trips{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
 .home-trip{padding:14px 18px;border-radius:16px}
 .home-trip b{font-size:15px}
-.home-more{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 20px;margin:28px 0 6px}
-.home-legal{font-size:12px;opacity:.75}
-.home-legal a{color:inherit}
 :root[data-theme="dark"] .start{color:#EAF3FB}
 :root[data-theme="dark"] .home-act,:root[data-theme="dark"] .home-trip{background:rgba(22,30,42,.75);color:#EAF3FB}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .start{color:#EAF3FB}:root:not([data-theme="light"]) .home-act,:root:not([data-theme="light"]) .home-trip{background:rgba(22,30,42,.75);color:#EAF3FB}}
