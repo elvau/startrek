@@ -37,7 +37,9 @@
   import EventPlanner from "./lib/ui/EventPlanner.svelte";
   import { eventPlanner } from "./lib/event/open.svelte";
   import FoodCard from "./lib/ui/FoodCard.svelte";
-  import { getYourGuideLink, tiqetsLink, viatorLink } from "./lib/links";
+  import { getYourGuideLink, tiqetsLink } from "./lib/links";
+  import ViatorLink from "./lib/ui/ViatorLink.svelte";
+  import { partner } from "./lib/partnerState.svelte";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
   import { flightSearch, openFlightSearch } from "./lib/flights/open.svelte";
   import { withoutTravel } from "./lib/flights/app";
@@ -101,9 +103,10 @@
             </div>
           {/if}
           <p class="search-row muted small fs-direct">
-            {#if app.trip.place}{t("att.find", { place: app.trip.place })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <a href={viatorLink(aq)} target="_blank" rel="noopener noreferrer">Viator ↗</a> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
+            {#if app.trip.place}{t("att.find", { place: app.trip.place })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <ViatorLink q={aq} /> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
             {:else}{t("att.noPlace")}{/if}
           </p>
+          {#if app.trip.place && partner.on}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
         {:else if ch.k === "stay" && !access.readonly}
           <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 {t("st.open")}</button></div>
         {/if}

@@ -37,6 +37,8 @@ describe("Erlebnisse beim Anbieter suchen", () => {
     expect(Object.fromEntries(u.searchParams)).toEqual({ q: "Split", date_from: "2027-07-18", date_to: "2027-07-29" });
     expect(getYourGuideLink({ place: "Split" })).toBe("https://www.getyourguide.de/s/?q=Split");
     expect(viatorLink({ place: "Plitvicer Seen" })).toBe("https://www.viator.com/de-DE/searchResults/all?text=Plitvicer%20Seen");
+    // mit Partnerkennung nur, wenn Partner-Links an sind
+    expect(viatorLink({ place: "Plitvicer Seen" }, true)).toBe("https://www.viator.com/de-DE/searchResults/all?text=Plitvicer+Seen&pid=P00322974&mcid=42383&medium=link");
     expect(tiqetsLink({ place: "Split" })).toBe("https://www.tiqets.com/de/search?q=Split");
   });
 });

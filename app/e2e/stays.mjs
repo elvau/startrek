@@ -33,6 +33,8 @@ try {
   const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
   p.on("pageerror", e => errors.push(e.message));
   const asked = [];
+  // Such-Dienst meldet: Partner-Links an
+  await p.route("https://flights.test/health", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ ok: true, partner: true }) }));
   await p.route("https://flights.test/stays/search", async r => {
     asked.push(JSON.parse(r.request().postData()));
     await new Promise(res => setTimeout(res, 200));
@@ -235,6 +237,13 @@ try {
   }
   if (rides.map(c => c.match(/v-(\w+)/)[1]).join() !== "taxi,bus,train") fail("Unterwegs: " + rides.join(" | "));
   log("Unterwegs: Taxi → Bus → Bahn beim Scrollen");
+
+  // Partner-Links an: Viator-Suche am Reiseort mit Partnerkennung, gekennzeichnet und mit Hinweis
+  const vl = p.locator("#attractions a", { hasText: "Viator" });
+  const href = await vl.getAttribute("href");
+  if (!href.includes("pid=P00322974") || !href.includes("mcid=42383") || !(await vl.getAttribute("rel")).includes("sponsored")) fail("Viator-Link ohne Partnerkennung: " + href);
+  if (!(await p.locator("#attractions", { hasText: "Partner-Link*" }).count())) fail("Viator-Partner-Link nicht gekennzeichnet");
+  log("Viator: Partner-Links an → Link mit Kennung, als Partner-Link gekennzeichnet");
 
   // Rundreise wie bei Eduard: Quito → Lima → Rio, Nachtflug nach Rio; Lücken und Suche je Stadt statt „alles in Quito“
   const leg = (dir, from, to, dep, arr, toCity) => ({ dir, from, to, dep, arr, ...(toCity ? { toCity } : {}) });
