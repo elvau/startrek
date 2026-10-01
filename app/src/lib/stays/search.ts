@@ -1,7 +1,8 @@
 /* Unterkünfte: alle Quellen gleichzeitig fragen, Doppelte zusammenführen, nach Preis sortieren */
 import type { SourceStatus } from "../flights/types";
 import { searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
-import type { StayOffer, StayQuery, StaySearchResult } from "./types";
+import { keepStays } from "./sort";
+import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StaySearchResult } from "./types";
 
 /** Adressen der MCP-Server (Cloudflare-Variablen); Booking.com erst mit eingetragener Adresse */
 export interface StayEnv { BOOKING_MCP_URL?: string; TRIVAGO_MCP_URL?: string }
@@ -52,7 +53,7 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
     }
   }));
   sources.sort((a, b) => STAY_PROVIDERS.findIndex(p => p.id === a.id) - STAY_PROVIDERS.findIndex(p => p.id === b.id));
-  return { offers: mergeStays(lists), sources };
+  return { offers: keepStays(mergeStays(lists), q), sources };
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -82,5 +83,16 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   }
   const currency = str("currency") || "EUR";
   if (!/^[A-Z]{3}$/.test(currency)) return "Währung ungültig";
-  return { place, ...(country ? { country } : {}), checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type, ...(sources ? { sources } : {}), currency };
+  let must: StayMust[] | undefined;
+  if (o.must != null) {
+    if (!Array.isArray(o.must) || !o.must.every(m => (STAY_MUSTS as readonly unknown[]).includes(m))) return "Unbekannte Ausstattung";
+    if (o.must.length) must = [...new Set(o.must as StayMust[])];
+  }
+  if (o.minStars != null && !int(o.minStars, 1, 5)) return "Sterne: 1 bis 5";
+  if (o.minScore != null && !(typeof o.minScore === "number" && o.minScore >= 0 && o.minScore <= 10)) return "Bewertung: 0 bis 10";
+  return {
+    place, ...(country ? { country } : {}), checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type,
+    ...(sources ? { sources } : {}), currency, ...(must ? { must } : {}),
+    ...(o.minStars != null ? { minStars: o.minStars as number } : {}), ...(o.minScore ? { minScore: o.minScore as number } : {})
+  };
 }

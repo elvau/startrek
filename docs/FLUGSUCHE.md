@@ -109,6 +109,12 @@ Treffer an anderen Flughäfen fallen raus.
 Die Suche fragt beide gleichzeitig, führt gleiche Unterkünfte zusammen (gleicher Name, gleiche Lage,
 die günstigere bleibt) und liefert Gesamtpreise für den ganzen Aufenthalt.
 
+Filter (Pool, Frühstück inklusive, Küche, Klimaanlage, Parkplatz, kostenlos stornierbar, Sterne ab, Bewertung ab)
+gehen an beide Anbieter (Trivago `filters`/`hotel_rating`/`review_rating`, Booking.com `facilities`/`meal_plan`/
+`star_rating`/`minimum_review_score`); Sterne und Bewertung prüfen Such-Dienst und App zusätzlich selbst.
+Sortieren: Preis, Bewertung, Nähe Zentrum (aus „x km bis Zentrum“) und, mit Kindern, „Für Familien“
+(Pool, Familienzimmer, Küche, Strand, Bewertung). Trivago nennt keine Verpflegung je Zimmer, nur einzelne Merkmale.
+
 ## Lokal ausprobieren
 
 ```

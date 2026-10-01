@@ -821,3 +821,5 @@ body[data-ch="split"] .amb-split{opacity:1}
 @media (max-width:520px){.hv-l{display:none}}
 .home-clean{margin:18px 0 0;text-align:center}
 .hr-top{display:flex;align-items:center;gap:8px;min-width:0}
+.st-filters{align-items:flex-end;gap:8px 12px}
+.st-filters .chips{flex:1 1 100%;flex-wrap:wrap}

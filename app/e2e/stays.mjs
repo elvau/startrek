@@ -62,9 +62,14 @@ try {
   log("Direkt-Link zu Booking.com mit Ort und Daten");
   const gyg = p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" });
   if (await gyg.count()) fail("Erlebnis-Links ohne Reiseziel");
+  // Ausstattung und Bewertung gehen an den Such-Dienst
+  await m.locator(".st-filters .chip", { hasText: "Pool" }).click();
+  await m.locator("label.f", { hasText: "Bewertung" }).locator("select").selectOption("7");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   const q = asked[0];
+  if (q.must?.join() !== "pool" || q.minScore !== 7 || q.minStars) fail("Filter falsch: " + JSON.stringify(q));
+  log("Filter (Pool, Bewertung ab 7) in der Anfrage");
   if (q.place !== "Split" || q.checkin !== "2027-07-18" || q.checkout !== "2027-07-25" || q.type !== "whole" || q.adults !== 1 || q.rooms !== 1) fail("Anfrage falsch: " + JSON.stringify(q));
   if (q.sources.join() !== "booking,trivago") fail("Quellen falsch: " + q.sources);
   log("Anfrage an den Such-Dienst stimmt");
@@ -80,6 +85,10 @@ try {
   // nach Bewertung sortieren
   await m.locator(".chip", { hasText: "Beste Bewertung" }).click();
   if (!(await m.locator(".fs-res").first().textContent()).includes("Cornaro Hotel")) fail("Sortierung nach Bewertung");
+  // nach Nähe zum Zentrum (aus „x km bis Zentrum“)
+  await m.locator(".chip", { hasText: "Nähe Zentrum" }).click();
+  if (!(await m.locator(".fs-res").first().textContent()).includes("Cornaro Hotel")) fail("Sortierung nach Nähe Zentrum");
+  if ((await m.locator(".fs-res").nth(1).textContent()).includes("Rooms")) fail("ohne Entfernung nicht ans Ende");
 
   // zwei übernehmen → ein Posten mit 2 Angeboten, Preis für den ganzen Aufenthalt
   await m.locator(".fs-res", { hasText: "Ferienwohnung Klara" }).locator(".btn", { hasText: "Übernehmen" }).click();
@@ -87,6 +96,9 @@ try {
   await m.waitFor({ state: "detached" });
   await p.locator("#stay .card", { hasText: "Unterkunft in Split" }).first().click();
   await p.locator("#stay .st-item").first().click();
+  if (!(await m.locator(".st-filters .chip.on", { hasText: "Pool" }).count())) fail("Filter nicht gemerkt");
+  await m.locator(".st-filters .chip", { hasText: "Pool" }).click();
+  log("Filter gemerkt");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res", { hasText: "Rooms Šećer" }).locator(".btn", { hasText: "Übernehmen" }).click();
   await m.waitFor({ state: "detached" });
