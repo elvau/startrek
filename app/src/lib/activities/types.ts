@@ -27,6 +27,8 @@ export interface ActivityHit {
   price?: number;
   currency: string;
   url?: string;
+  /** Link mit Partner-Kennung (Provision bei Buchung) */
+  sponsored?: boolean;
 }
 
 export interface ActivitySearchResult {
@@ -35,4 +37,4 @@ export interface ActivitySearchResult {
 }
 
 /** Schlüssel des Such-Dienstes (Cloudflare-Secret); fehlt er, bleibt die Suche aus */
-export interface ActivityEnv { VIATOR_API_KEY?: string }
+export interface ActivityEnv { VIATOR_API_KEY?: string; PARTNER_LINKS?: string }

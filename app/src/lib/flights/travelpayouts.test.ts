@@ -26,7 +26,7 @@ describe("Travelpayouts", () => {
   });
   it("Antwort: Preis pro Person mal Reisende, Ankunft aus Flugdauer, Link mit Partnerkennung", () => {
     const [a, b] = fromTravelpayouts(sample, q, "m123");
-    expect(a).toMatchObject({ source: "travelpayouts", price: 936, currency: "EUR", url: "https://www.aviasales.com/search/DUS1807SPU29071?t=EW1&marker=m123" });
+    expect(a).toMatchObject({ source: "travelpayouts", price: 936, currency: "EUR", url: "https://www.aviasales.com/search/DUS1807SPU29071?t=EW1&marker=m123", sponsored: true });
     expect(a.out).toMatchObject({ from: "DUS", to: "SPU", dep: "2027-07-18T06:10:00", arr: "2027-07-18T08:05:00", minutes: 115, stops: 0, flights: ["EW9958"] });
     expect(a.back).toMatchObject({ from: "SPU", to: "DUS", dep: "2027-07-29T14:25:00", arr: "2027-07-29T16:25:00" });
     expect(b.out.stops).toBe(1);

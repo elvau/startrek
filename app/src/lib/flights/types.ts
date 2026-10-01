@@ -77,6 +77,8 @@ export interface FlightOffer {
   price: number;
   currency: string;
   url?: string;
+  /** Link mit Partner-Kennung (Provision bei Buchung), in der App als „Partner“ gekennzeichnet */
+  sponsored?: boolean;
   out: OfferLeg;
   back?: OfferLeg;
   baggage?: { personal: number; cabin: number; checked: number };

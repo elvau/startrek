@@ -139,7 +139,7 @@
               </article>
             {/each}
           </div>
-          {#if tours.length}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+          {#if tours.some(a => a.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
         {/if}
         <p class="muted small xp-more">{t("xp.more")} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <a href={viatorLink(aq)} target="_blank" rel="noopener noreferrer">Viator ↗</a> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a></p>
       {/if}

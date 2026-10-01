@@ -157,4 +157,15 @@ describe("Gabelflug mit langem Umstieg", () => {
     expect(parseQuery({ ...b, via: ["DOH"], viaHours: [48, 10] })).toBe("Umstieg: Stunden 1 bis 72, von ≤ bis");
     expect(parseQuery({ ...b, via: ["doh"], viaHours: [10, 48] })).toBe("Umstieg: bis zu 8 Codes");
   });
+
+  it("Travelpayouts-Kennung (marker) nur mit eingeschalteten Partner-Links", async () => {
+    const urls: string[] = [];
+    const f = (async (u: string) => { urls.push(String(u)); return new Response("{}", { status: 503 }); }) as unknown as typeof fetch;
+    const q = parseQuery({ from: "DUS", to: "PMI", depart: "2027-05-10", ret: "2027-05-13" }) as FlightQuery;
+    await searchAll(q, { TRAVELPAYOUTS_TOKEN: "t", TRAVELPAYOUTS_MARKER: "m1" }, f);
+    expect(urls.filter(u => u.includes("travelpayouts")).every(u => !u.includes("marker="))).toBe(true);
+    urls.length = 0;
+    await searchAll(q, { TRAVELPAYOUTS_TOKEN: "t", TRAVELPAYOUTS_MARKER: "m1", PARTNER_LINKS: "on" }, f);
+    expect(urls.some(u => u.includes("travelpayouts") && u.includes("marker=m1"))).toBe(true);
+  });
 });

@@ -16,6 +16,9 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [ ] **Firebase-Schlüssel beschränken:** Google Cloud Console → APIs & Dienste → Anmeldedaten → Browser-Schlüssel auf
       splitandfly.com, elvau.github.io und startrek-1b6a7.web.app beschränken.
 - [ ] **Gewerbe anmelden** (Affiliate-Provisionen), Kleinunternehmerregelung gilt über die PV-Anlage mit.
+      Zustimmung des Arbeitgebers zur Nebentätigkeit offen; Dani lässt die Partner-Links trotzdem an (Entscheidung 10/2026).
+      **Schalter:** Cloudflare-Variable `PARTNER_LINKS` (Typ Text): `on` = an, alles andere = aus. Beim Ausschalten
+      Claude Bescheid geben, damit Impressum und Datenschutz (Abschnitt 10) angepasst werden.
 - [x] **Domains** splitandfly.de, split-and-fly.com, splitfly.de gekauft (Squarespace, 30.09.2026) und per 301 auf
       splitandfly.com weitergeleitet. Offen: E-Mail-Bestätigung für split-and-fly.com (sonst Sperre nach 15 Tagen),
       splitfly.de stand noch auf „ausstehend“ – kurz prüfen.

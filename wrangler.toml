@@ -19,6 +19,8 @@ TRAVELPAYOUTS_MARKER = "783080"
 # Schlüssel der Anbieter als Secrets im Cloudflare-Dashboard, nicht hier:
 #   TRAVELPAYOUTS_TOKEN, GEMINI_API_KEY (KI-Planer), TICKETMASTER_KEY, FOOTBALL_DATA_KEY (Event-Suche), VIATOR_API_KEY (Touren und Tickets), später DUFFEL_TOKEN (immer Typ „Secret“, sonst löscht ein neues Veröffentlichen sie)
 # KI-Planer optional: GEMINI_MODEL (Standard gemini-3.8-flash), GEMINI_FALLBACK_MODEL (springt bei Überlastung ein), AGENT_DAILY (Anfragen pro Tag, Standard 5)
+# Partner-Links (Provision): PARTNER_LINKS = "on" schaltet sie ein (Typ Text); fehlt die Variable, sind sie aus
+#   (keine Partner-Kennung in Links, keine Kennzeichnung „Partner“ in der App)
 # KI-Konnektor (worker/src/mcp.ts, docs/KONNEKTOR.md): Secrets MCP_KEY_SECRET (Schlüssel signieren) und
 #   FIREBASE_SERVICE_ACCOUNT (JSON des Dienstkontos, für Reisen im Konto); optional MCP_DAILY (Suchen pro Schlüssel und Tag,
 #   Standard 50), MCP_REVOKED (gesperrte Schlüsselkennungen, kommagetrennt)

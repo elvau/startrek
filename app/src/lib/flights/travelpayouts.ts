@@ -71,10 +71,11 @@ export function fromTravelpayouts(data: any, q: FlightQuery, marker?: string): F
     const out = leg(from, to, x.departure_at, x.duration_to ?? x.duration, x.transfers, x.airline, x.flight_number);
     const back = x.return_at ? leg(to, from, x.return_at, x.duration_back ?? 0, x.return_transfers ?? 0, x.airline) : undefined;
     const url = x.link ? `https://www.aviasales.com${x.link}${marker ? `${x.link.includes("?") ? "&" : "?"}marker=${marker}` : ""}` : undefined;
+    const sponsored = !!(marker && url);
     return {
       id: `tp:${from}${to}:${x.departure_at}:${x.return_at || ""}:${x.airline}${x.flight_number || ""}`,
       source: "travelpayouts", sourceName: "Travelpayouts", price: Math.round(x.price * pax), currency: (data.currency || q.currency || "EUR").toUpperCase(),
-      url, out, back
+      url, ...(sponsored ? { sponsored } : {}), out, back
     };
   }).filter((o: FlightOffer) => !q.departTo || q.latest || (o.out.dep.slice(0, 10) >= q.depart && o.out.dep.slice(0, 10) <= q.departTo))
     .filter((o: FlightOffer) => q.maxStops == null || (o.out.stops <= q.maxStops && (!o.back || o.back.stops <= q.maxStops)))

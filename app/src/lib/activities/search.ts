@@ -1,4 +1,5 @@
 /* Touren und Tickets: Quellen fragen (bisher Viator), nach Bewertung sortieren; Anfrage prüfen (im Such-Dienst) */
+import { partnerOn } from "../partner";
 import type { SourceStatus } from "../flights/types";
 import { searchViator } from "./viator";
 import type { ActivityEnv, ActivityHit, ActivityQuery, ActivitySearchResult } from "./types";
@@ -7,7 +8,7 @@ export async function searchActivities(q: ActivityQuery, env: ActivityEnv = {}, 
   if (!env.VIATOR_API_KEY) return { activities: [], sources: [{ id: "viator", name: "Viator", configured: false, ok: false, count: 0 }] };
   const t0 = Date.now();
   try {
-    const list = await Promise.race([searchViator(q, env.VIATOR_API_KEY, f), new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`keine Antwort nach ${timeoutMs / 1000} s`)), timeoutMs))]);
+    const list = await Promise.race([searchViator(q, env.VIATOR_API_KEY, f, partnerOn(env)), new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`keine Antwort nach ${timeoutMs / 1000} s`)), timeoutMs))]);
     const sources: SourceStatus[] = [{ id: "viator", name: "Viator", configured: true, ok: true, count: list.length, ms: Date.now() - t0 }];
     return { activities: rank(list), sources };
   } catch (e) {

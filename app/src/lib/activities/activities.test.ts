@@ -31,6 +31,16 @@ describe("Touren und Tickets (Viator)", () => {
     expect(rank([list[1], list[0]]).map(a => a.id)).toEqual(["viator:5010P1", "viator:9"]);
   });
 
+  it("Partner-Links nur mit Schalter: sonst ohne Partner-Kennung und nicht als Partner gekennzeichnet", async () => {
+    const f = (async () => new Response(JSON.stringify(VIATOR))) as unknown as typeof fetch;
+    const off = await searchActivities({ place: "Rom" }, { VIATOR_API_KEY: "x" }, f);
+    const t1 = off.activities.find(a => a.url)!;
+    expect(t1.url).toBe("https://www.viator.com/tours/x");
+    expect(t1.sponsored).toBeUndefined();
+    const on = await searchActivities({ place: "Rom" }, { VIATOR_API_KEY: "x", PARTNER_LINKS: "on" }, f);
+    expect(on.activities.find(a => a.url)).toMatchObject({ url: "https://www.viator.com/tours/x?pid=P&mcid=M", sponsored: true });
+  });
+
   it("Aufruf: Partner-Schlüssel, Version 2.0, Sprache; ohne Schlüssel aus", async () => {
     let head: Record<string, string> = {};
     const f = (async (_u: string, init: RequestInit) => { head = init.headers as Record<string, string>; return new Response(JSON.stringify(VIATOR)); }) as unknown as typeof fetch;
