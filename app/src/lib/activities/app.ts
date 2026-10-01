@@ -45,7 +45,8 @@ export function activityItem(a: ActivityHit): Item {
     options: [{
       id: uid(), label: a.title, ...(facts ? { detail: facts } : {}),
       price: { mode: "person", currency: "EUR", adult }, ...(adult ? {} : { estimate: true }),
-      source: { name: a.sourceName, at: new Date().toISOString().slice(0, 10), ...(a.url ? { url: a.url } : {}), ...(a.sponsored ? { sponsored: true } : {}) }
+      source: { name: a.sourceName, at: new Date().toISOString().slice(0, 10), ...(a.url ? { url: a.url } : {}), ...(a.sponsored ? { sponsored: true } : {}) },
+      ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {})
     }]
   };
 }

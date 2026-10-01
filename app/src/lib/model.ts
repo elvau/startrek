@@ -169,6 +169,8 @@ export interface Option {
   source?: { name: string; at?: string; url?: string; sponsored?: boolean };
   legs?: FlightLeg[];
   stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string };
+  /** Foto vom Anbieter (nur https), z. B. einer Tour */
+  image?: string;
   /** Unterkunft aus der Suche: Anfrage, mit der sie gefunden wurde (für die Reisebeobachtung) */
   query?: { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number };
 }

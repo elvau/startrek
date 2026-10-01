@@ -9,6 +9,7 @@
   let { item, icon }: { item: Item; icon: string } = $props();
   const r = $derived(calc.T.items[item.id]);
   const opt = $derived(r?.option);
+  let imgFailed = $state(false);
 
   // Beschreibung aus dem Preis, wenn keine Notiz da ist: "2 × 40 € Erwachsene · 2 × 15 € Kinder"
   const auto = $derived.by(() => {
@@ -26,7 +27,10 @@
 </script>
 
 <div class="row">
-  <div class="ic"><Icon name={item.icon || icon} /></div>
+  <!-- Foto vom Anbieter (Tour), sonst das Symbol -->
+  {#if opt?.image && !imgFailed}
+    <img class="row-img" src={opt.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={() => (imgFailed = true)} />
+  {:else}<div class="ic"><Icon name={item.icon || icon} /></div>{/if}
   <div>
     <h3>{item.name || opt?.label || t("item.new")}</h3>
     <p>{item.note || auto}</p>
