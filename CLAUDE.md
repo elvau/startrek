@@ -5,22 +5,25 @@ Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer mit Gemi
 Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, SPRACHEN, BUGS, NUTZUNG, OFFEN = Merkliste).
 
 ## Umgebungen und Ablauf
-- Testumgebung https://elvau.github.io/startrek/: jeder Push auf einen Branch außer `main` (zuletzt gepushter gewinnt).
+- Testumgebung https://elvau.github.io/startrek/: jeder Push auf einen Branch außer `main` (zuletzt gepushter gewinnt), nur gebaut.
 - Produktion https://splitandfly.com: jeder Push auf `main` (Firebase Hosting, `release.yml` legt Tag und Release an).
 - Worker: deployt nur von `main` (Cloudflare Workers Builds). Secrets nur in Cloudflare, nie im Code oder Chat.
 - Firestore-Regeln (`app/firestore.rules`) spielt Dani von Hand in der Firebase-Konsole ein: nach Änderungen Bescheid sagen.
-- **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: PR → `main`, CI grün, Merge (merge commit),
+- **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: PR → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit),
   danach den Arbeits-Branch auf `origin/main` zurücksetzen.
 - Version in `app/package.json` (`npm version X --no-git-tag-version`) im Release-PR: größere Funktionen mittlere Stelle,
   sonst Patch. Lieber langsam hochzählen.
 
-## Prüfen vor jedem Push
+## Prüfen
+Push auf die Testumgebung soll schnell gehen: GitHub baut dort nur (`pages.yml`), die volle Prüfung läuft beim PR nach
+`main` (`pruefen.yml`). Vor jedem Push lokal die schnellen Prüfungen und nur die e2e-Schritte der geänderten Bereiche:
 ```bash
 cd app
 npx svelte-check --threshold warning
 npx vitest run
-npm run test:cloud   # Firebase-Emulator + Playwright (Chromium vorinstalliert), dauert einige Minuten
+npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/X.mjs"
 ```
+Vor dem Release-PR alles: `npm run test:cloud` (Firebase-Emulator + Playwright, dauert einige Minuten).
 Neue Funktionen bekommen Unit-Tests und, wo sinnvoll, einen Schritt in `app/e2e/*.mjs`.
 
 ## Konventionen
