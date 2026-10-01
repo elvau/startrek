@@ -7,13 +7,15 @@
   import { airportData, ensureAirports } from "../geo/geo.svelte";
   import { countryName, locLabel, searchLocs, type Loc } from "../geo/locations";
 
-  let { value = $bindable(null), text = $bindable(""), label = "", placeholder = "", required = false, clearOnPick = false, onpick, cls = "", near = [], areaFor }:
+  let { value = $bindable(null), text = $bindable(""), label = "", placeholder = "", required = false, clearOnPick = false, onpick, cls = "", near = [], areaFor, from = null }:
     {
       value?: Loc | null; text?: string; label?: string; placeholder?: string; required?: boolean; clearOnPick?: boolean; onpick?: (l: Loc) => void; cls?: string;
       /** Vorschläge ohne Eingabe (z. B. Umkreis und Flughäfen am Reiseziel) */
       near?: Loc[];
       /** zu einer Eingabe zusätzlich „alle Flughäfen im Umkreis“ anbieten */
       areaFor?: (text: string) => Loc | null;
+      /** Bezugspunkt: gleich gute Treffer nach Entfernung (z. B. von den Abflughäfen aus) */
+      from?: { lat: number; lon: number } | null;
     } = $props();
 
   let open = $state(false);
@@ -24,7 +26,7 @@
   const hits = $derived.by(() => {
     if (!open) return [];
     if (!typing || !text.trim()) return near;
-    const found = searchLocs(airportData, text, 8);
+    const found = searchLocs(airportData, text, 8, from);
     const area = areaFor?.(text);
     if (!area) return found;
     // Umkreis hinter dem besten Treffer (bei einer Stadt hinter ihren Flughäfen)

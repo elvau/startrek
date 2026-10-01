@@ -16,6 +16,12 @@ describe("Flughafen- und Städteauswahl", () => {
     expect(searchLocs(d, "new york")[0]).toMatchObject({ code: "NYC", airports: ["JFK", "EWR", "LGA"] });
   });
 
+  it("gleich gute Treffer: der nähere zuerst (Birmingham ab Düsseldorf ist BHX, nicht BHM in Alabama)", () => {
+    const dus = { lat: 51.289, lon: 6.767 };
+    expect(searchLocs(d, "Birmingham", 8, dus)[0]).toMatchObject({ code: "BHX", cc: "GB" });
+    expect(searchLocs(d, "Birmingham", 8, { lat: 33.5, lon: -86.8 })[0]).toMatchObject({ code: "BHM", cc: "US" });
+  });
+
   it("ein Kürzel findet genau den Flughafen oder die Stadt", () => {
     expect(searchLocs(d, "SPU")[0]).toMatchObject({ kind: "airport", code: "SPU", city: "Split", cc: "HR" });
     expect(searchLocs(d, "jfk")[0]).toMatchObject({ kind: "airport", code: "JFK" });

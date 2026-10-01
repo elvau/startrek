@@ -60,7 +60,8 @@ export function locOf(d: AirportData, code: string, prefer: "city" | "airport" =
  * Vorschläge zu einer Eingabe: Städte mit mehreren Flughäfen zuerst, dann Flughäfen (große vor kleinen).
  * Treffer auf Code, Ort, Flughafenname, Stichwörter und Land.
  */
-export function searchLocs(d: AirportData, text: string, n = 8): Loc[] {
+/** from: Bezugspunkt (z. B. die Abflughäfen); gleich gute Treffer nach Entfernung, „Birmingham“ ab Düsseldorf also BHX vor BHM */
+export function searchLocs(d: AirportData, text: string, n = 8, from?: { lat: number; lon: number } | null): Loc[] {
   const s = norm(text);
   if (!s) return [];
   const up = text.trim().toUpperCase();
@@ -83,7 +84,13 @@ export function searchLocs(d: AirportData, text: string, n = 8): Loc[] {
     if (k >= 0) scored.push([k, fromAirport(a)]);
   }
   // Flughäfen einer vorgeschlagenen Stadt direkt dahinter
-  scored.sort((a, b) => a[0] - b[0]);
+  const at = (l: Loc): { lat: number; lon: number } | null => {
+    if (l.lat != null && l.lon != null) return { lat: l.lat, lon: l.lon };
+    const ap = d.airports.find(x => x[0] === l.airports[0]);
+    return ap ? { lat: ap[4], lon: ap[5] } : null;
+  };
+  const far = (l: Loc) => { const p = from && at(l); return p ? kmBetween(from!, p) : 0; };
+  scored.sort((a, b) => a[0] - b[0] || (from ? far(a[1]) - far(b[1]) : 0));
   const out: Loc[] = [];
   for (const [, l] of scored) {
     if (out.some(o => o.code === l.code && o.kind === l.kind)) continue;

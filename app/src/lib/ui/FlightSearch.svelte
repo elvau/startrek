@@ -88,11 +88,16 @@
     if (!name || /^[A-Za-z]{3}$/.test(name)) return null;
     const c = findCity(geo, name, cc) || findCity(geo, name);
     if (c) return { name: c.name, lat: c.lat, lon: c.lon, cc: c.cc };
-    const hit = searchLocs(airportData, name, 1)[0];
+    const hit = searchLocs(airportData, name, 1, fromPt)[0];
     const ap = hit && (hit.lat != null ? hit : locOf(airportData, hit.airports[0], "airport"));
     return ap?.lat != null ? { name: hit.city, lat: ap.lat, lon: ap.lon!, cc: hit.cc } : null;
   }
   const areaFor = (text: string) => { const p = pointOf(text); return p ? areaAround(airportData, p) : null; };
+  // Mittelpunkt der Abflughäfen: gleich gute Treffer beim Ziel nach Entfernung (Birmingham ab DUS → BHX, nicht BHM)
+  const fromPt = $derived.by(() => {
+    const ps = aps.map(c => locOf(airportData, c, "airport")).filter((l): l is Loc => l?.lat != null && l.lon != null);
+    return ps.length ? { lat: ps.reduce((v, l) => v + l.lat!, 0) / ps.length, lon: ps.reduce((v, l) => v + l.lon!, 0) / ps.length } : null;
+  });
   // Vorschläge ohne Eingabe: alle Flughäfen im Umkreis des Reiseziels, dann jeder einzeln mit Entfernung
   const nearDest = $derived.by(() => {
     const p = airportData.airports.length ? pointOf(trip.place || base.to) : null;
@@ -380,7 +385,7 @@
       <button type="button" role="radio" aria-checked={mode === "flex"} class="chip" class:on={mode === "flex"} onclick={() => (mode = "flex")}>{t("fs.flex")}</button>
     </div>
 
-    <LocationPicker label={t("ie.to")} bind:value={toLoc} bind:text={to} placeholder={t("fs.toPh")} required near={nearDest} {areaFor} />
+    <LocationPicker label={t("ie.to")} bind:value={toLoc} bind:text={to} placeholder={t("fs.toPh")} required near={nearDest} {areaFor} from={fromPt} />
     {#if toLoc && toLoc.kind !== "airport"}<p class="muted small fs-note">{t("fs.multiNote", { n: toLoc.airports.length, list: toLoc.airports.join(", ") })}</p>{/if}
 
     {/if}
@@ -394,7 +399,7 @@
         <div class="fs-stations">
           {#each stations as st, i (i)}
             <div class="fs-station">
-              <LocationPicker label={t("fs.station", { i: i + 1 })} bind:value={st.loc} bind:text={st.text} placeholder={t("fs.stationPh")} near={i === 0 ? nearDest : []} {areaFor} />
+              <LocationPicker label={t("fs.station", { i: i + 1 })} bind:value={st.loc} bind:text={st.text} placeholder={t("fs.stationPh")} near={i === 0 ? nearDest : []} {areaFor} from={fromPt} />
               <label class="f fs-n">{t("fs.nightsFrom")}<input type="number" min="0" max="60" bind:value={st.min} /></label>
               <label class="f fs-n">{t("range.to")}<input type="number" min="1" max="60" bind:value={st.max} /></label>
               {#if stations.length > 1}<button type="button" class="btn sm fs-del" aria-label={t("fs.stationRemove", { i: i + 1 })} onclick={() => (stations = stations.filter((_, j) => j !== i))}>×</button>{/if}
