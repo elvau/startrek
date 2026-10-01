@@ -153,6 +153,8 @@ export interface FlightLeg {
   arr: string;
   carrier?: string;
   stops?: number;
+  /** Flugdauer in Minuten (aus der Suche); Abflug und Landung sind Ortszeiten verschiedener Zeitzonen */
+  minutes?: number;
   /** Stadt am Ziel des Flugs (für Unterkünfte je Station einer Rundreise) */
   toCity?: string;
 }

@@ -1,7 +1,6 @@
 /* Flugsuche in der App: Anfrage aus der Reise, Ergebnis als Angebot in einen Flug-Posten */
 import { noteError } from "../bugs/log";
 import { t, tn } from "../i18n/index.svelte";
-import { ageClass } from "../calc";
 import { addOffer, hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
 import { dayShort, nights } from "../format";
 import { accessFor, airportsOf, roadKm } from "../calc/travel";
@@ -12,15 +11,22 @@ import type { RoundTrip } from "./roundtrip";
 export const FLIGHTS_URL = (import.meta.env.VITE_FLIGHTS_URL as string | undefined)?.replace(/\/$/, "") || "";
 
 /** Personen der Reise für die Suche: Babys (unter 2, nur mit bekanntem Alter) auf dem Schoß, sonst Kinder mit Sitz */
+/**
+ * Fluggäste nach den Regeln der Airlines (nicht nach den Altersgrenzen der Reise): ab 12 Erwachsene, unter 2 Babys auf dem
+ * Schoß, dazwischen Kinder. Ohne Alter zählt die Klasse des Platzhalters (Kleinkind bekommt sicherheitshalber einen Sitz).
+ * Mehr Babys als Erwachsene: die übrigen brauchen einen eigenen Sitz und zählen als Kinder.
+ */
 export function passengers(trip: Trip, ids?: string[]): Pick<FlightQuery, "adults" | "children" | "infants"> {
   let adults = 0, children = 0, infants = 0;
   for (const t of flyers(trip, ids)) {
-    const c = ageClass(t.age, trip.settings, t.kind);
-    if (c === "adult") adults++;
-    else if (t.age != null && (t.age as unknown) !== "" && t.age < 2) infants++;
+    const age = t.age != null && (t.age as unknown) !== "" && isFinite(Number(t.age)) ? Number(t.age) : null;
+    if (age == null ? (t.kind || "adult") === "adult" : age >= 12) adults++;
+    else if (age != null && age < 2) infants++;
     else children++;
   }
-  return { adults: Math.max(1, adults), children, infants: Math.min(infants, Math.max(1, adults)) };
+  adults = Math.max(1, adults);
+  const lap = Math.min(infants, adults);
+  return { adults, children: children + infants - lap, infants: lap };
 }
 
 /** Wer fliegt: diese Personen (fehlt: alle, die dabei sind) */
@@ -73,7 +79,7 @@ export function defaultQuery(trip: Trip, lastFrom = "", ids?: string[]): FlightQ
   };
 }
 
-const legOf = (dir: FlightLeg["dir"], l: OfferLeg): FlightLeg => ({ dir, from: l.from, to: l.to, dep: l.dep.slice(0, 16), arr: l.arr.slice(0, 16), carrier: l.carriers.join(" / "), stops: l.stops, ...(l.toCity ? { toCity: l.toCity } : {}) });
+export const legOf = (dir: FlightLeg["dir"], l: OfferLeg): FlightLeg => ({ dir, from: l.from, to: l.to, dep: l.dep.slice(0, 16), arr: l.arr.slice(0, 16), carrier: l.carriers.join(" / "), stops: l.stops, ...(l.minutes > 0 ? { minutes: l.minutes } : {}), ...(l.toCity ? { toCity: l.toCity } : {}) });
 
 export const stopsText = (n: number) => (n ? tn("n.stops", n) : t("fs.th.direct"));
 

@@ -23,6 +23,12 @@ const trip = (): Trip => ({
 describe("Flugsuche in der App", () => {
   it("zählt Personen: Baby nur mit Alter unter 2, Kleinkind ohne Alter mit Sitz, Inaktive nicht", () => {
     expect(passengers(trip())).toEqual({ adults: 2, children: 2, infants: 1 });
+    // Airline-Regeln, nicht die Altersgrenzen der Reise: 13 Jahre ist erwachsen, auch wenn die Reise erst ab 14 rechnet
+    const t13 = trip(); t13.settings = { ...t13.settings, adultAge: 14 }; t13.travelers = [{ id: "a", name: "A", household: "X", age: 40 }, { id: "b", name: "B", household: "X", age: 13 }];
+    expect(passengers(t13)).toEqual({ adults: 2, children: 0, infants: 0 });
+    // zwei Babys, ein Erwachsener: nur eins auf dem Schoß, das andere braucht einen Sitz
+    const twins = trip(); twins.travelers = [{ id: "a", name: "A", household: "X", age: 35 }, { id: "b", name: "B", household: "X", age: 0 }, { id: "c", name: "C", household: "X", age: 1 }];
+    expect(passengers(twins)).toEqual({ adults: 1, children: 1, infants: 1 });
   });
   it("schlägt Wohnort, Ziel und Daten der Reise vor", () => {
     expect(defaultQuery(trip())).toMatchObject({ from: "Düsseldorf", to: "Split", depart: "2027-07-18", ret: "2027-07-29" });
@@ -33,10 +39,12 @@ describe("Flugsuche in der App", () => {
   });
   it("macht aus einem Treffer ein Angebot mit Quelle, Link und Hin- und Rückflug", () => {
     const o = offerToOption(fromKiwi(fixture)[0]);
+    // Flugdauer aus der Suche bleibt am Flug (Abflug und Landung sind Ortszeiten)
+    expect(o.legs![0].minutes).toBe(fromKiwi(fixture)[0].out.minutes);
     expect(o).toMatchObject({ label: "Eurowings ab DUS, direkt", price: { mode: "unit", unit: 989 }, source: { name: "Kiwi.com", url: "https://kiwi.com/u/uqukjx" } });
     expect(o.legs).toEqual([
-      { dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T06:10", arr: "2027-07-18T08:05", carrier: "Eurowings", stops: 0, toCity: "Split" },
-      { dir: "back", from: "SPU", to: "DUS", dep: "2027-07-29T14:25", arr: "2027-07-29T16:25", carrier: "Eurowings", stops: 0, toCity: "Düsseldorf" }
+      { dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T06:10", arr: "2027-07-18T08:05", carrier: "Eurowings", stops: 0, minutes: 115, toCity: "Split" },
+      { dir: "back", from: "SPU", to: "DUS", dep: "2027-07-29T14:25", arr: "2027-07-29T16:25", carrier: "Eurowings", stops: 0, minutes: 120, toCity: "Düsseldorf" }
     ]);
   });
   it("erster Treffer legt einen Posten an, weitere kommen als Angebote dazu; die Summe stimmt", () => {
@@ -170,5 +178,14 @@ describe("Flugsuche wiederholen", () => {
     tr.items[0].status = "dropped";
     expect(withoutTravel(tr).map(t => t.id)).toEqual(["a", "b", "e"]);
     expect(covered(tr).has("c")).toBe(true);
+  });
+});
+
+describe("Flugdauer über Zeitzonen", () => {
+  it("nimmt die Dauer aus der Suche statt der Differenz der Ortszeiten", async () => {
+    const { legDuration } = await import("../format");
+    // Düsseldorf 10:00 → New York 12:30 Ortszeit sind 8 h 30 min
+    expect(legDuration({ dep: "2027-07-18T10:00", arr: "2027-07-18T12:30", minutes: 510 })).toBe("8 h 30 min");
+    expect(legDuration({ dep: "2027-07-18T10:00", arr: "2027-07-18T12:30" })).toBe("2 h 30 min");
   });
 });
