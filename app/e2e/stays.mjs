@@ -217,6 +217,15 @@ try {
   if (sticky.bar <= 0 || sticky.bar > sticky.aside || sticky.aside > 120) fail("Leiste oder Gesamtkosten nicht im Blick: " + JSON.stringify(sticky));
   log("Scrollen: Leiste oben sichtbar, Gesamtkosten rechts bleiben darunter stehen");
 
+  // Fokusmodus nur im eigenen Kapitel: Karte bei der Unterkunft offen, weiter zu „Alles andere“ gescrollt → dort alles klar
+  await p.locator("#stay .card[data-item] h3").first().click();
+  await p.locator("#stay .card.edit").waitFor();
+  await p.locator("#misc").evaluate(el => el.scrollIntoView({ block: "start", behavior: "instant" }));
+  await p.waitForTimeout(700);
+  const misc = await p.locator("#misc .card[data-item]").first().evaluate(el => { const c = getComputedStyle(el); return { o: c.opacity, f: c.filter }; });
+  if (misc.o !== "1" || misc.f !== "none") fail("Karte im nächsten Kapitel abgeblendet: " + JSON.stringify(misc));
+  log("Fokus: offene Karte bei der Unterkunft blendet beim Weiterscrollen „Alles andere“ nicht ab");
+
   // Rundreise wie bei Eduard: Quito → Lima → Rio, Nachtflug nach Rio; Lücken und Suche je Stadt statt „alles in Quito“
   const leg = (dir, from, to, dep, arr, toCity) => ({ dir, from, to, dep, arr, ...(toCity ? { toCity } : {}) });
   const RT = {

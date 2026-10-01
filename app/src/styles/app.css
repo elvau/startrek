@@ -193,8 +193,9 @@ body.scrolled .hint{pointer-events:none}
 .reveal.in{opacity:1;transform:none}
 .card:focus-visible{box-shadow:0 0 0 3px var(--a),var(--shadow)}
 /* Spotlight: beim Bearbeiten tritt alles andere zurück */
-body.editing .chapter.on .card:not(.edit){opacity:.35;filter:blur(1px)}
-body.editing .aside{opacity:.5}
+/* Fokus nur im Kapitel der offenen Karte; scrollt man weiter, bleiben die anderen Kapitel klar */
+.chapter.on:has(.card.edit) .card:not(.edit){opacity:.35;filter:blur(1px)}
+body:has(.chapter.on .card.edit) .aside{opacity:.5}
 .card.edit{transform:scale(1.015);box-shadow:0 0 0 2px var(--a),0 30px 60px -20px rgba(0,0,0,.35);z-index:2}
 
 .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
