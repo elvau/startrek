@@ -3,6 +3,7 @@
  * (ohne Flüge: Reise- bzw. Unterkunftsdaten). Ort aus der Reise, sonst die Stadt am Ankunftsflughafen.
  */
 import type { Trip } from "../model";
+import { shiftLocal } from "../format";
 import { arrivals } from "../stays/presence";
 
 export interface EventWindow {
@@ -18,18 +19,12 @@ export interface EventWindow {
 /** Abstand zu Landung und Abflug */
 export const BUFFER_H = 5;
 
-function shift(iso: string, h: number): string {
-  const d = new Date(`${iso.slice(0, 16)}:00Z`);
-  d.setUTCHours(d.getUTCHours() + h);
-  return d.toISOString().slice(0, 16);
-}
-
 export function eventWindow(trip: Trip, cityOf: (ap: string) => string = () => ""): EventWindow {
   const arr = arrivals(trip);
   const ins = arr.map(a => a.arr).filter((x): x is string => !!x && x.length >= 16).sort();
   const outs = arr.map(a => a.dep).filter((x): x is string => !!x && x.length >= 16).sort();
-  let start = ins[0] ? shift(ins[0], BUFFER_H) : undefined;
-  let end = outs.length ? shift(outs[outs.length - 1], -BUFFER_H) : undefined;
+  let start = ins[0] ? shiftLocal(ins[0], BUFFER_H) : undefined;
+  let end = outs.length ? shiftLocal(outs[outs.length - 1], -BUFFER_H) : undefined;
   if (start && end && end <= start) { start = undefined; end = undefined; }
   const stays = trip.items.filter(i => i.cat === "stay" && i.status !== "dropped" && i.from && i.to);
   const sFrom = stays.map(i => i.from!).sort()[0], sTo = stays.map(i => i.to!).sort().at(-1);

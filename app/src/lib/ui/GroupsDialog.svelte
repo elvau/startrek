@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t, tn } from "../i18n/index.svelte";
   /* Gespeicherte Gruppen und Personen verwalten. Eine Person kann in mehreren Gruppen sein. */
-  import { addGroup, addPerson, dir, removeGroup, removePerson, toggleMember } from "../directory.svelte";
+  import { addGroup, addPerson, dir, fullName, removeGroup, removePerson, toggleMember } from "../directory.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { personAge } from "../people";
   import { deleteAllDocs, docs, hasDoc, loadDocs, removeDoc, saveDocsNow } from "../traveldocs.svelte";
@@ -91,7 +91,7 @@
             <button class="pmore" aria-expanded={det === p.id} aria-label={t("per.more", { name: p.first })} onclick={() => (det = det === p.id ? null : p.id)}>
               <span class="muted small">{summary(p)}</span><span aria-hidden="true">{det === p.id ? "▴" : "▾"}</span>
             </button>
-            <button class="x" aria-label={t("grp.deletePerson", { name: p.first })} onclick={() => delPerson(p.id, `${p.first} ${p.last}`)}>×</button>
+            <button class="x" aria-label={t("grp.deletePerson", { name: p.first })} onclick={() => delPerson(p.id, fullName(p))}>×</button>
             {#if det === p.id}<PersonDetails {p} />{/if}
           </li>
         {/each}

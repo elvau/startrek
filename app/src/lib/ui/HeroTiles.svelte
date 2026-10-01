@@ -20,7 +20,6 @@
 
   const trip = $derived(app.trip);
   const T = $derived(calc.T);
-  const live = (cat: string) => trip.items.filter(i => i.cat === cat && i.status !== "dropped");
 
   /** Kurzfassung eines Postens: Strecke beim Flug, sonst Angebot oder Name */
   function label(i: Item): string {

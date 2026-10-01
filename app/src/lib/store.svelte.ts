@@ -5,7 +5,7 @@ import { t as tr, type Key } from "./i18n/index.svelte";
 import { totals } from "./calc";
 import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type SimpleLine, type Traveler, type Trip } from "./model";
 import { sampleTrip } from "./seed";
-import { autoName, dateDE } from "./format";
+import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";

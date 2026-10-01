@@ -6,8 +6,7 @@
   import ModeSwitch from "./ModeSwitch.svelte";
   import { renameTrip, setAllDetailed, tripMode } from "../store.svelte";
   import { eur, eurPP } from "../calc";
-  import { dayShort, nights, range } from "../format";
-  import { openEventPlanner } from "../event/open.svelte";
+  import { nights, range } from "../format";
   import TripEditor from "./TripEditor.svelte";
   import HeroTiles from "./HeroTiles.svelte";
 

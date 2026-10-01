@@ -5,12 +5,12 @@
  * Gebuchte, bezahlte und verworfene Posten bleiben außen vor, ebenso eigene Einträge ohne Suche.
  */
 import { t } from "./i18n/index.svelte";
-import { FIXED, type Item, type Option, type Trip, type TripWatch, type WatchHit } from "./model";
+import { FIXED, type Item, type Option, type Trip, type WatchHit } from "./model";
 import { activeOption } from "./calc";
 import { offerToOption, passengers } from "./flights/app";
 import { defaultStayQuery, stayToOption } from "./stays/app";
 import type { FlightOffer, FlightQuery, SearchResult } from "./flights/types";
-import type { StayOffer, StayQuery, StaySearchResult } from "./stays/types";
+import type { StayQuery, StaySearchResult } from "./stays/types";
 
 const day = (iso: string) => iso.slice(0, 10);
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -51,11 +51,6 @@ export function sameFlight(o: Option, offers: FlightOffer[]): FlightOffer | unde
   const out = o.legs!.find(l => l.dir === "out")!, back = o.legs!.find(l => l.dir === "back");
   const hit = offers.filter(f => sameLeg(out, f.out) && (!back ? !f.back : !!f.back && sameLeg(back, f.back)));
   return hit.sort((a, b) => a.price - b.price)[0];
-}
-
-export function sameStay(o: Option, offers: StayOffer[]): StayOffer | undefined {
-  const n = norm(o.label);
-  return offers.filter(s => norm(s.name) === n).sort((a, b) => a.total - b.total)[0];
 }
 
 /** ein Treffer der Nachsuche: Preis, ob er zu einem Angebot passt, als Angebot */

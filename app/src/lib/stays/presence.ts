@@ -5,7 +5,7 @@
 import { t } from "../i18n/index.svelte";
 import { hhKey, isActive, type Item, type Traveler, type Trip } from "../model";
 import { activeOption, participantsOf, presences } from "../calc";
-import { addDays, airNights, flightLegs, needs, nightsList, okDate, stopsOf, type Presence, type Stop } from "../calc/travel";
+import { airNights, flightLegs, needs, nightsList, okDate, stopsOf, type Presence, type Stop } from "../calc/travel";
 import { dayShort, time } from "../format";
 
 /** Personen mit gleicher An- und Abreise in einem Haushalt */
@@ -137,5 +137,3 @@ export function gaps(trip: Trip): Gap[] {
   }).sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to));
 }
 
-/** Suche für einen Posten: dessen Zeitraum und Beteiligte */
-export const itemScope = (it: Item) => ({ from: it.from, to: it.to, ids: it.participants });

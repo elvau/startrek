@@ -55,3 +55,10 @@ export function autoName(x: { place?: string; from?: string; to?: string }): str
   const n = nights(x.from, x.to);
   return [place || t("trip"), x.from ? monthYear(x.from) : "", n ? tn("n.days", n + 1) : ""].filter(Boolean).join(" · ");
 }
+
+/** Ortszeit „JJJJ-MM-TTTHH:MM“ um h Stunden verschieben (ohne Zeitzonen, über UTC gerechnet) */
+export function shiftLocal(iso: string, h: number): string {
+  const d = new Date(`${iso.slice(0, 16)}:00Z`);
+  d.setUTCHours(d.getUTCHours() + h);
+  return d.toISOString().slice(0, 16);
+}

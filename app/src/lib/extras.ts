@@ -5,6 +5,7 @@
  */
 import { t } from "./i18n/index.svelte";
 import { uid, type Item, type Trip } from "./model";
+import { shiftLocal } from "./format";
 import { arrivals } from "./stays/presence";
 
 export interface CarWindow {
@@ -21,18 +22,12 @@ export const CAR_PER_DAY = 40;
 export const INS_RATE = 0.04;
 export const INS_PER_PERSON = 12;
 
-function shift(iso: string, h: number): string {
-  const d = new Date(`${iso.slice(0, 16)}:00Z`);
-  d.setUTCHours(d.getUTCHours() + h);
-  return d.toISOString().slice(0, 16);
-}
-
 export function carWindow(trip: Trip): CarWindow | null {
   const arr = arrivals(trip);
   const ins = arr.filter(a => a.arr && a.arr.length >= 16).sort((a, b) => a.arr!.localeCompare(b.arr!));
   const outs = arr.filter(a => a.dep && a.dep.length >= 16).sort((a, b) => b.dep!.localeCompare(a.dep!));
-  let pick = ins[0] ? shift(ins[0].arr!, 1) : trip.from ? `${trip.from}T10:00` : "";
-  let drop = outs[0] ? shift(outs[0].dep!, -2) : trip.to ? `${trip.to}T10:00` : "";
+  const pick = ins[0] ? shiftLocal(ins[0].arr!, 1) : trip.from ? `${trip.from}T10:00` : "";
+  const drop = outs[0] ? shiftLocal(outs[0].dep!, -2) : trip.to ? `${trip.to}T10:00` : "";
   if (!pick || !drop || drop <= pick) return null;
   const days = Math.max(1, Math.ceil((Date.parse(`${drop}:00Z`) - Date.parse(`${pick}:00Z`)) / 86400000));
   return { ...(ins[0]?.arrAp ? { ap: ins[0].arrAp } : {}), pick, drop, days };

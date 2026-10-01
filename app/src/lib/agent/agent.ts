@@ -182,8 +182,6 @@ const PROPOSE =
     };
 
 /** alle Werkzeuge (Rückfrage erlaubt, Reisende bekannt) */
-export const TOOLS = toolsFor({ asked: false, travelersKnown: true });
-
 const BOARDS = ["self", "breakfast", "half", "full", "all"];
 
 const LANGS: Record<string, string> = { de: "German", en: "English", es: "Spanish", fr: "French", pl: "Polish", ru: "Russian", ar: "Arabic" };
@@ -209,7 +207,7 @@ export function systemPrompt(r: AgentRequest): string {
     "Use search_flights and search_stays to find real offers. Never invent prices, flights or hotels.",
     "If the travelers say they arrive on their own (by car, train or bus, \"we drive\", \"no flight\", \"Anreise selbst\" …), do not search flights: propose destinations within reach, each with a real accommodation and ownArrival (how, rough round-trip cost for the group), no flightId.",
     "Otherwise every proposal is a complete package: a real flight AND a real accommodation for the same destination and dates (search both for each destination), plus your estimates for local transport (transfers, rental car or public transport) and up to 3 fitting activities or events. Set board from the accommodation's board or facts (all-inclusive, half board …); if unknown, use 'self'. The app then adds only the meals not covered by the accommodation. Estimates are rough totals in EUR for the whole group.",
-    groupLine(r),
+    groupLine(),
     `Be economical: at most ${LIMITS.flights} flight searches and ${LIMITS.stays} accommodation searches in total.`,
     "Match the request (budget, season, length, interests). Budget amounts are per person unless stated otherwise.",
     `Then call propose_trips exactly once with 2-${LIMITS.trips} clearly different trips, using offer ids from the search results.`,
@@ -233,7 +231,7 @@ function tripPrompt(r: AgentRequest): string {
     "If the user asks for changes, make all of them in ONE update_trip call: search real offers with search_flights and search_stays where possible (never invent flights, hotels or prices), use estimates only for costs without a searchable offer, and use replaces to swap an item instead of adding a duplicate. Remove items that no longer fit (e.g. flights when the travelers now arrive by car).",
     "If the travelers arrive on their own (car, train, bus), add an estimate in category transport with arrival true for the round trip for the whole group (car: about 0.30 EUR per km plus tolls) and remove the flights.",
     "If the dates change, also replace the accommodation and flights for the new dates.",
-    groupLine(r),
+    groupLine(),
     "Never change or remove items with status booked or paid; mention it in reply if the user's wish would need that.",
     `Be economical: at most ${LIMITS.flights} flight searches and ${LIMITS.stays} accommodation searches in total.`,
     ...(r.asked ? ["You already asked a clarifying question; the user's answer is in the text. Do not ask again."] : [`Only if the wish is really unclear, call ask_user once, in ${lang}, before searching.`]),
@@ -244,7 +242,7 @@ function tripPrompt(r: AgentRequest): string {
 }
 
 /** große Gruppen: Flüge in kleinen Buchungen suchen, verschiedene Flüge erlaubt; Zimmer nach Wunsch */
-function groupLine(r: AgentRequest): string {
+function groupLine(): string {
   return "Groups: a flight booking holds at most 9 seats. For 5 or more adults (or if the wish asks to book separately), search flights with seats 2 (small bookings often get the cheapest fares); the app then books the group in several bookings of 2. You may split the group across different flights or departure airports (flights with travelers per flight). Choose rooms for the accommodation search as the wish says (e.g. 2-3 people per room).";
 }
 

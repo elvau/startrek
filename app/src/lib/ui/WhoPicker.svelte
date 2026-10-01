@@ -1,6 +1,6 @@
 <script module lang="ts">
   import { t, tn } from "../i18n/index.svelte";
-  import { addGroup, addPerson, dir, travelersFrom } from "../directory.svelte";
+  import { addGroup, addPerson, dir, fullName, travelersFrom } from "../directory.svelte";
   import { animalEmoji, animalName, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler } from "../placeholders";
   import { addToNew, dropFromNew, toggleSavedGroup, togglePicked, whoCount, type Who, type WhoMode, type WhoSrc } from "../who";
   import type { Traveler } from "../model";
@@ -48,7 +48,7 @@
   const other = (cur: string) => nextAnimal([cur]);
   const step = (k: "adults" | "kids", d: number) => (who.group[k] = Math.max(k === "adults" ? 1 : 0, Math.min(40, who.group[k] + d)));
   const byId = (id: string) => dir.people.find(p => p.id === id);
-  const pname = (id: string) => { const p = byId(id); return p ? `${p.first} ${p.last}`.trim() : "?"; };
+  const pname = (id: string) => { const p = byId(id); return p ? fullName(p) : "?"; };
 
   // gespeichert: Personen, die in keiner gewählten Gruppe sind
   const inChosen = $derived(new Set(dir.groups.filter(g => who.groups.includes(g.id)).flatMap(g => g.memberIds)));
