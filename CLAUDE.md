@@ -28,6 +28,9 @@ Neue Funktionen bekommen Unit-Tests und, wo sinnvoll, einen Schritt in `app/e2e/
 - Oberfläche in 7 Sprachen (de, en, es, fr, pl, ru, ar; ar von rechts nach links). Neue Texte immer in
   `app/src/lib/i18n/*.ts` für alle Sprachen, Mehrzahl über `.one/.other` (pl/ru mit few/many, ar mit zero/two/few/many).
 - Keine Modellnamen im Repo. Commit-Trailer wie bisher (`Co-Authored-By: Claude …`).
+- Autor der Commits ist das Bot-Konto `daniel-ai-coder`, je Rolle im Namen (Feature, Bugfix, Review, Sprachen):
+  `git commit --author="Split&Fly KI · Feature <336432604+daniel-ai-coder@users.noreply.github.com>"`.
+  Committer bleibt Claude (`noreply@anthropic.com`), sonst ist der Commit nicht signiert.
 
 ## Datenschutz (streng)
 - Fehlerberichte liegen im privaten Repo `elvau/splitandfly-bugs`, Bilder im R2-Speicher des Workers

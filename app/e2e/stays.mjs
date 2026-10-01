@@ -149,7 +149,9 @@ try {
   await m.locator(".x").click();
   // Fehler von vorher: der offene Posten graute danach „Wer ist wann wo“ aus
   if (await p.evaluate(() => document.body.classList.contains("editing"))) fail("Posten nach der Suche noch offen, Plan ausgegraut");
-  const op = await p.locator("#stay .plan-card").evaluate(el => getComputedStyle(el).opacity);
+  // nach dem Ausblenden des Postens läuft das Wiedereinblenden kurz als Übergang: auf den Endwert warten
+  let op = "";
+  for (let i = 0; i < 20; i++) { op = await p.locator("#stay .plan-card").evaluate(el => getComputedStyle(el).opacity); if (op === "1") break; await p.waitForTimeout(100); }
   if (op !== "1") fail("Plan ausgegraut: opacity " + op);
   log("Nach der Suche aus dem Posten ist der Plan nicht ausgegraut");
 
