@@ -388,6 +388,21 @@ try {
   await cw.locator(".ai-busy").waitFor({ state: "detached", timeout: 10000 });
   log("Längere Antwort: Hinweis „ein paar Minuten“, Wartezeit läuft mit");
 
+  // im Hintergrund: Fenster schließen und weiterarbeiten, der Knopf zeigt den Stand und meldet das Ergebnis
+  await cw.locator(".ai-bar textarea").fill("Bitte langsam: noch ein Wochenende");
+  await cw.locator(".ai-bar textarea").press("Enter");
+  await cw.locator(".ai-busy .ai-cancel").waitFor();
+  await cw.locator(".ai-head .x").click();
+  await p.locator(".ai-fab.working", { hasText: "KI arbeitet" }).waitFor();
+  await p.locator(".top .brand-btn").click().catch(() => {});
+  await p.locator(".start .home-title").waitFor();
+  await p.locator(".ai-note", { hasText: "Die KI ist fertig" }).waitFor({ timeout: 12000 });
+  if (!(await p.locator(".ai-fab.unread").count())) fail("Knopf zeigt das Ergebnis nicht an");
+  await p.locator(".ai-note").click();
+  await p.locator(".ai-chat .ai-card").last().waitFor();
+  if (await p.locator(".ai-note").count()) fail("Meldung bleibt nach dem Öffnen");
+  log("Im Hintergrund: Fenster zu, weitergearbeitet, „Die KI ist fertig“ am Knopf, Klick öffnet das Ergebnis");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
 } finally { await browser.close(); server.kill(); }
