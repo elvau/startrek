@@ -224,7 +224,9 @@ $effect.root(() => {
     const first = cloud.trips[0];
     if (checked || !first || !cloud.user) return;
     checked = true;
-    if (!isCloud(app.trip.id) && pristine(app.trip) && !uploaded.has(app.trip.id)) {
+    // nur solange man noch auf der Startseite ist: wer schon eine neue Reise begonnen hat (z. B. „Zu einem Event“
+    // direkt nach dem Laden, Konto noch nicht da), dem wird sie nicht unter den Händen gegen eine Konto-Reise getauscht
+    if (untrack(() => app.home) && !isCloud(app.trip.id) && pristine(app.trip) && !uploaded.has(app.trip.id)) {
       switchTrip(first.id);
     }
   });

@@ -320,6 +320,22 @@ try {
   if (!(await p.locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
   log("Aufräumen: unberührter Entwurf still gelöscht, „Idee Lissabon“ (ohne Kosten) nach Rückfrage, Reisen mit Kosten bleiben");
 
+  // „Zu einem Event“ direkt nach dem Laden, das Konto ist noch nicht da: Kommt es danach, bleibt die neue Reise offen
+  // (früher wurde sie gegen die erste Konto-Reise getauscht und der Event-Plan landete dort)
+  let release = () => {};
+  const gate = new Promise(r => (release = r));
+  await p.route("**/assets/firebase-*.js", async r => { await gate; await r.continue(); });
+  await p.reload();
+  await p.locator(".start .home-event").click();
+  await p.locator(".modal[aria-label='Reise zu einem Event']").waitFor();
+  release();
+  await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
+  await p.waitForTimeout(1500);
+  const opened = await p.locator(".top .tm-name").innerText();
+  if (opened !== "Neue Reise") fail("neue Reise gegen Konto-Reise getauscht: " + opened);
+  await p.unroute("**/assets/firebase-*.js");
+  log("Zu einem Event direkt nach dem Laden: neue Reise bleibt offen, auch wenn das Konto erst danach da ist");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
 } finally { await browser.close(); server.kill(); }

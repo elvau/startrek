@@ -4,7 +4,7 @@
    * Reise zu einem Event: Was, wo, wann. Daraus bis zu drei Vorschläge (ohne Nacht, eine Nacht, ab Vortag),
    * je mit dem günstigsten passenden Flug (inkl. Anfahrt) und einer gut bewerteten Unterkunft.
    */
-  import { app } from "../store.svelte";
+  import { app, startTrip, switchTrip } from "../store.svelte";
   import { eur } from "../calc";
   import { dayShort, range, time } from "../format";
   import Modal from "./Modal.svelte";
@@ -146,6 +146,8 @@
   }
 
   function take(r: Row) {
+    // in die Reise, für die der Planer geöffnet wurde; wurde inzwischen eine andere geöffnet, zurück (oder neu, falls weg)
+    if (app.trip.id !== trip.id) { switchTrip(trip.id); if (app.trip.id !== trip.id) startTrip(); }
     takePlan(app.trip, r.v, r.flight, r.stay, r.stayQ);
     done = true;
     rows = null;
