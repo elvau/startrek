@@ -18,6 +18,7 @@
   import GroupsButton from "./GroupsButton.svelte";
   import LangSelect from "./LangSelect.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
+  import AiMark from "./AiMark.svelte";
 
   let picking = $state(false);
   const today = new Date().toISOString().slice(0, 10);
@@ -67,7 +68,7 @@
       </button>
       {#if cloud.configured}
         <button class="home-act home-ai" onclick={openChat}>
-          <span class="home-ico" aria-hidden="true">✨</span><b>{t("home.ai")}</b><small>{t("home.aiSub")}</small>
+          <span class="home-ico" aria-hidden="true"><AiMark /></span><b>{t("home.ai")}</b><small>{t("home.aiSub")}</small>
         </button>
       {/if}
     </div>
@@ -81,7 +82,7 @@
             {@const leave = !!m.role && m.role !== "owner"}
             <div class="ht-wrap">
             <button class="home-trip" class:past={g.k === "past"} onclick={() => openTrip(m.id)}>
-              <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai">✨ {t("home.aiTag")}</span>{/if}</span>
+              <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
               {#if x}
                 {#if x.where}<span class="ht-where">{x.round ? `🔁 ${t("home.round")}: ` : "📍 "}{x.where}</span>{/if}
                 {#if m.from}<span class="ht-when">📅 {range(m.from, m.to)}{x.nights ? ` · ${tn("n.nights", x.nights)}` : ""}</span>{/if}

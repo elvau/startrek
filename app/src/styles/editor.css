@@ -765,3 +765,16 @@ body[data-ch="split"] .amb-split{opacity:1}
 .xp-img{flex:none;width:84px;height:64px;object-fit:cover;border-radius:10px}
 .xp-more{margin:4px 0 0}
 @media (max-width:520px){.xp-card{flex-wrap:wrap}.xp-acts{flex-direction:row;align-items:center;width:100%;justify-content:space-between}}
+
+/* Marke der KI „&✈KI“ und Kennzeichen an Posten */
+.aim{display:inline-flex;align-items:baseline;gap:0;font:800 1em "Bricolage Grotesque Variable",sans-serif;letter-spacing:-.02em;white-space:nowrap;line-height:1}
+.aim-amp{color:var(--a)}
+.aim-pl{font-size:.8em;margin:0 .06em;transform:translateY(-.08em);display:inline-block}
+.aim-ai{color:var(--idea)}
+.ai-fab .aim-amp,.ai-fab .aim-ai{color:inherit}
+.ai-fab .aim{font-size:17px}
+.aif{display:flex;align-items:center;gap:8px;padding:8px 22px 10px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted)}
+.aif .aim{font-size:13px;background:var(--idea-soft);border-radius:99px;padding:3px 8px}
+.ai-edit{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ai-edit small{flex-basis:100%}
+.ai-trip{font-size:12px;padding:6px 16px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

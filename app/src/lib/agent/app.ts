@@ -1,18 +1,18 @@
 /* KI-Planer in der App: Anfrage aus der Reise bauen, an den Such-Dienst schicken, Vorschlag übernehmen */
 import { i18n, t, type Key } from "../i18n/index.svelte";
-import { ageClass } from "../calc";
+import { ageClass, totals } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
-import { hhKey, uid, type Item, type Prefs, type Trip } from "../model";
+import { hhKey, uid, type AiMark, type Item, type Prefs, type Trip } from "../model";
 import { syncFood } from "../food";
 import type { GeoData } from "../geo/places";
 import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
-import type { AgentRequest, AgentResult, AgentTrip } from "./types";
+import type { AgentEdit, AgentRequest, AgentResult, AgentTrip, TripBrief } from "./types";
 import { noteError } from "../bugs/log";
 
 /** Wunsch plus Reisende, Abflughäfen und was über die Reise schon feststeht */
-export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: Prefs): AgentRequest {
+export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: Prefs, withTrip = false): AgentRequest {
   const pax = passengers(trip);
   // Kinder mit Alter (ohne Babys auf dem Schoß); ohne Alter: 8
   const childAges = flyers(trip)
@@ -25,7 +25,34 @@ export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: 
     origins: nearestAirports(trip, 3), adults: pax.adults, childAges, infants: pax.infants,
     ...(known.place || known.from || known.to ? { trip: known } : {}),
     originsKnown: flyers(trip).some(p => !!trip.households?.[hhKey(p)]?.geo),
-    travelersKnown: travelersKnown(trip), asked, ...(prefs ? { prefs } : {})
+    travelersKnown: travelersKnown(trip), asked, ...(prefs ? { prefs } : {}),
+    ...(withTrip ? { current: tripBrief(trip) } : {})
+  };
+}
+
+/** berät die KI zur offenen Reise? (sonst plant sie neue Reisen) – sobald Ziel oder eigene Posten da sind */
+export const hasPlan = (trip: Trip) => !!trip.place || trip.items.some(i => !i.auto);
+
+/** offene Reise für die KI: Ziel, Daten, Posten mit Betrag für alle; ohne Namen, Notizen und Buchungsangaben */
+export function tripBrief(trip: Trip): TripBrief {
+  const T = totals(trip);
+  // Postennamen enthalten oft Familiennamen („Flug Klein“): Namen der Reisenden und Familien unkenntlich machen
+  const names = [...new Set(trip.travelers.flatMap(p => [p.name, p.household]).map(x => (x || "").trim()).filter(x => x.length > 1))]
+    .sort((a, b) => b.length - a.length);
+  const anon = (s: string) => names.reduce((v, n) => v.split(n).join("…"), s);
+  const items = trip.items.filter(i => !i.auto).slice(0, 40).map(i => {
+    const o = T.items[i.id]?.option;
+    const legs = o?.legs?.length ? o.legs.map(l => `${l.from}→${l.to} ${l.dep.replace("T", " ")}`).join(", ") : "";
+    const detail = legs || (i.from && i.to ? `${i.from} – ${i.to}` : "");
+    return {
+      id: i.id, cat: i.cat, name: anon(i.name || o?.label || "").slice(0, 60), status: i.status, eur: Math.round(T.items[i.id]?.net || 0),
+      ...(o?.estimate ? { estimate: true } : {}), ...(detail ? { detail: detail.slice(0, 120) } : {})
+    };
+  });
+  return {
+    items,
+    ...(trip.place ? { place: trip.place } : {}), ...(trip.country ? { country: trip.country } : {}),
+    ...(trip.from ? { from: trip.from } : {}), ...(trip.to ? { to: trip.to } : {})
   };
 }
 
@@ -74,26 +101,74 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   trip.to = a.to;
   if (trip.autoName !== false) { trip.name = a.title; trip.autoName = false; }
   trip.detail ||= {};
-  if (a.flight) { trip.detail.flights = true; takeOffer(trip, a.flight); }
+  const at = new Date().toISOString();
+  // Flug und Unterkunft sind echte Angebote: „von der KI vorgeschlagen“
+  if (a.flight) { trip.detail.flights = true; takeOffer(trip, a.flight).ai = { at, kind: "suggested" }; }
   if (a.stay && a.stayQuery) {
     trip.detail.stay = true;
     const it = takeStay(trip, a.stay, a.stayQuery);
+    it.ai = { at, kind: "suggested" };
     // Verpflegung an der Unterkunft: aus der Suche, sonst laut KI; die Verpflegung unter „Sonstiges“ richtet sich danach
     const o = it.options.at(-1);
     if (o && !o.stay?.board && a.board) o.stay = { ...(o.stay || {}), board: a.board };
   }
-  trip.ai = { at: new Date().toISOString() };
+  trip.ai = { at };
   trip.food = { ...(trip.food || {}), on: true };
   // Schätzungen der KI als Posten, als Richtwert markiert
-  const est = (cat: Item["cat"], name: string, eur: number): Item => ({
-    id: uid(), cat, name, status: "idea",
-    options: [{ id: uid(), label: "", estimate: true, source: { name: t("ai.estimate") }, price: { mode: "unit", currency: "EUR", unit: eur } }]
-  });
+  const est = (cat: Item["cat"], name: string, eur: number) => estimateItem(cat, name, eur, { at, kind: "created" });
   if (a.arrival) { trip.detail.transport = true; trip.items.push(est("transport", a.arrival.label || t("ai.ownArrival"), a.arrival.eur)); }
   if (a.transport) { trip.detail.transport = true; trip.items.push(est("transport", a.transport.label || t("ai.transport"), a.transport.eur)); }
   if (a.extras?.length) { trip.detail.attractions = true; a.extras.forEach(x => trip.items.push(est("attractions", x.name, x.eur))); }
 }
 
+/** Schätzung der KI als Posten, als Richtwert markiert */
+export function estimateItem(cat: Item["cat"], name: string, eur: number, ai?: AiMark): Item {
+  return {
+    id: uid(), cat, name, status: "idea", ...(ai ? { ai } : {}),
+    options: [{ id: uid(), label: "", estimate: true, source: { name: t("ai.estimate") }, price: { mode: "unit", currency: "EUR", unit: eur } }]
+  };
+}
+
+/**
+ * Antwort der KI in die offene Reise übernehmen (nach Bestätigung): Ziel und Daten, Posten entfernen, ersetzen
+ * (an derselben Stelle) oder ergänzen. Alles, was die KI anlegt, ist markiert.
+ */
+export function applyEdit(trip: Trip, e: AgentEdit) {
+  const at = new Date().toISOString();
+  const fixed = (id: string) => { const i = trip.items.find(x => x.id === id); return !i || i.status === "booked" || i.status === "paid"; };
+  if (e.trip) {
+    if (e.trip.place) trip.place = e.trip.place;
+    if (e.trip.country) trip.country = e.trip.country;
+    if (e.trip.from) trip.from = e.trip.from;
+    if (e.trip.to) trip.to = e.trip.to;
+  }
+  trip.detail ||= {};
+  /** neuen Posten markieren; ersetzt er einen alten, nimmt er dessen Platz ein (Mitflieger folgen ihm) */
+  const place = (it: Item, kind: AiMark["kind"], replaces?: string) => {
+    trip.items = trip.items.filter(x => x !== it);
+    const k = replaces && !fixed(replaces) ? trip.items.findIndex(x => x.id === replaces) : -1;
+    it.ai = { at, kind: k < 0 ? kind : "changed" };
+    if (k < 0) { trip.items.push(it); return; }
+    const old = trip.items[k];
+    if (old.participants && !it.participants) it.participants = [...old.participants];
+    trip.items.splice(k, 1, it);
+    for (const x of trip.items) if (x.follow === old.id) x.follow = it.id;
+  };
+  for (const f of e.flights || []) { trip.detail.flights = true; place(takeOffer(trip, f.offer), "suggested", f.replaces); }
+  for (const s of e.stays || []) {
+    trip.detail.stay = true;
+    // nicht in einen leeren Unterkunftsposten legen (takeStay tut das), damit „ersetzt“ eindeutig bleibt
+    const it = takeStay(trip, s.offer, s.q);
+    place(it, "suggested", s.replaces);
+  }
+  for (const x of e.estimates || []) { trip.detail[x.cat] = true; place(estimateItem(x.cat, x.name, x.eur), "created", x.replaces); }
+  const gone = new Set((e.remove || []).filter(id => !fixed(id)));
+  if (gone.size) {
+    trip.items = trip.items.filter(i => !gone.has(i.id));
+    for (const x of trip.items) if (x.follow && gone.has(x.follow)) x.follow = undefined;
+  }
+  trip.ai = { at };
+}
 
 /**
  * Vorschlag als fertige Reise, ohne etwas zu speichern: so, wie sie beim Übernehmen entsteht (mit Verpflegung und

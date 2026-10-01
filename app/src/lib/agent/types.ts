@@ -1,7 +1,7 @@
 /* KI-Reiseplaner: gemeinsame Typen für App und Such-Dienst (worker/) */
 import type { FlightOffer } from "../flights/types";
 import type { StayOffer, StayQuery } from "../stays/types";
-import { BOARDS, STYLES, type Prefs } from "../model";
+import { BOARDS, CAT_KEYS, STYLES, type CatKey, type Prefs, type Status } from "../model";
 
 /** Was die App schickt: Wunsch in eigenen Worten und was über die Reisenden bekannt ist */
 export interface AgentRequest {
@@ -25,7 +25,47 @@ export interface AgentRequest {
   asked?: boolean;
   /** Vorlieben aus Konto und Gruppe (ohne Namen) */
   prefs?: Prefs;
+  /** offene Reise: die KI berät dazu und schlägt Änderungen vor, statt neue Reisen zu planen */
+  current?: TripBrief;
 }
+
+/** offene Reise, knapp für die KI: ohne Namen der Reisenden, ohne Buchungsdaten */
+export interface TripBrief {
+  place?: string;
+  country?: string;
+  from?: string;
+  to?: string;
+  items: BriefItem[];
+}
+
+/** ein Posten der Reise: Betrag für alle, gebuchte und bezahlte darf die KI nicht ändern */
+export interface BriefItem {
+  id: string;
+  cat: CatKey;
+  name: string;
+  status: Status;
+  eur: number;
+  estimate?: boolean;
+  /** Kurzbeschreibung, z. B. Flugzeiten oder Unterkunft mit Zeitraum */
+  detail?: string;
+}
+
+/** Antwort der KI zur offenen Reise: Text und, falls gewünscht, Änderungen (werden erst nach Bestätigung übernommen) */
+export interface AgentEdit {
+  reply: string;
+  trip?: { place?: string; country?: string; from?: string; to?: string };
+  /** Posten entfernen (Kennungen aus TripBrief) */
+  remove?: string[];
+  /** echte Angebote aus den Suchen, optional statt eines bisherigen Postens */
+  flights?: { offer: FlightOffer; replaces?: string }[];
+  stays?: { offer: StayOffer; q: StayQuery; replaces?: string }[];
+  /** Schätzungen der KI (Beträge für alle) */
+  estimates?: { cat: CatKey; name: string; eur: number; replaces?: string }[];
+}
+
+/** Anzahl der Änderungen (0: nur eine Antwort) */
+export const editCount = (e: AgentEdit) =>
+  (e.trip ? Object.keys(e.trip).length : 0) + (e.remove?.length || 0) + (e.flights?.length || 0) + (e.stays?.length || 0) + (e.estimates?.length || 0);
 
 /** Reisende, mit denen gesucht wurde (wenn die KI sie aus dem Wunsch oder der Antwort genommen hat) */
 export interface AgentParty { adults: number; childAges: number[]; infants: number }
@@ -61,6 +101,8 @@ export interface AgentResult {
   /** Rückfrage der KI statt Vorschlägen, mit Antworten zum Antippen */
   question?: string;
   options?: string[];
+  /** Antwort zur offenen Reise (statt Vorschlägen) */
+  edit?: AgentEdit;
   /** verbleibende Anfragen heute */
   remaining?: number;
 }
@@ -84,12 +126,38 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   const s = (v: unknown, n: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : undefined);
   const trip = { place: s(t.place, 80), from: s(t.from, 10), to: s(t.to, 10) };
   const prefs = parsePrefs(o.prefs);
+  const current = parseBrief(o.current);
   return {
     ...(prefs ? { prefs } : {}),
+    ...(current ? { current } : {}),
     prompt, lang, today, origins, adults: adults as number, childAges: childAges as number[], infants: infants as number,
     ...(trip.place || trip.from || trip.to ? { trip } : {}),
     originsKnown: o.originsKnown !== false, travelersKnown: o.travelersKnown !== false, asked: o.asked === true
   };
+}
+
+const STATUS: Status[] = ["idea", "chosen", "booked", "paid", "dropped"];
+
+/** offene Reise prüfen: höchstens 40 Posten, kurze Texte */
+export function parseBrief(v: unknown): TripBrief | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  const s = (x: unknown, n: number) => (typeof x === "string" && x.trim() ? x.trim().slice(0, n) : undefined);
+  const d = (x: unknown) => (typeof x === "string" && DATE.test(x) ? x : undefined);
+  const items = (Array.isArray(o.items) ? o.items : []).slice(0, 40).flatMap((x: unknown): BriefItem[] => {
+    const i = (x || {}) as Record<string, unknown>;
+    if (typeof i.id !== "string" || !/^[\w-]{1,40}$/.test(i.id) || !(CAT_KEYS as unknown[]).includes(i.cat)) return [];
+    const eur = typeof i.eur === "number" && isFinite(i.eur) ? Math.max(0, Math.min(1e6, Math.round(i.eur))) : 0;
+    const detail = s(i.detail, 120);
+    return [{
+      id: i.id, cat: i.cat as CatKey, name: s(i.name, 60) || "", status: (STATUS as unknown[]).includes(i.status) ? i.status as Status : "idea", eur,
+      ...(i.estimate === true ? { estimate: true } : {}), ...(detail ? { detail } : {})
+    }];
+  });
+  const b: TripBrief = { items };
+  for (const k of ["place", "country"] as const) { const x = s(o[k], 80); if (x) b[k] = x; }
+  for (const k of ["from", "to"] as const) { const x = d(o[k]); if (x) b[k] = x; }
+  return b;
 }
 
 /** Vorlieben prüfen: nur bekannte Felder in erlaubten Grenzen, alles andere fällt weg */

@@ -6,6 +6,8 @@
   import ItemRow from "./ItemRow.svelte";
   import ItemEditor from "./ItemEditor.svelte";
   import WatchBadge from "./WatchBadge.svelte";
+  import AiMark from "./AiMark.svelte";
+  import { t, type Key } from "../i18n/index.svelte";
   import { reveal } from "./reveal";
 
   let { item, icon }: { item: Item; icon: string } = $props();
@@ -33,5 +35,6 @@
     <ItemRow {item} {icon} />
   {/if}
   <WatchBadge {item} />
+  {#if item.ai}<div class="aif"><AiMark /> {t(`ai.mark.${item.ai.kind}` as Key)}</div>{/if}
   {#if editing}<ItemEditor {item} />{/if}
 </article>

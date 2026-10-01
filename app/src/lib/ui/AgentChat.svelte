@@ -4,14 +4,16 @@
    * KI-Assistent (Beta) als Chat unten rechts: Wunsch schreiben, nachschärfen („lieber im Juni“, „günstiger“),
    * Vorschläge direkt übernehmen. Frühere Wünsche gehen als Zusammenhang mit, damit Nachfragen funktionieren.
    * Nur für angemeldete Nutzer, begrenzt pro Tag (Such-Dienst).
+   * In einer offenen Reise berät die KI dazu: Fragen beantworten, Posten tauschen oder ergänzen. Änderungen eines
+   * Auftrags kommen gesammelt und werden mit einer Rückfrage übernommen (oder als KI-Vergleichsreise angelegt).
    */
   import { tick } from "svelte";
-  import { app, goHome, startTrip } from "../store.svelte";
+  import { app, duplicateTrip, goHome, startTrip } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { eur } from "../calc";
   import { dayShort, nights, range, time } from "../format";
   import { flyers } from "../flights/app";
-  import { agentRequest, askAgent, previewTrip, takeAgentTrip } from "../agent/app";
+  import { agentRequest, applyEdit, askAgent, hasPlan, previewTrip, takeAgentTrip } from "../agent/app";
   import { totals } from "../calc";
   import { syncFood } from "../food";
   import { geo } from "../geo/geo.svelte";
@@ -20,11 +22,20 @@
   import { dir } from "../directory.svelte";
   import { agentPrefs, myHome, prefsFor } from "../prefs";
   import { agentChat, openChat } from "../agent/open.svelte";
-  import type { AgentTrip } from "../agent/types";
+  import { editCount, type AgentEdit, type AgentTrip } from "../agent/types";
+  import type { Trip } from "../model";
+  import AiMark from "./AiMark.svelte";
 
   /** Nachricht; bei einer Rückfrage der KI mit Antworten zum Antippen */
-  interface Msg { me: boolean; text: string; trips?: AgentTrip[]; question?: boolean; options?: string[] }
+  interface Msg {
+    me: boolean; text: string; trips?: AgentTrip[]; question?: boolean; options?: string[];
+    /** Änderungen an der offenen Reise: offen, übernommen, als Variante angelegt, rückgängig gemacht */
+    edit?: AgentEdit; tripId?: string; state?: "open" | "applied" | "variant" | "undone"; snap?: string;
+  }
   const EXAMPLES = ["ai.ex1", "ai.ex2", "ai.ex3"] as const;
+  const TRIP_EXAMPLES = ["ai.tx1", "ai.tx2", "ai.tx3"] as const;
+  /** KI berät zur offenen Reise (statt neue Reisen zu planen) */
+  const onTrip = $derived(!app.home && hasPlan(app.trip));
   let msgs = $state<Msg[]>([]);
   let input = $state("");
   let busy = $state(false);
@@ -68,9 +79,11 @@
     ctrl?.abort(); ctrl = new AbortController();
     try {
       const b = base();
-      const res = await askAgent(agentRequest(b, prompt, asked, agentPrefs(prefsFor(app.home ? null : b, dir))), ctrl.signal);
+      const withTrip = onTrip, tripId = app.trip.id;
+      const res = await askAgent(agentRequest(b, prompt, asked, agentPrefs(prefsFor(app.home ? null : b, dir)), withTrip), ctrl.signal);
       remaining = res.remaining ?? remaining;
       msgs.push(res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
+        : res.edit ? { me: false, text: res.edit.reply, ...(editCount(res.edit) ? { edit: res.edit, tripId, state: "open" as const } : {}) }
         : res.trips.length ? { me: false, text: t("ai.here"), trips: res.trips } : { me: false, text: t("ai.none") });
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
@@ -87,6 +100,39 @@
     if (geo.world.length) syncFood(app.trip, geo);
     msgs.push({ me: false, text: t("ai.taken") });
     agentChat.open = false;
+  }
+
+  /** alle Änderungen eines Auftrags auf einmal übernehmen; der Stand davor bleibt für „Rückgängig“ */
+  function apply(m: Msg) {
+    if (!m.edit || app.trip.id !== m.tripId) return;
+    m.snap = JSON.stringify(app.trip);
+    applyEdit(app.trip, m.edit);
+    if (geo.world.length) syncFood(app.trip, geo);
+    m.state = "applied";
+    void scrollDown();
+  }
+
+  /** Änderungen in einer Kopie der Reise: die eigene Planung bleibt, die KI-Vergleichsreise liegt daneben */
+  function variant(m: Msg) {
+    if (!m.edit || app.trip.id !== m.tripId) return;
+    const name = app.trip.name;
+    duplicateTrip();
+    app.trip.name = t("ai.variantName", { n: name });
+    app.trip.autoName = false;
+    applyEdit(app.trip, m.edit);
+    if (geo.world.length) syncFood(app.trip, geo);
+    m.state = "variant";
+    m.tripId = app.trip.id;
+    void scrollDown();
+  }
+
+  function undo(m: Msg) {
+    if (!m.snap || app.trip.id !== m.tripId) return;
+    const before = JSON.parse(m.snap) as Trip;
+    const cur = app.trip as unknown as Record<string, unknown>;
+    for (const k of Object.keys(cur)) if (!(k in before)) delete cur[k];
+    Object.assign(app.trip, before);
+    m.state = "undone";
   }
 
   /** alle Vorschläge als eigene Reisen anlegen und auf der Startseite vergleichen */
@@ -119,22 +165,23 @@
 
 {#if !agentChat.open}
   <button class="ai-fab" onclick={openChat} aria-label={t("ai.open")} title={t("ai.open")}>
-    <span aria-hidden="true">✨</span><span class="ai-fab-lbl">{t("ai.chat")}</span>
+    <AiMark /><span class="ai-fab-lbl">{t("ai.assistant")}</span>
   </button>
 {:else}
   <div class="ai-chat" role="dialog" aria-label={t("ai.chat")}>
     <header class="ai-head">
-      <b>✨ {t("ai.chat")} <small class="muted">Beta</small></b>
+      <b><AiMark /> {t("ai.assistant")} <small class="muted">Beta</small></b>
       <button class="x" onclick={() => { ctrl?.abort(); agentChat.open = false; }} aria-label={t("close")}>×</button>
     </header>
 
+    {#if onTrip}<p class="ai-trip muted" title={app.trip.name}>🧳 {t("ai.onTrip", { n: app.trip.name })}</p>{/if}
     <div class="ai-msgs" bind:this={list}>
-      <p class="ai-msg">{t("ai.hello")}</p>
+      <p class="ai-msg">{onTrip ? t("ai.helloTrip") : t("ai.hello")}</p>
       {#if !cloud.user}
         <p class="ai-msg ai-login">{t("ai.needLogin")} <button class="btn sm primary" onclick={() => (cloud.showLogin = true)}>{t("ai.login")}</button></p>
       {:else if !msgs.length}
         <div class="chips ai-ex">
-          {#each EXAMPLES as k (k)}<button class="chip" onclick={() => send(t(k))}>{t(k)}</button>{/each}
+          {#each onTrip ? TRIP_EXAMPLES : EXAMPLES as k (k)}<button class="chip" onclick={() => send(t(k))}>{t(k)}</button>{/each}
         </div>
       {/if}
       {#each msgs as m, i (i)}
@@ -143,6 +190,26 @@
           {#if m.question && m.options?.length && i === msgs.length - 1 && !busy}
             <div class="chips ai-opts">
               {#each m.options as o (o)}<button class="chip" onclick={() => send(o)}>{o}</button>{/each}
+            </div>
+          {/if}
+          {#if m.edit}
+            <div class="ai-edit">
+              {#if m.state === "open"}
+                <small class="muted">{tn("ai.changes", editCount(m.edit))}</small>
+                {#if app.trip.id === m.tripId}
+                  <button class="btn sm primary ai-apply" onclick={() => apply(m)}>{t("ai.apply")}</button>
+                  <button class="btn sm ai-variant" onclick={() => variant(m)}>＋ {t("ai.variant")}</button>
+                {:else}
+                  <small class="muted">{t("ai.otherTrip")}</small>
+                {/if}
+              {:else if m.state === "applied"}
+                <small class="muted">✓ {t("ai.applied")}</small>
+                {#if app.trip.id === m.tripId}<button class="btn sm ai-undo" onclick={() => undo(m)}>↶ {t("ai.undo")}</button>{/if}
+              {:else if m.state === "variant"}
+                <small class="muted">✓ {t("ai.variantDone")}</small>
+              {:else if m.state === "undone"}
+                <small class="muted">↶ {t("ai.undone")}</small>
+              {/if}
             </div>
           {/if}
           {#if m.trips}
@@ -176,12 +243,12 @@
           {/if}
         </div>
       {/each}
-      {#if busy}<p class="ai-msg ai-busy">{t("ai.busy")}</p>{/if}
+      {#if busy}<p class="ai-msg ai-busy">{onTrip ? t("ai.busyTrip") : t("ai.busy")}</p>{/if}
     </div>
 
     {#if cloud.user}
       <form class="ai-bar" onsubmit={e => { e.preventDefault(); if (!busy) void send(); }}>
-        <textarea rows="2" maxlength="600" bind:value={input} onkeydown={key} placeholder={t("ai.ph")} aria-label={t("ai.wish")}></textarea>
+        <textarea rows="2" maxlength="600" bind:value={input} onkeydown={key} placeholder={onTrip ? t("ai.phTrip") : t("ai.ph")} aria-label={t("ai.wish")}></textarea>
         <button class="btn primary" disabled={busy || !input.trim()}>{t("ai.send")}</button>
       </form>
       <p class="ai-foot muted">{t("ai.note")}{remaining != null ? ` · ${tn("ai.left", remaining)}` : ""}</p>

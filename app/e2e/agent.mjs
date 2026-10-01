@@ -40,6 +40,12 @@ try {
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
     await new Promise(res => setTimeout(res, 300));
     // Strandurlaub mit Kindern: erst eine Rückfrage, nach der Antwort Vorschläge für die Familie
+    // offene Reise: Antwort mit Änderungen (eigene Anreise statt Flug)
+    if (body.current) {
+      const fl = body.current.items.find(i => i.cat === "flights");
+      const edit = { reply: "Ich ersetze den Flug durch die Anreise mit dem Auto.", estimates: [{ cat: "transport", name: "Anreise mit dem Auto", eur: 300, replaces: fl?.id }] };
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], edit, remaining: 1 }) });
+    }
     const beach = body.prompt.includes("Strandurlaub");
     const out = beach && !body.asked ? { trips: [], question: "Von wo fliegt ihr los und wie alt sind die Kinder?", options: ["Köln, Kinder 5 und 8", "Düsseldorf, Kinder 3 und 10"], remaining: 3 }
       : beach ? { ...RESULT, remaining: 2, trips: RESULT.trips.map(x => ({ ...x, party: { adults: 2, childAges: [5, 8], infants: 0 } })) } : RESULT;
@@ -155,10 +161,10 @@ try {
   await card.scrollIntoViewIfNeeded(); await shot("ai-card");
   await p.locator(".ai-all").last().click();
   await p.locator(".start .home-title").waitFor();
-  await until(() => p.locator(".start .home-trip", { hasText: "KI-Vorschlag" }).count().then(n => n >= 3), "KI-Reisen gekennzeichnet");
+  await until(() => p.locator(".start .home-trip .ht-ai").count().then(n => n >= 3), "KI-Reisen gekennzeichnet");
   if (!(await p.locator(".start .home-trip", { hasText: "Lissabon" }).count())) fail("Lissabon nicht angelegt");
   await p.locator(".start .home-h").first().scrollIntoViewIfNeeded(); await shot("ai-home");
-  log("Karte als ganze Reise (Halbpension, Mietwagen, Bootstour, Verpflegung, Gesamtpreis); alle angelegt und mit ✨ KI-Vorschlag gekennzeichnet");
+  log("Karte als ganze Reise (Halbpension, Mietwagen, Bootstour, Verpflegung, Gesamtpreis); alle angelegt und mit &✈KI gekennzeichnet");
 
   // Vorlieben: „Ich“ mit Wohnort, gesperrtes Land, Umstiege, Reisestil → gehen ohne Namen an den KI-Planer
   await p.keyboard.press("Escape");
@@ -192,6 +198,50 @@ try {
   if (q3.originsKnown === false || !q3.origins.includes("DUS")) fail("Wohnort von „Ich“ nicht genutzt: " + JSON.stringify({ o: q3.origins, k: q3.originsKnown }));
   if (JSON.stringify(q3).includes("Dani") || JSON.stringify(q3).includes("Klein")) fail("Name in der KI-Anfrage");
   log("Vorlieben: Ich = Dani (Mönchengladbach), Türkei gesperrt, 0 Umstiege, Strand → KI-Anfrage mit Vorlieben und Abflug ab DUS, ohne Namen");
+
+  // offene Reise: die KI kennt sie (ohne Namen), alle Änderungen eines Auftrags mit einer Rückfrage übernehmen
+  await c3.locator(".ai-head .x").click();
+  await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).first().click();
+  await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
+  const tripName = (await p.locator(".hero h1").innerText()).trim();
+  await p.locator(".ai-fab").click();
+  const c4 = p.locator(".ai-chat");
+  await c4.locator(".ai-trip", { hasText: "Sonne in Palma" }).waitFor();
+  const before4 = asked.length;
+  await c4.locator(".ai-bar textarea").fill("Wir reisen selbst mit dem Auto an");
+  await c4.locator(".ai-bar textarea").press("Enter");
+  await c4.locator(".ai-edit", { hasText: "1 Sache" }).waitFor();
+  const q4 = asked[before4].body;
+  if (!q4.current?.items?.some(i => i.cat === "flights" && i.eur > 0) || q4.current.place !== "Palma") fail("Reise fehlt in der Anfrage: " + JSON.stringify(q4.current));
+  if (/Dani|Klein|Kira/.test(JSON.stringify(q4.current))) fail("Name in der Reise für die KI");
+  await shot("ai-edit");
+  await c4.locator(".ai-apply").click();
+  await p.locator("#transport .card", { hasText: "Anreise mit dem Auto" }).locator(".aif", { hasText: "Von der KI angepasst" }).waitFor();
+  if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Flug nicht ersetzt");
+  if (!(await p.locator("#stay .card", { hasText: "Casa Palma" }).locator(".aif", { hasText: "Von der KI vorgeschlagen" }).count())) fail("Unterkunft aus dem Vorschlag nicht markiert");
+  await shot("ai-applied");
+  if (process.env.SHOTS) {
+    const fc = p.locator("#transport .card", { hasText: "Anreise mit dem Auto" });
+    await fc.scrollIntoViewIfNeeded(); await p.waitForTimeout(1200);
+    await fc.screenshot({ path: `${process.env.SHOTS}/ai-flag.png` });
+  }
+  await c4.locator(".ai-undo").click();
+  await p.locator("#flights .card", { hasText: "Sun Air" }).waitFor();
+  if (await p.locator("#transport .card", { hasText: "Anreise mit dem Auto" }).count()) fail("Rückgängig hat nicht gewirkt");
+  log("Offene Reise: Anfrage mit Reise ohne Namen, eine Rückfrage, Übernehmen ersetzt den Flug (markiert), Rückgängig");
+
+  // als KI-Vergleichsreise: eigene Reise daneben, die bisherige bleibt
+  await c4.locator(".ai-bar textarea").fill("Wir reisen selbst mit dem Auto an");
+  await c4.locator(".ai-bar textarea").press("Enter");
+  await until(() => c4.locator(".ai-variant").count().then(n => n === 1), "zweite Antwort zur Reise");
+  await c4.locator(".ai-variant").click();
+  await p.locator(".hero h1", { hasText: "(KI-Vergleich)" }).waitFor();
+  if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Vergleichsreise mit Flug");
+  await c4.locator(".ai-head .x").click();
+  await p.locator(".hero .hero-home").click();
+  await p.locator(".start .home-trip", { hasText: "(KI-Vergleich)" }).first().waitFor();
+  if (!(await p.locator(".start .home-trip", { hasText: tripName }).count())) fail("ursprüngliche Reise fehlt");
+  log("Als KI-Vergleichsreise angelegt, ursprüngliche Reise unverändert");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
