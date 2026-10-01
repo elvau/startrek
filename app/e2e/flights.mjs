@@ -233,6 +233,19 @@ try {
   await p.locator("#flights .card[data-item]", { hasText: "Hase · 2 Pers." }).waitFor();
   log("Hase als Nächstes vorgeschlagen (ab MUC), Jan einzeln abgewählt: Posten „Flug Hase“ für Hanna und Ida");
 
+  // Hinweis im Flug-Kapitel: Jan hat noch keinen Flug; „Flug für sie suchen“ öffnet die Suche nur für ihn
+  const miss = p.locator("#flights .miss-travel");
+  await miss.waitFor();
+  const mt = await miss.innerText();
+  if (!mt.includes("Jan") || mt.includes("Hanna")) fail("Hinweis ohne Flug: " + mt);
+  await miss.locator(".miss-search").click();
+  await m.locator(".fs-who summary").click();
+  const onNames = await m.locator(".fs-who .chip.sm.on").allTextContents();
+  if (onNames.length !== 1 || !onNames[0].includes("Jan")) fail("Suche nicht nur für Jan: " + onNames);
+  if (!(await m.locator(".fs-who .chip.sm", { hasText: "Hanna" }).locator(".fs-has").count())) fail("Hanna nicht als „hat Flug“ markiert");
+  await p.keyboard.press("Escape");
+  log("Hinweis „Noch ohne Flug oder Anreise: Jan“, Suche daraus nur für Jan, Personen mit Flug markiert");
+
   // Suche aus dem Posten: gilt für dessen Personen, Treffer kommen dazu
   await kc.click();
   await p.locator(".fs-item").click();

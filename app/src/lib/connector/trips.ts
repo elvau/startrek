@@ -127,7 +127,7 @@ export function addStay(trip: Trip, o: StayOffer, q: StayQuery, lang: string): I
   return push(trip, item);
 }
 
-export interface Cost { cat: CatKey; name: string; eur: number; perPerson?: boolean; url?: string }
+export interface Cost { cat: CatKey; name: string; eur: number; perPerson?: boolean; url?: string; arrival?: boolean }
 
 /** eigener Kostenposten (Mietwagen, Tickets, Schätzung): für alle oder pro Person */
 export function addCost(trip: Trip, c: Cost): Item {
@@ -136,7 +136,7 @@ export function addCost(trip: Trip, c: Cost): Item {
     price: c.perPerson ? { mode: "person", currency: "EUR", adult: c.eur } : { mode: "unit", currency: "EUR", unit: c.eur },
     ...(c.url ? { source: { name: new URL(c.url).hostname, at: day(), url: c.url } } : {})
   };
-  return push(trip, { id: uid(), cat: c.cat, name: c.name, status: "idea", options: [opt], ai: { at: at(), kind: "created" } });
+  return push(trip, { id: uid(), cat: c.cat, name: c.name, status: "idea", options: [opt], ai: { at: at(), kind: "created" }, ...(c.arrival ? { arrival: true } : {}) });
 }
 
 function push(trip: Trip, item: Item): Item {
@@ -182,7 +182,7 @@ export function tripSummary(trip: Trip, role: string) {
     const eur = itemEur(trip, i);
     return {
       id: i.id, category: i.cat, name: i.name || o?.label || "", status: i.status,
-      ...(eur != null ? { eur } : {}), ...(o?.estimate ? { estimate: true } : {}),
+      ...(eur != null ? { eur } : {}), ...(o?.estimate ? { estimate: true } : {}), ...(i.arrival ? { arrival: true } : {}),
       ...(i.from ? { from: i.from, to: i.to } : {}), ...(o?.source?.url ? { link: o.source.url } : {}),
       ...(i.options.length > 1 ? { offers: i.options.length } : {})
     };

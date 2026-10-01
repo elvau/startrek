@@ -2,7 +2,7 @@
 import { noteError } from "../bugs/log";
 import { t, tn } from "../i18n/index.svelte";
 import { ageClass } from "../calc";
-import { hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Trip } from "../model";
+import { hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
 import { dayShort, nights } from "../format";
 import { accessFor, airportsOf, roadKm } from "../calc/travel";
 import type { FlightOffer, FlightQuery, OfferLeg, SearchResult } from "./types";
@@ -28,9 +28,21 @@ export const flyers = (trip: Trip, ids?: string[]) => trip.travelers.filter(t =>
 
 /** wer schon einen eigenen Flug-Posten hat (Posten ohne Beteiligte gelten für alle) */
 export function covered(trip: Trip): Set<string> {
-  const fl = trip.items.filter(i => i.cat === "flights" && i.status !== "dropped");
+  // Flüge und eigene Anreisen (Auto, Bahn); ohne Teilnehmer gilt ein Posten für alle
+  const fl = trip.items.filter(i => (i.cat === "flights" || i.arrival) && i.status !== "dropped");
   if (fl.some(i => !i.participants)) return new Set(trip.travelers.map(t => t.id));
   return new Set(fl.flatMap(i => i.participants || []));
+}
+
+/**
+ * Wer hat noch keinen Flug und keine Anreise? Nur, wenn schon etwas geplant ist (sonst fehlt allen alles).
+ * Babys unter 2 fliegen auf dem Schoß mit und zählen nicht.
+ */
+export function withoutTravel(trip: Trip): Traveler[] {
+  const planned = trip.items.some(i => (i.cat === "flights" || i.arrival) && i.status !== "dropped");
+  if (!planned) return [];
+  const cov = covered(trip);
+  return trip.travelers.filter(t => isActive(t) && !cov.has(t.id) && !(t.age != null && (t.age as unknown) !== "" && t.age < 2));
 }
 
 /**

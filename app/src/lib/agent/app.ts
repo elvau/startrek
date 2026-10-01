@@ -46,7 +46,7 @@ export function tripBrief(trip: Trip): TripBrief {
     const detail = legs || (i.from && i.to ? `${i.from} – ${i.to}` : "");
     return {
       id: i.id, cat: i.cat, name: anon(i.name || o?.label || "").slice(0, 60), status: i.status, eur: Math.round(T.items[i.id]?.net || 0),
-      ...(o?.estimate ? { estimate: true } : {}), ...(detail ? { detail: detail.slice(0, 120) } : {})
+      ...(o?.estimate ? { estimate: true } : {}), ...(i.arrival ? { arrival: true } : {}), ...(detail ? { detail: detail.slice(0, 120) } : {})
     };
   });
   return {
@@ -120,7 +120,7 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   trip.food = { ...(trip.food || {}), on: true };
   // Schätzungen der KI als Posten, als Richtwert markiert
   const est = (cat: Item["cat"], name: string, eur: number) => estimateItem(cat, name, eur, { at, kind: "created" });
-  if (a.arrival) { trip.detail.transport = true; trip.items.push(est("transport", a.arrival.label || t("ai.ownArrival"), a.arrival.eur)); }
+  if (a.arrival) { trip.detail.transport = true; trip.items.push({ ...est("transport", a.arrival.label || t("ai.ownArrival"), a.arrival.eur), arrival: true }); }
   if (a.transport) { trip.detail.transport = true; trip.items.push(est("transport", a.transport.label || t("ai.transport"), a.transport.eur)); }
   if (a.extras?.length) { trip.detail.attractions = true; a.extras.forEach(x => trip.items.push(est("attractions", x.name, x.eur))); }
 }
@@ -203,7 +203,7 @@ export function applyEdit(trip: Trip, e: AgentEdit) {
     const it = takeStay(trip, s.offer, s.q);
     place(it, "suggested", s.replaces);
   }
-  for (const x of e.estimates || []) { trip.detail[x.cat] = true; place(estimateItem(x.cat, x.name, x.eur), "created", x.replaces); }
+  for (const x of e.estimates || []) { trip.detail[x.cat] = true; place({ ...estimateItem(x.cat, x.name, x.eur), ...(x.arrival ? { arrival: true } : {}) }, "created", x.replaces); }
   const gone = new Set((e.remove || []).filter(id => !fixed(id)));
   if (gone.size) {
     trip.items = trip.items.filter(i => !gone.has(i.id));

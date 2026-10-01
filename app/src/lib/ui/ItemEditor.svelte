@@ -138,6 +138,9 @@
       <label class="check"><input type="checkbox" checked={item.access !== false} onchange={e => (item.access = e.currentTarget.checked ? undefined : false)} /> {t("ie.access")}</label>
     </div>
   {/if}
+  {#if item.cat === "transport"}
+    <label class="check ie-arrival"><input type="checkbox" checked={!!item.arrival} onchange={e => (item.arrival = e.currentTarget.checked || undefined)} /> {t("ie.arrival")}</label>
+  {/if}
 
   {#if opt && !main}
     <div class="ed-sec">

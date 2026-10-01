@@ -122,6 +122,7 @@ const UPDATE = {
             cat: { type: "STRING", enum: CAT_KEYS, description: "flights, stay, transport (own arrival by car or train, rental car, transfers, local transport), attractions, misc" },
             name: S("Short name, e.g. 'Own arrival by car, 2 × 650 km'"),
             eur: { type: "NUMBER", description: "Estimated total in EUR for all travelers" },
+            arrival: { type: "BOOLEAN", description: "true if this is the travelers' own arrival (car, train, bus) instead of a flight" },
             replaces: REPLACES
           },
           required: ["cat", "name", "eur"]
@@ -227,10 +228,10 @@ function tripPrompt(r: AgentRequest): string {
     `Today is ${r.today}. Only suggest dates in the future.`,
     `Travelers: ${r.adults} adult(s)${kids}${babies}.`,
     r.origins.length ? `Home airports (nearest first): ${r.origins.join(", ")}.` : "Home airports are unknown; pick plausible airports near the trip's origin.",
-    "The open trip is given as JSON: destination, dates and items (id, category, name, status, total in EUR for all travelers, whether it is an estimate).",
+    "The open trip is given as JSON: destination, dates and items (id, category, name, status, total in EUR for all travelers, whether it is an estimate, arrival = own arrival instead of a flight).",
     "If the user only asks a question (what is missing, is this expensive, tips), answer it in reply and change nothing.",
     "If the user asks for changes, make all of them in ONE update_trip call: search real offers with search_flights and search_stays where possible (never invent flights, hotels or prices), use estimates only for costs without a searchable offer, and use replaces to swap an item instead of adding a duplicate. Remove items that no longer fit (e.g. flights when the travelers now arrive by car).",
-    "If the travelers arrive on their own (car, train, bus), add an estimate in category transport for the round trip for the whole group (car: about 0.30 EUR per km plus tolls) and remove the flights.",
+    "If the travelers arrive on their own (car, train, bus), add an estimate in category transport with arrival true for the round trip for the whole group (car: about 0.30 EUR per km plus tolls) and remove the flights.",
     "If the dates change, also replace the accommodation and flights for the new dates.",
     groupLine(r),
     "Never change or remove items with status booked or paid; mention it in reply if the user's wish would need that.",
@@ -453,7 +454,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
       const n = String(x?.name || "").trim().slice(0, 60), v = eur(x?.eur);
       if (!n || !v || !(CAT_KEYS as unknown[]).includes(x.cat)) return [];
       const rp = rep(x.replaces);
-      return [{ cat: x.cat as CatKey, name: n, eur: v, ...(rp ? { replaces: rp } : {}) }];
+      return [{ cat: x.cat as CatKey, name: n, eur: v, ...(x.arrival === true ? { arrival: true } : {}), ...(rp ? { replaces: rp } : {}) }];
     });
     const rm = list(a?.remove).map(rep).filter((x): x is string => !!x);
     const trip: NonNullable<AgentEdit["trip"]> = {};
