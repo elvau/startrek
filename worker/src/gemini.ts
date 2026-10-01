@@ -1,7 +1,8 @@
 /*
  * Aufruf an Gemini (generateContent) mit Wiederholung: Ist das Modell überlastet (503) oder kommen zu viele Anfragen (429),
  * nach 1 und 3 Sekunden noch einmal, danach das nächste Modell: GEMINI_FALLBACK_MODEL, sonst ein anderes Flash-Modell aus
- * der Liste, die Google für den Schlüssel anbietet. Ein Modell, das es nicht (mehr) gibt (404), wird gleich übersprungen.
+ * der Liste, die Google für den Schlüssel anbietet. Ein Modell, das es nicht (mehr) gibt (404), wird gleich übersprungen,
+ * ebenso eins, das nicht rechtzeitig antwortet (504, 524): das noch einmal zu versuchen, hieße wieder lange warten.
  * Hat ein Modell geantwortet, bleiben die weiteren Runden derselben Anfrage dabei.
  */
 export interface GeminiOpts {
@@ -17,7 +18,9 @@ export interface GeminiOpts {
   discover?: () => Promise<string[]>;
 }
 
-const RETRY = new Set([429, 500, 503]);
+const RETRY = new Set([429, 500, 502, 503]);
+/** Zeitüberschreitung: gleich das nächste Modell statt Wiederholung */
+const TIMEOUT = new Set([504, 524]);
 const API = "https://generativelanguage.googleapis.com/v1beta";
 
 /** Flash-Modelle, die der Schlüssel für Text nutzen darf, neueste zuerst (ohne Bild, Audio, Live, Embedding) */
@@ -61,7 +64,7 @@ export function geminiCaller(o: GeminiOpts) {
       const data = await res.json().catch(() => ({})) as { error?: { message?: string } };
       if (res.ok) return { ok: true, data };
       error = `KI-Fehler ${res.status} (${model})${data.error?.message ? `: ${data.error.message}` : ""}`;
-      if (res.status === 404) return { ok: false, error, retry: true };
+      if (res.status === 404 || TIMEOUT.has(res.status)) return { ok: false, error, retry: true };
       if (!RETRY.has(res.status)) return { ok: false, error, retry: false };
     }
     return { ok: false, error, retry: true };

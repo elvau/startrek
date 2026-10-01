@@ -28,6 +28,15 @@ describe("Gemini-Aufruf mit Wiederholung", () => {
     await callGemini({}, { key: "k", models: ["a", "b"], f: n.f, sleep: n.sleep });
     expect(n.seen).toEqual(["a", "a", "a", "b"]);
   });
+  it("Zeitüberschreitung (524, 504): ohne Wiederholung gleich das Ausweichmodell; 502 wie überlastet", async () => {
+    const n = net([524, 200]);
+    await callGemini({}, { key: "k", models: ["a", "b"], f: n.f, sleep: n.sleep });
+    expect(n.seen).toEqual(["a", "b"]);
+    expect(n.waits).toEqual([]);
+    const n2 = net([504, 502, 200]);
+    await callGemini({}, { key: "k", models: ["a", "b"], f: n2.f, sleep: n2.sleep });
+    expect(n2.seen).toEqual(["a", "b", "b"]);
+  });
   it("Modell gibt es nicht mehr: gleich das nächste; ohne Ausweichmodell die Meldung von Google", async () => {
     const n = net([404, 200]);
     await callGemini({}, { key: "k", models: ["alt", "neu"], f: n.f, sleep: n.sleep });
