@@ -8,6 +8,8 @@ import { spawn } from "node:child_process";
 const URL = "http://127.0.0.1:4176/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+/** „Weitere Optionen“ der Suche aufklappen (bleibt gemerkt) */
+const more = async m => { if (!(await m.locator(".fs-more[open]").count())) await m.locator(".fs-more > summary").click(); };
 async function until(fn, what, ms = 10000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
@@ -63,6 +65,7 @@ try {
   const gyg = p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" });
   if (await gyg.count()) fail("Erlebnis-Links ohne Reiseziel");
   // Ausstattung und Bewertung gehen an den Such-Dienst
+  await more(m);
   await m.locator(".st-filters .chip", { hasText: "Pool" }).click();
   await m.locator("label.f", { hasText: "Bewertung" }).locator("select").selectOption("7");
   await m.locator(".fs-form .btn.primary").click();
@@ -97,6 +100,7 @@ try {
   await p.locator("#stay .card", { hasText: "Unterkunft in Split" }).first().click();
   await p.locator("#stay .st-item").first().click();
   if (!(await m.locator(".st-filters .chip.on", { hasText: "Pool" }).count())) fail("Filter nicht gemerkt");
+  await more(m);
   await m.locator(".st-filters .chip", { hasText: "Pool" }).click();
   log("Filter gemerkt");
   await m.locator(".fs-form .btn.primary").click();

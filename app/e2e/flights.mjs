@@ -8,6 +8,8 @@ import { spawn } from "node:child_process";
 const URL = "http://127.0.0.1:4175/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+/** „Weitere Optionen“ der Suche aufklappen (bleibt gemerkt) */
+const more = async m => { if (!(await m.locator(".fs-more[open]").count())) await m.locator(".fs-more > summary").click(); };
 async function until(fn, what, ms = 10000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
@@ -65,6 +67,11 @@ try {
   const m = p.locator(".modal");
 
   // Abflughäfen: Standard 4, zwei abwählen → DUS und NRN
+  // Suche klappt im Kapitel auf (kein Fenster); Wer, Flughäfen, Umstiege, Koffer stecken unter „Weitere Optionen“
+  if (await p.locator(".modal-bg").count() || !(await p.locator("#flights .modal.inline").count())) fail("Flugsuche nicht im Kapitel aufgeklappt");
+  if (!(await m.locator(".fs-more > summary").textContent()).includes("Umstieg")) fail("Zusammenfassung der Optionen fehlt");
+  log("Flugsuche im Kapitel aufgeklappt, Optionen zugeklappt mit Zusammenfassung");
+  await more(m);
   const on = await m.locator(".fs-aps .chip.on").allTextContents();
   if (on.length !== 4) fail("Standard-Flughäfen: " + on);
   for (const c of on.slice(2)) await m.locator(".fs-aps .chip", { hasText: c }).click();
@@ -83,6 +90,7 @@ try {
   if (dlabel !== "7 bis 12 Nächte") fail("Schieberegler: " + dlabel);
   if (!(await m.locator(".dual-axis").textContent()).includes("max. 14 (ganzer Zeitraum)")) fail("Achse: " + await m.locator(".dual-axis").textContent());
   // Koffer insgesamt statt „je Person einer“
+  await more(m);
   await m.locator("label", { hasText: "Koffer gesamt" }).locator("select").selectOption("1");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
@@ -118,6 +126,7 @@ try {
   await dest.press("Enter");
   if (!(await dest.inputValue()).startsWith("Tokio (alle")) fail("Auswahl Tokio: " + await dest.inputValue());
   if (!(await m.locator(".fs-note").textContent()).includes("HND")) fail("Hinweis alle Flughäfen fehlt");
+  await more(m);
   const add = m.locator(".fs-add input");
   await add.fill("London");
   await m.locator(".lp-list li", { hasText: "LON" }).first().click();
@@ -188,6 +197,7 @@ try {
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
+  await more(m);
   if (!(await m.locator(".fs-who .chip.on", { hasText: "Klein (2)" }).count())) fail("Vorschlag erste Familie ohne Flug fehlt");
   const kAps = await m.locator(".fs-aps .chip.on").allTextContents();
   if (!kAps.includes("DUS") || kAps.includes("MUC")) fail("Flughäfen nicht zum Wohnort von Klein: " + kAps);
@@ -216,11 +226,13 @@ try {
 
   // nochmal: jetzt ist Hase dran, mit Flughäfen bei München
   await p.locator("#flights .fs-open").click();
+  await more(m);
   if (!(await m.locator(".fs-who .chip.on", { hasText: "Hase (3)" }).count())) fail("Vorschlag Hase fehlt");
   if (!(await m.locator(".fs-who .chip", { hasText: "Klein (2)" }).locator("small", { hasText: "hat Flug" }).count())) fail("Klein nicht als versorgt markiert");
   const hAps = await m.locator(".fs-aps .chip.on").allTextContents();
   if (!hAps.includes("MUC") || hAps.includes("DUS")) fail("Flughäfen nicht zum Wohnort von Hase: " + hAps);
   // eine Person herausnehmen: Jan fliegt separat
+  await more(m);
   await m.locator(".fs-who summary").click();
   await m.locator(".fs-who .chip", { hasText: "Jan" }).click();
   // (die nachgestellten Treffer starten alle in DUS: von München aus wären sie „zu spät zuhause“, darum feste Daten)
@@ -242,6 +254,7 @@ try {
   const mt = await miss.innerText();
   if (!mt.includes("Jan") || mt.includes("Hanna")) fail("Hinweis ohne Flug: " + mt);
   await miss.locator(".miss-search").click();
+  await more(m);
   await m.locator(".fs-who summary").click();
   const onNames = await m.locator(".fs-who .chip.sm.on").allTextContents();
   if (onNames.length !== 1 || !onNames[0].includes("Jan")) fail("Suche nicht nur für Jan: " + onNames);
@@ -253,6 +266,7 @@ try {
   await kc.click();
   await p.locator(".fs-item").click();
   if (!(await m.locator(".modal-h h3", { hasText: "Flüge suchen: Flug Klein" }).count())) fail("Suche aus dem Posten");
+  await more(m);
   if (!(await m.locator(".fs-who .chip.on", { hasText: "Klein (2)" }).count())) fail("Posten-Personen nicht übernommen");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").nth(1).locator(".btn", { hasText: "Übernehmen" }).click();
@@ -273,6 +287,7 @@ try {
   await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
   await p.keyboard.press("Escape");
   await p.locator("#flights .fs-open").click();
+  await more(m);
   if (!(await m.locator(".fs-who .chip.on", { hasText: "Hase (3)" }).count())) fail("Vorschlag Hase fehlt (Mitfliegen)");
   await m.locator(".fs-along .chip", { hasText: "Wie Flug Klein" }).click();
   const along = p.locator("#flights .card[data-item]", { hasText: "Hase · 3 Pers. · wie Flug Klein" });
@@ -399,6 +414,7 @@ try {
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
+  await more(m);
   if ((await m.locator("label", { hasText: "Umstiege max." }).locator("select").inputValue()) !== "0") fail("Umstiege nicht aus den Vorlieben");
   await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
   await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");

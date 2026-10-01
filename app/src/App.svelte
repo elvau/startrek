@@ -89,7 +89,9 @@
         onreset={items.length ? () => { if (confirm(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
-          <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button></div>
+          <div class="search-row"><button class="btn primary fs-open" aria-expanded={flightSearch.open} onclick={() => (flightSearch.open ? (flightSearch.open = false) : openFlightSearch())}>✈ {t("fs.open")} <span aria-hidden="true">{flightSearch.open ? "▴" : "▾"}</span></button></div>
+          <!-- Suche klappt im Kapitel auf statt als Fenster (auch aus Posten und Plan heraus) -->
+          {#if flightSearch.open}{#key flightSearch.scope}<FlightSearch inline scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/key}{/if}
           {@const miss = withoutTravel(app.trip)}
           {#if miss.length}
             <p class="search-row miss-travel">⚠ {t("fl.missing", { who: miss.slice(0, 6).map(x => x.name).join(", ") + (miss.length > 6 ? ` +${miss.length - 6}` : "") })}
@@ -115,7 +117,8 @@
           </p>
           {#if app.trip.place && partner.on}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
         {:else if ch.k === "stay" && !access.readonly}
-          <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 {t("st.open")}</button></div>
+          <div class="search-row"><button class="btn primary st-open" aria-expanded={staySearch.open} onclick={() => (staySearch.open ? (staySearch.open = false) : openStaySearch())}>🛏 {t("st.open")} <span aria-hidden="true">{staySearch.open ? "▴" : "▾"}</span></button></div>
+          {#if staySearch.open}{#key staySearch.scope}<StaySearch inline scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}
         {/if}
         {#if ch.k === "misc"}<article class="card plan-card" use:reveal><FoodCard /></article>{/if}
         {#if !det}
@@ -157,7 +160,5 @@
 {#if admin.open && admin.is && cloud.user}<UsagePanel />{/if}
 {#if connect.open && cloud.user}<ConnectDialog />{/if}
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
-{#if flightSearch.open}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/if}
 {#if eventPlanner.open}<EventPlanner onclose={() => (eventPlanner.open = false)} />{/if}
 {#if explore.open}<ExploreDialog onclose={() => (explore.open = false)} />{/if}
-{#if staySearch.open}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/if}

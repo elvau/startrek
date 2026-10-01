@@ -25,7 +25,7 @@
   import type { SourceStatus } from "../flights/types";
   import { airbnbLink, bookingLink } from "../links";
 
-  let { onclose, scope = {} }: { onclose: () => void; scope?: StayScope } = $props();
+  let { onclose, scope = {}, inline = false }: { onclose: () => void; scope?: StayScope; inline?: boolean } = $props();
 
   const K = "rk-stay-search";
   let saved: Record<string, unknown> = {};
@@ -75,6 +75,15 @@
     : prefs.board && prefs.board !== "self" ? ["breakfast"] : []);
   let minStars = $state<number>(typeof saved.minStars === "number" ? saved.minStars : prefs.minStars || 0);
   let minScore = $state<number>(typeof saved.minScore === "number" ? saved.minScore : 0);
+  const MORE = "rk-st-more";
+  let more = $state((() => { try { return localStorage.getItem(MORE) === "1"; } catch { return false; } })());
+  $effect(() => { const v = more ? "1" : "0"; try { localStorage.setItem(MORE, v); } catch {} });
+  const moreSummary = $derived([
+    ...must.map(m => t(`st.m.${m}`)),
+    minStars ? t("st.starsFrom", { n: minStars }) : "",
+    minScore ? t("st.scoreFrom", { n: minScore }) : "",
+    SOURCES.filter(s => use.includes(s.id)).map(s => s.name).join(", ")
+  ].filter(Boolean).join(" · "));
   const toggleMust = (m: StayMust) => (must = must.includes(m) ? must.filter(x => x !== m) : [...must, m]);
   let use = $state<string[]>(Array.isArray(saved.sources) && (saved.sources as string[]).length ? (saved.sources as string[]) : SOURCES.map(s => s.id));
   const nn = $derived(checkin && checkout ? nights(checkin, checkout) : 0);
@@ -167,7 +176,7 @@
   }
 </script>
 
-<Modal title={item ? `${t("st.open")}: ${item.name || t("stay.new")}` : t("st.open")} {onclose} wide>
+<Modal title={item ? `${t("st.open")}: ${item.name || t("stay.new")}` : t("st.open")} {onclose} wide {inline}>
   {#if arr.length}
     <div class="st-pres">
       <span class="dlabel">{arr.some(a => a.arr || a.dep) ? t("st.presFlights") : t("st.pres")}</span>
@@ -227,12 +236,10 @@
         <button type="button" role="radio" aria-checked={type === "hotel"} class="chip" class:on={type === "hotel"} onclick={() => (type = "hotel")}>{t("st.hotel")}</button>
         <button type="button" role="radio" aria-checked={type === "all"} class="chip" class:on={type === "all"} onclick={() => (type = "all")}>{t("all")}</button>
       </div>
-      <div class="chips" aria-label={t("st.sources")}>
-        {#each SOURCES as s (s.id)}
-          <button type="button" class="chip" class:on={use.includes(s.id)} aria-pressed={use.includes(s.id)} onclick={() => toggleSrc(s.id)}>{s.name}</button>
-        {/each}
-      </div>
     </div>
+    <!-- Ausstattung, Sterne, Bewertung, Quellen: zugeklappt mit Zusammenfassung (gemerkt) -->
+    <details class="fs-more" bind:open={more}>
+      <summary><b>{t("fs.more")}</b> <span class="muted small">{moreSummary}</span></summary>
     <div class="ed-row st-filters">
       <div class="chips" aria-label={t("st.must")}>
         {#each STAY_MUSTS as m (m)}
@@ -252,6 +259,12 @@
         </select>
       </label>
     </div>
+      <div class="chips" aria-label={t("st.sources")}>
+        {#each SOURCES as s (s.id)}
+          <button type="button" class="chip" class:on={use.includes(s.id)} aria-pressed={use.includes(s.id)} onclick={() => toggleSrc(s.id)}>{s.name}</button>
+        {/each}
+      </div>
+    </details>
     <p class="muted small st-guests">
       {#if nn > 0}{t("range.fromTo", { a: dayShort(checkin), b: dayShort(checkout) })} · {tn("n.nights", nn)} · {/if}
       {#if who.length}<b>{tn("n.guests", who.length)}</b>: {people(g.adults, g.childAges)}{:else}{t("st.nobody")}{/if}

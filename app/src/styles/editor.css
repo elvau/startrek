@@ -826,3 +826,12 @@ body[data-ch="split"] .amb-split{opacity:1}
 .person{position:relative}
 .person .p-x{position:absolute;top:6px;inset-inline-end:6px;width:26px;height:26px;border-radius:50%;border:0;background:transparent;color:var(--ink-3);font-size:18px;line-height:1;cursor:pointer}
 .person .p-x:hover,.person .p-x:focus-visible{background:var(--paper);color:#C4452E}
+/* Suche im Kapitel aufgeklappt statt als Fenster */
+.modal.inline{width:auto;max-width:none;max-height:none;overflow:visible;margin:0 0 18px;box-shadow:var(--shadow);scroll-margin-top:88px;animation:none}
+.modal.inline .modal-h{position:static;margin:-20px -20px 0}
+.fs-more{border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.fs-more>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.fs-more>summary::-webkit-details-marker{display:none}
+.fs-more>summary::before{content:"▸";color:var(--ink-3);transition:transform .2s}
+.fs-more[open]>summary::before{transform:rotate(90deg)}
+.fs-more>:not(summary){margin-top:12px}
