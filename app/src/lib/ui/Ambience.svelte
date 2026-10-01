@@ -16,7 +16,10 @@
   let placed = false;
   function placeVeh(q: number) {
     const e = 1 - (1 - q) ** 2;
-    const len = rail.getTotalLength(), at = 0.02 + e * 0.86;
+    // Ende so wählen, dass auch die (längste) Bahn ganz im Bild hält; die Schiene ragt links und rechts 5 % hinaus
+    const W = innerWidth, hw = (veh.querySelector<HTMLElement>(".v-train")?.offsetWidth || 180) / 2;
+    const end = Math.min(0.88, (W * 1.05 - hw - 12) / (W * 1.1));
+    const len = rail.getTotalLength(), at = 0.02 + e * (end - 0.02);
     const pt = rail.getPointAtLength(at * len), pt2 = rail.getPointAtLength(Math.min(len, at * len + 6));
     const box = rail.ownerSVGElement!.getBoundingClientRect();
     const sx = box.width / 1000, sy = box.height / 120;
@@ -154,11 +157,11 @@
     <!-- Fahrzeug steht mit den Rädern auf der Schiene; je nach Fortschritt Taxi, Bus oder Bahn -->
     <div class="veh" bind:this={veh}>
       <svg class="v v-taxi" class:on={ride === "taxi"} viewBox="0 0 84 44">
-        <rect x="30" y="0" width="22" height="8" rx="2" fill="#F2C94C" />
+        <rect x="30" y="0" width="22" height="8" rx="2" fill="currentColor" />
         <path d="M18 18 L28 8 H56 L68 18 Z" fill="currentColor" />
         <rect x="4" y="17" width="76" height="17" rx="7" fill="currentColor" />
         <path d="M30 11 H40 V18 H24 Z M44 11 H54 L62 18 H44 Z" fill="#fff" opacity=".8" />
-        <rect x="6" y="22" width="6" height="4" rx="2" fill="#F2C94C" />
+        <rect x="6" y="22" width="6" height="4" rx="2" fill="#fff" opacity=".8" />
         <circle cx="20" cy="37" r="6" fill="currentColor" /><circle cx="64" cy="37" r="6" fill="currentColor" />
       </svg>
       <svg class="v v-bus" class:on={ride === "bus"} viewBox="0 0 120 44">
