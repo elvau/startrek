@@ -262,6 +262,22 @@ try {
   if (!(await p.locator(".hero .meta").innerText()).includes("10 Personen")) fail("nicht 10 Personen");
   await until(() => p.locator("#flights .card").count().then(n => n === 5), "5 Flugposten");
   if (!(await p.locator("#flights .card", { hasText: "(5/5)" }).count())) fail("Buchungen nicht nummeriert");
+  // der übernommene Vorschlag liegt auch im Konto (nicht nur die leere Reise vom Anlegen)
+  const mfId = await p.evaluate(() => localStorage.getItem("rk2-current"));
+  const inDb = async () => {
+    const r = await fetch(`http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/${mfId}`, { headers: { Authorization: "Bearer owner" } });
+    const f = (await r.json()).fields || {};
+    const d = JSON.parse(f.data?.stringValue || "{}");
+    return f.name?.stringValue === "Mannschaftsfahrt Cala Rajada" && (d.items || []).filter(i => i.cat === "flights").length === 5 && d.travelers?.length === 10;
+  };
+  await until(inDb, "Vorschlag im Konto gespeichert");
+  // auch die mit „Alle übernehmen“ angelegten Reisen: keine bleibt als leere „Reise“ im Konto
+  const uid = await p.evaluate(() => Object.keys(localStorage).find(k => k.startsWith("rk2-cloud-seen:")).slice("rk2-cloud-seen:".length));
+  const names = async () => {
+    const r = await fetch("http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips?pageSize=300", { headers: { Authorization: "Bearer owner" } });
+    return ((await r.json()).documents || []).filter(d => d.fields?.owner?.stringValue === uid).map(d => d.fields?.name?.stringValue);
+  };
+  await until(async () => !(await names()).includes("Reise"), "alle KI-Reisen im Konto gespeichert, nicht leer");
   log("Mannschaftsfahrt: 10 Personen, Flug in 5 Buchungen à 2 Plätze als eigene Posten");
 
   // Startseite: sortieren (Preis, zuletzt bearbeitet, Land), Liste statt Kacheln, Wahl bleibt nach dem Neuladen

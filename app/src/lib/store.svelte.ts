@@ -271,7 +271,8 @@ export async function moveToCloud(id: string) {
   const t = id === app.trip.id ? app.trip : readTrip(id);
   if (!t) return;
   uploaded.add(id);
-  try { await upload(JSON.parse(JSON.stringify(t))); }
+  const sent = JSON.stringify(t);
+  try { await upload(JSON.parse(sent)); }
   catch (e) {
     uploaded.delete(id);
     cloud.error = (e as { code?: string }).code === "unavailable" ? tr("store.offlineMove") : tr("store.moveFailed");
@@ -279,6 +280,21 @@ export async function moveToCloud(id: string) {
   }
   app.index = app.index.filter(x => x.id !== id);
   put(K_INDEX, JSON.stringify(app.index));
+  pushLater(id, sent);
+}
+
+/**
+ * Während des Hochladens weiter geändert (z. B. KI-Vorschlag direkt in die neue Reise übernommen): Das Speichern ins Konto
+ * ging da noch nicht, weil die Liste im Konto die Reise noch nicht kannte. Den Stand nachschicken, sobald sie drin ist,
+ * sonst bleibt im Konto die leere Reise und überschreibt beim nächsten Laden die Kopie auf dem Gerät.
+ */
+function pushLater(id: string, sent: string, tries = 0) {
+  const cur = id === app.trip.id ? app.trip : readTrip(id);
+  if (!cur || !cloud.user) return;
+  const json = JSON.stringify(cur);
+  if (json === sent) return;
+  if (roleOf(id)) { void push(cur, json); return; }
+  if (tries < 40) setTimeout(() => pushLater(id, sent, tries + 1), 250);
 }
 
 /** Leere, unberührte Reise beim Verlassen wegräumen, damit sich keine „Neue Reise“ ansammelt */
