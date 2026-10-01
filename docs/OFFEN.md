@@ -39,6 +39,15 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [ ] **KI-Konnektor (MCP) einschalten** (docs/KONNEKTOR.md): in Cloudflare zwei Secrets anlegen: `MCP_KEY_SECRET`
       (lange Zufallszeichenkette) und `FIREBASE_SERVICE_ACCOUNT` (Firebase-Konsole → Projekteinstellungen → Dienstkonten →
       neuen privaten Schlüssel generieren, JSON-Inhalt als Wert, Datei danach löschen). Wirkt nach dem nächsten Release.
+- [ ] **Mehr Unterkunftsanbieter (#73):** Ohne Partnerfreigabe gibt es keine brauchbare Schnittstelle (Booking.com und Expedia
+      bieten ihre KI-Schnittstellen nur mit Anmeldung im Browser an, Hotellook/Travelpayouts ist seit 10/2025 geschlossen,
+      Airbnb hat keine öffentliche). Bewerben, je mehr desto besser:
+      1. **Booking.com Affiliate Partner** (partner.booking.com, Webseite splitandfly.com) → danach Zugang zur Demand API
+         anfragen. Bringt Preise je Zimmer und Verpflegung, Familienzimmer, Provision.
+      2. **Expedia Group Rapid API** (partner.expediagroup.com → Rapid) bzw. deren neuer B2B-Zugang für KI-Agenten.
+      3. **Hotelbeds APItude** (developer.hotelbeds.com): Testschlüssel sofort und kostenlos, Verpflegungsarten mit Preis je
+         Art; für echte Preise später ein Vertrag. Den Testschlüssel als Secrets `HOTELBEDS_KEY` und `HOTELBEDS_SECRET`.
+      Sobald ein Zugang da ist: Claude Bescheid geben, der Such-Dienst fragt ihn dann neben Trivago.
 
 ## Für Claude
 
