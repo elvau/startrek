@@ -789,3 +789,21 @@ body[data-ch="split"] .amb-split{opacity:1}
 .miss-travel{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:13.5px;color:var(--warn);background:var(--warn-soft);border-radius:12px;padding:8px 12px}
 .miss-travel .linkbtn{font-weight:700}
 .fs-has{color:var(--good)}
+
+/* Startseite: Sortierung und Ansicht (Kacheln oder Liste) */
+.home-tools{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin:32px 0 -24px}
+.home-tools .chip{backdrop-filter:blur(8px)}
+.home-trips.as-list{display:flex;flex-direction:column;gap:6px}
+.home-row{display:flex;align-items:center;gap:12px;width:100%;text-align:start;border:1px solid var(--glass-line);background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border-radius:14px;padding:10px 52px 10px 16px;color:var(--ink)}
+.home-row:hover{transform:translateY(-1px)}
+.home-row.past{opacity:.7}
+.hr-name{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.hr-name b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hr-name small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hr-total{font-weight:800;white-space:nowrap}
+.home-trips.as-list .ht-del{top:50%;transform:translateY(-50%)}
+:root[data-theme="dark"] .home-row{background:rgba(22,30,42,.75);color:#EAF3FB}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .home-row{background:rgba(22,30,42,.75);color:#EAF3FB}}
+@media (max-width:520px){.hv-l{display:none}}
+.home-clean{margin:18px 0 0;text-align:center}
+.hr-top{display:flex;align-items:center;gap:8px;min-width:0}

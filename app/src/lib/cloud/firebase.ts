@@ -9,7 +9,7 @@ import {
   updateProfile, type Auth, type User
 } from "firebase/auth";
 import {
-  arrayRemove, arrayUnion, connectFirestoreEmulator, deleteDoc, deleteField, doc, initializeFirestore, onSnapshot,
+  arrayRemove, arrayUnion, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDocFromServer, initializeFirestore, onSnapshot,
   persistentLocalCache, persistentMultipleTabManager, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, collection,
   type Firestore, type Unsubscribe
 } from "firebase/firestore";
@@ -136,6 +136,12 @@ export const saveTrip = (id: string, name: string, data: string, uid: string) =>
   updateDoc(tripRef(id), { name, data, updatedAt: serverTimestamp(), updatedBy: uid });
 
 export const deleteTrip = (id: string) => deleteDoc(tripRef(id));
+
+/** Inhalt der Reise frisch vom Server (nicht aus dem Zwischenspeicher); null, wenn es sie nicht gibt */
+export async function freshTripData(id: string): Promise<string | null> {
+  const s = await getDocFromServer(tripRef(id));
+  return s.exists() ? (s.data() as TripDoc).data : null;
+}
 
 export const setInvite = (id: string, invite: TripDoc["invite"]) => updateDoc(tripRef(id), { invite });
 
