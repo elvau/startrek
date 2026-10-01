@@ -14,6 +14,8 @@ export type TripState = "planned" | "booked" | "past";
 export interface TripSummary {
   /** Ziel; bei einer Rundreise über mehrere Länder deren Namen */
   where: string;
+  /** Land: aus der Reise, sonst aus dem Flugziel (für die Sortierung nach Land) */
+  country: string;
   round: boolean;
   nights: number;
   /** Event der Reise und Erlebnisse */
@@ -59,6 +61,7 @@ export function summarize(trip: Trip, today: string, g?: GeoData, lang = "de"): 
   const end = trip.to || trip.from;
   return {
     where: round ? cs.join(", ") : [trip.place, trip.country].filter(Boolean).join(", "),
+    country: trip.country?.trim() || cs[0] || "",
     round,
     nights: trip.from && trip.to ? nights(trip.from, trip.to) : 0,
     events: (trip.event ? 1 : 0) + trip.items.filter(i => i.cat === "attractions" && i.status !== "dropped").length,

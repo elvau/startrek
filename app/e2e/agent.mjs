@@ -264,6 +264,46 @@ try {
   if (!(await p.locator("#flights .card", { hasText: "(5/5)" }).count())) fail("Buchungen nicht nummeriert");
   log("Mannschaftsfahrt: 10 Personen, Flug in 5 Buchungen à 2 Plätze als eigene Posten");
 
+  // Startseite: sortieren (Preis, zuletzt bearbeitet, Land), Liste statt Kacheln, Wahl bleibt nach dem Neuladen
+  await p.locator(".hero .hero-home").click();
+  await p.locator(".home-sort .chip", { hasText: "Preis" }).click();
+  const prices = await p.locator(".home-trips").first().locator(".ht-total").allInnerTexts();
+  const num = s => Number(s.replace(/[^\d,]/g, "").replace(",", "."));
+  if (prices.length < 2 || prices.some((x, i) => i && num(x) < num(prices[i - 1]))) fail("nicht nach Preis sortiert: " + prices);
+  await p.locator(".home-sort .chip", { hasText: "Zuletzt bearbeitet" }).click();
+  await p.locator(".home-h", { hasText: "Zuletzt bearbeitet" }).waitFor();
+  const first = await p.locator(".home-trip").first().innerText();
+  if (!first.includes("Mannschaftsfahrt")) fail("zuletzt bearbeitete nicht oben: " + first);
+  await p.locator(".home-sort .chip", { hasText: "Land" }).click();
+  await p.locator(".home-h", { hasText: "Spanien" }).waitFor();
+  await p.locator(".home-view .chip", { hasText: "Liste" }).click();
+  await p.locator(".home-trips.as-list .home-row").first().waitFor();
+  await shot("home-list"); await shot("home-list-m", 390, 844);
+  await p.reload();
+  await p.locator(".home-trips.as-list .home-row").first().waitFor();
+  if (!(await p.locator(".home-sort .chip.on", { hasText: "Land" }).count())) fail("Sortierung nicht gemerkt");
+  log("Startseite: nach Preis, zuletzt bearbeitet und Land sortiert, Liste statt Kacheln, gemerkt");
+
+  // Aufräumen: unberührter Entwurf verschwindet still, Reise ohne Kosten nach Rückfrage
+  await p.evaluate(() => {
+    const idx = JSON.parse(localStorage.getItem("rk2-index") || "[]");
+    const base = { country: "", travelers: [{ id: "x", name: "Reh", household: "Reh", placeholder: true }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 } } };
+    localStorage.setItem("rk2-t:leer1", JSON.stringify({ ...base, id: "leer1", name: "", autoName: true, place: "" }));
+    localStorage.setItem("rk2-t:idee1", JSON.stringify({ ...base, id: "idee1", name: "Idee Lissabon", place: "Lissabon", from: "2027-09-01", to: "2027-09-05" }));
+    idx.push({ id: "leer1", name: "", place: "" }, { id: "idee1", name: "Idee Lissabon", place: "Lissabon", from: "2027-09-01", to: "2027-09-05" });
+    localStorage.setItem("rk2-index", JSON.stringify(idx));
+  });
+  await p.reload();
+  await p.locator(".home-clean .linkbtn", { hasText: "ohne Kosten aufräumen" }).waitFor();
+  await until(() => p.evaluate(() => localStorage.getItem("rk2-t:leer1") === null), "unberührter Entwurf gelöscht");
+  let asked2 = "";
+  p.once("dialog", d => { asked2 = d.message(); void d.accept(); });
+  await p.locator(".home-clean .linkbtn").click();
+  await until(() => p.locator(".home-row", { hasText: "Idee Lissabon" }).count().then(n => n === 0), "Idee aufgeräumt");
+  if (!asked2.includes("Idee Lissabon")) fail("Rückfrage ohne Namen: " + asked2);
+  if (!(await p.locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
+  log("Aufräumen: unberührter Entwurf still gelöscht, „Idee Lissabon“ (ohne Kosten) nach Rückfrage, Reisen mit Kosten bleiben");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
 } finally { await browser.close(); server.kill(); }

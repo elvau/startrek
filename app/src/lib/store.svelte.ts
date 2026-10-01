@@ -6,19 +6,29 @@ import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, ty
 import { sampleTrip } from "./seed";
 import { autoName, dateDE } from "./format";
 import { soloTraveler } from "./placeholders";
-import { cloud, cloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
+import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
-export interface TripEntry extends TripMeta { cloud: boolean; role?: Role; shared?: boolean }
+export interface TripEntry extends TripMeta { cloud: boolean; role?: Role; shared?: boolean; /** zuletzt bearbeitet (ISO), für die Sortierung */ edited?: string }
 
 const K_INDEX = "rk2-index", K_CUR = "rk2-current", K_TRIP = (id: string) => "rk2-t:" + id, K_OLD = "rk2-trip";
 /** Konto-Reisen, die dieses Gerät zuletzt in der Liste gesehen hat (je Konto) */
 const K_SEEN = (uid: string) => "rk2-cloud-seen:" + uid;
+/** wann eine Reise auf diesem Gerät zuletzt geändert wurde (für „Zuletzt bearbeitet“ auf der Startseite) */
+const K_EDITED = "rk2-edited";
 
 const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const put = (k: string, v: string) => { try { localStorage.setItem(k, v); return true; } catch { return false; } };
 const del = (k: string) => { try { localStorage.removeItem(k); } catch {} };
+let editedAt: Record<string, string> = {};
+try { editedAt = JSON.parse(localStorage.getItem(K_EDITED) || "{}"); } catch {}
+function markEdited(id: string) {
+  editedAt[id] = new Date().toISOString();
+  try { localStorage.setItem(K_EDITED, JSON.stringify(editedAt)); } catch {}
+}
+const later = (a?: string, b?: string) => (!a ? b : !b ? a : a > b ? a : b);
+
 const meta = (t: Trip): TripMeta => ({ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: t.travelers.filter(x => x.active !== false).length });
 
 function readTrip(id: string): Trip | null {
@@ -55,6 +65,11 @@ function pristine(t: Trip): boolean {
   const onlySolo = t.travelers.length <= 1 && t.travelers.every(x => x.placeholder);
   return onlySolo && !t.items.length && !t.lines?.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
     && (!t.place.trim() || t.place === "Neue Reise") && (!!t.autoName || t.name === "Neue Reise");
+}
+
+/** ohne Kosten: keine Posten, keine Beträge, kein Event (Ziel, Daten und Reisende zählen nicht) */
+export function costless(t: Trip): boolean {
+  return !t.items.some(i => !i.auto) && !t.lines?.length && !Object.values(t.simple || {}).some(Boolean) && !t.event;
 }
 
 /** schon ins Konto übernommen, die Liste im Konto kennt sie aber vielleicht noch nicht */
@@ -123,6 +138,7 @@ $effect.root(() => {
       put(K_TRIP(m.id), json);
       put(K_CUR, m.id);
       const edited = !(baseline.id === m.id && baseline.json === json);
+      if (edited) markEdited(m.id);
       if (isCloud(m.id)) {
         if (edited && needsPush(m.id, json)) {
           // unsere Fassung wird als letzte gespeichert und gilt, eine zurückgehaltene fremde verfällt
@@ -235,8 +251,8 @@ export function allTrips(): TripEntry[] {
   // Der Name der offenen Reise ist frischer als der im Konto (dort erst nach dem verzögerten Speichern); steht im Konto
   // noch der Platzhalter „Reise“ (gerade angelegt, Name noch nicht gespeichert), gilt der Name der Kopie auf dem Gerät
   const local = (id: string) => { const t = id === app.trip.id ? app.trip : readTrip(id); return t ? meta(t) : null; };
-  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1 }; });
-  const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, ...(m.id === app.trip.id ? meta(app.trip) : {}), cloud: false }));
+  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1, edited: later(editedAt[t.id], t.updated) }; });
+  const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, ...(m.id === app.trip.id ? meta(app.trip) : {}), cloud: false, edited: editedAt[m.id] }));
   return [...c, ...l];
 }
 
@@ -396,6 +412,38 @@ export function removeItem(id: string) {
 
 /* ---------- Startseite ---------- */
 
+/** darf diese Reise weg? Nur eigene: auf dem Gerät oder im Konto, dort nur ungeteilt und im eigenen Besitz */
+function mine(id: string): boolean {
+  const c = cloudTrip(id);
+  return !c || (c.owner === cloud.user?.uid && Object.keys(c.members).length === 1);
+}
+
+/**
+ * Aufräumen auf der Startseite: unberührte Entwürfe (außer der offenen Reise) still löschen.
+ * Konto-Reisen nur mit Kopie auf dem Gerät (sonst ist unbekannt, was drinsteht).
+ */
+export function sweepPristine() {
+  for (const m of allTrips()) {
+    if (m.id === app.trip.id || !mine(m.id)) continue;
+    const tr = readTrip(m.id);
+    if (tr && pristine(tr)) void deleteIf(m.id, pristine).catch(() => {});
+  }
+}
+
+/** löschen, wenn die Reise (bei Konto-Reisen frisch vom Server gelesen) die Bedingung erfüllt; sonst bleibt sie */
+export async function deleteIf(id: string, test: (t: Trip) => boolean): Promise<boolean> {
+  if (!mine(id)) return false;
+  const tr = isCloud(id) ? await freshCloudTrip(id) : readTrip(id);
+  if (!tr || !test(tr) || id === app.trip.id && !test(app.trip)) return false;
+  await deleteTrip(id);
+  return true;
+}
+
+/** eigene Reisen ohne Kosten (zum Aufräumen nach Rückfrage) */
+export function emptyTrips(): TripEntry[] {
+  return allTrips().filter(m => { if (!mine(m.id)) return false; const tr = tripFor(m.id); return !!tr && costless(tr); });
+}
+
 /** Reise zum Anzeigen: die offene oder die Kopie auf dem Gerät (Konto-Reisen, die hier nie offen waren: null) */
 export const tripFor = (id: string): Trip | null => (id === app.trip.id ? app.trip : readTrip(id));
 const isPristine = (id: string) => { const t = tripFor(id); return !t || pristine(t); };
@@ -403,7 +451,9 @@ const isPristine = (id: string) => { const t = tripFor(id); return !t || pristin
 /** Reisen für die Startseite: zuletzt geöffnete zuerst, leere Entwürfe nicht */
 export function homeTrips(): TripEntry[] {
   const cur = get(K_CUR);
-  return allTrips().filter(m => m.cloud || !isPristine(m.id)).sort((a, b) => Number(b.id === cur) - Number(a.id === cur));
+  // Konto-Reisen zeigen (die Kopie auf dem Gerät kann veraltet sein); nur die offene, eigene, unberührte nicht
+  const show = (m: TripEntry) => (m.cloud ? !(m.id === app.trip.id && mine(m.id) && pristine(app.trip)) : !isPristine(m.id));
+  return allTrips().filter(show).sort((a, b) => Number(b.id === cur) - Number(a.id === cur));
 }
 
 /** Reise öffnen und Startseite verlassen */

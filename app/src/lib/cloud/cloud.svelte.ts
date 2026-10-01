@@ -11,7 +11,7 @@ import { configured, emulator } from "./config";
 import type { Role, TripDoc } from "./firebase";
 
 export type { Role };
-export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"] }
+export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** zuletzt im Konto gespeichert (ISO) */ updated?: string }
 type FB = typeof import("./firebase");
 
 export const cloud = $state({
@@ -57,6 +57,12 @@ export function cloudTrip(id: string) { return cloud.trips.find(t => t.id === id
 export const isCloud = (id: string) => !!cloudTrip(id);
 export const roleOf = (id: string): Role | null => cloudTrip(id)?.role || null;
 
+/** Speicherzeit aus Firestore (Timestamp) als ISO; fehlt sie noch (gerade gespeichert), keine */
+const stamp = (v: unknown): { updated?: string } => {
+  const ms = (v as { toMillis?: () => number } | undefined)?.toMillis?.();
+  return ms ? { updated: new Date(ms).toISOString() } : {};
+};
+
 export async function initCloud(handlers: { remote: (id: string, trip: Trip) => void; gone: (id: string) => void }) {
   onRemote = handlers.remote; onGone = handlers.gone;
   readJoinLink();
@@ -74,7 +80,7 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
     unTrips = f.watchMyTrips(u.uid, (list, fromCache) => {
       const next = list.map(d => ({
         id: d.id, name: d.name, role: d.members[u.uid], owner: d.owner, members: d.members,
-        memberNames: d.memberNames || {}, invite: d.invite ?? null
+        memberNames: d.memberNames || {}, invite: d.invite ?? null, ...stamp(d.updatedAt)
       })).sort((a, b) => a.name.localeCompare(b.name, "de"));
       // auch bei reinen Statusänderungen (Zwischenspeicher → Server) gemeldet: Liste nur bei echter Änderung ersetzen
       if (JSON.stringify(next) !== JSON.stringify($state.snapshot(cloud.trips))) cloud.trips = next;
@@ -178,6 +184,12 @@ export async function upload(trip: Trip) {
   try { await f.createTrip(trip.id, trip.name || t("trip"), json, fbUser); }
   finally { creating.delete(trip.id); }
   if (wanted === trip.id) void watch(trip.id);
+}
+
+/** Konto-Reise frisch vom Server lesen (z. B. vor dem Aufräumen: die Kopie auf dem Gerät kann veraltet sein) */
+export async function freshCloudTrip(id: string): Promise<Trip | null> {
+  const data = await (await load()).freshTripData(id);
+  return data ? JSON.parse(data) as Trip : null;
 }
 
 export async function removeCloudTrip(id: string) {

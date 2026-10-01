@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { i18n, t, tn } from "../i18n/index.svelte";
+  import { i18n, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Startseite bei jedem Besuch: Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { deleteTrip, homeTrips, openSample, openTrip, startTrip, tripFor, type TripEntry } from "../store.svelte";
+  import { costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openSample, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { FOOD_STYLES } from "../food";
   import { summarize, type TripState, type TripSummary } from "../overview";
@@ -26,17 +26,49 @@
   const rows = $derived<Row[]>(homeTrips().map(m => { const tr = tripFor(m.id); return { ...m, s: tr ? summarize(tr, today, geo, i18n.lang) : null }; }));
   const stateOf = (r: Row): TripState => r.s?.state ?? (r.to && r.to < today ? "past" : "planned");
   const byDate = (dir: number) => (a: Row, b: Row) => dir * (a.from || "9999").localeCompare(b.from || "9999");
-  const groups = $derived([
-    { k: "planned", title: t("home.planned"), list: rows.filter(r => stateOf(r) === "planned").sort(byDate(1)) },
-    { k: "booked", title: t("home.booked"), list: rows.filter(r => stateOf(r) === "booked").sort(byDate(1)) },
-    { k: "past", title: t("home.past"), list: rows.filter(r => stateOf(r) === "past").sort(byDate(-1)) }
-  ].filter(g => g.list.length));
+  // Sortierung und Ansicht, je Gerät gemerkt
+  type Sort = "next" | "recent" | "price" | "country";
+  type View = "tiles" | "list";
+  const K_VIEW = "rk-home-view";
+  let pref: { sort: Sort; view: View } = { sort: "next", view: "tiles" };
+  try { pref = { ...pref, ...JSON.parse(localStorage.getItem(K_VIEW) || "{}") }; } catch {}
+  let sort = $state<Sort>(pref.sort), view = $state<View>(pref.view);
+  $effect(() => { try { localStorage.setItem(K_VIEW, JSON.stringify({ sort, view })); } catch {} });
+  const SORTS: Sort[] = ["next", "recent", "price", "country"];
+
+  const price = (r: Row) => r.s?.total || 0;
+  /** Land der Reise; Rundreisen und Reisen ohne Land in eigenen Gruppen */
+  const countryOf = (r: Row) => (r.s?.round ? t("home.round") : r.s?.country || t("home.noCountry"));
+  const groups = $derived.by(() => {
+    const byState = (cmp: (a: Row, b: Row) => number, pastCmp = cmp) => [
+      { k: "planned", title: t("home.planned"), list: rows.filter(r => stateOf(r) === "planned").sort(cmp) },
+      { k: "booked", title: t("home.booked"), list: rows.filter(r => stateOf(r) === "booked").sort(cmp) },
+      { k: "past", title: t("home.past"), list: rows.filter(r => stateOf(r) === "past").sort(pastCmp) }
+    ];
+    let out: { k: string; title: string; list: Row[] }[];
+    if (sort === "recent") out = [{ k: "recent", title: t("home.recent"), list: [...rows].sort((a, b) => (b.edited || "").localeCompare(a.edited || "") || byDate(1)(a, b)) }];
+    else if (sort === "price") out = byState((a, b) => price(a) - price(b));
+    else if (sort === "country") {
+      const names = [...new Set(rows.map(countryOf))].sort((a, b) => a.localeCompare(b, i18n.lang));
+      out = names.map(n => ({ k: `c:${n}`, title: n, list: rows.filter(r => countryOf(r) === n).sort((a, b) => Number(stateOf(a) === "past") - Number(stateOf(b) === "past") || byDate(1)(a, b)) }));
+    } else out = byState(byDate(1), byDate(-1));
+    return out.filter(g => g.list.length);
+  });
   // Länder für Rundreisen: Weltdaten nur laden, wenn es Flüge gibt
   $effect(() => { if (rows.some(r => r.s && tripFor(r.id)?.items.some(i => i.cat === "flights"))) loadGeo(geo, []); });
   const foodLabel = (f: TripSummary["food"]) => (f === "hh" ? t("home.foodHh") : FOOD_STYLES.find(x => x.k === f)?.l || "");
   // Impressum und Datenschutz liegen neben der App
   const LEGAL = (import.meta.env.BASE_URL as string) || "/";
   function event() { startTrip(); openEventPlanner(); }
+  // unberührte Entwürfe beim Anzeigen der Startseite aufräumen; Reisen ohne Kosten nur nach Rückfrage
+  $effect(() => { if (cloud.ready || !cloud.configured) sweepPristine(); });
+  const empties = $derived(rows.length ? emptyTrips() : []);
+  function cleanUp() {
+    const names = empties.map(m => `• ${m.name || m.place || t("trip.untitled")}`).join("\n");
+    if (!confirm(`${tn("home.cleanConfirm", empties.length)}\n\n${names}\n\n${t("tm.noUndo")}`)) return;
+    // Konto-Reisen frisch prüfen: auf einem anderen Gerät befüllt → bleibt
+    for (const m of empties) void deleteIf(m.id, costless).catch(e => console.warn(e));
+  }
   /** Reise direkt von der Startseite löschen (bzw. verlassen, wenn sie jemand anderem gehört) */
   function remove(m: TripEntry, name: string, leave: boolean) {
     const q = leave ? t("tm.leaveConfirm", { name })
@@ -73,15 +105,35 @@
       {/if}
     </div>
 
+    {#if rows.length > 1}
+      <div class="home-tools">
+        <div class="chips home-sort" role="group" aria-label={t("home.sortBy")}>
+          {#each SORTS as k (k)}<button class="chip sm" class:on={sort === k} aria-pressed={sort === k} onclick={() => (sort = k)}>{t(`home.sort.${k}` as Key)}</button>{/each}
+        </div>
+        <div class="chips home-view" role="group" aria-label={t("home.view")}>
+          <button class="chip sm" class:on={view === "tiles"} aria-pressed={view === "tiles"} onclick={() => (view = "tiles")} title={t("home.view.tiles")}>▦ <span class="hv-l">{t("home.view.tiles")}</span></button>
+          <button class="chip sm" class:on={view === "list"} aria-pressed={view === "list"} onclick={() => (view = "list")} title={t("home.view.list")}>☰ <span class="hv-l">{t("home.view.list")}</span></button>
+        </div>
+      </div>
+    {/if}
+
     {#each groups as g (g.k)}
       {#snippet list()}
-        <div class="home-trips">
+        <div class="home-trips" class:as-list={view === "list"}>
           {#each g.list as m (m.id)}
             {@const x = m.s}
             {@const nm = m.name || m.place || t("trip.untitled")}
             {@const leave = !!m.role && m.role !== "owner"}
+            {@const isPast = stateOf(m) === "past"}
             <div class="ht-wrap">
-            <button class="home-trip" class:past={g.k === "past"} onclick={() => openTrip(m.id)}>
+            {#if view === "list"}
+            <button class="home-row" class:past={isPast} onclick={() => openTrip(m.id)}>
+              <span class="hr-name"><span class="hr-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if stateOf(m) === "booked"}<span class="ht-tag">✓</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
+                <small class="muted">{[x?.where, m.from ? range(m.from, m.to) : "", m.people ? tn("n.persons", m.people) : ""].filter(Boolean).join(" · ")}</small></span>
+              <span class="hr-total num">{x && x.total > 0 ? eur(x.total) : ""}</span>
+            </button>
+            {:else}
+            <button class="home-trip" class:past={isPast} onclick={() => openTrip(m.id)}>
               <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
               {#if x}
                 {#if x.where}<span class="ht-where">{x.round ? `🔁 ${t("home.round")}: ` : "📍 "}{x.where}</span>{/if}
@@ -99,12 +151,13 @@
                 <small>{t("home.noDetails")}</small>
               {/if}
             </button>
+            {/if}
             <button class="ht-del" title={leave ? t("home.leaveTrip", { name: nm }) : t("home.deleteTrip", { name: nm })} aria-label={leave ? t("home.leaveTrip", { name: nm }) : t("home.deleteTrip", { name: nm })} onclick={() => remove(m, nm, leave)}>{leave ? "⇥" : "🗑"}</button>
             </div>
           {/each}
         </div>
       {/snippet}
-      {#if g.k === "past"}
+      {#if g.k === "past" && sort !== "country"}
         <details class="home-past"><summary class="home-h">{g.title} <span class="muted">({g.list.length})</span></summary>{@render list()}</details>
       {:else}
         <h2 class="home-h">{g.title}</h2>
@@ -112,6 +165,9 @@
       {/if}
     {/each}
 
+    {#if empties.length}
+      <p class="home-clean"><button class="linkbtn" onclick={cleanUp}>🧹 {tn("home.clean", empties.length)}</button></p>
+    {/if}
     <p class="home-more">
       <button class="linkbtn" onclick={openSample}>{t("sample.open")}</button>
       {#if cloud.configured && !cloud.user}<button class="linkbtn" onclick={() => (cloud.showLogin = true)}>{t("welcome.haveAccount")}</button>{/if}
