@@ -115,6 +115,16 @@ try {
   if (!srcHref || !/booking\.com|trivago\.de/.test(srcHref)) fail("Link zum Anbieter fehlt auf der Karte: " + srcHref);
   if (!c.includes("720")) fail("günstigstes Angebot nicht gewählt: " + c);
   log("Übernommen: ein Posten mit 2 Angeboten, günstigstes zählt");
+  // Vergleich nebeneinander in der Karte: wählen, wieder zurück
+  const tiles = cards.locator(".st-cmp .cmp-t");
+  if ((await tiles.count()) !== 2) fail("Vergleich: " + await tiles.count() + " Kacheln");
+  if (!(await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).count())) fail("gewähltes Angebot nicht markiert");
+  await cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" }).locator(".cmp-pick").click();
+  await cards.locator(".cmp-t.sel", { hasText: "Ferienwohnung Klara" }).waitFor();
+  if (!(await cards.locator(".stay .price b").textContent()).includes("783")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
+  await cards.locator(".cmp-t", { hasText: "Rooms Šećer" }).locator(".cmp-pick").click();
+  await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).waitFor();
+  log("Vergleich nebeneinander: Klara gewählt (783 €), zurück zu Rooms Šećer");
 
   // wie im Artefakt: Anwesenheit aus dem Flug, Lücke im Plan → „Unterkunft suchen“ für genau diese Nächte und Personen
   const TRIP = {

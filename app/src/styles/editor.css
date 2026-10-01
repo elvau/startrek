@@ -835,3 +835,16 @@ body[data-ch="split"] .amb-split{opacity:1}
 .fs-more>summary::before{content:"▸";color:var(--ink-3);transition:transform .2s}
 .fs-more[open]>summary::before{transform:rotate(90deg)}
 .fs-more>:not(summary){margin-top:12px}
+/* Unterkünfte nebeneinander vergleichen */
+.cmp-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,1fr);gap:10px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x mandatory}
+.cmp-t{display:flex;flex-direction:column;gap:6px;padding:10px;border:1.5px solid var(--line);border-radius:14px;background:var(--paper);scroll-snap-align:start;min-width:0}
+.cmp-t.sel{border-color:var(--a);box-shadow:0 0 0 3px color-mix(in srgb,var(--a) 18%,transparent)}
+.cmp-t img,.cmp-ph{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;background:var(--paper-2)}
+.cmp-ph{display:grid;place-items:center;font-size:22px;aspect-ratio:auto!important;height:44px}
+.cmp-n{font-size:14.5px;line-height:1.25}
+.cmp-t .facts{gap:4px}
+.cmp-t .fact{font-size:11.5px;padding:2px 8px}
+.cmp-p{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin-top:auto}
+.cmp-p b{font-size:18px}
+.cmp-a{display:flex;gap:6px;align-items:center}
+.cmp-a .cmp-x{margin-inline-start:auto}

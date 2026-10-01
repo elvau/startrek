@@ -344,4 +344,13 @@ export const hhKey = (t: Traveler) => t.household.trim() || "Ohne Haushalt";
 export const isActive = (t: Traveler) => t.active !== false;
 
 /** Wird dieser Bereich mit einzelnen Posten gerechnet? */
+/** leer angelegtes Angebot (ohne Namen, Preis und Herkunft), z. B. von „+ Unterkunft“ */
+export const blankOption = (o: Option) => !o.label && !o.price.unit && !o.price.adult && !o.price.child && !o.legs?.length && !o.source;
+
+/** Angebot aus einer Suche dazu; leere Angebote fliegen dabei raus (tauchten sonst als „Angebot 2“ im Vergleich auf) */
+export function addOffer(item: Item, opt: Option) {
+  item.options = [...item.options.filter(o => !blankOption(o)), opt];
+  if (item.chosen && !item.options.some(o => o.id === item.chosen)) item.chosen = undefined;
+}
+
 export const isDetailed = (trip: Trip, cat: CatKey) => trip.detail?.[cat] ?? trip.items.some(i => i.cat === cat);

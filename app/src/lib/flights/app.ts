@@ -2,7 +2,7 @@
 import { noteError } from "../bugs/log";
 import { t, tn } from "../i18n/index.svelte";
 import { ageClass } from "../calc";
-import { hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
+import { addOffer, hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
 import { dayShort, nights } from "../format";
 import { accessFor, airportsOf, roadKm } from "../calc/travel";
 import type { FlightOffer, FlightQuery, OfferLeg, SearchResult } from "./types";
@@ -95,7 +95,7 @@ export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: strin
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   // wer bisher mitflog und einen eigenen Flug übernimmt, fliegt ab jetzt selbst
   if (target?.follow) { target.follow = undefined; target.options = [opt]; target.chosen = undefined; return target; }
-  if (target) { target.options.push(opt); return target; }
+  if (target) { addOffer(target, opt); return target; }
   // nur ein Teil fliegt (z. B. eine Familie): Posten gilt nur für sie, Name wie im Artefakt „Flug Klein“
   const act = trip.travelers.filter(isActive);
   const part = ids?.length && act.some(t => !ids.includes(t.id)) ? ids : undefined;
