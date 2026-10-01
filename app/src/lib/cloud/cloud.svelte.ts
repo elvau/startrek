@@ -11,7 +11,7 @@ import { configured, emulator } from "./config";
 import type { Role, TripDoc } from "./firebase";
 
 export type { Role };
-export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** zuletzt im Konto gespeichert (ISO) */ updated?: string }
+export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** zuletzt im Konto gespeichert (ISO) */ updated?: string; /** von wem (Konto-ID) */ by?: string }
 type FB = typeof import("./firebase");
 
 export const cloud = $state({
@@ -80,7 +80,7 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
     unTrips = f.watchMyTrips(u.uid, (list, fromCache) => {
       const next = list.map(d => ({
         id: d.id, name: d.name, role: d.members[u.uid], owner: d.owner, members: d.members,
-        memberNames: d.memberNames || {}, invite: d.invite ?? null, ...stamp(d.updatedAt)
+        memberNames: d.memberNames || {}, invite: d.invite ?? null, ...stamp(d.updatedAt), ...(d.updatedBy ? { by: d.updatedBy } : {})
       })).sort((a, b) => a.name.localeCompare(b.name, "de"));
       // auch bei reinen Statusänderungen (Zwischenspeicher → Server) gemeldet: Liste nur bei echter Änderung ersetzen
       if (JSON.stringify(next) !== JSON.stringify($state.snapshot(cloud.trips))) cloud.trips = next;
@@ -159,13 +159,6 @@ export function needsPush(id: string, json: string): boolean {
 }
 
 /** Änderung der aktuellen Reise speichern (nur wenn sie im Konto liegt und man bearbeiten darf) */
-/**
- * Speicherzeiten bis zu diesem Zeitpunkt (ms) stammen von diesem Gerät, sind also keine fremde Änderung. Schon vor dem
- * Schreiben gesetzt (das Echo mit der Speicherzeit kann vor dem Ende des Schreibens kommen), danach knapp nachgezogen.
- */
-export const ownWrites: Record<string, number> = {};
-const writing = (id: string) => { ownWrites[id] = Math.max(ownWrites[id] || 0, Date.now() + 60000); };
-const wrote = (id: string) => { ownWrites[id] = Date.now() + 5000; };
 
 export async function push(trip: Trip, json: string) {
   if (!fbUser) return;
@@ -177,8 +170,7 @@ export async function push(trip: Trip, json: string) {
   synced.set(trip.id, json);
   cloud.status = navigator.onLine ? "saving" : "offline";
   const f = await load();
-  writing(trip.id);
-  try { await f.saveTrip(trip.id, trip.name || t("trip"), json, fbUser.uid); wrote(trip.id); cloud.status = "saved"; }
+  try { await f.saveTrip(trip.id, trip.name || t("trip"), json, fbUser.uid); cloud.status = "saved"; }
   catch (e) { cloud.error = message(e); cloud.status = "error"; synced.delete(trip.id); }
 }
 
@@ -190,8 +182,7 @@ export async function upload(trip: Trip) {
   synced.set(trip.id, json);
   cloud.loaded[trip.id] = true;
   creating.add(trip.id);
-  writing(trip.id);
-  try { await f.createTrip(trip.id, trip.name || t("trip"), json, fbUser); wrote(trip.id); }
+  try { await f.createTrip(trip.id, trip.name || t("trip"), json, fbUser); }
   finally { creating.delete(trip.id); }
   if (wanted === trip.id) void watch(trip.id);
 }

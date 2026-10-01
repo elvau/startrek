@@ -200,9 +200,12 @@ try {
   await p.locator(".ai-fab").click();
   const c3 = p.locator(".ai-chat");
   const before3 = asked.length;
+  const cards3 = await c3.locator(".ai-card").count();
   await c3.locator(".ai-bar textarea").fill("Ein langes Wochenende irgendwo in der Sonne");
   await c3.locator(".ai-bar textarea").press("Enter");
   await until(() => asked.length > before3, "Anfrage mit Vorlieben");
+  // Antwort abwarten, sonst ist die KI beim nächsten Auftrag noch beschäftigt (unter Last kommt sie später)
+  await until(() => c3.locator(".ai-card").count().then(n => n > cards3), "Antwort auf die Anfrage mit Vorlieben", 15000);
   const q3 = asked.at(-1).body;
   if (q3.prefs?.avoid?.join() !== "TR" || q3.prefs?.maxStops !== 0 || q3.prefs?.styles?.join() !== "beach") fail("Vorlieben fehlen in der Anfrage: " + JSON.stringify(q3.prefs));
   if (q3.originsKnown === false || !q3.origins.includes("DUS")) fail("Wohnort von „Ich“ nicht genutzt: " + JSON.stringify({ o: q3.origins, k: q3.originsKnown }));
@@ -293,7 +296,10 @@ try {
   await p.locator(".home-sort .chip", { hasText: "Zuletzt bearbeitet" }).click();
   await p.locator(".home-h", { hasText: "Zuletzt bearbeitet" }).waitFor();
   const first = await p.locator(".home-trip").first().innerText();
-  if (!first.includes("Mannschaftsfahrt")) fail("zuletzt bearbeitete nicht oben: " + first);
+  if (!first.includes("Mannschaftsfahrt")) {
+    console.log("Diagnose zuletzt bearbeitet:", await p.evaluate(() => localStorage.getItem("rk2-edited")), "idx", await p.evaluate(() => [...document.querySelectorAll(".home-trip")].map(x => x.innerText.split("\n")[0]).join(" | ")));
+    fail("zuletzt bearbeitete nicht oben: " + first);
+  }
   await p.locator(".home-sort .chip", { hasText: "Land" }).click();
   await p.locator(".home-h", { hasText: "Spanien" }).waitFor();
   await p.locator(".home-view .chip", { hasText: "Liste" }).click();
