@@ -128,11 +128,13 @@ try {
   await p.locator('[data-item="fl"] .wb-up').waitFor();
   log("Ergebnis bleibt nach dem Neuladen");
 
-  // Reise ohne Ziel mit Flug EIN → PMI: „Event hinzufügen“ im Kopf führt zu den Erlebnissen und sucht in Palma
+  // Reise ohne Ziel mit Flug EIN → PMI: „Events & Aktivitäten“ im Kopf führt zu den Erlebnissen und sucht in Palma
   await p.evaluate(() => scrollTo(0, 0));
   await p.goto(URL);
   await p.locator(".start .home-trip", { hasText: "Mallorca-Kurztrip" }).click();
   await p.locator(".hero .ht-ev").click();
+  // Touren & Tickets zuerst, Events im zweiten Reiter
+  await p.locator("#attractions .modal.inline .xp-tab", { hasText: "Events" }).click();
   await p.locator("#attractions .modal.inline .xp-ev").first().waitFor();
   const pq = evAsked.at(-1);
   if (!/Palma/.test(pq?.city || "") || pq.from !== "2027-10-15" || pq.to !== "2027-10-19") fail("Events in Palma: " + JSON.stringify(pq));
@@ -140,7 +142,7 @@ try {
   if (evNames.join() !== "Fiesta Palma") fail("Events im Zeitfenster: " + evNames);
   const where = await p.locator("#attractions .xp-where").innerText();
   if (!where.includes("17:20") || !where.includes("13:00")) fail("Zeitfenster nicht angezeigt: " + where);
-  log("Ohne Ziel, Flug nach Palma: „Event hinzufügen“ → Erlebnisse, nur Events ab Landung + 5 h bis Rückflug − 5 h");
+  log("Ohne Ziel, Flug nach Palma: „Events & Aktivitäten“ → Erlebnisse, nur Events ab Landung + 5 h bis Rückflug − 5 h");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Reisebeobachtung ok");

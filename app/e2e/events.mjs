@@ -189,6 +189,11 @@ try {
   for (let i = 0; i < 20 && (await prices()) !== "89,42"; i++) await p.waitForTimeout(150);
   if ((await prices()) !== "89,42") fail("Preise der Erlebnisse: " + await prices());
   log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €, mit Foto) als Posten übernommen");
+  // Kopf: Events & Aktivitäten sammelt Event und Erlebnisse, „Sonstige Kosten“ ohne die Tour
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  const evTile = await p.locator(".hero .ht-ev").innerText();
+  if (!evTile.includes("Tower of London") && !evTile.includes("Coldplay")) fail("Kachel Events & Aktivitäten: " + evTile);
+  if ((await p.locator(".hero .ht-misc").innerText()).includes("Tower of London")) fail("Tour unter Sonstige Kosten");
 
   // nur das Land bekannt (Sabah FK, Aserbaidschan): Hauptstadt Baku angenommen, mit Hinweis zum Prüfen
   // Event-Planer auch im Kapitel Erlebnisse, mit dem gewählten Event

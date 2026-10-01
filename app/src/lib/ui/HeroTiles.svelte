@@ -39,12 +39,15 @@
     const sorted = byPrice ? [...its].sort((a, b) => (T.items[b.id]?.net || 0) - (T.items[a.id]?.net || 0)) : its;
     return { first: sorted[0], list: sorted.slice(0, 2).map(i => ({ id: i.id, text: label(i), v: T.items[i.id]?.net || 0 })), more: Math.max(0, sorted.length - 2) };
   }
-  const OTHER = ["transport", "attractions", "misc"];
+  // Erlebnisse (Touren, Tickets) stehen bei „Events & Aktivitäten“, hier nur Vor Ort und Sonstiges
+  const OTHER = ["transport", "misc"];
   const fl = $derived(lines(["flights"]));
   const st = $derived(lines(["stay"]));
   const ot = $derived(lines(OTHER, true));
   const other = $derived(OTHER.reduce((s, k) => s + (T.byCat[k as keyof typeof T.byCat] || 0), 0));
   const ev = $derived(trip.event);
+  const act = $derived(lines(["attractions"]));
+  const actSum = $derived(T.byCat.attractions || 0);
   // Event hinzufügen: mit Ort (Reise oder Flug) zu den Erlebnissen und dort Events im Reisezeitraum suchen,
   // ohne Ort den Event-Planer (Reise rund um ein Event)
   async function addEvent() {
@@ -53,7 +56,7 @@
     if (!trip.place && trip.items.some(i => i.cat === "flights")) await ensureAirports().catch(() => {});
     const city = eventWindow(trip, ap => stationName(geo, airportData, ap)).city;
     if (!city || !FLIGHTS_URL) { openEventPlanner(); return; }
-    openExplore("events");
+    openExplore();
     // schon offen: nur hinscrollen
     document.querySelector("#attractions .modal.inline")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -91,13 +94,19 @@
       {:else}<b>{t("hero.t.stay")}</b><span class="ht-sub">{t("hero.t.staySub")}</span>{/if}
     </span>
   </button>
-  <button class="ht-tile ht-ev ev-open" class:empty={!ev} disabled={access.readonly && !ev} onclick={() => (ev ? go("attractions") : addEvent())}>
+  <!-- Events & Aktivitäten: das Event der Reise und die Erlebnisse (Touren, Tickets) -->
+  <button class="ht-tile ht-ev ev-open" class:empty={!ev && !act.list.length && !actSum} disabled={access.readonly && !ev && !act.list.length}
+    onclick={() => (ev || act.list.length || actSum ? go("attractions", act.first) : addEvent())}>
     <span class="ht-ico" aria-hidden="true">🎟</span>
     <span class="ht-b">
-      {#if ev}
-        <small>{t("hero.t.eventLabel")}</small>
-        <span class="ht-line"><span>{ev.name}</span></span>
-        <span class="ht-sub ev-hero">{[`${dayShort(ev.start.slice(0, 10))} ${ev.start.slice(11, 16)}`, ev.venue].filter(Boolean).join(" · ")}</span>
+      {#if ev || act.list.length || actSum}
+        <small>{t("hero.t.eventLabel")}{actSum && (act.list.length !== 1 || act.more || ev) ? ` · ${eur(actSum)}` : ""}</small>
+        {#if ev}
+          <span class="ht-line"><span>{ev.name}</span></span>
+          <span class="ht-sub ev-hero">{[`${dayShort(ev.start.slice(0, 10))} ${ev.start.slice(11, 16)}`, ev.venue].filter(Boolean).join(" · ")}</span>
+        {/if}
+        {#each act.list.slice(0, ev ? 1 : 2) as x (x.id)}<span class="ht-line"><span>{x.text}</span><i>{eur(x.v)}</i></span>{/each}
+        {#if act.more + (ev && act.list.length > 1 ? 1 : 0)}<span class="ht-sub">{t("hero.t.more", { n: act.more + (ev && act.list.length > 1 ? 1 : 0) })}</span>{/if}
       {:else}<b>{t("hero.t.event")}</b><span class="ht-sub">{t("hero.t.eventSub")}</span>{/if}
     </span>
   </button>
