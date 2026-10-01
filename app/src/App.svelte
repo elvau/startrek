@@ -45,6 +45,9 @@
   import ExploreDialog from "./lib/ui/ExploreDialog.svelte";
   import { explore, openExplore } from "./lib/activities/open.svelte";
   import { openEventPlanner } from "./lib/event/open.svelte";
+  import { eventWindow } from "./lib/activities/window";
+  import { stationName } from "./lib/stays/stationName";
+  import { airportData, ensureAirports, geo } from "./lib/geo/geo.svelte";
 
   let sheet = $state(false);
 
@@ -64,6 +67,9 @@
 
   const households = $derived(Object.keys(calc.T.byHousehold).length);
   const nn = $derived(nights(app.trip.from, app.trip.to));
+  // Ort und Zeitraum für Events vor Ort (aus der Reise oder den Flügen)
+  const evWin = $derived(eventWindow(app.trip, ap => stationName(geo, airportData, ap)));
+  $effect(() => { if (!app.trip.place && app.trip.items.some(i => i.cat === "flights")) void ensureAirports(); });
 </script>
 
 <Sprite />
@@ -97,7 +103,7 @@
               <button class="linkbtn miss-search" onclick={() => openFlightSearch({ ids: miss.map(x => x.id) })}>✈ {t("fl.searchMissing")}</button></p>
           {/if}
         {:else if ch.k === "attractions"}
-          {@const aq = { place: app.trip.place, from: app.trip.from, to: app.trip.to }}
+          {@const aq = { place: evWin.city, from: evWin.from, to: evWin.to }}
           {#if app.trip.event}
             {@const ev = app.trip.event}
             <p class="search-row att-event">🎟 <b>{ev.name}</b> <span class="muted small">{[`${dayShort(ev.start.slice(0, 10))} ${ev.start.slice(11, 16)}`, ev.venue].filter(Boolean).join(" · ")}</span></p>
@@ -105,16 +111,18 @@
           {#if !access.readonly}
             <!-- Reise zu einem Event (wie oben in der Reise) auch hier; Events und Touren am Ziel, sobald es eines gibt -->
             <div class="search-row">
-              {#if app.trip.place && FLIGHTS_URL}<button class="btn primary xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>{/if}
-              <button class="btn att-ev" class:primary={!app.trip.place} onclick={openEventPlanner}>🏟 {app.trip.event ? t("ev.change") : t("ev.btn")}</button>
-              {#if app.trip.place && FLIGHTS_URL}<button class="btn xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>{/if}
+              {#if evWin.city && FLIGHTS_URL}<button class="btn primary xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>{/if}
+              <button class="btn att-ev" class:primary={!evWin.city} onclick={openEventPlanner}>🏟 {app.trip.event ? t("ev.change") : t("ev.btn")}</button>
+              {#if evWin.city && FLIGHTS_URL}<button class="btn xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>{/if}
             </div>
+            <!-- Events und Touren klappen hier im Kapitel auf -->
+            {#if explore.open}<ExploreDialog inline onclose={() => (explore.open = false)} />{/if}
           {/if}
           <p class="search-row muted small fs-direct">
-            {#if app.trip.place}{t("att.find", { place: app.trip.place })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <ViatorLink q={aq} /> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
+            {#if evWin.city}{t("att.find", { place: evWin.city })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <ViatorLink q={aq} /> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
             {:else}{t("att.noPlace")}{/if}
           </p>
-          {#if app.trip.place && partner.on}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+          {#if evWin.city && partner.on}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
         {:else if ch.k === "stay" && !access.readonly}
           <div class="search-row"><button class="btn primary st-open" aria-expanded={staySearch.open} onclick={() => (staySearch.open ? (staySearch.open = false) : openStaySearch())}>🛏 {t("st.open")} <span aria-hidden="true">{staySearch.open ? "▴" : "▾"}</span></button></div>
           {#if staySearch.open}{#key staySearch.scope}<StaySearch inline scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}
@@ -159,4 +167,3 @@
 {#if connect.open && cloud.user}<ConnectDialog />{/if}
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
 {#if eventPlanner.open}<EventPlanner onclose={() => (eventPlanner.open = false)} />{/if}
-{#if explore.open}<ExploreDialog onclose={() => (explore.open = false)} />{/if}

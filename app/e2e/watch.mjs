@@ -28,6 +28,9 @@ const TRIPS = [
     ] },
   { id: "balkan", name: "Balkan", place: "Split", country: "Kroatien", from: "2027-08-01", to: "2027-08-10", travelers: people, ...base,
     items: [{ id: "rf", cat: "flights", name: "Rundreise", status: "booked", options: [flightOpt("o4", 700, [L("out", "DUS", "SPU", "2027-08-01T08:00", "2027-08-01T10:00"), L("via", "SPU", "TGD", "2027-08-05T12:00", "2027-08-05T13:00"), L("back", "TGD", "DUS", "2027-08-10T15:00", "2027-08-10T17:30")])] }] },
+  // ohne Ziel, nur Flug nach Palma: Events zwischen Landung + 5 h und Rückflug − 5 h
+  { id: "mallorca", name: "Mallorca-Kurztrip", place: "", country: "", travelers: people, ...base,
+    items: [{ id: "mf", cat: "flights", name: "Flug", status: "chosen", options: [{ ...flightOpt("o5", 138, [L("out", "EIN", "PMI", "2027-10-15T10:00", "2027-10-15T12:20"), L("back", "PMI", "EIN", "2027-10-19T18:00", "2027-10-19T20:20")]), source: undefined }] }] },
   { id: "rom", name: "Rom 2025", place: "Rom", country: "Italien", from: "2025-04-01", to: "2025-04-05", travelers: people, ...base, items: [] }
 ];
 
@@ -63,11 +66,19 @@ try {
     await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers: [s("Casa Palma", 600), s("Hostal Sol", 480)], sources: [] }) });
   });
 
+  const evAsked = [];
+  await p.route("https://flights.test/events/search", async r => {
+    if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
+    evAsked.push(JSON.parse(r.request().postData()));
+    const e = (id, name, start) => ({ id, source: "ticketmaster", sourceName: "Ticketmaster", name, start, venue: "Son Moix", city: "Palma", cc: "ES" });
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ events: [e("p1", "Zu früh", "2027-10-15T14:00"), e("p2", "Fiesta Palma", "2027-10-16T21:00"), e("p3", "Zu spät", "2027-10-19T15:00")], sources: [{ id: "ticketmaster", name: "Ticketmaster", configured: true, ok: true, count: 3 }] }) });
+  });
+
   // Startseite: geplant, gebucht, Archiv; Karte mit Ziel, Zeitraum, Nächten, Events, Verpflegung, Kosten
   await p.goto(URL);
   await p.locator(".start .home-title").waitFor();
   const heads = await p.locator(".start .home-h").allInnerTexts();
-  if (heads.map(h => h.replace(/\s*\(\d+\)/, "").trim()).join("|") !== "Geplante Reisen|Gebuchte Reisen|Vergangene Reisen") fail("Gruppen: " + heads.join("|"));
+  if (heads.map(h => h.replace(/🧹[\s\S]*$/, "").replace(/\s*\(\d+\)/, "").trim()).join("|") !== "Geplante Reisen|Gebuchte Reisen|Vergangene Reisen") fail("Gruppen: " + heads.join("|"));
   const palma = await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).innerText();
   for (const s of ["Palma, Spanien", "3 Nächte", "2 Events", "Halbpension", "ca. "]) if (!palma.includes(s)) fail(`Karte Palma ohne „${s}“: ${palma}`);
   await until(async () => (await p.locator(".start .home-trip", { hasText: "Balkan" }).innerText()).includes("Rundreise: Kroatien, Montenegro"), "Rundreise mit Ländern");
@@ -116,6 +127,20 @@ try {
   await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
   await p.locator('[data-item="fl"] .wb-up').waitFor();
   log("Ergebnis bleibt nach dem Neuladen");
+
+  // Reise ohne Ziel mit Flug EIN → PMI: „Event hinzufügen“ im Kopf führt zu den Erlebnissen und sucht in Palma
+  await p.evaluate(() => scrollTo(0, 0));
+  await p.goto(URL);
+  await p.locator(".start .home-trip", { hasText: "Mallorca-Kurztrip" }).click();
+  await p.locator(".hero .ht-ev").click();
+  await p.locator("#attractions .modal.inline .xp-ev").first().waitFor();
+  const pq = evAsked.at(-1);
+  if (!/Palma/.test(pq?.city || "") || pq.from !== "2027-10-15" || pq.to !== "2027-10-19") fail("Events in Palma: " + JSON.stringify(pq));
+  const evNames = await p.locator("#attractions .xp-ev b").allInnerTexts();
+  if (evNames.join() !== "Fiesta Palma") fail("Events im Zeitfenster: " + evNames);
+  const where = await p.locator("#attractions .xp-where").innerText();
+  if (!where.includes("17:20") || !where.includes("13:00")) fail("Zeitfenster nicht angezeigt: " + where);
+  log("Ohne Ziel, Flug nach Palma: „Event hinzufügen“ → Erlebnisse, nur Events ab Landung + 5 h bis Rückflug − 5 h");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Reisebeobachtung ok");

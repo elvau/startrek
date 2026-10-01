@@ -13,6 +13,10 @@
   import { openStaySearch } from "../stays/open.svelte";
   import { FLIGHTS_URL } from "../flights/app";
   import type { Item } from "../model";
+  import { openExplore } from "../activities/open.svelte";
+  import { eventWindow } from "../activities/window";
+  import { stationName } from "../stays/stationName";
+  import { airportData, ensureAirports, geo } from "../geo/geo.svelte";
 
   const trip = $derived(app.trip);
   const T = $derived(calc.T);
@@ -41,6 +45,18 @@
   const ot = $derived(lines(OTHER, true));
   const other = $derived(OTHER.reduce((s, k) => s + (T.byCat[k as keyof typeof T.byCat] || 0), 0));
   const ev = $derived(trip.event);
+  // Event hinzufügen: mit Ort (Reise oder Flug) zu den Erlebnissen und dort Events im Reisezeitraum suchen,
+  // ohne Ort den Event-Planer (Reise rund um ein Event)
+  async function addEvent() {
+    if (access.readonly) { go("attractions"); return; }
+    // Stadt am Ankunftsflughafen braucht die Flughafendaten
+    if (!trip.place && trip.items.some(i => i.cat === "flights")) await ensureAirports().catch(() => {});
+    const city = eventWindow(trip, ap => stationName(geo, airportData, ap)).city;
+    if (!city || !FLIGHTS_URL) { openEventPlanner(); return; }
+    openExplore("events");
+    // schon offen: nur hinscrollen
+    document.querySelector("#attractions .modal.inline")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   /** leer: Suche öffnen (falls möglich); befüllt: zum ersten Posten scrollen, sonst ins Kapitel */
   function go(chapter: string, first?: Item, open?: () => void) {
@@ -75,7 +91,7 @@
       {:else}<b>{t("hero.t.stay")}</b><span class="ht-sub">{t("hero.t.staySub")}</span>{/if}
     </span>
   </button>
-  <button class="ht-tile ht-ev ev-open" class:empty={!ev} disabled={access.readonly && !ev} onclick={() => (ev ? go("attractions") : openEventPlanner())}>
+  <button class="ht-tile ht-ev ev-open" class:empty={!ev} disabled={access.readonly && !ev} onclick={() => (ev ? go("attractions") : addEvent())}>
     <span class="ht-ico" aria-hidden="true">🎟</span>
     <span class="ht-b">
       {#if ev}
