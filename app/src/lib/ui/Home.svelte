@@ -4,7 +4,7 @@
    * Startseite bei jedem Besuch: Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openSample, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
+  import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { FOOD_STYLES } from "../food";
   import { summarize, type TripState, type TripSummary } from "../overview";
@@ -17,6 +17,7 @@
   import NewTripDialog from "./NewTripDialog.svelte";
   import AiMark from "./AiMark.svelte";
   import TopNav from "./TopNav.svelte";
+  import AppFooter from "./AppFooter.svelte";
 
   let picking = $state(false);
   const today = new Date().toISOString().slice(0, 10);
@@ -55,8 +56,6 @@
   // Länder für Rundreisen: Weltdaten nur laden, wenn es Flüge gibt
   $effect(() => { if (rows.some(r => r.s && tripFor(r.id)?.items.some(i => i.cat === "flights"))) loadGeo(geo, []); });
   const foodLabel = (f: TripSummary["food"]) => (f === "hh" ? t("home.foodHh") : FOOD_STYLES.find(x => x.k === f)?.l || "");
-  // Impressum und Datenschutz liegen neben der App
-  const LEGAL = (import.meta.env.BASE_URL as string) || "/";
   // zuletzt geöffnete Reise (bleibt im Hintergrund offen): oben direkt weiterplanen
   const last = $derived(rows.find(r => r.id === app.trip.id));
   function event() { startTrip(); openEventPlanner(); }
@@ -167,11 +166,7 @@
     {#if empties.length}
       <p class="home-clean"><button class="linkbtn" onclick={cleanUp}>🧹 {tn("home.clean", empties.length)}</button></p>
     {/if}
-    <p class="home-more">
-      <button class="linkbtn" onclick={openSample}>{t("sample.open")}</button>
-      {#if cloud.configured && !cloud.user}<button class="linkbtn" onclick={() => (cloud.showLogin = true)}>{t("welcome.haveAccount")}</button>{/if}
-    </p>
-    <p class="home-legal"><a href="{LEGAL}impressum.html">{t("legal.imprint")}</a> · <a href="{LEGAL}datenschutz.html">{t("legal.privacy")}</a> · <a class="app-version" href="https://github.com/elvau/startrek/releases" target="_blank" rel="noopener noreferrer" title={__APP_COMMIT__}>v{__APP_VERSION__}</a></p>
+    <AppFooter home />
   </div>
 </section>
 

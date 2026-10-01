@@ -33,6 +33,8 @@ try {
   const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
   p.on("pageerror", e => errors.push(e.message));
   const asked = [];
+  // Such-Dienst meldet: Partner-Links an
+  await p.route("https://flights.test/health", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ ok: true, partner: true }) }));
   await p.route("https://flights.test/stays/search", async r => {
     asked.push(JSON.parse(r.request().postData()));
     await new Promise(res => setTimeout(res, 200));
@@ -216,6 +218,32 @@ try {
   const sticky = await p.evaluate(() => ({ bar: document.querySelector(".top-in").getBoundingClientRect().bottom, aside: document.querySelector(".aside").getBoundingClientRect().top }));
   if (sticky.bar <= 0 || sticky.bar > sticky.aside || sticky.aside > 120) fail("Leiste oder Gesamtkosten nicht im Blick: " + JSON.stringify(sticky));
   log("Scrollen: Leiste oben sichtbar, Gesamtkosten rechts bleiben darunter stehen");
+
+  // Fokusmodus nur im eigenen Kapitel: Karte bei der Unterkunft offen, weiter zu „Alles andere“ gescrollt → dort alles klar
+  await p.locator("#stay .card[data-item] h3").first().click();
+  await p.locator("#stay .card.edit").waitFor();
+  await p.locator("#misc").evaluate(el => el.scrollIntoView({ block: "start", behavior: "instant" }));
+  await p.waitForTimeout(700);
+  const misc = await p.locator("#misc .card[data-item]").first().evaluate(el => { const c = getComputedStyle(el); return { o: c.opacity, f: c.filter }; });
+  if (misc.o !== "1" || misc.f !== "none") fail("Karte im nächsten Kapitel abgeblendet: " + JSON.stringify(misc));
+  log("Fokus: offene Karte bei der Unterkunft blendet beim Weiterscrollen „Alles andere“ nicht ab");
+
+  // Unterwegs: das Fahrzeug wechselt beim Scrollen durchs Kapitel von Taxi über Bus zur Bahn
+  const rides = [];
+  for (const q of [0.1, 0.5, 0.9]) {
+    await p.locator("#transport").evaluate((el, q) => { const r = el.getBoundingClientRect(); scrollTo({ top: scrollY + r.top + r.height * q - innerHeight / 2, behavior: "instant" }); }, q);
+    await p.waitForTimeout(400);
+    rides.push(await p.locator(".veh .v.on").getAttribute("class"));
+  }
+  if (rides.map(c => c.match(/v-(\w+)/)[1]).join() !== "taxi,bus,train") fail("Unterwegs: " + rides.join(" | "));
+  log("Unterwegs: Taxi → Bus → Bahn beim Scrollen");
+
+  // Partner-Links an: Viator-Suche am Reiseort mit Partnerkennung, gekennzeichnet und mit Hinweis
+  const vl = p.locator("#attractions a", { hasText: "Viator" });
+  const href = await vl.getAttribute("href");
+  if (!href.includes("pid=P00322974") || !href.includes("mcid=42383") || !(await vl.getAttribute("rel")).includes("sponsored")) fail("Viator-Link ohne Partnerkennung: " + href);
+  if (!(await p.locator("#attractions", { hasText: "Partner-Link*" }).count())) fail("Viator-Partner-Link nicht gekennzeichnet");
+  log("Viator: Partner-Links an → Link mit Kennung, als Partner-Link gekennzeichnet");
 
   // Rundreise wie bei Eduard: Quito → Lima → Rio, Nachtflug nach Rio; Lücken und Suche je Stadt statt „alles in Quito“
   const leg = (dir, from, to, dep, arr, toCity) => ({ dir, from, to, dep, arr, ...(toCity ? { toCity } : {}) });

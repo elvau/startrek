@@ -99,10 +99,18 @@ body[data-ch="transport"] .amb-transport,body[data-ch="attractions"] .amb-attrac
 .town rect.w{fill:#FFD98A;opacity:0;transition:opacity .6s}
 .town rect.w.on{opacity:.95}
 /* Schienen (Transport) */
-.rails{position:absolute;left:-5%;right:-5%;bottom:14%;height:120px;opacity:.5}
+/* Schiene und Fahrzeug im selben Rahmen: das Fahrzeug wird in Maßen der Schiene gesetzt und bleibt so darauf */
+.track{position:absolute;left:-5%;width:110%;bottom:14%;height:120px}
+.rails{position:absolute;inset:0;width:100%;height:100%;opacity:.5}
 .rails path{fill:none;stroke:var(--c-transport);stroke-width:3}
 .rails .tie{stroke-width:2;stroke-dasharray:3 16}
-.tram{position:absolute;bottom:calc(14% + 34px);left:0;width:120px;height:44px;transform:translateX(-130px);transition:transform .2s linear;color:var(--c-transport);opacity:.8}
+.rails .done{stroke-width:4;opacity:1}
+/* Fahrzeug: Ursprung unten in der Mitte (Räder auf der Schiene), folgt der Kurve; Wechsel mit kurzem Aufploppen */
+.veh{position:absolute;left:2%;top:50%;width:0;height:0;transform-origin:0 0;color:var(--c-transport)}
+.veh .v{position:absolute;bottom:2px;left:0;height:44px;translate:-50% 0;opacity:0;transform:scale(.4);transform-origin:50% 100%;transition:opacity .35s ease,transform .45s cubic-bezier(.3,1.6,.5,1)}
+.veh .v.on{opacity:.85;transform:none}
+.v-taxi{width:84px}.v-bus{width:120px}.v-train{width:180px}
+@media (max-width:640px){.veh .v{height:32px}.v-taxi{width:61px}.v-bus{width:87px}.v-train{width:131px}}
 /* Konfetti (Attraktionen) */
 .conf{position:absolute;width:10px;height:14px;border-radius:2px;opacity:.55;transform:translateY(calc(var(--p,0) * var(--dy,80px))) rotate(calc(var(--p,0) * var(--r,90deg)))}
 /* Sonne (Start) */
@@ -193,8 +201,9 @@ body.scrolled .hint{pointer-events:none}
 .reveal.in{opacity:1;transform:none}
 .card:focus-visible{box-shadow:0 0 0 3px var(--a),var(--shadow)}
 /* Spotlight: beim Bearbeiten tritt alles andere zurück */
-body.editing .chapter.on .card:not(.edit){opacity:.35;filter:blur(1px)}
-body.editing .aside{opacity:.5}
+/* Fokus nur im Kapitel der offenen Karte; scrollt man weiter, bleiben die anderen Kapitel klar */
+.chapter.on:has(.card.edit) .card:not(.edit){opacity:.35;filter:blur(1px)}
+body:has(.chapter.on .card.edit) .aside{opacity:.5}
 .card.edit{transform:scale(1.015);box-shadow:0 0 0 2px var(--a),0 30px 60px -20px rgba(0,0,0,.35);z-index:2}
 
 .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
@@ -323,7 +332,13 @@ body.editing .aside{opacity:.5}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .cloud{fill:#9FB3CC;opacity:.25}:root:not([data-theme="light"]) .tk-top{color:#0D131C}}
 :root[data-theme="dark"] .cloud{fill:#9FB3CC;opacity:.25}
 :root[data-theme="dark"] .tk-top{color:#0D131C}
-.note{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:0 16px 120px;color:var(--ink-2);font-size:13.5px;text-align:center}
+/* Fußzeile (Startseite und Reise): eigene Fläche, lesbar auf Himmel und Meer, hell wie dunkel */
+.foot{position:relative;z-index:1;width:fit-content;max-width:min(760px,calc(100% - 32px));margin:28px auto 120px;padding:12px 20px;border-radius:18px;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--glass-line);box-shadow:0 12px 30px -18px rgba(14,36,56,.45);color:var(--ink-2);font-size:13.5px;text-align:center;display:flex;flex-direction:column;gap:6px}
+.foot p{margin:0}
+.foot-links{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 20px}
+.foot-legal{font-size:12.5px}
+.foot-legal a{color:var(--ink-2)}
+.foot.on-home{margin-bottom:24px}
 
 @media (prefers-reduced-motion: reduce){
   *{transition:none!important;animation:none!important;scroll-behavior:auto!important}

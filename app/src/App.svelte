@@ -1,7 +1,7 @@
 <script lang="ts">
   import { applyDocument, t, tn } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
-  import { access, app, calc, addItem, discardDetails, openSample, setDetailed } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, setDetailed } from "./lib/store.svelte";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
   import { cloud } from "./lib/cloud/cloud.svelte";
@@ -23,6 +23,7 @@
   import PresencePlan from "./lib/ui/PresencePlan.svelte";
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
+  import AppFooter from "./lib/ui/AppFooter.svelte";
   import WatchPanel from "./lib/ui/WatchPanel.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
@@ -36,7 +37,9 @@
   import EventPlanner from "./lib/ui/EventPlanner.svelte";
   import { eventPlanner } from "./lib/event/open.svelte";
   import FoodCard from "./lib/ui/FoodCard.svelte";
-  import { getYourGuideLink, tiqetsLink, viatorLink } from "./lib/links";
+  import { getYourGuideLink, tiqetsLink } from "./lib/links";
+  import ViatorLink from "./lib/ui/ViatorLink.svelte";
+  import { partner } from "./lib/partnerState.svelte";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
   import { flightSearch, openFlightSearch } from "./lib/flights/open.svelte";
   import { withoutTravel } from "./lib/flights/app";
@@ -61,8 +64,6 @@
 
   const households = $derived(Object.keys(calc.T.byHousehold).length);
   const nn = $derived(nights(app.trip.from, app.trip.to));
-  // Impressum und Datenschutz liegen neben der App (…/startrek/impressum.html)
-  const LEGAL = (import.meta.env.BASE_URL as string) || "/";
 </script>
 
 <Sprite />
@@ -102,9 +103,10 @@
             </div>
           {/if}
           <p class="search-row muted small fs-direct">
-            {#if app.trip.place}{t("att.find", { place: app.trip.place })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <a href={viatorLink(aq)} target="_blank" rel="noopener noreferrer">Viator ↗</a> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
+            {#if app.trip.place}{t("att.find", { place: app.trip.place })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <ViatorLink q={aq} /> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
             {:else}{t("att.noPlace")}{/if}
           </p>
+          {#if app.trip.place && partner.on}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
         {:else if ch.k === "stay" && !access.readonly}
           <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 {t("st.open")}</button></div>
         {/if}
@@ -130,11 +132,7 @@
   <TicketAside />
 </div>
 
-<p class="note">
-  {cloud.user ? t("app.savedCloud") : t("app.savedLocal")}
-  <button class="linkbtn" onclick={() => { if (confirm(t("sample.confirm"))) openSample(); }}>{t("sample.open")}</button>
-  <span class="legal"><a href="{LEGAL}impressum.html">{t("legal.imprint")}</a> · <a href="{LEGAL}datenschutz.html">{t("legal.privacy")}</a> · <a class="app-version" href="https://github.com/elvau/startrek/releases" target="_blank" rel="noopener noreferrer" title={__APP_COMMIT__}>v{__APP_VERSION__}</a></span>
-</p>
+<AppFooter />
 
 <Dock onopen={() => (sheet = true)} />
 {#if sheet}

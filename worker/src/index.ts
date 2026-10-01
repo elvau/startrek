@@ -65,7 +65,8 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: h["access-control-allow-origin"] ? 204 : 403, headers: h });
 
     if (url.pathname === "/" || url.pathname === "/health") {
-      return json({ ok: true, dienst: "Reisekasse Flugsuche" }, 200, h);
+      // partner: ob Partner-Links an sind (die App kennzeichnet sie dann und hängt die Kennung an eigene Links)
+      return json({ ok: true, dienst: "Reisekasse Flugsuche", partner: partnerOn(env) }, 200, h);
     }
 
     // Suchen: höchstens so viele pro IP und Minute bzw. Stunde (schützt die Kontingente der Anbieter)

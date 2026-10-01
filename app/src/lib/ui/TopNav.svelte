@@ -1,8 +1,8 @@
 <script lang="ts">
   /*
    * Eine Leiste oben für Startseite und Reise, immer sichtbar: links Marke (in der Reise zurück zur Startseite) und Reise-Menü,
-   * in der Mitte die Kapitel (erst beim Scrollen), rechts überall gleich Gruppen, Konto, hell/dunkel und Sprache.
-   * Auf dem Handy liegen Gruppen, hell/dunkel und Sprache hinter „⋯“.
+   * in der Mitte die Kapitel (erst beim Scrollen), rechts überall gleich Gruppen, Vorlieben, Konto, hell/dunkel und Sprache.
+   * Auf dem Handy liegen Gruppen, Vorlieben, hell/dunkel und Sprache hinter „⋯“.
    */
   import { t } from "../i18n/index.svelte";
   import LangSelect from "./LangSelect.svelte";
@@ -13,6 +13,8 @@
   import Account from "./Account.svelte";
   import GroupsButton from "./GroupsButton.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
+  import PrefsButton from "./PrefsButton.svelte";
+  import PrefsDialog from "./PrefsDialog.svelte";
   import { access, goHome } from "../store.svelte";
   import { heroEdit } from "./heroEdit.svelte";
 
@@ -37,7 +39,7 @@
   }
 
   // „⋯“ auf dem Handy
-  let more = $state(false), groups = $state(false);
+  let more = $state(false), groups = $state(false), prefs = $state(false);
   let moreEl = $state<HTMLElement>();
   $effect(() => {
     if (!more) return;
@@ -71,6 +73,7 @@
     {/if}
     <div class="top-r">
       <span class="top-wide"><GroupsButton /></span>
+      <span class="top-wide"><PrefsButton /></span>
       <Account compact />
       <button class="tbtn top-wide" onclick={toggleTheme} aria-label={t("nav.theme")} title={t("nav.theme")}><Icon name="moon" size={18} /></button>
       <span class="top-wide"><LangSelect short /></span>
@@ -78,7 +81,8 @@
         <button class="tbtn" onclick={() => (more = !more)} aria-expanded={more} aria-label={t("nav.more")} title={t("nav.more")}><span aria-hidden="true">⋯</span></button>
         {#if more}
           <div class="tm-pop top-pop" role="menu">
-            <button class="tm-act" onclick={() => { more = false; groups = true; }}>{t("groups.title")}</button>
+            <button class="tm-act" onclick={() => { more = false; groups = true; }}><Icon name="users" size={16} /> {t("groups.title")}</button>
+            <button class="tm-act" onclick={() => { more = false; prefs = true; }}><Icon name="sliders" size={16} /> {t("prefs.title")}</button>
             <button class="tm-act" onclick={toggleTheme}><Icon name="moon" size={16} /> {t("nav.theme")}</button>
             <label class="top-lang"><span>{t("nav.language")}</span><LangSelect short /></label>
           </div>
@@ -88,3 +92,4 @@
   </div>
 </header>
 {#if groups}<GroupsDialog onclose={() => (groups = false)} />{/if}
+{#if prefs}<PrefsDialog onclose={() => (prefs = false)} />{/if}
