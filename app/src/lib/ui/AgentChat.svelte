@@ -5,7 +5,7 @@
    * Vorschläge direkt übernehmen. Frühere Wünsche gehen als Zusammenhang mit, damit Nachfragen funktionieren.
    * Nur für angemeldete Nutzer, begrenzt pro Tag (Such-Dienst).
    * In einer offenen Reise berät die KI dazu: Fragen beantworten, Posten tauschen oder ergänzen. Änderungen eines
-   * Auftrags kommen gesammelt und werden mit einer Rückfrage übernommen (oder als eigene KI-Variante angelegt).
+   * Auftrags kommen gesammelt und werden mit einer Rückfrage übernommen (oder als KI-Vergleichsreise angelegt).
    */
   import { tick } from "svelte";
   import { app, duplicateTrip, goHome, startTrip } from "../store.svelte";
@@ -112,7 +112,7 @@
     void scrollDown();
   }
 
-  /** Änderungen in einer Kopie der Reise: die eigene Planung bleibt, die KI-Variante liegt daneben */
+  /** Änderungen in einer Kopie der Reise: die eigene Planung bleibt, die KI-Vergleichsreise liegt daneben */
   function variant(m: Msg) {
     if (!m.edit || app.trip.id !== m.tripId) return;
     const name = app.trip.name;

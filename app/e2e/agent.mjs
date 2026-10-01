@@ -230,18 +230,18 @@ try {
   if (await p.locator("#transport .card", { hasText: "Anreise mit dem Auto" }).count()) fail("Rückgängig hat nicht gewirkt");
   log("Offene Reise: Anfrage mit Reise ohne Namen, eine Rückfrage, Übernehmen ersetzt den Flug (markiert), Rückgängig");
 
-  // als KI-Variante: eigene Reise daneben, die bisherige bleibt
+  // als KI-Vergleichsreise: eigene Reise daneben, die bisherige bleibt
   await c4.locator(".ai-bar textarea").fill("Wir reisen selbst mit dem Auto an");
   await c4.locator(".ai-bar textarea").press("Enter");
   await until(() => c4.locator(".ai-variant").count().then(n => n === 1), "zweite Antwort zur Reise");
   await c4.locator(".ai-variant").click();
-  await p.locator(".hero h1", { hasText: "(KI-Variante)" }).waitFor();
-  if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Variante mit Flug");
+  await p.locator(".hero h1", { hasText: "(KI-Vergleich)" }).waitFor();
+  if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Vergleichsreise mit Flug");
   await c4.locator(".ai-head .x").click();
   await p.locator(".hero .hero-home").click();
-  await p.locator(".start .home-trip", { hasText: "(KI-Variante)" }).first().waitFor();
+  await p.locator(".start .home-trip", { hasText: "(KI-Vergleich)" }).first().waitFor();
   if (!(await p.locator(".start .home-trip", { hasText: tripName }).count())) fail("ursprüngliche Reise fehlt");
-  log("Als KI-Variante angelegt, ursprüngliche Reise unverändert");
+  log("Als KI-Vergleichsreise angelegt, ursprüngliche Reise unverändert");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
