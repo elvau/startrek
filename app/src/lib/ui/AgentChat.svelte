@@ -39,6 +39,15 @@
   let msgs = $state<Msg[]>([]);
   let input = $state("");
   let busy = $state(false);
+  // Wartezeit sichtbar: Minuten und Sekunden seit dem Absenden, nach 90 s ein Hinweis, dass es heute länger dauert
+  let waited = $state(0);
+  $effect(() => {
+    if (!busy) { waited = 0; return; }
+    const t0 = Date.now();
+    const iv = setInterval(() => (waited = Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(iv);
+  });
+  const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   let remaining = $state<number | null>(null);
   let list = $state<HTMLElement>();
   let ctrl: AbortController | undefined;
@@ -247,7 +256,7 @@
           {/if}
         </div>
       {/each}
-      {#if busy}<p class="ai-msg ai-busy">{onTrip ? t("ai.busyTrip") : t("ai.busy")}</p>{/if}
+      {#if busy}<p class="ai-msg ai-busy">{onTrip ? t("ai.busyTrip") : t("ai.busy")}{#if waited >= 5} <span class="ai-wait" dir="ltr">{clock(waited)}</span>{/if}{#if waited >= 90}<br>{t("ai.busyLong")}{/if}</p>{/if}
     </div>
 
     {#if cloud.user}

@@ -38,7 +38,7 @@ try {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" } });
     const body = JSON.parse(r.request().postData());
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
-    await new Promise(res => setTimeout(res, 300));
+    await new Promise(res => setTimeout(res, body.prompt?.includes("langsam") ? 6500 : 300));
     // Strandurlaub mit Kindern: erst eine Rückfrage, nach der Antwort Vorschläge für die Familie
     // offene Reise: Antwort mit Änderungen (eigene Anreise statt Flug)
     if (body.current) {
@@ -377,6 +377,16 @@ try {
   await w2.close();
   await pd2.locator(".modal-h .x").click();
   log("Gruppen-Vorlieben angemeldet, zweites Fenster offen: langsam getippt und Halbpension gewählt, nichts springt zurück, gespeichert");
+
+  // dauert es länger: Wartezeit läuft sichtbar mit (statt „bis zu einer Minute“)
+  if (await p.locator(".ai-fab").count()) await p.locator(".ai-fab").click();
+  const cw = p.locator(".ai-chat");
+  await cw.locator(".ai-bar textarea").fill("Bitte langsam: ein Wochenende am Meer");
+  await cw.locator(".ai-bar textarea").press("Enter");
+  await cw.locator(".ai-busy", { hasText: "ein paar Minuten" }).waitFor();
+  await cw.locator(".ai-busy .ai-wait", { hasText: /^0:0[5-9]$/ }).waitFor({ timeout: 8000 });
+  await cw.locator(".ai-busy").waitFor({ state: "detached", timeout: 10000 });
+  log("Längere Antwort: Hinweis „ein paar Minuten“, Wartezeit läuft mit");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
