@@ -237,9 +237,17 @@ try {
   await p.reload();
   await p.locator(".start .home-trip").first().click();
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
+  // Polnisch wird erst bei Bedarf geladen, auch nach dem Neuladen gleich auf Polnisch (kein Englisch dazwischen)
+  await p.locator(".top .lang-sel").selectOption("pl");
+  await p.locator("#stay .st-open", { hasText: "Szukaj noclegu" }).waitFor();
+  await p.reload();
+  await p.locator(".start .home-trip").first().waitFor();
+  if (await p.locator("text=Search accommodation").count()) fail("nach dem Neuladen kurz Englisch");
+  await p.locator(".start .home-trip").first().click();
+  await p.locator("#stay .st-open", { hasText: "Szukaj noclegu" }).waitFor();
   await p.locator(".top .lang-sel").selectOption("de");
   await p.locator("#stay .st-open", { hasText: "Unterkunft suchen" }).waitFor();
-  log("Sprache: Englisch gewählt, Oberfläche übersetzt, bleibt nach dem Neuladen; zurück auf Deutsch");
+  log("Sprache: Englisch gewählt, Oberfläche übersetzt, bleibt nach dem Neuladen; Polnisch nachgeladen; zurück auf Deutsch");
 
   // Leiste oben bleibt beim Scrollen, die Gesamtkosten rechts bleiben darunter im Blick
   await p.evaluate(() => scrollTo({ top: 2500, behavior: "instant" }));
