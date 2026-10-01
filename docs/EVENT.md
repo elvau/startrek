@@ -62,3 +62,13 @@ Viator einrichten:
 2. Cloudflare → Workers & Pages → **startrek** → Einstellungen → Variablen und Geheimnisse → **Secret** `VIATOR_API_KEY`.
 3. Ohne Schlüssel zeigt der Reiter „noch nicht eingerichtet“ und die Links zu GetYourGuide, Viator und Tiqets.
 
+Nutzungsbedingungen der Viator-Affiliate-API (von Dani akzeptiert, 10/2026), daran halten wir uns:
+- Viator-Inhalte und API nur, um Affiliate-Traffic zu viator.com zu leiten: jeder Treffer und jeder übernommene Posten
+  verlinkt auf viator.com mit Partnerkennung; keine Nutzung für andere Zwecke.
+- Nur für die eigene Domain (splitandfly.com); keine Weitergabe an Websites oder Anwendungen Dritter.
+- API nur so, wie in der technischen Dokumentation von Viator beschrieben.
+- Kein Bieten auf geschützte Begriffe wie „Viator“ in Suchmaschinen- oder anderer Werbung.
+- Keine Viator-Inhalte indexieren lassen (keine öffentlichen, durchsuchbaren Seiten mit Touren).
+- Verstöße können zur sofortigen Sperre des Partnerkontos führen.
+
+
