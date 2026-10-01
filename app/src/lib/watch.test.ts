@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkTrip, flightQueryFor, hitFor, potential, rises, takeBetter, watchable } from "./watch";
+import { applyRefresh, changed, findCheaper, flightQueryFor, hitFor, potential, refreshTrip, takeBetter, watchable, type Searchers } from "./watch";
 import { summarize, isBooked } from "./overview";
 import { offerToOption } from "./flights/app";
 import { stayToOption } from "./stays/app";
@@ -38,49 +38,67 @@ describe("Reisebeobachtung", () => {
     expect(q).toMatchObject({ from: "DUS", to: "PMI", fromAirports: ["DUS"], toAirports: ["PMI"], depart: "2027-05-07", ret: "2027-05-10", adults: 2, children: 0 });
   });
 
-  it("Flug teurer geworden, Unterkunft günstiger gefunden: Pfeile, Potenzial, Übernehmen", async () => {
+  it("Preise prüfen: dieselben Angebote zum heutigen Preis übernehmen, Änderung am Posten", async () => {
     const tr = trip();
+    // zweites Unterkunfts-Angebot im Vergleich: wird mit aktualisiert
+    const so2 = stayToOption(stay("Hostal Sol", 520), 2);
+    tr.items[1].options.push(so2);
+    tr.items[1].chosen = tr.items[1].options[0].id;
     const asked: unknown[] = [];
-    tr.watch = await checkTrip(tr, {
-      // derselbe Flug kostet jetzt 450, ein anderer (früher am Morgen) 380
+    const s: Searchers = {
+      // derselbe Flug kostet jetzt 450, ein anderer 380 (zählt hier nicht)
       flights: async q => { asked.push(q); return { offers: [flight(450), flight(380, "2027-05-07T06:00:00", "EW7")], sources: [] }; },
-      // dieselbe Unterkunft gleich teuer, eine andere 520
-      stays: async q => { asked.push(q); return { offers: [stay("Casa Palma", 600), stay("Hostal Sol", 520)], sources: [] }; }
-    });
+      stays: async q => { asked.push(q); return { offers: [stay("Casa Palma", 560), stay("Hostal Sol", 500), stay("Billig", 300)], sources: [] }; }
+    };
+    applyRefresh(tr, await refreshTrip(tr, s), "2026-10-01T10:00:00Z");
     expect(asked).toHaveLength(2);
-    const f = hitFor(tr, tr.items[0])!, s = hitFor(tr, tr.items[1])!;
-    expect([f.was, f.now, f.best]).toEqual([400, 450, 380]);
-    expect([s.was, s.now, s.best]).toEqual([600, 600, 520]);
-    expect(rises(tr)).toBe(50);
-    expect(potential(tr)).toBe(20 + 80);
-    expect(summarize(tr, "2026-09-29").potential).toBe(100);
-
-    takeBetter(tr, tr.items[1]);
-    expect(tr.items[1].options).toHaveLength(2);
-    expect(tr.items[1].options.find(o => o.id === tr.items[1].chosen)!.label).toBe("Hostal Sol");
-    expect(hitFor(tr, tr.items[1])).toBeNull();
-    expect(potential(tr)).toBe(20);
+    expect(tr.items[0].options[0].price.unit).toBe(450);
+    expect(tr.items[1].options.map(o => o.price.unit)).toEqual([560, 500]);
+    expect(tr.items[1].options[0].source?.at).toBe("2026-10-01");
+    expect(hitFor(tr, tr.items[0])).toMatchObject({ was: 400, now: 450 });
+    expect(hitFor(tr, tr.items[1])).toMatchObject({ was: 600, now: 560 });
+    expect(changed(tr)).toBe(50 - 40);
+    // kein Vorschlag fremder Angebote bei der Prüfung der ganzen Reise
+    expect(potential(tr)).toBe(0);
   });
 
-  it("nichts Günstigeres: kein Potenzial; Fehler bleibt am Posten", async () => {
+  it("nicht wiedergefunden oder Fehler: Preis bleibt, Hinweis am Posten", async () => {
     const tr = trip();
-    tr.watch = await checkTrip(tr, {
-      flights: async () => ({ offers: [flight(400), flight(420, "2027-05-07T12:00:00")], sources: [] }),
+    applyRefresh(tr, await refreshTrip(tr, {
+      flights: async () => ({ offers: [flight(420, "2027-05-07T12:00:00")], sources: [] }),
       stays: async () => { throw new Error("weg"); }
-    });
-    expect(hitFor(tr, tr.items[0])).toMatchObject({ was: 400, now: 400 });
-    expect(hitFor(tr, tr.items[0])!.best).toBeUndefined();
+    }));
+    expect(tr.items[0].options[0].price.unit).toBe(400);
+    expect(hitFor(tr, tr.items[0])).toMatchObject({ was: 400 });
+    expect(hitFor(tr, tr.items[0])!.now).toBeUndefined();
     expect(hitFor(tr, tr.items[1])!.err).toBe("weg");
+    expect(changed(tr)).toBe(0);
+  });
+
+  it("Günstigeres je Posten: bestes fremdes Angebot, Übernehmen wählt es", async () => {
+    const tr = trip();
+    const s: Searchers = {
+      flights: async () => ({ offers: [flight(400)], sources: [] }),
+      stays: async () => ({ offers: [stay("Casa Palma", 600), stay("Hostal Sol", 520)], sources: [] })
+    };
+    tr.watch = { at: "", items: { st: (await findCheaper(tr, tr.items[1], s))!, fl: (await findCheaper(tr, tr.items[0], s))! } };
+    expect(hitFor(tr, tr.items[1])).toMatchObject({ was: 600, best: 520 });
+    expect(hitFor(tr, tr.items[0])).toMatchObject({ noBetter: true });
+    expect(potential(tr)).toBe(80);
+    expect(summarize(tr, "2026-09-29").potential).toBe(80);
+    takeBetter(tr, tr.items[1]);
+    expect(tr.items[1].options.find(o => o.id === tr.items[1].chosen)!.label).toBe("Hostal Sol");
+    expect(hitFor(tr, tr.items[1])).toBeNull();
     expect(potential(tr)).toBe(0);
   });
 
   it("anderes Angebot gewählt: altes Ergebnis zählt nicht mehr", async () => {
     const tr = trip();
-    tr.watch = await checkTrip(tr, { flights: async () => ({ offers: [flight(300)], sources: [] }), stays: async () => ({ offers: [], sources: [] }) });
-    expect(potential(tr)).toBe(100);
+    applyRefresh(tr, await refreshTrip(tr, { flights: async () => ({ offers: [flight(300)], sources: [] }), stays: async () => ({ offers: [], sources: [] }) }));
+    expect(changed(tr)).toBe(-100);
     const o = offerToOption(flight(350, "2027-05-07T09:00:00"));
     tr.items[0].options.push(o); tr.items[0].chosen = o.id;
-    expect(potential(tr)).toBe(0);
+    expect(changed(tr)).toBe(0);
   });
 });
 

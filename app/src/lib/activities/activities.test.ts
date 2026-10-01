@@ -60,8 +60,24 @@ describe("Touren und Tickets (Viator)", () => {
     expect(a.options[0]).toMatchObject({ price: { mode: "person", currency: "EUR", adult: 47 }, source: { name: "Viator", url: tour.url } });
     expect(a.options[0].detail).toContain("4.7");
     expect(activityItem(usd).options[0]).toMatchObject({ price: { adult: 0 }, estimate: true });
+    // Foto der Tour wird mitgenommen, nur über https
+    expect(activityItem({ ...tour, image: "https://media-cdn.tripadvisor.com/x.jpg" }).options[0].image).toBe("https://media-cdn.tripadvisor.com/x.jpg");
+    expect(activityItem({ ...tour, image: "http://x/y.jpg" }).options[0].image).toBeUndefined();
     const e = eventItem({ id: "tm:1", source: "ticketmaster", sourceName: "Ticketmaster", name: "Coldplay", start: "2027-05-02T20:00", venue: "San Siro", city: "Milano", price: { min: 65, currency: "EUR" }, url: "https://tm/1" });
     expect(e.note).toContain("20:00 · San Siro, Milano");
     expect(e.options[0]).toMatchObject({ price: { mode: "person", adult: 65 }, source: { name: "Ticketmaster", url: "https://tm/1" } });
+  });
+});
+
+describe("Viator-Bedingungen", () => {
+  it("nur auf splitandfly.com und nur mit Partner-Links", async () => {
+    const { viatorBlock, blockedResult } = await import("./search");
+    const on = { VIATOR_API_KEY: "k", PARTNER_LINKS: "on" };
+    expect(viatorBlock("https://splitandfly.com", on)).toBeNull();
+    expect(viatorBlock("https://www.splitandfly.com", on)).toBeNull();
+    expect(viatorBlock("https://elvau.github.io", on)).toBe("domain");
+    expect(viatorBlock(null, on)).toBe("domain");
+    expect(viatorBlock("https://splitandfly.com", { VIATOR_API_KEY: "k" })).toBe("partner");
+    expect(blockedResult("domain").sources[0]).toMatchObject({ configured: false, error: "domain" });
   });
 });

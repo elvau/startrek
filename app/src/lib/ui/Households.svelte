@@ -37,7 +37,6 @@
 
   function members(name: string) { return app.trip.travelers.filter(t => isActive(t) && hhKey(t) === name); }
   function presText(name: string) {
-    const h = app.trip.households?.[name];
     const p = members(name).map(t => pres[t.id]).find(Boolean);
     if (!p) return t("hh.presOpen");
     return `${t("range.fromTo", { a: dateDE(p.a), b: dateDE(p.d) })} · ${p.src === "manual" ? t("hh.ownDates") : t("hh.fromFlight")}`;
@@ -53,7 +52,6 @@
 <div class="hhs">
   <div class="hhs-h"><span class="dlabel">{t("hh.title")}</span></div>
   {#each names as name (name)}
-    {@const h = app.trip.households?.[name]}
     <div class="hh" class:open={open === name}>
       <button class="hh-sum" onclick={() => toggle(name)} aria-expanded={open === name}>
         <b>{name}</b>

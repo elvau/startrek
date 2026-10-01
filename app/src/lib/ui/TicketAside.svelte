@@ -1,12 +1,15 @@
 <script lang="ts">
   import { arrow, t, tn } from "../i18n/index.svelte";
-  import { app, calc } from "../store.svelte";
+  import { access, app, calc } from "../store.svelte";
   import { cloud, isCloud } from "../cloud/cloud.svelte";
   import { activeOption, eur, eurPP } from "../calc";
   import { isDetailed } from "../model";
   import { CAT_CHAPTERS } from "../chapters";
   import { nights } from "../format";
   import { view } from "../scroll.svelte";
+  import { changed, watchable } from "../watch";
+  import { runWatch, watchRun } from "../watch.svelte";
+  import { FLIGHTS_URL } from "../flights/app";
 
   // sheet: auf dem Handy als Blatt über der Seite, ein Tipp auf einen Link schließt es
   let { sheet = false, onpick }: { sheet?: boolean; onpick?: () => void } = $props();
@@ -16,6 +19,13 @@
   const nn = $derived(nights(app.trip.from, app.trip.to));
   // Fest/offen und bezahlt gibt es nur mit detaillierten Posten
   const anyDetail = $derived(CAT_CHAPTERS.some(c => isDetailed(app.trip, c.k)));
+
+  // Preise prüfen: dieselben Angebote zum heutigen Preis; was sich geändert hat, steht am Posten
+  const nw = $derived(watchable(app.trip).length);
+  const w = $derived(app.trip.watch?.at ? app.trip.watch : null);
+  const moved = $derived(w ? Object.entries(w.items).filter(([, h]) => !h.err && h.now != null && h.now !== h.was).length : 0);
+  const delta = $derived(changed(app.trip));
+  const wAt = $derived(w ? new Date(w.at).toLocaleString(undefined, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "");
 
   function detailText(k: (typeof CAT_CHAPTERS)[number]["k"], label: string): string {
     if (!isDetailed(app.trip, k)) {
@@ -64,6 +74,17 @@
       {/if}
       {#if nn && n}<div class="pp"><span>{t("aside.perNight")}</span><b class="num">{eur(T.total / n / nn)}</b></div>{/if}
       {#if anyDetail}<div class="pp"><span>{t("aside.paid")}</span><b class="num">{eur(T.paid)}</b></div>{/if}
+      {#if nw && FLIGHTS_URL && !access.readonly}
+        <div class="tk-watch">
+          <button class="btn sm watch-run" disabled={watchRun.busy} title={t("watch.lead")} onclick={runWatch}>
+            <span aria-hidden="true" class:spin={watchRun.busy}>🔄</span> {watchRun.busy ? t("watch.checking", { n: watchRun.done, of: watchRun.of }) : t("watch.check")}
+          </button>
+          {#if w && !watchRun.busy}
+            <small class="watch-res">{t("watch.at", { d: wAt })} · {moved ? `${tn("watch.moved", moved)}${delta ? ` (${delta > 0 ? "▲ +" : "▼ −"}${eur(Math.abs(delta))})` : ""}` : t("watch.same")}</small>
+          {/if}
+          {#if watchRun.err}<small class="err">{watchRun.err}</small>{/if}
+        </div>
+      {/if}
       <div class="pp save"><span>{!app.saved || cloud.status === "saving" ? t("acct.st.saving") : isCloud(app.trip.id) ? (cloud.status === "offline" ? t("aside.offline") : cloud.status === "error" ? t("acct.st.error") : `☁ ${t("acct.st.saved")}`) : t("aside.savedLocal")}</span></div>
     </div>
   </div>

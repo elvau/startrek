@@ -53,6 +53,8 @@
     } else out = byState(byDate(1), byDate(-1));
     return out.filter(g => g.list.length);
   });
+  // erste Gruppe mit offener Überschrift (Vergangene sind zugeklappt): dort steht „aufräumen“
+  const firstOpen = $derived(groups.find(g => !(g.k === "past" && sort !== "country"))?.k);
   // Länder für Rundreisen: Weltdaten nur laden, wenn es Flüge gibt
   $effect(() => { if (rows.some(r => r.s && tripFor(r.id)?.items.some(i => i.cat === "flights"))) loadGeo(geo, []); });
   const foodLabel = (f: TripSummary["food"]) => (f === "hh" ? t("home.foodHh") : FOOD_STYLES.find(x => x.k === f)?.l || "");
@@ -158,13 +160,16 @@
       {#if g.k === "past" && sort !== "country"}
         <details class="home-past"><summary class="home-h">{g.title} <span class="muted">({g.list.length})</span></summary>{@render list()}</details>
       {:else}
-        <h2 class="home-h">{g.title}</h2>
+        <h2 class="home-h">{g.title}
+          <!-- leere Reisen aufräumen: als Bubble neben der ersten Überschrift -->
+          {#if empties.length && g.k === firstOpen}<button class="home-clean" onclick={cleanUp}>🧹 {tn("home.clean", empties.length)}</button>{/if}
+        </h2>
         {@render list()}
       {/if}
     {/each}
 
-    {#if empties.length}
-      <p class="home-clean"><button class="linkbtn" onclick={cleanUp}>🧹 {tn("home.clean", empties.length)}</button></p>
+    {#if empties.length && !firstOpen}
+      <p><button class="home-clean" onclick={cleanUp}>🧹 {tn("home.clean", empties.length)}</button></p>
     {/if}
     <AppFooter home />
   </div>

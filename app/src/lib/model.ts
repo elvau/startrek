@@ -153,6 +153,8 @@ export interface FlightLeg {
   arr: string;
   carrier?: string;
   stops?: number;
+  /** Flugdauer in Minuten (aus der Suche); Abflug und Landung sind Ortszeiten verschiedener Zeitzonen */
+  minutes?: number;
   /** Stadt am Ziel des Flugs (für Unterkünfte je Station einer Rundreise) */
   toCity?: string;
 }
@@ -169,6 +171,8 @@ export interface Option {
   source?: { name: string; at?: string; url?: string; sponsored?: boolean };
   legs?: FlightLeg[];
   stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string };
+  /** Foto vom Anbieter (nur https), z. B. einer Tour */
+  image?: string;
   /** Unterkunft aus der Suche: Anfrage, mit der sie gefunden wurde (für die Reisebeobachtung) */
   query?: { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number };
 }
@@ -305,15 +309,17 @@ export interface Trip {
 
 /** Ergebnis der Nachsuche für einen Posten, Beträge für den ganzen Posten */
 export interface WatchHit {
-  /** Preis beim Übernehmen */
+  /** Preis vor der Prüfung */
   was: number;
-  /** dasselbe Angebot heute, falls wiedergefunden */
+  /** dasselbe Angebot heute, falls wiedergefunden (steht dann auch im Angebot) */
   now?: number;
   /** günstigeres Angebot für dieselbe Reise */
   best?: number;
   bestOpt?: Option;
   /** nicht prüfbar oder Suche fehlgeschlagen */
   err?: string;
+  /** nach einem günstigeren Angebot gesucht, keins gefunden */
+  noBetter?: boolean;
 }
 export interface TripWatch { at: string; items: Record<string, WatchHit> }
 
@@ -344,4 +350,13 @@ export const hhKey = (t: Traveler) => t.household.trim() || "Ohne Haushalt";
 export const isActive = (t: Traveler) => t.active !== false;
 
 /** Wird dieser Bereich mit einzelnen Posten gerechnet? */
+/** leer angelegtes Angebot (ohne Namen, Preis und Herkunft), z. B. von „+ Unterkunft“ */
+export const blankOption = (o: Option) => !o.label && !o.price.unit && !o.price.adult && !o.price.child && !o.legs?.length && !o.source;
+
+/** Angebot aus einer Suche dazu; leere Angebote fliegen dabei raus (tauchten sonst als „Angebot 2“ im Vergleich auf) */
+export function addOffer(item: Item, opt: Option) {
+  item.options = [...item.options.filter(o => !blankOption(o)), opt];
+  if (item.chosen && !item.options.some(o => o.id === item.chosen)) item.chosen = undefined;
+}
+
 export const isDetailed = (trip: Trip, cat: CatKey) => trip.detail?.[cat] ?? trip.items.some(i => i.cat === cat);

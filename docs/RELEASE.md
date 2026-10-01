@@ -2,7 +2,7 @@
 
 | Umgebung | Adresse | Wird aktualisiert | Hosting |
 | --- | --- | --- | --- |
-| Testumgebung | https://elvau.github.io/startrek/ | bei jedem Push auf einen Feature-Branch (Tests müssen grün sein) | GitHub Pages (`.github/workflows/pages.yml`) |
+| Testumgebung | https://elvau.github.io/startrek/ | bei jedem Push auf einen Feature-Branch (nur bauen, ohne Tests, ca. 1–2 Minuten) | GitHub Pages (`.github/workflows/pages.yml`) |
 | Produktion | https://splitandfly.com | bei jedem Push auf `main` (Merge eines Feature-Branches) | Firebase Hosting (`.github/workflows/release.yml`) |
 
 Beide Umgebungen nutzen dasselbe Firebase-Projekt (Konten, geteilte Reisen) und denselben Such-Dienst.
@@ -10,11 +10,12 @@ Die frühere Adresse `…/neu/` leitet auf die App weiter (auch Einladungslinks 
 
 ## Ablauf
 
-1. **Entwickeln** auf einem Feature-Branch (z. B. `claude/…` oder `feature/…`). Jeder Push wird geprüft
-   (Unit-Tests, Typprüfung, Browser-Tests) und landet danach automatisch auf der Testumgebung.
+1. **Entwickeln** auf einem Feature-Branch (z. B. `claude/…` oder `feature/…`). Jeder Push wird nur gebaut und landet
+   nach 1–2 Minuten auf der Testumgebung. Die volle Prüfung (Unit-Tests, Typprüfung, Such-Dienst, Sicherheitsregeln,
+   Browser-Tests gegen den Firebase-Emulator) läuft beim Pull Request nach `main` (`.github/workflows/pruefen.yml`).
    Mehrere Branches gleichzeitig: Es steht immer der zuletzt gepushte drauf.
 2. **Ausprobieren** auf https://elvau.github.io/startrek/.
-3. **Release:** den Pull Request des Feature-Branches nach `main` mergen. Der Push auf `main` bringt den Stand nach 2–3 Minuten
+3. **Release:** Pull Request des Feature-Branches nach `main`, warten bis „Prüfen (vor dem Release)“ grün ist, dann mergen. Der Push auf `main` bringt den Stand nach 2–3 Minuten
    auf splitandfly.com (Actions → „Release (splitandfly.com)“). Wöchentlich wird `main` zusätzlich neu gebaut (Flughafendaten).
 4. **Version:** Jeder Release-PR hebt die Version in `app/package.json` an (`npm version 0.3.0 --no-git-tag-version` in `app/`):
    neue Funktionen → mittlere Stelle (0.2.0 → 0.3.0), nur Fehlerbehebungen → letzte Stelle (0.3.0 → 0.3.1).

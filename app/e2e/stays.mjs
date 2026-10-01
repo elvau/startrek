@@ -8,6 +8,8 @@ import { spawn } from "node:child_process";
 const URL = "http://127.0.0.1:4176/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+/** „Weitere Optionen“ der Suche aufklappen (bleibt gemerkt) */
+const more = async m => { if (!(await m.locator(".fs-more[open]").count())) await m.locator(".fs-more > summary").click(); };
 async function until(fn, what, ms = 10000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
@@ -63,6 +65,7 @@ try {
   const gyg = p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" });
   if (await gyg.count()) fail("Erlebnis-Links ohne Reiseziel");
   // Ausstattung und Bewertung gehen an den Such-Dienst
+  await more(m);
   await m.locator(".st-filters .chip", { hasText: "Pool" }).click();
   await m.locator("label.f", { hasText: "Bewertung" }).locator("select").selectOption("7");
   await m.locator(".fs-form .btn.primary").click();
@@ -97,6 +100,7 @@ try {
   await p.locator("#stay .card", { hasText: "Unterkunft in Split" }).first().click();
   await p.locator("#stay .st-item").first().click();
   if (!(await m.locator(".st-filters .chip.on", { hasText: "Pool" }).count())) fail("Filter nicht gemerkt");
+  await more(m);
   await m.locator(".st-filters .chip", { hasText: "Pool" }).click();
   log("Filter gemerkt");
   await m.locator(".fs-form .btn.primary").click();
@@ -111,6 +115,16 @@ try {
   if (!srcHref || !/booking\.com|trivago\.de/.test(srcHref)) fail("Link zum Anbieter fehlt auf der Karte: " + srcHref);
   if (!c.includes("720")) fail("günstigstes Angebot nicht gewählt: " + c);
   log("Übernommen: ein Posten mit 2 Angeboten, günstigstes zählt");
+  // Vergleich nebeneinander in der Karte: wählen, wieder zurück
+  const tiles = cards.locator(".st-cmp .cmp-t");
+  if ((await tiles.count()) !== 2) fail("Vergleich: " + await tiles.count() + " Kacheln");
+  if (!(await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).count())) fail("gewähltes Angebot nicht markiert");
+  await cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" }).locator(".cmp-pick").click();
+  await cards.locator(".cmp-t.sel", { hasText: "Ferienwohnung Klara" }).waitFor();
+  if (!(await cards.locator(".stay .price b").textContent()).includes("783")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
+  await cards.locator(".cmp-t", { hasText: "Rooms Šećer" }).locator(".cmp-pick").click();
+  await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).waitFor();
+  log("Vergleich nebeneinander: Klara gewählt (783 €), zurück zu Rooms Šećer");
 
   // wie im Artefakt: Anwesenheit aus dem Flug, Lücke im Plan → „Unterkunft suchen“ für genau diese Nächte und Personen
   const TRIP = {
@@ -205,7 +219,8 @@ try {
   const fr = p.locator("#misc .food-rows li", { hasText: "Klein" });
   await fr.waitFor();
   const ft = await fr.textContent();
-  if (!ft.includes("12 Tage")) fail("Verpflegung Klein: " + ft);
+  // 11 Nächte: An- und Abreisetag je halb, also 11 Tage
+  if (!ft.includes("11 Tage")) fail("Verpflegung Klein: " + ft);
   await p.locator("#misc .card[data-item]", { hasText: "Verpflegung Klein" }).waitFor();
   const before = await fr.locator("b.num").textContent();
   await p.locator("#misc .food .chip", { hasText: "Genießer" }).first().click();
@@ -213,7 +228,7 @@ try {
   if ((await fr.locator("b.num").textContent()) === before) fail("Stil ändert den Betrag nicht");
   const rl = await p.locator("#misc .fs-direct a", { hasText: "Restaurants" }).getAttribute("href");
   if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
-  log("Verpflegung: Klein 12 Tage, Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
+  log("Verpflegung: Klein 11 Tage (An- und Abreise je halb), Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
 
   // Sprache umschalten: Texte, Datums- und Betragsformat folgen, die Wahl bleibt nach dem Neuladen
   await p.locator(".top .lang-sel").selectOption("en");
@@ -223,9 +238,17 @@ try {
   await p.reload();
   await p.locator(".start .home-trip").first().click();
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
+  // Polnisch wird erst bei Bedarf geladen, auch nach dem Neuladen gleich auf Polnisch (kein Englisch dazwischen)
+  await p.locator(".top .lang-sel").selectOption("pl");
+  await p.locator("#stay .st-open", { hasText: "Szukaj noclegu" }).waitFor();
+  await p.reload();
+  await p.locator(".start .home-trip").first().waitFor();
+  if (await p.locator("text=Search accommodation").count()) fail("nach dem Neuladen kurz Englisch");
+  await p.locator(".start .home-trip").first().click();
+  await p.locator("#stay .st-open", { hasText: "Szukaj noclegu" }).waitFor();
   await p.locator(".top .lang-sel").selectOption("de");
   await p.locator("#stay .st-open", { hasText: "Unterkunft suchen" }).waitFor();
-  log("Sprache: Englisch gewählt, Oberfläche übersetzt, bleibt nach dem Neuladen; zurück auf Deutsch");
+  log("Sprache: Englisch gewählt, Oberfläche übersetzt, bleibt nach dem Neuladen; Polnisch nachgeladen; zurück auf Deutsch");
 
   // Leiste oben bleibt beim Scrollen, die Gesamtkosten rechts bleiben darunter im Blick
   await p.evaluate(() => scrollTo({ top: 2500, behavior: "instant" }));
@@ -237,8 +260,8 @@ try {
   // Fokusmodus nur im eigenen Kapitel: Karte bei der Unterkunft offen, weiter zu „Alles andere“ gescrollt → dort alles klar
   await p.locator("#stay .card[data-item] h3").first().click();
   await p.locator("#stay .card.edit").waitFor();
-  await p.locator("#misc").evaluate(el => el.scrollIntoView({ block: "start", behavior: "instant" }));
-  await p.waitForTimeout(700);
+  await p.locator("#misc .card[data-item]").first().evaluate(el => el.scrollIntoView({ block: "center", behavior: "instant" }));
+  await p.waitForTimeout(900);
   const misc = await p.locator("#misc .card[data-item]").first().evaluate(el => { const c = getComputedStyle(el); return { o: c.opacity, f: c.filter }; });
   if (misc.o !== "1" || misc.f !== "none") fail("Karte im nächsten Kapitel abgeblendet: " + JSON.stringify(misc));
   log("Fokus: offene Karte bei der Unterkunft blendet beim Weiterscrollen „Alles andere“ nicht ab");

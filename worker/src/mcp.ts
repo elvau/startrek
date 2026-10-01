@@ -8,11 +8,9 @@
 import { parseQuery } from "../../app/src/lib/flights/search";
 import { parseStayQuery } from "../../app/src/lib/stays/search";
 import { parseEventQuery } from "../../app/src/lib/events/search";
-import { parseActivityQuery } from "../../app/src/lib/activities/search";
 import type { FlightOffer, FlightQuery, SearchResult } from "../../app/src/lib/flights/types";
 import type { StayOffer, StayQuery, StaySearchResult } from "../../app/src/lib/stays/types";
 import type { EventQuery, EventSearchResult } from "../../app/src/lib/events/types";
-import type { ActivityQuery, ActivitySearchResult } from "../../app/src/lib/activities/types";
 import type { Trip } from "../../app/src/lib/model";
 import { addCost, addFlight, addStay, isCat, LANGS, newTrip, removeItem, tripSummary } from "../../app/src/lib/connector/trips";
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
@@ -22,7 +20,6 @@ export interface McpDeps {
   flights: (q: FlightQuery) => Promise<SearchResult>;
   stays: (q: StayQuery) => Promise<StaySearchResult>;
   events: (q: EventQuery) => Promise<EventSearchResult>;
-  activities: (q: ActivityQuery) => Promise<ActivitySearchResult>;
   /** Reisen im Konto; null: nur Suchen */
   store: TripStore | null;
   /** gefundene Angebote merken (je Schlüssel, einige Stunden) */
@@ -41,7 +38,7 @@ const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const SHOWN = 8;
 
 const INSTRUCTIONS = [
-  "Split&Fly plans group trips and splits the costs fairly. Use these tools to search real flights, accommodation, events and tours, and to plan trips in the user's Split&Fly account.",
+  "Split&Fly plans group trips and splits the costs fairly. Use these tools to search real flights, accommodation and events, and to plan trips in the user's Split&Fly account.",
   "Search results have an id; add an offer to a trip with add_flight or add_stay (ids stay valid for a few hours). Prices are totals for all travelers in the given currency.",
   "Split&Fly does not book: each offer has a link to the provider, where the user books. Never ask for passport or ID data.",
   "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family."
@@ -77,11 +74,6 @@ const SEARCH_TOOLS = [
     name: "search_events", title: "Search events",
     description: "Concerts, sports and shows in a city in a date range (Ticketmaster, football fixtures).",
     inputSchema: { type: "object", properties: { city: str("City"), from: str("YYYY-MM-DD"), to: str("YYYY-MM-DD"), keyword: str("Optional keyword, e.g. a band or team") }, required: ["city"] }
-  },
-  {
-    name: "search_tours", title: "Search tours and tickets",
-    description: "Bookable tours, attractions and tickets at a destination (Viator).",
-    inputSchema: { type: "object", properties: { place: str("City or region"), from: str("YYYY-MM-DD"), to: str("YYYY-MM-DD"), language: lang }, required: ["place"] }
   }
 ];
 
@@ -115,7 +107,7 @@ const TRIP_TOOLS = [
   { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay).", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip") }, required: ["tripId", "itemId"] } }
 ];
 
-const READ_ONLY = new Set(["search_flights", "search_stays", "search_events", "search_tours", "list_trips", "get_trip"]);
+const READ_ONLY = new Set(["search_flights", "search_stays", "search_events", "list_trips", "get_trip"]);
 
 export function toolList(deps: Pick<McpDeps, "store">) {
   return [...SEARCH_TOOLS, ...(deps.store ? TRIP_TOOLS : [])].map(t => ({ ...t, annotations: { readOnlyHint: READ_ONLY.has(t.name), openWorldHint: t.name.startsWith("search_") } }));
@@ -215,12 +207,6 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       if (typeof q === "string") fail(q);
       const res = await deps.events(q as EventQuery);
       return { events: res.events.slice(0, 15).map(e => ({ name: e.name, start: e.start, venue: e.venue, city: e.city, ...(e.category ? { category: e.category } : {}), link: e.url })) };
-    }
-    case "search_tours": {
-      const q = parseActivityQuery({ place: S(a.place), lang: lng(a.language), ...(a.from ? { from: a.from, to: a.to || a.from } : {}) });
-      if (typeof q === "string") fail(q);
-      const res = await deps.activities(q as ActivityQuery);
-      return { tours: res.activities.slice(0, 15).map(t => ({ title: t.title, price: t.price, currency: t.currency, ...(t.rating ? { rating: t.rating } : {}), ...(t.minutes ? { minutes: t.minutes } : {}), link: t.url })) };
     }
   }
   const store = deps.store || fail("Trips are not available");

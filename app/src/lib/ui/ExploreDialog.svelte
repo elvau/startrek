@@ -7,7 +7,9 @@
   import { app, setDetailed } from "../store.svelte";
   import { eur } from "../calc";
   import { dayShort, range } from "../format";
-  import { ensureGeo, geo } from "../geo/geo.svelte";
+  import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
+  import { stationName } from "../stays/stationName";
+  import { eventWindow, inWindow } from "../activities/window";
   import { ccOf, findCity } from "../geo/places";
   import { noteError } from "../bugs/log";
   import { getYourGuideLink, tiqetsLink } from "../links";
@@ -21,19 +23,27 @@
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
 
-  let { onclose }: { onclose: () => void } = $props();
+  let { onclose, inline = false }: { onclose: () => void; inline?: boolean } = $props();
   const trip = app.trip;
-  const city = (trip.place || "").split(",")[0].trim();
-  const when = trip.from ? range(trip.from, trip.to || trip.from) : t("xp.anyDate");
+  // Ort und Zeitraum aus der Reise, sonst aus den Flügen: Landung + 5 h bis Rückflug − 5 h
+  $effect(() => { void ensureAirports(); });
+  const win = $derived(eventWindow(trip, ap => stationName(geo, airportData, ap)));
+  const city = $derived(win.city);
+  const stamp = (iso: string) => `${dayShort(iso.slice(0, 10))} ${iso.slice(11, 16)}`;
+  const when = $derived(win.start || win.end
+    ? `${win.start ? stamp(win.start) : dayShort(win.from!)} – ${win.end ? stamp(win.end) : dayShort(win.to!)}`
+    : win.from ? range(win.from, win.to || win.from) : t("xp.anyDate"));
+  const span = $derived(win.from ? { from: win.from, to: win.to || win.from } : {});
 
   let kw = $state("");
   let evBusy = $state(false), evErr = $state(""), events = $state<EventHit[] | null>(null);
-  let toBusy = $state(false), toErr = $state(""), tours = $state<ActivityHit[] | null>(null), toursOff = $state(false);
+  let toBusy = $state(false), toErr = $state(""), tours = $state<ActivityHit[] | null>(null), toursOff = $state(false), toursWhy = $state("");
   let taken = $state<Record<string, boolean>>({});
 
   /** Stadtmitte und englischer Name aus den Ortsdaten (für den Umkreis bei Ticketmaster und die Vereine) */
   async function where() {
     await ensureGeo(trip).catch(() => {});
+    await ensureAirports().catch(() => {});
     const cc = ccOf(geo, trip.country);
     const c = findCity(geo, city, cc);
     return { city, ...(c?.en ? { cityEn: c.en } : {}), ...(c?.cc || cc ? { cc: c?.cc || cc! } : {}), ...(c ? { lat: c.lat, lon: c.lon } : {}) };
@@ -44,9 +54,9 @@
     if (!city) return;
     evBusy = true; evErr = ""; events = null;
     try {
-      const res = await searchLocalEvents({ q: kw.trim(), ...(await where()), ...(trip.from ? { from: trip.from, to: trip.to || trip.from } : {}) });
+      const res = await searchLocalEvents({ q: kw.trim(), ...(await where()), ...span });
       if (!res.sources.some(s => s.configured)) { evErr = t("evs.notReady"); return; }
-      events = uniqueById(res.events || []);
+      events = uniqueById(res.events || []).filter(h => inWindow(h.start, win));
       if (!events.length && res.sources.every(s => !s.ok)) {
         evErr = res.sources.find(s => s.error)?.error || t("xp.noEvents");
         noteError(`Events vor Ort: ${res.sources.map(s => `${s.id} ${s.error || (s.ok ? "ok" : "aus")}`).join(", ")}`);
@@ -59,8 +69,10 @@
     if (!city || tours || toBusy) return;
     toBusy = true; toErr = "";
     try {
-      const res = await searchActivitiesRemote({ place: city, lang: i18n.lang, ...(trip.from ? { from: trip.from, to: trip.to || trip.from } : {}) });
+      const res = await searchActivitiesRemote({ place: city, lang: i18n.lang, ...span });
       toursOff = !res.sources.some(s => s.configured);
+      // Viator nur auf splitandfly.com (Bedingungen der Viator-API): in der Testumgebung Hinweis statt Touren
+      toursWhy = res.sources.find(s => s.error === "domain") ? "domain" : "";
       tours = uniqueById(res.activities || []);
       const bad = res.sources.find(s => s.configured && !s.ok);
       if (!tours.length && bad) { toErr = bad.error || t("xp.noTours"); noteError(`Touren: ${bad.error}`); }
@@ -68,8 +80,9 @@
     finally { toBusy = false; }
   }
 
-  // beim Öffnen gleich suchen; Touren erst, wenn man den Reiter ansieht
-  $effect(() => { if (city) void findEvents(); });
+  // Events suchen, sobald der Reiter offen ist und der Ort feststeht; Touren ebenso
+  let searchedFor = "";
+  $effect(() => { if (city && explore.tab === "events" && city !== searchedFor) { searchedFor = city; void findEvents(); } });
   $effect(() => { if (explore.tab === "tours") void findTours(); });
 
   function take(id: string, make: () => ReturnType<typeof eventItem>) {
@@ -79,18 +92,18 @@
     showItem(item.id);
   }
   const money = (n: number, cur: string) => (cur === "EUR" ? eur(n) : `${Math.round(n)} ${cur}`);
-  const aq = { place: city, from: trip.from, to: trip.to };
+  const aq = $derived({ place: city, from: win.from, to: win.to });
 </script>
 
-<Modal title={t("xp.title")} {onclose} wide>
+<Modal title={t("xp.title")} {onclose} wide {inline}>
   <div class="xp">
     {#if !city}
       <p class="warnline">{t("xp.noPlace")}</p>
     {:else}
       <p class="muted small xp-where">📍 {city} · 📅 {when}</p>
       <div class="xp-tabs" role="tablist">
-        <button role="tab" class="xp-tab" class:on={explore.tab === "events"} aria-selected={explore.tab === "events"} onclick={() => (explore.tab = "events")}>🎟 {t("xp.events")}</button>
         <button role="tab" class="xp-tab" class:on={explore.tab === "tours"} aria-selected={explore.tab === "tours"} onclick={() => (explore.tab = "tours")}>🎡 {t("xp.tours")}</button>
+        <button role="tab" class="xp-tab" class:on={explore.tab === "events"} aria-selected={explore.tab === "events"} onclick={() => (explore.tab = "events")}>🎟 {t("xp.events")}</button>
       </div>
 
       {#if explore.tab === "events"}
@@ -122,7 +135,7 @@
         {#if toBusy}<p class="muted small">{t("evs.busy")}</p>{/if}
         {#if toErr}<p class="warnline">{toErr}</p>{/if}
         {#if toursOff}
-          <p class="muted small">{t("xp.toursSetup")}</p>
+          <p class="muted small">{toursWhy === "domain" ? t("xp.toursLiveOnly") : t("xp.toursSetup")}</p>
         {:else if tours}
           {#if !tours.length && !toErr}<p class="muted small">{t("xp.noTours")}</p>{/if}
           <div class="xp-list">

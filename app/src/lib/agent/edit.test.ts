@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { runAgent, systemPrompt, toolsFor } from "./agent";
-import { applyEdit, hasPlan, takeAgentTrip, tripBrief } from "./app";
+import { agentError, applyEdit, hasPlan, takeAgentTrip, tripBrief } from "./app";
 import { editCount, parseAgentRequest, type AgentRequest } from "./types";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, FlightQuery } from "../flights/types";
@@ -145,5 +145,13 @@ describe("KI zur offenen Reise", () => {
     expect(t.items[0].participants).toEqual(["a"]);
     expect(t.items[1].participants).toEqual(["b"]);
     expect(t.items[1].ai?.kind).toBe("changed");
+  });
+});
+
+describe("Fehlermeldung der KI", () => {
+  it("überlastet oder kein Vorschlag: mit dem eigentlichen Grund", () => {
+    expect(agentError(502, "Die KI ist zu keinem Ergebnis gekommen.")).toContain("(Grund: Die KI ist zu keinem Ergebnis gekommen.)");
+    expect(agentError(502)).not.toContain("Grund");
+    expect(agentError(429, "x")).not.toContain("Grund");
   });
 });

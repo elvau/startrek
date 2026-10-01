@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { i18n, t, tn, LANGS } from "./index.svelte";
+import { beforeAll, describe, expect, it } from "vitest";
+import { i18n, loadLang, t, tn, LANGS } from "./index.svelte";
 import { de } from "./de";
 import { en } from "./en";
 import { es } from "./es";
@@ -13,6 +13,8 @@ import { dayShort, monthYear, range } from "../format";
 const inLang = <T>(l: (typeof LANGS)[number]["code"], fn: () => T): T => { const old = i18n.lang; i18n.lang = l; try { return fn(); } finally { i18n.lang = old; } };
 
 describe("Übersetzungen", () => {
+  beforeAll(async () => { for (const l of LANGS) await loadLang(l.code); });
+
   it("Deutsch ohne Browser, Platzhalter werden ersetzt", () => {
     expect(i18n.lang).toBe("de");
     expect(t("perPerson", { v: "10 €" })).toBe("10 € pro Person");

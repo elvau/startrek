@@ -25,7 +25,7 @@
   import { googleFlightsLink, skyscannerLink } from "../links";
   import type { FlightOffer, FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
 
-  let { onclose, scope = {} }: { onclose: () => void; scope?: FlightScope } = $props();
+  let { onclose, scope = {}, inline = false }: { onclose: () => void; scope?: FlightScope; inline?: boolean } = $props();
 
   const K = "rk-flight-search";
   let saved: Record<string, unknown> = {};
@@ -338,7 +338,7 @@
   </div>
 {/snippet}
 
-<Modal title={item ? `${t("fs.open")}: ${item.name || t("ie.flight")}` : t("fs.open")} {onclose} wide>
+<Modal title={item ? `${t("fs.open")}: ${item.name || t("ie.flight")}` : t("fs.open")} {onclose} wide {inline}>
   <form class="fs-form" onsubmit={search}>
     <div class="fs-who">
       <span class="dlabel">{t("fs.who")}</span>

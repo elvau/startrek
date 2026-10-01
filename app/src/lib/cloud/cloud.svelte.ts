@@ -11,7 +11,7 @@ import { configured, emulator } from "./config";
 import type { Role, TripDoc } from "./firebase";
 
 export type { Role };
-export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** zuletzt im Konto gespeichert (ISO) */ updated?: string }
+export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** zuletzt im Konto gespeichert (ISO) */ updated?: string; /** von wem (Konto-ID) */ by?: string }
 type FB = typeof import("./firebase");
 
 export const cloud = $state({
@@ -53,6 +53,28 @@ const dbg = (...a: unknown[]) => { if (emulator) console.debug("[rk]", ...a); };
 /** Stand, der gerade aus dem Konto übernommen wurde, gilt als gespeichert (kein Zurückschicken) */
 export function markSynced(id: string, json: string) { synced.set(id, json); }
 
+/*
+ * Stand jeder Konto-Reise, wie ihn die Liste mitliefert: für die Startseite, auch wenn die Reise auf diesem Gerät nie
+ * geöffnet wurde (sonst stand sie dort mit 0 € und ohne Ziel, bis man sie öffnete).
+ */
+const remote = new Map<string, { json: string; trip?: Trip | null }>();
+const remoteRev = $state({ n: 0 });
+function keepRemote(list: { id: string; data?: string }[]) {
+  let changed = false;
+  const ids = new Set(list.map(d => d.id));
+  for (const id of [...remote.keys()]) if (!ids.has(id)) { remote.delete(id); changed = true; }
+  for (const d of list) if (typeof d.data === "string" && remote.get(d.id)?.json !== d.data) { remote.set(d.id, { json: d.data }); changed = true; }
+  if (changed) remoteRev.n++;
+}
+/** Stand der Konto-Reise aus der Liste (reaktiv), null wenn nicht bekannt */
+export function remoteTrip(id: string): Trip | null {
+  void remoteRev.n;
+  const r = remote.get(id);
+  if (!r) return null;
+  if (r.trip === undefined) { try { r.trip = JSON.parse(r.json) as Trip; } catch { r.trip = null; } }
+  return r.trip;
+}
+
 export function cloudTrip(id: string) { return cloud.trips.find(t => t.id === id) || null; }
 export const isCloud = (id: string) => !!cloudTrip(id);
 export const roleOf = (id: string): Role | null => cloudTrip(id)?.role || null;
@@ -74,16 +96,17 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
   f.onUser(u => {
     fbUser = u;
     unTrips?.(); unTrips = null;
-    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
+    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
     cloud.user = { uid: u.uid, name: f.displayName(u), email: u.email || "" };
     cloud.showLogin = false;
     unTrips = f.watchMyTrips(u.uid, (list, fromCache) => {
       const next = list.map(d => ({
         id: d.id, name: d.name, role: d.members[u.uid], owner: d.owner, members: d.members,
-        memberNames: d.memberNames || {}, invite: d.invite ?? null, ...stamp(d.updatedAt)
+        memberNames: d.memberNames || {}, invite: d.invite ?? null, ...stamp(d.updatedAt), ...(d.updatedBy ? { by: d.updatedBy } : {})
       })).sort((a, b) => a.name.localeCompare(b.name, "de"));
       // auch bei reinen Statusänderungen (Zwischenspeicher → Server) gemeldet: Liste nur bei echter Änderung ersetzen
       if (JSON.stringify(next) !== JSON.stringify($state.snapshot(cloud.trips))) cloud.trips = next;
+      keepRemote(list);
       cloud.fresh = !fromCache;
       cloud.ready = true;
       if (cloud.status === "local") cloud.status = "saved";
@@ -159,6 +182,7 @@ export function needsPush(id: string, json: string): boolean {
 }
 
 /** Änderung der aktuellen Reise speichern (nur wenn sie im Konto liegt und man bearbeiten darf) */
+
 export async function push(trip: Trip, json: string) {
   if (!fbUser) return;
   const r = roleOf(trip.id);

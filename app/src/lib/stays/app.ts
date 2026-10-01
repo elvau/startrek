@@ -1,6 +1,6 @@
 /* Unterkunftssuche in der App: Anfrage aus der Reise, Treffer als Angebot in einen Unterkunft-Posten */
 import { t } from "../i18n/index.svelte";
-import { isActive, uid, type Item, type Option, type Traveler, type Trip } from "../model";
+import { addOffer, isActive, uid, type Item, type Option, type Traveler, type Trip } from "../model";
 import { FLIGHTS_URL } from "../flights/app";
 import type { StayOffer, StayQuery, StaySearchResult, StayType } from "./types";
 
@@ -53,7 +53,7 @@ export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, 
   const opt = stayToOption(o, q.adults + q.childAges.length);
   opt.query = { place: q.place, country: q.country, checkin: q.checkin, checkout: q.checkout, adults: q.adults, childAges: [...q.childAges], rooms: q.rooms };
   const target = into ? trip.items.find(i => i.id === into) : undefined;
-  if (target) { target.options.push(opt); return target; }
+  if (target) { addOffer(target, opt); return target; }
   // nur ein Teil der Reisenden (z. B. eine Familie, die früher kommt)
   const act = trip.travelers.filter(isActive).map(t => t.id);
   const part = ids?.length && act.some(id => !ids.includes(id)) ? ids.filter(id => act.includes(id)) : undefined;

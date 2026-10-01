@@ -25,11 +25,6 @@ export interface Presence { a: string; d: string; src: "manual" | "flight" }
 export const needs = (p: Presence | null, night: string) => !p || (p.a <= night && night < p.d);
 
 /** Flug einer Person: einer, in dem sie ausdrücklich steht, sonst einer für alle */
-export function flightFor(t: Traveler, trip: Trip): Item | undefined {
-  const fl = trip.items.filter(it => it.cat === "flights" && it.status !== "dropped" && (it.follow || it.options.some(o => o.legs?.length)));
-  return fl.find(it => it.participants?.includes(t.id)) || fl.find(it => !it.participants);
-}
-
 /**
  * Hin- und Rückflug einer Person, auch aus getrennten Posten (erst nur bis Rio, später der Rückflug):
  * Posten, in denen sie ausdrücklich steht, sonst die für alle; erster Hinflug, letzter Rückflug.

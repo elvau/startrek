@@ -55,11 +55,45 @@ describe("KI-Reiseplaner", () => {
     expect(res.trips[0].total).toBe(520);
   });
 
-  it("letzte Runde erzwingt den Vorschlag, ohne Vorschlag gibt es einen Fehler", async () => {
+  it("letzte Runde erzwingt den Vorschlag; kommt keiner, baut die App ihn aus den gefundenen Angeboten", async () => {
     const f = fake([call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13" })]);
-    await expect(runAgent(req, f.deps)).rejects.toThrow(/kein.*Ergebnis/);
+    const res = await runAgent(req, f.deps);
     expect(f.asked.bodies).toHaveLength(LIMITS.rounds);
     expect(f.asked.bodies.at(-1).toolConfig.functionCallingConfig.allowedFunctionNames).toEqual(["propose_trips"]);
+    expect(res.trips).toHaveLength(1);
+    expect(res.trips[0]).toMatchObject({ place: "Palma", total: 600 });
+  });
+
+  it("nichts gefunden und kein Vorschlag: Fehler", async () => {
+    const f = fake([call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2026-01-10", return: "2026-01-13" })]);
+    await expect(runAgent(req, f.deps)).rejects.toThrow(/kein.*Ergebnis/);
+  });
+
+  it("kaputter Werkzeugaufruf (MALFORMED_FUNCTION_CALL): noch einmal fragen statt aufgeben", async () => {
+    const broken = { candidates: [{ finishReason: "MALFORMED_FUNCTION_CALL", content: { role: "model", parts: [] } }] };
+    const f = fake([
+      broken,
+      call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13" }),
+      broken,
+      call("propose_trips", { trips: [{ title: "Palma", summary: "x", place: "Palma", from: "2027-05-10", to: "2027-05-13", stayId: "s1", ownArrival: { label: "Auto", eur: 200 } }] })
+    ]);
+    const res = await runAgent(req, f.deps);
+    expect(res.trips[0]).toMatchObject({ title: "Palma", total: 600 });
+    expect(f.asked.bodies[1].contents.at(-1).parts[0].text).toMatch(/function call/);
+  });
+
+  it("große Gruppe ohne Vorschlag: günstigster Flug in Buchungen und günstigste Unterkunft", async () => {
+    const big = { ...req, adults: 15 };
+    const f = fake([
+      call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", seats: 2 }),
+      call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13", rooms: 8 })
+    ]);
+    const res = await runAgent(big, f.deps);
+    expect(res.trips).toHaveLength(1);
+    const t = res.trips[0];
+    expect(t.stay?.id).toBe("s1");
+    expect(t.bookings?.[0]).toMatchObject({ seats: 2, travelers: 15 });
+    expect(t.total).toBe(Math.round((480 / 2) * 15 + 600));
   });
 
   it("vergangene Daten und ungültige Eingaben gehen als Fehler an die KI zurück", async () => {

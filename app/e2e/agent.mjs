@@ -200,9 +200,12 @@ try {
   await p.locator(".ai-fab").click();
   const c3 = p.locator(".ai-chat");
   const before3 = asked.length;
+  const cards3 = await c3.locator(".ai-card").count();
   await c3.locator(".ai-bar textarea").fill("Ein langes Wochenende irgendwo in der Sonne");
   await c3.locator(".ai-bar textarea").press("Enter");
   await until(() => asked.length > before3, "Anfrage mit Vorlieben");
+  // Antwort abwarten, sonst ist die KI beim nächsten Auftrag noch beschäftigt (unter Last kommt sie später)
+  await until(() => c3.locator(".ai-card").count().then(n => n > cards3), "Antwort auf die Anfrage mit Vorlieben", 15000);
   const q3 = asked.at(-1).body;
   if (q3.prefs?.avoid?.join() !== "TR" || q3.prefs?.maxStops !== 0 || q3.prefs?.styles?.join() !== "beach") fail("Vorlieben fehlen in der Anfrage: " + JSON.stringify(q3.prefs));
   if (q3.originsKnown === false || !q3.origins.includes("DUS")) fail("Wohnort von „Ich“ nicht genutzt: " + JSON.stringify({ o: q3.origins, k: q3.originsKnown }));
@@ -293,7 +296,10 @@ try {
   await p.locator(".home-sort .chip", { hasText: "Zuletzt bearbeitet" }).click();
   await p.locator(".home-h", { hasText: "Zuletzt bearbeitet" }).waitFor();
   const first = await p.locator(".home-trip").first().innerText();
-  if (!first.includes("Mannschaftsfahrt")) fail("zuletzt bearbeitete nicht oben: " + first);
+  if (!first.includes("Mannschaftsfahrt")) {
+    console.log("Diagnose zuletzt bearbeitet:", await p.evaluate(() => localStorage.getItem("rk2-edited")), "idx", await p.evaluate(() => [...document.querySelectorAll(".home-trip")].map(x => x.innerText.split("\n")[0]).join(" | ")));
+    fail("zuletzt bearbeitete nicht oben: " + first);
+  }
   await p.locator(".home-sort .chip", { hasText: "Land" }).click();
   await p.locator(".home-h", { hasText: "Spanien" }).waitFor();
   await p.locator(".home-view .chip", { hasText: "Liste" }).click();
@@ -314,11 +320,13 @@ try {
     localStorage.setItem("rk2-index", JSON.stringify(idx));
   });
   await p.reload();
-  await p.locator(".home-clean .linkbtn", { hasText: "ohne Kosten aufräumen" }).waitFor();
+  await p.locator(".home-clean", { hasText: "ohne Kosten aufräumen" }).waitFor();
+  if (!(await p.locator(".home-h .home-clean").count())) fail("„aufräumen“ nicht neben der Überschrift");
+  if (process.env.SHOTS) { await p.locator(".home-h .home-clean").scrollIntoViewIfNeeded(); await p.emulateMedia({ colorScheme: "dark" }); await p.waitForTimeout(400); await p.screenshot({ path: `${process.env.SHOTS}/clean.png` }); await p.emulateMedia({ colorScheme: "light" }); }
   await until(() => p.evaluate(() => localStorage.getItem("rk2-t:leer1") === null), "unberührter Entwurf gelöscht");
   let asked2 = "";
   p.once("dialog", d => { asked2 = d.message(); void d.accept(); });
-  await p.locator(".home-clean .linkbtn").click();
+  await p.locator(".home-clean").click();
   await until(() => p.locator(".home-row", { hasText: "Idee Lissabon" }).count().then(n => n === 0), "Idee aufgeräumt");
   if (!asked2.includes("Idee Lissabon")) fail("Rückfrage ohne Namen: " + asked2);
   if (!(await p.locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
@@ -402,6 +410,28 @@ try {
   await p.locator(".ai-chat .ai-card").last().waitFor();
   if (await p.locator(".ai-note").count()) fail("Meldung bleibt nach dem Öffnen");
   log("Im Hintergrund: Fenster zu, weitergearbeitet, „Die KI ist fertig“ am Knopf, Klick öffnet das Ergebnis");
+
+  // langsames Netz: neue Reise wird ins Konto hochgeladen, während man sie schon umbenennt → der Name kommt im Konto an
+  await p.keyboard.press("Escape");
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  const slow2 = async r => { await new Promise(res => setTimeout(res, 1500)); await r.continue().catch(() => {}); };
+  await p.route("**/google.firestore.v1.Firestore/**", slow2);
+  if (await p.locator(".top .brand-btn").count()) await p.locator(".top .brand-btn").click();
+  await p.locator(".start .home-new").click();
+  await p.locator(".modal .newtrip .btn.primary").click();
+  const h1 = p.locator(".hero h1");
+  await h1.click();
+  await p.keyboard.press("ControlOrMeta+a");
+  await p.keyboard.type("Langsam-Test");
+  await p.keyboard.press("Enter");
+  await p.waitForTimeout(6000);
+  await p.unroute("**/google.firestore.v1.Firestore/**", slow2);
+  await p.waitForTimeout(2500);
+  // Kopie auf dem Gerät weg, damit nach dem Neuladen nur zählt, was im Konto steht
+  await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("rk2-t:")) localStorage.removeItem(k); });
+  await p.reload();
+  await until(() => p.locator(".start .home-trip, .start .home-row", { hasText: "Langsam-Test" }).count().then(n => n > 0), "Name im Konto angekommen", 15000);
+  log("Langsames Netz: Reise während des Hochladens umbenannt, Name steht danach im Konto");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");

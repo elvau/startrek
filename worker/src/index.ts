@@ -12,7 +12,7 @@ import { verifyIdToken } from "../../app/src/lib/agent/auth";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
-import { parseActivityQuery, searchActivities } from "../../app/src/lib/activities/search";
+import { blockedResult, parseActivityQuery, searchActivities, viatorBlock } from "../../app/src/lib/activities/search";
 import type { ActivityEnv } from "../../app/src/lib/activities/types";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
@@ -121,6 +121,8 @@ export default {
       const q = parseActivityQuery(body);
       if (typeof q === "string") return json({ error: q }, 400, h);
       noteRoute(env, "activities");
+      const block = viatorBlock(origin, env);
+      if (block) return json(blockedResult(block), 200, h);
       // Touren ändern sich selten: 6 Stunden aus dem Zwischenspeicher
       const result = await cachedJson(`activities${partnerOn(env) ? "/p" : ""}/${encodeURIComponent(JSON.stringify(q))}`, 6 * 3600, () => searchActivities(q, env, meter(env)), r => r.activities.length > 0, ctx);
       return json(result, 200, h);
@@ -255,7 +257,6 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
     flights: q => searchAll(q, env, net),
     stays: q => searchStays(q, env, net),
     events: q => cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, net, cachedJson), r => r.events.length > 0, ctx),
-    activities: q => cachedJson(`activities${partnerOn(env) ? "/p" : ""}/${encodeURIComponent(JSON.stringify(q))}`, 6 * 3600, () => searchActivities(q, env, net), r => r.activities.length > 0, ctx),
     store: tripStore(env, net),
     offers: {
       put: (id, v) => caches.default.put(offerKey(id), new Response(JSON.stringify(v), { headers: { "cache-control": "max-age=21600" } })),

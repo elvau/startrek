@@ -184,6 +184,11 @@ try {
   if (after.length !== 10 || after[0] !== "Dani Klein" || after.includes(`${A} Erw. 1`)) fail("nach Ersetzen: " + after);
   const hh3 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
   if (!hh3.some(x => x.startsWith("Klein") && x.includes("100 €"))) fail("Klein nach Ersetzen: " + hh3);
+  // × an der Person: schnell entfernen (mit Rückfrage), ohne „Personen bearbeiten“
+  await a.locator(".person", { hasText: `${B} Kleinkind 1` }).locator(".p-x").click();
+  await until(async () => (await a.locator(".person:not(.add) b").count()) === 9, "Kleinkind entfernt");
+  if ((await a.locator(".person:not(.add) b").allTextContents()).includes(`${B} Kleinkind 1`)) fail("Kleinkind noch da");
+  log("× entfernt einen Platzhalter direkt");
   log(`„${A} Erw. 1“ durch die gespeicherte`, " Dani Klein ersetzt, Familie Klein zahlt 100 €");
   log(`Platzhalter: Familie ${A} (2+3) und ${B} (2+2+1 Kleinkind)`, " 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
 
@@ -301,6 +306,23 @@ try {
   const saved = await b.evaluate(() => { const d = JSON.parse(localStorage.getItem("rk2-dir") || "{}"); const g = d.groups.find(x => x.name === "Familie Schmitz"); return g && g.memberIds.map(id => d.people.find(p => p.id === id)); });
   if (!saved || saved.length !== 3 || saved[2].first !== "Lea" || saved[2].last !== "Schmitz" || saved[2].age !== 8) fail("Gruppe nicht gespeichert: " + JSON.stringify(saved));
   log("Neue Gruppe beim Anlegen: Uwe gezogen, Monika angetippt, Lea neu; „Familie Schmitz“ gespeichert, Reise mit 3 Personen");
+
+  // Reise auf einem Gerät gefüllt, auf dem anderen nie geöffnet: Startseite zeigt sie trotzdem mit Ort und Betrag
+  await b.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  await b.locator(".hero h1").click();
+  await b.keyboard.press("ControlOrMeta+a");
+  await b.keyboard.type("Zweitgerät-Test");
+  await b.keyboard.press("Enter");
+  const bi = b.locator("#stay .simple-in input");
+  await bi.scrollIntoViewIfNeeded();
+  await bi.fill("840");
+  await b.waitForTimeout(2500);
+  await a.goto(URL);
+  const card = a.locator(".start .home-trip", { hasText: "Zweitgerät-Test" });
+  await card.waitFor();
+  await until(async () => (await card.innerText()).includes("840"), "Betrag der Reise vom anderen Gerät auf der Startseite", 10000)
+    .catch(async e => { console.log("Karte:", await card.innerText()); throw e; });
+  log("Auf einem Gerät gefüllt, auf dem anderen nie geöffnet: Startseite zeigt den Betrag (840 €) ohne Öffnen");
 
   console.log("\nAlle Schritte erfolgreich.");
 } finally {

@@ -144,6 +144,16 @@ describe("Unterkunftssuche in der App", () => {
     expect(neu.id).not.toBe("leer");
     expect(t.items.filter(x => x.cat === "stay")).toHaveLength(2);
   });
+  it("Übernehmen in einen Posten mit leerem Angebot: das leere fliegt raus (kein „Angebot 2“)", () => {
+    const t = trip();
+    const [a, b] = fromBooking(booking);
+    const it = takeStay(t, a, q);
+    it.options.push({ id: "leer", label: "", price: { mode: "person", currency: "EUR" } });
+    it.chosen = "leer";
+    takeStay(t, b, q, it.id);
+    expect(it.options.map(x => x.label)).toEqual(["Antea", "Rooms Šećer"]);
+    expect(it.chosen).toBeUndefined();
+  });
 });
 
 describe("Verpflegung aus den Merkmalen der Unterkunft", () => {

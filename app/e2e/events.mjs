@@ -80,11 +80,12 @@ try {
         sources: [{ id: "footballdata", name: "football-data.org", configured: true, ok: true, count: 1 }] } : EVENTS;
     await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
   });
+  await p.route("https://media-cdn.tripadvisor.com/**", r => r.fulfill({ path: "public/brand/logo-120.png" }));
   const tourAsked = [];
   await p.route("https://flights.test/activities/search", async r => {
     tourAsked.push(JSON.parse(r.request().postData()));
     await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ activities: [
-      { id: "viator:1", source: "viator", sourceName: "Viator", title: "Tower of London: Kronjuwelen", rating: 4.7, reviews: 5210, minutes: 180, price: 42, currency: "EUR", url: "https://www.viator.com/t/1" }
+      { id: "viator:1", source: "viator", sourceName: "Viator", title: "Tower of London: Kronjuwelen", rating: 4.7, reviews: 5210, minutes: 180, price: 42, currency: "EUR", url: "https://www.viator.com/t/1", image: "https://media-cdn.tripadvisor.com/media/tower.jpg" }
     ], sources: [{ id: "viator", name: "Viator", configured: true, ok: true, count: 1 }] }) });
   });
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
@@ -164,6 +165,9 @@ try {
   log("Vorschlag übernommen: Name, Daten, Flug und Unterkunft");
 
   // Erlebnisse finden: was am Reiseort im Reisezeitraum läuft, Touren; Übernehmen legt Posten an
+  // Touren & Tickets zuerst, dann Events vor Ort
+  const attBtns = await p.locator("#attractions .search-row .btn").allInnerTexts();
+  if (!attBtns[0]?.includes("Touren") || !attBtns[1]?.includes("Events")) fail("Reihenfolge Erlebnisse: " + attBtns);
   await p.locator("#attractions .xp-open").click();
   const x = p.locator(".modal .xp");
   await x.locator(".xp-ev").first().waitFor();
@@ -180,14 +184,22 @@ try {
   const att = p.locator("#attractions");
   await att.locator(".card", { hasText: "Coldplay" }).waitFor();
   if (!(await att.locator(".card", { hasText: "Tower of London" }).count())) fail("Tour nicht übernommen");
+  await att.locator(".card", { hasText: "Tower of London" }).locator(".row-img").waitFor();
   const prices = () => p.evaluate(() => { const t = JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current"))); return t.items.filter(i => i.cat === "attractions").map(i => i.options[0].price.adult).join(); });
   for (let i = 0; i < 20 && (await prices()) !== "89,42"; i++) await p.waitForTimeout(150);
   if ((await prices()) !== "89,42") fail("Preise der Erlebnisse: " + await prices());
-  log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €) als Posten übernommen");
+  log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €, mit Foto) als Posten übernommen");
+  // Kopf: Events & Aktivitäten sammelt Event und Erlebnisse, „Sonstige Kosten“ ohne die Tour
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  const evTile = await p.locator(".hero .ht-ev").innerText();
+  if (!evTile.includes("Tower of London") && !evTile.includes("Coldplay")) fail("Kachel Events & Aktivitäten: " + evTile);
+  if ((await p.locator(".hero .ht-misc").innerText()).includes("Tower of London")) fail("Tour unter Sonstige Kosten");
 
   // nur das Land bekannt (Sabah FK, Aserbaidschan): Hauptstadt Baku angenommen, mit Hinweis zum Prüfen
-  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
-  await p.locator(".hero .ev-open").click();
+  // Event-Planer auch im Kapitel Erlebnisse, mit dem gewählten Event
+  if (!(await att.locator(".att-event", { hasText: "Emirates Stadium" }).count())) fail("Event nicht bei den Erlebnissen");
+  await att.locator(".att-ev", { hasText: "Event ändern" }).click();
+  log("Erlebnisse: gewähltes Event und „Event ändern“ öffnet den Event-Planer");
   const m2 = p.locator(".modal");
   await m2.locator(".ev-find input").fill("Sabah");
   await m2.locator(".ev-find .btn").click();

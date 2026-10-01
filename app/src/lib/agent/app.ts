@@ -72,6 +72,8 @@ export function takeParty(trip: Trip, a: AgentTrip) {
 /** Meldung des Such-Dienstes in der gewählten Sprache (der Dienst antwortet auf Deutsch) */
 export function agentError(status: number, msg?: string): string {
   const k = ({ 400: "ai.err.input", 401: "ai.err.login", 429: "ai.err.limit", 502: "ai.err.busy", 503: "ai.err.setup" } as Record<number, Key>)[status];
+  // bei 502 den eigentlichen Grund dazu (sonst sieht man nicht, ob Gemini, die Suche oder das Budget hakt)
+  if (k === "ai.err.busy" && msg) return `${t(k)} ${t("ai.err.reason", { msg })}`;
   if (k) return t(k);
   return i18n.lang === "de" && msg ? msg : t("search.status", { s: status });
 }

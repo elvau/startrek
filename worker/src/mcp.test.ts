@@ -37,7 +37,6 @@ function deps(over: Partial<McpDeps> = {}) {
     flights: async () => ({ offers: [flight("f1", 480), flight("f2", 520)], sources: [] }),
     stays: async () => ({ offers: [stay("s1", 600)], sources: [] }),
     events: async () => ({ events: [{ id: "e1", source: "tm", sourceName: "Ticketmaster", name: "Konzert", start: "2027-05-11T20:00", city: "Palma", url: "https://tm/x" }], sources: [] }),
-    activities: async () => ({ activities: [], sources: [] }),
     store: memStore(),
     offers: { put: async (id, v) => { saved.set(id, JSON.parse(JSON.stringify(v))); }, get: async id => saved.get(id) || null },
     allowSearch: async () => (++searches > 3 ? "Daily limit reached" : null),

@@ -34,12 +34,13 @@ export const dateDE = (iso: string) => {
   return `${String(x.getDate()).padStart(2, "0")}.${String(x.getMonth() + 1).padStart(2, "0")}.`;
 };
 
-/** Dauer zwischen zwei lokalen Zeiten, "2 h 15 min" */
+/** Dauer zwischen zwei lokalen Zeiten, "2 h 15 min" (nur richtig in derselben Zeitzone) */
 export function duration(a: string, b: string): string {
-  const m = Math.round((d(b).getTime() - d(a).getTime()) / 60000);
-  if (!(m > 0)) return "";
-  return `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`;
+  return minutesText(Math.round((d(b).getTime() - d(a).getTime()) / 60000));
 }
+export const minutesText = (m: number) => (m > 0 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}` : "");
+/** Flugdauer: aus der Suche (zeitzonenrichtig), sonst aus Abflug und Landung */
+export const legDuration = (l: { dep: string; arr: string; minutes?: number }) => (l.minutes ? minutesText(l.minutes) : duration(l.dep, l.arr));
 
 /** "Juli 2027" */
 export const monthYear = (iso: string) => {
@@ -54,4 +55,11 @@ export function autoName(x: { place?: string; from?: string; to?: string }): str
   if (!place && !x.from) return null;
   const n = nights(x.from, x.to);
   return [place || t("trip"), x.from ? monthYear(x.from) : "", n ? tn("n.days", n + 1) : ""].filter(Boolean).join(" · ");
+}
+
+/** Ortszeit „JJJJ-MM-TTTHH:MM“ um h Stunden verschieben (ohne Zeitzonen, über UTC gerechnet) */
+export function shiftLocal(iso: string, h: number): string {
+  const d = new Date(`${iso.slice(0, 16)}:00Z`);
+  d.setUTCHours(d.getUTCHours() + h);
+  return d.toISOString().slice(0, 16);
 }

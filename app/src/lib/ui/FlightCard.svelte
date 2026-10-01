@@ -3,7 +3,7 @@
   import { hhKey, isActive, type Item } from "../model";
   import { access, app, calc } from "../store.svelte";
   import { calcOption, eur } from "../calc";
-  import { dayShort, duration, time, dateDE } from "../format";
+  import { dayShort, legDuration, time, dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
 
   let { item }: { item: Item } = $props();
@@ -41,7 +41,7 @@
     {#if out}
       <div class="bp-route">
         <div class="bp-ap"><b>{out.from}</b><span>{cities?.[1] || ""}</span></div>
-        <div class="bp-line"><svg viewBox="0 0 24 24" style="transform:rotate(90deg)"><use href="#i-plane" /></svg><em>{duration(out.dep, out.arr)}</em></div>
+        <div class="bp-line"><svg viewBox="0 0 24 24" style="transform:rotate(90deg)"><use href="#i-plane" /></svg><em>{legDuration(out)}</em></div>
         <div class="bp-ap r"><b>{out.to}</b><span>{cities?.[2] || ""}</span></div>
       </div>
       {#if r?.access}
@@ -74,7 +74,7 @@
       {@const lo = o.legs?.find(l => l.dir === "out")}
       <button class="opt" class:sel={o.id === opt?.id} onclick={e => choose(o.id, e)}>
         <i></i>
-        <span>{o.label}<small>{lo ? `${time(lo.dep)} ${arrow()} ${time(lo.arr)} · ${duration(lo.dep, lo.arr)}` : ""}{o.detail ? ` · ${o.detail}` : ""}{c.access?.cost ? ` · ${t("fl.inclAccess", { v: eur(c.access.cost) })}` : ""}</small></span>
+        <span>{o.label}<small>{lo ? `${time(lo.dep)} ${arrow()} ${time(lo.arr)} · ${legDuration(lo)}` : ""}{o.detail ? ` · ${o.detail}` : ""}{c.access?.cost ? ` · ${t("fl.inclAccess", { v: eur(c.access.cost) })}` : ""}</small></span>
         <span class="num">{eur(c.net)} {#if o.id !== opt?.id && Math.round(diff)}<span class="d" class:down={diff < 0} class:up={diff > 0}>{diff > 0 ? "+" : "−"}{Math.abs(Math.round(diff))}</span>{/if}</span>
       </button>
     {/each}

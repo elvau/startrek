@@ -6,12 +6,9 @@
   import ModeSwitch from "./ModeSwitch.svelte";
   import { renameTrip, setAllDetailed, tripMode } from "../store.svelte";
   import { eur, eurPP } from "../calc";
-  import { dayShort, nights, range } from "../format";
-  import { openEventPlanner } from "../event/open.svelte";
+  import { nights, range } from "../format";
   import TripEditor from "./TripEditor.svelte";
-  import { potential, watchable } from "../watch";
-  import { runWatch, watchRun } from "../watch.svelte";
-  import { FLIGHTS_URL } from "../flights/app";
+  import HeroTiles from "./HeroTiles.svelte";
 
   import { heroEdit } from "./heroEdit.svelte";
   // „Reise bearbeiten“ sitzt in der Leiste oben; beim Öffnen einer Reise zu
@@ -74,19 +71,7 @@
         {/if}
       {/key}
       <div class="meta">{[where, range(trip.from, trip.to), nights(trip.from, trip.to) ? tn("n.nights", nights(trip.from, trip.to)) : "", n ? tn("n.persons", n) : t("nobody")].filter(Boolean).join(" · ")}</div>
-      {#if trip.event}
-        <div class="ev-hero">🎟 {[trip.event.name !== trip.name ? trip.event.name : "", `${dayShort(trip.event.start.slice(0, 10))} ${trip.event.start.slice(11, 16)}`, trip.event.venue].filter(Boolean).join(" · ")}</div>
-      {/if}
-      {#if !access.readonly}
-        <div class="hero-acts"><button class="pill-btn ev-open" onclick={openEventPlanner}><span aria-hidden="true">🎟</span> {trip.event ? t("ev.go") : t("ev.btn")}</button>
-          {#if FLIGHTS_URL && !access.readonly && watchable(trip).length}
-            {@const pot = potential(trip)}
-            <button class="pill-btn watch-btn" class:good={pot > 0} disabled={watchRun.busy} title={t("watch.lead")} onclick={runWatch}>
-              <span aria-hidden="true" class:spin={watchRun.busy}>🔄</span> {watchRun.busy ? t("watch.checking", { n: watchRun.done, of: watchRun.of }) : pot > 0 ? t("watch.btnSave", { v: eur(pot) }) : t("watch.check")}
-            </button>
-          {/if}
-        </div>
-      {/if}
+      <HeroTiles />
     {/if}
     {#if !access.readonly}
       <div class="hero-mode"><ModeSwitch value={tripMode()} onchange={setAllDetailed} label={t("hero.mode")} />{#if tripMode() === "mixed"}<span class="muted small">{t("hero.mixed")}</span>{/if}</div>

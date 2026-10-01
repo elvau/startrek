@@ -5,9 +5,9 @@ import { t as tr, type Key } from "./i18n/index.svelte";
 import { totals } from "./calc";
 import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type SimpleLine, type Traveler, type Trip } from "./model";
 import { sampleTrip } from "./seed";
-import { autoName, dateDE } from "./format";
+import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
-import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
+import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
@@ -29,6 +29,11 @@ function markEdited(id: string) {
   try { localStorage.setItem(K_EDITED, JSON.stringify(editedAt)); } catch {}
 }
 const later = (a?: string, b?: string) => (!a ? b : !b ? a : a > b ? a : b);
+/**
+ * Speicherzeit im Konto zählt als „bearbeitet“ nur, wenn jemand anderes gespeichert hat: eigene Änderungen kennt
+ * editedAt, und ein spät nachgeschickter eigener Stand (z. B. nach dem Hochladen) soll die Reise nicht nach oben schieben.
+ */
+const foreign = (t: CloudTrip) => (t.updated && (!t.by || t.by !== cloud.user?.uid) ? t.updated : undefined);
 
 const meta = (t: Trip): TripMeta => ({ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: t.travelers.filter(x => x.active !== false).length });
 
@@ -167,6 +172,8 @@ function flush() {
   timer = undefined;
   const json = JSON.stringify(app.trip);
   put(K_TRIP(app.trip.id), json);
+  // sofort gespeichert (Wechsel der Reise, Schließen): Änderung zählt wie beim verzögerten Speichern als bearbeitet
+  if (pending && !(baseline.id === app.trip.id && baseline.json === json)) markEdited(app.trip.id);
   if (pending && isCloud(app.trip.id)) void push(app.trip, json);
 }
 // Neuladen oder Schließen kurz nach einer Änderung: nicht auf das verzögerte Speichern warten
@@ -254,8 +261,8 @@ export function allTrips(): TripEntry[] {
   // Ziel und Zeitraum stehen nur in der Reise selbst; aus der Kopie auf dem Gerät ergänzen, falls vorhanden.
   // Der Name der offenen Reise ist frischer als der im Konto (dort erst nach dem verzögerten Speichern); steht im Konto
   // noch der Platzhalter „Reise“ (gerade angelegt, Name noch nicht gespeichert), gilt der Name der Kopie auf dem Gerät
-  const local = (id: string) => { const t = id === app.trip.id ? app.trip : readTrip(id); return t ? meta(t) : null; };
-  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1, edited: later(editedAt[t.id], t.updated) }; });
+  const local = (id: string) => { const t = tripFor(id); return t ? meta(t) : null; };
+  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1, edited: later(editedAt[t.id], foreign(t)) }; });
   const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, ...(m.id === app.trip.id ? meta(app.trip) : {}), cloud: false, edited: editedAt[m.id] }));
   return [...c, ...l];
 }
@@ -292,13 +299,23 @@ export async function moveToCloud(id: string) {
  * ging da noch nicht, weil die Liste im Konto die Reise noch nicht kannte. Den Stand nachschicken, sobald sie drin ist,
  * sonst bleibt im Konto die leere Reise und überschreibt beim nächsten Laden die Kopie auf dem Gerät.
  */
-function pushLater(id: string, sent: string, tries = 0) {
+async function pushLater(id: string, sent: string) {
+  if (!(await whenListed(id))) return;
   const cur = id === app.trip.id ? app.trip : readTrip(id);
   if (!cur || !cloud.user) return;
   const json = JSON.stringify(cur);
-  if (json === sent) return;
-  if (roleOf(id)) { void push(cur, json); return; }
-  if (tries < 40) setTimeout(() => pushLater(id, sent, tries + 1), 250);
+  if (json !== sent) void push(cur, json);
+}
+
+/** wartet, bis die Reise in der Liste des Kontos steht (statt alle 250 ms nachzusehen); false nach ms ohne Eintrag */
+function whenListed(id: string, ms = 60000): Promise<boolean> {
+  if (roleOf(id)) return Promise.resolve(true);
+  return new Promise(resolve => {
+    let done = false;
+    const finish = (ok: boolean) => { if (done) return; done = true; clearTimeout(tm); queueMicrotask(stop); resolve(ok); };
+    const tm = setTimeout(() => finish(false), ms);
+    const stop = $effect.root(() => { $effect(() => { if (roleOf(id)) finish(true); }); });
+  });
 }
 
 /** Leere, unberührte Reise beim Verlassen wegräumen, damit sich keine „Neue Reise“ ansammelt */
@@ -379,6 +396,8 @@ export function newTrip(opts: NewOpts = {}) {
     // Wohnorte und Anreise je Familie aus der bisherigen Reise übernehmen, das spart Tipparbeit
     households: JSON.parse(JSON.stringify(prev.households || {}))
   }, "neu");
+  // neu angelegt zählt als bearbeitet (auch wenn sie gleich gefüllt und verlassen wird, z. B. „Alle übernehmen“)
+  markEdited(app.trip.id);
   dropIfPristine(prev);
   if (cloud.user) void moveToCloud(app.trip.id);
 }
@@ -390,6 +409,7 @@ export function duplicateTrip() {
   copy.name = `${copy.name} (${tr("store.copy")})`;
   const toCloud = !!cloud.user;
   open(copy, "Kopie");
+  markEdited(copy.id);
   if (toCloud) void moveToCloud(copy.id);
 }
 
@@ -461,7 +481,17 @@ export function emptyTrips(): TripEntry[] {
 }
 
 /** Reise zum Anzeigen: die offene oder die Kopie auf dem Gerät (Konto-Reisen, die hier nie offen waren: null) */
-export const tripFor = (id: string): Trip | null => (id === app.trip.id ? app.trip : readTrip(id));
+/**
+ * Reise zum Anzeigen ohne sie zu öffnen (Startseite): die offene, bei Konto-Reisen der Stand aus dem Konto (auch wenn sie
+ * hier nie geöffnet wurde oder die Kopie auf dem Gerät älter ist), sonst die Kopie auf dem Gerät.
+ */
+const normalized = new WeakSet<Trip>();
+export function tripFor(id: string): Trip | null {
+  if (id === app.trip.id) return app.trip;
+  const r = isCloud(id) ? remoteTrip(id) : null;
+  if (r) { if (!normalized.has(r)) { normalize(r); normalized.add(r); } return r; }
+  return readTrip(id);
+}
 const isPristine = (id: string) => { const t = tripFor(id); return !t || pristine(t); };
 
 /** Reisen für die Startseite: zuletzt geöffnete zuerst, leere Entwürfe nicht */

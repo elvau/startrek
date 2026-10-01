@@ -1,15 +1,16 @@
 /*
- * Reisebeobachtung: Flüge und Unterkünfte aus der Suche genau so noch einmal suchen.
- * Je Posten: dasselbe Angebot heute (teurer/günstiger) und das günstigste Angebot für dieselbe Reise.
+ * Preise prüfen: Flüge und Unterkünfte aus der Suche genau so noch einmal suchen.
+ * Für die ganze Reise: dieselben Angebote zum heutigen Preis übernehmen und die Änderung je Posten merken.
+ * Je Posten auf Wunsch: ein günstigeres Angebot für dieselbe Reise suchen.
  * Gebuchte, bezahlte und verworfene Posten bleiben außen vor, ebenso eigene Einträge ohne Suche.
  */
 import { t } from "./i18n/index.svelte";
-import { FIXED, type Item, type Option, type Trip, type TripWatch, type WatchHit } from "./model";
+import { FIXED, type Item, type Option, type Trip, type WatchHit } from "./model";
 import { activeOption } from "./calc";
 import { offerToOption, passengers } from "./flights/app";
 import { defaultStayQuery, stayToOption } from "./stays/app";
 import type { FlightOffer, FlightQuery, SearchResult } from "./flights/types";
-import type { StayOffer, StayQuery, StaySearchResult } from "./stays/types";
+import type { StayQuery, StaySearchResult } from "./stays/types";
 
 const day = (iso: string) => iso.slice(0, 10);
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -52,81 +53,117 @@ export function sameFlight(o: Option, offers: FlightOffer[]): FlightOffer | unde
   return hit.sort((a, b) => a.price - b.price)[0];
 }
 
-export function sameStay(o: Option, offers: StayOffer[]): StayOffer | undefined {
-  const n = norm(o.label);
-  return offers.filter(s => norm(s.name) === n).sort((a, b) => a.total - b.total)[0];
+/** ein Treffer der Nachsuche: Preis, ob er zu einem Angebot passt, als Angebot */
+interface Found { price: number; same: (o: Option) => boolean; opt: () => Option }
+
+/** genau die Suche, mit der das gewählte Angebot gefunden wurde, noch einmal */
+async function lookup(trip: Trip, it: Item, o: Option, s: Searchers): Promise<Found[] | null> {
+  const cur = o.price.currency || "EUR";
+  if (it.cat === "flights") {
+    const q = flightQueryFor(trip, it, o);
+    if (!q) return null;
+    const offers = (await s.flights(q)).offers.filter(f => f.currency === cur);
+    return offers.map(f => ({ price: f.price, same: x => !!x.legs?.length && !x.legs.some(l => l.dir === "via") && sameFlight(x, [f]) === f, opt: () => offerToOption(f) }));
+  }
+  const q = stayQueryFor(trip, it, o);
+  const offers = (await s.stays(q)).offers.filter(x => x.currency === cur && x.total > 0);
+  return offers.map(x => ({ price: x.total, same: y => norm(y.label) === norm(x.name), opt: () => ({ ...stayToOption(x, q.adults + q.childAges.length), query: o.query }) }));
 }
 
-/** Vergleich für einen Posten aus den neuen Treffern (Preise in der Währung des Angebots) */
-export function compare(was: number, now: number | undefined, cheapest: { price: number; opt: () => Option } | undefined): WatchHit {
-  const hit: WatchHit = { was };
-  if (now != null) hit.now = Math.round(now);
-  const ref = Math.min(was, now ?? was);
-  if (cheapest && Math.round(cheapest.price) < ref) { hit.best = Math.round(cheapest.price); hit.bestOpt = cheapest.opt(); }
-  return hit;
-}
-
-/** Ersparnis gegenüber dem Preis beim Übernehmen (0, wenn nichts günstiger ist) */
-export const saving = (h: WatchHit) => h.err ? 0 : Math.max(0, h.was - Math.min(h.now ?? h.was, h.best ?? Infinity));
-/** Aufschlag, wenn dasselbe Angebot teurer geworden ist */
-export const rise = (h: WatchHit) => h.err || h.now == null ? 0 : Math.max(0, h.now - h.was);
+/** Preisänderung seit der letzten Prüfung (▲ positiv, ▼ negativ) */
+export const change = (h: WatchHit) => (h.err || h.now == null ? 0 : h.now - h.was);
+/** Ersparnis mit dem günstigeren Angebot */
+export const saving = (h: WatchHit) => (h.err || h.best == null ? 0 : Math.max(0, (h.now ?? h.was) - h.best));
 
 /** Ergebnis für diesen Posten, solange das gewählte Angebot noch dasselbe ist */
 export function hitFor(trip: Trip, it: Item): WatchHit | null {
   const h = trip.watch?.items[it.id];
   const o = h && watchOption(it, trip);
-  return h && o && o.price.unit === h.was ? h : null;
+  return h && o && o.price.unit === (h.now ?? h.was) ? h : null;
 }
 
 export const potential = (trip: Trip) => trip.items.reduce((s, it) => { const h = hitFor(trip, it); return s + (h ? saving(h) : 0); }, 0);
-export const rises = (trip: Trip) => trip.items.reduce((s, it) => { const h = hitFor(trip, it); return s + (h ? rise(h) : 0); }, 0);
+/** Summe der Preisänderungen der letzten Prüfung */
+export const changed = (trip: Trip) => trip.items.reduce((s, it) => { const h = hitFor(trip, it); return s + (h ? change(h) : 0); }, 0);
 
 export interface Searchers {
   flights: (q: FlightQuery) => Promise<SearchResult>;
   stays: (q: StayQuery) => Promise<StaySearchResult>;
 }
 
-/** einen Posten nachsuchen */
-export async function checkItem(trip: Trip, it: Item, s: Searchers): Promise<WatchHit | null> {
+/** Ergebnis der Preisprüfung für einen Posten: neue Preise je Angebot (wiedergefunden) */
+export interface Refresh { hit: WatchHit; prices: Record<string, number> }
+
+/** einen Posten nachsuchen: dieselben Angebote zum heutigen Preis */
+export async function refreshItem(trip: Trip, it: Item, s: Searchers): Promise<Refresh | null> {
   const o = watchOption(it, trip);
   if (!o) return null;
   const was = o.price.unit!;
-  const cur = o.price.currency || "EUR";
   try {
-    if (it.cat === "flights") {
-      const q = flightQueryFor(trip, it, o);
-      if (!q) return null;
-      const offers = (await s.flights(q)).offers.filter(f => f.currency === cur);
-      const same = sameFlight(o, offers);
-      const cheap = offers.slice().sort((a, b) => a.price - b.price)[0];
-      return compare(was, same?.price, cheap && { price: cheap.price, opt: () => offerToOption(cheap) });
+    const found = await lookup(trip, it, o, s);
+    if (!found) return null;
+    const prices: Record<string, number> = {};
+    for (const x of it.options) {
+      if (!x.source || x.price.mode !== "unit") continue;
+      const m = found.filter(f => f.same(x)).sort((a, b) => a.price - b.price)[0];
+      if (m) prices[x.id] = Math.round(m.price);
     }
-    const q = stayQueryFor(trip, it, o);
-    const offers = (await s.stays(q)).offers.filter(x => x.currency === cur && x.total > 0);
-    const same = sameStay(o, offers);
-    const cheap = offers.slice().sort((a, b) => a.total - b.total)[0];
-    return compare(was, same?.total, cheap && { price: cheap.total, opt: () => ({ ...stayToOption(cheap, q.adults + q.childAges.length), query: o.query }) });
+    return { hit: prices[o.id] != null ? { was, now: prices[o.id] } : { was }, prices };
   } catch (e) {
-    return { was, err: (e as Error).message || t("watch.failed") };
+    return { hit: { was, err: (e as Error).message || t("watch.failed") }, prices: {} };
   }
 }
 
 /** alle beobachtbaren Posten nachsuchen, höchstens zwei Suchen gleichzeitig */
-export async function checkTrip(trip: Trip, s: Searchers, progress?: (done: number, of: number) => void): Promise<TripWatch> {
+export async function refreshTrip(trip: Trip, s: Searchers, progress?: (done: number, of: number) => void): Promise<Record<string, Refresh>> {
   const list = watchable(trip);
-  const items: Record<string, WatchHit> = {};
+  const out: Record<string, Refresh> = {};
   let done = 0, next = 0;
   progress?.(0, list.length);
   const worker = async () => {
     while (next < list.length) {
       const it = list[next++];
-      const h = await checkItem(trip, it, s);
-      if (h) items[it.id] = h;
+      const r = await refreshItem(trip, it, s);
+      if (r) out[it.id] = r;
       progress?.(++done, list.length);
     }
   };
   await Promise.all([worker(), worker()]);
-  return { at: new Date().toISOString(), items };
+  return out;
+}
+
+/** neue Preise in die Posten schreiben und die Änderungen merken */
+export function applyRefresh(trip: Trip, res: Record<string, Refresh>, at = new Date().toISOString()) {
+  const items: Record<string, WatchHit> = {};
+  for (const [id, r] of Object.entries(res)) {
+    const it = trip.items.find(i => i.id === id);
+    if (!it) continue;
+    for (const o of it.options) {
+      const v = r.prices[o.id];
+      if (v == null) continue;
+      o.price.unit = v;
+      if (o.source) o.source.at = at.slice(0, 10);
+    }
+    items[id] = r.hit;
+  }
+  trip.watch = { at, items };
+}
+
+/** für einen Posten ein günstigeres Angebot suchen (dieselbe Reise, gleiche Daten und Personen) */
+export async function findCheaper(trip: Trip, it: Item, s: Searchers): Promise<WatchHit | null> {
+  const o = watchOption(it, trip);
+  if (!o) return null;
+  const now = o.price.unit!;
+  const prev = hitFor(trip, it);
+  const base: WatchHit = prev ? { was: prev.was, ...(prev.now != null ? { now: prev.now } : {}) } : { was: now, now };
+  try {
+    const found = await lookup(trip, it, o, s);
+    if (!found) return null;
+    const cheap = found.filter(f => !it.options.some(x => f.same(x))).sort((a, b) => a.price - b.price)[0];
+    return cheap && Math.round(cheap.price) < now ? { ...base, best: Math.round(cheap.price), bestOpt: cheap.opt() } : { ...base, noBetter: true };
+  } catch (e) {
+    return { ...base, err: (e as Error).message || t("watch.failed") };
+  }
 }
 
 /** günstigeres Angebot in den Posten übernehmen und wählen */

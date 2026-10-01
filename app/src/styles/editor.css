@@ -284,7 +284,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .pdocs .ed-row{width:100%}
 @media (max-width:640px){.plist li{grid-template-columns:1fr 1fr 34px}.plist li .pmore{grid-column:1/3;grid-row:2}.plist li .x{grid-row:1;grid-column:3}}
 .plist .inp{width:100%}
-.grp-chip{font-weight:700}
 .add-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
 .tm-cur{font-size:11px;font-weight:700;color:var(--a);margin-inline-start:4px}
 .welcome{display:flex;flex-direction:column;gap:10px}
@@ -328,7 +327,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 :root[data-theme="dark"] .age-pill.infant{background:#4A1F38;color:#F5A8D2}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .age-pill{background:#4A3413;color:#FFD08A}:root:not([data-theme="light"]) .age-pill.infant{background:#4A1F38;color:#F5A8D2}}
 .welcome .btn.go{align-items:center;font-size:16px;padding:13px 16px;align-self:stretch}
-.welcome-more{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 20px;margin-top:2px}
 /* Kopfzeile: Reisen + Neue Reise links, Gruppen rechts */
 .tmenu{display:inline-flex;align-items:center;gap:6px}
 .tm-ico{font-size:14px}
@@ -376,9 +374,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 :root[data-theme="dark"] .who-art{filter:brightness(.85)}
 /* Flugsuche */
 .fs-form{display:flex;flex-direction:column;gap:10px}
-.fs-route{flex-wrap:nowrap}
-.fs-swap{align-self:flex-end;margin-bottom:2px;font-size:16px}
-.fs-one{align-self:center;padding-top:14px;gap:6px;font-size:13.5px}
 .fs-src{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--ink-2)}
 .fs-src .ok{color:#1F8A70;font-weight:700}
 .fs-src .off{opacity:.7}
@@ -390,19 +385,12 @@ body[data-ch="split"] .amb-split{opacity:1}
 .fs-leg{display:grid;grid-template-columns:52px 1fr;gap:0 8px;font-size:13.5px}
 .fs-leg .muted{grid-column:2;font-size:12.5px}
 .fs-dir{grid-row:1/3;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);padding-top:2px}
-.fs-bag{margin:0}
 .fs-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .btn.sm{padding:6px 12px;font-size:13px;text-decoration:none;color:inherit}
 .btn.primary.sm{color:#fff}
 .btn.sm small{font-weight:600;opacity:.8}
 .search-row{display:flex;justify-content:flex-start;margin:-4px 0 14px}
-@media (max-width:520px){.fs-route{flex-wrap:wrap}.fs-swap{display:none}}
 .fs-mode{margin-bottom:-2px}
-.fs-nights{flex-direction:column;align-items:flex-start;gap:6px}
-.fs-nn-row{display:flex;align-items:center;gap:12px}
-.fs-nights .dlabel{margin:0}
-.fs-nights .inp.num{width:64px;text-align:center}
-.fs-nn{font-weight:700;color:var(--ink-2)}
 /* Doppel-Schieberegler */
 .dual-wrap{display:flex;flex-direction:column;gap:6px;align-self:stretch}
 .dual-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -529,7 +517,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .ev-hero{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;font-size:14px;font-weight:600}
 .ev-hero .linkbtn{color:inherit;text-decoration:underline}
 /* KI-Planer */
-.ai-in{font:inherit;font-size:14px;font-weight:500;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;resize:vertical;min-height:70px}
 .ai-ex .chip{text-align:start;white-space:normal}
 .ai-sum{color:var(--ink-2)}
 .ai-login{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -540,11 +527,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .ev-or{margin:10px 0 0}
 
 /* Kopf der Reise: Event als Knopf, Überschrift ohne Namen blasser */
-.hero-acts{margin-top:14px;display:flex;justify-content:center;flex-wrap:wrap;gap:10px}
-.pill-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:99px;border:1px solid var(--glass-line);background:rgba(255,255,255,.7);backdrop-filter:blur(8px);color:inherit;font-weight:700;font-size:14px;box-shadow:0 10px 26px -14px rgba(14,36,56,.45);transition:transform .15s,background .15s}
-.pill-btn:hover{background:#fff;transform:translateY(-1px)}
-:root[data-theme="dark"] .pill-btn{background:rgba(10,25,45,.55)}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .pill-btn{background:rgba(10,25,45,.55)}}
 .hero h1.untitled{opacity:.5}
 .brand-btn{border:0;background:none;padding:0;color:inherit;cursor:pointer}
 
@@ -660,8 +642,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .home-past summary .muted{font-size:15px;font-weight:600}
 
 /* ---------- Reisebeobachtung ---------- */
-.pill-btn:disabled{opacity:.75;cursor:default;transform:none}
-.watch-btn.good{color:var(--good);border-color:var(--good)}
 .spin{display:inline-block;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .wb{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 22px 12px;border-top:1px dashed var(--line);font-size:13px}
@@ -670,17 +650,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .wb-down{color:var(--good);background:var(--good-soft)}
 .wb-err{color:var(--warn);background:var(--warn-soft)}
 .wb-what{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
-.watch{margin-top:28px;padding:22px 24px;cursor:default}
-.watch-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.watch-head h3{margin:0 0 4px}
-.watch-head p{margin:0;max-width:520px}
-.watch-sum{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 28px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
-.watch-pot small,.watch-rise small{display:block;font-size:12px;color:var(--ink-2)}
-.watch-pot b,.watch-rise b{font:800 24px "Bricolage Grotesque Variable",sans-serif}
-.watch-pot.good b{color:var(--good)}
-.watch-rise b{color:#C62828}
-.watch-at{margin:0 0 0 auto}
-@media (max-width:640px){.watch-run{width:100%}.watch-at{margin:0}}
 
 /* Posten nach dem Übernehmen kurz hervorheben */
 .card.flash{animation:flash 2s ease-out}
@@ -694,7 +663,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .pr-sec .ed-row{width:100%}
 .prefs textarea{width:100%;resize:vertical;font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink)}
 .chip.locked{opacity:.6;cursor:default}
-.pr-toggle{align-self:flex-start}
 
 /* Admin: Nutzung der kostenlosen Kontingente */
 .usage h4{margin:20px 0 8px;font-size:14px}
@@ -819,7 +787,67 @@ body[data-ch="split"] .amb-split{opacity:1}
 :root[data-theme="dark"] .home-row{background:rgba(22,30,42,.75);color:#EAF3FB}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .home-row{background:rgba(22,30,42,.75);color:#EAF3FB}}
 @media (max-width:520px){.hv-l{display:none}}
-.home-clean{margin:18px 0 0;text-align:center}
+.home-h:has(.home-clean){display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.home-clean{font-weight:700;font-size:13px;line-height:1.2;font-family:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:6px 12px;cursor:pointer;box-shadow:var(--shadow-sm,0 1px 3px rgba(0,0,0,.12))}
+.home-clean:hover,.home-clean:focus-visible{border-color:var(--a)}
 .hr-top{display:flex;align-items:center;gap:8px;min-width:0}
 .st-filters{align-items:flex-end;gap:8px 12px}
 .st-filters .chips{flex:1 1 100%;flex-wrap:wrap}
+.person{position:relative}
+.person .p-x{position:absolute;top:6px;inset-inline-end:6px;width:26px;height:26px;border-radius:50%;border:0;background:transparent;color:var(--ink-3);font-size:18px;line-height:1;cursor:pointer}
+.person .p-x:hover,.person .p-x:focus-visible{background:var(--paper);color:#C4452E}
+/* Suche im Kapitel aufgeklappt statt als Fenster */
+.modal.inline{width:auto;max-width:none;max-height:none;overflow:visible;margin:0 0 18px;box-shadow:var(--shadow);scroll-margin-top:88px;animation:none}
+.modal.inline .modal-h{position:static;margin:-20px -20px 0}
+.fs-more{border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.fs-more>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.fs-more>summary::-webkit-details-marker{display:none}
+.fs-more>summary::before{content:"▸";color:var(--ink-3);transition:transform .2s}
+.fs-more[open]>summary::before{transform:rotate(90deg)}
+.fs-more>:not(summary){margin-top:12px}
+/* Unterkünfte nebeneinander vergleichen */
+.cmp-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(200px,1fr);gap:10px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x mandatory}
+.cmp-t{display:flex;flex-direction:column;gap:6px;padding:10px;border:1.5px solid var(--line);border-radius:14px;background:var(--paper);scroll-snap-align:start;min-width:0}
+.cmp-t.sel{border-color:var(--a);box-shadow:0 0 0 3px color-mix(in srgb,var(--a) 18%,transparent)}
+.cmp-t img,.cmp-ph{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;background:var(--paper-2)}
+.cmp-ph{display:grid;place-items:center;font-size:22px;aspect-ratio:auto!important;height:44px}
+.cmp-n{font-size:14.5px;line-height:1.25}
+.cmp-t .facts{gap:4px}
+.cmp-t .fact{font-size:11.5px;padding:2px 8px}
+.cmp-p{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin-top:auto}
+.cmp-p b{font-size:18px}
+.cmp-a{display:flex;gap:6px;align-items:center}
+.cmp-a .cmp-x{margin-inline-start:auto}
+.tk-watch{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px 0 2px;border-top:1px dashed var(--line);margin-top:6px}
+.tk-watch .watch-res{color:var(--ink-2);font-size:12px}
+.wb-cheaper{margin-inline-start:auto;font-size:12.5px}
+/* Kopf der Reise: vier Kacheln als Einstieg und Mini-Übersicht */
+.hero-tiles{margin:16px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(560px,100%)}
+.ht-tile{display:flex;gap:10px;align-items:flex-start;text-align:start;padding:12px 14px;border-radius:18px;border:1px solid var(--glass-line);background:rgba(255,255,255,.72);backdrop-filter:blur(8px);color:inherit;box-shadow:0 10px 26px -14px rgba(14,36,56,.45);transition:transform .15s,background .15s;cursor:pointer;min-width:0}
+.ht-tile:hover:not(:disabled){background:#fff;transform:translateY(-1px)}
+.ht-tile .ht-ico{flex:none;font-size:22px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--paper-2)}
+.ht-tile small{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.ht-tile b{font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ht-tile .ht-sub{font-size:12.5px;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ht-tile.empty b{color:var(--a)}
+.ht-tile.empty{align-items:center}
+.ht-b{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.ht-line{display:flex;gap:8px;justify-content:space-between;font-size:13.5px;font-weight:700;min-width:0}
+.ht-line span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ht-line i{font-style:normal;font-weight:600;color:var(--ink-2);white-space:nowrap}
+:root[data-theme="dark"] .ht-tile{background:rgba(10,25,45,.6)}
+:root[data-theme="dark"] .ht-tile:hover:not(:disabled){background:rgba(10,25,45,.8)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .ht-tile{background:rgba(10,25,45,.6)}:root:not([data-theme="light"]) .ht-tile:hover:not(:disabled){background:rgba(10,25,45,.8)}}
+/* schmal: ohne Symbol, Namen dürfen zweizeilig werden, Preis darunter */
+@media (max-width:520px){
+  .hero-tiles{gap:8px}
+  .ht-tile{padding:10px 12px}
+  .ht-tile .ht-ico{display:none}
+  .ht-line{flex-direction:column;gap:0}
+  .ht-line span,.ht-tile b,.ht-tile .ht-sub{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .ht-line i{font-size:12.5px}
+}
+/* Posten mit Foto vom Anbieter (z. B. Tour) */
+.row:has(.row-img){grid-template-columns:88px minmax(0,1fr) auto}
+.row-img{width:88px;height:66px;object-fit:cover;border-radius:12px;background:var(--paper-2)}
+@media (max-width:520px){.row:has(.row-img){grid-template-columns:64px minmax(0,1fr) auto}.row-img{width:64px;height:52px}}

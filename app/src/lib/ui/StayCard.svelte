@@ -2,7 +2,7 @@
   import { t, tn, type Key } from "../i18n/index.svelte";
   import { BOARDS, type Board, type Item } from "../model";
   import { access, app, calc } from "../store.svelte";
-  import { eur } from "../calc";
+  import { calcOption, eur } from "../calc";
   import { dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
 
@@ -21,6 +21,19 @@
     if (!o) return;
     o.stay = { ...(o.stay || {}), board: b || undefined };
   }
+  // Vergleich nebeneinander, solange noch nicht gebucht
+  const cmp = $derived(item.options.length > 1 && item.status !== "booked" && item.status !== "paid");
+  function choose(id: string, e: Event) {
+    e.stopPropagation();
+    if (!access.readonly) item.chosen = id;
+  }
+  function drop(id: string, e: Event) {
+    e.stopPropagation();
+    if (access.readonly || item.options.length < 2) return;
+    item.options = item.options.filter(o => o.id !== id);
+    if (item.chosen === id) item.chosen = undefined;
+  }
+  let broken = $state<Record<string, boolean>>({});
   let imgFailed = $state(false);
   let shown = $state(false);
   $effect(() => { const tm = setTimeout(() => (shown = true), 300); return () => clearTimeout(tm); });
@@ -79,3 +92,38 @@
     </div>
   </div>
 </div>
+
+{#if cmp}
+  <div class="opts st-cmp">
+    <div class="opts-h"><span>{t("fl.compare")}</span><span>{tn("n.offers", item.options.length)}</span></div>
+    <div class="cmp-row">
+      {#each item.options as o, i (o.id)}
+        {@const c = calcOption(o, item, app.trip)}
+        {@const diff = c.net - (r?.net || 0)}
+        {@const sel = o.id === r?.option?.id}
+        <div class="cmp-t" class:sel>
+          {#if o.stay?.image && !broken[o.id]}<img src={o.stay.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={() => (broken[o.id] = true)} />{:else}<div class="cmp-ph" aria-hidden="true">🏨</div>{/if}
+          <b class="cmp-n">{o.label || t("ie.offerN", { n: i + 1 })}</b>
+          {#if o.source?.name}<small class="muted">{o.source.name}</small>{/if}
+          <div class="facts">
+            {#if o.stay?.stars}<span class="fact">{"★".repeat(o.stay.stars)}</span>{/if}
+            {#if o.stay?.rating}<span class="fact">{t("stay.rating", { p: o.stay.rating })}</span>{/if}
+            {#if o.stay?.board}<span class="fact">{t(`board.${o.stay.board}` as Key)}</span>{/if}
+            {#each (o.stay?.facts || []).slice(0, 3) as f (f)}<span class="fact">{f}</span>{/each}
+          </div>
+          <div class="cmp-p">
+            <b class="num">{eur(c.net)}</b>
+            {#if !sel && Math.round(diff)}<span class="d" class:down={diff < 0} class:up={diff > 0}>{diff > 0 ? "+" : "−"}{eur(Math.abs(diff))}</span>{/if}
+            {#if nn}<small class="muted">{t("perNight", { v: eur(c.net / nn) })}</small>{/if}
+          </div>
+          <div class="cmp-a">
+            {#if sel}<span class="pill-n">✓ {t("st.chosen")}</span>
+            {:else}<button class="btn sm primary cmp-pick" disabled={access.readonly} onclick={e => choose(o.id, e)}>{t("fs.pick")}</button>{/if}
+            {#if o.source?.url}<a class="btn sm" href={o.source.url} target="_blank" rel={o.source.sponsored ? "noopener noreferrer sponsored" : "noopener noreferrer"} onclick={e => e.stopPropagation()}>↗</a>{/if}
+            {#if !access.readonly}<button class="btn sm cmp-x" title={t("ie.dropOffer")} aria-label={t("ie.dropOffer")} onclick={e => drop(o.id, e)}>×</button>{/if}
+          </div>
+        </div>
+      {/each}
+    </div>
+  </div>
+{/if}

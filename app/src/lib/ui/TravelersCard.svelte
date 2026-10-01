@@ -26,6 +26,15 @@
     quick = false;
   }
 
+  // Person oder Platzhalter aus der Reise nehmen, auch aus den Posten, denen sie zugeordnet ist
+  function remove(id: string) {
+    const x = app.trip.travelers.find(t => t.id === id);
+    if (!x || !confirm(t("trav.removeQ", { name: x.placeholder ? x.name : `${x.name} ${x.household}`.trim() || t("trav.noName") }))) return;
+    app.trip.travelers = app.trip.travelers.filter(t => t.id !== id);
+    for (const it of app.trip.items) if (it.participants?.includes(id)) it.participants = it.participants.filter(p => p !== id);
+    if (replacing === id) replacing = null;
+  }
+
   // Platzhalter durch eine gespeicherte Person ersetzen; Reisender bleibt derselbe (Posten-Zuordnung bleibt)
   let replacing = $state<string | null>(null);
   const repl = $derived(app.trip.travelers.find(t => t.id === replacing) || null);
@@ -89,13 +98,14 @@
     {@const emoji = t.placeholder ? animalEmoji(t.household) : null}
     {@const cls = ageClass(t.age, app.trip.settings, t.kind)}
     <div class="person" class:off={!isActive(t)} class:kid={cls !== "adult"}>
+      {#if !edit && !access.readonly}<button class="p-x" aria-label={tt("trav.removeAria", { name: t.name || tt("trav.noName") })} title={tt("remove")} onclick={() => remove(t.id)}>×</button>{/if}
       <span class="av" class:emoji style:--ring={t.color || COLORS[i % COLORS.length]} style:background={emoji ? null : t.color || COLORS[i % COLORS.length]}>{emoji || (t.name || "?")[0]}</span>
       {#if edit}
         <!-- ein echter Name macht aus dem Platzhalter eine Person -->
         <input class="inp" class:need={missing(t.name)} bind:value={t.name} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.first')} *" aria-label={tt("trav.first")} />
         <input class="inp" class:need={missing(t.household)} bind:value={t.household} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.last')} *" aria-label={tt("trav.last")} />
         <label class="in-row"><input class="inp num" type="number" min="0" max="120" bind:value={t.age} placeholder="?" aria-label={tt("trav.age")} /> {tt("trav.years")}</label>
-        <button class="linkbtn danger" onclick={() => (app.trip.travelers = app.trip.travelers.filter(x => x.id !== t.id))}>{tt("remove")}</button>
+        <button class="linkbtn danger" onclick={() => remove(t.id)}>{tt("remove")}</button>
       {:else}
         <b>{t.placeholder ? t.name : `${t.name || tt("trav.noName")} ${t.household}`}</b>
         <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}</span>

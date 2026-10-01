@@ -60,11 +60,23 @@ try {
   await p.goto(URL);
   await p.locator(".start .home-new").click();
   await p.locator(".modal .newtrip .btn.primary").click();
+  // Kopf der neuen Reise: vier Kacheln als Einstieg; „Zu den Flügen“ öffnet die Suche im Kapitel
+  const tiles = (await p.locator(".hero .ht-tile b").allInnerTexts()).join("|");
+  if (tiles !== "Zu den Flügen|Zu den Hotels|Events & Aktivitäten|Sonstige Kosten") fail("Kacheln im Kopf: " + tiles);
+  await p.locator(".hero .ht-fl").click();
+  await p.locator("#flights .modal.inline").waitFor();
+  await p.locator("#flights .modal.inline .x").click();
+  await p.locator("#flights .modal.inline").waitFor({ state: "detached" });
+  log("Kopf: Zu den Flügen, Zu den Hotels, Events & Aktivitäten, Sonstige Kosten; Flüge öffnet die Suche im Kapitel");
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   const m = p.locator(".modal");
 
   // Abflughäfen: Standard 4, zwei abwählen → DUS und NRN
+  // Suche klappt im Kapitel auf (kein Fenster); Wer, Abflughäfen, Umstiege und Koffer immer sichtbar
+  if (await p.locator(".modal-bg").count() || !(await p.locator("#flights .modal.inline").count())) fail("Flugsuche nicht im Kapitel aufgeklappt");
+  if (!(await m.locator(".fs-aps").isVisible()) || !(await m.locator(".fs-who").isVisible()) || !(await m.locator("label", { hasText: "Koffer gesamt" }).isVisible())) fail("Optionen der Flugsuche nicht sichtbar");
+  log("Flugsuche im Kapitel aufgeklappt, Wer, Abflughäfen, Umstiege und Koffer sichtbar");
   const on = await m.locator(".fs-aps .chip.on").allTextContents();
   if (on.length !== 4) fail("Standard-Flughäfen: " + on);
   for (const c of on.slice(2)) await m.locator(".fs-aps .chip", { hasText: c }).click();
@@ -173,6 +185,13 @@ try {
   const txt = await card.textContent();
   if (!txt.includes("Eurowings") || !txt.includes("2 Angebote")) fail("Posten: " + txt.slice(0, 200));
   log("Feste Daten ± 2 Tage; zwei Treffer übernommen (Liste und „Wählen“ in der Tabelle): ein Flug-Posten mit 2 Angeboten");
+  // Kopf: Flug-Kachel mit Kurzfassung des Postens, Klick scrollt zum Posten
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  const flLine = await p.locator(".hero .ht-fl .ht-line").first().innerText();
+  if (!/→/.test(flLine) || !/€/.test(flLine)) fail("Flug-Kachel ohne Strecke und Preis: " + flLine);
+  await p.locator(".hero .ht-fl").click();
+  await until(() => p.locator("#flights [data-item]").first().evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }), "zum Flug-Posten gescrollt");
+  log("Kopf: Flug-Kachel zeigt " + flLine.replace(/\s+/g, " ") + ", Klick scrollt zum Posten");
 
   // wie im Artefakt: je Familie suchen und buchen (eigene Flughäfen, eigene Anfahrt, eigener Flug-Posten)
   const TWO = {

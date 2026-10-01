@@ -1,31 +1,45 @@
 <script lang="ts">
-  /* Reisebeobachtung am Posten: roter Pfeil nach oben (teurer geworden), grüner nach unten (günstiger gefunden) */
+  /*
+   * Preise am Posten: Änderung seit der letzten Prüfung (▲ teurer, ▼ günstiger geworden),
+   * dazu „Günstigeres suchen“ nur für diesen Posten, mit Übernehmen.
+   */
   import { t } from "../i18n/index.svelte";
   import type { Item } from "../model";
   import { eur } from "../calc";
   import { access, app } from "../store.svelte";
-  import { hitFor, rise, saving, takeBetter } from "../watch";
+  import { change, hitFor, saving, takeBetter, watchOption } from "../watch";
+  import { cheaperRun, runCheaper } from "../watch.svelte";
+  import { FLIGHTS_URL } from "../flights/app";
 
   let { item }: { item: Item } = $props();
+  const can = $derived(!!watchOption(item, app.trip));
   const h = $derived(hitFor(app.trip, item));
-  const up = $derived(h ? rise(h) : 0);
+  const d = $derived(h ? change(h) : 0);
   const down = $derived(h ? saving(h) : 0);
+  const gone = $derived(!!h && !h.err && h.now == null && !!app.trip.watch?.at);
+  const busy = $derived(!!cheaperRun[item.id]);
 </script>
 
-{#if h && (up || down || h.err || (h.now == null && !h.best))}
+{#if can}
   <div class="wb">
-    {#if h.err}
+    {#if h?.err}
       <span class="wb-err" title={h.err}>⚠ {t("watch.failed")}</span>
     {:else}
-      {#if up}<span class="wb-up" title={t("watch.upTip")}>▲ {t("watch.up", { v: eur(up) })}</span>{/if}
-      {#if h.best != null && down}
-        <span class="wb-down" title={h.bestOpt?.label}>▼ {t("watch.down", { v: eur(down) })}</span>
-        <span class="wb-what muted">{h.bestOpt?.label}</span>
+      {#if d > 0}<span class="wb-up" title={t("watch.upTip")}>▲ {t("watch.up", { v: eur(d) })}</span>
+      {:else if d < 0}<span class="wb-down" title={t("watch.downTip")}>▼ {t("watch.cheaperNow", { v: eur(-d) })}</span>
+      {:else if gone}<span class="muted">{t("watch.gone")}</span>{/if}
+      {#if h?.best != null && down}
+        <span class="wb-down wb-best">▼ {t("watch.down", { v: eur(down) })}</span>
+        <span class="wb-what muted" title={h.bestOpt?.label}>{h.bestOpt?.label} · {eur(h.best)}</span>
         {#if !access.readonly}<button class="linkbtn wb-take" onclick={() => takeBetter(app.trip, item)}>{t("watch.take")}</button>{/if}
-      {:else if down}
-        <span class="wb-down">▼ {t("watch.down", { v: eur(down) })}</span>
+      {:else if h?.noBetter}
+        <span class="muted wb-none">{t("watch.nothing")}</span>
       {/if}
-      {#if h.now == null && !h.best}<span class="muted">{t("watch.gone")}</span>{/if}
+    {/if}
+    {#if FLIGHTS_URL && !access.readonly}
+      <button class="linkbtn wb-cheaper" disabled={busy} onclick={e => { e.stopPropagation(); runCheaper(item.id); }}>
+        <span aria-hidden="true" class:spin={busy}>🔎</span> {busy ? t("watch.searching") : t("watch.findCheaper")}
+      </button>
     {/if}
   </div>
 {/if}

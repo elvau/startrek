@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t, tn } from "../i18n/index.svelte";
-  import { app, calc } from "../store.svelte";
+  import { calc } from "../store.svelte";
   import { eur } from "../calc";
   import { CHAPTERS, chLabel } from "../chapters";
   import { view } from "../scroll.svelte";
