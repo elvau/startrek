@@ -156,4 +156,19 @@ describe("KI-Konnektor (MCP)", () => {
     expect(r.error).toBe(true);
     expect(r.text).toMatch(/limit/);
   });
+
+  it("große Gruppe: Flug für 2 Plätze gesucht, in Buchungen auf die Gruppe verteilt, Rest auf einen zweiten Flug", async () => {
+    const d = deps();
+    const id = (await tool(d, "create_trip", { place: "Cala Rajada", from: "2027-05-10", to: "2027-05-13", adults: 10 })).data.tripId;
+    await tool(d, "search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 2 });
+    const a = await tool(d, "add_flight", { tripId: id, offerId: "f1", travelers: 6 });
+    expect(a.data.bookings).toBe(3);
+    const b = await tool(d, "add_flight", { tripId: id, offerId: "f2" });
+    expect(b.data.bookings).toBe(2);
+    const trip: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    const fl = trip.items.filter(i => i.cat === "flights");
+    expect(fl.map(i => i.participants?.length)).toEqual([2, 2, 2, 2, 2]);
+    expect(new Set(fl.flatMap(i => i.participants)).size).toBe(10);
+    expect(fl.map(i => i.options[0].price.unit)).toEqual([480, 480, 480, 520, 520]);
+  });
 });

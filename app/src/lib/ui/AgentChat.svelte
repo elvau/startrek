@@ -22,7 +22,7 @@
   import { dir } from "../directory.svelte";
   import { agentPrefs, myHome, prefsFor } from "../prefs";
   import { agentChat, openChat } from "../agent/open.svelte";
-  import { editCount, type AgentEdit, type AgentTrip } from "../agent/types";
+  import { bookingPrice, editCount, flightTotal, type AgentEdit, type AgentTrip } from "../agent/types";
   import type { Trip } from "../model";
   import AiMark from "./AiMark.svelte";
 
@@ -153,7 +153,7 @@
   function preview(a: AgentTrip) {
     void geo.world.length;
     const T = totals(previewTrip(base(), a, geo));
-    return { total: T.total, access: T.byCat.flights - (a.flight?.price || 0), food: T.byCat.misc, people: T.active };
+    return { total: T.total, access: T.byCat.flights - flightTotal(a), food: T.byCat.misc, people: T.active };
   }
 
   function key(e: KeyboardEvent) {
@@ -224,7 +224,11 @@
                 <small class="muted">{a.place}{a.country ? `, ${a.country}` : ""} · {range(a.from, a.to)}{nn ? ` · ${tn("n.nights", nn)}` : ""}</small>
                 <span class="ai-sum">{a.summary}</span>
                 <ul class="ai-parts">
-                  {#if f}<li>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {f.out.carriers.join(" / ")}<b>{eur(f.price)}</b></li>{/if}
+                  {#if a.bookings?.length}
+                    {#each a.bookings as b, k (k)}
+                      <li>✈ {b.offer.out.from} {dayShort(b.offer.out.dep)} {time(b.offer.out.dep)} {arrow()} {b.offer.out.to} · {b.offer.out.carriers.join(" / ")} · {tn("ai.split", Math.ceil(b.travelers / Math.max(1, b.seats)), { p: b.travelers, s: b.seats })}<b>{eur(bookingPrice(b))}</b></li>
+                    {/each}
+                  {:else if f}<li>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {f.out.carriers.join(" / ")}<b>{eur(f.price)}</b></li>{/if}
                   {#if a.arrival}<li>🚗 {a.arrival.label || t("ai.ownArrival")}<b>≈ {eur(a.arrival.eur)}</b></li>{/if}
                   {#if pv.access > 0.5}<li>🚆 {t("ai.access")}<b>≈ {eur(pv.access)}</b></li>{/if}
                   {#if a.stay}<li>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{(a.stay.board || a.board) ? ` · ${t(`board.${a.stay.board || a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}

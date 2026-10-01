@@ -12,6 +12,14 @@ Gemini sucht über unsere Flug- und Unterkunftssuche und schlägt 2–3 Reisen v
    Gemini nennt nur Kennungen von Angeboten; die echten Angebote hängt der Such-Dienst an. Erfundene Kennungen fallen weg.
 4. Grenzen je Anfrage: 8 Runden, 4 Flugsuchen, 3 Unterkunftssuchen, 3 Vorschläge. Personen kommen aus der App, nicht von der KI.
 
+## Große Gruppen
+
+Eine Flugbuchung fasst höchstens 9 Plätze. Die KI sucht für Gruppen ab 5 Erwachsenen mit `seats: 2` (kleine Buchungen
+bekommen oft die günstigsten Tarife) und kann die Gruppe auf verschiedene Flüge verteilen (`flights` mit `travelers`
+je Flug). Beim Übernehmen wird jede Buchung ein eigener Flugposten mit ihren Reisenden („Flug DUS – PMI (2/5)“),
+Preis pro Platz mal Personen. Zimmer wählt die KI nach Wunsch (`rooms`). Gruppen bis 20 Erwachsene.
+Der KI-Konnektor kann das ebenso (`add_flight` mit `travelers`).
+
 ## Beratung in der offenen Reise
 
 Ist eine Reise offen (Ziel oder eigene Posten vorhanden), berät die KI dazu statt neue Reisen zu planen:

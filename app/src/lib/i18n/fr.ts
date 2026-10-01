@@ -115,6 +115,8 @@ export const fr: Dict = {
   "ai.phTrip": "p. ex. hôtel moins cher, on y va en voiture, que manque-t-il ?",
   "ai.refine": "Tu peux affiner, p. ex. « plutôt en juin » ou « moins cher ».",
   "ai.send": "Envoyer",
+  "ai.split.one": "{p} pers. en {n} réservation",
+  "ai.split.other": "{p} pers. en {n} réservations de {s} places",
   "ai.takeAll.one": "Créer comme voyage",
   "ai.takeAll.other": "Créer les {n} comme voyages",
   "ai.taken": "Ajouté. Tu trouveras d’autres offres dans la recherche de vols et d’hébergements.",

@@ -33,7 +33,7 @@ export interface McpDeps {
   today?: string;
 }
 
-export type Saved = { kind: "flight"; offer: FlightOffer } | { kind: "stay"; offer: StayOffer; q: StayQuery };
+export type Saved = { kind: "flight"; offer: FlightOffer; seats?: number } | { kind: "stay"; offer: StayOffer; q: StayQuery };
 
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const SHOWN = 8;
@@ -53,12 +53,12 @@ const lang = { type: "string", enum: LANGS, description: "Language for item name
 const SEARCH_TOOLS = [
   {
     name: "search_flights", title: "Search flights",
-    description: "Search real round-trip or one-way flights for all travelers. Returns the cheapest offers with id, total price and booking link.",
+    description: "Search real round-trip or one-way flights. A booking holds at most 9 seats; for bigger groups (or cheaper fares) search 2 seats and add the offer with add_flight and travelers, which splits the group into bookings. Returns the cheapest offers with id, total price for the searched seats and booking link.",
     inputSchema: { type: "object", properties: {
       from: { type: "array", items: { type: "string" }, description: "IATA codes of departure airports (1-3), e.g. [\"DUS\",\"CGN\"]" },
       to: { type: "array", items: { type: "string" }, description: "IATA codes of destination airports (1-3)" },
       depart: str("Outbound date YYYY-MM-DD"), return: str("Return date YYYY-MM-DD (omit for one-way)"),
-      adults: int("Adults", 1, 9), childAges: ages, maxStops: int("Maximum stops per direction (default 1)", 0, 2),
+      adults: int("Adults in this booking (max 9)", 1, 9), childAges: ages, maxStops: int("Maximum stops per direction (default 1)", 0, 2),
       bags: { type: "boolean", description: "Include a checked bag per person" }
     }, required: ["from", "to", "depart", "adults"] }
   },
@@ -94,7 +94,11 @@ const TRIP_TOOLS = [
       adults: int("Adults", 1, 20), childAges: ages, language: lang
     }, required: ["place", "adults"] }
   },
-  { name: "add_flight", title: "Add flight to trip", description: "Add a flight offer from search_flights to a trip.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_flights"), language: lang }, required: ["tripId", "offerId"] } },
+  {
+    name: "add_flight", title: "Add flight to trip",
+    description: "Add a flight offer from search_flights to a trip. If the offer was searched for fewer seats than the trip has travelers, or travelers is given, it is added for that many travelers without a flight yet, split into bookings of the searched seat count (one item per booking). Use several offers to put parts of the group on different flights.",
+    inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_flights"), travelers: int("How many travelers take this flight (default: all without a flight)", 1, 30), language: lang }, required: ["tripId", "offerId"] }
+  },
   { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang }, required: ["tripId", "offerId"] } },
   {
     name: "add_cost", title: "Add cost to trip",
@@ -171,7 +175,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       if (fq.depart < today) fail("Date is in the past");
       const res = await deps.flights(fq);
       const top = res.offers.slice(0, SHOWN);
-      await Promise.all(top.map(o => deps.offers.put(o.id, { kind: "flight", offer: o })));
+      const seats = fq.adults + fq.children;
+      await Promise.all(top.map(o => deps.offers.put(o.id, { kind: "flight", offer: o, seats })));
       return {
         offers: top.map(o => ({
           id: o.id, priceTotal: Math.round(o.price), currency: o.currency, provider: o.sourceName, link: o.url,
@@ -242,7 +247,12 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const saved = typeof a.offerId === "string" ? await deps.offers.get(a.offerId) : null;
       if (!saved || saved.kind !== (name === "add_flight" ? "flight" : "stay")) fail("Offer not found or expired: search again and use an id from the results");
       return edit(store!, a.tripId, user, t => {
-        const it = saved!.kind === "flight" ? addFlight(t, saved!.offer, lng(a.language)) : addStay(t, saved!.offer, (saved as { q: StayQuery }).q, lng(a.language));
+        if (saved!.kind === "flight") {
+          const travelers = Number.isInteger(a.travelers) && a.travelers >= 1 ? a.travelers : undefined;
+          const items = addFlight(t, saved!.offer, lng(a.language), saved!.seats ? { seats: saved!.seats, travelers } : undefined);
+          return { added: items.map(i => i.id), bookings: items.length, name: items[0]?.name };
+        }
+        const it = addStay(t, saved!.offer, (saved as { q: StayQuery }).q, lng(a.language));
         return { added: it.id, name: it.name };
       });
     }
