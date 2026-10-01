@@ -9,7 +9,7 @@
   import { eur } from "./lib/calc";
   import { CHAPTERS, CAT_CHAPTERS, SPLIT } from "./lib/chapters";
   import { initScroll } from "./lib/scroll.svelte";
-  import { nights } from "./lib/format";
+  import { dayShort, nights } from "./lib/format";
   import Sprite from "./lib/ui/Sprite.svelte";
   import Ambience from "./lib/ui/Ambience.svelte";
   import TopNav from "./lib/ui/TopNav.svelte";
@@ -45,6 +45,7 @@
   import { withoutTravel } from "./lib/flights/app";
   import ExploreDialog from "./lib/ui/ExploreDialog.svelte";
   import { explore, openExplore } from "./lib/activities/open.svelte";
+  import { openEventPlanner } from "./lib/event/open.svelte";
 
   let sheet = $state(false);
 
@@ -96,10 +97,16 @@
           {/if}
         {:else if ch.k === "attractions"}
           {@const aq = { place: app.trip.place, from: app.trip.from, to: app.trip.to }}
-          {#if app.trip.place && !access.readonly && FLIGHTS_URL}
+          {#if app.trip.event}
+            {@const ev = app.trip.event}
+            <p class="search-row att-event">🎟 <b>{ev.name}</b> <span class="muted small">{[`${dayShort(ev.start.slice(0, 10))} ${ev.start.slice(11, 16)}`, ev.venue].filter(Boolean).join(" · ")}</span></p>
+          {/if}
+          {#if !access.readonly}
+            <!-- Reise zu einem Event (wie oben in der Reise) auch hier; Events und Touren am Ziel, sobald es eines gibt -->
             <div class="search-row">
-              <button class="btn primary xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>
-              <button class="btn xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>
+              {#if app.trip.place && FLIGHTS_URL}<button class="btn primary xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>{/if}
+              <button class="btn att-ev" class:primary={!app.trip.place} onclick={openEventPlanner}>🏟 {app.trip.event ? t("ev.change") : t("ev.btn")}</button>
+              {#if app.trip.place && FLIGHTS_URL}<button class="btn xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>{/if}
             </div>
           {/if}
           <p class="search-row muted small fs-direct">

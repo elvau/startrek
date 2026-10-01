@@ -284,6 +284,7 @@ export const pl: Dict = {
   "ev.flightsDown": "Wyszukiwarka lotów jest chwilowo niedostępna, spróbuj ponownie.",
   "ev.from": "Wylot z {aps} dla: {p}.",
   "ev.origins": "Lotniska wylotu",
+  "ev.change": "Zmień wydarzenie",
   "ev.go": "Zaproponuj podróże",
   "ev.hours": "Czas trwania (godziny)",
   "ev.lead": "Mecz, koncert, targi: powiedz nam co, gdzie i kiedy. Znajdziemy pasujące loty i noclegi.",

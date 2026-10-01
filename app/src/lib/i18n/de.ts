@@ -270,6 +270,7 @@ export const de = {
   "ev.flightsDown": "Flugsuche gerade nicht erreichbar, bitte noch einmal suchen.",
   "ev.from": "Abflug ab {aps} für {p}.",
   "ev.origins": "Abflughäfen",
+  "ev.change": "Event ändern",
   "ev.go": "Reisen vorschlagen",
   "ev.hours": "Dauer (Stunden)",
   "ev.lead": "Spiel, Konzert, Messe: Sag uns was, wo und wann. Wir suchen passende Flüge und Unterkünfte.",

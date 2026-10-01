@@ -272,6 +272,7 @@ export const es: Dict = {
   "ev.flightsDown": "La búsqueda de vuelos no está disponible ahora, vuelve a intentarlo.",
   "ev.from": "Salida desde {aps} para {p}.",
   "ev.origins": "Aeropuertos de salida",
+  "ev.change": "Cambiar evento",
   "ev.go": "Proponer viajes",
   "ev.hours": "Duración (horas)",
   "ev.lead": "Partido, concierto, feria: dinos qué, dónde y cuándo. Buscamos vuelos y alojamientos adecuados.",

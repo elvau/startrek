@@ -186,8 +186,10 @@ try {
   log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €) als Posten übernommen");
 
   // nur das Land bekannt (Sabah FK, Aserbaidschan): Hauptstadt Baku angenommen, mit Hinweis zum Prüfen
-  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
-  await p.locator(".hero .ev-open").click();
+  // Event-Planer auch im Kapitel Erlebnisse, mit dem gewählten Event
+  if (!(await att.locator(".att-event", { hasText: "Emirates Stadium" }).count())) fail("Event nicht bei den Erlebnissen");
+  await att.locator(".att-ev", { hasText: "Event ändern" }).click();
+  log("Erlebnisse: gewähltes Event und „Event ändern“ öffnet den Event-Planer");
   const m2 = p.locator(".modal");
   await m2.locator(".ev-find input").fill("Sabah");
   await m2.locator(".ev-find .btn").click();
