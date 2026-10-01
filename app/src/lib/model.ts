@@ -305,15 +305,17 @@ export interface Trip {
 
 /** Ergebnis der Nachsuche für einen Posten, Beträge für den ganzen Posten */
 export interface WatchHit {
-  /** Preis beim Übernehmen */
+  /** Preis vor der Prüfung */
   was: number;
-  /** dasselbe Angebot heute, falls wiedergefunden */
+  /** dasselbe Angebot heute, falls wiedergefunden (steht dann auch im Angebot) */
   now?: number;
   /** günstigeres Angebot für dieselbe Reise */
   best?: number;
   bestOpt?: Option;
   /** nicht prüfbar oder Suche fehlgeschlagen */
   err?: string;
+  /** nach einem günstigeren Angebot gesucht, keins gefunden */
+  noBetter?: boolean;
 }
 export interface TripWatch { at: string; items: Record<string, WatchHit> }
 

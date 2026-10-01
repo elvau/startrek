@@ -661,7 +661,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 
 /* ---------- Reisebeobachtung ---------- */
 .pill-btn:disabled{opacity:.75;cursor:default;transform:none}
-.watch-btn.good{color:var(--good);border-color:var(--good)}
 .spin{display:inline-block;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .wb{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 22px 12px;border-top:1px dashed var(--line);font-size:13px}
@@ -670,16 +669,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .wb-down{color:var(--good);background:var(--good-soft)}
 .wb-err{color:var(--warn);background:var(--warn-soft)}
 .wb-what{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
-.watch{margin-top:28px;padding:22px 24px;cursor:default}
-.watch-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.watch-head h3{margin:0 0 4px}
-.watch-head p{margin:0;max-width:520px}
-.watch-sum{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 28px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
-.watch-pot small,.watch-rise small{display:block;font-size:12px;color:var(--ink-2)}
-.watch-pot b,.watch-rise b{font:800 24px "Bricolage Grotesque Variable",sans-serif}
-.watch-pot.good b{color:var(--good)}
-.watch-rise b{color:#C62828}
-.watch-at{margin:0 0 0 auto}
 @media (max-width:640px){.watch-run{width:100%}.watch-at{margin:0}}
 
 /* Posten nach dem Übernehmen kurz hervorheben */
@@ -848,3 +837,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .cmp-p b{font-size:18px}
 .cmp-a{display:flex;gap:6px;align-items:center}
 .cmp-a .cmp-x{margin-inline-start:auto}
+.tk-watch{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px 0 2px;border-top:1px dashed var(--line);margin-top:6px}
+.tk-watch .watch-res{color:var(--ink-2);font-size:12px}
+.wb-cheaper{margin-inline-start:auto;font-size:12.5px}

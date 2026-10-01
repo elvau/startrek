@@ -24,7 +24,6 @@
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
   import AppFooter from "./lib/ui/AppFooter.svelte";
-  import WatchPanel from "./lib/ui/WatchPanel.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
   import UsagePanel from "./lib/ui/UsagePanel.svelte";
@@ -137,7 +136,6 @@
     <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.total)} sub={tn("n.families", households)}>
       <Split />
     </Chapter>
-    <WatchPanel />
   </main>
   <TicketAside />
 </div>

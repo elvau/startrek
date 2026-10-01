@@ -78,44 +78,40 @@ try {
   log("Startseite: geplant, gebucht (Rundreise Kroatien, Montenegro), Archiv zugeklappt; Karte mit Ziel, Nächten, Events, Verpflegung, Kosten");
   if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/w-home.png`, fullPage: true });
 
-  // Reise öffnen, Preise prüfen
+  // Reise öffnen, Preise prüfen (an der Gesamtkalkulation): dieselben Angebote zum heutigen Preis
   await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
-  await p.locator(".hero .watch-btn").click();
-  await until(() => p.locator(".watch-pot b").count().then(n => n > 0), "Ergebnis der Beobachtung");
+  await p.locator(".aside .watch-run").click();
+  await p.locator(".aside .watch-res").waitFor();
   const fq = asked.flights[0], sq = asked.stays[0];
   if (fq.from !== "DUS" || fq.to !== "PMI" || fq.depart !== "2027-05-07" || fq.ret !== "2027-05-10" || fq.adults !== 2) fail("Flug-Anfrage: " + JSON.stringify(fq));
   if (sq.place !== "Palma" || sq.checkin !== "2027-05-07" || sq.checkout !== "2027-05-10" || sq.adults !== 2) fail("Unterkunft-Anfrage: " + JSON.stringify(sq));
   if (asked.flights.length + asked.stays.length !== 2) fail("zu viele Suchen");
   const fl = await p.locator('[data-item="fl"] .wb').innerText();
   if (!fl.includes("▲") || !fl.includes("50")) fail("Flug ohne roten Pfeil +50: " + fl);
-  const st = await p.locator('[data-item="st"] .wb').innerText();
-  if (!st.includes("▼") || !st.includes("120") || !st.includes("Hostal Sol")) fail("Unterkunft ohne grünen Pfeil −120: " + st);
-  const pot = await p.locator(".watch-pot b").innerText();
-  if (!pot.includes("120")) fail("Potenzial: " + pot);
-  if (!(await p.locator(".watch-rise b").innerText()).includes("50")) fail("Teurer geworden fehlt");
-  if (!(await p.locator(".hero .watch-btn").innerText()).includes("120")) fail("Knopf zeigt Ersparnis nicht");
-  log("Preise geprüft: genau dieselbe Suche; Flug ▲ 50 €, Unterkunft ▼ 120 € (Hostal Sol), Potenzial 120 €");
+  if (!(await p.locator('[data-item="fl"]').innerText()).includes("470")) fail("neuer Flugpreis nicht übernommen: " + await p.locator('[data-item="fl"]').innerText());
+  if (await p.locator('[data-item="st"] .wb-up, [data-item="st"] .wb-down').count()) fail("Unterkunft gleich teuer, trotzdem Pfeil");
+  if (await p.locator('[data-item="st"] .wb-best').count()) fail("Preise prüfen schlägt fremde Angebote vor");
+  const res = await p.locator(".aside .watch-res").innerText();
+  if (!res.includes("1 Preis geändert") || !res.includes("+50")) fail("Ergebnis an der Gesamtkalkulation: " + res);
+  log("Preise geprüft an der Gesamtkalkulation: genau dieselbe Suche, Flug auf 450 € aktualisiert (mit Anfahrt 470 €) (▲ 50 €), Unterkunft unverändert");
   if (process.env.SHOTS) {
-    await p.locator('[data-item="st"]').scrollIntoViewIfNeeded(); await p.waitForTimeout(500);
-    await p.screenshot({ path: `${process.env.SHOTS}/w-item.png` });
-    await p.locator(".watch").scrollIntoViewIfNeeded(); await p.waitForTimeout(500);
-    await p.screenshot({ path: `${process.env.SHOTS}/w-panel.png` });
-    await p.setViewportSize({ width: 390, height: 844 });
+    await p.screenshot({ path: `${process.env.SHOTS}/w-aside.png` });
     await p.locator('[data-item="fl"]').scrollIntoViewIfNeeded(); await p.waitForTimeout(500);
-    await p.screenshot({ path: `${process.env.SHOTS}/w-item-m.png` });
-    await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(500);
-    await p.screenshot({ path: `${process.env.SHOTS}/w-hero-m.png` });
-    await p.setViewportSize({ width: 1280, height: 900 });
+    await p.screenshot({ path: `${process.env.SHOTS}/w-item.png` });
   }
 
-  // günstigere Unterkunft übernehmen: gewählt, Pfeil weg, Potenzial 0
+  // je Posten: günstigere Unterkunft suchen und übernehmen
+  await p.locator('[data-item="st"] .wb-cheaper').click();
+  await p.locator('[data-item="st"] .wb-best').waitFor();
+  const st = await p.locator('[data-item="st"] .wb').innerText();
+  if (!st.includes("120") || !st.includes("Hostal Sol")) fail("Günstigeres für die Unterkunft: " + st);
+  if (asked.stays.length !== 2 || asked.flights.length !== 1) fail("Günstigeres sucht nur diesen Posten");
   await p.locator('[data-item="st"] .wb-take').click();
-  await until(() => p.locator('[data-item="st"] .wb').count().then(n => n === 0), "Pfeil an der Unterkunft weg");
+  await until(() => p.locator('[data-item="st"] .wb-best').count().then(n => n === 0), "Vorschlag an der Unterkunft weg");
   if (!(await p.locator('[data-item="st"]').innerText()).includes("Hostal Sol")) fail("Hostal Sol nicht gewählt");
-  await until(async () => (await p.locator(".watch-pot b").innerText()).includes("Nichts Günstigeres"), "Potenzial aufgebraucht");
-  log("Günstigere Unterkunft übernommen: gewählt, Pfeil weg, kein Potenzial mehr");
+  log("Günstigeres je Posten: Hostal Sol 120 € günstiger, übernommen und gewählt");
 
-  // zurück: Karte zeigt kein Potenzial mehr, Ergebnis bleibt nach dem Neuladen
+  // Ergebnis bleibt nach dem Neuladen
   await p.reload();
   await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
   await p.locator('[data-item="fl"] .wb-up').waitFor();
