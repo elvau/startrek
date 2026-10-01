@@ -51,7 +51,7 @@ const PROVIDERS: Record<string, { name: string; limit?: number; per?: Per }> = {
   "api.viator.com": { name: "Viator" }
 };
 
-export const ROUTES = ["flights", "stays", "events", "activities", "agent", "bug", "blocked"] as const;
+export const ROUTES = ["flights", "stays", "events", "activities", "agent", "mcp", "mcpkey", "bug", "blocked"] as const;
 
 export function level(share: number | null): Level {
   if (share == null) return "ok";

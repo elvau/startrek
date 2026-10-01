@@ -27,6 +27,8 @@
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
   import UsagePanel from "./lib/ui/UsagePanel.svelte";
+  import ConnectDialog from "./lib/ui/ConnectDialog.svelte";
+  import { connect } from "./lib/connector/app.svelte";
   import { admin } from "./lib/admin/app.svelte";
   import { FLIGHTS_URL } from "./lib/flights/app";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
@@ -142,6 +144,7 @@
 {#if cloud.configured}<AgentChat />{/if}
 {#if cloud.configured && FLIGHTS_URL}<BugButton />{/if}
 {#if admin.open && admin.is && cloud.user}<UsagePanel />{/if}
+{#if connect.open && cloud.user}<ConnectDialog />{/if}
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
 {#if flightSearch.open}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/if}
 {#if eventPlanner.open}<EventPlanner onclose={() => (eventPlanner.open = false)} />{/if}

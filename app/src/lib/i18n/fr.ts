@@ -1,5 +1,5 @@
 /* Französisch (maschinell übersetzt, gern von Muttersprachlern prüfen lassen) */
-import type { Dict } from "./index.svelte";
+import type { Dict } from "./types";
 
 export const fr: Dict = {
   "acc.car": "Voiture 2 × {km} km{cars} + {days} de parking",
@@ -45,6 +45,8 @@ export const fr: Dict = {
   "adm.r.bug": "Rapports de bugs",
   "adm.r.events": "Recherche d’événements",
   "adm.r.flights": "Recherche de vols",
+  "adm.r.mcp": "Connecteur IA (MCP)",
+  "adm.r.mcpkey": "Clés du connecteur créées",
   "adm.r.stays": "Recherche d’hébergement",
   "adm.r2a": "R2 écritures (classe A)",
   "adm.r2b": "R2 lectures (classe B)",
@@ -609,6 +611,25 @@ export const fr: Dict = {
   "lp.cityAll": "{name}, tous les aéroports",
   "lp.placeholder": "Ville, aéroport ou code",
   "lp.show": "Afficher les suggestions",
+  "mcp.app": "Pour les apps de chat comme Claude ou ChatGPT, la connexion directe avec ton compte Split&Fly arrive ensuite.",
+  "mcp.code": "Exemple Claude Code (à exécuter dans le terminal) :",
+  "mcp.copied": "Copié",
+  "mcp.copy": "Copier",
+  "mcp.copyCmd": "Copier la commande",
+  "mcp.create": "Créer une clé",
+  "mcp.intro": "Avec une clé personnelle, ton propre assistant IA peut chercher des vols, hébergements, événements et visites via Split&Fly, et créer et compléter des voyages dans ton compte. Cela fonctionne avec tout programme qui prend en charge les serveurs MCP. La réservation se fait chez le prestataire, comme dans l’app.",
+  "mcp.key": "Ta clé",
+  "mcp.making": "Création …",
+  "mcp.noTrips": "Les voyages du compte ne sont pas encore activés ; pour l’instant ton assistant IA peut seulement chercher.",
+  "mcp.notReady": "Le connecteur IA n’est pas encore configuré.",
+  "mcp.once": "La clé n’est affichée que maintenant. Elle donne accès à tes voyages : ne la partage pas.",
+  "mcp.open": "Connecter un assistant IA",
+  "mcp.other": "Autres programmes (p. ex. Cursor, VS Code, Gemini CLI) : ajoute un serveur MCP de type HTTP avec cette adresse et l’en-tête « Authorization: Bearer <clé> ».",
+  "mcp.revoke": "Clé perdue ou partagée ? Contacte-nous avec l’identifiant {kid} et nous la bloquerons.",
+  "mcp.title": "Connecter un assistant IA (MCP, bêta)",
+  "mcp.tooMany": "Assez de clés ont été créées aujourd’hui. Réessaie demain.",
+  "mcp.url": "Adresse (MCP via HTTP)",
+  "mcp.warn": "La clé donne accès aux voyages de ton compte (sans données de réservation). Ne la partage pas.",
   "mode.detail": "Détaillé",
   "mode.input": "Saisie",
   "mode.simple": "Simple",

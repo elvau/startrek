@@ -1,5 +1,5 @@
 /* Englisch (maschinell übersetzt, gern von Muttersprachlern prüfen lassen) */
-import type { Dict } from "./index.svelte";
+import type { Dict } from "./types";
 
 export const en: Dict = {
   "acc.car": "Car 2 × {km} km{cars} + {days} parking",
@@ -45,6 +45,8 @@ export const en: Dict = {
   "adm.r.bug": "Bug reports",
   "adm.r.events": "Event search",
   "adm.r.flights": "Flight search",
+  "adm.r.mcp": "AI connector (MCP)",
+  "adm.r.mcpkey": "Connector keys created",
   "adm.r.stays": "Accommodation search",
   "adm.r2a": "R2 writes (class A)",
   "adm.r2b": "R2 reads (class B)",
@@ -609,6 +611,25 @@ export const en: Dict = {
   "lp.cityAll": "{name}, all airports",
   "lp.placeholder": "City, airport or code",
   "lp.show": "Show suggestions",
+  "mcp.app": "For chat apps like Claude or ChatGPT, signing in directly with your Split&Fly account comes next.",
+  "mcp.code": "Example Claude Code (run in the terminal):",
+  "mcp.copied": "Copied",
+  "mcp.copy": "Copy",
+  "mcp.copyCmd": "Copy command",
+  "mcp.create": "Create key",
+  "mcp.intro": "With a personal key, your own AI assistant can search flights, accommodation, events and tours through Split&Fly and create and extend trips in your account. It works with any program that supports MCP servers. Booking happens with the provider, as in the app.",
+  "mcp.key": "Your key",
+  "mcp.making": "Creating …",
+  "mcp.noTrips": "Trips in your account are not enabled yet; for now your AI assistant can only search.",
+  "mcp.notReady": "The AI connector is not set up yet.",
+  "mcp.once": "The key is shown only now. It gives access to your trips: don't share it.",
+  "mcp.open": "Connect AI assistant",
+  "mcp.other": "Other programs (e.g. Cursor, VS Code, Gemini CLI): add an HTTP MCP server with this address and the header “Authorization: Bearer <key>”.",
+  "mcp.revoke": "Key lost or shared? Contact us with the id {kid} and we'll block it.",
+  "mcp.title": "Connect AI assistant (MCP, beta)",
+  "mcp.tooMany": "Enough keys have been created today. Try again tomorrow.",
+  "mcp.url": "Address (MCP over HTTP)",
+  "mcp.warn": "The key gives access to your trips in your account (without booking data). Don't share it.",
   "mode.detail": "Detailed",
   "mode.input": "Input",
   "mode.simple": "Simple",

@@ -2,7 +2,7 @@
 
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
 Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer mit Gemini, Fehlermeldungen), Daten und
-Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, SPRACHEN, BUGS, NUTZUNG, OFFEN = Merkliste).
+Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, SPRACHEN, BUGS, NUTZUNG, OFFEN = Merkliste).
 
 ## Umgebungen und Ablauf
 - Testumgebung https://elvau.github.io/startrek/: jeder Push auf einen Branch außer `main` (zuletzt gepushter gewinnt).

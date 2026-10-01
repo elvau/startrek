@@ -1,5 +1,5 @@
 /* Polnisch (maschinell übersetzt, gern von Muttersprachlern prüfen lassen) */
-import type { Dict } from "./index.svelte";
+import type { Dict } from "./types";
 
 export const pl: Dict = {
   "acc.car": "Samochód 2 × {km} km{cars} + parking: {days}",
@@ -47,6 +47,8 @@ export const pl: Dict = {
   "adm.r.bug": "Zgłoszenia błędów",
   "adm.r.events": "Wyszukiwanie wydarzeń",
   "adm.r.flights": "Wyszukiwanie lotów",
+  "adm.r.mcp": "Konektor AI (MCP)",
+  "adm.r.mcpkey": "Utworzone klucze konektora",
   "adm.r.stays": "Wyszukiwanie noclegów",
   "adm.r2a": "R2 zapisy (klasa A)",
   "adm.r2b": "R2 odczyty (klasa B)",
@@ -625,6 +627,25 @@ export const pl: Dict = {
   "lp.cityAll": "{name}, wszystkie lotniska",
   "lp.placeholder": "Miasto, lotnisko lub kod",
   "lp.show": "Pokaż propozycje",
+  "mcp.app": "Dla aplikacji czatu, takich jak Claude czy ChatGPT, następne będzie logowanie bezpośrednio kontem Split&Fly.",
+  "mcp.code": "Przykład Claude Code (uruchom w terminalu):",
+  "mcp.copied": "Skopiowano",
+  "mcp.copy": "Kopiuj",
+  "mcp.copyCmd": "Kopiuj polecenie",
+  "mcp.create": "Utwórz klucz",
+  "mcp.intro": "Dzięki osobistemu kluczowi twój własny asystent AI może przez Split&Fly szukać lotów, noclegów, wydarzeń i wycieczek oraz tworzyć i uzupełniać podróże na twoim koncie. Działa to z każdym programem obsługującym serwery MCP. Rezerwacja odbywa się u dostawcy, jak w aplikacji.",
+  "mcp.key": "Twój klucz",
+  "mcp.making": "Tworzenie …",
+  "mcp.noTrips": "Podróże na koncie nie są jeszcze włączone; na razie twój asystent AI może tylko szukać.",
+  "mcp.notReady": "Konektor AI nie jest jeszcze skonfigurowany.",
+  "mcp.once": "Klucz jest pokazywany tylko teraz. Daje dostęp do twoich podróży: nie udostępniaj go.",
+  "mcp.open": "Połącz asystenta AI",
+  "mcp.other": "Inne programy (np. Cursor, VS Code, Gemini CLI): dodaj serwer MCP typu HTTP z tym adresem i nagłówkiem „Authorization: Bearer <klucz>”.",
+  "mcp.revoke": "Klucz zgubiony lub udostępniony? Napisz do nas z identyfikatorem {kid}, a zablokujemy go.",
+  "mcp.title": "Połącz asystenta AI (MCP, beta)",
+  "mcp.tooMany": "Dziś utworzono już wystarczająco kluczy. Spróbuj jutro.",
+  "mcp.url": "Adres (MCP przez HTTP)",
+  "mcp.warn": "Klucz daje dostęp do podróży na twoim koncie (bez danych do rezerwacji). Nie udostępniaj go.",
   "mode.detail": "Szczegółowo",
   "mode.input": "Wprowadzanie",
   "mode.simple": "Prosto",

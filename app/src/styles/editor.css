@@ -778,3 +778,9 @@ body[data-ch="split"] .amb-split{opacity:1}
 .ai-edit{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .ai-edit small{flex-basis:100%}
 .ai-trip{font-size:12px;padding:6px 16px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Mit Claude verbinden */
+.mcp{display:flex;flex-direction:column;gap:10px;max-width:560px}
+.mcp-row{display:flex;gap:6px}
+.mcp-key,.mcp-url{flex:1;min-width:0;font:12px ui-monospace,monospace}
+.mcp-cmd{white-space:pre-wrap;word-break:break-all;font:12px/1.5 ui-monospace,monospace;background:var(--line);border-radius:10px;padding:10px 12px;margin:0}

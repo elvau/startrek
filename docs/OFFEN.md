@@ -27,7 +27,15 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
       Mückenschutz, erloschen) ist unkritisch. Vor der Anmeldung noch ähnliche Namen prüfen (Splitfly, Split Fly, Fly&Split,
       Splyt) und Handelsregister. Später evtl. EU-Marke (EUIPO) und Bildmarke fürs Logo.
 
+- [ ] **KI-Konnektor (MCP) einschalten** (docs/KONNEKTOR.md): in Cloudflare zwei Secrets anlegen: `MCP_KEY_SECRET`
+      (lange Zufallszeichenkette) und `FIREBASE_SERVICE_ACCOUNT` (Firebase-Konsole → Projekteinstellungen → Dienstkonten →
+      neuen privaten Schlüssel generieren, JSON-Inhalt als Wert, Datei danach löschen). Wirkt nach dem nächsten Release.
+
 ## Für Claude
 
 - [ ] Nach Teil 2 oben: `VITE_FIREBASE_AUTH_DOMAIN=splitandfly.com` nur im Release-Build (release.yml), Testumgebung bleibt.
 - [x] Mengenbegrenzung pro IP für die Suchen (60 pro Minute, 600 pro Stunde; v0.9.1).
+- [ ] Vergleichen von Reisen und/oder Posten (nächstes großes Feature; KI-Vergleichsreise aus v0.10.0 ist der Einstieg).
+- [x] KI-Konnektor (MCP) Schritt 1 und 2: Suchen und Reisen im Konto mit persönlichem Schlüssel (docs/KONNEKTOR.md).
+- [ ] KI-Konnektor Schritt 3: OAuth über die Firebase-Anmeldung für Chat-Apps (Claude, ChatGPT). Vor dem offenen Anbieten
+  Partnerbedingungen prüfen (Weitergabe der Suchergebnisse, Affiliate-Links).

@@ -1,5 +1,5 @@
 /* Spanisch (maschinell übersetzt, gern von Muttersprachlern prüfen lassen) */
-import type { Dict } from "./index.svelte";
+import type { Dict } from "./types";
 
 export const es: Dict = {
   "acc.car": "Coche 2 × {km} km{cars} + {days} de aparcamiento",
@@ -45,6 +45,8 @@ export const es: Dict = {
   "adm.r.bug": "Informes de errores",
   "adm.r.events": "Búsqueda de eventos",
   "adm.r.flights": "Búsqueda de vuelos",
+  "adm.r.mcp": "Conector de IA (MCP)",
+  "adm.r.mcpkey": "Claves del conector creadas",
   "adm.r.stays": "Búsqueda de alojamiento",
   "adm.r2a": "R2 escrituras (clase A)",
   "adm.r2b": "R2 lecturas (clase B)",
@@ -609,6 +611,25 @@ export const es: Dict = {
   "lp.cityAll": "{name}, todos los aeropuertos",
   "lp.placeholder": "Ciudad, aeropuerto o código",
   "lp.show": "Mostrar sugerencias",
+  "mcp.app": "Para apps de chat como Claude o ChatGPT, lo siguiente será iniciar sesión directamente con tu cuenta de Split&Fly.",
+  "mcp.code": "Ejemplo Claude Code (ejecutar en el terminal):",
+  "mcp.copied": "Copiado",
+  "mcp.copy": "Copiar",
+  "mcp.copyCmd": "Copiar comando",
+  "mcp.create": "Crear clave",
+  "mcp.intro": "Con una clave personal, tu propio asistente de IA puede buscar vuelos, alojamientos, eventos y tours a través de Split&Fly y crear y completar viajes en tu cuenta. Funciona con cualquier programa que admita servidores MCP. La reserva se hace con el proveedor, como en la app.",
+  "mcp.key": "Tu clave",
+  "mcp.making": "Creando …",
+  "mcp.noTrips": "Los viajes de tu cuenta aún no están habilitados; por ahora tu asistente de IA solo puede buscar.",
+  "mcp.notReady": "El conector de IA aún no está configurado.",
+  "mcp.once": "La clave solo se muestra ahora. Da acceso a tus viajes: no la compartas.",
+  "mcp.open": "Conectar asistente de IA",
+  "mcp.other": "Otros programas (p. ej. Cursor, VS Code, Gemini CLI): añade un servidor MCP de tipo HTTP con esta dirección y la cabecera «Authorization: Bearer <clave>».",
+  "mcp.revoke": "¿Clave perdida o compartida? Escríbenos con el identificador {kid} y la bloquearemos.",
+  "mcp.title": "Conectar asistente de IA (MCP, beta)",
+  "mcp.tooMany": "Hoy ya se han creado suficientes claves. Vuelve a intentarlo mañana.",
+  "mcp.url": "Dirección (MCP por HTTP)",
+  "mcp.warn": "La clave da acceso a los viajes de tu cuenta (sin datos de reserva). No la compartas.",
   "mode.detail": "Detallado",
   "mode.input": "Entrada",
   "mode.simple": "Sencillo",
