@@ -3,6 +3,10 @@ import type { SourceStatus } from "../flights/types";
 
 export type StayType = "whole" | "hotel" | "all";
 
+/** Ausstattung, nach der gefiltert wird (an die Anbieter weitergegeben) */
+export const STAY_MUSTS = ["pool", "breakfast", "kitchen", "aircon", "parking", "freeCancel"] as const;
+export type StayMust = (typeof STAY_MUSTS)[number];
+
 export interface StayQuery {
   /** Ort, z. B. „Split“ */
   place: string;
@@ -19,6 +23,12 @@ export interface StayQuery {
   type: StayType;
   /** nur diese Quellen fragen; fehlt: alle */
   sources?: string[];
+  /** muss vorhanden sein (z. B. Pool, Frühstück inklusive) */
+  must?: StayMust[];
+  /** mindestens so viele Sterne (1–5) */
+  minStars?: number;
+  /** mindestens diese Gästebewertung (0–10, z. B. 8) */
+  minScore?: number;
   currency?: string;
 }
 

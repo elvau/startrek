@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Item } from "../model";
-  import { access, app } from "../store.svelte";
+  import { access, app, calc } from "../store.svelte";
   import FlightCard from "./FlightCard.svelte";
   import StayCard from "./StayCard.svelte";
   import ItemRow from "./ItemRow.svelte";
@@ -14,6 +14,8 @@
   const editing = $derived(app.editing === item.id);
   const hasLegs = $derived(!!item.follow || item.options.some(o => o.legs?.length));
   const isStay = $derived(item.cat === "stay");
+  // Link zum Anbieter des gewählten Angebots (aus der Suche übernommen), bleibt auf der Karte
+  const src = $derived(calc.T.items[item.id]?.option?.source);
 
   function toggle(e: MouseEvent) {
     if (access.readonly) return;
@@ -33,6 +35,9 @@
     <StayCard {item} />
   {:else}
     <ItemRow {item} {icon} />
+  {/if}
+  {#if src?.url}
+    <p class="src-link"><a href={src.url} target="_blank" rel={src.sponsored ? "noopener noreferrer sponsored" : "noopener noreferrer"} title={src.sponsored ? t("fs.partnerNote") : undefined}>{t("search.atProvider")}{src.name ? ` · ${src.name}` : ""} ↗</a>{#if src.sponsored} <small>{t("fs.partner")}*</small>{/if}</p>
   {/if}
   <WatchBadge {item} />
   {#if item.ai}<div class="aif"><AiMark /> {t(`ai.mark.${item.ai.kind}` as Key)}</div>{/if}

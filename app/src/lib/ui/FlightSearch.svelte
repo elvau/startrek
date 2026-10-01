@@ -139,7 +139,9 @@
   // für beide
   // Vorlieben (Konto und Gruppe) belegen vor; gesperrte Länder filtern
   let maxStops = $state(Number(prefs.maxStops ?? saved.maxStops ?? 1));
-  let bags = $state(prefs.bags ?? saved.bags !== false);
+  // Koffer insgesamt (aufgegeben), je Reise gemerkt; sonst je Person einer, außer „nur Handgepäck“
+  const bagMemo: Record<string, number> = saved.bagCounts && typeof saved.bagCounts === "object" ? (saved.bagCounts as Record<string, number>) : {};
+  let bagCount = $state<number | null>(typeof bagMemo[trip.id] === "number" ? bagMemo[trip.id] : null);
   const avoid = prefs.avoid || [];
   const ccOfAp = (c: string) => locOf(airportData, c, "airport")?.cc;
   let avoidedOut = $state(0);
@@ -147,6 +149,9 @@
   let withAccess = $state(saved.withAccess !== false);
 
   const pax = $derived(passengers(trip, who));
+  // Plätze mit Koffer (Babys auf dem Schoß ohne); ohne eigene Wahl: je Platz einer, bei „nur Handgepäck“ keiner
+  const seats = $derived(pax.adults + pax.children);
+  const bags = $derived(Math.min(bagCount ?? ((prefs.bags ?? saved.bags !== false) ? seats : 0), 2 * seats));
   const n = $derived(pax.adults + pax.children + pax.infants);
   const people = $derived([`${pax.adults} ${t("age.adultShort")}`, pax.children && tn("n.kids", pax.children), pax.infants && tn("n.babies", pax.infants)].filter(Boolean).join(" · "));
 
@@ -203,11 +208,11 @@
     // Auswahl = Name + Liste von Codes; bei einer Stadt zusätzlich ihr Stadt-Code
     const toQ = dest ? { to: dest.code, toAirports: dest.airports, ...(dest.kind === "city" ? { toCityCode: dest.code } : {}) } : { to: to.trim().toUpperCase() };
     const fromQ = (code: string) => { const l = originLoc(code); return l ? { from: l.code, fromAirports: l.airports, ...(l.kind === "city" ? { fromCityCode: l.code } : {}) } : { from: code }; };
-    try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], apCities: custom ? apCities.filter(c => aps.includes(c)) : [], mode, kind, rToTime, flexDays, maxStops, bags, noSelf, withAccess })); } catch {}
+    try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], apCities: custom ? apCities.filter(c => aps.includes(c)) : [], mode, kind, rToTime, flexDays, maxStops, bags: bags > 0, bagCounts: { ...bagMemo, ...(bagCount != null ? { [trip.id]: bagCount } : {}) }, noSelf, withAccess })); } catch {}
 
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
-    const common = { ...toQ, ...pax, maxStops, bags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
+    const common = { ...toQ, ...pax, maxStops, bags: bags > 0, bagCount: bags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
     const q: Omit<FlightQuery, "from"> = kind === "oneway"
       ? mode === "flex" ? { ...common, depart: rFrom, departTo: wTo } : { ...common, depart: out, flexDays }
       : mode === "flex" ? { ...common, depart: rFrom, latest: rTo, nightsMin: lo, nightsMax: hi } : { ...common, depart: out, ret: ret || undefined, flexDays };
@@ -260,12 +265,12 @@
     const fromAps = [...new Set(aps.flatMap(c => originLoc(c)?.airports ?? [c]))];
     const one = aps.length === 1 ? originLoc(aps[0]) : null;
     const from: RoundPlace = { name: aps.join("/"), code: fromAps[0], airports: fromAps, ...(one?.kind === "city" ? { cityCode: one.code } : {}) };
-    try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], apCities: custom ? apCities.filter(c => aps.includes(c)) : [], mode, kind, rToTime, flexDays, maxStops, bags, noSelf, withAccess })); } catch {}
+    try { localStorage.setItem(K, JSON.stringify({ aps: custom ? aps : [], apCities: custom ? apCities.filter(c => aps.includes(c)) : [], mode, kind, rToTime, flexDays, maxStops, bags: bags > 0, bagCounts: { ...bagMemo, ...(bagCount != null ? { [trip.id]: bagCount } : {}) }, noSelf, withAccess })); } catch {}
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
     const signal = ctrl.signal;
     try {
-      const plan = { from, stops, home, depart: rFrom, departTo: wTo, ...pax, maxStops, bags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
+      const plan = { from, stops, home, depart: rFrom, departTo: wTo, ...pax, maxStops, bags: bags > 0, bagCount: bags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
       const run = (p: typeof plan, what: string) => searchRound(p, q => searchFlights(q, signal), (k, of) => (progress = `${what}${t("fs.leg", { k, n: of })}`));
       // getrennte Flüge; kurze Stationen (unter 48 h) zusätzlich als Gabelflug mit langem Umstieg auf einem Ticket
       const res = [await run(plan, "")];
@@ -450,7 +455,9 @@
 
     <div class="ed-row fs-opts">
       <label class="f fs-sel">{t("fs.maxStops")}<select bind:value={maxStops}>{#each [0, 1, 2] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
-      <label class="in-row"><input type="checkbox" bind:checked={bags} /> {t("fs.bag")}</label>
+      <label class="f fs-sel">{t("fs.bags")}<select value={bags} onchange={e => (bagCount = Number(e.currentTarget.value))}>
+        {#each Array.from({ length: 2 * seats + 1 }, (_, i) => i) as v (v)}<option value={v}>{v === 0 ? t("fs.bagsNone") : v}</option>{/each}
+      </select></label>
       <label class="in-row"><input type="checkbox" bind:checked={noSelf} /> {t("fs.noSelf")}</label>
       <label class="in-row"><input type="checkbox" bind:checked={withAccess} /> {t("fs.withAccess")}</label>
     </div>

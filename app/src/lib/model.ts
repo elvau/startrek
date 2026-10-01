@@ -165,7 +165,8 @@ export interface Option {
   /** Richtwert statt echtem Angebot */
   estimate?: boolean;
   /** Herkunft und Stand des Preises */
-  source?: { name: string; at?: string; url?: string };
+  /** sponsored: Link mit Partnerkennung (in der App als Partner-Link gekennzeichnet) */
+  source?: { name: string; at?: string; url?: string; sponsored?: boolean };
   legs?: FlightLeg[];
   stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string };
   /** Unterkunft aus der Suche: Anfrage, mit der sie gefunden wurde (für die Reisebeobachtung) */

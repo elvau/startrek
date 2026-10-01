@@ -1,6 +1,6 @@
 /*
  * Fehlermeldung aus der Beta (Knopf 🐞): gemeinsame Typen und Prüfung für App und Such-Dienst (worker/).
- * Enthält bewusst keine Reisedaten, nur Beschreibung, Umgebung und die letzten Fehler im Browser.
+ * Enthält bewusst keine Reisedaten, nur Beschreibung, Umgebung, die letzten Fehler im Browser und Reisewechsel (Kennungen).
  */
 
 export interface BugReport {
@@ -19,6 +19,8 @@ export interface BugReport {
   errors: string[];
   /** Ansicht: Startseite oder Reise, Modus, Zahl der Personen (keine Namen) */
   view: string;
+  /** letzte Reisewechsel: Uhrzeit, Grund, Kennung der Reise (keine Namen) */
+  nav: string[];
 }
 
 export const BUG_MAX_TEXT = 4000;
@@ -41,7 +43,8 @@ export function parseBugReport(b: unknown): BugReport | string {
     screen: str(o.screen, 30),
     version: str(o.version, 40),
     errors: Array.isArray(o.errors) ? o.errors.slice(-10).map(e => str(e, 500)).filter(Boolean) : [],
-    view: str(o.view, 200)
+    view: str(o.view, 200),
+    nav: Array.isArray(o.nav) ? o.nav.slice(-12).map(e => str(e, 120)).filter(Boolean) : []
   };
 }
 
@@ -62,6 +65,7 @@ export function bugBody(r: BugReport, image?: string, who?: string): string {
     "\n| | |\n|---|---|",
     ...rows.map(([k, v]) => `| ${k} | ${cell(v)} |`),
     who ? `| Gemeldet von | ${cell(who)} |` : "",
-    r.errors.length ? "\n**Letzte Fehler im Browser**\n\n```\n" + r.errors.join("\n").replace(/```/g, "ʼʼʼ") + "\n```" : "\n_Keine Fehler im Browser aufgezeichnet._"
+    r.errors.length ? "\n**Letzte Fehler im Browser**\n\n```\n" + r.errors.join("\n").replace(/```/g, "ʼʼʼ") + "\n```" : "\n_Keine Fehler im Browser aufgezeichnet._",
+    r.nav.length ? "\n**Letzte Reisewechsel**\n\n```\n" + r.nav.join("\n").replace(/```/g, "ʼʼʼ") + "\n```" : ""
   ].filter(Boolean).join("\n");
 }

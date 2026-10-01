@@ -38,7 +38,7 @@ try {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" } });
     const body = JSON.parse(r.request().postData());
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
-    await new Promise(res => setTimeout(res, 300));
+    await new Promise(res => setTimeout(res, body.prompt?.includes("langsam") ? 6500 : 300));
     // Strandurlaub mit Kindern: erst eine Rückfrage, nach der Antwort Vorschläge für die Familie
     // offene Reise: Antwort mit Änderungen (eigene Anreise statt Flug)
     if (body.current) {
@@ -339,6 +339,69 @@ try {
   if (opened !== "Neue Reise") fail("neue Reise gegen Konto-Reise getauscht: " + opened);
   await p.unroute("**/assets/firebase-*.js");
   log("Zu einem Event direkt nach dem Laden: neue Reise bleibt offen, auch wenn das Konto erst danach da ist");
+
+  await p.keyboard.press("Escape");
+  // Vorlieben einer Gruppe, angemeldet und in einem zweiten Fenster offen: langsam tippen und auswählen,
+  // nichts springt zurück (beide Fenster gleichen über das Konto ab und dürfen sich nicht gegenseitig überschreiben)
+  const w2 = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
+  for (const f of ["world.json", "packs.json", "airports.json"]) await w2.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+  await w2.goto(URL);
+  await w2.locator(".top .tm-btn", { hasText: "Anmelden" }).click();
+  await w2.locator(".login .test input").fill("Kira");
+  await w2.locator(".login .test button").click();
+  await w2.locator(".top .acct-btn").waitFor({ timeout: 15000 });
+  await p.locator(".top .grp-btn").click();
+  const gd2 = p.locator(".modal");
+  await gd2.locator("label", { hasText: "Neue Gruppe" }).locator("input").fill("Familie Klein");
+  await gd2.locator("form", { hasText: "Neue Gruppe" }).locator("button").click();
+  await gd2.locator(".modal-h .x").click();
+  await p.locator(".top .prefs-btn").click();
+  const pd2 = p.locator(".modal", { hasText: "Meine Vorlieben" });
+  await pd2.locator(".grp-h", { hasText: "Familie Klein" }).click();
+  const ge = pd2.locator(".grp-b .prefs");
+  const apIn = ge.locator("label", { hasText: "Bevorzugte Abflughäfen" }).locator("input");
+  // Datenbank langsam wie im echten Netz: das Echo des Speicherns kommt, während schon weitergetippt wird
+  const slow = async r => { await new Promise(res => setTimeout(res, 700)); await r.continue().catch(() => {}); };
+  await p.route("**/google.firestore.v1.Firestore/**", slow);
+  await w2.route("**/google.firestore.v1.Firestore/**", slow);
+  for (const ch of "DUS, CGN") { await apIn.press(ch === " " ? "Space" : ch); await p.waitForTimeout(350); }
+  await ge.locator("label", { hasText: "Verpflegung" }).locator("select").selectOption({ label: "Halbpension" });
+  await p.waitForTimeout(4000);
+  await p.unroute("**/google.firestore.v1.Firestore/**", slow);
+  if ((await apIn.inputValue()) !== "DUS, CGN") fail("Eingabe in den Gruppen-Vorlieben zurückgesprungen: " + await apIn.inputValue());
+  if ((await ge.locator("label", { hasText: "Verpflegung" }).locator("select").inputValue()) !== "half") fail("Verpflegung zurückgesprungen");
+  const gp = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs);
+  if (gp?.airports?.join() !== "DUS,CGN" || gp?.board !== "half") fail("Gruppen-Vorlieben nicht gespeichert: " + JSON.stringify(gp));
+  const gp2 = await w2.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs);
+  if (gp2?.board !== "half") fail("zweites Fenster hat die Gruppen-Vorlieben nicht: " + JSON.stringify(gp2));
+  await w2.close();
+  await pd2.locator(".modal-h .x").click();
+  log("Gruppen-Vorlieben angemeldet, zweites Fenster offen: langsam getippt und Halbpension gewählt, nichts springt zurück, gespeichert");
+
+  // dauert es länger: Wartezeit läuft sichtbar mit (statt „bis zu einer Minute“)
+  if (await p.locator(".ai-fab").count()) await p.locator(".ai-fab").click();
+  const cw = p.locator(".ai-chat");
+  await cw.locator(".ai-bar textarea").fill("Bitte langsam: ein Wochenende am Meer");
+  await cw.locator(".ai-bar textarea").press("Enter");
+  await cw.locator(".ai-busy", { hasText: "ein paar Minuten" }).waitFor();
+  await cw.locator(".ai-busy .ai-wait", { hasText: /^0:0[5-9]$/ }).waitFor({ timeout: 8000 });
+  await cw.locator(".ai-busy").waitFor({ state: "detached", timeout: 10000 });
+  log("Längere Antwort: Hinweis „ein paar Minuten“, Wartezeit läuft mit");
+
+  // im Hintergrund: Fenster schließen und weiterarbeiten, der Knopf zeigt den Stand und meldet das Ergebnis
+  await cw.locator(".ai-bar textarea").fill("Bitte langsam: noch ein Wochenende");
+  await cw.locator(".ai-bar textarea").press("Enter");
+  await cw.locator(".ai-busy .ai-cancel").waitFor();
+  await cw.locator(".ai-head .x").click();
+  await p.locator(".ai-fab.working", { hasText: "KI arbeitet" }).waitFor();
+  await p.locator(".top .brand-btn").click().catch(() => {});
+  await p.locator(".start .home-title").waitFor();
+  await p.locator(".ai-note", { hasText: "Die KI ist fertig" }).waitFor({ timeout: 12000 });
+  if (!(await p.locator(".ai-fab.unread").count())) fail("Knopf zeigt das Ergebnis nicht an");
+  await p.locator(".ai-note").click();
+  await p.locator(".ai-chat .ai-card").last().waitFor();
+  if (await p.locator(".ai-note").count()) fail("Meldung bleibt nach dem Öffnen");
+  log("Im Hintergrund: Fenster zu, weitergearbeitet, „Die KI ist fertig“ am Knopf, Klick öffnet das Ergebnis");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");

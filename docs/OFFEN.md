@@ -8,6 +8,11 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
       Viator-Links (bei `PARTNER_LINKS=on`). Fehlt noch: im Partnerkonto unter API den Schlüssel (Production) holen bzw.
       den API-Zugang anfragen und in Cloudflare als Secret `VIATOR_API_KEY` eintragen. Dann zeigt „Touren & Tickets“
       echte Touren (docs/EVENT.md). Danach einmal ausprobieren; hakt es, steht der Grund im Fehlerbericht (🐞).
+- [ ] **Awin (Pauschalreisen vergleichen):** Bei Awin als Publisher anmelden (Webseite splitandfly.com), bei Pauschalanbietern
+      bewerben (TUI, ab-in-den-urlaub, l'tur, DERTOUR, weg.de, alltours …). Nach Freischaltung unter Toolbox → Create-a-Feed
+      prüfen, wer einen Produktfeed anbietet, Anbieter mit Feed-ID an Claude geben; den Feed-Schlüssel in Cloudflare als Secret
+      `AWIN_FEED_KEY` eintragen. Dann lädt der Such-Dienst die Feeds und die App vergleicht Pauschalpreise mit der selbst
+      gebauten Reise (gleiches Hotel, gleiche Verpflegung). Datenschutz/Impressum: Awin als Partnernetzwerk ergänzen.
 - [ ] **Google-Anmeldung aufhübschen, Teil 1:** Google Cloud Console → Google Auth Platform → Branding: Name „Split&Fly“,
       Support-E-Mail danielklein@splitandfly.com (vorher das Konto im Projekt als Inhaber eintragen), Logo
       `https://splitandfly.com/brand/logo-120.png`, Startseite, Datenschutz, autorisierte Domain splitandfly.com.

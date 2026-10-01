@@ -3,6 +3,7 @@ import trivago from "./trivago.fixture.json";
 import booking from "./booking.fixture.json";
 import { boardOf, bookingArgs, fromBooking, fromTrivago, priceNum, searchTrivago, trivagoArgs } from "./providers";
 import { mergeStays, parseStayQuery, searchStays } from "./search";
+import { centerKm, keepStays, sortStays } from "./sort";
 import { defaultStayQuery, guests, stayToOption, takeStay } from "./app";
 import type { StayOffer, StayQuery } from "./types";
 import type { Item, Trip } from "../model";
@@ -168,3 +169,49 @@ describe("Bild der Unterkunft", () => {
   });
 });
 
+
+describe("Unterkunftssuche: Filter und Sortierung", () => {
+  const f: StayQuery = { ...q, must: ["pool", "breakfast", "freeCancel", "kitchen"], minStars: 4, minScore: 8.2 };
+  it("gibt Ausstattung, Sterne und Bewertung an Trivago weiter", () => {
+    const a = trivagoArgs(f) as Record<string, unknown>;
+    expect(a.filters).toEqual({ pool: true, breakfastIncluded: true, freeCancellation: true, kitchen: true });
+    expect(a.hotel_rating).toEqual({ "4star": true, "5star": true });
+    expect(a.review_rating).toEqual({ rating80: true });
+    expect(trivagoArgs(q)).not.toHaveProperty("filters");
+  });
+  it("gibt sie an Booking.com weiter (Küche als Art der Unterkunft)", () => {
+    const a = bookingArgs(f) as Record<string, unknown>;
+    expect(a.facilities).toEqual(["SWIMMING_POOL"]);
+    expect(a.meal_plan).toBe("breakfast_included");
+    expect(a.cancellation_type).toBe("free_cancellation");
+    expect(a.star_rating).toEqual([4, 5]);
+    expect(a.minimum_review_score).toBe(8);
+    expect(a.accommodation_types).toEqual(["HOLIDAY_HOME", "APARTMENT", "VILLA"]);
+  });
+  it("prüft die Filter in der Anfrage", () => {
+    const base = { ...q };
+    expect(parseStayQuery({ ...base, must: ["pool"], minStars: 3, minScore: 8 })).toMatchObject({ must: ["pool"], minStars: 3, minScore: 8 });
+    expect(parseStayQuery({ ...base, must: ["sauna"] })).toBe("Unbekannte Ausstattung");
+    expect(parseStayQuery({ ...base, minStars: 6 })).toBe("Sterne: 1 bis 5");
+    expect(parseStayQuery({ ...base, minScore: 11 })).toBe("Bewertung: 0 bis 10");
+  });
+  const o = (id: string, total: number, x: Partial<StayOffer> = {}): StayOffer => ({ id, source: "t", sourceName: "T", name: id, total, currency: "EUR", ...x });
+  it("filtert nach: zu wenig Sterne oder zu schwache Bewertung fliegt raus, ohne Bewertung bleibt", () => {
+    const l = [o("a", 100, { stars: 3, score: 9 }), o("b", 200, { stars: 4, score: 7 }), o("c", 300, { stars: 5 }), o("d", 50, { score: 9 })];
+    expect(keepStays(l, { minStars: 4, minScore: 8 }).map(x => x.id)).toEqual(["c"]);
+    expect(keepStays(l, { minScore: 8 }).map(x => x.id)).toEqual(["a", "c", "d"]);
+  });
+  it("sortiert nach Preis, Bewertung, Nähe Zentrum und für Familien", () => {
+    expect(centerKm({ place: "Split, 0.7 km bis Zentrum" })).toBe(0.7);
+    expect(centerKm({ place: "Split" })).toBeUndefined();
+    const l = [
+      o("teuer", 300, { score: 9, place: "Split, 2,5 km bis Zentrum" }),
+      o("billig", 100, { score: 7, place: "Split, 0.3 km bis Zentrum" }),
+      o("familie", 200, { score: 8, facts: ["Pool", "Familienzimmer"] })
+    ];
+    expect(sortStays(l, "price").map(x => x.id)).toEqual(["billig", "familie", "teuer"]);
+    expect(sortStays(l, "rating").map(x => x.id)).toEqual(["teuer", "familie", "billig"]);
+    expect(sortStays(l, "center").map(x => x.id)).toEqual(["billig", "teuer", "familie"]);
+    expect(sortStays(l, "family")[0].id).toBe("familie");
+  });
+});

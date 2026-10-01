@@ -38,6 +38,8 @@ export interface FlightQuery {
   maxStops?: number;
   /** ein Koffer pro Erwachsenem und Kind */
   bags?: boolean;
+  /** Koffer insgesamt (aufgegeben), auf die Reisenden verteilt; geht vor „bags“ */
+  bagCount?: number;
   /** Verbindungen aus getrennten Tickets („Self-Transfer“) erlauben */
   selfTransfer?: boolean;
   /** gesperrte Länder (ISO): dort nicht umsteigen */

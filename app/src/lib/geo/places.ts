@@ -4,7 +4,7 @@
  */
 
 type WorldCity = [string, number, number, string?, string?];
-interface WorldCountry { k: string; l: string; en: string; cities: WorldCity[]; aps?: [string, string, number, number, string?][]; cur?: string; rate?: number; pli?: number }
+interface WorldCountry { k: string; l: string; en: string; cities: WorldCity[]; cap?: string; aps?: [string, string, number, number, string?][]; cur?: string; rate?: number; pli?: number }
 interface PackCity { n: string; en?: string; lat: number; lon: number; alias?: string[]; top?: number; food?: number }
 interface Pack { k: string; cur?: string; airports: { iata: string; n: string; lat: number; lon: number }[]; cities: PackCity[]; food?: Record<string, number>; foodNote?: Record<string, string> }
 
@@ -39,6 +39,13 @@ export function airportOf(g: GeoData, code: string): Airport | null {
     if (a) return { code: c, name: a[1], lat: a[2], lon: a[3], cc: w.k };
   }
   return null;
+}
+
+/** Hauptstadt eines Landes (z. B. wenn bei einem Event nur das Land bekannt ist: Sabah FK → Baku) */
+export function capitalOf(g: GeoData, cc: string): { name: string; lat: number; lon: number } | null {
+  const w = g.world.find(x => x.k === cc);
+  const c = w?.cap ? w.cities.find(x => x[0] === w.cap || x[3] === w.cap) : null;
+  return c ? { name: c[0], lat: c[1], lon: c[2] } : null;
 }
 
 /** Länderkürzel aus deutschem oder englischem Namen („Kroatien“ → HR) */

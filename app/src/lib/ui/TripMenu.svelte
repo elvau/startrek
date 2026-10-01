@@ -46,7 +46,7 @@
   <Modal title={t("tm.mine")} onclose={() => (open = false)}>
     <div class="tm-list">
       {#each trips as m (m.id)}
-        <button class="tm-trip" class:on={m.id === app.trip.id} aria-current={m.id === app.trip.id} onclick={() => act(() => switchTrip(m.id))}>
+        <button class="tm-trip" class:on={m.id === app.trip.id} aria-current={m.id === app.trip.id} onclick={() => act(() => switchTrip(m.id, "Reise-Menü"))}>
           <b>{m.cloud ? "☁ " : ""}{m.name || m.place || t("trip.untitled")}{#if m.id === app.trip.id} <span class="tm-cur">{t("tm.open")}</span>{/if}</b>
           <small>{sub(m)}</small>
         </button>

@@ -20,7 +20,8 @@
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { airportOf, ccOf, cityForAirport, placesNear, searchParts, stayNear, suggestCities, type CityHit } from "../geo/places";
   import type { StayScope } from "../stays/open.svelte";
-  import type { StayOffer, StayQuery, StayType } from "../stays/types";
+  import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StayType } from "../stays/types";
+  import { centerKm, keepStays, sortStays, type StaySort } from "../stays/sort";
   import type { SourceStatus } from "../flights/types";
   import { airbnbLink, bookingLink } from "../links";
 
@@ -69,6 +70,12 @@
     const k = ccOf(geo, searchParts(geo, place.trim(), ccOf(geo, trip.country)).country || "");
     return k && prefs.avoid.includes(k) ? k : "";
   });
+  // Ausstattung, Sterne und Bewertung: gemerkt; Sterne und Frühstück aus den Vorlieben, solange nichts gemerkt ist
+  let must = $state<StayMust[]>(Array.isArray(saved.must) ? (saved.must as StayMust[]).filter(m => STAY_MUSTS.includes(m))
+    : prefs.board && prefs.board !== "self" ? ["breakfast"] : []);
+  let minStars = $state<number>(typeof saved.minStars === "number" ? saved.minStars : prefs.minStars || 0);
+  let minScore = $state<number>(typeof saved.minScore === "number" ? saved.minScore : 0);
+  const toggleMust = (m: StayMust) => (must = must.includes(m) ? must.filter(x => x !== m) : [...must, m]);
   let use = $state<string[]>(Array.isArray(saved.sources) && (saved.sources as string[]).length ? (saved.sources as string[]) : SOURCES.map(s => s.id));
   const nn = $derived(checkin && checkout ? nights(checkin, checkout) : 0);
 
@@ -103,7 +110,7 @@
   let list = $state<StayOffer[] | null>(null);
   let sources = $state<SourceStatus[]>([]);
   let asked = $state<StayQuery | null>(null);
-  let sort = $state<"price" | "rating">("price");
+  let sort = $state<StaySort>("price");
   let taken = $state<Record<string, boolean>>({});
   let into = $state<string | undefined>(item?.id);
   let ctrl: AbortController | undefined;
@@ -116,7 +123,8 @@
     return { total: o.price.basis === "stay" ? o.price.unit : o.price.unit * (nights(it!.from, it!.to) || 1), url: o.source?.url };
   });
 
-  const shown = $derived(sort === "rating" ? [...(list || [])].sort((a, b) => (b.score || 0) - (a.score || 0) || a.total - b.total) : list || []);
+  const shown = $derived(sortStays(list || [], sort));
+  const hasKm = $derived((list || []).some(o => centerKm(o) != null));
   const toggleSrc = (id: string) => (use = use.includes(id) ? use.filter(x => x !== id) : [...use, id]);
   const score = (s: number) => s.toFixed(1).replace(".", ",");
   const people = (a: number, kids: number[]) => `${a} ${t("age.adultShort")}${kids.length ? `, ${tn("n.kids", kids.length)} (${kids.join(", ")} ${t("st.yearsShort")})` : ""}`;
@@ -128,14 +136,17 @@
     if (!nn || nn < 1) { error = t("st.errDates"); return; }
     if (!who.length) { error = t("st.errNobody"); return; }
     if (!use.length) { error = t("st.errSource"); return; }
-    try { localStorage.setItem(K, JSON.stringify({ type, sources: use.length < SOURCES.length ? use : [] })); } catch {}
+    try { localStorage.setItem(K, JSON.stringify({ type, sources: use.length < SOURCES.length ? use : [], must, minStars, minScore })); } catch {}
     const sp = searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc);
-    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type, sources: use, currency: "EUR" };
+    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type, sources: use, currency: "EUR",
+      ...(must.length ? { must } : {}), ...(minStars ? { minStars } : {}), ...(minScore ? { minScore } : {}) };
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
     try {
       const r = await searchStaysRemote(q, ctrl.signal);
-      list = r.offers.slice(0, 40);
+      // auch hier filtern: ein älterer Such-Dienst kennt Sterne und Bewertung noch nicht
+      list = keepStays(r.offers, q).slice(0, 40);
+      sort = q.childAges.length ? "family" : "price";
       sources = r.sources;
       asked = q;
     } catch (err) {
@@ -222,6 +233,25 @@
         {/each}
       </div>
     </div>
+    <div class="ed-row st-filters">
+      <div class="chips" aria-label={t("st.must")}>
+        {#each STAY_MUSTS as m (m)}
+          <button type="button" class="chip sm" class:on={must.includes(m)} aria-pressed={must.includes(m)} onclick={() => toggleMust(m)}>{t(`st.m.${m}`)}</button>
+        {/each}
+      </div>
+      <label class="f">{t("st.minStars")}
+        <select bind:value={minStars}>
+          <option value={0}>{t("st.any")}</option>
+          {#each [2, 3, 4, 5] as n (n)}<option value={n}>{t("st.starsFrom", { n })}</option>{/each}
+        </select>
+      </label>
+      <label class="f">{t("st.minScore")}
+        <select bind:value={minScore}>
+          <option value={0}>{t("st.any")}</option>
+          {#each [7, 8, 9] as n (n)}<option value={n}>{t("st.scoreFrom", { n })}</option>{/each}
+        </select>
+      </label>
+    </div>
     <p class="muted small st-guests">
       {#if nn > 0}{t("range.fromTo", { a: dayShort(checkin), b: dayShort(checkout) })} · {tn("n.nights", nn)} · {/if}
       {#if who.length}<b>{tn("n.guests", who.length)}</b>: {people(g.adults, g.childAges)}{:else}{t("st.nobody")}{/if}
@@ -252,6 +282,8 @@
       <div class="chips fs-sort" role="radiogroup" aria-label={t("search.sort")}>
         <button type="button" class="chip" class:on={sort === "price"} onclick={() => (sort = "price")}>{t("search.cheapest")}</button>
         <button type="button" class="chip" class:on={sort === "rating"} onclick={() => (sort = "rating")}>{t("st.bestRated")}</button>
+        {#if hasKm}<button type="button" class="chip" class:on={sort === "center"} onclick={() => (sort = "center")}>{t("st.nearCenter")}</button>{/if}
+        {#if asked.childAges.length}<button type="button" class="chip" class:on={sort === "family"} onclick={() => (sort = "family")}>{t("st.forFamilies")}</button>{/if}
       </div>
       <p class="muted small">{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(list[0].total) })}</p>
       <div class="fs-list">
@@ -272,6 +304,7 @@
               <div class="fs-pills">
                 {#if o.score}<span class="pill-n">{score(o.score)}{o.reviews ? ` (${t("st.reviews", { n: o.reviews.toLocaleString(locale()) })})` : ""}</span>{/if}
                 {#if o.stars}<span class="pill-h">{"★".repeat(o.stars)}</span>{/if}
+                {#if o.board && o.board !== "self"}<span class="pill-h">{t(`board.${o.board}`)}</span>{/if}
                 {#each o.facts || [] as f (f)}<span class="pill-h">{f}</span>{/each}
               </div>
               {#if o.place}<p class="muted small fs-sub">{o.place}</p>{/if}

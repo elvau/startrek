@@ -11,7 +11,28 @@ export const FD_URL = "https://api.football-data.org/v4";
 export const FD_COMPS: { code: string; cc?: string }[] = [
   { code: "PL", cc: "GB" }, { code: "BL1", cc: "DE" }, { code: "PD", cc: "ES" }, { code: "SA", cc: "IT" }, { code: "FL1", cc: "FR" }, { code: "CL" }
 ];
-const TZ: Record<string, string> = { GB: "Europe/London", DE: "Europe/Berlin", ES: "Europe/Madrid", IT: "Europe/Rome", FR: "Europe/Paris", NL: "Europe/Amsterdam", PT: "Europe/Lisbon" };
+const TZ: Record<string, string> = {
+  GB: "Europe/London", DE: "Europe/Berlin", ES: "Europe/Madrid", IT: "Europe/Rome", FR: "Europe/Paris", NL: "Europe/Amsterdam", PT: "Europe/Lisbon",
+  IE: "Europe/Dublin", BE: "Europe/Brussels", LU: "Europe/Luxembourg", AT: "Europe/Vienna", CH: "Europe/Zurich", CZ: "Europe/Prague",
+  SK: "Europe/Bratislava", PL: "Europe/Warsaw", HU: "Europe/Budapest", SI: "Europe/Ljubljana", HR: "Europe/Zagreb", BA: "Europe/Sarajevo",
+  RS: "Europe/Belgrade", ME: "Europe/Podgorica", MK: "Europe/Skopje", AL: "Europe/Tirane", XK: "Europe/Belgrade", GR: "Europe/Athens",
+  CY: "Asia/Nicosia", MT: "Europe/Malta", BG: "Europe/Sofia", RO: "Europe/Bucharest", MD: "Europe/Chisinau", UA: "Europe/Kyiv",
+  BY: "Europe/Minsk", RU: "Europe/Moscow", TR: "Europe/Istanbul", DK: "Europe/Copenhagen", SE: "Europe/Stockholm", NO: "Europe/Oslo",
+  FI: "Europe/Helsinki", IS: "Atlantic/Reykjavik", EE: "Europe/Tallinn", LV: "Europe/Riga", LT: "Europe/Vilnius", GE: "Asia/Tbilisi",
+  AM: "Asia/Yerevan", AZ: "Asia/Baku", KZ: "Asia/Almaty", IL: "Asia/Jerusalem", FO: "Atlantic/Faroe", GI: "Europe/Gibraltar", AD: "Europe/Andorra"
+};
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/** Länder bei football-data (area.code, meist ISO alpha-3; England, Schottland … eigene) → ISO alpha-2 */
+const AREA: Record<string, string> = {
+  ENG: "GB", SCO: "GB", WAL: "GB", NIR: "GB", DEU: "DE", GER: "DE", ESP: "ES", ITA: "IT", FRA: "FR", NLD: "NL", PRT: "PT", IRL: "IE",
+  BEL: "BE", LUX: "LU", AUT: "AT", CHE: "CH", CZE: "CZ", SVK: "SK", POL: "PL", HUN: "HU", SVN: "SI", HRV: "HR", BIH: "BA", SRB: "RS",
+  MNE: "ME", MKD: "MK", ALB: "AL", KOS: "XK", GRC: "GR", CYP: "CY", MLT: "MT", BGR: "BG", ROU: "RO", MDA: "MD", UKR: "UA", BLR: "BY",
+  RUS: "RU", TUR: "TR", DNK: "DK", SWE: "SE", NOR: "NO", FIN: "FI", ISL: "IS", EST: "EE", LVA: "LV", LTU: "LT", GEO: "GE", ARM: "AM",
+  AZE: "AZ", KAZ: "KZ", ISR: "IL", FRO: "FO", GIB: "GI", AND: "AD"
+};
+/** Ländercode einer Mannschaft aus ihrem Gebiet (für Mannschaften, die nur über die Champions League kommen) */
+export const areaCc = (area: any): string | undefined => (area?.code && AREA[String(area.code).toUpperCase()]) || undefined;
 
 export interface FdTeam { id: number; name: string; shortName?: string; tla?: string; venue?: string; address?: string; cc?: string }
 
@@ -38,7 +59,6 @@ export function matchTeams(teams: FdTeam[], q: string): FdTeam[] {
     .sort((a, b) => ws.filter(w => hay(b).includes(w)).length - ws.filter(w => hay(a).includes(w)).length);
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 async function get(path: string, key: string, f: typeof fetch): Promise<any> {
   const res = await f(`${FD_URL}${path}`, { headers: { "X-Auth-Token": key } });
   if (res.status === 429) throw new Error("football-data.org: zu viele Anfragen, bitte gleich noch einmal");
@@ -47,13 +67,15 @@ async function get(path: string, key: string, f: typeof fetch): Promise<any> {
 }
 
 export async function fdTeams(key: string, f: typeof fetch, cached: Cached): Promise<FdTeam[]> {
-  return cached("fd:teams", 7 * 86400, async () => {
+  return cached("fd:teams2", 7 * 86400, async () => {
     const byId = new Map<number, FdTeam>();
     for (const c of FD_COMPS) {
       const data = await get(`/competitions/${c.code}/teams`, key, f).catch(() => null);
       for (const t of data?.teams || []) {
         if (byId.has(t.id)) continue;
-        byId.set(t.id, { id: t.id, name: t.name, shortName: t.shortName, tla: t.tla, venue: t.venue || undefined, address: t.address || undefined, cc: c.cc });
+        // Land: das der Liga, sonst (Champions League) das Gebiet der Mannschaft, z. B. Sabah FK → Aserbaidschan
+        const cc = c.cc || areaCc(t.area);
+        byId.set(t.id, { id: t.id, name: t.name, shortName: t.shortName, tla: t.tla, venue: t.venue || undefined, address: t.address || undefined, cc });
       }
     }
     if (!byId.size) throw new Error("football-data.org: keine Mannschaften");

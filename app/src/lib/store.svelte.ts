@@ -1,4 +1,5 @@
 /* App-Zustand: mehrere Reisen, lokal gespeichert. Später hinter einem Speicher-Adapter (Firebase). */
+import { noteNav } from "./bugs/log";
 import { untrack } from "svelte";
 import { t as tr, type Key } from "./i18n/index.svelte";
 import { totals } from "./calc";
@@ -107,6 +108,7 @@ function boot(): { index: TripMeta[]; trip: Trip } {
 }
 
 const b = boot();
+noteNav(`geladen: ${b.trip.id}`);
 
 export const app = $state({
   trip: b.trip,
@@ -201,7 +203,7 @@ void initCloud({
   },
   gone(id) {
     del(K_TRIP(id));
-    if (id === app.trip.id) openFirst();
+    if (id === app.trip.id) openFirst("im Konto weg");
   }
 });
 
@@ -227,7 +229,7 @@ $effect.root(() => {
     // nur solange man noch auf der Startseite ist: wer schon eine neue Reise begonnen hat (z. B. „Zu einem Event“
     // direkt nach dem Laden, Konto noch nicht da), dem wird sie nicht unter den Händen gegen eine Konto-Reise getauscht
     if (untrack(() => app.home) && !isCloud(app.trip.id) && pristine(app.trip) && !uploaded.has(app.trip.id)) {
-      switchTrip(first.id);
+      switchTrip(first.id, "Konto-Start");
     }
   });
   // Verzeichnis mit der Liste im Konto abgleichen: Konto-Reisen raus, woanders gelöschte Konto-Reisen weg (nur mit Stand vom Server)
@@ -244,7 +246,7 @@ $effect.root(() => {
     put(key, JSON.stringify(ids));
   });
   // nach dem Beitreten die Reise öffnen
-  $effect(() => { const j = cloud.joined; if (j && isCloud(j)) { cloud.joined = null; switchTrip(j); app.home = false; } });
+  $effect(() => { const j = cloud.joined; if (j && isCloud(j)) { cloud.joined = null; switchTrip(j, "Einladung"); app.home = false; } });
 });
 
 /** Alle Reisen: im Konto und nur auf diesem Gerät */
@@ -327,27 +329,23 @@ export async function logout() {
   await cloudLogout();
   // Reisen aus dem Konto nicht auf dem Gerät liegen lassen
   ids.forEach(id => del(K_TRIP(id)));
-  if (ids.includes(app.trip.id)) openFirst();
+  if (ids.includes(app.trip.id)) openFirst("abgemeldet");
 }
 
-/** Nach dem Löschen oder Abmelden: nächste Reise öffnen, sonst eine leere (nie wieder das Beispiel) */
-function openFirst() {
+/**
+ * Die offene Reise ist weg (gelöscht, im Konto verschwunden, abgemeldet): auf die Startseite, im Hintergrund eine leere
+ * Reise (wird nicht angezeigt und nicht ins Konto gelegt). Früher ging es in die nächste Reise der Liste; die ist
+ * alphabetisch sortiert, so landete man unerwartet z. B. in der Beispielreise (Fehlerbericht #13).
+ */
+function openFirst(why: string) {
   clearTimeout(timer); timer = undefined;
-  const gone = app.trip.id;
-  const next = app.index.filter(m => m.id !== gone).map(m => readTrip(m.id)).find(Boolean);
-  if (next) { open(next); return; }
-  const c = cloud.trips.find(t => t.id !== gone);
-  if (c) {
-    open(readTrip(c.id) || { id: c.id, name: c.name, place: "", country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });
-    return;
-  }
-  const empty = emptyTrip();
-  open(empty);
-  // auf der Startseite (dort gelöscht) keine leere Reise ins Konto legen; sie entsteht erst, wenn man sie nutzt
-  if (cloud.user && !app.home) void moveToCloud(empty.id);
+  open(emptyTrip(), `weg (${why}) → Startseite`);
+  app.home = true;
 }
 
-function open(trip: Trip) {
+/** why: Grund für den Verlauf in Fehlermeldungen (ohne Namen, nur Kennung) */
+function open(trip: Trip, why: string) {
+  noteNav(`${why}: ${trip.id}${isCloud(trip.id) ? " ☁" : ""}`);
   app.trip = normalize(trip);
   setBaseline(app.trip);
   app.editing = null;
@@ -359,15 +357,15 @@ function open(trip: Trip) {
   scrollTo({ top: 0, behavior: "smooth" });
 }
 
-export function switchTrip(id: string) {
+export function switchTrip(id: string, why = "gewechselt") {
   if (id === app.trip.id) return;
   flush();
   const prev = app.trip;
   const t = readTrip(id);
   // Reise aus dem Konto, noch nicht auf diesem Gerät: Platzhalter, Inhalt kommt gleich
   const c = t ? null : cloudTrip(id);
-  if (t) open(t);
-  else if (c) open({ id, name: c.name, place: "", country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });
+  if (t) open(t, why);
+  else if (c) open({ id, name: c.name, place: "", country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } }, why);
   else return;
   dropIfPristine(prev);
 }
@@ -380,7 +378,7 @@ export function newTrip(opts: NewOpts = {}) {
     ...emptyTrip(opts),
     // Wohnorte und Anreise je Familie aus der bisherigen Reise übernehmen, das spart Tipparbeit
     households: JSON.parse(JSON.stringify(prev.households || {}))
-  });
+  }, "neu");
   dropIfPristine(prev);
   if (cloud.user) void moveToCloud(app.trip.id);
 }
@@ -391,7 +389,7 @@ export function duplicateTrip() {
   copy.id = uid();
   copy.name = `${copy.name} (${tr("store.copy")})`;
   const toCloud = !!cloud.user;
-  open(copy);
+  open(copy, "Kopie");
   if (toCloud) void moveToCloud(copy.id);
 }
 
@@ -403,13 +401,13 @@ export async function deleteTrip(id: string) {
     // kann beim Start ins Verzeichnis geraten sein, bevor die Liste im Konto da war
     app.index = app.index.filter(x => x.id !== id);
     put(K_INDEX, JSON.stringify(app.index));
-    if (id === app.trip.id) openFirst();
+    if (id === app.trip.id) openFirst("gelöscht");
     return;
   }
   del(K_TRIP(id));
   app.index = app.index.filter(x => x.id !== id);
   put(K_INDEX, JSON.stringify(app.index));
-  if (app.trip.id === id) openFirst();
+  if (app.trip.id === id) openFirst("gelöscht");
 }
 
 export function addItem(cat: CatKey): Item {
@@ -475,8 +473,8 @@ export function homeTrips(): TripEntry[] {
 }
 
 /** Reise öffnen und Startseite verlassen */
-export function openTrip(id: string) {
-  switchTrip(id);
+export function openTrip(id: string, why = "Startseite") {
+  switchTrip(id, why);
   app.home = false;
   scrollTo({ top: 0 });
 }
@@ -492,6 +490,7 @@ export function goHome() {
   flush();
   app.editing = null;
   app.home = true;
+  noteNav("Startseite");
   scrollTo({ top: 0 });
 }
 
@@ -507,7 +506,7 @@ export function openSample() {
   flush();
   const prev = app.trip;
   const s = sampleTrip();
-  open({ ...s, id: uid(), name: tr("store.sampleName", { name: s.name }) });
+  open({ ...s, id: uid(), name: tr("store.sampleName", { name: s.name }) }, "Beispiel");
   dropIfPristine(prev);
   app.home = false;
   if (cloud.user) void moveToCloud(app.trip.id);

@@ -57,13 +57,34 @@ try {
   if (!s.auth.startsWith("Bearer ") || s.auth.length < 30) fail("kein Anmelde-Nachweis");
   if (!s.report.text.startsWith("Bei 3 Personen") || s.report.lang !== "de" || s.report.view !== "Startseite" || !s.report.screen.includes("×") || !s.report.version) fail("Meldung: " + JSON.stringify(s.report));
   if (!s.report.errors.some(e => e.includes("Testfehler beim Rechnen"))) fail("letzter Fehler fehlt: " + JSON.stringify(s.report.errors));
+  if (!s.report.nav?.some(e => /^\d\d:\d\d:\d\d geladen: \w+/.test(e))) fail("Reisewechsel fehlen: " + JSON.stringify(s.report.nav));
   if (!s.img || s.img.type !== "image/jpeg" || s.img.head.join(",") !== "255,216,255") fail("Bild nicht als JPEG verkleinert: " + JSON.stringify(s.img));
-  log("Meldung gesendet: Text, Ansicht, Sprache, Bildschirm, App-Stand, letzter Fehler im Browser, Bild als JPEG; Danke mit Nummer #12");
+  log("Meldung gesendet: Text, Ansicht, Sprache, Bildschirm, App-Stand, letzter Fehler im Browser, Reisewechsel, Bild als JPEG; Danke mit Nummer #12");
 
   // schließen und neu: Formular ist leer
   await p.locator(".modal .bug .btn.primary").click();
   await p.locator(".bug-fab").click();
   if ((await p.locator(".modal .bug textarea").inputValue()) !== "") fail("Formular nicht geleert");
+
+  // aus Versehen daneben: mit Eingaben schließt ein Klick auf den Hintergrund nicht (Hinweis), Rausziehen nie
+  const bg = p.locator(".modal-bg");
+  const ta = p.locator(".modal .bug textarea");
+  await ta.fill("Halb geschrieben");
+  await bg.click({ position: { x: 5, y: 5 } });
+  if (!(await p.locator(".modal .bug textarea").count()) || (await ta.inputValue()) !== "Halb geschrieben") fail("Fenster mit Eingaben durch Danebenklicken geschlossen");
+  await p.locator(".modal-hint", { hasText: "Schließen mit × oder Esc" }).waitFor({ timeout: 2000 }).catch(() => fail("Hinweis zum Schließen fehlt"));
+  const tb = await ta.boundingBox();
+  await p.mouse.move(tb.x + 20, tb.y + 10); await p.mouse.down(); await p.mouse.move(5, 5, { steps: 5 }); await p.mouse.up();
+  if (!(await p.locator(".modal .bug textarea").count())) fail("Rausziehen hat das Fenster geschlossen");
+  await p.locator(".modal .x").click();
+  // leer: Rausziehen schließt trotzdem nicht, Danebenklicken schließt wie gewohnt
+  await p.locator(".bug-fab").click();
+  const tb2 = await p.locator(".modal .bug textarea").boundingBox();
+  await p.mouse.move(tb2.x + 20, tb2.y + 10); await p.mouse.down(); await p.mouse.move(5, 5, { steps: 5 }); await p.mouse.up();
+  if (!(await p.locator(".modal .bug textarea").count())) fail("Rausziehen hat das leere Fenster geschlossen");
+  await p.locator(".modal-bg").click({ position: { x: 5, y: 5 } });
+  if (await p.locator(".modal .bug").count()) fail("leeres Fenster schließt nicht beim Danebenklicken");
+  log("Danebenklicken: mit Eingaben bleibt das Fenster offen (Hinweis), Rausziehen schließt nie, leer schließt es");
   await p.keyboard.press("Escape");
   log("Nach dem Senden ist das Formular wieder leer");
 

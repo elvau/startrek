@@ -82,8 +82,11 @@ try {
   const dlabel = await m.locator(".dual-head b").textContent();
   if (dlabel !== "7 bis 12 Nächte") fail("Schieberegler: " + dlabel);
   if (!(await m.locator(".dual-axis").textContent()).includes("max. 14 (ganzer Zeitraum)")) fail("Achse: " + await m.locator(".dual-axis").textContent());
+  // Koffer insgesamt statt „je Person einer“
+  await m.locator("label", { hasText: "Koffer gesamt" }).locator("select").selectOption("1");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
+  if (asked[0]?.bagCount !== 1) fail("Kofferzahl nicht in der Anfrage: " + JSON.stringify(asked[0]));
   if (asked.length !== 2 || asked.map(a => a.from).join() !== on.slice(0, 2).join()) fail("Anfragen je Flughafen: " + JSON.stringify(asked.map(a => a.from)));
   const a0 = asked[0];
   if (a0.depart !== "2027-07-15" || a0.latest !== "2027-07-29" || a0.nightsMin !== 7 || a0.nightsMax !== 12 || a0.maxStops !== 1 || a0.bags !== true || a0.selfTransfer !== false || a0.ret)

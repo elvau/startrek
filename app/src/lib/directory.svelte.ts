@@ -17,16 +17,33 @@ function load(): Directory {
 export const dir = $state<Directory>(load());
 
 let fromCloud = "";
+/** zuletzt ins Konto geschickte Stände: kommt einer davon zurück, ist es das Echo des eigenen Speicherns */
+const sent: string[] = [];
 /** Konto, dessen Stand schon empfangen wurde; vorher wird nichts hochgeladen */
 const sync = $state({ loaded: "" });
 let timer: ReturnType<typeof setTimeout> | undefined;
 let stop: (() => void) | null = null;
 
-/** zwei Stände zusammenführen: alles aus beiden, bei gleicher ID gewinnt a */
-function merge(a: Directory, b: Directory): Directory {
+/** Stand ohne Rücksicht auf die Reihenfolge der Felder (zwei Fenster dürfen sich nicht gegenseitig „Änderungen“ schicken) */
+export function canonDir(json: string): string {
+  const sort = (v: unknown): unknown => Array.isArray(v) ? v.map(sort)
+    : v && typeof v === "object" ? Object.fromEntries(Object.keys(v as object).sort().map(k => [k, sort((v as Record<string, unknown>)[k])])) : v;
+  try { return JSON.stringify(sort(JSON.parse(json))); } catch { return json; }
+}
+
+/** zwei Stände zusammenführen: alles aus beiden, bei gleicher ID gewinnt a; „Ich“ und eigene Vorlieben aus a, sonst b */
+export function mergeDir(a: Directory, b: Directory): Directory {
   const people = [...a.people, ...b.people.filter(p => !a.people.some(x => x.id === p.id))];
   const groups = [...a.groups, ...b.groups.filter(g => !a.groups.some(x => x.id === g.id))];
-  return { people, groups };
+  const me = a.me ?? b.me, prefs = a.prefs ?? b.prefs;
+  return { people, groups, ...(me ? { me } : {}), ...(prefs ? { prefs } : {}) };
+}
+
+/** Stand aus dem Konto übernehmen (Personen, Gruppen, „Ich“, eigene Vorlieben) */
+function apply(next: Directory) {
+  dir.people = next.people; dir.groups = next.groups;
+  if (next.me) dir.me = next.me; else delete dir.me;
+  if (next.prefs) dir.prefs = next.prefs; else delete dir.prefs;
 }
 
 $effect.root(() => {
@@ -35,11 +52,13 @@ $effect.root(() => {
     const json = JSON.stringify(dir);
     try { localStorage.setItem(KEY, json); } catch {}
     const u = cloud.user;
-    if (!u || sync.loaded !== u.uid || json === fromCloud) return;
+    if (!u || sync.loaded !== u.uid || json === fromCloud || canonDir(json) === canonDir(fromCloud)) return;
     clearTimeout(timer);
     timer = setTimeout(async () => {
+      timer = undefined;
       const f = await import("./cloud/firebase");
       fromCloud = json;
+      sent.push(json); if (sent.length > 5) sent.shift();
       try { await f.saveProfile(u.uid, json); } catch (e) { console.warn(e); fromCloud = ""; }
     }, 500);
   });
@@ -53,12 +72,15 @@ $effect.root(() => {
     void import("./cloud/firebase").then(f => {
       stop = f.watchProfile(u.uid, (data, pending) => {
         if (pending) return;
+        // Echo des eigenen Speicherns oder noch ungespeicherte Eingaben: der Stand im Browser ist neuer, nichts überschreiben
+        // (sonst sprangen Felder beim Tippen zurück, z. B. in den Vorlieben einer Gruppe)
+        if (!first && (timer || (data && sent.includes(data)))) { sync.loaded = u.uid; return; }
         const remote: Directory = data ? JSON.parse(data) : { people: [], groups: [] };
         // beim ersten Mal lokale Einträge mitnehmen, danach gilt der Stand aus dem Konto
-        const next = first ? merge(remote, $state.snapshot(dir)) : remote;
+        const next = first ? mergeDir(remote, $state.snapshot(dir)) : remote;
         first = false;
         fromCloud = data || "";
-        if (JSON.stringify(next) !== JSON.stringify($state.snapshot(dir))) { dir.people = next.people; dir.groups = next.groups; }
+        if (canonDir(JSON.stringify(next)) !== canonDir(JSON.stringify($state.snapshot(dir)))) apply(next);
         sync.loaded = u.uid;
       }, e => console.warn(e));
     });

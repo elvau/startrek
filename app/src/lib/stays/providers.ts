@@ -1,6 +1,6 @@
 /* Booking.com und Trivago über ihre MCP-Server */
 import { callTool } from "../mcp";
-import type { StayOffer, StayQuery } from "./types";
+import type { StayMust, StayOffer, StayQuery } from "./types";
 
 export const TRIVAGO_MCP = "https://mcp.trivago.com/mcp";
 
@@ -46,7 +46,24 @@ export function bookingArgs(q: StayQuery) {
     number_of_adults: q.adults, number_of_rooms: q.rooms,
     ...(q.childAges.length ? { children_ages: q.childAges } : {}),
     ...(q.type === "whole" ? { accommodation_types: ["HOLIDAY_HOME", "APARTMENT", "VILLA"] } : q.type === "hotel" ? { accommodation_types: ["HOTEL", "GUEST_HOUSE"] } : {}),
+    ...bookingFilters(q),
     user_country_code: "de", user_locale: "de", currency: q.currency || "EUR"
+  };
+}
+
+const BOOKING_FAC: Partial<Record<StayMust, string>> = { pool: "SWIMMING_POOL", parking: "PARKING", aircon: "AIR_CONDITIONING" };
+
+function bookingFilters(q: StayQuery) {
+  const must = q.must || [];
+  const fac = must.map(m => BOOKING_FAC[m]).filter((x): x is string => !!x);
+  return {
+    ...(fac.length ? { facilities: fac } : {}),
+    ...(must.includes("breakfast") ? { meal_plan: "breakfast_included" } : {}),
+    ...(must.includes("freeCancel") ? { cancellation_type: "free_cancellation" } : {}),
+    // Booking kennt Küche nur als Art: Wohnung, Ferienhaus
+    ...(must.includes("kitchen") && q.type === "all" ? { accommodation_types: ["HOLIDAY_HOME", "APARTMENT", "VILLA"] } : {}),
+    ...(q.minStars ? { star_rating: [1, 2, 3, 4, 5].filter(n => n >= q.minStars!) } : {}),
+    ...(q.minScore && q.minScore >= 7 ? { minimum_review_score: Math.min(9, Math.floor(q.minScore)) } : {})
   };
 }
 
@@ -71,7 +88,23 @@ export function trivagoArgs(q: StayQuery) {
   return {
     query: q.place, arrival: q.checkin, departure: q.checkout,
     adults: q.adults, children: q.childAges.length, ...(q.childAges.length ? { children_ages: q.childAges.join("-") } : {}),
-    rooms: Math.min(q.rooms, q.adults), country: "DE", currency: q.currency || "EUR", language: "DE_DE"
+    rooms: Math.min(q.rooms, q.adults), country: "DE", currency: q.currency || "EUR", language: "DE_DE",
+    ...trivagoFilters(q)
+  };
+}
+
+const TRIVAGO_FILTER: Record<StayMust, string> = {
+  pool: "pool", breakfast: "breakfastIncluded", kitchen: "kitchen", aircon: "airConditioning", parking: "parking", freeCancel: "freeCancellation"
+};
+
+function trivagoFilters(q: StayQuery) {
+  const must = q.must || [];
+  // Trivago kennt nur 7.0, 7.5, 8.0 und 8.5: die nächstniedrigere Stufe, den Rest filtert die App
+  const step = [85, 80, 75, 70].find(r => (q.minScore || 0) * 10 >= r);
+  return {
+    ...(must.length ? { filters: Object.fromEntries(must.map(m => [TRIVAGO_FILTER[m], true])) } : {}),
+    ...(q.minStars ? { hotel_rating: Object.fromEntries([1, 2, 3, 4, 5].filter(n => n >= q.minStars!).map(n => [n + "star", true])) } : {}),
+    ...(step ? { review_rating: { ["rating" + step]: true } } : {})
   };
 }
 

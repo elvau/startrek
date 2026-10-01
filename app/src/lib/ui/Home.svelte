@@ -83,7 +83,7 @@
     <p class="home-lead">{t("home.lead")}</p>
 
     {#if last}
-      <button class="home-cont" onclick={() => openTrip(last.id)}>
+      <button class="home-cont" onclick={() => openTrip(last.id, "Weiter planen")}>
         <span class="hc-l"><small>{t("home.continue")}</small><b>{last.cloud ? "☁ " : ""}{last.name || last.place || t("trip.untitled")}</b>
           <small>{[range(last.from, last.to), last.s?.total ? eur(last.s.total) : ""].filter(Boolean).join(" · ")}</small></span>
         <span class="hc-go" aria-hidden="true">→</span>
@@ -125,13 +125,13 @@
             {@const isPast = stateOf(m) === "past"}
             <div class="ht-wrap">
             {#if view === "list"}
-            <button class="home-row" class:past={isPast} onclick={() => openTrip(m.id)}>
+            <button class="home-row" class:past={isPast} onclick={() => openTrip(m.id, "Liste")}>
               <span class="hr-name"><span class="hr-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if stateOf(m) === "booked"}<span class="ht-tag">✓</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
                 <small class="muted">{[x?.where, m.from ? range(m.from, m.to) : "", m.people ? tn("n.persons", m.people) : ""].filter(Boolean).join(" · ")}</small></span>
               <span class="hr-total num">{x && x.total > 0 ? eur(x.total) : ""}</span>
             </button>
             {:else}
-            <button class="home-trip" class:past={isPast} onclick={() => openTrip(m.id)}>
+            <button class="home-trip" class:past={isPast} onclick={() => openTrip(m.id, "Liste")}>
               <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
               {#if x}
                 {#if x.where}<span class="ht-where">{x.round ? `🔁 ${t("home.round")}: ` : "📍 "}{x.where}</span>{/if}

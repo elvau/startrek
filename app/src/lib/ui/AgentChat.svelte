@@ -8,7 +8,7 @@
    * Auftrags kommen gesammelt und werden mit einer Rückfrage übernommen (oder als KI-Vergleichsreise angelegt).
    */
   import { tick } from "svelte";
-  import { app, duplicateTrip, goHome, startTrip } from "../store.svelte";
+  import { app, duplicateTrip, goHome, openTrip, startTrip } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { eur } from "../calc";
   import { dayShort, nights, range, time } from "../format";
@@ -31,6 +31,8 @@
     me: boolean; text: string; trips?: AgentTrip[]; question?: boolean; options?: string[];
     /** Änderungen an der offenen Reise: offen, übernommen, als Variante angelegt, rückgängig gemacht */
     edit?: AgentEdit; tripId?: string; state?: "open" | "applied" | "variant" | "undone"; snap?: string;
+    /** Vorschläge von der Startseite aus angefragt: Übernehmen legt eine neue Reise an, auch wenn inzwischen eine offen ist */
+    home?: boolean;
   }
   const EXAMPLES = ["ai.ex1", "ai.ex2", "ai.ex3"] as const;
   const TRIP_EXAMPLES = ["ai.tx1", "ai.tx2", "ai.tx3"] as const;
@@ -39,6 +41,15 @@
   let msgs = $state<Msg[]>([]);
   let input = $state("");
   let busy = $state(false);
+  // Wartezeit sichtbar: Minuten und Sekunden seit dem Absenden, nach 90 s ein Hinweis, dass es heute länger dauert
+  let waited = $state(0);
+  $effect(() => {
+    if (!busy) { waited = 0; return; }
+    const t0 = Date.now();
+    const iv = setInterval(() => (waited = Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(iv);
+  });
+  const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   let remaining = $state<number | null>(null);
   let list = $state<HTMLElement>();
   let ctrl: AbortController | undefined;
@@ -77,25 +88,36 @@
     busy = true;
     void scrollDown();
     ctrl?.abort(); ctrl = new AbortController();
+    // läuft im Hintergrund weiter, auch wenn das Fenster zugeht; der Knopf meldet dann das Ergebnis
+    const done = (kind: typeof agentChat.unread) => { if (!agentChat.open) agentChat.unread = kind; };
     try {
       const b = base();
-      const withTrip = onTrip, tripId = app.trip.id;
+      const withTrip = onTrip, tripId = app.trip.id, home = app.home;
       const res = await askAgent(agentRequest(b, prompt, asked, agentPrefs(prefsFor(app.home ? null : b, dir)), withTrip), ctrl.signal);
       remaining = res.remaining ?? remaining;
       msgs.push(res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
         : res.edit ? { me: false, text: res.edit.reply, ...(editCount(res.edit) ? { edit: res.edit, tripId, state: "open" as const } : {}) }
-        : res.trips.length ? { me: false, text: t("ai.here"), trips: res.trips } : { me: false, text: t("ai.none") });
+        : res.trips.length ? { me: false, text: t("ai.here"), trips: res.trips, home } : { me: false, text: t("ai.none") });
+      done(res.question ? "question" : res.edit || res.trips.length ? "done" : "none");
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       const r = (err as { remaining?: number }).remaining;
       if (r != null) remaining = r;
       msgs.push({ me: false, text: (err as Error).message });
+      done("error");
     } finally { busy = false; void scrollDown(); }
   }
 
-  function take(a: AgentTrip) {
-    // von der Startseite aus: neue Reise anlegen, sonst in die offene Reise
-    if (app.home) startTrip();
+  /** bewusst abbrechen (Schließen des Fensters bricht nicht mehr ab) */
+  function cancel() {
+    ctrl?.abort();
+    busy = false;
+    msgs.push({ me: false, text: t("ai.cancelled") });
+  }
+
+  function take(a: AgentTrip, m: Msg) {
+    // von der Startseite aus angefragt: neue Reise anlegen, sonst in die offene Reise
+    if (app.home || m.home) startTrip();
     takeAgentTrip(app.trip, a);
     if (geo.world.length) syncFood(app.trip, geo);
     msgs.push({ me: false, text: t("ai.taken") });
@@ -164,14 +186,17 @@
 </script>
 
 {#if !agentChat.open}
-  <button class="ai-fab" onclick={openChat} aria-label={t("ai.open")} title={t("ai.open")}>
-    <AiMark /><span class="ai-fab-lbl">{t("ai.assistant")}</span>
+  {#if agentChat.unread}
+    <div role="status"><button class="ai-note" class:err={agentChat.unread === "error"} onclick={openChat}>{t(`ai.unread.${agentChat.unread}` as Key)} · <b>{t("ai.show")}</b></button></div>
+  {/if}
+  <button class="ai-fab" class:working={busy} class:unread={!!agentChat.unread} onclick={openChat} aria-label={t("ai.open")} title={t("ai.open")}>
+    <AiMark /><span class="ai-fab-lbl">{busy ? `${t("ai.working")}${waited >= 5 ? ` ${clock(waited)}` : ""}` : t("ai.assistant")}</span>
   </button>
 {:else}
   <div class="ai-chat" role="dialog" aria-label={t("ai.chat")}>
     <header class="ai-head">
       <b><AiMark /> {t("ai.assistant")} <small class="muted">Beta</small></b>
-      <button class="x" onclick={() => { ctrl?.abort(); agentChat.open = false; }} aria-label={t("close")}>×</button>
+      <button class="x" onclick={() => (agentChat.open = false)} aria-label={t("close")}>×</button>
     </header>
 
     {#if onTrip}<p class="ai-trip muted" title={app.trip.name}>🧳 {t("ai.onTrip", { n: app.trip.name })}</p>{/if}
@@ -201,6 +226,7 @@
                   <button class="btn sm ai-variant" onclick={() => variant(m)}>＋ {t("ai.variant")}</button>
                 {:else}
                   <small class="muted">{t("ai.otherTrip")}</small>
+                  <button class="btn sm ai-goto" onclick={() => openTrip(m.tripId!, "KI")}>{t("ai.gotoTrip")}</button>
                 {/if}
               {:else if m.state === "applied"}
                 <small class="muted">✓ {t("ai.applied")}</small>
@@ -238,7 +264,7 @@
                 </ul>
                 <footer>
                   <span><small class="muted">{t("ai.total")}</small> <b class="num">{eur(pv.total)}</b>{#if pp > 1} <small class="muted">{t("perPerson", { v: eur(pv.total / pp) })}</small>{/if}</span>
-                  <button class="btn sm primary" onclick={() => take(a)}>{t("ev.take")}</button>
+                  <button class="btn sm primary" onclick={() => take(a, m)}>{t("ev.take")}</button>
                 </footer>
               </article>
             {/each}
@@ -247,7 +273,8 @@
           {/if}
         </div>
       {/each}
-      {#if busy}<p class="ai-msg ai-busy">{onTrip ? t("ai.busyTrip") : t("ai.busy")}</p>{/if}
+      {#if busy}<p class="ai-msg ai-busy">{onTrip ? t("ai.busyTrip") : t("ai.busy")}{#if waited >= 5} <span class="ai-wait" dir="ltr">{clock(waited)}</span>{/if}{#if waited >= 90}<br>{t("ai.busyLong")}{/if}
+        <br><small class="muted">{t("ai.bgHint")}</small> <button class="linkbtn ai-cancel" onclick={cancel}>{t("ai.cancel")}</button></p>{/if}
     </div>
 
     {#if cloud.user}

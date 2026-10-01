@@ -7,7 +7,7 @@ import { FLIGHTS_URL } from "../flights/app";
 import { idToken } from "../cloud/cloud.svelte";
 import { app, calc, tripMode } from "../store.svelte";
 import type { BugReport } from "./types";
-import { recentErrors } from "./log";
+import { recentErrors, recentNav } from "./log";
 
 export const bugDialog = $state({ open: false });
 
@@ -21,7 +21,7 @@ function view(): string {
 export function collect(text: string): BugReport {
   return {
     text, page: location.href.split("#")[0], lang: i18n.lang, ua: navigator.userAgent,
-    screen: `${innerWidth}×${innerHeight}`, version: `v${__APP_VERSION__} (${__APP_COMMIT__})`, errors: recentErrors(), view: view()
+    screen: `${innerWidth}×${innerHeight}`, version: `v${__APP_VERSION__} (${__APP_COMMIT__})`, errors: recentErrors(), view: view(), nav: recentNav()
   };
 }
 
