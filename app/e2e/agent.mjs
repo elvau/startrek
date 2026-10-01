@@ -314,11 +314,13 @@ try {
     localStorage.setItem("rk2-index", JSON.stringify(idx));
   });
   await p.reload();
-  await p.locator(".home-clean .linkbtn", { hasText: "ohne Kosten aufräumen" }).waitFor();
+  await p.locator(".home-clean", { hasText: "ohne Kosten aufräumen" }).waitFor();
+  if (!(await p.locator(".home-h .home-clean").count())) fail("„aufräumen“ nicht neben der Überschrift");
+  if (process.env.SHOTS) { await p.locator(".home-h .home-clean").scrollIntoViewIfNeeded(); await p.emulateMedia({ colorScheme: "dark" }); await p.waitForTimeout(400); await p.screenshot({ path: `${process.env.SHOTS}/clean.png` }); await p.emulateMedia({ colorScheme: "light" }); }
   await until(() => p.evaluate(() => localStorage.getItem("rk2-t:leer1") === null), "unberührter Entwurf gelöscht");
   let asked2 = "";
   p.once("dialog", d => { asked2 = d.message(); void d.accept(); });
-  await p.locator(".home-clean .linkbtn").click();
+  await p.locator(".home-clean").click();
   await until(() => p.locator(".home-row", { hasText: "Idee Lissabon" }).count().then(n => n === 0), "Idee aufgeräumt");
   if (!asked2.includes("Idee Lissabon")) fail("Rückfrage ohne Namen: " + asked2);
   if (!(await p.locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
