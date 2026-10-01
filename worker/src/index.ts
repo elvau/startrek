@@ -25,7 +25,7 @@ import { mcpMessage, type Saved } from "./mcp";
 import pkg from "../../app/package.json";
 
 interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv {
-  /** Claude-Konnektor: Suchen pro Schlüssel und Tag (Standard 50) */
+  /** KI-Konnektor: Suchen pro Schlüssel und Tag (Standard 50) */
   MCP_DAILY?: string;
   /** erlaubte Herkünfte, kommagetrennt */
   ALLOWED_ORIGINS?: string;
@@ -208,11 +208,11 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   }
 }
 
-/* ---------- Claude-Konnektor (MCP) ---------- */
+/* ---------- KI-Konnektor (MCP) ---------- */
 
 /** persönlichen Schlüssel ausstellen (angemeldet, höchstens 3 pro Tag); der Such-Dienst speichert ihn nicht */
 async function mcpKey(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
-  if (!env.MCP_KEY_SECRET) return json({ error: "Der Claude-Konnektor ist noch nicht eingerichtet" }, 503, h);
+  if (!env.MCP_KEY_SECRET) return json({ error: "Der KI-Konnektor ist noch nicht eingerichtet" }, 503, h);
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Bitte anmelden" }, 401, h);
   let uid: string;
@@ -233,10 +233,10 @@ async function mcpKey(req: Request, env: Env, h: Record<string, string>): Promis
 async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const plain = (status: number, msg: string, extra: Record<string, string> = {}) => json({ jsonrpc: "2.0", id: null, error: { code: -32000, message: msg } }, status, extra);
   if (req.method !== "POST") return plain(405, "Nur POST", { allow: "POST" });
-  // aus dem Browser nur von unseren Seiten (Schutz vor DNS-Rebinding); Claude schickt keinen Origin mit
+  // aus dem Browser nur von unseren Seiten (Schutz vor DNS-Rebinding); KI-Programme schicken keinen Origin mit
   const origin = req.headers.get("origin");
   if (origin && !cors(origin, env)["access-control-allow-origin"]) return plain(403, "Herkunft nicht erlaubt");
-  if (!env.MCP_KEY_SECRET) return plain(503, "Der Claude-Konnektor ist noch nicht eingerichtet");
+  if (!env.MCP_KEY_SECRET) return plain(503, "Der KI-Konnektor ist noch nicht eingerichtet");
   const user = await verifyKey(env, (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, ""));
   if (!user) return plain(401, "Schlüssel fehlt oder ist ungültig", { "www-authenticate": "Bearer" });
   let msg: unknown;

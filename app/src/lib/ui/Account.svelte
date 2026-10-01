@@ -45,7 +45,7 @@
             <button class="tm-act" onclick={moveAll} disabled={busy}>{busy ? t("acct.moving") : t("acct.moveAll")}</button>
           {/if}
           <div class="tm-sep"></div>
-          <button class="tm-act acct-claude" onclick={() => { open = false; connect.open = true; }}>{t("mcp.open")}</button>
+          <button class="tm-act acct-mcp" onclick={() => { open = false; connect.open = true; }}>{t("mcp.open")}</button>
           {#if admin.is && admin.uid === cloud.user.uid}
             <div class="tm-sep"></div>
             <button class="tm-act acct-usage" onclick={() => { open = false; admin.open = true; }}>{t("adm.open")}</button>

@@ -1,5 +1,5 @@
 /*
- * Claude-Konnektor: Reisen im Konto anlegen und ergänzen, ohne Svelte (läuft im Such-Dienst).
+ * KI-Konnektor: Reisen im Konto anlegen und ergänzen, ohne Svelte (läuft im Such-Dienst).
  * Posten entstehen wie in der App (Flug, Unterkunft, eigene Kosten) und sind als „von der KI“ markiert.
  */
 import { ar } from "../i18n/ar";

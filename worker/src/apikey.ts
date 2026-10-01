@@ -1,5 +1,5 @@
 /*
- * Schlüssel für den Claude-Konnektor: signiert statt gespeichert. Der Schlüssel enthält Kontokennung, Schlüsselkennung
+ * Schlüssel für den KI-Konnektor: signiert statt gespeichert. Der Schlüssel enthält Kontokennung, Schlüsselkennung
  * und Anzeigename, dazu eine Signatur (HMAC-SHA-256) mit MCP_KEY_SECRET. Sperren: Schlüsselkennung in MCP_REVOKED
  * eintragen; neues Secret macht alle Schlüssel ungültig.
  */

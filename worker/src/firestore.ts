@@ -1,5 +1,5 @@
 /*
- * Reisen im Konto für den Claude-Konnektor: Firestore über REST mit einem Dienstkonto (Secret FIREBASE_SERVICE_ACCOUNT,
+ * Reisen im Konto für den KI-Konnektor: Firestore über REST mit einem Dienstkonto (Secret FIREBASE_SERVICE_ACCOUNT,
  * JSON aus der Firebase-Konsole). Das Dienstkonto umgeht die Sicherheitsregeln, darum prüft dieser Baustein selbst:
  * lesen nur Mitglieder, ändern nur Besitzer und Bearbeiter, Mitglieder und Einladung bleiben unangetastet.
  */

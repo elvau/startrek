@@ -76,7 +76,7 @@ describe("Firestore-Werte", () => {
   });
 });
 
-describe("Claude-Konnektor (MCP)", () => {
+describe("KI-Konnektor (MCP)", () => {
   it("Handschlag, Werkzeugliste und Benachrichtigungen", async () => {
     const d = deps();
     const init = await mcpMessage(rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } }), ME, d) as any;

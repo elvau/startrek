@@ -1,5 +1,5 @@
 /*
- * Claude-Konnektor gegen den Firestore-Emulator: der MCP-Kern des Such-Dienstes legt eine Reise im Konto an und
+ * KI-Konnektor gegen den Firestore-Emulator: der MCP-Kern des Such-Dienstes legt eine Reise im Konto an und
  * ergänzt sie (Suchen nachgestellt); die App zeigt sie, markiert und live. Dazu Schlüssel im Kontomenü erzeugen.
  * Start: npm run test:cloud
  */
@@ -96,15 +96,17 @@ try {
   // Schlüssel im Kontomenü erzeugen: Anfrage angemeldet, Schlüssel und Befehl für Claude Code
   await p.evaluate(() => scrollTo(0, 0));
   await p.locator(".hero .acct-btn").click();
-  await p.locator(".acct-claude").click();
+  await p.locator(".acct-mcp").click();
   await p.locator(".modal .mcp-make").click();
   await p.locator(".modal .mcp-key").waitFor();
   if ((await p.locator(".modal .mcp-key").inputValue()) !== "sf_test.sig") fail("Schlüssel nicht angezeigt");
   const cmd = await p.locator(".modal .mcp-cmd").innerText();
   if (!cmd.includes("claude mcp add --transport http splitandfly https://flights.test/mcp") || !cmd.includes("Bearer sf_test.sig")) fail("Befehl: " + cmd);
+  if ((await p.locator(".modal .mcp-url").inputValue()) !== "https://flights.test/mcp") fail("Adresse fehlt");
+  if (!(await p.locator(".modal .mcp", { hasText: "Authorization: Bearer" }).count())) fail("Hinweis für andere Programme fehlt");
   if (!keys[0]?.auth.startsWith("Bearer ") || keys[0].body.name !== "Claudia") fail("Schlüssel-Anfrage: " + JSON.stringify(keys[0]));
   if (process.env.SHOTS) await p.locator(".modal").screenshot({ path: `${process.env.SHOTS}/connect.png` });
-  log("Schlüssel im Kontomenü erzeugt, mit Befehl für Claude Code");
+  log("Schlüssel im Kontomenü erzeugt, mit Adresse, Hinweis für andere Programme und Beispiel Claude Code");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Konnektor ok");

@@ -782,5 +782,5 @@ body[data-ch="split"] .amb-split{opacity:1}
 /* Mit Claude verbinden */
 .mcp{display:flex;flex-direction:column;gap:10px;max-width:560px}
 .mcp-row{display:flex;gap:6px}
-.mcp-key{flex:1;min-width:0;font:12px ui-monospace,monospace}
+.mcp-key,.mcp-url{flex:1;min-width:0;font:12px ui-monospace,monospace}
 .mcp-cmd{white-space:pre-wrap;word-break:break-all;font:12px/1.5 ui-monospace,monospace;background:var(--line);border-radius:10px;padding:10px 12px;margin:0}
