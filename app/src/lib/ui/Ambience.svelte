@@ -12,7 +12,28 @@
   // gleichbleibender Zufall, damit die Stadt immer gleich aussieht
   const rng = (s: number) => () => (s = (s * 9301 + 49297) % 233280) / 233280;
 
+  /** Fahrzeug auf die Schiene setzen (q: Fortschritt im Kapitel 0…1); das erste Mal ohne Übergang, sonst flöge es von oben links herein */
+  let placed = false;
+  function placeVeh(q: number) {
+    const e = 1 - (1 - q) ** 2;
+    const len = rail.getTotalLength(), at = 0.02 + e * 0.86;
+    const pt = rail.getPointAtLength(at * len), pt2 = rail.getPointAtLength(Math.min(len, at * len + 6));
+    const box = rail.ownerSVGElement!.getBoundingClientRect();
+    const sx = box.width / 1000, sy = box.height / 120;
+    const ang = (Math.atan2((pt2.y - pt.y) * sy, (pt2.x - pt.x) * sx) * 180) / Math.PI;
+    if (!placed) veh.style.transition = "none";
+    veh.style.transform = `translate(${box.left + pt.x * sx}px,${box.top + pt.y * sy}px) rotate(${ang}deg)`;
+    if (!placed) { void veh.offsetWidth; veh.style.transition = ""; placed = true; }
+    railDone.style.strokeDasharray = String(len);
+    railDone.style.strokeDashoffset = String(len * (1 - at));
+    ride = q < 0.34 ? "taxi" : q < 0.67 ? "bus" : "train";
+  }
+
   onMount(() => {
+    // gleich am Schienenanfang bereitstellen (die Szene ist noch ausgeblendet); bei neuer Fenstergröße neu, ohne Gleiten
+    placeVeh(0);
+    const onResize = () => { placed = false; };
+    addEventListener("resize", onResize);
     const rnd = rng(7);
     let tw = "";
     for (let x = 0; x < 1000;) {
@@ -67,6 +88,7 @@
       }
       split.appendChild(st);
     });
+    return () => removeEventListener("resize", onResize);
   });
 
   $effect(() => {
@@ -89,16 +111,7 @@
       // damit es am Anfang links steht; fährt auf der Schiene herein, wechselt Taxi → Bus → Bahn und hält rechts
       const r = document.getElementById("transport")?.getBoundingClientRect();
       const q = r && r.height ? Math.max(0, Math.min(1, (innerHeight / 2 - r.top) / r.height)) : p;
-      const e = 1 - (1 - q) ** 2;
-      const len = rail.getTotalLength(), at = 0.02 + e * 0.86;
-      const pt = rail.getPointAtLength(at * len), pt2 = rail.getPointAtLength(Math.min(len, at * len + 6));
-      const box = rail.ownerSVGElement!.getBoundingClientRect();
-      const sx = box.width / 1000, sy = box.height / 120;
-      const ang = (Math.atan2((pt2.y - pt.y) * sy, (pt2.x - pt.x) * sx) * 180) / Math.PI;
-      veh.style.transform = `translate(${box.left + pt.x * sx}px,${box.top + pt.y * sy}px) rotate(${ang}deg)`;
-      railDone.style.strokeDasharray = String(len);
-      railDone.style.strokeDashoffset = String(len * (1 - at));
-      ride = q < 0.34 ? "taxi" : q < 0.67 ? "bus" : "train";
+      placeVeh(q);
     }
     if (a === "split") coins.forEach(c => c.classList.toggle("on", +c.dataset.t! < p * 1.1));
     if (a === "stay") windows.forEach(w => w.classList.toggle("on", +w.dataset.t! < p * 0.9));
