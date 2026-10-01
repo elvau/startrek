@@ -8,14 +8,14 @@ const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefi
 try {
   const p = await b.newPage({ viewport: { width: 1280, height: 860 }, locale: "de-DE" });
   await p.goto("http://127.0.0.1:4174/"); await p.waitForTimeout(1200);
-  await p.locator(".hero .acct .tm-btn").click(); await p.waitForTimeout(400);
+  await p.locator(".top .acct .tm-btn").click(); await p.waitForTimeout(400);
   await p.screenshot({ path: `${OUT}/e-login.png` });
   await p.locator(".login .test button").click();
-  await p.locator(".hero .acct-btn").waitFor();
-  await p.locator(".hero .acct-btn").click(); await p.waitForTimeout(300);
+  await p.locator(".top .acct-btn").waitFor();
+  await p.locator(".top .acct-btn").click(); await p.waitForTimeout(300);
   await p.screenshot({ path: `${OUT}/e-account.png` });
   await p.locator(".tm-act", { hasText: "Ins Konto übernehmen" }).click(); await p.waitForTimeout(1500);
-  await p.locator(".hero .tm-btn").first().click(); await p.waitForTimeout(300);
+  await p.locator(".top .tm-btn").first().click(); await p.waitForTimeout(300);
   await p.screenshot({ path: `${OUT}/e-menu.png` });
   await p.locator(".tm-act", { hasText: "Teilen" }).click();
   await p.locator(".modal .btn", { hasText: "Link erstellen" }).click(); await p.waitForTimeout(800);

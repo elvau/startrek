@@ -4,7 +4,7 @@
    * Startseite bei jedem Besuch: Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openSample, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
+  import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openSample, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { FOOD_STYLES } from "../food";
   import { summarize, type TripState, type TripSummary } from "../overview";
@@ -14,11 +14,9 @@
   import { range } from "../format";
   import { openEventPlanner } from "../event/open.svelte";
   import { openChat } from "../agent/open.svelte";
-  import Account from "./Account.svelte";
-  import GroupsButton from "./GroupsButton.svelte";
-  import LangSelect from "./LangSelect.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
   import AiMark from "./AiMark.svelte";
+  import TopNav from "./TopNav.svelte";
 
   let picking = $state(false);
   const today = new Date().toISOString().slice(0, 10);
@@ -59,6 +57,8 @@
   const foodLabel = (f: TripSummary["food"]) => (f === "hh" ? t("home.foodHh") : FOOD_STYLES.find(x => x.k === f)?.l || "");
   // Impressum und Datenschutz liegen neben der App
   const LEGAL = (import.meta.env.BASE_URL as string) || "/";
+  // zuletzt geöffnete Reise (bleibt im Hintergrund offen): oben direkt weiterplanen
+  const last = $derived(rows.find(r => r.id === app.trip.id));
   function event() { startTrip(); openEventPlanner(); }
   // unberührte Entwürfe beim Anzeigen der Startseite aufräumen; Reisen ohne Kosten nur nach Rückfrage
   $effect(() => { if (cloud.ready || !cloud.configured) sweepPristine(); });
@@ -77,20 +77,19 @@
   }
 </script>
 
+<TopNav home />
 <section class="start" data-ch="hero">
-  <div class="home-bar">
-    <span class="brand home-brand"><img class="brand-ico" src="icon.svg" alt="" width="28" height="28">Split<span class="brand-y">&amp;</span>Fly</span>
-    <div class="hero-r">
-      <GroupsButton />
-      {#if cloud.configured}<Account />{/if}
-      <LangSelect />
-    </div>
-  </div>
-
   <div class="home-in">
     <h1 class="home-title">{t("home.title")}</h1>
     <p class="home-lead">{t("home.lead")}</p>
 
+    {#if last}
+      <button class="home-cont" onclick={() => openTrip(last.id)}>
+        <span class="hc-l"><small>{t("home.continue")}</small><b>{last.cloud ? "☁ " : ""}{last.name || last.place || t("trip.untitled")}</b>
+          <small>{[range(last.from, last.to), last.s?.total ? eur(last.s.total) : ""].filter(Boolean).join(" · ")}</small></span>
+        <span class="hc-go" aria-hidden="true">→</span>
+      </button>
+    {/if}
     <div class="home-acts">
       <button class="home-act home-new" onclick={() => (picking = true)}>
         <span class="home-ico" aria-hidden="true">🧳</span><b>{t("home.new")}</b><small>{t("home.newSub")}</small>

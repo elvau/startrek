@@ -3,21 +3,19 @@
   import { onMount } from "svelte";
   import { access, app, calc } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
-  import Account from "./Account.svelte";
   import ModeSwitch from "./ModeSwitch.svelte";
-  import { goHome, renameTrip, setAllDetailed, tripMode } from "../store.svelte";
+  import { renameTrip, setAllDetailed, tripMode } from "../store.svelte";
   import { eur, eurPP } from "../calc";
   import { dayShort, nights, range } from "../format";
   import { openEventPlanner } from "../event/open.svelte";
-  import TripMenu from "./TripMenu.svelte";
-  import GroupsButton from "./GroupsButton.svelte";
   import TripEditor from "./TripEditor.svelte";
-  import LangSelect from "./LangSelect.svelte";
   import { potential, watchable } from "../watch";
   import { runWatch, watchRun } from "../watch.svelte";
   import { FLIGHTS_URL } from "../flights/app";
 
-  let editing = $state(false);
+  import { heroEdit } from "./heroEdit.svelte";
+  // „Reise bearbeiten“ sitzt in der Leiste oben; beim Öffnen einer Reise zu
+  onMount(() => { heroEdit.open = false; });
   // Überschrift: eigener Name, sonst Ort (mit Land) oder der vorläufige Name
   const custom = $derived(!app.trip.autoName && !!app.trip.name && app.trip.name !== app.trip.place);
   const named = $derived(custom ? app.trip.name : app.trip.place || app.trip.name);
@@ -59,24 +57,12 @@
 </script>
 
 <section class="hero" id="hero" data-ch="hero">
-  <div class="hero-bar">
-    <div class="hero-l">
-      <button class="hero-home" onclick={goHome} aria-label={t("home.back")} title={t("home.back")}><span aria-hidden="true">⌂</span></button>
-      <TripMenu />
-    </div>
-    <div class="hero-r">
-      {#if !access.readonly}<button class="hero-edit" onclick={() => (editing = !editing)} aria-expanded={editing} aria-label={editing ? t("close") : t("hero.edit")}><span class="ico" aria-hidden="true">{editing ? "×" : "✎"}</span><span class="lbl">{editing ? t("close") : t("hero.edit")}</span></button>{/if}
-      <GroupsButton />
-      <Account />
-      <LangSelect />
-    </div>
-  </div>
   {#if access.loading}<div class="banner">{t("hero.loading")}</div>
   {:else if access.readonly}<div class="banner">{t("hero.readonly")}</div>{/if}
   {#if cloud.joinError}<div class="banner err">{cloud.joinError} <button class="linkbtn" onclick={() => (cloud.joinError = "")}>OK</button></div>{/if}
   <div class="hero-in">
-    {#if editing}
-      <TripEditor onclose={() => (editing = false)} />
+    {#if heroEdit.open}
+      <TripEditor onclose={() => (heroEdit.open = false)} />
     {:else}
       {#if trip.kicker}<span class="kick">☀️ {trip.kicker}</span>{/if}
       {#key `${rev}|${title}`}

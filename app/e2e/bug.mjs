@@ -43,7 +43,7 @@ try {
   await p.locator(".modal .bug .btn.primary", { hasText: "Anmelden" }).click();
   await p.locator(".login .test input").fill("Kira");
   await p.locator(".login .test button").click();
-  await p.locator(".start .acct-btn").waitFor({ timeout: 15000 });
+  await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
   log("Ohne Anmeldung nur Hinweis, Anmeldung daraus");
 
   // Meldung mit Bild
@@ -86,17 +86,17 @@ try {
       ]
     }) });
   });
-  await p.locator(".start .acct-btn").click();
+  await p.locator(".top .acct-btn").click();
   await p.locator(".acct-pop").waitFor();
   await p.waitForTimeout(500);
   if (await p.locator(".acct-usage").count()) fail("Admin-Eintrag ohne Freigabe");
   // Freigabe wird je Anmeldung einmal geprüft: neu anmelden
   isAdmin = true;
   await p.locator(".acct-pop .tm-act", { hasText: "Abmelden" }).click();
-  await p.locator(".start .tm-btn", { hasText: "Anmelden" }).click();
+  await p.locator(".top .tm-btn", { hasText: "Anmelden" }).click();
   await p.locator(".login .test input").fill("Kira");
   await p.locator(".login .test button").click();
-  await p.locator(".start .acct-btn").click();
+  await p.locator(".top .acct-btn").click();
   await p.locator(".acct-usage").click();
   await p.locator(".modal .usage .usage-card[data-id=workers].lv-high .barrel").waitFor();
   const text = await p.locator(".modal .usage").innerText();
