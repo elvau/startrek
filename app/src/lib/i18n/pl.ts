@@ -265,6 +265,7 @@ export const pl: Dict = {
   "ev.back": "powrót",
   "ev.btn": "Na wydarzenie",
   "ev.city": "Miasto",
+  "ev.cityGuess": "Nieznane miasto, przyjęto {city} (stolica). Sprawdź proszę.",
   "ev.cityPh": "np. Londyn",
   "ev.date": "Data",
   "ev.errFields": "Podaj, co, w jakim mieście, którego dnia i o której godzinie.",

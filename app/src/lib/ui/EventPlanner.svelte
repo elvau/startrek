@@ -10,7 +10,7 @@
   import Modal from "./Modal.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
-  import { ccOf, findCity, loadGeo, searchParts } from "../geo/places";
+  import { capitalOf, ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, destAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
@@ -40,6 +40,8 @@
   let evErr = $state("");
   let hits = $state<EventHit[] | null>(null);
   let picked = $state<EventHit | null>(null);
+  /** angenommene Stadt (Hauptstadt), solange man sie nicht ändert */
+  let guess = $state("");
   async function find(e: Event) {
     e.preventDefault();
     evErr = ""; hits = null;
@@ -64,12 +66,20 @@
     venue = h.venue || "";
     loc = null;
     evNear = [];
+    guess = "";
     place = h.city || "";
     // Stadt aus der Anschrift: Flughafenliste und die Orte des Landes (für Städte ohne Flughafen, z. B. Mönchengladbach)
     if (!h.city && h.address) {
       await Promise.all([ensureAirports(), h.cc ? loadGeo(geo, [h.cc]) : null]);
       if (picked !== h) return;
       if (!place) place = cityFromAddress(airportData, h.address, h.cc, geo) || "";
+    }
+    // nur das Land bekannt (z. B. Champions League gegen Sabah FK): Hauptstadt annehmen, mit Hinweis zum Prüfen
+    if (!place && h.cc) {
+      await loadGeo(geo, [h.cc]);
+      if (picked !== h) return;
+      const cap = capitalOf(geo, h.cc);
+      if (cap) { place = cap.name; guess = cap.name; }
     }
     // Ziel aus der Lage des Stadions: Flughäfen im Umkreis (gleichnamige Städte woanders spielen keine Rolle);
     // beim Antippen des Felds stehen sie zur Auswahl, falls man lieber einen bestimmten anfliegt
@@ -219,6 +229,7 @@
       <LocationPicker label={t("ev.city")} bind:value={loc} bind:text={place} placeholder={t("ev.cityPh")} required near={evNear} from={fromPt} />
       <label class="f ev-grow">{t("ev.venue")}<input bind:value={venue} placeholder={t("ev.venuePh")} /></label>
     </div>
+    {#if guess && place === guess}<p class="warnline small ev-guess">{t("ev.cityGuess", { city: guess })}</p>{/if}
     <div class="ed-row">
       <label class="f">{t("ev.date")}<input type="date" bind:value={date} required /></label>
       <label class="f">{t("ev.start")}<input type="time" bind:value={clock} required /></label>

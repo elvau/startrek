@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fromTicketmaster, searchTicketmaster, tmParams } from "./ticketmaster";
-import { localTime, matchTeams, searchFootballData } from "./footballdata";
+import { areaCc, localTime, matchTeams, searchFootballData } from "./footballdata";
 import { mergeEvents, parseEventQuery, searchEvents } from "./search";
 
 const TM = { _embedded: { events: [
@@ -46,9 +46,15 @@ describe("Event-Suche", () => {
   it("football-data: Ortszeit, Mannschaften finden", () => {
     expect(localTime("2027-05-15T19:00:00Z", "GB")).toBe("2027-05-15T20:00");
     expect(localTime("2027-01-15T19:00:00Z", "DE")).toBe("2027-01-15T20:00");
+    // Champions League: Baku (Sabah FK) in Ortszeit, nicht Pariser Zeit
+    expect(localTime("2026-10-20T16:45:00Z", "AZ")).toBe("2026-10-20T20:45");
     const teams = [{ id: 57, name: "Arsenal FC", shortName: "Arsenal" }, { id: 4, name: "Bayer 04 Leverkusen", shortName: "Leverkusen" }, { id: 5, name: "FC Bayern München", shortName: "Bayern" }];
     expect(matchTeams(teams, "arsenal").map(t => t.id)).toEqual([57]);
     expect(matchTeams(teams, "Arsenal gegen Bayern").map(t => t.id)).toEqual([57, 5]);
+    // Land aus dem Gebiet der Mannschaft (nur Champions League, keine Liga mit Land)
+    expect(areaCc({ name: "Azerbaijan", code: "AZE" })).toBe("AZ");
+    expect(areaCc({ name: "England", code: "ENG" })).toBe("GB");
+    expect(areaCc({ name: "Europe", code: "EUR" })).toBeUndefined();
   });
 
   it("football-data: nächste Spiele mit Stadion der Heimmannschaft; zwei Mannschaften: ihr gemeinsames Spiel", async () => {

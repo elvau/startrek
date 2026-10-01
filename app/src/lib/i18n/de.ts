@@ -251,6 +251,7 @@ export const de = {
   "ev.back": "zurück",
   "ev.btn": "Zu einem Event",
   "ev.city": "Stadt",
+  "ev.cityGuess": "Stadt nicht bekannt, {city} (Hauptstadt) angenommen. Bitte prüfen.",
   "ev.cityPh": "z. B. London",
   "ev.date": "Datum",
   "ev.errFields": "Bitte angeben, was, in welcher Stadt, an welchem Tag und um wie viel Uhr.",

@@ -74,7 +74,10 @@ try {
     evAsked.push(q);
     // „Events vor Ort“: nach Stadt und Zeitraum, mit Ticketpreis
     const body = q.city ? { events: [{ id: "tm:77", source: "ticketmaster", sourceName: "Ticketmaster", name: "Coldplay", start: "2027-05-15T20:00", venue: "Wembley Stadium", city: "London", cc: "GB", url: "https://tickets.example/coldplay", price: { min: 89, max: 250, currency: "EUR" } }],
-      sources: [{ id: "ticketmaster", name: "Ticketmaster", configured: true, ok: true, count: 1 }] } : EVENTS;
+      sources: [{ id: "ticketmaster", name: "Ticketmaster", configured: true, ok: true, count: 1 }] }
+      // Champions League gegen eine Mannschaft ohne Anschrift: nur das Land ist bekannt (Fehlerbericht #14)
+      : q.q === "Sabah" ? { events: [{ id: "fd:9", source: "footballdata", sourceName: "football-data.org", name: "Sabah FK – Dortmund", start: "2027-10-20T20:45", cc: "AZ", category: "UEFA Champions League" }],
+        sources: [{ id: "footballdata", name: "football-data.org", configured: true, ok: true, count: 1 }] } : EVENTS;
     await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
   });
   const tourAsked = [];
@@ -181,6 +184,20 @@ try {
   for (let i = 0; i < 20 && (await prices()) !== "89,42"; i++) await p.waitForTimeout(150);
   if ((await prices()) !== "89,42") fail("Preise der Erlebnisse: " + await prices());
   log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €) als Posten übernommen");
+
+  // nur das Land bekannt (Sabah FK, Aserbaidschan): Hauptstadt Baku angenommen, mit Hinweis zum Prüfen
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  await p.locator(".hero .ev-open").click();
+  const m2 = p.locator(".modal");
+  await m2.locator(".ev-find input").fill("Sabah");
+  await m2.locator(".ev-find .btn").click();
+  await m2.locator(".ev-hit", { hasText: "Sabah FK" }).click();
+  const city2 = m2.locator(".ev-form .lp").first().locator("input");
+  for (let i = 0; i < 40 && (await city2.inputValue()) !== "Baku"; i++) await p.waitForTimeout(150);
+  if ((await city2.inputValue()) !== "Baku") fail("keine Stadt bei Sabah FK: " + await city2.inputValue());
+  if (!(await m2.locator(".ev-guess", { hasText: "Baku" }).count())) fail("Hinweis zur angenommenen Stadt fehlt");
+  await p.keyboard.press("Escape");
+  log("Event nur mit Land (Sabah FK): Hauptstadt Baku angenommen, Hinweis zum Prüfen");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Event-Reise ok");

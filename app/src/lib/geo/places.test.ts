@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 import world from "../../../../public/world.json";
 import packs from "../../../../public/packs.json";
 import places from "../../../../public/places/pa.json";
-import { airportOf, ccOf, cityForAirport, findCity, placesNear, searchParts, suggestCities, type GeoData } from "./places";
+import { airportOf, capitalOf, ccOf, cityForAirport, findCity, placesNear, searchParts, suggestCities, type GeoData } from "./places";
 
 // echte Daten des Artefakts (public/ im Hauptordner)
 const g = { world: world.countries, packs, places } as unknown as GeoData;
 
 describe("Orte und Flughäfen", () => {
+  it("Hauptstadt eines Landes (Event nur mit Land, z. B. Sabah FK)", () => {
+    expect(capitalOf(g, "AZ")).toMatchObject({ name: "Baku" });
+    expect(capitalOf(g, "XX")).toBeNull();
+  });
+
   it("findet Flughäfen aus Paketen und Weltdaten", () => {
     expect(airportOf(g, "SPU")).toMatchObject({ code: "SPU", cc: "HR", name: "Split" });
     expect(airportOf(g, "zag")?.cc).toBe("HR");
