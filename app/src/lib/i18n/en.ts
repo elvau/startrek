@@ -652,6 +652,7 @@ export const en: Dict = {
   "mcp.tooMany": "Enough keys have been created today. Try again tomorrow.",
   "mcp.url": "Address (MCP over HTTP)",
   "mcp.warn": "The key gives access to your trips in your account (without booking data). Don't share it.",
+  "modal.closeHint": "Close with × or Esc",
   "mode.detail": "Detailed",
   "mode.input": "Input",
   "mode.simple": "Simple",

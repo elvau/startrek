@@ -674,6 +674,7 @@ export const pl: Dict = {
   "mcp.tooMany": "Dziś utworzono już wystarczająco kluczy. Spróbuj jutro.",
   "mcp.url": "Adres (MCP przez HTTP)",
   "mcp.warn": "Klucz daje dostęp do podróży na twoim koncie (bez danych do rezerwacji). Nie udostępniaj go.",
+  "modal.closeHint": "Zamknij przez × lub Esc",
   "mode.detail": "Szczegółowo",
   "mode.input": "Wprowadzanie",
   "mode.simple": "Prosto",

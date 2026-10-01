@@ -197,6 +197,9 @@ body[data-ch="split"] .amb-split{opacity:1}
 .acct.compact .acct-av{width:28px;height:28px;font-size:13px}
 
 .modal-bg{position:fixed;inset:0;z-index:100;background:rgba(10,18,30,.45);backdrop-filter:blur(4px);display:grid;place-items:center;padding:16px;animation:fadeIn .2s}
+.modal-hint{margin-inline-start:auto;margin-inline-end:8px;font-size:12.5px;font-weight:700;color:var(--a);white-space:nowrap}
+.modal.nudge{animation:nudge .35s ease}
+@keyframes nudge{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
 @keyframes fadeIn{from{opacity:0}}
 .modal{width:min(520px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:var(--paper);color:var(--ink);border-radius:22px;box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:14px;animation:edIn .3s cubic-bezier(.2,.8,.2,1)}
 .modal-h{display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:-20px;z-index:5;margin:-20px -20px 0;padding:16px 20px 12px;background:var(--paper);border-radius:22px 22px 0 0;box-shadow:0 1px 0 var(--line)}

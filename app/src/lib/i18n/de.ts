@@ -650,6 +650,7 @@ export const de = {
   "mcp.tooMany": "Heute wurden schon genug Schlüssel erzeugt. Morgen geht es wieder.",
   "mcp.url": "Adresse (MCP über HTTP)",
   "mcp.warn": "Der Schlüssel gibt Zugriff auf deine Reisen im Konto (ohne Buchungsdaten). Gib ihn nicht weiter.",
+  "modal.closeHint": "Schließen mit × oder Esc",
   "mode.detail": "Detailliert",
   "mode.input": "Eingabe",
   "mode.simple": "Einfach",

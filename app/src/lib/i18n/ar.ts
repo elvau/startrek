@@ -693,6 +693,7 @@ export const ar: Dict = {
   "mcp.tooMany": "تم إنشاء ما يكفي من المفاتيح اليوم. حاول غدًا.",
   "mcp.url": "العنوان (MCP عبر HTTP)",
   "mcp.warn": "يمنح المفتاح الوصول إلى الرحلات في حسابك (دون بيانات الحجز). لا تشاركه.",
+  "modal.closeHint": "للإغلاق: × أو Esc",
   "mode.detail": "مفصّل",
   "mode.input": "الإدخال",
   "mode.simple": "بسيط",
