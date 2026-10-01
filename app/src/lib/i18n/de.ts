@@ -1040,6 +1040,8 @@ export const de = {
   "trav.phNote": "🦡 Tiernamen wie „Dachs“ oder „Reh“ sind Platzhalter: So kannst du ohne Namen losrechnen. Echte Namen trägst du über „Personen bearbeiten“ ein oder ersetzt sie durch gespeicherte Personen.",
   "trav.quick": "Familie als Platzhalter",
   "trav.quickHint": "Nur für diese Reise, nicht in Gruppen gespeichert. Echte Namen trägst du bei „Personen bearbeiten“ ein.",
+  "trav.removeAria": "{name} entfernen",
+  "trav.removeQ": "{name} aus der Reise entfernen?",
   "trav.replace": "Ersetzen",
   "trav.replaceWith": "„{name}“ ersetzen durch",
   "trav.saveGroup": "Als Gruppe speichern",

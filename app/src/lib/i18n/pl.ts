@@ -1092,6 +1092,8 @@ export const pl: Dict = {
   "trav.phNote": "🦡 Nazwy zwierząt, np. „Borsuk” czy „Sarna”, to zastępcze nazwy: możesz liczyć bez imion. Prawdziwe imiona wpiszesz w „Edytuj osoby” albo zastąpisz zapisanymi osobami.",
   "trav.quick": "Rodzina jako zastępstwo",
   "trav.quickHint": "Tylko dla tej podróży, nie zapisywane w grupach. Prawdziwe imiona wpisz w „Edytuj osoby”.",
+  "trav.removeAria": "Usuń {name}",
+  "trav.removeQ": "Usunąć {name} z podróży?",
   "trav.replace": "Zastąp",
   "trav.replaceWith": "Zastąp „{name}” przez",
   "trav.saveGroup": "Zapisz jako grupę",

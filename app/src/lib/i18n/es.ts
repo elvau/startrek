@@ -1042,6 +1042,8 @@ export const es: Dict = {
   "trav.phNote": "🦡 Los nombres de animales como «Tejón» o «Corzo» son marcadores: así puedes empezar sin nombres. Añade nombres reales en «Editar personas» o sustitúyelos por personas guardadas.",
   "trav.quick": "Familia como marcador",
   "trav.quickHint": "Solo para este viaje, no se guarda en grupos. Los nombres reales se introducen en «Editar personas».",
+  "trav.removeAria": "Quitar a {name}",
+  "trav.removeQ": "¿Quitar a {name} del viaje?",
   "trav.replace": "Sustituir",
   "trav.replaceWith": "Sustituir «{name}» por",
   "trav.saveGroup": "Guardar como grupo",

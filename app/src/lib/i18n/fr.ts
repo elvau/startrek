@@ -1042,6 +1042,8 @@ export const fr: Dict = {
   "trav.phNote": "🦡 Les noms d’animaux comme « Blaireau » ou « Chevreuil » sont provisoires : tu peux commencer sans noms. Ajoute les vrais noms via « Modifier les personnes » ou remplace-les par des personnes enregistrées.",
   "trav.quick": "Famille provisoire",
   "trav.quickHint": "Seulement pour ce voyage, pas enregistré dans les groupes. Les vrais noms se saisissent sous « Modifier les personnes ».",
+  "trav.removeAria": "Retirer {name}",
+  "trav.removeQ": "Retirer {name} du voyage ?",
   "trav.replace": "Remplacer",
   "trav.replaceWith": "Remplacer « {name} » par",
   "trav.saveGroup": "Enregistrer comme groupe",

@@ -1042,6 +1042,8 @@ export const en: Dict = {
   "trav.phNote": "🦡 Animal names like “Badger” or “Deer” are placeholders so you can start without names. Add real names via “Edit people” or replace them with saved people.",
   "trav.quick": "Family as placeholder",
   "trav.quickHint": "Only for this trip, not saved in groups. Enter real names under “Edit people”.",
+  "trav.removeAria": "Remove {name}",
+  "trav.removeQ": "Remove {name} from the trip?",
   "trav.replace": "Replace",
   "trav.replaceWith": "Replace “{name}” with",
   "trav.saveGroup": "Save as group",

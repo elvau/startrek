@@ -823,3 +823,6 @@ body[data-ch="split"] .amb-split{opacity:1}
 .hr-top{display:flex;align-items:center;gap:8px;min-width:0}
 .st-filters{align-items:flex-end;gap:8px 12px}
 .st-filters .chips{flex:1 1 100%;flex-wrap:wrap}
+.person{position:relative}
+.person .p-x{position:absolute;top:6px;inset-inline-end:6px;width:26px;height:26px;border-radius:50%;border:0;background:transparent;color:var(--ink-3);font-size:18px;line-height:1;cursor:pointer}
+.person .p-x:hover,.person .p-x:focus-visible{background:var(--paper);color:#C4452E}

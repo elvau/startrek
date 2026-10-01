@@ -184,6 +184,11 @@ try {
   if (after.length !== 10 || after[0] !== "Dani Klein" || after.includes(`${A} Erw. 1`)) fail("nach Ersetzen: " + after);
   const hh3 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
   if (!hh3.some(x => x.startsWith("Klein") && x.includes("100 €"))) fail("Klein nach Ersetzen: " + hh3);
+  // × an der Person: schnell entfernen (mit Rückfrage), ohne „Personen bearbeiten“
+  await a.locator(".person", { hasText: `${B} Kleinkind 1` }).locator(".p-x").click();
+  await until(async () => (await a.locator(".person:not(.add) b").count()) === 9, "Kleinkind entfernt");
+  if ((await a.locator(".person:not(.add) b").allTextContents()).includes(`${B} Kleinkind 1`)) fail("Kleinkind noch da");
+  log("× entfernt einen Platzhalter direkt");
   log(`„${A} Erw. 1“ durch die gespeicherte`, " Dani Klein ersetzt, Familie Klein zahlt 100 €");
   log(`Platzhalter: Familie ${A} (2+3) und ${B} (2+2+1 Kleinkind)`, " 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
 
