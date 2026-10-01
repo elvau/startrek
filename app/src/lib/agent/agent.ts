@@ -472,6 +472,15 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     return { trips: [], edit: e };
   }
 
+  /** Notlösung ohne Vorschlag der KI: günstigste gefundene Unterkunft mit dem günstigsten Flug (je Platzzahl) */
+  function autoProposal(): AgentResult {
+    const st = [...stays.values()].sort((a, b) => a.offer.total - b.offer.total)[0];
+    const fl = [...flights.entries()].sort((a, b) => bookingPrice({ ...a[1], travelers: size() }) - bookingPrice({ ...b[1], travelers: size() }))[0];
+    if (!st && !fl) return { trips: [] };
+    const place = st?.q.place || fl?.[1].offer.out.toCity || fl?.[1].offer.out.to || "";
+    return finish({ trips: [{ title: place, summary: "", place, ...(fl ? { flightId: fl[0] } : {}), ...(st ? { stayId: st.offer.id } : {}) }] });
+  }
+
   /** Rückfrage: Text und bis zu 4 kurze Antworten */
   function question(a: any): AgentResult {
     const q = String(a?.question || "").trim().slice(0, 300);
@@ -480,7 +489,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
   }
 
   const contents: any[] = [{ role: "user", parts: [{ text: userText(r) }] }];
-  let retried = false;
+  let retried = false, nudges = 0;
   for (let round = 0; round < LIMITS.rounds; round++) {
     const last = round === LIMITS.rounds - 1;
     const res = await deps.gemini({
@@ -493,7 +502,15 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     });
     const content = res?.candidates?.[0]?.content;
     const calls = (content?.parts || []).filter((p: any) => p.functionCall).map((p: any) => p.functionCall);
-    if (!calls.length) throw new Error("Die KI hat keinen Vorschlag gemacht. Bitte anders formulieren.");
+    if (!calls.length) {
+      // kaputter Werkzeugaufruf (MALFORMED_FUNCTION_CALL) oder Text statt Aufruf: noch einmal mit Hinweis
+      if (nudges < 2 && !last) {
+        nudges++;
+        contents.push({ role: "user", parts: [{ text: `Reply only with a function call. When you have enough results, call ${finalName(r)}.` }] });
+        continue;
+      }
+      break;
+    }
     const edit = r.current && calls.find((c: any) => c.name === "update_trip");
     if (edit) return finishEdit(edit.args);
     const done = !r.current && calls.find((c: any) => c.name === "propose_trips");
@@ -521,5 +538,10 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     }));
     contents.push({ role: "user", parts: answers });
   }
-  throw new Error("Die KI ist zu keinem Ergebnis gekommen. Bitte noch einmal versuchen.");
+  // kein Vorschlag in den Runden (z. B. große Gruppe, viele Suchen): aus den besten gefundenen Angeboten einen bauen
+  if (!r.current) {
+    const auto = autoProposal();
+    if (auto.trips.length) return auto;
+  }
+  throw new Error(nudges ? "Die KI hat keinen Vorschlag gemacht. Bitte anders formulieren." : "Die KI ist zu keinem Ergebnis gekommen. Bitte noch einmal versuchen.");
 }
