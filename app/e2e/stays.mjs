@@ -94,6 +94,9 @@ try {
   if ((await cards.count()) !== 1) fail("Posten nicht angelegt");
   const c = await cards.textContent();
   if (!c.includes("2 Angebote") || !c.includes("7 Nächte")) fail("Posten: " + c);
+  // Link zum Anbieter des gewählten Angebots bleibt auf der Karte
+  const srcHref = await cards.locator(".src-link a").getAttribute("href").catch(() => null);
+  if (!srcHref || !/booking\.com|trivago\.de/.test(srcHref)) fail("Link zum Anbieter fehlt auf der Karte: " + srcHref);
   if (!c.includes("720")) fail("günstigstes Angebot nicht gewählt: " + c);
   log("Übernommen: ein Posten mit 2 Angeboten, günstigstes zählt");
 
