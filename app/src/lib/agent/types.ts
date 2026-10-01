@@ -48,6 +48,8 @@ export interface BriefItem {
   estimate?: boolean;
   /** Kurzbeschreibung, z. B. Flugzeiten oder Unterkunft mit Zeitraum */
   detail?: string;
+  /** eigene Anreise (Auto, Bahn) statt Flug */
+  arrival?: boolean;
 }
 
 /** Antwort der KI zur offenen Reise: Text und, falls gewünscht, Änderungen (werden erst nach Bestätigung übernommen) */
@@ -60,7 +62,7 @@ export interface AgentEdit {
   flights?: { offer: FlightOffer; replaces?: string; seats?: number; travelers?: number }[];
   stays?: { offer: StayOffer; q: StayQuery; replaces?: string }[];
   /** Schätzungen der KI (Beträge für alle) */
-  estimates?: { cat: CatKey; name: string; eur: number; replaces?: string }[];
+  estimates?: { cat: CatKey; name: string; eur: number; replaces?: string; arrival?: boolean }[];
 }
 
 /** Anzahl der Änderungen (0: nur eine Antwort) */
@@ -167,7 +169,7 @@ export function parseBrief(v: unknown): TripBrief | undefined {
     const detail = s(i.detail, 120);
     return [{
       id: i.id, cat: i.cat as CatKey, name: s(i.name, 60) || "", status: (STATUS as unknown[]).includes(i.status) ? i.status as Status : "idea", eur,
-      ...(i.estimate === true ? { estimate: true } : {}), ...(detail ? { detail } : {})
+      ...(i.estimate === true ? { estimate: true } : {}), ...(i.arrival === true ? { arrival: true } : {}), ...(detail ? { detail } : {})
     }];
   });
   const b: TripBrief = { items };

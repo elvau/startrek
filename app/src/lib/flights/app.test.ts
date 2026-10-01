@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi } from "./kiwi";
-import { worthRetry, compareRow, covered, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
+import { worthRetry, compareRow, covered, withoutTravel, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
 import { activeOption, totals } from "../calc";
 import { presences } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
@@ -156,5 +156,19 @@ describe("Flugsuche wiederholen", () => {
     // keine Flüge, aber alle Quellen haben geantwortet
     expect(worthRetry({ offers: [], sources: [src({ ok: true, ms: 3000 })] } as never)).toBe(false);
     expect(worthRetry({ offers: [{}], sources: [src({ ms: 8000 })] } as never)).toBe(false);
+  });
+
+  it("zeigt, wer noch keinen Flug und keine Anreise hat (Babys fliegen mit, ohne Plan kein Hinweis)", () => {
+    const tr = trip();
+    expect(withoutTravel(tr)).toEqual([]);
+    tr.items.push({ id: "f", cat: "flights", name: "Flug", status: "idea", participants: ["a", "b"], options: [] });
+    // Mia (8) und das Kleinkind ohne Alter fehlen; Ben (1) fliegt auf dem Schoß, Opa ist nicht dabei
+    expect(withoutTravel(tr).map(t => t.id)).toEqual(["c", "e"]);
+    tr.items.push({ id: "auto", cat: "transport", name: "Anreise Auto", status: "idea", arrival: true, participants: ["c"], options: [] });
+    expect(withoutTravel(tr).map(t => t.id)).toEqual(["e"]);
+    // verworfener Flug zählt nicht
+    tr.items[0].status = "dropped";
+    expect(withoutTravel(tr).map(t => t.id)).toEqual(["a", "b", "e"]);
+    expect(covered(tr).has("c")).toBe(true);
   });
 });

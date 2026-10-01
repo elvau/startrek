@@ -206,6 +206,8 @@ export interface Item {
   /** Flug: fliegt mit im Flug dieses Postens (gleicher Flug, gleicher Preis pro Person, wie im Artefakt „Wie Klein“) */
   follow?: string;
   payments?: Payment[];
+  /** Anreise ohne Flug (Auto, Bahn, Bus): Teilnehmer gelten als angereist wie mit einem Flug */
+  arrival?: boolean;
   /** von der KI: vorgeschlagen (echtes Angebot), erstellt (Schätzung) oder angepasst (ersetzt einen Posten) */
   ai?: AiMark;
 }

@@ -784,3 +784,8 @@ body[data-ch="split"] .amb-split{opacity:1}
 .mcp-row{display:flex;gap:6px}
 .mcp-key,.mcp-url{flex:1;min-width:0;font:12px ui-monospace,monospace}
 .mcp-cmd{white-space:pre-wrap;word-break:break-all;font:12px/1.5 ui-monospace,monospace;background:var(--line);border-radius:10px;padding:10px 12px;margin:0}
+
+/* Flug-Kapitel: wer noch keinen Flug und keine Anreise hat */
+.miss-travel{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:13.5px;color:var(--warn);background:var(--warn-soft);border-radius:12px;padding:8px 12px}
+.miss-travel .linkbtn{font-weight:700}
+.fs-has{color:var(--good)}

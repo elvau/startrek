@@ -342,7 +342,7 @@
         {/if}
       </div>
       <details class="more"><summary class="muted small">{t("fs.single")}</summary>
-        <div class="chips">{#each act as p (p.id)}<button type="button" class="chip sm" class:on={whoIds.includes(p.id)} aria-pressed={whoIds.includes(p.id)} onclick={() => togglePerson(p.id)}>{p.name}</button>{/each}</div>
+        <div class="chips">{#each act as p (p.id)}<button type="button" class="chip sm" class:on={whoIds.includes(p.id)} aria-pressed={whoIds.includes(p.id)} onclick={() => togglePerson(p.id)}>{p.name}{#if cov.has(p.id) && !item}<small class="fs-has" title={t("fs.hasFlight")}> ✓</small>{/if}</button>{/each}</div>
       </details>
       {#if hhs.length > 1 && !who}<p class="muted small">{t("fs.tipFamily")}</p>{/if}
       {#if who && mains.length && !item}

@@ -39,6 +39,7 @@
   import { getYourGuideLink, tiqetsLink, viatorLink } from "./lib/links";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
   import { flightSearch, openFlightSearch } from "./lib/flights/open.svelte";
+  import { withoutTravel } from "./lib/flights/app";
   import ExploreDialog from "./lib/ui/ExploreDialog.svelte";
   import { explore, openExplore } from "./lib/activities/open.svelte";
 
@@ -87,6 +88,11 @@
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button></div>
+          {@const miss = withoutTravel(app.trip)}
+          {#if miss.length}
+            <p class="search-row miss-travel">⚠ {t("fl.missing", { who: miss.slice(0, 6).map(x => x.name).join(", ") + (miss.length > 6 ? ` +${miss.length - 6}` : "") })}
+              <button class="linkbtn miss-search" onclick={() => openFlightSearch({ ids: miss.map(x => x.id) })}>✈ {t("fl.searchMissing")}</button></p>
+          {/if}
         {:else if ch.k === "attractions"}
           {@const aq = { place: app.trip.place, from: app.trip.from, to: app.trip.to }}
           {#if app.trip.place && !access.readonly && FLIGHTS_URL}

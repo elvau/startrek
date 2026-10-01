@@ -106,7 +106,8 @@ const TRIP_TOOLS = [
     inputSchema: { type: "object", properties: {
       tripId: str("Trip id"), category: { type: "string", enum: ["flights", "stay", "transport", "attractions", "misc"], description: "flights, stay, transport (rental car, transfers, own arrival), attractions, misc" },
       name: str("Short name"), amountEur: { type: "number", description: "Amount in EUR", minimum: 0 },
-      perPerson: { type: "boolean", description: "true: amount per person; false (default): total for the group" }, link: str("Optional https link (e.g. ticket shop)")
+      perPerson: { type: "boolean", description: "true: amount per person; false (default): total for the group" }, link: str("Optional https link (e.g. ticket shop)"),
+      arrival: { type: "boolean", description: "true if this is the travelers' own arrival (car, train, bus) instead of a flight" }
     }, required: ["tripId", "category", "name", "amountEur"] }
   },
   { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay).", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip") }, required: ["tripId", "itemId"] } }
@@ -261,7 +262,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       if (!n || !isCat(a.category) || !isFinite(eur) || eur < 0 || eur > 100000) fail("category, name and amountEur (0-100000) are required");
       const link = typeof a.link === "string" && /^https:\/\/[^\s]{4,300}$/.test(a.link) ? a.link : undefined;
       return edit(store!, a.tripId, user, t => {
-        const it = addCost(t, { cat: a.category, name: n, eur: Math.round(eur * 100) / 100, perPerson: a.perPerson === true, url: link });
+        const it = addCost(t, { cat: a.category, name: n, eur: Math.round(eur * 100) / 100, perPerson: a.perPerson === true, url: link, arrival: a.arrival === true });
         return { added: it.id, name: it.name };
       });
     }
