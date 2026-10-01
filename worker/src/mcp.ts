@@ -31,6 +31,8 @@ export interface McpDeps {
   allowSearch: () => Promise<string | null>;
   version: string;
   today?: string;
+  /** Partner-Links eingeschaltet (sonst Links aus gespeicherten Reisen ohne Partner-Kennung) */
+  partner?: boolean;
 }
 
 export type Saved = { kind: "flight"; offer: FlightOffer; seats?: number } | { kind: "stay"; offer: StayOffer; q: StayQuery };
@@ -229,7 +231,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
     }
     case "get_trip": {
       const r = await readable(store!, a.tripId, user.uid);
-      return tripSummary(parse(r) || fail("Trip data unreadable"), roleOf(r, user.uid)!);
+      return tripSummary(parse(r) || fail("Trip data unreadable"), roleOf(r, user.uid)!, deps.partner);
     }
     case "create_trip": {
       const place = S(a.place);

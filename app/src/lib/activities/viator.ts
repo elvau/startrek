@@ -2,6 +2,7 @@
  * Viator Partner-API (v2, Freitext-Suche): buchbare Touren und Tickets mit Preis ab, Bewertung und Bild.
  * Der Schlüssel ist ein Partner-Schlüssel; die Produkt-Links enthalten die Partnerkennung (Provision bei Buchung).
  */
+import { plainLink } from "../partner";
 import type { ActivityHit, ActivityQuery } from "./types";
 
 export const VIATOR_URL = "https://api.viator.com/partner";
@@ -50,12 +51,14 @@ export function fromViator(data: any): ActivityHit[] {
   }).filter(a => a.title && a.id !== "viator:undefined");
 }
 
-export async function searchViator(q: ActivityQuery, key: string, f: typeof fetch = fetch): Promise<ActivityHit[]> {
+/** partner: Links mit Partner-Kennung lassen (Provision); sonst Kennung entfernen */
+export async function searchViator(q: ActivityQuery, key: string, f: typeof fetch = fetch, partner = false): Promise<ActivityHit[]> {
   const res = await f(`${VIATOR_URL}/search/freetext`, {
     method: "POST",
     headers: { "exp-api-key": key, accept: "application/json;version=2.0", "accept-language": LANGS[q.lang || ""] || "en-US", "content-type": "application/json" },
     body: JSON.stringify(viatorBody(q))
   });
   if (!res.ok) throw new Error(`Viator ${res.status}`);
-  return fromViator(await res.json());
+  const list = fromViator(await res.json());
+  return list.map(a => (!a.url ? a : partner ? { ...a, sponsored: true } : { ...a, url: plainLink(a.url) }));
 }

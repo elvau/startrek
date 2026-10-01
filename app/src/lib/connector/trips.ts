@@ -11,6 +11,7 @@ import { pl } from "../i18n/pl";
 import { ru } from "../i18n/ru";
 import { CAT_KEYS, DEFAULT_SETTINGS, isActive, uid, type CatKey, type Item, type Option, type Traveler, type Trip } from "../model";
 import type { FlightOffer, OfferLeg } from "../flights/types";
+import { plainLink } from "../partner";
 import type { StayOffer, StayQuery } from "../stays/types";
 
 const DICTS: Record<string, Record<string, string | undefined>> = { de, en, es, fr, pl, ru, ar };
@@ -175,7 +176,7 @@ function itemEur(trip: Trip, it: Item): number | null {
 }
 
 /** Reise für Claude: ohne Namen der Reisenden (nur Altersklassen), Posten mit Kennung, Status und Betrag */
-export function tripSummary(trip: Trip, role: string) {
+export function tripSummary(trip: Trip, role: string, partner = false) {
   const act = trip.travelers.filter(isActive);
   const items = trip.items.filter(i => !i.auto).map(i => {
     const o = i.options.find(x => x.id === i.chosen) || i.options[0];
@@ -183,7 +184,7 @@ export function tripSummary(trip: Trip, role: string) {
     return {
       id: i.id, category: i.cat, name: i.name || o?.label || "", status: i.status,
       ...(eur != null ? { eur } : {}), ...(o?.estimate ? { estimate: true } : {}), ...(i.arrival ? { arrival: true } : {}),
-      ...(i.from ? { from: i.from, to: i.to } : {}), ...(o?.source?.url ? { link: o.source.url } : {}),
+      ...(i.from ? { from: i.from, to: i.to } : {}), ...(o?.source?.url ? { link: partner ? o.source.url : plainLink(o.source.url) } : {}),
       ...(i.options.length > 1 ? { offers: i.options.length } : {})
     };
   });

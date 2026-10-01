@@ -493,7 +493,7 @@
               {@const alts = alternatives(x.rt, i)}
               {@const key = `${x.rt.id}:${i}`}
               {@render legRow(`${i + 1}.`, l.out)}
-              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<a href={l.url} target="_blank" rel={l.source === "travelpayouts" ? "noopener noreferrer sponsored" : "noopener noreferrer"}>{t("search.atProvider")} ↗</a>{#if l.source === "travelpayouts"} <small>{t("fs.partner")}*</small>{/if}{/if}</p>
+              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<a href={l.url} target="_blank" rel={l.sponsored ? "noopener noreferrer sponsored" : "noopener noreferrer"}>{t("search.atProvider")} ↗</a>{#if l.sponsored} <small>{t("fs.partner")}*</small>{/if}{/if}</p>
               {#if alts.length}
                 <button type="button" class="linkbtn fs-altbtn" aria-expanded={altOpen === key} onclick={() => (altOpen = altOpen === key ? null : key)}>{altOpen === key ? t("fs.altHide") : t("fs.altShow", { n: alts.length })} {altOpen === key ? "▴" : "▾"}</button>
                 {#if altOpen === key}
@@ -519,7 +519,7 @@
           </article>
         {/each}
       </div>
-      {#if rounds.some(x => x.rt.legs.some(l => l.source === "travelpayouts"))}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+      {#if rounds.some(x => x.rt.legs.some(l => l.sponsored))}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
       {#if into}<p class="muted small">{t("fs.roundTaken")}</p>{/if}
     {:else}
       <p class="muted small">{t("fs.roundNone")}</p>
@@ -590,7 +590,7 @@
             {#if o.back}{@render legRow(t("fs.backShort"), o.back)}{/if}
             <div class="fs-acts">
               <button class="btn primary sm" disabled={taken[o.id + o.origin]} onclick={() => take(o)}>{taken[o.id + o.origin] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
-              {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel={o.source === "travelpayouts" ? "noopener noreferrer sponsored" : "noopener noreferrer"}>{t("search.atProvider")} ↗{#if o.source === "travelpayouts"}<small class="fs-ad">{t("fs.partner")}*</small>{/if}</a>{/if}
+              {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel={o.sponsored ? "noopener noreferrer sponsored" : "noopener noreferrer"}>{t("search.atProvider")} ↗{#if o.sponsored}<small class="fs-ad">{t("fs.partner")}*</small>{/if}</a>{/if}
               <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
             </div>
           </article>
@@ -598,7 +598,7 @@
           <p class="muted small">{t("fs.noDirect")}</p>
         {/each}
       </div>
-      {#if list.some(o => o.source === "travelpayouts")}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+      {#if list.some(o => o.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
       {#if into}<p class="muted small">{t("fs.takenHint")}</p>{/if}
     {:else}
       <p class="muted small">{t("fs.none")}</p>

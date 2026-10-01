@@ -23,6 +23,7 @@ import { issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
 import { tripStore, type StoreEnv } from "./firestore";
 import { mcpMessage, type Saved } from "./mcp";
 import pkg from "../../app/package.json";
+import { partnerOn } from "../../app/src/lib/partner";
 
 interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv {
   /** KI-Konnektor: Suchen pro Schlüssel und Tag (Standard 50) */
@@ -86,7 +87,8 @@ export default {
       if (typeof q === "string") return json({ error: q }, 400, h);
 
       // gleiche Suche 10 Minuten aus dem Zwischenspeicher
-      const key = new Request(`https://cache.reisekasse/${route}?` + encodeURIComponent(JSON.stringify(q)));
+      // Partner-Schalter im Schlüssel: nach dem Umschalten keine Treffer mit alten Links
+      const key = new Request(`https://cache.reisekasse/${route}${partnerOn(env) ? "/p" : ""}?` + encodeURIComponent(JSON.stringify(q)));
       const cache = caches.default;
       const hit = await cache.match(key);
       noteRoute(env, route, !!hit);
@@ -119,7 +121,7 @@ export default {
       if (typeof q === "string") return json({ error: q }, 400, h);
       noteRoute(env, "activities");
       // Touren ändern sich selten: 6 Stunden aus dem Zwischenspeicher
-      const result = await cachedJson(`activities/${encodeURIComponent(JSON.stringify(q))}`, 6 * 3600, () => searchActivities(q, env, meter(env)), r => r.activities.length > 0, ctx);
+      const result = await cachedJson(`activities${partnerOn(env) ? "/p" : ""}/${encodeURIComponent(JSON.stringify(q))}`, 6 * 3600, () => searchActivities(q, env, meter(env)), r => r.activities.length > 0, ctx);
       return json(result, 200, h);
     }
 
@@ -252,7 +254,7 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
     flights: q => searchAll(q, env, net),
     stays: q => searchStays(q, env, net),
     events: q => cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, net, cachedJson), r => r.events.length > 0, ctx),
-    activities: q => cachedJson(`activities/${encodeURIComponent(JSON.stringify(q))}`, 6 * 3600, () => searchActivities(q, env, net), r => r.activities.length > 0, ctx),
+    activities: q => cachedJson(`activities${partnerOn(env) ? "/p" : ""}/${encodeURIComponent(JSON.stringify(q))}`, 6 * 3600, () => searchActivities(q, env, net), r => r.activities.length > 0, ctx),
     store: tripStore(env, net),
     offers: {
       put: (id, v) => caches.default.put(offerKey(id), new Response(JSON.stringify(v), { headers: { "cache-control": "max-age=21600" } })),
@@ -266,7 +268,8 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
       await q.bump();
       return null;
     },
-    version: pkg.version
+    version: pkg.version,
+    partner: partnerOn(env)
   });
   if (!res) return new Response(null, { status: 202 });
   return json(res, 200, {});
@@ -288,7 +291,7 @@ async function admin(req: Request, env: Env, h: Record<string, string>): Promise
     agentDaily: Number(env.AGENT_DAILY) || 5, bugDaily: Number(env.BUG_DAILY) || 5,
     model: env.GEMINI_MODEL || DEFAULT_MODEL, fallback: env.GEMINI_FALLBACK_MODEL || "", geminiPerDay: Number(env.GEMINI_RPD) || 0,
     gemini: !!env.GEMINI_API_KEY, travelpayouts: !!env.TRAVELPAYOUTS_TOKEN, ticketmaster: !!env.TICKETMASTER_KEY, viator: !!env.VIATOR_API_KEY,
-    footballData: !!env.FOOTBALL_DATA_KEY, mcp: !!env.MCP_KEY_SECRET, mcpTrips: !!tripStore(env), mcpDaily: Number(env.MCP_DAILY) || 50, bugs: !!(env.GITHUB_TOKEN && env.BUG_REPO), bugImages: !!env.BUG_BUCKET, kv: !!env.AGENT_KV
+    footballData: !!env.FOOTBALL_DATA_KEY, mcp: !!env.MCP_KEY_SECRET, partnerLinks: partnerOn(env), mcpTrips: !!tripStore(env), mcpDaily: Number(env.MCP_DAILY) || 50, bugs: !!(env.GITHUB_TOKEN && env.BUG_REPO), bugImages: !!env.BUG_BUCKET, kv: !!env.AGENT_KV
   };
   return json(await usageReport(env, config), 200, { ...h, "cache-control": "no-store" });
 }
