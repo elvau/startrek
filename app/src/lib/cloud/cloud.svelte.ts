@@ -159,6 +159,14 @@ export function needsPush(id: string, json: string): boolean {
 }
 
 /** Änderung der aktuellen Reise speichern (nur wenn sie im Konto liegt und man bearbeiten darf) */
+/**
+ * Speicherzeiten bis zu diesem Zeitpunkt (ms) stammen von diesem Gerät, sind also keine fremde Änderung. Schon vor dem
+ * Schreiben gesetzt (das Echo mit der Speicherzeit kann vor dem Ende des Schreibens kommen), danach knapp nachgezogen.
+ */
+export const ownWrites: Record<string, number> = {};
+const writing = (id: string) => { ownWrites[id] = Math.max(ownWrites[id] || 0, Date.now() + 60000); };
+const wrote = (id: string) => { ownWrites[id] = Date.now() + 5000; };
+
 export async function push(trip: Trip, json: string) {
   if (!fbUser) return;
   const r = roleOf(trip.id);
@@ -169,7 +177,8 @@ export async function push(trip: Trip, json: string) {
   synced.set(trip.id, json);
   cloud.status = navigator.onLine ? "saving" : "offline";
   const f = await load();
-  try { await f.saveTrip(trip.id, trip.name || t("trip"), json, fbUser.uid); cloud.status = "saved"; }
+  writing(trip.id);
+  try { await f.saveTrip(trip.id, trip.name || t("trip"), json, fbUser.uid); wrote(trip.id); cloud.status = "saved"; }
   catch (e) { cloud.error = message(e); cloud.status = "error"; synced.delete(trip.id); }
 }
 
@@ -181,7 +190,8 @@ export async function upload(trip: Trip) {
   synced.set(trip.id, json);
   cloud.loaded[trip.id] = true;
   creating.add(trip.id);
-  try { await f.createTrip(trip.id, trip.name || t("trip"), json, fbUser); }
+  writing(trip.id);
+  try { await f.createTrip(trip.id, trip.name || t("trip"), json, fbUser); wrote(trip.id); }
   finally { creating.delete(trip.id); }
   if (wanted === trip.id) void watch(trip.id);
 }

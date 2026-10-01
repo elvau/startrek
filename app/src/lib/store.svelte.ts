@@ -7,7 +7,7 @@ import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, ty
 import { sampleTrip } from "./seed";
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
-import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
+import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, ownWrites, push, removeCloudTrip, roleOf, upload, watch, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
@@ -29,6 +29,11 @@ function markEdited(id: string) {
   try { localStorage.setItem(K_EDITED, JSON.stringify(editedAt)); } catch {}
 }
 const later = (a?: string, b?: string) => (!a ? b : !b ? a : a > b ? a : b);
+/**
+ * Speicherzeit im Konto zählt als „bearbeitet“ nur, wenn sie nicht von diesem Gerät stammt: ein spät nachgeschickter Stand
+ * (z. B. nach dem Hochladen) würde die Reise sonst als zuletzt bearbeitet nach oben schieben.
+ */
+const foreign = (id: string, updated?: string) => (updated && !(ownWrites[id] && Date.parse(updated) <= ownWrites[id]) ? updated : undefined);
 
 const meta = (t: Trip): TripMeta => ({ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: t.travelers.filter(x => x.active !== false).length });
 
@@ -255,7 +260,7 @@ export function allTrips(): TripEntry[] {
   // Der Name der offenen Reise ist frischer als der im Konto (dort erst nach dem verzögerten Speichern); steht im Konto
   // noch der Platzhalter „Reise“ (gerade angelegt, Name noch nicht gespeichert), gilt der Name der Kopie auf dem Gerät
   const local = (id: string) => { const t = id === app.trip.id ? app.trip : readTrip(id); return t ? meta(t) : null; };
-  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1, edited: later(editedAt[t.id], t.updated) }; });
+  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1, edited: later(editedAt[t.id], foreign(t.id, t.updated)) }; });
   const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, ...(m.id === app.trip.id ? meta(app.trip) : {}), cloud: false, edited: editedAt[m.id] }));
   return [...c, ...l];
 }
