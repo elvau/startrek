@@ -11,9 +11,8 @@ import { pl } from "./pl";
 import { ru } from "./ru";
 import { ar } from "./ar";
 
-export type Key = keyof typeof de & string;
-/** Wörterbuch einer Sprache; zusätzliche Mehrzahlformen (few, many …) auch für Schlüssel, die Deutsch nicht braucht */
-export type Dict = { [k in Key]?: string } & { [k: `${string}.${"zero" | "one" | "two" | "few" | "many" | "other"}`]: string };
+import type { Dict, Key } from "./types";
+export type { Dict, Key };
 
 export const LANGS = [
   { code: "de", name: "Deutsch", locale: "de-DE" },

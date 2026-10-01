@@ -19,8 +19,14 @@ import { agentBudget } from "./budget";
 import { geminiCaller } from "./gemini";
 import { isAdmin, meter, noteRoute, usageReport, type UsageEnv } from "./usage";
 import { checkLimit, searchWindows, type LimitEnv } from "./ratelimit";
+import { issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
+import { tripStore, type StoreEnv } from "./firestore";
+import { mcpMessage, type Saved } from "./mcp";
+import pkg from "../../app/package.json";
 
-interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv {
+interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv {
+  /** Claude-Konnektor: Suchen pro Schlüssel und Tag (Standard 50) */
+  MCP_DAILY?: string;
   /** erlaubte Herkünfte, kommagetrennt */
   ALLOWED_ORIGINS?: string;
   /** KI-Reiseplaner: Schlüssel aus Google AI Studio (Secret); fehlt er, ist der Planer aus */
@@ -135,6 +141,12 @@ export default {
     }
     if (url.pathname.startsWith("/bug-image/") && req.method === "GET") return bugImage(url.pathname, env);
 
+    if (url.pathname === "/mcp/key" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      return mcpKey(req, env, h);
+    }
+    if (url.pathname === "/mcp") return mcp(req, env, ctx);
+
     return json({ error: "Nicht gefunden" }, 404, h);
   }
 };
@@ -196,6 +208,70 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   }
 }
 
+/* ---------- Claude-Konnektor (MCP) ---------- */
+
+/** persönlichen Schlüssel ausstellen (angemeldet, höchstens 3 pro Tag); der Such-Dienst speichert ihn nicht */
+async function mcpKey(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
+  if (!env.MCP_KEY_SECRET) return json({ error: "Der Claude-Konnektor ist noch nicht eingerichtet" }, 503, h);
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return json({ error: "Bitte anmelden" }, 401, h);
+  let uid: string;
+  try { uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); }
+  catch (e) { return json({ error: (e as Error).message }, 401, h); }
+  const body = await req.json().catch(() => ({})) as { name?: unknown };
+  const quota = await countToday(env, uid, "mcpkey");
+  if (quota.used >= 3) return json({ error: "Höchstens 3 Schlüssel pro Tag" }, 429, h);
+  await quota.bump();
+  const kid = newKid();
+  const name = typeof body.name === "string" ? body.name.trim().slice(0, 60) : "";
+  const key = await issueKey(env.MCP_KEY_SECRET, { uid, kid, name, at: new Date().toISOString().slice(0, 10) });
+  noteRoute(env, "mcpkey");
+  return json({ key, kid, trips: !!tripStore(env) }, 200, h);
+}
+
+/** MCP über HTTP: eine JSON-RPC-Nachricht pro Anfrage, Antwort als JSON (kein Stream) */
+async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const plain = (status: number, msg: string, extra: Record<string, string> = {}) => json({ jsonrpc: "2.0", id: null, error: { code: -32000, message: msg } }, status, extra);
+  if (req.method !== "POST") return plain(405, "Nur POST", { allow: "POST" });
+  // aus dem Browser nur von unseren Seiten (Schutz vor DNS-Rebinding); Claude schickt keinen Origin mit
+  const origin = req.headers.get("origin");
+  if (origin && !cors(origin, env)["access-control-allow-origin"]) return plain(403, "Herkunft nicht erlaubt");
+  if (!env.MCP_KEY_SECRET) return plain(503, "Der Claude-Konnektor ist noch nicht eingerichtet");
+  const user = await verifyKey(env, (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, ""));
+  if (!user) return plain(401, "Schlüssel fehlt oder ist ungültig", { "www-authenticate": "Bearer" });
+  let msg: unknown;
+  try { msg = await req.json(); } catch { return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, 400, {}); }
+  if (Array.isArray(msg)) return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Batch nicht unterstützt" } }, 400, {});
+  noteRoute(env, "mcp");
+
+  const net = meter(env);
+  const ip = req.headers.get("cf-connecting-ip");
+  const offerKey = (id: string) => new Request(`https://mcp.splitandfly/offer/${user.kid}/${encodeURIComponent(id)}`);
+  const limit = Number(env.MCP_DAILY) || 50;
+  const res = await mcpMessage(msg, user, {
+    flights: q => searchAll(q, env, net),
+    stays: q => searchStays(q, env, net),
+    events: q => cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, net, cachedJson), r => r.events.length > 0, ctx),
+    activities: q => cachedJson(`activities/${encodeURIComponent(JSON.stringify(q))}`, 6 * 3600, () => searchActivities(q, env, net), r => r.activities.length > 0, ctx),
+    store: tripStore(env, net),
+    offers: {
+      put: (id, v) => caches.default.put(offerKey(id), new Response(JSON.stringify(v), { headers: { "cache-control": "max-age=21600" } })),
+      get: async id => { const r = await caches.default.match(offerKey(id)); return r ? await r.json() as Saved : null; }
+    },
+    allowSearch: async () => {
+      const lim = await checkLimit(caches.default, ip, searchWindows(env));
+      if (!lim.ok) { noteRoute(env, "blocked"); return `Too many searches, wait ${lim.retryAfter} s`; }
+      const q = await countToday(env, user.kid, "mcp");
+      if (q.used >= limit) return `Daily limit of ${limit} searches reached for this key`;
+      await q.bump();
+      return null;
+    },
+    version: pkg.version
+  });
+  if (!res) return new Response(null, { status: 202 });
+  return json(res, 200, {});
+}
+
 /* ---------- Admin: Nutzung der kostenlosen Kontingente ---------- */
 
 async function admin(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
@@ -212,7 +288,7 @@ async function admin(req: Request, env: Env, h: Record<string, string>): Promise
     agentDaily: Number(env.AGENT_DAILY) || 5, bugDaily: Number(env.BUG_DAILY) || 5,
     model: env.GEMINI_MODEL || DEFAULT_MODEL, fallback: env.GEMINI_FALLBACK_MODEL || "", geminiPerDay: Number(env.GEMINI_RPD) || 0,
     gemini: !!env.GEMINI_API_KEY, travelpayouts: !!env.TRAVELPAYOUTS_TOKEN, ticketmaster: !!env.TICKETMASTER_KEY, viator: !!env.VIATOR_API_KEY,
-    footballData: !!env.FOOTBALL_DATA_KEY, bugs: !!(env.GITHUB_TOKEN && env.BUG_REPO), bugImages: !!env.BUG_BUCKET, kv: !!env.AGENT_KV
+    footballData: !!env.FOOTBALL_DATA_KEY, mcp: !!env.MCP_KEY_SECRET, mcpTrips: !!tripStore(env), mcpDaily: Number(env.MCP_DAILY) || 50, bugs: !!(env.GITHUB_TOKEN && env.BUG_REPO), bugImages: !!env.BUG_BUCKET, kv: !!env.AGENT_KV
   };
   return json(await usageReport(env, config), 200, { ...h, "cache-control": "no-store" });
 }

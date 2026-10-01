@@ -1,5 +1,5 @@
 /* Arabisch (maschinell übersetzt, gern von Muttersprachlern prüfen lassen) */
-import type { Dict } from "./index.svelte";
+import type { Dict } from "./types";
 
 export const ar: Dict = {
   "acc.car": "سيارة 2 × {km} كم{cars} + موقف: {days}",
@@ -48,6 +48,8 @@ export const ar: Dict = {
   "adm.r.bug": "تقارير الأخطاء",
   "adm.r.events": "البحث عن فعاليات",
   "adm.r.flights": "البحث عن رحلات",
+  "adm.r.mcp": "موصل Claude",
+  "adm.r.mcpkey": "مفاتيح الموصل المنشأة",
   "adm.r.stays": "البحث عن سكن",
   "adm.r2a": "R2 كتابة (الفئة A)",
   "adm.r2b": "R2 قراءة (الفئة B)",
@@ -638,6 +640,23 @@ export const ar: Dict = {
   "lp.cityAll": "{name}، كل المطارات",
   "lp.placeholder": "مدينة أو مطار أو رمز",
   "lp.show": "عرض الاقتراحات",
+  "mcp.app": "في تطبيق Claude (الويب، الحاسوب، الهاتف) سيأتي لاحقًا تسجيل الدخول مباشرة بحسابك في Split&Fly.",
+  "mcp.code": "الإعداد في Claude Code (نفّذه في الطرفية):",
+  "mcp.copied": "تم النسخ",
+  "mcp.copy": "نسخ",
+  "mcp.copyCmd": "نسخ الأمر",
+  "mcp.create": "إنشاء مفتاح",
+  "mcp.intro": "بمفتاح شخصي يستطيع Claude الخاص بك البحث عبر Split&Fly عن الرحلات الجوية والإقامة والفعاليات والجولات، وإنشاء الرحلات في حسابك وإكمالها. يتم الحجز لدى المزوّد كما في التطبيق.",
+  "mcp.key": "مفتاحك",
+  "mcp.making": "جارٍ الإنشاء …",
+  "mcp.noTrips": "الرحلات في الحساب غير مفعّلة بعد؛ حاليًا يستطيع Claude البحث فقط.",
+  "mcp.notReady": "موصل Claude غير مُعدّ بعد.",
+  "mcp.once": "يُعرض المفتاح الآن فقط. يمنح الوصول إلى رحلاتك: لا تشاركه.",
+  "mcp.open": "الاتصال بـ Claude",
+  "mcp.revoke": "فقدت المفتاح أو شاركته؟ تواصل معنا مع المعرّف {kid} وسنحظره.",
+  "mcp.title": "الاتصال بـ Claude (تجريبي)",
+  "mcp.tooMany": "تم إنشاء ما يكفي من المفاتيح اليوم. حاول غدًا.",
+  "mcp.warn": "يمنح المفتاح الوصول إلى الرحلات في حسابك (دون بيانات الحجز). لا تشاركه.",
   "mode.detail": "مفصّل",
   "mode.input": "الإدخال",
   "mode.simple": "بسيط",
