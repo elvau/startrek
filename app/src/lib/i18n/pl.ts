@@ -271,6 +271,7 @@ export const pl: Dict = {
   "ev.errPlace": "Nie znaleziono „{q}”. Wybierz miasto z listy.",
   "ev.flightsDown": "Wyszukiwarka lotów jest chwilowo niedostępna, spróbuj ponownie.",
   "ev.from": "Wylot z {aps} dla: {p}.",
+  "ev.origins": "Lotniska wylotu",
   "ev.go": "Zaproponuj podróże",
   "ev.hours": "Czas trwania (godziny)",
   "ev.lead": "Mecz, koncert, targi: powiedz nam co, gdzie i kiedy. Znajdziemy pasujące loty i noclegi.",

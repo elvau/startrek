@@ -11,7 +11,7 @@
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { ccOf, findCity, loadGeo, searchParts } from "../geo/places";
-  import { areaAround, countryName, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
+  import { areaAround, countryName, destAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
   import { DEFAULT_H, fits, km, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
@@ -63,16 +63,46 @@
     if (h.start.length > 10) clock = h.start.slice(11, 16);
     venue = h.venue || "";
     loc = null;
+    evNear = [];
     place = h.city || "";
-    if (h.city || !h.address) return;
     // Stadt aus der Anschrift: Flughafenliste und die Orte des Landes (für Städte ohne Flughafen, z. B. Mönchengladbach)
-    await Promise.all([ensureAirports(), h.cc ? loadGeo(geo, [h.cc]) : null]);
-    if (picked === h && !place) place = cityFromAddress(airportData, h.address, h.cc, geo) || "";
+    if (!h.city && h.address) {
+      await Promise.all([ensureAirports(), h.cc ? loadGeo(geo, [h.cc]) : null]);
+      if (picked !== h) return;
+      if (!place) place = cityFromAddress(airportData, h.address, h.cc, geo) || "";
+    }
+    // Ziel aus der Lage des Stadions: Flughäfen im Umkreis (gleichnamige Städte woanders spielen keine Rolle);
+    // beim Antippen des Felds stehen sie zur Auswahl, falls man lieber einen bestimmten anfliegt
+    if (h.lat == null || h.lon == null) return;
+    await ensureAirports();
+    if (picked !== h) return;
+    const p = { name: place.split(",")[0].trim() || h.venue || h.name, lat: h.lat, lon: h.lon, cc: h.cc };
+    const { best, options } = destAround(airportData, p);
+    evNear = options;
+    if (best) { loc = best; place = locLabel(best); }
   }
 
-  const aps = nearestAirports(trip);
+  // Abflughäfen: vorausgewählt die nächsten zu den Wohnorten, an- und abwählbar, weitere hinzufügen
+  const aps0 = nearestAirports(trip);
+  let aps = $state<string[]>(aps0);
+  let allCodes = $state<string[]>([...aps0]);
+  const toggleAp = (c: string) => (aps = aps.includes(c) ? aps.filter(x => x !== c) : [...aps, c]);
+  function addAp(l: Loc) {
+    for (const c of l.kind === "airport" ? [l.code] : l.airports) {
+      if (!allCodes.includes(c)) allCodes = [...allCodes, c];
+      if (!aps.includes(c)) aps = [...aps, c];
+    }
+  }
+  // Mittelpunkt der Abflughäfen: gleich gute Treffer beim Ziel nach Entfernung
+  const fromPt = $derived.by(() => {
+    const ps = aps.map(c => locOf(airportData, c, "airport")).filter((l): l is Loc => l?.lat != null && l.lon != null);
+    return ps.length ? { lat: ps.reduce((v, l) => v + l.lat!, 0) / ps.length, lon: ps.reduce((v, l) => v + l.lon!, 0) / ps.length } : null;
+  });
+  /** Flughäfen rund um das gewählte Event (Vorschläge im Zielfeld) */
+  let evNear = $state<Loc[]>([]);
   const people = flyers(trip);
-  const cc = $derived(ccOf(geo, trip.country));
+  // Land: das des gewählten Events, sonst das der Reise
+  const cc = $derived(picked?.cc || ccOf(geo, trip.country));
 
   /** Ziel als Auswahl: Stadt oder Flughafen aus der Liste, sonst alle Flughäfen im Umkreis des Ortes */
   function destOf(text: string): Loc | null {
@@ -83,7 +113,7 @@
     if (hit) return hit;
     const c = findCity(geo, n, cc) || findCity(geo, n);
     if (c) return areaAround(airportData, { name: c.name, lat: c.lat, lon: c.lon, cc: c.cc });
-    const s = searchLocs(airportData, n, 1)[0];
+    const s = searchLocs(airportData, n, 1, fromPt)[0];
     const ap = s && (s.lat != null ? s : locOf(airportData, s.airports[0], "airport"));
     return ap?.lat != null ? areaAround(airportData, { name: s.city, lat: ap.lat, lon: ap.lon!, cc: s.cc }) : null;
   }
@@ -99,6 +129,7 @@
     e.preventDefault();
     error = ""; rows = null; done = false;
     if (!name.trim() || !place.trim() || !date || !/^\d{2}:\d{2}$/.test(clock)) { error = t("ev.errFields"); return; }
+    if (!aps.length) { error = t("fs.errAirport"); return; }
     if (!FLIGHTS_URL) { error = t("search.notReady"); return; }
     await Promise.all([ensureGeo(trip), ensureAirports()]);
     const dest = destOf(place);
@@ -185,13 +216,20 @@
       <label class="f ev-grow">{t("ev.name")}<input bind:value={name} placeholder={t("ev.namePh")} required /></label>
     </div>
     <div class="ed-row">
-      <LocationPicker label={t("ev.city")} bind:value={loc} bind:text={place} placeholder={t("ev.cityPh")} required />
+      <LocationPicker label={t("ev.city")} bind:value={loc} bind:text={place} placeholder={t("ev.cityPh")} required near={evNear} from={fromPt} />
       <label class="f ev-grow">{t("ev.venue")}<input bind:value={venue} placeholder={t("ev.venuePh")} /></label>
     </div>
     <div class="ed-row">
       <label class="f">{t("ev.date")}<input type="date" bind:value={date} required /></label>
       <label class="f">{t("ev.start")}<input type="time" bind:value={clock} required /></label>
       <label class="f">{t("ev.hours")}<input class="n sm" type="number" min="1" max="24" step="0.5" bind:value={hours} /></label>
+    </div>
+    <div>
+      <span class="dlabel">{t("ev.origins")}</span>
+      <div class="chips fs-aps">
+        {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
+        <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} from={fromPt} />
+      </div>
     </div>
     <p class="muted small">{t("ev.from", { aps: aps.join(", "), p: tn("n.persons", people.length) })} {t("ev.rule")}</p>
     <button class="btn primary" disabled={busy}>{busy ? t("ev.progress") : t("ev.go")}</button>

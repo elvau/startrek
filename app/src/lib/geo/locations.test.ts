@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import data from "../../../../public/airports.json";
-import { airportsNear, areaAround, countryName, locLabel, locOf, resolveLoc, searchLocs, type AirportData } from "./locations";
+import { airportsNear, areaAround, destAround, countryName, locLabel, locOf, resolveLoc, searchLocs, type AirportData } from "./locations";
 // @ts-expect-error Skript ohne Typen
 import { build, parseCsv } from "../../../../scripts/airports.mjs";
 
@@ -20,6 +20,16 @@ describe("Flughafen- und Städteauswahl", () => {
     const dus = { lat: 51.289, lon: 6.767 };
     expect(searchLocs(d, "Birmingham", 8, dus)[0]).toMatchObject({ code: "BHX", cc: "GB" });
     expect(searchLocs(d, "Birmingham", 8, { lat: 33.5, lon: -86.8 })[0]).toMatchObject({ code: "BHM", cc: "US" });
+  });
+
+  it("Ziel um ein Stadion: gleichnamige Städte woanders spielen keine Rolle", () => {
+    // NFL im Protective Stadium, Birmingham (Alabama) und Fußball in Birmingham (England)
+    const us = destAround(d, { name: "Birmingham", lat: 33.522, lon: -86.809, cc: "US" });
+    expect(us.best?.airports[0]).toBe("BHM");
+    expect(us.options.some(l => l.airports.includes("BHX"))).toBe(false);
+    const uk = destAround(d, { name: "Birmingham", lat: 52.475, lon: -1.868, cc: "GB" });
+    expect(uk.best?.airports[0]).toBe("BHX");
+    expect(uk.options.length).toBeGreaterThan(1);
   });
 
   it("ein Kürzel findet genau den Flughafen oder die Stadt", () => {

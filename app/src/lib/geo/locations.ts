@@ -142,6 +142,16 @@ export function areaAround(d: AirportData, place: { name: string; lat: number; l
   return { kind: "area", code: near[0].code, name: t("loc.areaName", { name: place.name }), city: place.name, en: place.name, cc: place.cc || near[0].cc, airports: near.map(a => a.code), lat: place.lat, lon: place.lon };
 }
 
+/**
+ * Ziel rund um einen bekannten Punkt (z. B. das Stadion eines Events): alle Flughäfen im Umkreis als Vorschlag,
+ * dazu die einzelnen zur Auswahl. Gleichnamige Städte woanders spielen so keine Rolle (NFL in Birmingham, USA → BHM).
+ */
+export function destAround(d: AirportData, place: { name: string; lat: number; lon: number; cc?: string }): { best: Loc | null; options: Loc[] } {
+  const area = areaAround(d, place);
+  const near = airportsNear(d, place);
+  return { best: area || near[0] || null, options: [...(area ? [area] : []), ...near] };
+}
+
 /* ---------- Laden (einmal pro Sitzung) ---------- */
 
 let loading: Promise<void> | undefined;

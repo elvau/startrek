@@ -257,6 +257,7 @@ export const de = {
   "ev.errPlace": "„{q}“ nicht gefunden. Bitte eine Stadt aus der Liste wählen.",
   "ev.flightsDown": "Flugsuche gerade nicht erreichbar, bitte noch einmal suchen.",
   "ev.from": "Abflug ab {aps} für {p}.",
+  "ev.origins": "Abflughäfen",
   "ev.go": "Reisen vorschlagen",
   "ev.hours": "Dauer (Stunden)",
   "ev.lead": "Spiel, Konzert, Messe: Sag uns was, wo und wann. Wir suchen passende Flüge und Unterkünfte.",

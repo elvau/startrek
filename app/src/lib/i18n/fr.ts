@@ -259,6 +259,7 @@ export const fr: Dict = {
   "ev.errPlace": "« {q} » introuvable. Choisis une ville dans la liste.",
   "ev.flightsDown": "La recherche de vols est indisponible pour le moment, réessaie.",
   "ev.from": "Départ de {aps} pour {p}.",
+  "ev.origins": "Aéroports de départ",
   "ev.go": "Proposer des voyages",
   "ev.hours": "Durée (heures)",
   "ev.lead": "Match, concert, salon : dis-nous quoi, où et quand. Nous cherchons les vols et hébergements adaptés.",
