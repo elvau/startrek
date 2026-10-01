@@ -1251,5 +1251,6 @@ export const ar: Dict = {
   "xp.tickets": "التذاكر",
   "xp.title": "اكتشف الأنشطة",
   "xp.tours": "جولات وتذاكر",
+  "xp.toursLiveOnly": "الجولات والتذاكر متاحة فقط على splitandfly.com.",
   "xp.toursSetup": "البحث عن الجولات غير مُعدّ بعد.",
 };

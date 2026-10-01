@@ -1148,5 +1148,6 @@ export const de = {
   "xp.tickets": "Tickets",
   "xp.title": "Erlebnisse finden",
   "xp.tours": "Touren & Tickets",
+  "xp.toursLiveOnly": "Touren & Tickets gibt es nur auf splitandfly.com.",
   "xp.toursSetup": "Die Touren-Suche ist noch nicht eingerichtet.",
 };

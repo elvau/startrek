@@ -37,7 +37,7 @@
 
   let kw = $state("");
   let evBusy = $state(false), evErr = $state(""), events = $state<EventHit[] | null>(null);
-  let toBusy = $state(false), toErr = $state(""), tours = $state<ActivityHit[] | null>(null), toursOff = $state(false);
+  let toBusy = $state(false), toErr = $state(""), tours = $state<ActivityHit[] | null>(null), toursOff = $state(false), toursWhy = $state("");
   let taken = $state<Record<string, boolean>>({});
 
   /** Stadtmitte und englischer Name aus den Ortsdaten (für den Umkreis bei Ticketmaster und die Vereine) */
@@ -71,6 +71,8 @@
     try {
       const res = await searchActivitiesRemote({ place: city, lang: i18n.lang, ...span });
       toursOff = !res.sources.some(s => s.configured);
+      // Viator nur auf splitandfly.com (Bedingungen der Viator-API): in der Testumgebung Hinweis statt Touren
+      toursWhy = res.sources.find(s => s.error === "domain") ? "domain" : "";
       tours = uniqueById(res.activities || []);
       const bad = res.sources.find(s => s.configured && !s.ok);
       if (!tours.length && bad) { toErr = bad.error || t("xp.noTours"); noteError(`Touren: ${bad.error}`); }
@@ -133,7 +135,7 @@
         {#if toBusy}<p class="muted small">{t("evs.busy")}</p>{/if}
         {#if toErr}<p class="warnline">{toErr}</p>{/if}
         {#if toursOff}
-          <p class="muted small">{t("xp.toursSetup")}</p>
+          <p class="muted small">{toursWhy === "domain" ? t("xp.toursLiveOnly") : t("xp.toursSetup")}</p>
         {:else if tours}
           {#if !tours.length && !toErr}<p class="muted small">{t("xp.noTours")}</p>{/if}
           <div class="xp-list">

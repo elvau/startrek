@@ -56,9 +56,9 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 
 ## Für Claude
 
-- [ ] **Viator-Bedingungen absichern** (docs/EVENT.md), mit Dani abstimmen: Viator-Suche nur für splitandfly.com (nicht die
-      Testumgebung elvau.github.io), nur bei `PARTNER_LINKS=on` (sonst kein Affiliate-Traffic), Viator-Posten nicht über den
-      KI-Konnektor oder an die KI weitergeben, geteilte Reiseseiten nicht indexierbar (noindex).
+- [x] **Viator-Bedingungen absichern:** Suche nur für splitandfly.com und bei `PARTNER_LINKS=on`, keine Touren im
+      KI-Konnektor (10/2026). Offen: übernommene Viator-Posten (Name, Preis, Link) stehen weiter in der Reise und damit auch
+      in dem, was der Konnektor und der KI-Planer von einer Reise sehen – mit Dani klären, ob das reicht.
 
 - [ ] Nach Teil 2 oben: `VITE_FIREBASE_AUTH_DOMAIN=splitandfly.com` nur im Release-Build (release.yml), Testumgebung bleibt.
 - [x] Mengenbegrenzung pro IP für die Suchen (60 pro Minute, 600 pro Stunde; v0.9.1).

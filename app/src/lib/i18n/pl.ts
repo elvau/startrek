@@ -1202,5 +1202,6 @@ export const pl: Dict = {
   "xp.tickets": "Bilety",
   "xp.title": "Znajdź atrakcje",
   "xp.tours": "Wycieczki i bilety",
+  "xp.toursLiveOnly": "Wycieczki i bilety są dostępne tylko na splitandfly.com.",
   "xp.toursSetup": "Wyszukiwanie wycieczek nie jest jeszcze skonfigurowane.",
 };

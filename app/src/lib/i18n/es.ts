@@ -1150,5 +1150,6 @@ export const es: Dict = {
   "xp.tickets": "Entradas",
   "xp.title": "Encontrar actividades",
   "xp.tours": "Tours y entradas",
+  "xp.toursLiveOnly": "Tours y entradas solo están disponibles en splitandfly.com.",
   "xp.toursSetup": "La búsqueda de tours aún no está configurada.",
 };

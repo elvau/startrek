@@ -10,7 +10,7 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Der Schlüssel `sf_…` ist signiert (HMAC mit `MCP_KEY_SECRET`) und enthält Kontokennung, Schlüsselkennung (`kid`),
    Anzeigename und Datum. Gespeichert wird er nirgends; die App zeigt ihn einmal an, dazu die Adresse, einen Hinweis für andere Programme und als Beispiel den Befehl für Claude Code:
    `claude mcp add --transport http splitandfly https://…/mcp --header "Authorization: Bearer sf_…"`
-2. **Werkzeuge** (`worker/src/mcp.ts`): `search_flights`, `search_stays`, `search_events`, `search_tours`;
+2. **Werkzeuge** (`worker/src/mcp.ts`): `search_flights`, `search_stays`, `search_events` (keine Touren: Viator-Inhalte dürfen nicht an fremde Anwendungen);
    mit Dienstkonto zusätzlich `list_trips`, `get_trip`, `create_trip`, `add_flight`, `add_stay`, `add_cost`, `remove_item`.
    Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel (Zwischenspeicher), `add_*` nimmt die Kennung.
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,

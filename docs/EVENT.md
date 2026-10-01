@@ -71,4 +71,8 @@ Nutzungsbedingungen der Viator-Affiliate-API (von Dani akzeptiert, 10/2026), dar
 - Keine Viator-Inhalte indexieren lassen (keine öffentlichen, durchsuchbaren Seiten mit Touren).
 - Verstöße können zur sofortigen Sperre des Partnerkontos führen.
 
+Umsetzung: Der Such-Dienst liefert Touren nur für Aufrufe von splitandfly.com (und lokal) und nur bei `PARTNER_LINKS=on`
+(`viatorBlock` in `app/src/lib/activities/search.ts`); die Testumgebung zeigt „nur auf splitandfly.com“. Der KI-Konnektor
+hat keine Touren-Suche.
+
 

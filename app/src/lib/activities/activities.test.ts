@@ -68,3 +68,16 @@ describe("Touren und Tickets (Viator)", () => {
     expect(e.options[0]).toMatchObject({ price: { mode: "person", adult: 65 }, source: { name: "Ticketmaster", url: "https://tm/1" } });
   });
 });
+
+describe("Viator-Bedingungen", () => {
+  it("nur auf splitandfly.com und nur mit Partner-Links", async () => {
+    const { viatorBlock, blockedResult } = await import("./search");
+    const on = { VIATOR_API_KEY: "k", PARTNER_LINKS: "on" };
+    expect(viatorBlock("https://splitandfly.com", on)).toBeNull();
+    expect(viatorBlock("https://www.splitandfly.com", on)).toBeNull();
+    expect(viatorBlock("https://elvau.github.io", on)).toBe("domain");
+    expect(viatorBlock(null, on)).toBe("domain");
+    expect(viatorBlock("https://splitandfly.com", { VIATOR_API_KEY: "k" })).toBe("partner");
+    expect(blockedResult("domain").sources[0]).toMatchObject({ configured: false, error: "domain" });
+  });
+});

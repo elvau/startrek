@@ -4,6 +4,20 @@ import type { SourceStatus } from "../flights/types";
 import { searchViator } from "./viator";
 import type { ActivityEnv, ActivityHit, ActivityQuery, ActivitySearchResult } from "./types";
 
+/**
+ * Viator-Bedingungen (docs/EVENT.md): Inhalte nur auf der eigenen Domain und nur, um Partner-Traffic zu viator.com zu
+ * leiten. Gesperrt: andere Herkunft (Testumgebung), Partner-Links aus. Der KI-Konnektor (fremde Anwendung) hat keine Touren.
+ */
+export const VIATOR_ORIGINS = ["https://splitandfly.com", "https://www.splitandfly.com", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173"];
+export type ViatorBlock = "domain" | "partner";
+export function viatorBlock(origin: string | null, env: ActivityEnv): ViatorBlock | null {
+  if (!partnerOn(env)) return "partner";
+  if (!origin || !VIATOR_ORIGINS.includes(origin)) return "domain";
+  return null;
+}
+/** Ergebnis ohne Suche, wenn Viator hier nicht gezeigt werden darf (error: Grund für die App) */
+export const blockedResult = (why: ViatorBlock): ActivitySearchResult => ({ activities: [], sources: [{ id: "viator", name: "Viator", configured: false, ok: false, count: 0, error: why }] });
+
 export async function searchActivities(q: ActivityQuery, env: ActivityEnv = {}, f: typeof fetch = fetch, timeoutMs = 20000): Promise<ActivitySearchResult> {
   if (!env.VIATOR_API_KEY) return { activities: [], sources: [{ id: "viator", name: "Viator", configured: false, ok: false, count: 0 }] };
   const t0 = Date.now();
