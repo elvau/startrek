@@ -70,6 +70,15 @@
   const households = $derived(Object.keys(calc.T.byHousehold).length);
   const nn = $derived(nights(app.trip.from, app.trip.to));
   // Ort und Zeitraum für Events vor Ort (aus der Reise oder den Flügen)
+  // aufgeklappte Suchen gehören zur Reise, in der sie geöffnet wurden: beim Wechsel der Reise zuklappen
+  let searchTrip = app.trip.id;
+  $effect(() => {
+    const id = app.trip.id;
+    if (id === searchTrip) return;
+    searchTrip = id;
+    flightSearch.open = false; staySearch.open = false; explore.open = false;
+  });
+
   // Mietwagen und Reiseversicherung als Richtwert-Posten
   function addCar() {
     const w = carWindow(app.trip) || { pick: "", drop: "", days: Math.max(1, nn || 1) };

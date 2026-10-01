@@ -157,6 +157,17 @@ try {
   await ins.waitFor();
   log("Mietwagen: Abholung PMI 15.10. 13:20 bis 19.10. 16:00, Richtwert 5 × 40 €, KAYAK vorbefüllt; Reiseversicherung geschätzt");
 
+  // aufgeklappte Suche gehört zur Reise: nach dem Wechsel in eine andere Reise ist sie zu
+  await p.locator("#flights .fs-open").click();
+  await p.locator("#flights .modal.inline").waitFor();
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  await p.locator(".top .brand-btn").click();
+  await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
+  await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
+  await p.waitForTimeout(500);
+  if (await p.locator(".modal.inline").count()) fail("Suche aus der anderen Reise noch offen");
+  log("Reise gewechselt: aufgeklappte Flugsuche der vorigen Reise ist zu");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Reisebeobachtung ok");
 } finally { await browser.close(); server.kill(); }
