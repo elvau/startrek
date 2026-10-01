@@ -355,7 +355,7 @@ export const pl: Dict = {
   "food.est": "szacunkowo",
   "food.in": "W {place}:",
   "food.itemName": "Wyżywienie {hh}",
-  "food.lead": "Ryczałt dzienny według waszego stylu jedzenia, na rodzinę za dni na miejscu (z lotów lub dat podróży). Wartości orientacyjne dla kraju.",
+  "food.lead": "Ryczałt dzienny według waszego stylu jedzenia, na rodzinę za dni na miejscu (z lotów lub dat podróży; dzień przyjazdu i wyjazdu liczy się po połowie). Wartości orientacyjne dla kraju.",
   "food.likeAll": "jak wszyscy",
   "food.noDays": "Brak dni podróży: dodaj daty lub loty.",
   "food.off": "wyłącz",

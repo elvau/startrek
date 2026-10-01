@@ -343,7 +343,7 @@ export const en: Dict = {
   "food.est": "estimated",
   "food.in": "In {place}:",
   "food.itemName": "Food {hh}",
-  "food.lead": "A daily allowance from your eating style, per family for the days on site (from flights or trip dates). Guide values per country.",
+  "food.lead": "A daily allowance from your eating style, per family for the days on site (from flights or trip dates; arrival and departure day count half). Guide values per country.",
   "food.likeAll": "like everyone",
   "food.noDays": "No travel days yet: add trip dates or flights.",
   "food.off": "turn off",

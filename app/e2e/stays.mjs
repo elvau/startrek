@@ -219,7 +219,8 @@ try {
   const fr = p.locator("#misc .food-rows li", { hasText: "Klein" });
   await fr.waitFor();
   const ft = await fr.textContent();
-  if (!ft.includes("12 Tage")) fail("Verpflegung Klein: " + ft);
+  // 11 Nächte: An- und Abreisetag je halb, also 11 Tage
+  if (!ft.includes("11 Tage")) fail("Verpflegung Klein: " + ft);
   await p.locator("#misc .card[data-item]", { hasText: "Verpflegung Klein" }).waitFor();
   const before = await fr.locator("b.num").textContent();
   await p.locator("#misc .food .chip", { hasText: "Genießer" }).first().click();
@@ -227,7 +228,7 @@ try {
   if ((await fr.locator("b.num").textContent()) === before) fail("Stil ändert den Betrag nicht");
   const rl = await p.locator("#misc .fs-direct a", { hasText: "Restaurants" }).getAttribute("href");
   if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
-  log("Verpflegung: Klein 12 Tage, Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
+  log("Verpflegung: Klein 11 Tage (An- und Abreise je halb), Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
 
   // Sprache umschalten: Texte, Datums- und Betragsformat folgen, die Wahl bleibt nach dem Neuladen
   await p.locator(".top .lang-sel").selectOption("en");

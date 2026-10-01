@@ -341,7 +341,7 @@ export const de = {
   "food.est": "geschätzt",
   "food.in": "In {place}:",
   "food.itemName": "Verpflegung {hh}",
-  "food.lead": "Pauschale pro Tag aus eurem Essensstil, je Familie für die Tage vor Ort (aus Flügen oder Reisedaten). Richtwerte je Land, wie im Artefakt.",
+  "food.lead": "Pauschale pro Tag aus eurem Essensstil, je Familie für die Tage vor Ort (aus Flügen oder Reisedaten; An- und Abreisetag je halb). Richtwerte je Land, wie im Artefakt.",
   "food.likeAll": "wie alle",
   "food.noDays": "Noch keine Reisetage: Reisedaten oder Flüge eintragen.",
   "food.off": "ausschalten",

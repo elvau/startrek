@@ -343,7 +343,7 @@ export const fr: Dict = {
   "food.est": "estimé",
   "food.in": "À {place} :",
   "food.itemName": "Repas {hh}",
-  "food.lead": "Forfait journalier selon votre façon de manger, par famille pour les jours sur place (d’après les vols ou les dates). Valeurs indicatives par pays.",
+  "food.lead": "Forfait journalier selon votre façon de manger, par famille pour les jours sur place (d’après les vols ou les dates ; jours d’arrivée et de départ comptés à moitié). Valeurs indicatives par pays.",
   "food.likeAll": "comme tous",
   "food.noDays": "Pas encore de jours de voyage : ajoute des dates ou des vols.",
   "food.off": "désactiver",

@@ -29,7 +29,7 @@ describe("Verpflegung wie im Artefakt", () => {
     const t = trip();
     t.food = { on: true, style: "self", hh: { Hase: "treat" } };
     const rows = foodPlan(t, g);
-    expect(rows.map(r => [r.hh, r.days, r.style, r.own])).toEqual([["Klein", 8, "self", false], ["Hase", 6, "treat", true]]);
+    expect(rows.map(r => [r.hh, r.days, r.style, r.own])).toEqual([["Klein", 7, "self", false], ["Hase", 5, "treat", true]]);
   });
   it("legt Posten an, rechnet Kinder mit 50 %, ändert nichts beim zweiten Mal, räumt beim Ausschalten auf", () => {
     const t = trip();
@@ -38,9 +38,9 @@ describe("Verpflegung wie im Artefakt", () => {
     const klein = t.items.find(i => i.hh === "Klein")!;
     expect(klein).toMatchObject({ cat: "misc", auto: "food", name: "Verpflegung Klein", participants: ["a", "b"] });
     const p = klein.options[0].price;
-    expect(p.qty).toBe(8);
+    expect(p.qty).toBe(7);
     expect(p.child).toBe(Math.round(p.adult! / 2));
-    expect(totals(t).items[klein.id].net).toBe((p.adult! + p.child!) * 8);
+    expect(totals(t).items[klein.id].net).toBe((p.adult! + p.child!) * 7);
     expect(syncFood(t, g)).toBe(false);
     t.food.on = false;
     expect(syncFood(t, g)).toBe(true);

@@ -59,15 +59,19 @@ export function boardFor(trip: Trip, ids: string[]): Board | undefined {
   return undefined;
 }
 
-/** je Familie: Tage vor Ort (Anreise bis Abreise, beide Tage zählen), sonst Reisetage */
+/**
+ * je Familie: Tage vor Ort, sonst Reisetage. An- und Abreisetag zählen je einen halben Tag (man isst dort meist nur
+ * einmal), also so viele Tage wie Nächte; ein Tagesausflug ohne Übernachtung zählt einen Tag.
+ */
+const mealDays = (nights: number) => Math.max(1, nights);
 export function foodPlan(trip: Trip, g: GeoData): FoodRow[] {
   const cfg = foodCfg(trip);
   const pres = presences(trip);
   const act = trip.travelers.filter(isActive);
-  const tripDays = okDate(trip.from) && okDate(trip.to) ? nightsList(trip.from, trip.to).length + 1 : 0;
+  const tripDays = okDate(trip.from) && okDate(trip.to) ? mealDays(nightsList(trip.from, trip.to).length) : 0;
   return [...new Set(act.map(hhKey))].map(hh => {
     const ids = act.filter(t => hhKey(t) === hh).map(t => t.id);
-    const ds = ids.map(id => pres[id]).filter(p => !!p).map(p => nightsList(p!.a, p!.d).length + 1);
+    const ds = ids.map(id => pres[id]).filter(p => !!p).map(p => mealDays(nightsList(p!.a, p!.d).length));
     const days = ds.length ? Math.max(...ds) : tripDays;
     const own = !!cfg.hh?.[hh];
     // eigene Wahl der Familie > Verpflegung der Unterkunft > Stil für alle
