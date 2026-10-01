@@ -405,6 +405,28 @@ try {
   if (await p.locator(".ai-note").count()) fail("Meldung bleibt nach dem Öffnen");
   log("Im Hintergrund: Fenster zu, weitergearbeitet, „Die KI ist fertig“ am Knopf, Klick öffnet das Ergebnis");
 
+  // langsames Netz: neue Reise wird ins Konto hochgeladen, während man sie schon umbenennt → der Name kommt im Konto an
+  await p.keyboard.press("Escape");
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  const slow2 = async r => { await new Promise(res => setTimeout(res, 1500)); await r.continue().catch(() => {}); };
+  await p.route("**/google.firestore.v1.Firestore/**", slow2);
+  if (await p.locator(".top .brand-btn").count()) await p.locator(".top .brand-btn").click();
+  await p.locator(".start .home-new").click();
+  await p.locator(".modal .newtrip .btn.primary").click();
+  const h1 = p.locator(".hero h1");
+  await h1.click();
+  await p.keyboard.press("ControlOrMeta+a");
+  await p.keyboard.type("Langsam-Test");
+  await p.keyboard.press("Enter");
+  await p.waitForTimeout(6000);
+  await p.unroute("**/google.firestore.v1.Firestore/**", slow2);
+  await p.waitForTimeout(2500);
+  // Kopie auf dem Gerät weg, damit nach dem Neuladen nur zählt, was im Konto steht
+  await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("rk2-t:")) localStorage.removeItem(k); });
+  await p.reload();
+  await until(() => p.locator(".start .home-trip, .start .home-row", { hasText: "Langsam-Test" }).count().then(n => n > 0), "Name im Konto angekommen", 15000);
+  log("Langsames Netz: Reise während des Hochladens umbenannt, Name steht danach im Konto");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("KI-Planer ok");
 } finally { await browser.close(); server.kill(); }

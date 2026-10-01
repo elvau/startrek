@@ -292,13 +292,23 @@ export async function moveToCloud(id: string) {
  * ging da noch nicht, weil die Liste im Konto die Reise noch nicht kannte. Den Stand nachschicken, sobald sie drin ist,
  * sonst bleibt im Konto die leere Reise und überschreibt beim nächsten Laden die Kopie auf dem Gerät.
  */
-function pushLater(id: string, sent: string, tries = 0) {
+async function pushLater(id: string, sent: string) {
+  if (!(await whenListed(id))) return;
   const cur = id === app.trip.id ? app.trip : readTrip(id);
   if (!cur || !cloud.user) return;
   const json = JSON.stringify(cur);
-  if (json === sent) return;
-  if (roleOf(id)) { void push(cur, json); return; }
-  if (tries < 40) setTimeout(() => pushLater(id, sent, tries + 1), 250);
+  if (json !== sent) void push(cur, json);
+}
+
+/** wartet, bis die Reise in der Liste des Kontos steht (statt alle 250 ms nachzusehen); false nach ms ohne Eintrag */
+function whenListed(id: string, ms = 60000): Promise<boolean> {
+  if (roleOf(id)) return Promise.resolve(true);
+  return new Promise(resolve => {
+    let done = false;
+    const finish = (ok: boolean) => { if (done) return; done = true; clearTimeout(tm); queueMicrotask(stop); resolve(ok); };
+    const tm = setTimeout(() => finish(false), ms);
+    const stop = $effect.root(() => { $effect(() => { if (roleOf(id)) finish(true); }); });
+  });
 }
 
 /** Leere, unberührte Reise beim Verlassen wegräumen, damit sich keine „Neue Reise“ ansammelt */
