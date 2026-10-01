@@ -78,9 +78,9 @@
     finally { toBusy = false; }
   }
 
-  // beim Öffnen (und sobald der Ort feststeht) gleich suchen; Touren erst, wenn man den Reiter ansieht
+  // Events suchen, sobald der Reiter offen ist und der Ort feststeht; Touren ebenso
   let searchedFor = "";
-  $effect(() => { if (city && city !== searchedFor) { searchedFor = city; void findEvents(); } });
+  $effect(() => { if (city && explore.tab === "events" && city !== searchedFor) { searchedFor = city; void findEvents(); } });
   $effect(() => { if (explore.tab === "tours") void findTours(); });
 
   function take(id: string, make: () => ReturnType<typeof eventItem>) {
@@ -100,8 +100,8 @@
     {:else}
       <p class="muted small xp-where">📍 {city} · 📅 {when}</p>
       <div class="xp-tabs" role="tablist">
-        <button role="tab" class="xp-tab" class:on={explore.tab === "events"} aria-selected={explore.tab === "events"} onclick={() => (explore.tab = "events")}>🎟 {t("xp.events")}</button>
         <button role="tab" class="xp-tab" class:on={explore.tab === "tours"} aria-selected={explore.tab === "tours"} onclick={() => (explore.tab = "tours")}>🎡 {t("xp.tours")}</button>
+        <button role="tab" class="xp-tab" class:on={explore.tab === "events"} aria-selected={explore.tab === "events"} onclick={() => (explore.tab = "events")}>🎟 {t("xp.events")}</button>
       </div>
 
       {#if explore.tab === "events"}

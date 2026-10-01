@@ -164,6 +164,9 @@ try {
   log("Vorschlag übernommen: Name, Daten, Flug und Unterkunft");
 
   // Erlebnisse finden: was am Reiseort im Reisezeitraum läuft, Touren; Übernehmen legt Posten an
+  // Touren & Tickets zuerst, dann Events vor Ort
+  const attBtns = await p.locator("#attractions .search-row .btn").allInnerTexts();
+  if (!attBtns[0]?.includes("Touren") || !attBtns[1]?.includes("Events")) fail("Reihenfolge Erlebnisse: " + attBtns);
   await p.locator("#attractions .xp-open").click();
   const x = p.locator(".modal .xp");
   await x.locator(".xp-ev").first().waitFor();

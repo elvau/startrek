@@ -111,9 +111,9 @@
           {#if !access.readonly}
             <!-- Reise zu einem Event (wie oben in der Reise) auch hier; Events und Touren am Ziel, sobald es eines gibt -->
             <div class="search-row">
-              {#if evWin.city && FLIGHTS_URL}<button class="btn primary xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>{/if}
+              {#if evWin.city && FLIGHTS_URL}<button class="btn primary xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>{/if}
+              {#if evWin.city && FLIGHTS_URL}<button class="btn xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>{/if}
               <button class="btn att-ev" class:primary={!evWin.city} onclick={openEventPlanner}>🏟 {app.trip.event ? t("ev.change") : t("ev.btn")}</button>
-              {#if evWin.city && FLIGHTS_URL}<button class="btn xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>{/if}
             </div>
             <!-- Events und Touren klappen hier im Kapitel auf -->
             {#if explore.open}<ExploreDialog inline onclose={() => (explore.open = false)} />{/if}
