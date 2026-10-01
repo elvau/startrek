@@ -155,17 +155,6 @@
   const n = $derived(pax.adults + pax.children + pax.infants);
   const people = $derived([`${pax.adults} ${t("age.adultShort")}`, pax.children && tn("n.kids", pax.children), pax.infants && tn("n.babies", pax.infants)].filter(Boolean).join(" · "));
 
-  // weitere Optionen: zu, bis man sie einmal aufklappt (gemerkt)
-  const MORE = "rk-fs-more";
-  let more = $state((() => { try { return localStorage.getItem(MORE) === "1"; } catch { return false; } })());
-  $effect(() => { const v = more ? "1" : "0"; try { localStorage.setItem(MORE, v); } catch {} });
-  const moreSummary = $derived([
-    who ? [...new Set(flyers(trip, who).map(hhKey))].join(", ") : `${t("all")} (${act.length})`,
-    aps.length > 3 ? `${aps.slice(0, 3).join(", ")} +${aps.length - 3}` : aps.join(", "),
-    tn("fs.stopsN", maxStops),
-    bags ? tn("fs.bagsN", bags) : t("fs.bagsNone")
-  ].filter(Boolean).join(" · "));
-
   let busy = $state(false);
   let progress = $state("");
   let error = $state("");
@@ -351,6 +340,44 @@
 
 <Modal title={item ? `${t("fs.open")}: ${item.name || t("ie.flight")}` : t("fs.open")} {onclose} wide {inline}>
   <form class="fs-form" onsubmit={search}>
+    <div class="fs-who">
+      <span class="dlabel">{t("fs.who")}</span>
+      <div class="chips">
+        <button type="button" class="chip" class:on={!who} aria-pressed={!who} onclick={() => setWho(undefined)}>{t("all")} ({act.length})</button>
+        {#if hhs.length > 1}
+          {#each hhs as h (h)}
+            {@const ms = act.filter(x => hhKey(x) === h)}
+            <button type="button" class="chip" class:on={hhOn(h)} aria-pressed={hhOn(h)} onclick={() => toggleHh(h)}>{h} ({ms.length}){#if ms.every(x => cov.has(x.id)) && !item}<small> {t("fs.hasFlight")}</small>{/if}</button>
+          {/each}
+        {/if}
+      </div>
+      <details class="more"><summary class="muted small">{t("fs.single")}</summary>
+        <div class="chips">{#each act as p (p.id)}<button type="button" class="chip sm" class:on={whoIds.includes(p.id)} aria-pressed={whoIds.includes(p.id)} onclick={() => togglePerson(p.id)}>{p.name}{#if cov.has(p.id) && !item}<small class="fs-has" title={t("fs.hasFlight")}> ✓</small>{/if}</button>{/each}</div>
+      </details>
+      {#if hhs.length > 1 && !who}<p class="muted small">{t("fs.tipFamily")}</p>{/if}
+      {#if who && mains.length && !item}
+        <div class="chips fs-along"><span class="muted small">{t("fs.alongLabel")}</span>
+          {#each mains as mm (mm.id)}<button type="button" class="chip sm" onclick={() => flyAlong(mm.id)}>{t("ie.like", { name: mm.name })}</button>{/each}
+        </div>
+      {/if}
+      {#if alongCost != null}<p class="muted small">{t("fs.alongCost", { name: trip.items.find(i => i.id === item?.follow)?.name || "", v: eur(alongCost) })}</p>{/if}
+    </div>
+    <div>
+      <span class="dlabel">{t("fs.origins")}</span>
+      <div class="chips fs-aps">
+        {#each allCodes as c (c)}
+          {@const a = known.find(x => x.code === c)}
+          {@const l = a ? null : originLoc(c)}
+          <button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} title={a?.name || (l ? locLabel(l) : c)} onclick={() => toggleAp(c)}>{c}{#if l?.kind === "city"}<small>{t("fs.cityAll", { name: l.name })}</small>{/if}</button>
+        {/each}
+        <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
+      </div>
+      <p class="muted small">
+        {#if custom}{t("fs.custom")} <button type="button" class="linkbtn" onclick={resetAps}>{t("fs.reset")}</button>
+        {:else}{t("fs.default")}{/if}
+      </p>
+    </div>
+
     <div class="chips fs-kind" role="radiogroup" aria-label={t("fs.kind")}>
       {#each [["return", t("fs.return")], ["oneway", t("fs.oneway")], ["round", t("fs.round")]] as [k, lbl] (k)}
         <button type="button" role="radio" aria-checked={kind === k} class="chip" class:on={kind === k} onclick={() => setKind(k as typeof kind)}>{lbl}</button>
@@ -426,47 +453,6 @@
       </div>
     {/if}
 
-    <!-- Wer, Abflughäfen, Umstiege, Koffer: zugeklappt mit kurzer Zusammenfassung (gemerkt) -->
-    <details class="fs-more" bind:open={more}>
-      <summary><b>{t("fs.more")}</b> <span class="muted small">{moreSummary}</span></summary>
-    <div class="fs-who">
-      <span class="dlabel">{t("fs.who")}</span>
-      <div class="chips">
-        <button type="button" class="chip" class:on={!who} aria-pressed={!who} onclick={() => setWho(undefined)}>{t("all")} ({act.length})</button>
-        {#if hhs.length > 1}
-          {#each hhs as h (h)}
-            {@const ms = act.filter(x => hhKey(x) === h)}
-            <button type="button" class="chip" class:on={hhOn(h)} aria-pressed={hhOn(h)} onclick={() => toggleHh(h)}>{h} ({ms.length}){#if ms.every(x => cov.has(x.id)) && !item}<small> {t("fs.hasFlight")}</small>{/if}</button>
-          {/each}
-        {/if}
-      </div>
-      <details class="more"><summary class="muted small">{t("fs.single")}</summary>
-        <div class="chips">{#each act as p (p.id)}<button type="button" class="chip sm" class:on={whoIds.includes(p.id)} aria-pressed={whoIds.includes(p.id)} onclick={() => togglePerson(p.id)}>{p.name}{#if cov.has(p.id) && !item}<small class="fs-has" title={t("fs.hasFlight")}> ✓</small>{/if}</button>{/each}</div>
-      </details>
-      {#if hhs.length > 1 && !who}<p class="muted small">{t("fs.tipFamily")}</p>{/if}
-      {#if who && mains.length && !item}
-        <div class="chips fs-along"><span class="muted small">{t("fs.alongLabel")}</span>
-          {#each mains as mm (mm.id)}<button type="button" class="chip sm" onclick={() => flyAlong(mm.id)}>{t("ie.like", { name: mm.name })}</button>{/each}
-        </div>
-      {/if}
-      {#if alongCost != null}<p class="muted small">{t("fs.alongCost", { name: trip.items.find(i => i.id === item?.follow)?.name || "", v: eur(alongCost) })}</p>{/if}
-    </div>
-    <div>
-      <span class="dlabel">{t("fs.origins")}</span>
-      <div class="chips fs-aps">
-        {#each allCodes as c (c)}
-          {@const a = known.find(x => x.code === c)}
-          {@const l = a ? null : originLoc(c)}
-          <button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} title={a?.name || (l ? locLabel(l) : c)} onclick={() => toggleAp(c)}>{c}{#if l?.kind === "city"}<small>{t("fs.cityAll", { name: l.name })}</small>{/if}</button>
-        {/each}
-        <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
-      </div>
-      <p class="muted small">
-        {#if custom}{t("fs.custom")} <button type="button" class="linkbtn" onclick={resetAps}>{t("fs.reset")}</button>
-        {:else}{t("fs.default")}{/if}
-      </p>
-    </div>
-
     <div class="ed-row fs-opts">
       <label class="f fs-sel">{t("fs.maxStops")}<select bind:value={maxStops}>{#each [0, 1, 2] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
       <label class="f fs-sel">{t("fs.bags")}<select value={bags} onchange={e => (bagCount = Number(e.currentTarget.value))}>
@@ -475,7 +461,6 @@
       <label class="in-row"><input type="checkbox" bind:checked={noSelf} /> {t("fs.noSelf")}</label>
       <label class="in-row"><input type="checkbox" bind:checked={withAccess} /> {t("fs.withAccess")}</label>
     </div>
-    </details>
     <p class="muted small">{people}{who ? ` (${[...new Set(flyers(trip, who).map(hhKey))].join(", ")})` : ` (${t("fs.allTrav")})`}. {who ? ([...new Set(flyers(trip, who).map(hhKey))].length === 1 ? t("fs.pricesOne") : t("fs.pricesSome")) : t("fs.pricesAll")}</p>
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `${t("fs.busy")} ${progress}` : kind === "round" ? t("fs.roundBtn") : aps.length > 1 ? t("fs.compareN", { n: aps.length }) : t("fs.searchBtn")}</button>
