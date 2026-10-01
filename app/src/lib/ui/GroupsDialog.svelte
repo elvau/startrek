@@ -7,7 +7,6 @@
   import { deleteAllDocs, docs, hasDoc, loadDocs, removeDoc, saveDocsNow } from "../traveldocs.svelte";
   import Modal from "./Modal.svelte";
   import PersonDetails from "./PersonDetails.svelte";
-  import PrefsEditor from "./PrefsEditor.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
   let first = $state(""), last = $state(""), age = $state<number | undefined>();
@@ -15,14 +14,6 @@
   let err = $state("");
   let open = $state<string | null>(dir.groups[0]?.id ?? null);
   let det = $state<string | null>(null);
-  // Vorlieben: eigene oder die einer Gruppe aufgeklappt
-  let prefsOpen = $state<string | null>(null);
-  function togglePrefs(id: string) {
-    if (prefsOpen === id) { prefsOpen = null; return; }
-    if (id === "me") dir.prefs ||= {};
-    else { const g = dir.groups.find(x => x.id === id); if (g) g.prefs ||= {}; }
-    prefsOpen = id;
-  }
   function close() { void saveDocsNow(); onclose(); }
   function delPerson(id: string, name: string) {
     if (!confirm(t("grp.deletePersonConfirm", { name }))) return;
@@ -61,11 +52,6 @@
     <p class="muted small">{cloud.user ? t("grp.inAccount") : t("grp.inBrowser")}</p>
 
     <div class="ed-sec">
-      <button class="linkbtn pr-toggle" aria-expanded={prefsOpen === "me"} onclick={() => togglePrefs("me")}>⚙ {t("prefs.mine")} {prefsOpen === "me" ? "▴" : "▾"}</button>
-      {#if prefsOpen === "me" && dir.prefs}<PrefsEditor p={dir.prefs} />{/if}
-    </div>
-
-    <div class="ed-sec">
       <span class="dlabel">{t("grp.groups")}</span>
       {#each dir.groups as g (g.id)}
         <div class="grp" class:open={open === g.id}>
@@ -82,9 +68,7 @@
                   <span class="muted small">{t("grp.noPeople")}</span>
                 {/each}
               </div>
-              <button class="linkbtn pr-toggle" aria-expanded={prefsOpen === g.id} onclick={() => togglePrefs(g.id)}>⚙ {t("prefs.group")} {prefsOpen === g.id ? "▴" : "▾"}</button>
-              {#if prefsOpen === g.id && g.prefs}<PrefsEditor p={g.prefs} base={dir.prefs || {}} />{/if}
-                            <button class="linkbtn danger" onclick={() => { if (confirm(t("grp.deleteConfirm", { name: g.name }))) removeGroup(g.id); }}>{t("grp.delete")}</button>
+              <button class="linkbtn danger" onclick={() => { if (confirm(t("grp.deleteConfirm", { name: g.name }))) removeGroup(g.id); }}>{t("grp.delete")}</button>
             </div>
           {/if}
         </div>

@@ -183,14 +183,18 @@ try {
   await gd.locator('.pmore[aria-label="Details zu Dani"]').click();
   await gd.locator(".pdet label", { hasText: "Wohnort" }).locator("input").fill("41236");
   await until(async () => (await gd.locator(".pdet label", { hasText: "Wohnort" }).locator("input").inputValue()).includes("Mönchengladbach"), "Wohnort Dani");
-  await gd.locator(".pr-toggle", { hasText: "Meine Vorlieben" }).click();
-  const pe = gd.locator(".prefs");
+  // Vorlieben haben einen eigenen Knopf oben, nicht mehr bei Gruppen und Personen
+  if (await gd.locator(".prefs").count()) fail("Vorlieben noch im Dialog Gruppen und Personen");
+  await gd.locator(".modal-h .x").click();
+  await p.locator(".top .prefs-btn").click();
+  const pd = p.locator(".modal", { hasText: "Meine Vorlieben" });
+  const pe = pd.locator(".prefs").first();
   await pe.locator("label", { hasText: "Ich bin" }).locator("select").selectOption({ label: "Dani Klein" });
   await pe.locator('input[placeholder^="Land hinzufügen"]').fill("Türk");
   await pe.locator(".sugg button", { hasText: "Türkei" }).click();
   await pe.locator("label", { hasText: "Umstiege max." }).locator("select").selectOption("0");
   await pe.locator(".chip", { hasText: "Strand" }).click();
-  await gd.locator(".modal-h .x").click();
+  await pd.locator(".modal-h .x").click();
   const stored = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}"));
   if (!stored.me || stored.prefs?.avoid?.join() !== "TR" || stored.prefs?.maxStops !== 0) fail("Vorlieben nicht gespeichert: " + JSON.stringify(stored.prefs));
   await p.locator(".ai-fab").click();
