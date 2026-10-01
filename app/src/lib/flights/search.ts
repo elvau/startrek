@@ -93,7 +93,7 @@ export function parseQuery(b: unknown): FlightQuery | string {
   const adults = o.adults ?? 1, children = o.children ?? 0, infants = o.infants ?? 0;
   if (!int(adults, 1, 9) || !int(children, 0, 8) || !int(infants, 0, 4)) return "Personen: 1–9 Erwachsene, bis 8 Kinder, bis 4 Babys";
   if ((infants as number) > (adults as number)) return "Höchstens ein Baby pro Erwachsenem";
-  const opt: Pick<FlightQuery, "flexDays" | "maxStops" | "bags" | "selfTransfer" | "departTo" | "via" | "viaHours" | "avoidCountries" | "maxHours"> = {};
+  const opt: Pick<FlightQuery, "flexDays" | "maxStops" | "bags" | "bagCount" | "selfTransfer" | "departTo" | "via" | "viaHours" | "avoidCountries" | "maxHours"> = {};
   if (o.avoidCountries != null) {
     const v = o.avoidCountries;
     if (!Array.isArray(v) || v.length > 30 || !v.every(x => typeof x === "string" && /^[A-Z]{2}$/.test(x))) return "Gesperrte Länder: bis zu 30 Ländercodes";
@@ -116,6 +116,7 @@ export function parseQuery(b: unknown): FlightQuery | string {
   if (o.flexDays != null) { if (!int(o.flexDays, 0, 3)) return "± Tage: 0 bis 3"; if (!latest) opt.flexDays = o.flexDays as number; }
   if (o.maxStops != null) { if (!int(o.maxStops, 0, 2)) return "Umstiege: 0 bis 2"; opt.maxStops = o.maxStops as number; }
   if (o.bags != null) { if (typeof o.bags !== "boolean") return "Koffer: ja oder nein"; opt.bags = o.bags; }
+  if (o.bagCount != null) { if (!int(o.bagCount, 0, 18)) return "Koffer: 0 bis 18"; opt.bagCount = o.bagCount as number; }
   if (o.selfTransfer != null) { if (typeof o.selfTransfer !== "boolean") return "Self-Transfer: ja oder nein"; opt.selfTransfer = o.selfTransfer; }
   const places: Pick<FlightQuery, "fromAirports" | "toAirports" | "fromCityCode" | "toCityCode"> = {};
   for (const k of ["fromAirports", "toAirports"] as const) {

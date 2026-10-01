@@ -17,6 +17,20 @@ export function addDays(iso: string, n: number): string {
 /** mehrere Flughäfen: Kiwi nimmt eine Liste („SPU,BWK,DBV“) und sucht alle auf einmal */
 const kiwiPlace = (code: string, aps?: string[]) => (aps && aps.length > 1 ? aps.join(",") : code);
 
+/**
+ * Koffer insgesamt auf die Reisenden verteilen: erst je einer für Erwachsene, dann für Kinder, dann ein zweiter
+ * (höchstens zwei je Person). Kiwi bucht Koffer je Person, so reichen z. B. 3 Koffer für 2 Erwachsene und 3 Kinder.
+ */
+export function holdBags(adults: number, children: number, total: number): { adults: number[]; children: number[] } {
+  const a = Array(adults).fill(0) as number[], c = Array(children).fill(0) as number[];
+  let left = Math.max(0, Math.min(total, 2 * (adults + children)));
+  for (let round = 0; round < 2 && left; round++) {
+    for (let i = 0; i < adults && left; i++, left--) a[i]++;
+    for (let i = 0; i < children && left; i++, left--) c[i]++;
+  }
+  return { adults: a, children: c };
+}
+
 export function kiwiArgs(q: FlightQuery) {
   // flexibel: Abflug zwischen frühester Abreise und (späteste Rückkehr − Mindest-Nächte), Nächte als Spanne
   const flex = q.latest && q.nightsMin
@@ -34,7 +48,9 @@ export function kiwiArgs(q: FlightQuery) {
     ...(q.selfTransfer != null ? { allow_self_transfer: q.selfTransfer } : {}),
     ...(q.avoidCountries?.length ? { exclude_stopover_countries: q.avoidCountries.join(",") } : {}),
     ...(q.maxHours ? { max_fly_duration: q.maxHours } : {}),
-    ...(q.bags ? { adults_hold_bags: Array(adults).fill(1), ...(q.children ? { children_hold_bags: Array(q.children).fill(1) } : {}) } : {}),
+    ...(q.bagCount != null
+      ? (({ adults: a, children: c }) => (q.bagCount ? { adults_hold_bags: a, ...(q.children ? { children_hold_bags: c } : {}) } : {}))(holdBags(adults, q.children || 0, q.bagCount))
+      : q.bags ? { adults_hold_bags: Array(adults).fill(1), ...(q.children ? { children_hold_bags: Array(q.children).fill(1) } : {}) } : {}),
     adults, children: q.children, infants: q.infants,
     currency: q.currency || "EUR", locale: "de", sort: "price"
   };

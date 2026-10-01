@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
-import { fromKiwi, kiwiArgs, searchKiwi } from "./kiwi";
+import { fromKiwi, holdBags, kiwiArgs, searchKiwi } from "./kiwi";
 import { atAirports, inWindow, merge, parseQuery, searchAll } from "./search";
 import type { FlightQuery } from "./types";
 
@@ -31,6 +31,18 @@ describe("Flugsuche", () => {
   it("übersetzt die Anfrage in Kiwis Format", () => {
     expect(kiwiArgs(q)).toMatchObject({ flyFrom: "DUS", flyTo: "SPU", departureDate: "18/07/2027", returnDate: "29/07/2027", adults: 2, children: 1, infants: 0, currency: "EUR" });
     expect(kiwiArgs({ ...q, ret: undefined })).not.toHaveProperty("returnDate");
+  });
+  it("Koffer insgesamt: je Person verteilt (erst Erwachsene, dann Kinder, höchstens zwei je Person)", () => {
+    expect(holdBags(2, 3, 3)).toEqual({ adults: [1, 1], children: [1, 0, 0] });
+    expect(holdBags(2, 3, 0)).toEqual({ adults: [0, 0], children: [0, 0, 0] });
+    expect(holdBags(2, 1, 4)).toEqual({ adults: [2, 1], children: [1] });
+    expect(holdBags(1, 0, 9)).toEqual({ adults: [2], children: [] });
+    const fam = { ...q, adults: 2, children: 3 };
+    expect(kiwiArgs({ ...fam, bagCount: 3 })).toMatchObject({ adults_hold_bags: [1, 1], children_hold_bags: [1, 0, 0] });
+    expect(kiwiArgs({ ...fam, bagCount: 0, bags: true })).not.toHaveProperty("adults_hold_bags");
+    expect(kiwiArgs({ ...fam, bags: true })).toMatchObject({ adults_hold_bags: [1, 1], children_hold_bags: [1, 1, 1] });
+    expect(parseQuery({ from: "DUS", to: "SPU", depart: "2027-07-18", adults: 2, children: 3, bagCount: 3 })).toMatchObject({ bagCount: 3 });
+    expect(parseQuery({ from: "DUS", to: "SPU", depart: "2027-07-18", adults: 2, bagCount: 40 })).toBe("Koffer: 0 bis 18");
   });
   it("spricht MCP: initialize, initialized, tools/call mit Session", async () => {
     const calls: { method: string; session?: string | null }[] = [];
