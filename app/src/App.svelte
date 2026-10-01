@@ -46,6 +46,8 @@
   import { explore, openExplore } from "./lib/activities/open.svelte";
   import { openEventPlanner } from "./lib/event/open.svelte";
   import { eventWindow } from "./lib/activities/window";
+  import { CAR_LINKS, INSURANCE_LINKS, carItem, carWindow, insuranceItem, kayakCarLink } from "./lib/extras";
+  import { showItem } from "./lib/ui/showItem";
   import { stationName } from "./lib/stays/stationName";
   import { airportData, ensureAirports, geo } from "./lib/geo/geo.svelte";
 
@@ -68,6 +70,22 @@
   const households = $derived(Object.keys(calc.T.byHousehold).length);
   const nn = $derived(nights(app.trip.from, app.trip.to));
   // Ort und Zeitraum für Events vor Ort (aus der Reise oder den Flügen)
+  // Mietwagen und Reiseversicherung als Richtwert-Posten
+  function addCar() {
+    const w = carWindow(app.trip) || { pick: "", drop: "", days: Math.max(1, nn || 1) };
+    setDetailed("transport", true);
+    const it = carItem(w);
+    app.trip.items.push(it);
+    showItem(it.id);
+  }
+  function addInsurance() {
+    const T = calc.T;
+    const cost = (T.byCat.flights || 0) + (T.byCat.stay || 0) + (T.byCat.transport || 0) + (T.byCat.attractions || 0);
+    setDetailed("misc", true);
+    const it = insuranceItem(cost, T.active || app.trip.travelers.length);
+    app.trip.items.push(it);
+    showItem(it.id);
+  }
   const evWin = $derived(eventWindow(app.trip, ap => stationName(geo, airportData, ap)));
   $effect(() => { if (!app.trip.place && app.trip.items.some(i => i.cat === "flights")) void ensureAirports(); });
 </script>
@@ -123,6 +141,22 @@
             {:else}{t("att.noPlace")}{/if}
           </p>
           {#if evWin.city && partner.on}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+        {:else if ch.k === "transport"}
+          <!-- Mietwagen: Richtwert-Posten aus den Flugzeiten, dazu Vergleich mit Ort und Zeiten -->
+          {@const cw = carWindow(app.trip)}
+          {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.add")}</button></div>{/if}
+          <p class="search-row muted small fs-direct car-links">{t("car.compare")}
+            {#if cw}<a href={kayakCarLink(cw, evWin.city)} target="_blank" rel="noopener noreferrer">KAYAK ↗</a> ·{/if}
+            {#each CAR_LINKS as l, i (l.name)}{i ? " · " : ""}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>{/each}
+            {#if cw}<br />{t("car.when", { a: `${cw.ap ? `${cw.ap} ` : ""}${cw.pick.slice(8, 10)}.${cw.pick.slice(5, 7)}. ${cw.pick.slice(11, 16)}`, b: `${cw.drop.slice(8, 10)}.${cw.drop.slice(5, 7)}. ${cw.drop.slice(11, 16)}`, n: cw.days })}{/if}
+          </p>
+        {:else if ch.k === "misc"}
+          <!-- Reiseversicherung: neutrale Schätzung (keine Beratung), Links zu Anbietern -->
+          {#if !access.readonly}<div class="search-row"><button class="btn ins-add" onclick={addInsurance}>🛡 {t("ins.add")}</button></div>{/if}
+          <p class="search-row muted small fs-direct ins-links">{t("ins.compare")}
+            {#each INSURANCE_LINKS as l, i (l.name)}{i ? " · " : ""}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>{/each}
+            <br />{t("ins.hint")}
+          </p>
         {:else if ch.k === "stay" && !access.readonly}
           <div class="search-row"><button class="btn primary st-open" aria-expanded={staySearch.open} onclick={() => (staySearch.open ? (staySearch.open = false) : openStaySearch())}>🛏 {t("st.open")} <span aria-hidden="true">{staySearch.open ? "▴" : "▾"}</span></button></div>
           {#if staySearch.open}{#key staySearch.scope}<StaySearch inline scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}

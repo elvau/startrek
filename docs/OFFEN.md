@@ -48,6 +48,11 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
       3. **Hotelbeds APItude** (developer.hotelbeds.com): Testschlüssel sofort und kostenlos, Verpflegungsarten mit Preis je
          Art; für echte Preise später ein Vertrag. Den Testschlüssel als Secrets `HOTELBEDS_KEY` und `HOTELBEDS_SECRET`.
       Sobald ein Zugang da ist: Claude Bescheid geben, der Such-Dienst fragt ihn dann neben Trivago.
+- [ ] **Mietwagen-Partnerlinks:** in Travelpayouts das Programm DiscoverCars (oder EconomyBookings/Localrent) hinzufügen,
+      unter Tools → Links einen Link erzeugen und Claude schicken (daraus kommen Programm- und Kampagnen-ID). Bis dahin
+      verlinkt die App neutral (KAYAK vorbefüllt, CHECK24, DiscoverCars).
+- [ ] **Reiseversicherung-Partner (optional):** über Awin z. B. ERGO Reiseversicherung oder HanseMerkur. Nur als Tippgeber
+      verlinken (keine Beratung, kein Tarifvergleich), sonst ist eine Erlaubnis nach § 34d GewO nötig.
 
 ## Für Claude
 

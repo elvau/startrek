@@ -144,6 +144,19 @@ try {
   if (!where.includes("17:20") || !where.includes("13:00")) fail("Zeitfenster nicht angezeigt: " + where);
   log("Ohne Ziel, Flug nach Palma: „Events & Aktivitäten“ → Erlebnisse, nur Events ab Landung + 5 h bis Rückflug − 5 h");
 
+  // Mietwagen aus den Flugzeiten (Richtwert), KAYAK mit Ort und Zeiten; Reiseversicherung als Schätzung
+  const kayak = await p.locator("#transport .car-links a", { hasText: "KAYAK" }).getAttribute("href");
+  if (kayak !== "https://www.kayak.de/cars/PMI/2027-10-15-13h/2027-10-19-16h") fail("KAYAK-Link: " + kayak);
+  await p.locator("#transport .car-add").click();
+  const car = p.locator("#transport .card", { hasText: "Mietwagen" });
+  await car.waitFor();
+  if (!(await car.innerText()).includes("200")) fail("Mietwagen-Richtwert (5 Tage × 40 €): " + await car.innerText());
+  await p.keyboard.press("Escape");
+  await p.locator("#misc .ins-add").click();
+  const ins = p.locator("#misc .card", { hasText: "Reiseversicherung" });
+  await ins.waitFor();
+  log("Mietwagen: Abholung PMI 15.10. 13:20 bis 19.10. 16:00, Richtwert 5 × 40 €, KAYAK vorbefüllt; Reiseversicherung geschätzt");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Reisebeobachtung ok");
 } finally { await browser.close(); server.kill(); }

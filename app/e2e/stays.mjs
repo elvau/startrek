@@ -251,8 +251,8 @@ try {
   // Fokusmodus nur im eigenen Kapitel: Karte bei der Unterkunft offen, weiter zu „Alles andere“ gescrollt → dort alles klar
   await p.locator("#stay .card[data-item] h3").first().click();
   await p.locator("#stay .card.edit").waitFor();
-  await p.locator("#misc").evaluate(el => el.scrollIntoView({ block: "start", behavior: "instant" }));
-  await p.waitForTimeout(700);
+  await p.locator("#misc .card[data-item]").first().evaluate(el => el.scrollIntoView({ block: "center", behavior: "instant" }));
+  await p.waitForTimeout(900);
   const misc = await p.locator("#misc .card[data-item]").first().evaluate(el => { const c = getComputedStyle(el); return { o: c.opacity, f: c.filter }; });
   if (misc.o !== "1" || misc.f !== "none") fail("Karte im nächsten Kapitel abgeblendet: " + JSON.stringify(misc));
   log("Fokus: offene Karte bei der Unterkunft blendet beim Weiterscrollen „Alles andere“ nicht ab");
