@@ -3,8 +3,10 @@
   import { onMount } from "svelte";
   import { view } from "../scroll.svelte";
 
-  let fp: SVGPathElement, fmp: SVGPathElement, plane: SVGSVGElement, tram: SVGSVGElement, flights: HTMLDivElement, town: SVGSVGElement, stay: HTMLDivElement, fun: HTMLDivElement, misc: HTMLDivElement, split: HTMLDivElement;
+  let fp: SVGPathElement, fmp: SVGPathElement, plane: SVGSVGElement, rail: SVGPathElement, railDone: SVGPathElement, veh: HTMLDivElement, flights: HTMLDivElement, town: SVGSVGElement, stay: HTMLDivElement, fun: HTMLDivElement, misc: HTMLDivElement, split: HTMLDivElement;
   let windows: SVGRectElement[] = [];
+  /** Unterwegs: Taxi, dann Bus, dann Bahn */
+  let ride = $state<"taxi" | "bus" | "train">("taxi");
   let coins: HTMLElement[] = [];
 
   // gleichbleibender Zufall, damit die Stadt immer gleich aussieht
@@ -82,13 +84,21 @@
     // Wolken und Bahn bewegen sich nur im eigenen Kapitel; beim Verlassen bleiben sie stehen,
     // statt beim Ausblenden sichtbar an den Anfang zu springen
     if (a === "flights" && flights) flights.querySelectorAll<SVGElement>(".cloud").forEach(c => (c.style.transform = `translateX(calc(${p} * var(--dx,-120px)))`));
-    if (a === "transport" && tram) {
+    if (a === "transport" && rail && veh) {
       // eigener Fortschritt über genau die Strecke, in der das Kapitel aktiv ist (Mitte des Bildschirms),
-      // damit er am Anfang links steht; fährt herein und hält rechts, ohne aus dem Bild zu fahren
+      // damit es am Anfang links steht; fährt auf der Schiene herein, wechselt Taxi → Bus → Bahn und hält rechts
       const r = document.getElementById("transport")?.getBoundingClientRect();
       const q = r && r.height ? Math.max(0, Math.min(1, (innerHeight / 2 - r.top) / r.height)) : p;
       const e = 1 - (1 - q) ** 2;
-      tram.style.transform = `translateX(${-130 + e * (innerWidth - 40)}px)`;
+      const len = rail.getTotalLength(), at = 0.02 + e * 0.86;
+      const pt = rail.getPointAtLength(at * len), pt2 = rail.getPointAtLength(Math.min(len, at * len + 6));
+      const box = rail.ownerSVGElement!.getBoundingClientRect();
+      const sx = box.width / 1000, sy = box.height / 120;
+      const ang = (Math.atan2((pt2.y - pt.y) * sy, (pt2.x - pt.x) * sx) * 180) / Math.PI;
+      veh.style.transform = `translate(${box.left + pt.x * sx}px,${box.top + pt.y * sy}px) rotate(${ang}deg)`;
+      railDone.style.strokeDasharray = String(len);
+      railDone.style.strokeDashoffset = String(len * (1 - at));
+      ride = q < 0.34 ? "taxi" : q < 0.67 ? "bus" : "train";
     }
     if (a === "split") coins.forEach(c => c.classList.toggle("on", +c.dataset.t! < p * 1.1));
     if (a === "stay") windows.forEach(w => w.classList.toggle("on", +w.dataset.t! < p * 0.9));
@@ -124,16 +134,43 @@
   </div>
   <div class="amb-transport">
     <svg class="rails" viewBox="0 0 1000 120" preserveAspectRatio="none">
-      <path d="M0 60 C 300 20, 700 100, 1000 60" />
+      <path bind:this={rail} d="M0 60 C 300 20, 700 100, 1000 60" />
       <path class="tie" d="M0 60 C 300 20, 700 100, 1000 60" stroke-width="18" />
+      <path bind:this={railDone} class="done" d="M0 60 C 300 20, 700 100, 1000 60" />
     </svg>
-    <svg class="tram" bind:this={tram} viewBox="0 0 120 44">
-      <rect x="2" y="4" width="116" height="30" rx="10" fill="currentColor" />
-      <rect x="12" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8" />
-      <rect x="40" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8" />
-      <rect x="68" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8" />
-      <circle cx="26" cy="38" r="5" fill="currentColor" /><circle cx="94" cy="38" r="5" fill="currentColor" />
-    </svg>
+    <!-- Fahrzeug steht mit den Rädern auf der Schiene; je nach Fortschritt Taxi, Bus oder Bahn -->
+    <div class="veh" bind:this={veh}>
+      <svg class="v v-taxi" class:on={ride === "taxi"} viewBox="0 0 84 44">
+        <rect x="30" y="0" width="22" height="8" rx="2" fill="#F2C94C" />
+        <path d="M18 18 L28 8 H56 L68 18 Z" fill="currentColor" />
+        <rect x="4" y="17" width="76" height="17" rx="7" fill="currentColor" />
+        <path d="M30 11 H40 V18 H24 Z M44 11 H54 L62 18 H44 Z" fill="#fff" opacity=".8" />
+        <rect x="6" y="22" width="6" height="4" rx="2" fill="#F2C94C" />
+        <circle cx="20" cy="37" r="6" fill="currentColor" /><circle cx="64" cy="37" r="6" fill="currentColor" />
+      </svg>
+      <svg class="v v-bus" class:on={ride === "bus"} viewBox="0 0 120 44">
+        <rect x="2" y="4" width="116" height="30" rx="10" fill="currentColor" />
+        <rect x="12" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8" />
+        <rect x="40" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8" />
+        <rect x="68" y="10" width="20" height="12" rx="3" fill="#fff" opacity=".8" />
+        <rect x="96" y="10" width="14" height="20" rx="3" fill="#fff" opacity=".6" />
+        <circle cx="26" cy="38" r="5" fill="currentColor" /><circle cx="94" cy="38" r="5" fill="currentColor" />
+      </svg>
+      <svg class="v v-train" class:on={ride === "train"} viewBox="0 0 180 44">
+        <path d="M100 4 L108 -2 M108 -2 L116 4" stroke="currentColor" stroke-width="2" fill="none" />
+        <rect x="2" y="6" width="80" height="28" rx="6" fill="currentColor" />
+        <path d="M88 6 H158 C 170 6, 178 18, 178 28 V34 H88 Z" fill="currentColor" />
+        <rect x="82" y="16" width="6" height="12" fill="currentColor" opacity=".7" />
+        <rect x="10" y="12" width="16" height="10" rx="2" fill="#fff" opacity=".8" />
+        <rect x="32" y="12" width="16" height="10" rx="2" fill="#fff" opacity=".8" />
+        <rect x="54" y="12" width="16" height="10" rx="2" fill="#fff" opacity=".8" />
+        <rect x="96" y="12" width="16" height="10" rx="2" fill="#fff" opacity=".8" />
+        <rect x="118" y="12" width="16" height="10" rx="2" fill="#fff" opacity=".8" />
+        <path d="M150 12 H160 C 166 12, 170 17, 171 22 H150 Z" fill="#fff" opacity=".8" />
+        <circle cx="16" cy="38" r="4.5" fill="currentColor" /><circle cx="68" cy="38" r="4.5" fill="currentColor" />
+        <circle cx="104" cy="38" r="4.5" fill="currentColor" /><circle cx="160" cy="38" r="4.5" fill="currentColor" />
+      </svg>
+    </div>
   </div>
   <div class="amb-attractions" bind:this={fun}></div>
   <div class="amb-misc" bind:this={misc}></div>

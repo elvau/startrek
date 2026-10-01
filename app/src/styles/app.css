@@ -102,7 +102,12 @@ body[data-ch="transport"] .amb-transport,body[data-ch="attractions"] .amb-attrac
 .rails{position:absolute;left:-5%;right:-5%;bottom:14%;height:120px;opacity:.5}
 .rails path{fill:none;stroke:var(--c-transport);stroke-width:3}
 .rails .tie{stroke-width:2;stroke-dasharray:3 16}
-.tram{position:absolute;bottom:calc(14% + 34px);left:0;width:120px;height:44px;transform:translateX(-130px);transition:transform .2s linear;color:var(--c-transport);opacity:.8}
+.rails .done{stroke-width:4;opacity:1}
+/* Fahrzeug: Ursprung unten in der Mitte (Räder auf der Schiene), folgt der Kurve; Wechsel mit kurzem Aufploppen */
+.veh{position:absolute;left:0;top:0;width:0;height:0;transform:translate(-200px,0);transition:transform .2s linear;color:var(--c-transport)}
+.veh .v{position:absolute;bottom:2px;left:0;height:44px;translate:-50% 0;opacity:0;transform:scale(.4);transform-origin:50% 100%;transition:opacity .35s ease,transform .45s cubic-bezier(.3,1.6,.5,1)}
+.veh .v.on{opacity:.85;transform:none}
+.v-taxi{width:84px}.v-bus{width:120px}.v-train{width:180px}
 /* Konfetti (Attraktionen) */
 .conf{position:absolute;width:10px;height:14px;border-radius:2px;opacity:.55;transform:translateY(calc(var(--p,0) * var(--dy,80px))) rotate(calc(var(--p,0) * var(--r,90deg)))}
 /* Sonne (Start) */

@@ -226,6 +226,16 @@ try {
   if (misc.o !== "1" || misc.f !== "none") fail("Karte im nächsten Kapitel abgeblendet: " + JSON.stringify(misc));
   log("Fokus: offene Karte bei der Unterkunft blendet beim Weiterscrollen „Alles andere“ nicht ab");
 
+  // Unterwegs: das Fahrzeug wechselt beim Scrollen durchs Kapitel von Taxi über Bus zur Bahn
+  const rides = [];
+  for (const q of [0.1, 0.5, 0.9]) {
+    await p.locator("#transport").evaluate((el, q) => { const r = el.getBoundingClientRect(); scrollTo({ top: scrollY + r.top + r.height * q - innerHeight / 2, behavior: "instant" }); }, q);
+    await p.waitForTimeout(400);
+    rides.push(await p.locator(".veh .v.on").getAttribute("class"));
+  }
+  if (rides.map(c => c.match(/v-(\w+)/)[1]).join() !== "taxi,bus,train") fail("Unterwegs: " + rides.join(" | "));
+  log("Unterwegs: Taxi → Bus → Bahn beim Scrollen");
+
   // Rundreise wie bei Eduard: Quito → Lima → Rio, Nachtflug nach Rio; Lücken und Suche je Stadt statt „alles in Quito“
   const leg = (dir, from, to, dep, arr, toCity) => ({ dir, from, to, dep, arr, ...(toCity ? { toCity } : {}) });
   const RT = {
