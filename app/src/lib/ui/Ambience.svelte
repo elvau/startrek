@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { view } from "../scroll.svelte";
 
-  let fp: SVGPathElement, fmp: SVGPathElement, plane: SVGSVGElement, rail: SVGPathElement, railDone: SVGPathElement, veh: HTMLDivElement, flights: HTMLDivElement, town: SVGSVGElement, stay: HTMLDivElement, fun: HTMLDivElement, misc: HTMLDivElement, split: HTMLDivElement;
+  let fp: SVGPathElement, fmp: SVGPathElement, plane: SVGSVGElement, rail: SVGPathElement, railDone: SVGPathElement, veh: HTMLDivElement, track: HTMLDivElement, flights: HTMLDivElement, town: SVGSVGElement, stay: HTMLDivElement, fun: HTMLDivElement, misc: HTMLDivElement, split: HTMLDivElement;
   let windows: SVGRectElement[] = [];
   /** Unterwegs: Taxi, dann Bus, dann Bahn */
   let ride = $state<"taxi" | "bus" | "train">("taxi");
@@ -12,31 +12,33 @@
   // gleichbleibender Zufall, damit die Stadt immer gleich aussieht
   const rng = (s: number) => () => (s = (s * 9301 + 49297) % 233280) / 233280;
 
-  /** Fahrzeug auf die Schiene setzen (q: Fortschritt im Kapitel 0…1); das erste Mal ohne Übergang, sonst flöge es von oben links herein */
-  let placed = false;
+  /**
+   * Fahrzeug auf die Schiene setzen (q: Fortschritt im Kapitel 0…1). Es liegt im selben Rahmen wie die Schiene und wird in
+   * deren Maßen gesetzt (x in %, y in px wie im viewBox), nicht in Bildschirmkoordinaten: so bleibt es auf der Schiene, auch
+   * wenn sich das Fenster verändert (Handy: Adressleiste ein- und ausfahren).
+   */
+  let vhMax = 0;
   function placeVeh(q: number) {
     const e = 1 - (1 - q) ** 2;
     // Ende so wählen, dass auch die (längste) Bahn ganz im Bild hält; die Schiene ragt links und rechts 5 % hinaus
-    const W = innerWidth, hw = (veh.querySelector<HTMLElement>(".v-train")?.offsetWidth || 180) / 2;
-    const end = Math.min(0.88, (W * 1.05 - hw - 12) / (W * 1.1));
-    const len = rail.getTotalLength(), at = 0.02 + e * (end - 0.02);
+    const tw = track.offsetWidth || innerWidth * 1.1, W = tw / 1.1, hw = (veh.querySelector<HTMLElement>(".v-train")?.offsetWidth || 180) / 2;
+    const end = Math.min(0.88, (W * 1.05 - hw - 12) / tw);
+    // Anfang so, dass das Taxi ganz im Bild steht
+    const start = Math.max(0.02, (W * 0.05 + (veh.querySelector<HTMLElement>(".v-taxi")?.offsetWidth || 84) / 2 + 8) / tw);
+    const len = rail.getTotalLength(), at = start + e * (end - start);
     const pt = rail.getPointAtLength(at * len), pt2 = rail.getPointAtLength(Math.min(len, at * len + 6));
-    const box = rail.ownerSVGElement!.getBoundingClientRect();
-    const sx = box.width / 1000, sy = box.height / 120;
-    const ang = (Math.atan2((pt2.y - pt.y) * sy, (pt2.x - pt.x) * sx) * 180) / Math.PI;
-    if (!placed) veh.style.transition = "none";
-    veh.style.transform = `translate(${box.left + pt.x * sx}px,${box.top + pt.y * sy}px) rotate(${ang}deg)`;
-    if (!placed) { void veh.offsetWidth; veh.style.transition = ""; placed = true; }
+    const ang = (Math.atan2(pt2.y - pt.y, ((pt2.x - pt.x) * tw) / 1000) * 180) / Math.PI;
+    veh.style.left = `${pt.x / 10}%`;
+    veh.style.top = `${pt.y}px`;
+    veh.style.transform = `rotate(${ang}deg)`;
     railDone.style.strokeDasharray = String(len);
     railDone.style.strokeDashoffset = String(len * (1 - at));
     ride = q < 0.34 ? "taxi" : q < 0.67 ? "bus" : "train";
   }
 
   onMount(() => {
-    // gleich am Schienenanfang bereitstellen (die Szene ist noch ausgeblendet); bei neuer Fenstergröße neu, ohne Gleiten
+    // gleich am Schienenanfang bereitstellen (die Szene ist noch ausgeblendet)
     placeVeh(0);
-    const onResize = () => { placed = false; };
-    addEventListener("resize", onResize);
     const rnd = rng(7);
     let tw = "";
     for (let x = 0; x < 1000;) {
@@ -91,7 +93,6 @@
       }
       split.appendChild(st);
     });
-    return () => removeEventListener("resize", onResize);
   });
 
   $effect(() => {
@@ -113,7 +114,9 @@
       // eigener Fortschritt über genau die Strecke, in der das Kapitel aktiv ist (Mitte des Bildschirms),
       // damit es am Anfang links steht; fährt auf der Schiene herein, wechselt Taxi → Bus → Bahn und hält rechts
       const r = document.getElementById("transport")?.getBoundingClientRect();
-      const q = r && r.height ? Math.max(0, Math.min(1, (innerHeight / 2 - r.top) / r.height)) : p;
+      // größte bisher gesehene Fensterhöhe: auf dem Handy springt sonst das Fahrzeug, wenn die Adressleiste ein- und ausfährt
+      vhMax = Math.max(vhMax, innerHeight);
+      const q = r && r.height ? Math.max(0, Math.min(1, (vhMax / 2 - r.top) / r.height)) : p;
       placeVeh(q);
     }
     if (a === "split") coins.forEach(c => c.classList.toggle("on", +c.dataset.t! < p * 1.1));
@@ -149,6 +152,7 @@
     <svg class="town" bind:this={town} viewBox="0 0 1000 300" preserveAspectRatio="xMidYMax slice"></svg>
   </div>
   <div class="amb-transport">
+    <div class="track" bind:this={track}>
     <svg class="rails" viewBox="0 0 1000 120" preserveAspectRatio="none">
       <path bind:this={rail} d="M0 60 C 300 20, 700 100, 1000 60" />
       <path class="tie" d="M0 60 C 300 20, 700 100, 1000 60" stroke-width="18" />
@@ -186,6 +190,7 @@
         <circle cx="16" cy="38" r="4.5" fill="currentColor" /><circle cx="68" cy="38" r="4.5" fill="currentColor" />
         <circle cx="104" cy="38" r="4.5" fill="currentColor" /><circle cx="160" cy="38" r="4.5" fill="currentColor" />
       </svg>
+    </div>
     </div>
   </div>
   <div class="amb-attractions" bind:this={fun}></div>
