@@ -50,9 +50,6 @@ jobs:
         run: npm run build
         env:
           BASE: /
-          # Anmeldung über die eigene Domain: Google zeigt „splitandfly.com“ statt startrek-1b6a7.firebaseapp.com
-          # (Voraussetzung: Weiterleitungs-URI https://splitandfly.com/__/auth/handler im OAuth-Client, docs/OFFEN.md)
-          VITE_FIREBASE_AUTH_DOMAIN: splitandfly.com
       - name: Flughafendaten aktualisieren
         run: node scripts/airports.mjs || echo "::warning::Flughafendaten nicht aktualisiert, alte Datei bleibt"
       - name: Seite zusammenstellen
