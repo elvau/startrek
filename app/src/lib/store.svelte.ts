@@ -1,4 +1,5 @@
 /* App-Zustand: mehrere Reisen, lokal gespeichert. Später hinter einem Speicher-Adapter (Firebase). */
+import { entryCurrency } from "./currency.svelte";
 import { noteNav } from "./bugs/log";
 import { untrack } from "svelte";
 import { t as tr, type Key } from "./i18n/index.svelte";
@@ -433,7 +434,7 @@ export async function deleteTrip(id: string) {
 export function addItem(cat: CatKey): Item {
   const it: Item = {
     id: uid(), cat, name: "", status: "idea",
-    options: [{ id: uid(), label: "", price: { mode: cat === "stay" || cat === "transport" ? "unit" : "person", currency: "EUR" } }]
+    options: [{ id: uid(), label: "", price: { mode: cat === "stay" || cat === "transport" ? "unit" : "person", currency: entryCurrency() } }]
   };
   if (cat === "stay" && app.trip.from && app.trip.to) { it.from = app.trip.from; it.to = app.trip.to; }
   app.trip.items.push(it);

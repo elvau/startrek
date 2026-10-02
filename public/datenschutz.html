@@ -51,8 +51,8 @@
 
 <h2>4. Speicherung im Browser</h2>
 <p>
-  Reisen, gespeicherte Personen und Gruppen, Einstellungen (z. B. Sprache, helle oder dunkle Ansicht, Sortierung der
-  Startseite), wann ihr eine Reise zuletzt geändert habt (für „Zuletzt bearbeitet“) und zuletzt genutzte Suchoptionen speichert die App im Speicher eures Browsers (localStorage), damit sie beim nächsten Besuch
+  Reisen, gespeicherte Personen und Gruppen, Einstellungen (z. B. Sprache, Währung, helle oder dunkle Ansicht, Sortierung der
+  Startseite), die Tageskurse der EZB für die Umrechnung, wann ihr eine Reise zuletzt geändert habt (für „Zuletzt bearbeitet“) und zuletzt genutzte Suchoptionen speichert die App im Speicher eures Browsers (localStorage), damit sie beim nächsten Besuch
   wieder da sind. Mit Konto legt Firebase zusätzlich die Anmeldung und eine Kopie eurer Reisen im Browser ab
   (IndexedDB), damit die App auch offline funktioniert; bei der Anmeldung per E-Mail-Link merkt sich die App die
   E-Mail-Adresse, bis ihr den Link öffnet. Buchungsdaten werden nicht im Browser gespeichert (siehe Abschnitt 5).
@@ -130,7 +130,9 @@
 <ul>
   <li>Kiwi.com s.r.o., Palachovo náměstí 797/4, 625 00 Brno, Tschechien (Flüge)</li>
   <li>Travelpayouts / Aviasales (Flugpreise aus dem Zwischenspeicher von Aviasales)</li>
+  <li>Duffel Technology Ltd., London, Vereinigtes Königreich (Flüge, sobald angebunden; bei Kindern ein Alter, das die App festlegt, nicht das echte)</li>
   <li>trivago N.V., Kesselstraße 5–7, 40221 Düsseldorf (Unterkünfte)</li>
+  <li>liteAPI (Nuitée, Unterkünfte, sobald angebunden)</li>
   <li>Ticketmaster (Live Nation Entertainment) und football-data.org (Event-Suche: nur Suchbegriff, Reiseort und Zeitraum)</li>
   <li>Viator (Tripadvisor LLC, USA; Touren und Tickets: nur Reiseort, Zeitraum und Sprache)</li>
 </ul>
@@ -140,7 +142,7 @@
 </p>
 <p>
   Bilder von Unterkünften (in den Suchergebnissen und auf übernommenen Unterkünften) lädt euer Browser direkt vom
-  Bildserver von trivago (imgcy.trivago.com). Dabei sieht trivago technisch eure IP-Adresse und die Adresse des Bildes,
+  Bildserver des Anbieters (z. B. trivago, imgcy.trivago.com, oder liteAPI). Dabei sieht der Anbieter technisch eure IP-Adresse und die Adresse des Bildes,
   aber nicht, von welcher Seite der Aufruf kommt (die App schickt keinen Referrer mit). Ebenso kommen Fotos von Touren
   (in den Suchergebnissen und auf übernommenen Erlebnissen) direkt vom Bildserver von Tripadvisor/Viator
   (media-cdn.tripadvisor.com).

@@ -357,7 +357,7 @@ body[data-ch="split"] .amb-split{opacity:1}
 .top-pop{inset-inline-start:auto;inset-inline-end:0;min-width:220px}
 .top-pop .tm-act{flex-direction:row;align-items:center;gap:8px;color:var(--ink)}
 .top-lang{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 10px;font-weight:700;font-size:13.5px}
-.top-lang .lang-sel{background:var(--paper-2)}
+.top-lang .lang-sel,.top-lang .cur-sel{background:var(--paper-2)}
 .top-in .tmenu{min-width:0;flex:0 1 auto}
 .top-in .tm-btn{min-width:0}
 .top-edit{font-size:15px}

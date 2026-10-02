@@ -1,11 +1,17 @@
 /* Alle Quellen gleichzeitig fragen, zusammenführen, Doppelte entfernen, nach Preis sortieren */
 import { addDays, searchKiwi } from "./kiwi";
 import { searchTravelpayouts } from "./travelpayouts";
+import { searchDuffel } from "./duffel";
 import type { FlightOffer, FlightQuery, SearchResult, SourceStatus } from "./types";
 import { partnerOn } from "../partner";
+import { inCurrency, type Rates } from "../fx";
 
 /** Schlüssel des Such-Dienstes (Cloudflare-Secrets); fehlt einer, bleibt die Quelle aus */
-export interface FlightEnv { DUFFEL_TOKEN?: string; TRAVELPAYOUTS_TOKEN?: string; TRAVELPAYOUTS_MARKER?: string; KIWI_MCP_URL?: string; PARTNER_LINKS?: string }
+export interface FlightEnv {
+  DUFFEL_TOKEN?: string; TRAVELPAYOUTS_TOKEN?: string; TRAVELPAYOUTS_MARKER?: string; KIWI_MCP_URL?: string; PARTNER_LINKS?: string;
+  /** Tageskurse (EZB), vom Such-Dienst gesetzt: Preise in fremder Währung werden umgerechnet */
+  FX?: Rates | null;
+}
 
 interface Provider {
   id: string;
@@ -14,12 +20,10 @@ interface Provider {
   search: (q: FlightQuery, env: FlightEnv, f: typeof fetch) => Promise<FlightOffer[]>;
 }
 
-const notYet = (name: string) => async (): Promise<FlightOffer[]> => { throw new Error(`${name} ist eingerichtet, aber noch nicht angebunden`); };
-
 export const PROVIDERS: Provider[] = [
   { id: "kiwi", name: "Kiwi.com", configured: () => true, search: (q, env, f) => searchKiwi(q, f, env.KIWI_MCP_URL || undefined) },
-  // folgt, sobald ein Schlüssel da ist
-  { id: "duffel", name: "Duffel", configured: env => !!env.DUFFEL_TOKEN, search: notYet("Duffel") },
+  // nur feste Daten; flexible Suchen liefern Kiwi und Travelpayouts
+  { id: "duffel", name: "Duffel", configured: env => !!env.DUFFEL_TOKEN, search: (q, env, f) => searchDuffel(q, env.DUFFEL_TOKEN!, f) },
   { id: "travelpayouts", name: "Travelpayouts", configured: env => !!env.TRAVELPAYOUTS_TOKEN, search: (q, env, f) => searchTravelpayouts(q, env.TRAVELPAYOUTS_TOKEN!, f, (partnerOn(env) && env.TRAVELPAYOUTS_MARKER) || undefined) }
 ];
 
@@ -58,7 +62,7 @@ export async function searchAll(q: FlightQuery, env: FlightEnv = {}, f: typeof f
   const lists = await Promise.all(active.map(async p => {
     const t0 = Date.now();
     try {
-      const offers = await withTimeout(p.search(q, env, f), timeoutMs);
+      const offers = inCurrency(await withTimeout(p.search(q, env, f), timeoutMs), "price", q.currency || "EUR", env.FX);
       sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0 });
       return offers;
     } catch (e) {

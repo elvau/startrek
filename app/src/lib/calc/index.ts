@@ -5,6 +5,7 @@
  * Beteiligte, Währungsumrechnung.
  */
 import { i18n, locale, t, type Key } from "../i18n/index.svelte";
+import { fx, shown } from "../currency.svelte";
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
 import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
 
@@ -33,7 +34,8 @@ export const activeTravelers = (trip: Trip) => trip.travelers.filter(isActive);
 /** Beteiligte eines einfachen Eintrags, die dabei sind (fehlt die Auswahl: alle) */
 export const lineWho = (l: SimpleLine, trip: Trip): Traveler[] => activeTravelers(trip).filter(t => !l.who || l.who.includes(t.id));
 
-const rateOf = (cur: string, s: Settings) => (cur === "EUR" ? 1 : s.rates[cur] || 1);
+/** Kurs: eigener der Reise, sonst Tageskurs der EZB, sonst 1 */
+const rateOf = (cur: string, s: Settings) => (cur === "EUR" ? 1 : s.rates[cur] || fx.rates?.rates[cur] || 1);
 
 export interface StayCalc {
   nights: string[];
@@ -279,24 +281,30 @@ export function parseNum(v: unknown): number {
 
 const fmt = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
 const cur = new Map<string, Intl.NumberFormat>();
-/** Betrag in Euro, gerundet: deutsch „1.505 €“, sonst im Format der Sprache (z. B. „€1,505“) */
-export const eur = (v: number) => {
-  if (i18n.lang === "de") return fmt.format(Math.round(v || 0)) + " €";
-  const l = locale();
-  if (!cur.has(l)) cur.set(l, new Intl.NumberFormat(l, { style: "currency", currency: "EUR", maximumFractionDigits: 0, minimumFractionDigits: 0 }));
-  return cur.get(l)!.format(Math.round(v || 0));
+/** Betrag in einer Währung, gerundet: deutsch „1.505 €“, sonst im Format der Sprache (z. B. „€1,505“, „1 234 zł“) */
+export const money = (v: number, currency: string) => {
+  if (i18n.lang === "de" && currency === "EUR") return fmt.format(Math.round(v || 0)) + " €";
+  const k = locale() + currency;
+  if (!cur.has(k)) {
+    try { cur.set(k, new Intl.NumberFormat(locale(), { style: "currency", currency, maximumFractionDigits: 0, minimumFractionDigits: 0 })); }
+    catch { return `${Math.round(v || 0)} ${currency}`; }
+  }
+  return cur.get(k)!.format(Math.round(v || 0));
 };
+/** Betrag in Euro (so rechnet die App), angezeigt in der Währung der Person (siehe currency.svelte.ts) */
+export const eur = (v: number) => { const s = shown(v || 0); return money(s.v, s.currency); };
 
 const fmt2 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const cur2 = new Map<string, Intl.NumberFormat>();
 /** Anteil pro Person: unter 100 € mit Cent, wenn er nicht glatt aufgeht (20 € für 3 → „6,67 €“ statt „7 €“) */
 export const eurPP = (v: number) => {
-  v = v || 0;
-  if (Math.abs(v) >= 100 || Math.abs(v - Math.round(v)) < 0.005) return eur(v);
-  if (i18n.lang === "de") return fmt2.format(v) + " €";
-  const l = locale();
-  if (!cur2.has(l)) cur2.set(l, new Intl.NumberFormat(l, { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  return cur2.get(l)!.format(v);
+  const s = shown(v || 0);
+  v = s.v;
+  if (Math.abs(v) >= 100 || Math.abs(v - Math.round(v)) < 0.005 || s.currency === "JPY" || s.currency === "KRW") return money(v, s.currency);
+  if (i18n.lang === "de" && s.currency === "EUR") return fmt2.format(v) + " €";
+  const k = locale() + s.currency;
+  if (!cur2.has(k)) cur2.set(k, new Intl.NumberFormat(locale(), { style: "currency", currency: s.currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  return cur2.get(k)!.format(v);
 };
 
 /* ---------- Abrechnung pro Haushalt ---------- */

@@ -45,6 +45,8 @@ try {
   // Orts- und Flughafendaten des Artefakts (liegen auf der Seite eine Ebene über der App)
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
+  // Tageskurse (EZB) für die Anzeige in anderer Währung
+  await p.route("https://flights.test/rates", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ date: "2026-10-01", rates: { EUR: 1, USD: 1.1, PLN: 4.25, GBP: 0.8 } }) }));
   // Karte: leerer Kartenstil statt der echten Kacheln (OpenFreeMap)
   await p.route("https://tiles.openfreemap.org/**", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ version: 8, sources: {}, layers: [] }) }));
   await p.goto(URL);
@@ -76,7 +78,8 @@ try {
   if (q.must?.join() !== "pool" || q.minScore !== 7 || q.minStars) fail("Filter falsch: " + JSON.stringify(q));
   log("Filter (Pool, Bewertung ab 7) in der Anfrage");
   if (q.place !== "Split" || q.checkin !== "2027-07-18" || q.checkout !== "2027-07-25" || q.type !== "whole" || q.adults !== 1 || q.rooms !== 1) fail("Anfrage falsch: " + JSON.stringify(q));
-  if (q.sources.join() !== "booking,trivago") fail("Quellen falsch: " + q.sources);
+  // alle Quellen an: keine Liste (ein älterer Such-Dienst kennt neue Quellen nicht); Land als Code für liteAPI
+  if (q.sources || q.cc !== "HR") fail("Quellen/Land falsch: " + JSON.stringify(q));
   log("Anfrage an den Such-Dienst stimmt");
 
   const src = await m.locator(".fs-src").textContent();
@@ -276,6 +279,14 @@ try {
   const rl = await p.locator("#misc .fs-direct a", { hasText: "Restaurants" }).getAttribute("href");
   if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
   log("Verpflegung: Klein 11 Tage (An- und Abreise je halb), Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
+
+  // Währung umschalten: alle Beträge in Złoty (Tageskurs vom Such-Dienst), Eingabe ebenfalls; zurück auf Euro
+  await p.locator(".top .cur-sel").selectOption("PLN");
+  // auf Deutsch schreibt Intl „PLN“, in anderen Sprachen „zł“
+  await until(async () => /PLN|zł/.test(await p.locator("#stay .card[data-item]").first().textContent()), "Beträge in Złoty");
+  await p.locator(".top .cur-sel").selectOption("EUR");
+  await until(async () => !/PLN|zł/.test(await p.locator("#stay .card[data-item]").first().textContent()), "zurück in Euro");
+  log(`Währung: auf Złoty umgestellt (Kurs vom Such-Dienst), Beträge umgerechnet, zurück auf Euro`);
 
   // Sprache umschalten: Texte, Datums- und Betragsformat folgen, die Wahl bleibt nach dem Neuladen
   await p.locator(".top .lang-sel").selectOption("en");

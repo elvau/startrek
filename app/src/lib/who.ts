@@ -16,6 +16,8 @@ export interface Who {
   /** Weg bei Familie und Gruppe; leer = noch nicht gewählt */
   src: WhoSrc;
   solo: string;
+  /** solo als man selbst (Person „Das bin ich“ oder Name des Kontos), sobald bekannt; sonst als Tier */
+  soloMe?: boolean;
   partner: string;
   fams: FamilyRow[];
   group: { adults: number; kids: number };

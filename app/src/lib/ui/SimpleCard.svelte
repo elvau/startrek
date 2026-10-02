@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { t, tn } from "../i18n/index.svelte";
+  import { locale, t, tn } from "../i18n/index.svelte";
+  import { fromShown, symbol, toShown } from "../currency.svelte";
   /* Einfacher Modus: ein Betrag für den ganzen Bereich, gleich auf alle Aktiven verteilt */
   import type { CatKey } from "../model";
   import type { Key } from "../i18n/index.svelte";
@@ -23,12 +24,13 @@
   let text = $state("");
   let focused = $state(false);
   // Anzeige folgt dem Wert, außer während man tippt
-  $effect(() => { if (!focused) text = v != null ? String(v).replace(".", ",") : ""; });
+  // in der Währung der Person anzeigen, in Euro speichern
+  $effect(() => { if (!focused) text = v != null ? String(toShown(v)).replace(".", ",") : ""; });
 
   function input(e: Event) {
     text = (e.currentTarget as HTMLInputElement).value;
     const x = parseNum(text);
-    setSimple(cat, text.trim() === "" ? undefined : isNaN(x) ? v : x);
+    setSimple(cat, text.trim() === "" ? undefined : isNaN(x) ? v : fromShown(x));
   }
 </script>
 
@@ -37,7 +39,7 @@
     <span class="simple-t">{lines.length ? t("simple.rest") : t("simple.total", { label })}</span>
     <span class="simple-in">
       <input inputmode="decimal" placeholder="0" value={text} oninput={input} onfocus={() => (focused = true)} onblur={() => (focused = false)} disabled={access.readonly} aria-label={t("simple.totalEur", { label })} />
-      <span class="simple-eur">€</span>
+      <span class="simple-eur">{symbol(locale())}</span>
     </span>
     <span class="muted">{lines.length ? t("simple.restHint") : HINT(cat)}</span>
   </label>
