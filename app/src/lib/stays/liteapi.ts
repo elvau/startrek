@@ -95,18 +95,20 @@ async function call(f: typeof fetch, key: string, path: string, init: RequestIni
 export async function searchLite(q: StayQuery, key: string, f: typeof fetch = fetch, link?: string): Promise<StayOffer[]> {
   if (!liteFits(q)) return [];
   if (!q.cc) throw new Error("liteAPI braucht das Land des Orts");
+  const priced = async (hotels: any[]): Promise<StayOffer[]> => {
+    const ids = hotels.filter(h => !q.minStars || (num(h.stars) ?? 0) >= q.minStars).map(h => h.id).filter(Boolean).slice(0, 60);
+    if (!ids.length) return [];
+    const rates = await call(f, key, "/hotels/rates", {
+      method: "POST",
+      body: JSON.stringify({ hotelIds: ids, checkin: q.checkin, checkout: q.checkout, currency: q.currency || "EUR", guestNationality: "DE", occupancies: occupancies(q), timeout: 12 })
+    });
+    return fromLite(hotels.filter(h => ids.includes(h.id)), rates.data || [], q, link);
+  };
   const p = new URLSearchParams({ countryCode: q.cc, cityName: q.place, limit: "60" });
-  let hotels: any[] = (await call(f, key, `/data/hotels?${p}`)).data || [];
-  // Name nicht bekannt (z. B. „Palma“ statt „Palma de Mallorca“): im Umkreis von 10 km um den Ort
-  if (!hotels.length && q.lat != null && q.lon != null) {
-    const g = new URLSearchParams({ countryCode: q.cc, latitude: String(q.lat), longitude: String(q.lon), radius: "10000", limit: "60" });
-    hotels = (await call(f, key, `/data/hotels?${g}`)).data || [];
-  }
-  const ids = hotels.filter(h => !q.minStars || (num(h.stars) ?? 0) >= q.minStars).map(h => h.id).filter(Boolean).slice(0, 60);
-  if (!ids.length) return [];
-  const rates = await call(f, key, "/hotels/rates", {
-    method: "POST",
-    body: JSON.stringify({ hotelIds: ids, checkin: q.checkin, checkout: q.checkout, currency: q.currency || "EUR", guestNationality: "DE", occupancies: occupancies(q), timeout: 12 })
-  });
-  return fromLite(hotels.filter(h => ids.includes(h.id)), rates.data || [], q, link);
+  const byName = await priced((await call(f, key, `/data/hotels?${p}`)).data || []);
+  if (byName.length || q.lat == null || q.lon == null) return byName;
+  // Name passt nicht oder nur zu Hotels ohne Preise (z. B. „Palma“ statt „Palma de Mallorca“): Umkreis von 10 km um den Ort
+  // (liteAPI nennt den Umkreis je nach Stand radius oder distance, in Metern)
+  const g = new URLSearchParams({ countryCode: q.cc, latitude: String(q.lat), longitude: String(q.lon), radius: "10000", distance: "10000", limit: "60" });
+  return priced((await call(f, key, `/data/hotels?${g}`)).data || []);
 }

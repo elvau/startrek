@@ -65,7 +65,15 @@ describe("liteAPI", () => {
       return new Response(JSON.stringify(url.includes("/data/hotels") ? { data: url.includes("cityName") ? [] : HOTELS } : { data: RATES }));
     }) as unknown as typeof fetch;
     expect((await searchLite({ ...q, lat: 39.57, lon: 2.65 }, "k", g)).length).toBe(2);
-    expect(seen[1]).toBe("https://api.liteapi.travel/v3.0/data/hotels?countryCode=ES&latitude=39.57&longitude=2.65&radius=10000&limit=60");
+    expect(seen[1]).toBe("https://api.liteapi.travel/v3.0/data/hotels?countryCode=ES&latitude=39.57&longitude=2.65&radius=10000&distance=10000&limit=60");
+    // Hotels zum Namen, aber ohne Preise: ebenfalls Umkreis
+    const seen2: string[] = [];
+    const h = (async (url: string) => {
+      seen2.push(url);
+      return new Response(JSON.stringify(url.includes("/data/hotels") ? { data: HOTELS } : { data: seen2.some(u => u.includes("latitude")) ? RATES : [] }));
+    }) as unknown as typeof fetch;
+    expect((await searchLite({ ...q, lat: 39.57, lon: 2.65 }, "k", h)).length).toBe(2);
+    expect(seen2.filter(u => u.includes("/data/hotels"))).toHaveLength(2);
     expect(await searchLite({ ...q, type: "whole" }, "k", f)).toEqual([]);
   });
 });
