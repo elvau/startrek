@@ -1,4 +1,5 @@
 /* Datenmodell der Reisekasse. Siehe docs/KONZEPT.md, Abschnitte 2 und 4. */
+import type { Campaign } from "./campaign";
 
 export type CatKey = "flights" | "stay" | "transport" | "attractions" | "misc";
 export const CAT_KEYS: CatKey[] = ["flights", "stay", "transport", "attractions", "misc"];
@@ -319,6 +320,8 @@ export interface Trip {
   lines?: SimpleLine[];
   /** Zuschüsse: Mannschaftskasse, Oma und Opa, Sponsor … senken den Eigenanteil */
   funds?: Fund[];
+  /** öffentliche Aktionsseite zum Mitfinanzieren (Zuschüsse Stufe 2), nur mit Einwilligung zu Name und IBAN */
+  campaign?: Campaign;
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
   detail?: Partial<Record<CatKey, boolean>>;
   tiers: Partial<Record<CatKey, Tier[]>>;

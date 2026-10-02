@@ -9,6 +9,7 @@ import type { Unsubscribe } from "firebase/firestore";
 import type { Trip } from "../model";
 import { configured, emulator } from "./config";
 import type { Role, TripDoc } from "./firebase";
+import type { CampaignDoc } from "../campaign";
 
 export type { Role };
 export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** zuletzt im Konto gespeichert (ISO) */ updated?: string; /** von wem (Konto-ID) */ by?: string }
@@ -252,3 +253,16 @@ function message(e: unknown): string {
   if (code.includes("operation-not-allowed")) return t("cloud.method");
   return (e as Error)?.message || String(e);
 }
+
+/* ---------- Aktionsseite ---------- */
+
+/** neue Kennung für eine Aktionsseite (zufällig, nicht zu erraten) */
+export async function newCampaignId(): Promise<string> { const f = await load(); return f.newKey(); }
+/** veröffentlichen oder aktualisieren (nur angemeldet); gibt das Konto zurück, dem die Seite gehört */
+export async function saveCampaign(id: string, d: Omit<CampaignDoc, "owner">): Promise<string> {
+  if (!fbUser) throw new Error(t("cmp.needLogin"));
+  const f = await load();
+  await f.publishCampaign(id, { ...d, owner: fbUser.uid });
+  return fbUser.uid;
+}
+export async function deleteCampaign(id: string) { const f = await load(); await f.removeCampaign(id); }

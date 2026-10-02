@@ -182,6 +182,63 @@ try {
   });
   log("Nach dem Neuladen alles da");
 
+  // Aktionsseite: Anna trägt einen Zuschuss ein und veröffentlicht eine Seite mit IBAN; ein Gast ohne Konto sieht sie
+  const fund = async (name, amount) => {
+    await anna.locator("#split .funds .fu-add").click();
+    const ed = anna.locator("#split .funds .fu-edit");
+    await ed.locator("input").first().fill(name);
+    await ed.locator(".fu-amt input").fill(String(amount));
+    await ed.locator("label.in-row input[type=checkbox]").check();
+    await ed.locator(".btn.primary").click();
+  };
+  await anna.locator("#split").scrollIntoViewIfNeeded();
+  await fund("Oma", 200);
+  await anna.locator("#split .cmp-start").click();
+  const ce = anna.locator("#split .cmp-edit");
+  await ce.locator("label.f", { hasText: "Kontoinhaber" }).locator("input").fill("Anna Klein");
+  await ce.locator(".cmp-iban-in").fill("DE89 3704 0044 0532 0130 00");
+  await ce.locator(".cmp-publish").click();
+  if (!(await ce.locator(".err").textContent()).includes("zustimmen")) fail("ohne Einwilligung veröffentlicht");
+  await ce.locator(".cmp-consent input").check();
+  await ce.locator(".cmp-publish").click();
+  await until(async () => (await anna.locator("#split .cmp-link input").count()) > 0, "Aktionsseite veröffentlicht");
+  const aktion = await anna.locator("#split .cmp-link input").inputValue();
+  if (!/\?aktion=[A-Za-z0-9]{12,}/.test(aktion)) fail("Link der Aktionsseite: " + aktion);
+  const gast = await person("Gast");
+  await gast.goto(aktion);
+  await gast.locator(".cmp h1").waitFor();
+  const page = await gast.locator(".cmp").innerText();
+  if (!page.includes("DE89 3704 0044 0532 0130 00") || !page.includes("Anna Klein") || !/200\s?€/.test(page)) fail("Aktionsseite: " + page.slice(0, 400));
+  if (!(await gast.locator(".cmp svg.qr path").count())) fail("kein GiroCode");
+  if (page.includes("Oma")) fail("Aktionsseite zeigt Namen aus der Reise");
+  if (process.env.SHOTS) {
+    await anna.locator("#split .funds").screenshot({ path: `${process.env.SHOTS}/cmp-card.png` });
+    await gast.setViewportSize({ width: 390, height: 1100 });
+    await gast.screenshot({ path: `${process.env.SHOTS}/cmp-page.png` });
+    await gast.setViewportSize({ width: 1280, height: 900 });
+  }
+  log("Aktionsseite veröffentlicht (nur mit Einwilligung), Gast ohne Konto sieht Ziel, 200 €, IBAN und GiroCode, keine Namen der Reise");
+
+  // Fortschritt zieht automatisch nach
+  await fund("Sponsor", 100);
+  await until(async () => { await gast.reload(); await gast.locator(".cmp h1").waitFor(); return /300\s?€/.test(await gast.locator(".cmp-sum").innerText()); }, "Fortschritt 300 € auf der Aktionsseite", 20000);
+  log("Neuer Zuschuss: Aktionsseite zeigt 300 €");
+
+  // Regeln: ohne Konto (und als anderes Konto) lässt sich die Seite nicht ändern
+  const cid = new globalThis.URL(aktion).searchParams.get("aktion");
+  const rest = `http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/campaigns/${cid}`;
+  const hack = await fetch(rest + "?updateMask.fieldPaths=iban", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ fields: { iban: { stringValue: "GB33BUKB20201555555555" } } }) });
+  if (hack.status !== 403) fail("Aktionsseite ohne Konto änderbar: " + hack.status);
+  log("Fremde können die IBAN nicht ändern (Firestore-Regeln)");
+
+  // Zurückziehen: Link zeigt „gibt es nicht mehr“
+  anna.on("dialog", d => d.accept());
+  await anna.locator("#split .cmp-box .fu-del").click();
+  await anna.locator("#split .cmp-start").waitFor();
+  await gast.reload();
+  await until(async () => (await gast.locator(".cmp").innerText()).includes("gibt es nicht"), "zurückgezogene Aktionsseite");
+  log("Aktionsseite zurückgezogen: Link zeigt „gibt es nicht (mehr)“");
+
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");
 } finally {
