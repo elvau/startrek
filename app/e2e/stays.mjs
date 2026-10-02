@@ -94,6 +94,9 @@ try {
   await m.locator(".chip", { hasText: "Nähe Zentrum" }).click();
   if (!(await m.locator(".fs-res").first().textContent()).includes("Cornaro Hotel")) fail("Sortierung nach Nähe Zentrum");
   if ((await m.locator(".fs-res").nth(1).textContent()).includes("Rooms")) fail("ohne Entfernung nicht ans Ende");
+  // Entfernung zum Zentrum je Treffer (Angabe des Anbieters oder aus den Koordinaten)
+  if (!(await m.locator(".fs-res", { hasText: "Cornaro Hotel" }).locator(".st-dist").textContent()).includes("400 m zum Zentrum")) fail("Entfernung Cornaro: " + await m.locator(".fs-res", { hasText: "Cornaro Hotel" }).locator(".st-dist").textContent());
+  if (!/\d,\d km zum Zentrum/.test(await m.locator(".fs-res", { hasText: "Rooms" }).locator(".st-dist").textContent())) fail("Entfernung aus Koordinaten fehlt");
   // Google-Maps-Link je Treffer: Name und Ort, ohne Schlüssel
   const gm = await m.locator(".fs-res", { hasText: "Cornaro Hotel" }).locator(".st-gmap").getAttribute("href");
   if (gm !== "https://www.google.com/maps/search/?api=1&query=Cornaro%20Hotel%2C%20Split") fail("Google-Maps-Link: " + gm);
@@ -149,6 +152,16 @@ try {
   const cardMap = await cards.locator(".src-link a.gmap").getAttribute("href").catch(() => null);
   if (!cardMap?.includes("query=Rooms%20%C5%A0e%C4%87er%2C%20Split")) fail("Google-Maps-Link am Posten: " + cardMap);
   log("Übernommen: ein Posten mit 2 Angeboten, günstigstes zählt");
+  // Karte der Reise im Kapitel Unterkunft: gewählte Unterkunft mit Ort, Tipp springt zum Posten
+  await p.locator("#stay .tm-open").click();
+  const tmPin = p.locator("#stay .trip-map .map-stay");
+  await tmPin.first().waitFor();
+  if (!(await tmPin.first().textContent()).includes("Unterkunft in Split")) fail("Karte der Reise: " + await tmPin.first().textContent());
+  await tmPin.first().click();
+  await until(async () => (await cards.first().getAttribute("class")).includes("flash"), "Posten nach Tipp auf der Karte");
+  await p.locator("#stay .trip-map .linkbtn", { hasText: "Karte schließen" }).click();
+  if (await p.locator("#stay .trip-map").count()) fail("Karte der Reise nicht geschlossen");
+  log("Karte der Reise: Unterkunft als Pin, Tipp springt zum Posten, wieder geschlossen");
   // Vergleich nebeneinander in der Karte: wählen, wieder zurück
   const tiles = cards.locator(".st-cmp .cmp-t");
   if ((await tiles.count()) !== 2) fail("Vergleich: " + await tiles.count() + " Kacheln");

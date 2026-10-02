@@ -52,7 +52,7 @@
       el.setAttribute("aria-label", p.title || p.label);
       el.dataset.id = p.id;
       if (p.id === selected) el.classList.add("on");
-      if (p.kind === "stay") el.addEventListener("click", e => { e.stopPropagation(); onselect?.(p.id); });
+      if (onselect) { el.classList.add("map-click"); el.addEventListener("click", e => { e.stopPropagation(); onselect(p.id); }); }
       const m = new lib!.Marker({ element: el, anchor: "bottom" }).setLngLat([p.lon, p.lat]).addTo(map!);
       return { id: p.id, m, el };
     });

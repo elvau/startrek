@@ -62,10 +62,8 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 
 - [x] Nach Teil 2 oben: `VITE_FIREBASE_AUTH_DOMAIN=splitandfly.com` in `app/.env.production`, für Live-Seite und Testumgebung.
 - [x] Mengenbegrenzung pro IP für die Suchen (60 pro Minute, 600 pro Stunde; v0.9.1).
-- [ ] Preiskalender mit Richtpreisen vor der Suche (Travelpayouts-Kalender, ganze Monate, als „ca.“), Tipp auf zwei
-      Tage startet die echte Suche. Heute zeigt der Kalender nur die Tage aus den Suchtreffern (`flights/filter.ts`).
-- [ ] Karte weiter: Entfernung zum Zentrum, Flughafen und zu den Events an jeder Unterkunft („1,2 km zum Zentrum“);
-      Karte auch für Events und gewählte Posten der Reise. Basis: `app/src/lib/geo/maps.ts`, `MapView.svelte` (OpenFreeMap).
+- [x] Preiskalender mit Richtpreisen vor der Suche (`flights/calendar.ts`, Such-Dienst `/flights/calendar`; wirkt erst nach dem Release, Worker nur von main).
+- [x] Karte weiter: Entfernung zu Zentrum, Flughafen und Events an jeder Unterkunft; „Karte der Reise“ (`geo/spots.ts`, `TripMap.svelte`).
 - [ ] Vergleichen von Reisen und/oder Posten (nächstes großes Feature; KI-Vergleichsreise aus v0.10.0 ist der Einstieg).
 - [x] KI-Konnektor (MCP) Schritt 1 und 2: Suchen und Reisen im Konto mit persönlichem Schlüssel (docs/KONNEKTOR.md).
 - [ ] KI-Konnektor Schritt 3: OAuth über die Firebase-Anmeldung für Chat-Apps (Claude, ChatGPT). Vor dem offenen Anbieten

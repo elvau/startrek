@@ -36,6 +36,7 @@
   import EventPlanner from "./lib/ui/EventPlanner.svelte";
   import { eventPlanner } from "./lib/event/open.svelte";
   import FoodCard from "./lib/ui/FoodCard.svelte";
+  import TripMap from "./lib/ui/TripMap.svelte";
   import { getYourGuideLink, tiqetsLink } from "./lib/links";
   import ViatorLink from "./lib/ui/ViatorLink.svelte";
   import { partner } from "./lib/partnerState.svelte";
@@ -53,6 +54,8 @@
   import { airportData, ensureAirports, ensureGeo, geo } from "./lib/geo/geo.svelte";
 
   let sheet = $state(false);
+  // Karte der Reise, aufgeklappt im Kapitel Unterkunft oder Erlebnisse
+  let mapOpen = $state<"stay" | "attractions" | null>(null);
 
   onMount(() => {
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
@@ -77,7 +80,7 @@
     const id = app.trip.id;
     if (id === searchTrip) return;
     searchTrip = id;
-    flightSearch.open = false; staySearch.open = false; explore.open = false;
+    flightSearch.open = false; staySearch.open = false; explore.open = false; mapOpen = null;
   });
 
   // Mietwagen und Reiseversicherung als Richtwert-Posten
@@ -145,7 +148,9 @@
               {#if evWin.city && FLIGHTS_URL}<button class="btn primary xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>{/if}
               {#if evWin.city && FLIGHTS_URL}<button class="btn xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>{/if}
               <button class="btn att-ev" class:primary={!evWin.city} onclick={openEventPlanner}>🏟 {app.trip.event ? t("ev.change") : t("ev.btn")}</button>
+              <button class="btn tm-open" aria-expanded={mapOpen === "attractions"} onclick={() => (mapOpen = mapOpen === "attractions" ? null : "attractions")}>🗺 {t("tmap.open")}</button>
             </div>
+            {#if mapOpen === "attractions"}<TripMap onclose={() => (mapOpen = null)} />{/if}
             <!-- Events und Touren klappen hier im Kapitel auf -->
             {#if explore.open}<ExploreDialog inline onclose={() => (explore.open = false)} />{/if}
           {/if}
@@ -171,7 +176,9 @@
             <br />{t("ins.hint")}
           </p>
         {:else if ch.k === "stay" && !access.readonly}
-          <div class="search-row"><button class="btn primary st-open" aria-expanded={staySearch.open} onclick={() => (staySearch.open ? (staySearch.open = false) : openStaySearch())}>🛏 {t("st.open")} <span aria-hidden="true">{staySearch.open ? "▴" : "▾"}</span></button></div>
+          <div class="search-row"><button class="btn primary st-open" aria-expanded={staySearch.open} onclick={() => (staySearch.open ? (staySearch.open = false) : openStaySearch())}>🛏 {t("st.open")} <span aria-hidden="true">{staySearch.open ? "▴" : "▾"}</span></button>
+            <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
+          {#if mapOpen === "stay"}<TripMap onclose={() => (mapOpen = null)} />{/if}
           {#if staySearch.open}{#key staySearch.scope}<StaySearch inline scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}
         {/if}
         {#if ch.k === "misc"}<article class="card plan-card" use:reveal><FoodCard /></article>{/if}

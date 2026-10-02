@@ -24,6 +24,7 @@
   import { keepStays, sortStays, type StaySort } from "../stays/sort";
   import { applyStayFilter, kmToCenter, noStayFilter, type StayCtx } from "../stays/filter";
   import StayFilters from "./StayFilters.svelte";
+  import { kmText, nearest, tripSpots } from "../geo/spots";
   import type { SourceStatus } from "../flights/types";
   import { airbnbLink, bookingLink } from "../links";
   import { hasCoords, locText, mapsUrl } from "../geo/maps";
@@ -168,6 +169,20 @@
     const p = picked ? xs.find(o => o.id === picked) ?? located.find(o => o.id === picked) : undefined;
     return p ? [p, ...xs.filter(o => o !== p)] : xs;
   });
+  // Entfernungen je Unterkunft: Zentrum, nächster Flughafen der Reise, nächstes Event mit Ort
+  const spots = $derived(tripSpots(trip, geo));
+  function dist(o: StayOffer): string[] {
+    const out: string[] = [];
+    const c = kmToCenter(o, ctx);
+    if (c != null) out.push(t("sf.toCenter", { d: kmText(c, locale()) }));
+    if (hasCoords(o)) {
+      const p = { lat: o.lat!, lon: o.lon! };
+      const ap = nearest(p, spots, "airport"), ev = nearest(p, spots, "event");
+      if (ap) out.push(t("sf.toAirport", { d: kmText(ap.km, locale()), ap: ap.spot.id.slice(3) }));
+      if (ev) out.push(t("sf.toEvent", { d: kmText(ev.km, locale()), name: ev.spot.name.length > 24 ? ev.spot.name.slice(0, 23) + "…" : ev.spot.name }));
+    }
+    return out;
+  }
   const mapLink = (o: StayOffer) => mapsUrl({ q: locText(o.name, asked?.place), lat: o.lat, lon: o.lon });
   const hasKm = $derived((list || []).some(o => kmToCenter(o, ctx) != null));
   const toggleSrc = (id: string) => (use = use.includes(id) ? use.filter(x => x !== id) : [...use, id]);
@@ -236,6 +251,7 @@
         {#each o.facts || [] as f (f)}<span class="pill-h">{f}</span>{/each}
       </div>
       {#if o.place}<p class="muted small fs-sub">{o.place}</p>{/if}
+      {#if dist(o).length}<div class="fs-pills st-dist">{#each dist(o) as d (d)}<span class="pill-h">{d}</span>{/each}</div>{/if}
       <div class="fs-acts">
         {#if !taken[o.id] && current?.url === o.url}<span class="pill-n">{t("st.chosen")}</span>
         {:else}<button class="btn primary sm" disabled={taken[o.id]} onclick={() => take(o)}>{taken[o.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>{/if}
@@ -378,7 +394,7 @@
       <StayFilters {list} bind:filter={sfilter} {ctx} />
       <p class="muted small">{filtered.length < list.length ? `${t("fs.f.shown", { n: filtered.length, of: list.length })} · ` : ""}{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(list[0].total) })}</p>
       {#if view === "map" && located.length}
-        <MapView {points} selected={picked} onselect={id => (picked = id)} onbounds={b => (bounds = b)} />
+        <MapView {points} selected={picked} onselect={id => { if (located.some(o => o.id === id)) picked = id; }} onbounds={b => (bounds = b)} />
         <p class="muted small st-maphint">{tn("map.inView", inView.length)}{located.length < shown.length ? ` · ${tn("map.missing", shown.length - located.length)}` : ""} · {t("map.pick")}</p>
         <div class="fs-list">
           {#each inView as o (o.id)}{@render res(o, an, n)}{/each}
