@@ -60,7 +60,7 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
       KI-Konnektor (10/2026). Offen: übernommene Viator-Posten (Name, Preis, Link) stehen weiter in der Reise und damit auch
       in dem, was der Konnektor und der KI-Planer von einer Reise sehen – mit Dani klären, ob das reicht.
 
-- [x] Nach Teil 2 oben: `VITE_FIREBASE_AUTH_DOMAIN=splitandfly.com` nur im Release-Build (release.yml, 0.16.0), Testumgebung bleibt.
+- [x] Nach Teil 2 oben: `VITE_FIREBASE_AUTH_DOMAIN=splitandfly.com` in `app/.env.production`, für Live-Seite und Testumgebung.
 - [x] Mengenbegrenzung pro IP für die Suchen (60 pro Minute, 600 pro Stunde; v0.9.1).
 - [ ] Vergleichen von Reisen und/oder Posten (nächstes großes Feature; KI-Vergleichsreise aus v0.10.0 ist der Einstieg).
 - [x] KI-Konnektor (MCP) Schritt 1 und 2: Suchen und Reisen im Konto mit persönlichem Schlüssel (docs/KONNEKTOR.md).
