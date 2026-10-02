@@ -73,8 +73,9 @@ try {
     const q = JSON.parse(r.request().postData());
     evAsked.push(q);
     // „Events vor Ort“: nach Stadt und Zeitraum, mit Ticketpreis
-    const body = q.city ? { events: [{ id: "tm:77", source: "ticketmaster", sourceName: "Ticketmaster", name: "Coldplay", start: "2027-05-15T20:00", venue: "Wembley Stadium", city: "London", cc: "GB", url: "https://tickets.example/coldplay", price: { min: 89, max: 250, currency: "EUR" } }],
-      sources: [{ id: "ticketmaster", name: "Ticketmaster", configured: true, ok: true, count: 1 }] }
+    const body = q.city ? { events: [{ id: "tm:77", source: "ticketmaster", sourceName: "Ticketmaster", name: "Coldplay", start: "2027-05-15T20:00", venue: "Wembley Stadium", city: "London", cc: "GB", url: "https://tickets.example/coldplay", price: { min: 89, max: 250, currency: "EUR" } },
+      { id: "tm:78", source: "ticketmaster", sourceName: "Ticketmaster", name: "Westminster Abbey Führung", start: "2027-05-16T10:00", venue: "Westminster Abbey", city: "London", cc: "GB", category: "Führung" }],
+      sources: [{ id: "ticketmaster", name: "Ticketmaster", configured: true, ok: true, count: 2 }] }
       // Champions League gegen eine Mannschaft ohne Anschrift: nur das Land ist bekannt (Fehlerbericht #14)
       : q.q === "Sabah" ? { events: [{ id: "fd:9", source: "footballdata", sourceName: "football-data.org", name: "Sabah FK – Dortmund", start: "2027-10-20T20:45", cc: "AZ", category: "UEFA Champions League" }],
         sources: [{ id: "footballdata", name: "football-data.org", configured: true, ok: true, count: 1 }] } : EVENTS;
@@ -85,8 +86,9 @@ try {
   await p.route("https://flights.test/activities/search", async r => {
     tourAsked.push(JSON.parse(r.request().postData()));
     await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ activities: [
-      { id: "viator:1", source: "viator", sourceName: "Viator", title: "Tower of London: Kronjuwelen", rating: 4.7, reviews: 5210, minutes: 180, price: 42, currency: "EUR", url: "https://www.viator.com/t/1", image: "https://media-cdn.tripadvisor.com/media/tower.jpg" }
-    ], sources: [{ id: "viator", name: "Viator", configured: true, ok: true, count: 1 }] }) });
+      { id: "viator:1", source: "viator", sourceName: "Viator", title: "Tower of London: Kronjuwelen", rating: 4.7, reviews: 5210, minutes: 180, price: 42, currency: "EUR", url: "https://www.viator.com/t/1", image: "https://media-cdn.tripadvisor.com/media/tower.jpg" },
+      { id: "viator:2", source: "viator", sourceName: "Viator", title: "Themse-Bootsfahrt", rating: 4.3, reviews: 800, minutes: 60, price: 18, currency: "EUR", url: "https://www.viator.com/t/2" }
+    ], sources: [{ id: "viator", name: "Viator", configured: true, ok: true, count: 2 }] }) });
   });
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
@@ -174,12 +176,27 @@ try {
   const eq = evAsked[evAsked.length - 1];
   if (eq.city !== "London" || eq.from !== "2027-05-15" || eq.to !== "2027-05-16" || eq.q !== "" || eq.lat == null) fail("Events vor Ort: " + JSON.stringify(eq));
   if (!(await x.locator(".xp-ev", { hasText: "ab 89" }).count())) fail("Ticketpreis fehlt");
+  // Filter: Reisetage („Tag 2 · …“) und Tageszeit mit Anzahl, ohne neue Anfrage
+  const nEv = evAsked.length;
+  if (!(await x.locator(".xp-days .chip", { hasText: "Tag 2" }).count())) fail("Tageschips: " + await x.locator(".xp-days").textContent());
+  await x.locator(".xp-parts .chip", { hasText: "Vormittags" }).click();
+  if ((await x.locator(".xp-ev").count()) !== 1 || !(await x.locator(".xp-ev").textContent()).includes("Westminster")) fail("Filter vormittags");
+  await x.locator(".xp-f .linkbtn", { hasText: "Filter zurücksetzen" }).click();
+  if ((await x.locator(".xp-ev").count()) !== 2 || evAsked.length !== nEv) fail("Events-Filter zurücksetzen");
+  log("Events-Filter: Tag 1/Tag 2, „Vormittags“ → Westminster, zurückgesetzt");
   await x.locator(".xp-ev", { hasText: "Coldplay" }).locator(".xp-take").click();
   await x.locator(".xp-ev .xp-take", { hasText: "In der Reise" }).waitFor();
   await x.locator(".xp-tab", { hasText: "Touren" }).click();
   await x.locator(".xp-tour").first().waitFor();
   if (tourAsked[0]?.place !== "London" || tourAsked[0]?.lang !== "de" || tourAsked[0]?.from !== "2027-05-15") fail("Touren-Anfrage: " + JSON.stringify(tourAsked));
-  await x.locator(".xp-tour .xp-take").click();
+  // Touren: Dauer mit Anzahl und Preis ab, Sortierung nach Preis
+  await x.locator(".xp-lens .chip", { hasText: "Bis 2 h" }).click();
+  if ((await x.locator(".xp-tour").count()) !== 1 || !(await x.locator(".xp-tour").textContent()).includes("Themse")) fail("Filter bis 2 h");
+  await x.locator(".xp-lens .chip", { hasText: "Bis 2 h" }).click();
+  await x.locator(".xp-f .chip", { hasText: "Günstigste" }).click();
+  if (!(await x.locator(".xp-tour").first().textContent()).includes("Themse")) fail("Touren nach Preis");
+  log("Touren-Filter: „Bis 2 h“ → Themse-Bootsfahrt, nach Preis sortiert");
+  await x.locator(".xp-tour", { hasText: "Tower of London" }).locator(".xp-take").click();
   await p.keyboard.press("Escape");
   const att = p.locator("#attractions");
   await att.locator(".card", { hasText: "Coldplay" }).waitFor();
