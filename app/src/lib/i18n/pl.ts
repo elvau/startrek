@@ -195,6 +195,7 @@ export const pl: Dict = {
   "app.ofTotal": "z {n} jedzie",
   "app.savedCloud": "Podróże z ☁ są na twoim koncie.",
   "app.savedLocal": "Zapisywane w tej przeglądarce.",
+  "aside.details": "Pokaż pozycje",
   "aside.noAmount": "jeszcze bez kwoty",
   "aside.noItems": "jeszcze bez pozycji",
   "aside.offline": "Offline, zostanie przesłane później",

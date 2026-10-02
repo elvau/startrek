@@ -206,6 +206,7 @@ export const ar: Dict = {
   "app.ofTotal": "من أصل {n} مشاركين",
   "app.savedCloud": "الرحلات التي عليها ☁ محفوظة في حسابك.",
   "app.savedLocal": "يُحفظ في هذا المتصفح.",
+  "aside.details": "إظهار البنود",
   "aside.noAmount": "لم يُدخل مبلغ بعد",
   "aside.noItems": "لا بنود بعد",
   "aside.offline": "غير متصل، سيُرسل لاحقًا",

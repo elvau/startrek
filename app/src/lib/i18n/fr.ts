@@ -183,6 +183,7 @@ export const fr: Dict = {
   "app.ofTotal": "sur {n} présents",
   "app.savedCloud": "Les voyages avec ☁ sont dans ton compte.",
   "app.savedLocal": "Enregistré dans ce navigateur.",
+  "aside.details": "Afficher les postes",
   "aside.noAmount": "aucun montant saisi",
   "aside.noItems": "aucun poste saisi",
   "aside.offline": "Hors ligne, envoi plus tard",

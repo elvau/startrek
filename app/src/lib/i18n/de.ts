@@ -181,6 +181,7 @@ export const de = {
   "app.ofTotal": "von {n} dabei",
   "app.savedCloud": "Reisen mit ☁ liegen in deinem Konto.",
   "app.savedLocal": "Gespeichert wird in diesem Browser.",
+  "aside.details": "Posten zeigen",
   "aside.noAmount": "noch kein Betrag eingetragen",
   "aside.noItems": "noch keine Posten eingetragen",
   "aside.offline": "Offline, wird später übertragen",

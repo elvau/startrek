@@ -170,6 +170,8 @@ body[data-ch="split"] .amb-split{opacity:1}
 .sh-l .num{font-weight:600;white-space:nowrap}
 .sh-l .num.fixed{color:var(--good)}
 .fam{display:flex;flex-direction:column;gap:2px;border-top:1px dashed var(--line);padding-top:10px}
+.fam-d summary{cursor:pointer;list-style-position:inside}
+.fam-d[open] summary{margin-bottom:4px}
 .sect{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
 .fam-l{display:flex;justify-content:space-between;padding:5px 10px;border-radius:10px;color:var(--ink);text-decoration:none;font-size:14px}
 .fam-l:hover{background:var(--paper-2)}

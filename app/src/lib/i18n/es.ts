@@ -183,6 +183,7 @@ export const es: Dict = {
   "app.ofTotal": "de {n} participan",
   "app.savedCloud": "Los viajes con ☁ están en tu cuenta.",
   "app.savedLocal": "Se guarda en este navegador.",
+  "aside.details": "Mostrar partidas",
   "aside.noAmount": "aún sin importe",
   "aside.noItems": "aún sin partidas",
   "aside.offline": "Sin conexión, se enviará más tarde",

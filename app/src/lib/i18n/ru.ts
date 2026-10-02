@@ -195,6 +195,7 @@ export const ru: Dict = {
   "app.ofTotal": "из {n} едут",
   "app.savedCloud": "Поездки с ☁ хранятся в твоём аккаунте.",
   "app.savedLocal": "Сохраняется в этом браузере.",
+  "aside.details": "Показать статьи",
   "aside.noAmount": "сумма ещё не указана",
   "aside.noItems": "позиций ещё нет",
   "aside.offline": "Офлайн, отправим позже",

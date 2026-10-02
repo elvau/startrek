@@ -242,6 +242,18 @@ try {
   const fin = p.locator("#stay .card[data-item]", { hasText: "Hostal Sol" });
   await fin.waitFor();
   await until(async () => (await fin.innerText()).includes("960"), "Unterkunft 2 × 480 €");
+  // Gesamtanzeige bei kleinem Fenster: passt hinein, scrollt selbst; Posten einer Kategorie erst auf ▾
+  await p.setViewportSize({ width: 1280, height: 480 });
+  await p.locator("#stay").scrollIntoViewIfNeeded();
+  await p.waitForTimeout(600);
+  const tk = await p.evaluate(() => { const a = document.querySelector(".aside").getBoundingClientRect(), b = document.querySelector(".aside .tk-b"); return { bottom: a.bottom, h: innerHeight, scroll: b.scrollHeight > b.clientHeight, ov: getComputedStyle(b).overflowY }; });
+  if (tk.bottom > tk.h + 1 || !tk.scroll || tk.ov !== "auto") fail("Gesamtanzeige ragt aus dem Fenster oder scrollt nicht: " + JSON.stringify(tk));
+  const stayCat = p.locator(".aside .cat", { hasText: "Unterkunft" });
+  if (await stayCat.locator(".cat-d").isVisible()) fail("Posten der Kategorie ohne Wunsch aufgeklappt");
+  await stayCat.locator(".cat-t").click();
+  if (!(await stayCat.locator(".cat-d").innerText()).includes("960")) fail("Posten nach ▾ nicht sichtbar");
+  await p.setViewportSize({ width: 1280, height: 900 });
+  log("Gesamtanzeige: passt ins Fenster (eigener Scrollbalken), Posten je Kategorie auf ▾");
   log("Große Gruppe: Flug in 3 Buchungen à 4, gesucht für 4, Preise × 3 (wählbar, max. 9 je Suche); Ferienwohnung auf 2 Unterkünfte à 6, gesucht für 6, übernommen 2 × 480 €");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));

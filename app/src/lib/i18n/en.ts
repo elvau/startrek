@@ -183,6 +183,7 @@ export const en: Dict = {
   "app.ofTotal": "of {n} coming",
   "app.savedCloud": "Trips with ☁ are stored in your account.",
   "app.savedLocal": "Saved in this browser.",
+  "aside.details": "Show items",
   "aside.noAmount": "no amount entered yet",
   "aside.noItems": "no items added yet",
   "aside.offline": "Offline, will sync later",
