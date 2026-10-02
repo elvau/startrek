@@ -1155,6 +1155,8 @@ export const de = {
   "watch.nothing": "Nichts Günstigeres gefunden",
   "watch.take": "Übernehmen",
   "welcome.haveAccount": "Anmelden oder Konto anlegen",
+  "who.asAnimal": "Lieber als Tier planen",
+  "who.asMe": "Als {name} planen",
   "who.createWith": "Reise mit {name} anlegen ({p})",
   "who.familyHint": "Eine oder mehrere Familien, jede als Tier, z. B. „Familie Fuchs: 2 Erwachsene, 2 Kinder“. Echte Namen kannst du später eintragen.",
   "who.familySub": "eine oder mehrere",

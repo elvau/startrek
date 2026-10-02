@@ -1157,6 +1157,8 @@ export const en: Dict = {
   "watch.nothing": "Nothing cheaper found",
   "watch.take": "Use this",
   "welcome.haveAccount": "Sign in or create an account",
+  "who.asAnimal": "Plan as an animal instead",
+  "who.asMe": "Plan as {name}",
   "who.createWith": "Create trip with {name} ({p})",
   "who.familyHint": "One or more families, each as an animal, e.g. “Fox family: 2 adults, 2 children”. You can add real names later.",
   "who.familySub": "one or more",

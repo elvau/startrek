@@ -125,6 +125,16 @@ try {
   await mal.keyboard.press("Escape");
   log("Offene Reise gelöscht: Startseite, keine andere Reise geöffnet, keine leere im Konto");
 
+  // Neue Reise angemeldet: solo plant man als man selbst, nicht als Tier (Fehlerbericht #16)
+  await mal.locator(".start .home-new").click();
+  const whoLine = mal.locator(".modal .who-d p").first();
+  if (!(await whoLine.textContent()).includes("Du planst als Mallory")) fail("Neue Reise solo: " + await whoLine.textContent());
+  await whoLine.locator(".linkbtn", { hasText: "Lieber als Tier planen" }).click();
+  if ((await whoLine.textContent()).includes("Mallory") && !(await whoLine.textContent()).includes("Als Mallory planen")) fail("als Tier: " + await whoLine.textContent());
+  await whoLine.locator(".linkbtn", { hasText: "Als Mallory planen" }).click();
+  await mal.keyboard.press("Escape");
+  log("Neue Reise angemeldet: „Du planst als Mallory“, umschaltbar auf ein Tier");
+
   // Verzeichniseintrag ohne gespeicherte Reise (z. B. gelöschte Konto-Reise) zählt nicht als Reise auf dem Gerät
   await mal.evaluate(() => {
     const ix = JSON.parse(localStorage.getItem("rk2-index") || "[]");

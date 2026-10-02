@@ -4,18 +4,37 @@
   import { animalEmoji, animalName, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler } from "../placeholders";
   import { addToNew, dropFromNew, toggleSavedGroup, togglePicked, whoCount, type Who, type WhoMode, type WhoSrc } from "../who";
   import type { Traveler } from "../model";
+  import { cloud } from "../cloud/cloud.svelte";
 
   export type { Who };
+  /**
+   * Wer man selbst ist: die Person „Das bin ich“ aus den Vorlieben, sonst der Name des Kontos (Vorname, Rest als
+   * Familienname); ohne beides null, dann plant man als Tier.
+   */
+  export function meName(): { first: string; last: string; personId?: string } | null {
+    const p = dir.me ? dir.people.find(x => x.id === dir.me) : undefined;
+    if (p) return { first: p.first, last: p.last || p.first, personId: p.id };
+    const n = cloud.user?.name?.trim();
+    if (!n) return null;
+    // ohne Anzeigenamen kommt der Teil vor dem @ der E-Mail („mallory“): groß schreiben
+    const [first, ...rest] = n.split(/\s+/).map(w => w.charAt(0).toLocaleUpperCase() + w.slice(1));
+    return { first, last: rest.join(" ") || first };
+  }
   /** Startauswahl: solo; bei Familie und Gruppe ist noch kein Weg gewählt */
   export function newWho(): Who {
     return {
-      mode: "solo", src: "", solo: nextAnimal(), partner: nextAnimal(), fams: [{ animal: nextAnimal(), adults: 2, kids: 0, infants: 0 }],
+      mode: "solo", src: "", solo: nextAnimal(), soloMe: true, partner: nextAnimal(), fams: [{ animal: nextAnimal(), adults: 2, kids: 0, infants: 0 }],
       group: { adults: 6, kids: 0 }, mascot: nextAnimal(), groups: [], picked: [], ng: { name: "", ids: [], drafts: [] }
     };
   }
   /** Reisende nach der Auswahl; eine neue Gruppe wird dabei mit ihren neuen Personen gespeichert */
   export function whoTravelers(w: Who): Traveler[] {
-    if (w.mode === "solo") return [soloTraveler(w.solo)];
+    if (w.mode === "solo") {
+      const me = w.soloMe ? meName() : null;
+      if (me?.personId) return travelersFrom([me.personId]);
+      if (me) { const { placeholder: _p, ...base } = soloTraveler(w.solo); return [{ ...base, name: me.first, household: me.last }]; }
+      return [soloTraveler(w.solo)];
+    }
     if (w.mode === "partner") return placeholderTravelers([{ animal: w.partner, adults: 2, kids: 0 }]);
     if (w.src === "saved") return travelersFrom(w.picked);
     if (w.src === "new") {
@@ -139,7 +158,12 @@
 
 <div class="who-d">
   {#if who.mode === "solo"}
-    <p class="small">{t("who.soloAs")} <b>{animalEmoji(who.solo)} {animalName(who.solo)}</b>. <button type="button" class="linkbtn" onclick={() => (who.solo = other(who.solo))}>{t("who.otherAnimal")}</button></p>
+    {@const me = meName()}
+    {#if me && who.soloMe}
+      <p class="small">{t("who.soloAs")} <b>{me.first}</b>. <button type="button" class="linkbtn" onclick={() => (who.soloMe = false)}>{t("who.asAnimal")}</button></p>
+    {:else}
+      <p class="small">{t("who.soloAs")} <b>{animalEmoji(who.solo)} {animalName(who.solo)}</b>. <button type="button" class="linkbtn" onclick={() => (who.solo = other(who.solo))}>{t("who.otherAnimal")}</button>{#if me} · <button type="button" class="linkbtn" onclick={() => (who.soloMe = true)}>{t("who.asMe", { name: me.first })}</button>{/if}</p>
+    {/if}
     <p class="muted small">{t("who.soloHint")}</p>
   {:else if who.mode === "partner"}
     <p class="small">{t("who.partnerAs")} <b>{animalEmoji(who.partner)} {t("family.named", { name: animalName(who.partner) })}</b>. <button type="button" class="linkbtn" onclick={() => (who.partner = other(who.partner))}>{t("who.otherAnimal")}</button></p>
