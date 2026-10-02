@@ -2,13 +2,14 @@
   import { t, tn } from "../i18n/index.svelte";
   /* Wer zahlt was: pro Familie Summe, fest und offen, Mitglieder und alle Posten */
   import { app, calc } from "../store.svelte";
-  import { eur, eurPP, householdShares } from "../calc";
+  import { activeOption, eur, eurPP, householdShares, testItems } from "../calc";
   import { CAT_CHAPTERS } from "../chapters";
   import { reveal } from "./reveal";
   import Icon from "./Icon.svelte";
   import type { Key } from "../i18n/index.svelte";
 
   const shares = $derived(householdShares(app.trip, calc.T));
+  const tests = $derived(testItems(app.trip));
   const label = (k: string) => CAT_CHAPTERS.find(c => c.k === k)!;
   const ST = (s: string) => t(`status.${s}` as Key);
 
@@ -18,6 +19,7 @@
   }
 </script>
 
+{#if tests.length && shares.length}<p class="warnline test-banner">⚠ {tn("test.inSplit", tests.length)}</p>{/if}
 {#each shares as h (h.name)}
   <article class="card share" id="hh-{h.name}" use:reveal>
     <div class="sh-head">
@@ -42,7 +44,7 @@
             {#each c.lines as l (l.key)}
               <li>
                 <button class="sh-l" onclick={() => (l.item ? jump(l.item.id) : document.getElementById(c.cat)?.scrollIntoView({ behavior: "smooth" }))}>
-                  <span class="sh-n">{l.label}<small>{[l.detail, l.who < h.members.length ? t("split.who", { a: l.who, b: h.members.length }) : "", l.item ? ST(l.item.status) : ""].filter(Boolean).join(" · ")}</small></span>
+                  <span class="sh-n">{l.label}{#if l.item && activeOption(l.item, app.trip)?.source?.test} <span class="pill-test">{t("test.badge")}</span>{/if}<small>{[l.detail, l.who < h.members.length ? t("split.who", { a: l.who, b: h.members.length }) : "", l.item ? ST(l.item.status) : ""].filter(Boolean).join(" · ")}</small></span>
                   <span class="num" class:fixed={l.fixed}>{eur(l.v)}</span>
                 </button>
               </li>

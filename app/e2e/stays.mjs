@@ -392,7 +392,13 @@ try {
   const qb = asked.at(-1);
   if (qb.country !== "Colombia" || !/^Bogot/.test(qb.place)) fail("Anfrage Bogotá: " + JSON.stringify(qb));
   log("Stadtsuche: „Cus“ → Cusco, „Bogo“ → Bogotá, Kolumbien; an die Anbieter " + qb.place + ", " + qb.country);
-  await m.locator(".modal-h .x").click();
+  // Testangebot übernommen: Hinweis bleibt am Posten, an der Summe und in der Abrechnung
+  await m.locator(".fs-res", { hasText: "Cornaro Hotel" }).locator(".btn", { hasText: "Übernehmen" }).click();
+  await m.waitFor({ state: "detached" });
+  await p.locator("#stay .card[data-item]", { hasText: "Cornaro" }).locator(".pill-test").waitFor();
+  if (!(await p.locator(".aside .tk-test").first().textContent()).includes("Testpreis")) fail("Summe ohne Hinweis auf Testpreis");
+  if (!(await p.locator("#split .test-banner").count())) fail("Abrechnung ohne Hinweis auf Testpreise");
+  log("Testangebot übernommen: „Testpreis“ am Posten, Hinweis an der Summe und in der Abrechnung");
   log("Suche je Station: aus der Lücke Lima 14.–20.04., Auswahl der Stationen, ohne Vorgabe Quito 07.–14.04.");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));

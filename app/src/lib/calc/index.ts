@@ -175,6 +175,9 @@ function followOption(main: Item, trip: Trip): Option | null {
 }
 
 /** Die Option, die in die Summe eingeht: gewählt, sonst die günstigste; beim Mitfliegen der Flug des anderen Postens */
+/** Posten, deren gewähltes Angebot aus einem Testzugang stammt (Preis nicht echt) */
+export const testItems = (trip: Trip) => trip.items.filter(i => i.status !== "dropped" && activeOption(i, trip)?.source?.test);
+
 export function activeOption(it: Item, trip: Trip): Option | null {
   const main = followed(it, trip);
   if (main) return followOption(main, trip);

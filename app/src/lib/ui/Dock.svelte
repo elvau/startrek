@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t, tn } from "../i18n/index.svelte";
-  import { calc } from "../store.svelte";
-  import { eur } from "../calc";
+  import { app, calc } from "../store.svelte";
+  import { eur, testItems } from "../calc";
   import { CHAPTERS, chLabel } from "../chapters";
   import { view } from "../scroll.svelte";
   import Icon from "./Icon.svelte";
@@ -15,6 +15,6 @@
 <button class="dock" onclick={onopen} aria-label={t("dock.open", { total: eur(calc.T.total) })}>
   <span class="ic"><Icon name={ch.icon} /></span>
   <div><small>{chLabel(ch)}</small><b class="num">{val}</b></div>
-  <div class="tot"><small>{t("total")}</small><b class="num">{eur(calc.T.total)}</b></div>
+  <div class="tot"><small>{t("total")}{#if testItems(app.trip).length} <span class="pill-test">{t("test.badge")}</span>{/if}</small><b class="num">{eur(calc.T.total)}</b></div>
   <span class="up" aria-hidden="true">▴</span>
 </button>
