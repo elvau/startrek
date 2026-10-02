@@ -7,7 +7,7 @@
 import { i18n, locale, t, type Key } from "../i18n/index.svelte";
 import { fx, shown } from "../currency.svelte";
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
-import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
+import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Fund, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number | null | undefined, s: Settings, kind?: AgeClass): AgeClass {
   // ohne Altersangabe: angegebene Klasse (Platzhalter), sonst erwachsen
@@ -218,6 +218,15 @@ export interface Totals {
   simple: Partial<Record<CatKey, number>>;
   /** Anzahl Aktive, auf die einfache Beträge verteilt werden */
   active: number;
+  /** Zuschüsse: insgesamt angerechnet, davon schon eingegangen, je Person, je Zuschuss (angerechnet und übrig) */
+  funds: number;
+  fundsReceived: number;
+  fundBy: Record<string, number>;
+  fundUse: Record<string, { applied: number; surplus: number }>;
+  /** Eigenanteil: Kosten minus Zuschüsse */
+  due: number;
+  /** Kosten je Person und Bereich (Grundlage für Zuschüsse zu einem Bereich) */
+  byPersonCat: Record<string, Partial<Record<CatKey, number>>>;
 }
 
 export function totals(trip: Trip): Totals {
@@ -227,6 +236,9 @@ export function totals(trip: Trip): Totals {
   const items: Record<string, ItemCalc> = {};
   const simple: Partial<Record<CatKey, number>> = {};
   trip.travelers.forEach(t => (byPerson[t.id] = 0));
+  // Kosten je Person und Bereich (für Zuschüsse, die nur einen Bereich decken)
+  const byPersonCat: Record<string, Partial<Record<CatKey, number>>> = {};
+  const addPC = (id: string, cat: CatKey, v: number) => { const m = (byPersonCat[id] ||= {}); m[cat] = (m[cat] || 0) + v; };
   const act = activeTravelers(trip);
   let total = 0, saved = 0, fixed = 0, paid = 0;
   for (const cat of CAT_KEYS) {
@@ -237,7 +249,7 @@ export function totals(trip: Trip): Totals {
     if (v) {
       total += v;
       byCat[cat] += v;
-      act.forEach(t => (byPerson[t.id] += v / act.length));
+      act.forEach(t => { byPerson[t.id] += v / act.length; addPC(t.id, cat, v / act.length); });
     }
     // einzelne Einträge: nur auf die Beteiligten verteilt
     for (const l of trip.lines || []) {
@@ -246,7 +258,7 @@ export function totals(trip: Trip): Totals {
       if (!who.length) continue;
       total += l.amount;
       byCat[cat] += l.amount;
-      who.forEach(t => (byPerson[t.id] += l.amount / who.length));
+      who.forEach(t => { byPerson[t.id] += l.amount / who.length; addPC(t.id, cat, l.amount / who.length); });
     }
   }
   for (const it of trip.items) {
@@ -260,14 +272,62 @@ export function totals(trip: Trip): Totals {
     paid += Math.min(r.paid, r.net);
     if (FIXED.includes(it.status)) fixed += r.net;
     byCat[it.cat] += r.net;
-    for (const id in r.per) byPerson[id] = (byPerson[id] || 0) + r.per[id];
+    for (const id in r.per) { byPerson[id] = (byPerson[id] || 0) + r.per[id]; addPC(id, it.cat, r.per[id]); }
   }
+  const f = applyFunds(trip.funds || [], act, byPerson, byPersonCat);
   trip.travelers.forEach(t => {
     if (!isActive(t)) return;
     const h = t.household.trim() || "Ohne Haushalt";
-    byHousehold[h] = (byHousehold[h] || 0) + (byPerson[t.id] || 0);
+    // je Haushalt der Eigenanteil (Kosten minus Zuschüsse)
+    byHousehold[h] = (byHousehold[h] || 0) + (byPerson[t.id] || 0) - (f.by[t.id] || 0);
   });
-  return { total, saved, fixed, open: total - fixed, paid, byCat, byPerson, byHousehold, items, simple, active: act.length };
+  return { total, saved, fixed, open: total - fixed, paid, byCat, byPerson, byHousehold, items, simple, active: act.length,
+    funds: f.total, fundsReceived: f.received, fundBy: f.by, fundUse: f.use, due: total - f.total, byPersonCat };
+}
+
+/**
+ * Zuschüsse der Reihe nach verteilen: auf die Begünstigten (sonst alle Aktiven), höchstens bis ihre (Bereichs-)Kosten
+ * gedeckt sind. Gleich je Person: wer schon gedeckt ist, fällt raus, der Rest geht an die anderen. Nach Anteil: im
+ * Verhältnis der Kosten. Was niemand mehr braucht, bleibt als Überschuss stehen.
+ */
+export function applyFunds(funds: Fund[], act: Traveler[], byPerson: Record<string, number>, byPersonCat: Record<string, Partial<Record<CatKey, number>>>) {
+  const by: Record<string, number> = {}, byCat: Record<string, Partial<Record<CatKey, number>>> = {};
+  const use: Record<string, { applied: number; surplus: number }> = {};
+  let total = 0, received = 0;
+  for (const fu of funds) {
+    const amount = Math.max(0, fu.amount || 0);
+    const rec = act.filter(t => !fu.for?.length || fu.for.includes(t.id));
+    // was je Person noch offen ist (insgesamt bzw. im Bereich)
+    const cap = (id: string) => {
+      const all = (byPerson[id] || 0) - (by[id] || 0);
+      return Math.max(0, fu.cat ? Math.min(all, (byPersonCat[id]?.[fu.cat] || 0) - (byCat[id]?.[fu.cat] || 0)) : all);
+    };
+    const give: Record<string, number> = {};
+    let left = amount;
+    if (fu.split === "share") {
+      const caps = rec.map(t => cap(t.id)), sum = caps.reduce((a, b) => a + b, 0);
+      rec.forEach((t, i) => { const g = sum > 0 ? Math.min(caps[i], (amount * caps[i]) / sum) : 0; give[t.id] = g; left -= g; });
+    } else {
+      // gleich je Person, wer gedeckt ist, fällt raus
+      let open = rec.filter(t => cap(t.id) > 0.005);
+      for (let k = 0; k < 50 && left > 0.005 && open.length; k++) {
+        const each = left / open.length;
+        for (const t of open) { const g = Math.min(each, cap(t.id) - (give[t.id] || 0)); give[t.id] = (give[t.id] || 0) + g; left -= g; }
+        open = open.filter(t => cap(t.id) - (give[t.id] || 0) > 0.005);
+      }
+    }
+    let applied = 0;
+    for (const id in give) {
+      if (!(give[id] > 0)) continue;
+      by[id] = (by[id] || 0) + give[id];
+      if (fu.cat) { const m = (byCat[id] ||= {}); m[fu.cat] = (m[fu.cat] || 0) + give[id]; }
+      applied += give[id];
+    }
+    use[fu.id] = { applied, surplus: Math.max(0, amount - applied) };
+    total += applied;
+    if (fu.received) received += applied;
+  }
+  return { by, use, total, received };
 }
 
 /** Zahl aus deutscher oder englischer Eingabe, wie in der alten App */
@@ -328,17 +388,39 @@ export interface ShareLine {
 }
 export interface HouseholdShare {
   name: string;
+  /** v: Eigenanteil der Person (Kosten minus Zuschüsse) */
   members: { t: Traveler; v: number }[];
+  /** Eigenanteil des Haushalts */
   total: number;
+  /** Kosten vor Zuschüssen */
+  costs: number;
+  /** Zuschüsse, die auf diesen Haushalt entfallen */
+  funds: { id: string; name: string; v: number; received: boolean }[];
   fixed: number;
   open: number;
   cats: { cat: CatKey; sum: number; lines: ShareLine[] }[];
+}
+
+/** je Zuschuss und Person der angerechnete Betrag (die Verteilung aus applyFunds, Zuschuss für Zuschuss) */
+export function fundShares(trip: Trip, T: Totals): Record<string, Record<string, number>> {
+  const out: Record<string, Record<string, number>> = {};
+  const act = activeTravelers(trip);
+  const done: Fund[] = [];
+  for (const fu of trip.funds || []) {
+    const before = applyFunds(done, act, T.byPerson, T.byPersonCat).by;
+    const after = applyFunds([...done, fu], act, T.byPerson, T.byPersonCat).by;
+    out[fu.id] = {};
+    for (const id in after) { const d = after[id] - (before[id] || 0); if (d > 0.005) out[fu.id][id] = d; }
+    done.push(fu);
+  }
+  return out;
 }
 
 const AGE_L = (c: AgeClass) => t(`age.class.${c}` as Key);
 
 export function householdShares(trip: Trip, T: Totals = totals(trip)): HouseholdShare[] {
   const names = [...new Set(activeTravelers(trip).map(hhKey))];
+  const per = fundShares(trip, T);
   return names.map(name => {
     const ms = activeTravelers(trip).filter(t => hhKey(t) === name);
     const cats = CAT_KEYS.map(cat => {
@@ -372,8 +454,11 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
       }
       return { cat, sum: lines.reduce((a, l) => a + l.v, 0), lines };
     }).filter(c => c.lines.length);
-    const total = cats.reduce((a, c) => a + c.sum, 0);
+    const costs = cats.reduce((a, c) => a + c.sum, 0);
     const fixed = cats.reduce((a, c) => a + c.lines.filter(l => l.fixed).reduce((x, l) => x + l.v, 0), 0);
-    return { name, members: ms.map(t => ({ t, v: T.byPerson[t.id] || 0 })), total, fixed, open: total - fixed, cats };
+    // Zuschüsse je Haushalt: dieselbe Verteilung wie in der Summe, einzeln je Zuschuss
+    const funds = (trip.funds || []).map(fu => ({ id: fu.id, name: fu.name || t("fund.unnamed"), v: ms.reduce((a, m) => a + (per[fu.id]?.[m.id] || 0), 0), received: !!fu.received })).filter(f => f.v > 0.005);
+    const fsum = funds.reduce((a, f) => a + f.v, 0);
+    return { name, members: ms.map(m => ({ t: m, v: (T.byPerson[m.id] || 0) - (T.fundBy[m.id] || 0) })), total: costs - fsum, costs, funds, fixed, open: costs - fixed, cats };
   });
 }

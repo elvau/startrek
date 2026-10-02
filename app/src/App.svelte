@@ -198,7 +198,7 @@
       </Chapter>
     {/each}
 
-    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.total)} sub={tn("n.families", households)}>
+    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.due)} sub={tn("n.families", households)}>
       <Split />
     </Chapter>
   </main>

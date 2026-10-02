@@ -103,6 +103,22 @@ try {
   if (!k.includes("175") || !h.includes("125")) fail(`Summe nach Umschalten: Klein ${k}, Hase ${h}`);
   log("Detailliert: drei Posten mit denselben Beteiligten, Abrechnung unverändert");
 
+  // Zuschuss: Kasse gibt 100 € für alle, gleich je Person (25 €) → Klein 125, Hase 75
+  const fc = p.locator(".funds");
+  await fc.scrollIntoViewIfNeeded();
+  await fc.locator(".fu-add").click();
+  await fc.locator(".fu-edit input").first().fill("Kegelkasse");
+  await fc.locator(".fu-amt input").fill("100");
+  await fc.locator(".fu-edit .in-row input").check();
+  await fc.locator(".fu-acts .btn", { hasText: "Fertig" }).click();
+  await until(async () => (await fc.locator(".fu-calc").innerText()).includes("200"), "Eigenanteil 200 €");
+  [k, h] = await hh();
+  if (!k.includes("125") || !h.includes("75")) fail(`Abrechnung mit Zuschuss: Klein ${k}, Hase ${h}`);
+  if (!(await p.locator('[id="hh-Klein"] .sh-funds').innerText()).includes("Kegelkasse")) fail("Zuschuss fehlt in der Abrechnung der Familie");
+  if (!(await fc.locator(".fu-row").innerText()).includes("eingegangen")) fail("Status eingegangen fehlt");
+  if (!(await p.locator(".aside .tk-fund").innerText()).includes("100")) fail("Summe ohne Zuschuss-Hinweis");
+  log("Zuschuss: Kegelkasse 100 € für alle (eingegangen) → Eigenanteil 200 €, Klein 125 €, Hase 75 €");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");
 } finally { await browser.close(); server.kill(); }

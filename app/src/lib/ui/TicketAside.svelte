@@ -45,7 +45,8 @@
     <div class="tk-top">
       <small>{t("total")}</small>
       <b class="num">{eur(T.total)}</b>
-      <span>{n ? `${t("perPerson", { v: eurPP(T.total / n) })} · ${tn("n.persons", n)}` : t("nobody")}</span>
+      <span>{n ? `${t("perPerson", { v: eurPP(T.due / n) })} · ${tn("n.persons", n)}` : t("nobody")}</span>
+      {#if T.funds}<span class="tk-fund">{t("fund.minus", { v: eur(T.funds) })} · {t("fund.own")} {eur(T.due)}</span>{/if}
       {#if tests.length}<span class="tk-test" title={tests.map(x => x.name).join(", ")}>⚠ {tn("test.inTotal", tests.length)}</span>{/if}
     </div>
     <div class="tk-b">
@@ -75,7 +76,7 @@
       {:else}
         <a class="fam-more" href="#split">{t("aside.split")} {arrow()}</a>
       {/if}
-      {#if nn && n}<div class="pp"><span>{t("aside.perNight")}</span><b class="num">{eur(T.total / n / nn)}</b></div>{/if}
+      {#if nn && n}<div class="pp"><span>{t("aside.perNight")}</span><b class="num">{eur(T.due / n / nn)}</b></div>{/if}
       {#if anyDetail}<div class="pp"><span>{t("aside.paid")}</span><b class="num">{eur(T.paid)}</b></div>{/if}
       {#if nw && FLIGHTS_URL && !access.readonly}
         <div class="tk-watch">
