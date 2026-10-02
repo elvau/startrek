@@ -207,3 +207,13 @@ am Ziel) zur Unterkunft mit Lage, sonst zum Anlass oder in die Ortsmitte (`app/s
 darüber Reisebusse), Richtwert je Fahrt aus Grundpreis und Straßen-km, angepasst ans Preisniveau des Landes;
 Posten „Flughafentransfer“ mit zwei Fahrten. Links: Kiwitaxi, GetTransfer, Intui.travel (Partnerprogramme über
 Travelpayouts), Welcome Pickups, Booking.com Taxi, Route in Google Maps.
+
+## Abflughäfen und Wohnort
+
+`app/src/lib/airports.ts`: die NRW-Flughäfen mit festen Bahnpreisen (Vorschlag ohne Wohnort) und 20 weitere in
+Deutschland und grenznah (HAM, BER, STR, NUE, LEJ, DRS, BRE, FMO, FKB, FMM, HHN, SCN, FDH, BSL, ZRH, VIE, SZG, LUX, BRU, CRL);
+für diese kommen Bahnpreis und Fahrzeit aus der Entfernung (`trainPP` in `calc/travel.ts`). Zur Auswahl stehen die 8
+nächsten zum Wohnort der Mitfliegenden. Fehlt der Wohnort, fragen Flugsuche und Event-Planer direkt nach der PLZ.
+Kurze Reisen (bis 3 Nächte) sucht die flexible Suche mit der ganzen Dauer, damit alle Gruppen dieselben Tage fliegen.
+Für Abflüge in mehr als etwa 11 Monaten erklärt die Suche, dass die Airlines meist noch nicht verkaufen.
+Testangebote (Sandbox) stehen in allen Sortierungen hinter den echten.

@@ -21,7 +21,13 @@ export function keepStays(list: StayOffer[], q: Pick<StayQuery, "minStars" | "mi
   return list.filter(o => (!q.minStars || (o.stars || 0) >= q.minStars) && (!q.minScore || o.score == null || o.score >= q.minScore));
 }
 
+/** Testangebote (Sandbox, keine echten Preise) immer hinter die echten, sonst stehen sie bei „Günstigste“ oben */
+export const realFirst = <T extends { test?: boolean }>(l: T[]): T[] => [...l.filter(o => !o.test), ...l.filter(o => o.test)];
+
 export function sortStays(list: StayOffer[], by: StaySort): StayOffer[] {
+  return realFirst(sortStaysBy(list, by));
+}
+function sortStaysBy(list: StayOffer[], by: StaySort): StayOffer[] {
   const l = [...list];
   if (by === "rating") return l.sort((a, b) => (b.score || 0) - (a.score || 0) || a.total - b.total);
   if (by === "center") return l.sort((a, b) => (centerKm(a) ?? Infinity) - (centerKm(b) ?? Infinity) || a.total - b.total);

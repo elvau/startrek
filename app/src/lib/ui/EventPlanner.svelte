@@ -12,6 +12,8 @@
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { capitalOf, ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, destAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
+  import { loadPlz } from "../plz";
+  import { hhKey } from "../model";
   import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
   import { DEFAULT_H, fits, km, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
@@ -96,6 +98,18 @@
   const aps0 = nearestAirports(trip);
   let aps = $state<string[]>(aps0);
   let allCodes = $state<string[]>([...aps0]);
+  // ohne Wohnort: PLZ gleich hier (sonst Flughäfen aus NRW und keine Anfahrt)
+  const noHome = $derived(flyers(trip).some(x => !trip.households?.[hhKey(x)]?.geo));
+  let plzErr = $state(false);
+  async function setPlz(v: string) {
+    plzErr = false;
+    if (!/^\d{5}$/.test(v.trim())) return;
+    const pl = (await loadPlz().catch(() => null))?.get(v.trim());
+    if (!pl) { plzErr = true; return; }
+    trip.households ||= {};
+    for (const h of new Set(flyers(trip).map(hhKey))) if (!trip.households[h]?.geo) trip.households[h] = { ...trip.households[h], plz: v.trim(), geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
+    aps = nearestAirports(trip); allCodes = [...new Set([...aps, ...allCodes])];
+  }
   const toggleAp = (c: string) => (aps = aps.includes(c) ? aps.filter(x => x !== c) : [...aps, c]);
   function addAp(l: Loc) {
     for (const c of l.kind === "airport" ? [l.code] : l.airports) {
@@ -241,6 +255,7 @@
         {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} from={fromPt} />
       </div>
+      {#if noHome}<p class="warnline fs-nohome">{t("fs.noHome")} <input class="fs-plz" inputmode="numeric" maxlength="5" placeholder={t("fs.plzPh")} aria-label={t("fs.plzPh")} oninput={e => setPlz(e.currentTarget.value)} />{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</p>{/if}
     </div>
     <p class="muted small">{t("ev.from", { aps: aps.join(", "), p: tn("n.persons", people.length) })} {t("ev.rule")}</p>
     <button class="btn primary" disabled={busy}>{busy ? t("ev.progress") : t("ev.go")}</button>
