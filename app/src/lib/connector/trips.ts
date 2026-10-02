@@ -12,6 +12,9 @@ import { ru } from "../i18n/ru";
 import { CAT_KEYS, DEFAULT_SETTINGS, isActive, uid, type CatKey, type Item, type Option, type Traveler, type Trip } from "../model";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import { plainLink } from "../partner";
+import { locOf } from "../geo/maps";
+
+const withLoc = <T>(loc: T | undefined) => (loc ? { loc } : {});
 import type { StayOffer, StayQuery } from "../stays/types";
 
 /** Flug aus der Suche als Teilstrecke; Dauer aus der Suche, weil Abflug und Landung Ortszeiten sind */
@@ -121,6 +124,7 @@ export function addStay(trip: Trip, o: StayOffer, q: StayQuery, lang: string): I
     price: { mode: "unit", basis: "stay", currency: o.currency, unit: Math.round(o.total), capacity: Math.max(1, q.adults + q.childAges.length) },
     source: { name: o.sourceName, at: day(), ...(o.url ? { url: o.url } : {}) },
     stay: { ...(o.stars ? { stars: o.stars } : {}), ...(o.score != null ? { rating: Math.round(o.score * 10) } : {}), ...(o.facts?.length ? { facts: o.facts } : {}), ...(o.board ? { board: o.board } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) },
+    ...withLoc(locOf(o.name, q.place, o)),
     query: { place: q.place, country: q.country, checkin: q.checkin, checkout: q.checkout, adults: q.adults, childAges: [...q.childAges], rooms: q.rooms }
   };
   const item: Item = {

@@ -67,7 +67,7 @@ async function lookup(trip: Trip, it: Item, o: Option, s: Searchers): Promise<Fo
   }
   const q = stayQueryFor(trip, it, o);
   const offers = (await s.stays(q)).offers.filter(x => x.currency === cur && x.total > 0);
-  return offers.map(x => ({ price: x.total, same: y => norm(y.label) === norm(x.name), opt: () => ({ ...stayToOption(x, q.adults + q.childAges.length), query: o.query }) }));
+  return offers.map(x => ({ price: x.total, same: y => norm(y.label) === norm(x.name), opt: () => ({ ...stayToOption(x, q.adults + q.childAges.length, q.place), query: o.query }) }));
 }
 
 /** Preisänderung seit der letzten Prüfung (▲ positiv, ▼ negativ) */

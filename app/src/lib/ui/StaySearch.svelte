@@ -24,6 +24,8 @@
   import { centerKm, keepStays, sortStays, type StaySort } from "../stays/sort";
   import type { SourceStatus } from "../flights/types";
   import { airbnbLink, bookingLink } from "../links";
+  import { hasCoords, locText, mapsUrl } from "../geo/maps";
+  import MapView, { type MapPoint } from "./MapView.svelte";
 
   let { onclose, scope = {}, inline = false }: { onclose: () => void; scope?: StayScope; inline?: boolean } = $props();
 
@@ -133,6 +135,23 @@
   });
 
   const shown = $derived(sortStays(list || [], sort));
+  // Liste oder Karte (gemerkt); auf der Karte zeigt ein Tipp auf den Preis die Unterkunft darunter
+  const VIEW = "rk-st-view";
+  let view = $state<"list" | "map">((() => { try { return localStorage.getItem(VIEW) === "map" ? "map" : "list"; } catch { return "list"; } })());
+  $effect(() => { const v = view; try { localStorage.setItem(VIEW, v); } catch {} });
+  let picked = $state<string | null>(null);
+  const located = $derived(shown.filter(hasCoords));
+  const points = $derived<MapPoint[]>([
+    ...located.map(o => ({ id: o.id, lat: o.lat!, lon: o.lon!, kind: "stay" as const, label: eur(o.total), title: o.name })),
+    // Orientierung: Flughäfen der Reise und Erlebnisse mit bekanntem Ort
+    ...near.map(n => ({ id: "ap:" + n.ap.code, lat: n.ap.lat, lon: n.ap.lon, kind: "airport" as const, label: `✈ ${n.ap.code}`, title: n.ap.name })),
+    ...trip.items.filter(i => i.cat === "attractions" && i.status !== "dropped").flatMap(i => {
+      const l = (activeOption(i, trip) || i.options[0])?.loc;
+      return hasCoords(l) ? [{ id: "ev:" + i.id, lat: l.lat, lon: l.lon, kind: "event" as const, label: `★ ${i.name.length > 22 ? i.name.slice(0, 21) + "…" : i.name}`, title: i.name }] : [];
+    })
+  ]);
+  const pickedOffer = $derived(picked ? shown.find(o => o.id === picked) : undefined);
+  const mapLink = (o: StayOffer) => mapsUrl({ q: locText(o.name, asked?.place), lat: o.lat, lon: o.lon });
   const hasKm = $derived((list || []).some(o => centerKm(o) != null));
   const toggleSrc = (id: string) => (use = use.includes(id) ? use.filter(x => x !== id) : [...use, id]);
   const score = (s: number) => s.toFixed(1).replace(".", ",");
@@ -156,6 +175,7 @@
       // auch hier filtern: ein älterer Such-Dienst kennt Sterne und Bewertung noch nicht
       list = keepStays(r.offers, q).slice(0, 40);
       sort = q.childAges.length ? "family" : "price";
+      picked = null;
       sources = r.sources;
       asked = q;
     } catch (err) {
@@ -175,6 +195,38 @@
     showItem(into);
   }
 </script>
+
+{#snippet res(o: StayOffer, an: number, n: number)}
+  {@const diff = current && current.url !== o.url ? o.total - current.total : null}
+  <article class="fs-res st-res" class:st-cur={current?.url === o.url}>
+    {#if o.image}<img class="st-img" src={o.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={e => ((e.currentTarget as HTMLImageElement).hidden = true)} />{/if}
+    <div class="st-b">
+      <div class="fs-top">
+        <b class="st-name">{o.name}</b>
+        <span class="fs-badge">{o.sourceName}{o.via && o.via !== o.sourceName ? ` · ${o.via}` : ""}</span>
+      </div>
+      <div class="fs-top">
+        <b class="num fs-price">{eur(o.total)}</b>
+        <span class="muted small">{t("perNight", { v: eur(o.total / an) })}{n > 1 ? ` · ${t("st.ppNight", { v: eur(o.total / an / n) })}` : ""}</span>
+        {#if diff != null && Math.abs(diff) >= 1}<span class="st-diff" class:good={diff < 0}>{diff < 0 ? "−" : "+"}{eur(Math.abs(diff))} {t("st.vsCurrent")}</span>{/if}
+      </div>
+      <div class="fs-pills">
+        {#if o.score}<span class="pill-n">{score(o.score)}{o.reviews ? ` (${t("st.reviews", { n: o.reviews.toLocaleString(locale()) })})` : ""}</span>{/if}
+        {#if o.stars}<span class="pill-h">{"★".repeat(o.stars)}</span>{/if}
+        {#if o.board && o.board !== "self"}<span class="pill-h">{t(`board.${o.board}`)}</span>{/if}
+        {#each o.facts || [] as f (f)}<span class="pill-h">{f}</span>{/each}
+      </div>
+      {#if o.place}<p class="muted small fs-sub">{o.place}</p>{/if}
+      <div class="fs-acts">
+        {#if !taken[o.id] && current?.url === o.url}<span class="pill-n">{t("st.chosen")}</span>
+        {:else}<button class="btn primary sm" disabled={taken[o.id]} onclick={() => take(o)}>{taken[o.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>{/if}
+        {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel="noopener noreferrer">{t("search.atProvider")} ↗</a>{/if}
+        {#if mapLink(o)}<a class="btn sm st-gmap" href={mapLink(o)} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
+        <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
+      </div>
+    </div>
+  </article>
+{/snippet}
 
 <Modal title={item ? `${t("st.open")}: ${item.name || t("stay.new")}` : t("st.open")} {onclose} wide {inline}>
   {#if arr.length}
@@ -298,39 +350,22 @@
         {#if hasKm}<button type="button" class="chip" class:on={sort === "center"} onclick={() => (sort = "center")}>{t("st.nearCenter")}</button>{/if}
         {#if asked.childAges.length}<button type="button" class="chip" class:on={sort === "family"} onclick={() => (sort = "family")}>{t("st.forFamilies")}</button>{/if}
       </div>
+      {#if located.length}
+        <div class="chips st-view" role="radiogroup" aria-label={t("map.view")}>
+          <button type="button" role="radio" aria-checked={view === "list"} class="chip" class:on={view === "list"} onclick={() => (view = "list")}>☰ {t("map.list")}</button>
+          <button type="button" role="radio" aria-checked={view === "map"} class="chip" class:on={view === "map"} onclick={() => (view = "map")}>🗺 {t("map.map")}</button>
+        </div>
+      {/if}
       <p class="muted small">{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(list[0].total) })}</p>
-      <div class="fs-list">
-        {#each shown as o (o.id)}
-          {@const diff = current && current.url !== o.url ? o.total - current.total : null}
-          <article class="fs-res st-res" class:st-cur={current?.url === o.url}>
-            {#if o.image}<img class="st-img" src={o.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={e => ((e.currentTarget as HTMLImageElement).hidden = true)} />{/if}
-            <div class="st-b">
-              <div class="fs-top">
-                <b class="st-name">{o.name}</b>
-                <span class="fs-badge">{o.sourceName}{o.via && o.via !== o.sourceName ? ` · ${o.via}` : ""}</span>
-              </div>
-              <div class="fs-top">
-                <b class="num fs-price">{eur(o.total)}</b>
-                <span class="muted small">{t("perNight", { v: eur(o.total / an) })}{n > 1 ? ` · ${t("st.ppNight", { v: eur(o.total / an / n) })}` : ""}</span>
-                {#if diff != null && Math.abs(diff) >= 1}<span class="st-diff" class:good={diff < 0}>{diff < 0 ? "−" : "+"}{eur(Math.abs(diff))} {t("st.vsCurrent")}</span>{/if}
-              </div>
-              <div class="fs-pills">
-                {#if o.score}<span class="pill-n">{score(o.score)}{o.reviews ? ` (${t("st.reviews", { n: o.reviews.toLocaleString(locale()) })})` : ""}</span>{/if}
-                {#if o.stars}<span class="pill-h">{"★".repeat(o.stars)}</span>{/if}
-                {#if o.board && o.board !== "self"}<span class="pill-h">{t(`board.${o.board}`)}</span>{/if}
-                {#each o.facts || [] as f (f)}<span class="pill-h">{f}</span>{/each}
-              </div>
-              {#if o.place}<p class="muted small fs-sub">{o.place}</p>{/if}
-              <div class="fs-acts">
-                {#if !taken[o.id] && current?.url === o.url}<span class="pill-n">{t("st.chosen")}</span>
-                {:else}<button class="btn primary sm" disabled={taken[o.id]} onclick={() => take(o)}>{taken[o.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>{/if}
-                {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel="noopener noreferrer">{t("search.atProvider")} ↗</a>{/if}
-                <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
-              </div>
-            </div>
-          </article>
-        {/each}
-      </div>
+      {#if view === "map" && located.length}
+        <MapView {points} selected={picked} onselect={id => (picked = id)} />
+        <p class="muted small st-maphint">{located.length < shown.length ? `${tn("map.missing", shown.length - located.length)} · ` : ""}{pickedOffer ? "" : t("map.pick")}</p>
+        {#if pickedOffer}<div class="fs-list">{@render res(pickedOffer, an, n)}</div>{/if}
+      {:else}
+        <div class="fs-list">
+          {#each shown as o (o.id)}{@render res(o, an, n)}{/each}
+        </div>
+      {/if}
       {#if into}<p class="muted small">{t("st.takenHint", { name: trip.items.find(i => i.id === into)?.name || "" })}</p>{/if}
     {:else}
       <p class="muted small">{t("st.none")}</p>

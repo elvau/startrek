@@ -437,6 +437,16 @@ body[data-ch="split"] .amb-split{opacity:1}
 .st-name{font-size:15px;min-width:0;overflow-wrap:anywhere}
 .stay-opt{font-size:13.5px;font-weight:600;color:var(--ink-2)}
 @media (max-width:520px){.st-img{width:64px;height:64px}}
+/* Karte der Unterkünfte (MapView): Preise als Schilder, Flughäfen und Erlebnisse zur Orientierung */
+.st-view{margin-top:6px}
+.mapbox{position:relative;height:min(420px,60vh);border-radius:14px;overflow:hidden;background:var(--paper-2);border:1px solid var(--line)}
+.map-fail{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:16px;text-align:center}
+.map-pin{font:700 12px/1 inherit;font-family:inherit;padding:5px 8px;border-radius:999px;border:1px solid rgba(0,0,0,.15);background:#fff;color:#15202E;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;cursor:default}
+.map-stay{cursor:pointer}
+.map-stay:hover,.map-stay.on{background:#15202E;color:#fff;z-index:2}
+.map-airport{background:#2B6F8F;color:#fff;border-color:transparent}
+.map-event{background:#C4513C;color:#fff;border-color:transparent;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.st-maphint{margin:6px 2px 0}
 .st-pres{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:14px;background:var(--paper-2)}
 .st-pres ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .st-pres li{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:13.5px;align-items:baseline}

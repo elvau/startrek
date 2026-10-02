@@ -17,9 +17,9 @@ async function until(fn, what, ms = 10000) {
 }
 const RESULT = {
   offers: [
-    { id: "booking:496993", source: "booking", sourceName: "Booking.com", name: "Rooms Šećer", total: 720, currency: "EUR", url: "https://www.booking.com/hotel/hr/sobe-a-eaer.html", score: 9.4, reviews: 416, stars: 1, place: "Split Stadtzentrum, Split", facts: ["Parkplatz", "Familienzimmer"] },
+    { id: "booking:496993", source: "booking", sourceName: "Booking.com", name: "Rooms Šećer", total: 720, currency: "EUR", url: "https://www.booking.com/hotel/hr/sobe-a-eaer.html", score: 9.4, reviews: 416, stars: 1, place: "Split Stadtzentrum, Split", facts: ["Parkplatz", "Familienzimmer"], lat: 43.5089, lon: 16.4392 },
     { id: "trivago:c89342aae3a0", source: "trivago", sourceName: "Trivago", via: "Airbnb", name: "Ferienwohnung Klara", total: 783, currency: "EUR", url: "https://www.trivago.de/de/lm/klara", score: 9.4, reviews: 194, place: "Split, 0.9 km bis Zentrum", facts: ["Küche", "Parkplatz"] },
-    { id: "trivago:9c4d6ea1f5e0", source: "trivago", sourceName: "Trivago", via: "Trip.com", name: "Cornaro Hotel", total: 2364, currency: "EUR", url: "https://www.trivago.de/de/lm/cornaro", score: 9.6, reviews: 4022, stars: 5, place: "Split, 0.4 km bis Zentrum" }
+    { id: "trivago:9c4d6ea1f5e0", source: "trivago", sourceName: "Trivago", via: "Trip.com", name: "Cornaro Hotel", total: 2364, currency: "EUR", url: "https://www.trivago.de/de/lm/cornaro", score: 9.6, reviews: 4022, stars: 5, place: "Split, 0.4 km bis Zentrum", lat: 43.5081, lon: 16.4402 }
   ],
   sources: [
     { id: "booking", name: "Booking.com", configured: true, ok: true, count: 1, ms: 2100 },
@@ -45,6 +45,8 @@ try {
   // Orts- und Flughafendaten des Artefakts (liegen auf der Seite eine Ebene über der App)
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
+  // Karte: leerer Kartenstil statt der echten Kacheln (OpenFreeMap)
+  await p.route("https://tiles.openfreemap.org/**", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ version: 8, sources: {}, layers: [] }) }));
   await p.goto(URL);
   await p.locator(".start .home-new").click();
   await p.locator(".modal .newtrip .btn.primary").click();
@@ -92,6 +94,22 @@ try {
   await m.locator(".chip", { hasText: "Nähe Zentrum" }).click();
   if (!(await m.locator(".fs-res").first().textContent()).includes("Cornaro Hotel")) fail("Sortierung nach Nähe Zentrum");
   if ((await m.locator(".fs-res").nth(1).textContent()).includes("Rooms")) fail("ohne Entfernung nicht ans Ende");
+  // Google-Maps-Link je Treffer: Name und Ort, ohne Schlüssel
+  const gm = await m.locator(".fs-res", { hasText: "Cornaro Hotel" }).locator(".st-gmap").getAttribute("href");
+  if (gm !== "https://www.google.com/maps/search/?api=1&query=Cornaro%20Hotel%2C%20Split") fail("Google-Maps-Link: " + gm);
+
+  // Karte: Preise als Schilder, Tipp zeigt die Unterkunft darunter; Treffer ohne Lage werden gezählt
+  await m.locator(".st-view .chip", { hasText: "Karte" }).click();
+  await until(async () => (await m.locator(".mapbox .map-stay").count()) === 2, "zwei Preisschilder auf der Karte");
+  if (!(await m.locator(".st-maphint").textContent()).includes("1 ohne Lage")) fail("Hinweis ohne Lage: " + await m.locator(".st-maphint").textContent());
+  if (await m.locator(".fs-res").count()) fail("Karte zeigt schon eine Unterkunft");
+  await m.locator(".map-stay", { hasText: "2.364" }).click();
+  await until(async () => (await m.locator(".fs-res").count()) === 1, "Unterkunft unter der Karte");
+  if (!(await m.locator(".fs-res").textContent()).includes("Cornaro Hotel")) fail("falsche Unterkunft unter der Karte");
+  if (!(await m.locator(".map-stay.on", { hasText: "2.364" }).count())) fail("Preisschild nicht markiert");
+  await m.locator(".st-view .chip", { hasText: "Liste" }).click();
+  if ((await m.locator(".fs-res").count()) !== 3) fail("zurück zur Liste");
+  log("Karte mit Preisschildern, Google-Maps-Link je Treffer");
 
   // zwei übernehmen → ein Posten mit 2 Angeboten, Preis für den ganzen Aufenthalt
   await m.locator(".fs-res", { hasText: "Ferienwohnung Klara" }).locator(".btn", { hasText: "Übernehmen" }).click();
@@ -111,9 +129,12 @@ try {
   const c = await cards.textContent();
   if (!c.includes("2 Angebote") || !c.includes("7 Nächte")) fail("Posten: " + c);
   // Link zum Anbieter des gewählten Angebots bleibt auf der Karte
-  const srcHref = await cards.locator(".src-link a").getAttribute("href").catch(() => null);
+  const srcHref = await cards.locator(".src-link a:not(.gmap)").getAttribute("href").catch(() => null);
   if (!srcHref || !/booking\.com|trivago\.de/.test(srcHref)) fail("Link zum Anbieter fehlt auf der Karte: " + srcHref);
   if (!c.includes("720")) fail("günstigstes Angebot nicht gewählt: " + c);
+  // Lage des gewählten Angebots in Google Maps
+  const cardMap = await cards.locator(".src-link a.gmap").getAttribute("href").catch(() => null);
+  if (!cardMap?.includes("query=Rooms%20%C5%A0e%C4%87er%2C%20Split")) fail("Google-Maps-Link am Posten: " + cardMap);
   log("Übernommen: ein Posten mit 2 Angeboten, günstigstes zählt");
   // Vergleich nebeneinander in der Karte: wählen, wieder zurück
   const tiles = cards.locator(".st-cmp .cmp-t");

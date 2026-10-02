@@ -3,6 +3,7 @@ import { t } from "../i18n/index.svelte";
 import { addOffer, isActive, uid, type Item, type Option, type Traveler, type Trip } from "../model";
 import { FLIGHTS_URL } from "../flights/app";
 import type { StayOffer, StayQuery, StaySearchResult, StayType } from "./types";
+import { locOf } from "../geo/maps";
 
 /** Gäste: Erwachsene und Alter der Kinder (Hotels rechnen bis 17 als Kind); ohne Alter: Kind 8, Baby 1 */
 export function guests(people: Traveler[]): Pick<StayQuery, "adults" | "childAges"> {
@@ -30,15 +31,17 @@ export function defaultStayQuery(trip: Trip, item?: Item, type: StayType = "whol
   };
 }
 
-/** Treffer als Angebot: Gesamtpreis für den Aufenthalt, auf die Gäste verteilt; mit Quelle und Link */
-export function stayToOption(o: StayOffer, people: number): Option {
+/** Treffer als Angebot: Gesamtpreis für den Aufenthalt, auf die Gäste verteilt; mit Quelle, Link und Lage */
+export function stayToOption(o: StayOffer, people: number, place?: string): Option {
+  const loc = locOf(o.name, place, o);
   return {
     id: uid(),
     label: o.name,
     detail: o.place,
     price: { mode: "unit", basis: "stay", currency: o.currency, unit: Math.round(o.total), capacity: Math.max(1, people) },
     source: { name: o.via && o.via !== o.sourceName ? t("st.via", { a: o.sourceName, b: o.via }) : o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url },
-    stay: { stars: o.stars, rating: o.score != null ? Math.round(o.score * 10) : undefined, facts: o.facts?.length ? o.facts : undefined, ...(o.board ? { board: o.board } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) }
+    stay: { stars: o.stars, rating: o.score != null ? Math.round(o.score * 10) : undefined, facts: o.facts?.length ? o.facts : undefined, ...(o.board ? { board: o.board } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) },
+    ...(loc ? { loc } : {})
   };
 }
 
@@ -50,7 +53,7 @@ const blank = (it: Item) => it.options.length === 1 && !it.options[0].label && !
  * weitere kommen als Angebote zum Vergleichen dazu.
  */
 export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, ids?: string[]): Item {
-  const opt = stayToOption(o, q.adults + q.childAges.length);
+  const opt = stayToOption(o, q.adults + q.childAges.length, q.place);
   opt.query = { place: q.place, country: q.country, checkin: q.checkin, checkout: q.checkout, adults: q.adults, childAges: [...q.childAges], rooms: q.rooms };
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   if (target) { addOffer(target, opt); return target; }

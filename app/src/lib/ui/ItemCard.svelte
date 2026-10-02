@@ -9,6 +9,7 @@
   import AiMark from "./AiMark.svelte";
   import { t, type Key } from "../i18n/index.svelte";
   import { reveal } from "./reveal";
+  import { itemLoc, mapsUrl } from "../geo/maps";
 
   let { item, icon }: { item: Item; icon: string } = $props();
   const editing = $derived(app.editing === item.id);
@@ -16,6 +17,8 @@
   const isStay = $derived(item.cat === "stay");
   // Link zum Anbieter des gewählten Angebots (aus der Suche übernommen), bleibt auf der Karte
   const src = $derived(calc.T.items[item.id]?.option?.source);
+  // Lage in Google Maps (Unterkunft, Veranstaltungsort): öffnet erst beim Antippen
+  const gmap = $derived(mapsUrl(itemLoc(item, calc.T.items[item.id]?.option, app.trip)));
 
   function toggle(e: MouseEvent) {
     if (access.readonly) return;
@@ -36,8 +39,12 @@
   {:else}
     <ItemRow {item} {icon} />
   {/if}
-  {#if src?.url}
-    <p class="src-link"><a href={src.url} target="_blank" rel={src.sponsored ? "noopener noreferrer sponsored" : "noopener noreferrer"} title={src.sponsored ? t("fs.partnerNote") : undefined}>{t("search.atProvider")}{src.name ? ` · ${src.name}` : ""} ↗</a>{#if src.sponsored} <small>{t("fs.partner")}*</small>{/if}</p>
+  {#if src?.url || gmap}
+    <p class="src-link">
+      {#if src?.url}<a href={src.url} target="_blank" rel={src.sponsored ? "noopener noreferrer sponsored" : "noopener noreferrer"} title={src.sponsored ? t("fs.partnerNote") : undefined}>{t("search.atProvider")}{src.name ? ` · ${src.name}` : ""} ↗</a>{#if src.sponsored} <small>{t("fs.partner")}*</small>{/if}{/if}
+      {#if src?.url && gmap} · {/if}
+      {#if gmap}<a class="gmap" href={gmap} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
+    </p>
   {/if}
   <WatchBadge {item} />
   {#if item.ai}<div class="aif"><AiMark /> {t(`ai.mark.${item.ai.kind}` as Key)}</div>{/if}
