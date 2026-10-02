@@ -31,9 +31,9 @@ const TRIPS = [
   // ohne Ziel, nur Flug nach Palma: Events zwischen Landung + 5 h und Rückflug − 5 h
   { id: "mallorca", name: "Mallorca-Kurztrip", place: "", country: "", travelers: people, ...base,
     items: [{ id: "mf", cat: "flights", name: "Flug", status: "chosen", options: [{ ...flightOpt("o5", 138, [L("out", "EIN", "PMI", "2027-10-15T10:00", "2027-10-15T12:20"), L("back", "PMI", "EIN", "2027-10-19T18:00", "2027-10-19T20:20")]), source: undefined }] }] },
-  // nahes Ziel mit 9 Personen aus Köln: Bahn, Fernbus, Auto und Reisebus statt Flug
+  // nahes Ziel mit 12 Personen aus Köln: Bahn, Fernbus, Auto und Reisebus statt Flug
   { id: "berlin", name: "Berlin-Wochenende", place: "Berlin", country: "Deutschland", from: "2027-06-04", to: "2027-06-06", ...base,
-    travelers: Array.from({ length: 9 }, (_, i) => ({ id: "k" + i, name: "Kegler " + (i + 1), household: "Kegelclub" })),
+    travelers: Array.from({ length: 12 }, (_, i) => ({ id: "k" + i, name: "Kegler " + (i + 1), household: "Kegelclub" })),
     households: { Kegelclub: { plz: "50667", geo: { ort: "Köln", lat: 50.94, lon: 6.96 } } }, items: [] },
   { id: "rom", name: "Rom 2025", place: "Rom", country: "Italien", from: "2025-04-01", to: "2025-04-05", travelers: people, ...base, items: [] }
 ];
@@ -194,7 +194,44 @@ try {
   await coach.waitFor();
   await until(async () => /Köln → Berlin[\s\S]*\d €/.test(await coach.innerText()), "Reisebus-Posten mit Richtwert");
   await p.keyboard.press("Escape");
-  log("Köln → Berlin, 9 Personen: Flug von Tür zu Tür (2 h vorher), Bahn, Fernbus, Auto, Reisebus mit Richtwerten, bahn.de vorbefüllt, Reisebus als Posten");
+  log("Köln → Berlin, 12 Personen: Flug von Tür zu Tür (2 h vorher), Bahn, Fernbus, Auto, Reisebus mit Richtwerten, bahn.de vorbefüllt, Reisebus als Posten");
+
+  // große Gruppe: Flüge in Buchungen à höchstens 5 (12 → 3 × 4), Ferienwohnungen auf 2 Unterkünfte à 6
+  await p.locator("#flights .fs-open").click();
+  const fm = p.locator("#flights .modal.inline");
+  await fm.waitFor();
+  if ((await fm.locator(".fs-split select").inputValue()) !== "4") fail("Buchungsgröße: " + await fm.locator(".fs-split select").inputValue());
+  const fh = await fm.locator(".fs-split-hint").innerText();
+  if (!fh.includes("12 Personen in 3 Buchungen à 4")) fail("Hinweis Aufteilen: " + fh);
+  // Suche läuft für eine Buchung (4 Personen), Preise × 3 auf alle 12
+  const nFl = asked.flights.length;
+  await fm.locator("label.f", { hasText: "Nach" }).locator("input").fill("PMI");
+  await fm.locator("form.fs-form > button.btn.primary").click();
+  await until(() => asked.flights.length > nFl, "Flugsuche für eine Buchung", 15000);
+  if (asked.flights.slice(nFl).some(q => q.adults !== 4)) fail("Flugsuche nicht je Buchung: " + JSON.stringify(asked.flights.slice(nFl).map(q => q.adults)));
+  await until(async () => (await fm.innerText()).includes("1.350"), "Preis × 3 (3 × 450 €)", 15000);
+  await fm.locator(".fs-split select").selectOption("9");
+  await until(async () => (await fm.locator(".fs-split-hint").innerText().catch(() => "")).includes("2 Buchungen à 6"), "höchstens 9 je Suche");
+  await p.locator("#flights .fs-open").click();
+  await p.locator("#stay .st-open").click();
+  const sm = p.locator("#stay .modal.inline");
+  await sm.waitFor();
+  await sm.locator(".chip", { hasText: "Ganze Unterkunft" }).click();
+  if ((await sm.locator(".st-parts").inputValue()) !== "2") fail("Unterkünfte für 12: " + await sm.locator(".st-parts").inputValue());
+  // Hotel ebenso aufgeteilt (Anbieter liefern für so viele kaum etwas), ein Zimmer je zwei Gäste
+  await sm.locator(".chip", { hasText: "Hotel" }).click();
+  await until(async () => (await sm.locator(".st-parts").inputValue()) === "2" && (await sm.locator("input[type=number]").last().inputValue()) === "3", "Hotel: 2 × 3 Zimmer");
+  await sm.locator(".chip", { hasText: "Ganze Unterkunft" }).click();
+  const nStays = asked.stays.length;
+  await sm.locator("form.fs-form > button.btn.primary").click();
+  await until(() => asked.stays.length > nStays, "Unterkunftssuche für eine Unterkunft");
+  if (asked.stays.at(-1).adults !== 6 || asked.stays.at(-1).rooms !== 1) fail("Anfrage je Unterkunft: " + JSON.stringify(asked.stays.at(-1)));
+  await sm.locator(".st-times").first().waitFor();
+  await sm.locator(".fs-res", { hasText: "Hostal Sol" }).locator("button.primary").click();
+  const fin = p.locator("#stay .card[data-item]", { hasText: "Hostal Sol" });
+  await fin.waitFor();
+  await until(async () => (await fin.innerText()).includes("960"), "Unterkunft 2 × 480 €");
+  log("Große Gruppe: Flug in 3 Buchungen à 4, gesucht für 4, Preise × 3 (wählbar, max. 9 je Suche); Ferienwohnung auf 2 Unterkünfte à 6, gesucht für 6, übernommen 2 × 480 €");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Reisebeobachtung ok");

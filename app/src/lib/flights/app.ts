@@ -29,6 +29,38 @@ export function passengers(trip: Trip, ids?: string[]): Pick<FlightQuery, "adult
   return { adults, children: children + infants - lap, infants: lap };
 }
 
+type Pax = Pick<FlightQuery, "adults" | "children" | "infants">;
+
+/** Höchstzahl der Fluggäste je Suche bei den Anbietern */
+export const MAX_PAX = 9;
+/** ab so vielen Sitzen wird vorgeschlagen aufzuteilen, dann in Buchungen zu höchstens BOOKING_SIZE */
+export const SPLIT_FROM = 10;
+export const BOOKING_SIZE = 5;
+
+export interface PaxSplit { q: Pax; bookings: number; size: number; factor: number }
+
+/**
+ * Große Gruppen in Buchungen aufteilen: günstige Tarife gibt es je Flug nur in kleinen Kontingenten, und die Anbieter
+ * suchen höchstens 9 Personen. Gesucht wird für die größte Buchung (Erwachsene und Kinder anteilig, Babys bei
+ * Erwachsenen), der Preis wird nach Köpfen auf alle hochgerechnet.
+ */
+export function splitPax(p: Pax, size: number): PaxSplit {
+  const seats = p.adults + p.children;
+  const bookings = Math.ceil(seats / Math.max(1, Math.min(MAX_PAX, size)));
+  if (bookings <= 1) return { q: p, bookings: 1, size: seats, factor: 1 };
+  const per = Math.ceil(seats / bookings);
+  const adults = Math.max(1, Math.min(per, Math.ceil(p.adults / bookings)));
+  const children = Math.min(p.children, per - adults);
+  const infants = Math.min(adults, Math.ceil(p.infants / bookings));
+  return { q: { adults, children, infants }, bookings, size: adults + children, factor: (seats + p.infants) / (adults + children + infants) };
+}
+
+/** Preise einer Suche für eine Buchung auf die ganze Gruppe hochrechnen */
+export function scaleResult(r: SearchResult, factor: number): SearchResult {
+  if (factor === 1) return r;
+  return { ...r, offers: r.offers.map(o => ({ ...o, price: Math.round(o.price * factor), ...(o.orig ? { orig: { ...o.orig, amount: Math.round(o.orig.amount * factor) } } : {}) })) };
+}
+
 /** Wer fliegt: diese Personen (fehlt: alle, die dabei sind) */
 export const flyers = (trip: Trip, ids?: string[]) => trip.travelers.filter(t => isActive(t) && (!ids || ids.includes(t.id)));
 
@@ -84,11 +116,15 @@ export const legOf = (dir: FlightLeg["dir"], l: OfferLeg): FlightLeg => ({ dir, 
 export const stopsText = (n: number) => (n ? tn("n.stops", n) : t("fs.th.direct"));
 
 /** Suchergebnis als Angebot: Gesamtpreis für alle, gleich verteilt; mit Quelle und Link */
-export function offerToOption(o: FlightOffer): Option {
+/** aufgeteilt gesucht: Größe einer Buchung und Hinweis am Angebot */
+export interface SplitInfo { size: number; note: string }
+
+export function offerToOption(o: FlightOffer, split?: SplitInfo): Option {
   return {
     id: uid(),
     label: `${o.out.carriers.join(" / ")} ${t("fs.from", { ap: o.out.from })}, ${stopsText(o.out.stops)}`,
-    detail: [o.out.route.join(" → "), o.back ? o.back.route.join(" → ") : ""].filter(Boolean).join(" · "),
+    detail: [o.out.route.join(" → "), o.back ? o.back.route.join(" → ") : "", split?.note || ""].filter(Boolean).join(" · "),
+    ...(split ? { split: split.size } : {}),
     price: { mode: "unit", currency: o.currency, unit: o.price },
     source: { name: o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url, ...(o.sponsored ? { sponsored: true } : {}), ...(o.test ? { test: true } : {}) },
     legs: [legOf("out", o.out), ...(o.back ? [legOf("back", o.back)] : [])]
@@ -96,8 +132,8 @@ export function offerToOption(o: FlightOffer): Option {
 }
 
 /** Übernehmen: erstes Ergebnis legt einen Flug-Posten an, weitere kommen als Angebote zum Vergleichen dazu */
-export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: string[]): Item {
-  const opt = offerToOption(o);
+export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: string[], split?: SplitInfo): Item {
+  const opt = offerToOption(o, split);
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   // wer bisher mitflog und einen eigenen Flug übernimmt, fliegt ab jetzt selbst
   if (target?.follow) { target.follow = undefined; target.options = [opt]; target.chosen = undefined; return target; }
@@ -113,13 +149,14 @@ export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: strin
 }
 
 /** Rundreise als ein Angebot: Hinflug, weitere Flüge, Rückflug (falls es nach Hause geht); getrennte Tickets */
-export function roundToOption(rt: RoundTrip, home: boolean): Option {
+export function roundToOption(rt: RoundTrip, home: boolean, split?: SplitInfo): Option {
   const n = rt.legs.length;
   const route = [rt.legs[0].out.from, ...rt.legs.map(l => l.out.to)];
   return {
     id: uid(),
     label: `${t("fs.round")} ${route.join(" → ")}`,
-    detail: `${n === 1 ? tn("n.tickets", 1) : t("round.separate", { n: tn("n.tickets", n) })}${rt.stays?.length ? ` · ${rt.stays.map(s => (s.hours != null ? `${s.name} ${Math.round(s.hours)} h` : `${s.name} ${t("round.nightsShort", { n: s.nights ?? 0 })}`)).join(" / ")}` : ""}`,
+    detail: `${n === 1 ? tn("n.tickets", 1) : t("round.separate", { n: tn("n.tickets", n) })}${rt.stays?.length ? ` · ${rt.stays.map(s => (s.hours != null ? `${s.name} ${Math.round(s.hours)} h` : `${s.name} ${t("round.nightsShort", { n: s.nights ?? 0 })}`)).join(" / ")}` : ""}${split ? ` · ${split.note}` : ""}`,
+    ...(split ? { split: split.size } : {}),
     price: { mode: "unit", currency: rt.legs[0].currency, unit: rt.price },
     source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: new Date().toISOString().slice(0, 10), url: rt.legs[0].url, ...(rt.legs[0].sponsored ? { sponsored: true } : {}), ...(rt.legs.some(l => l.test) ? { test: true } : {}) },
     legs: rt.legs.map((l, i) => legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out))
@@ -127,8 +164,8 @@ export function roundToOption(rt: RoundTrip, home: boolean): Option {
 }
 
 /** Rundreise übernehmen: neuer Posten „Rundreise …“ oder weiteres Angebot im gewählten Posten */
-export function takeRound(trip: Trip, rt: RoundTrip, home: boolean, into?: string, ids?: string[]): Item {
-  const opt = roundToOption(rt, home);
+export function takeRound(trip: Trip, rt: RoundTrip, home: boolean, into?: string, ids?: string[], split?: SplitInfo): Item {
+  const opt = roundToOption(rt, home, split);
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   if (target?.follow) { target.follow = undefined; target.options = [opt]; target.chosen = undefined; return target; }
   if (target) { target.options.push(opt); return target; }

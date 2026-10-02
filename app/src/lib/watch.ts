@@ -7,7 +7,7 @@
 import { t } from "./i18n/index.svelte";
 import { FIXED, type Item, type Option, type Trip, type WatchHit } from "./model";
 import { activeOption } from "./calc";
-import { offerToOption, passengers } from "./flights/app";
+import { offerToOption, passengers, scaleResult, splitPax } from "./flights/app";
 import { defaultStayQuery, stayToOption } from "./stays/app";
 import type { FlightOffer, FlightQuery, SearchResult } from "./flights/types";
 import type { StayQuery, StaySearchResult } from "./stays/types";
@@ -31,10 +31,12 @@ export const watchable = (trip: Trip) => trip.items.filter(it => watchOption(it,
 export function flightQueryFor(trip: Trip, it: Item, o: Option): FlightQuery | null {
   const out = o.legs?.find(l => l.dir === "out"), back = o.legs?.find(l => l.dir === "back");
   if (!out) return null;
+  // aufgeteilt übernommen: wieder für eine Buchung suchen
+  const pax = passengers(trip, it.participants);
   return {
     from: out.from, to: out.to, fromAirports: [out.from], toAirports: [out.to],
     depart: day(out.dep), ...(back ? { ret: day(back.dep) } : {}),
-    ...passengers(trip, it.participants), currency: o.price.currency || "EUR"
+    ...(o.split ? splitPax(pax, o.split).q : pax), currency: o.price.currency || "EUR"
   };
 }
 
@@ -62,12 +64,14 @@ async function lookup(trip: Trip, it: Item, o: Option, s: Searchers): Promise<Fo
   if (it.cat === "flights") {
     const q = flightQueryFor(trip, it, o);
     if (!q) return null;
-    const offers = (await s.flights(q)).offers.filter(f => f.currency === cur);
-    return offers.map(f => ({ price: f.price, same: x => !!x.legs?.length && !x.legs.some(l => l.dir === "via") && sameFlight(x, [f]) === f, opt: () => offerToOption(f) }));
+    const sp = o.split ? splitPax(passengers(trip, it.participants), o.split) : null;
+    const split = sp && sp.bookings > 1 ? { size: sp.size, note: t("fs.split.note", { n: sp.bookings, k: sp.size }) } : undefined;
+    const offers = scaleResult(await s.flights(q), sp?.factor ?? 1).offers.filter(f => f.currency === cur);
+    return offers.map(f => ({ price: f.price, same: x => !!x.legs?.length && !x.legs.some(l => l.dir === "via") && sameFlight(x, [f]) === f, opt: () => offerToOption(f, split) }));
   }
   const q = stayQueryFor(trip, it, o);
   const offers = (await s.stays(q)).offers.filter(x => x.currency === cur && x.total > 0);
-  return offers.map(x => ({ price: x.total, same: y => norm(y.label) === norm(x.name), opt: () => ({ ...stayToOption(x, q.adults + q.childAges.length, q.place), query: o.query }) }));
+  return offers.map(x => ({ price: x.total, same: y => norm(y.label) === norm(x.name), opt: () => ({ ...stayToOption(x, q.adults + q.childAges.length, q.place, o.split || 1), query: o.query }) }));
 }
 
 /** Preisänderung seit der letzten Prüfung (▲ positiv, ▼ negativ) */
