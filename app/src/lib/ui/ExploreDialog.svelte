@@ -35,6 +35,8 @@
     ? `${win.start ? stamp(win.start) : dayShort(win.from!)} – ${win.end ? stamp(win.end) : dayShort(win.to!)}`
     : win.from ? range(win.from, win.to || win.from) : t("xp.anyDate"));
   const span = $derived(win.from ? { from: win.from, to: win.to || win.from } : {});
+  // Events stehen oft erst wenige Monate vorher fest: bei leerem Ergebnis für ferne Reisen „noch nicht“ statt „gibt es nicht“
+  const farOut = $derived(!!win.from && win.from > new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10));
 
   let kw = $state("");
   let evBusy = $state(false), evErr = $state(""), events = $state<EventHit[] | null>(null);
@@ -130,7 +132,7 @@
         {#if evErr}<p class="warnline">{evErr}</p>{/if}
         {#if evBusy && !events}<p class="muted small">{t("evs.busy")}</p>{/if}
         {#if events}
-          {#if !events.length && !evErr}<p class="muted small">{t("xp.noEvents")}</p>{/if}
+          {#if !events.length && !evErr}<p class="muted small">{t("xp.noEvents")}</p>{#if farOut}<p class="warnline xp-farout">{t("xp.farOut")}</p>{/if}{/if}
           {#if events.length > 1}
             <div class="ff xp-f">
               {#if evFc.days.length > 1}

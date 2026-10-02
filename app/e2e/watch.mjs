@@ -263,6 +263,17 @@ try {
   log("Gesamtanzeige: passt ins Fenster (eigener Scrollbalken), Posten je Kategorie auf ▾");
   log("Große Gruppe: Flug in 3 Buchungen à 4, gesucht für 4, Preise × 3 (wählbar, max. 9 je Suche); Ferienwohnung auf 2 Unterkünfte à 6, gesucht für 6, übernommen 2 × 480 €");
 
+  // Reise ohne Flug und ohne Wohnort: „Unterwegs“ fragt nach der PLZ für den Bahn/Bus-Vergleich
+  await p.locator(".top .brand-btn").click();
+  if (!(await p.locator(".start .home-trip", { hasText: "Rom 2025" }).isVisible())) await p.locator(".start .home-past summary").click();
+  await p.locator(".start .home-trip", { hasText: "Rom 2025" }).click();
+  await p.locator("#transport").scrollIntoViewIfNeeded();
+  const ask = p.locator("#transport .gr-askhome");
+  await ask.waitFor({ timeout: 10000 });
+  await ask.locator(".fs-plz").fill("50667");
+  await until(async () => (await ask.count()) === 0, "PLZ übernommen");
+  log("Ohne Flug und Wohnort: „Unterwegs“ fragt nach der PLZ, danach verschwindet die Frage");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Reisebeobachtung ok");
 } finally { await browser.close(); server.kill(); }
