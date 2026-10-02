@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeCount, applyFilter, dayCells, facets, noFilter, sortFlights, tier, type Filterable } from "./filter";
+import { activeCount, applyFilter, arrivalGap, dayCells, facets, noFilter, sortFlights, tier, type Filterable } from "./filter";
 
 const leg = (dep: string, minutes: number, stops: number, carriers = ["Eurowings"]) => ({ dep, arr: dep, minutes, stops, carriers });
 const f = (id: string, total: number, out: ReturnType<typeof leg>, back?: ReturnType<typeof leg>, origin = "DUS"): Filterable => ({ id, origin, total, out, back, accessHours: 0 });
@@ -30,6 +30,7 @@ describe("Flugfilter", () => {
     expect(applyFilter(L, { ...noFilter(), maxHours: 5 }).map(o => o.id)).toEqual(["a", "b", "d"]);
     expect(facets(L, noFilter()).longest).toBe(11);
     expect(activeCount({ ...noFilter(), maxHours: 5, outDep: [6, 24], outDay: "2027-08-12" })).toBe(2);
+    expect(activeCount({ ...noFilter(), together: 3 })).toBe(1);
   });
 
   it("Kalender: Hinflug-Tage, dann Rückflug-Tage zum gewählten Hinflug", () => {
@@ -53,5 +54,26 @@ describe("Flugfilter", () => {
     expect(sortFlights(L, "best")[0].id).toBe("d");
     expect(sortFlights(L, "time").map(o => o.id)).toEqual(["a", "d", "b", "c"]);
     expect(sortFlights(L, "arrival").map(o => o.id)).toEqual(["a", "b", "d", "c"]);
+  });
+});
+
+describe("Zusammen ankommen", () => {
+  const at = (arr: string, back?: string) => f(arr, 100, { dep: arr, arr, minutes: 120, stops: 0, carriers: ["X"] }, back ? { dep: back, arr: back, minutes: 120, stops: 0, carriers: ["X"] } : undefined);
+  const refs = [{ who: "Klein", arr: "2027-08-12T14:00", dep: "2027-08-19T18:00" }];
+  const L2 = [at("2027-08-12T14:30", "2027-08-19T17:00"), at("2027-08-12T16:30", "2027-08-19T18:00"), at("2027-08-12T21:00", "2027-08-19T18:00"), at("2027-08-12T13:00", "2027-08-19T08:00")];
+  it("Landung und Rückflug höchstens so viele Stunden auseinander", () => {
+    expect(applyFilter(L2, { ...noFilter(), together: 1 }, refs).map(o => o.id)).toEqual(["2027-08-12T14:30"]);
+    expect(applyFilter(L2, { ...noFilter(), together: 3 }, refs)).toHaveLength(2);
+    // ohne andere Flüge filtert „zusammen“ nichts
+    expect(applyFilter(L2, { ...noFilter(), together: 1 }, [])).toHaveLength(4);
+  });
+  it("Auswahl ± 1, 3, 6 Stunden mit Anzahl, nur Spannen, die etwas ändern", () => {
+    expect(facets(L2, noFilter(), refs).together.map(x => [x.key, x.count])).toEqual([[1, 1], [3, 2]]);
+    expect(facets(L2, noFilter(), []).together).toEqual([]);
+  });
+  it("Abstand zur nächsten Landung", () => {
+    expect(arrivalGap(L2[1], refs)).toEqual({ min: 150, who: "Klein" });
+    expect(arrivalGap(L2[3], refs)).toEqual({ min: -60, who: "Klein" });
+    expect(arrivalGap(L2[0], [])).toBeNull();
   });
 });

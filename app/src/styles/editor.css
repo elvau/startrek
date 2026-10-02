@@ -893,3 +893,5 @@ body[data-ch="split"] .amb-split{opacity:1}
 .ff-ranges{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 18px}
 .ff-hours input{width:100%}
 .ff-reset{align-self:flex-start}
+.ff-together{align-items:center}
+.fs-sync.near{background:var(--good-soft);color:var(--good)}

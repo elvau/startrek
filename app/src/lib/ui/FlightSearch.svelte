@@ -24,7 +24,8 @@
   import type { FlightScope } from "../flights/open.svelte";
   import { googleFlightsLink, skyscannerLink } from "../links";
   import type { FlightOffer, FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
-  import { applyFilter, dayCells, noFilter, sortFlights, type FlightSort } from "../flights/filter";
+  import { applyFilter, arrivalGap, dayCells, noFilter, sortFlights, type FlightSort, type SyncRef } from "../flights/filter";
+  import { arrivals } from "../stays/presence";
   import FlightFilters from "./FlightFilters.svelte";
   import PriceCalendar from "./PriceCalendar.svelte";
 
@@ -183,12 +184,15 @@
   function resetAps() { aps = nearestAirports(trip, 4, who); custom = false; }
 
   const SHOW = 40;
-  const filtered = $derived(applyFilter(list || [], filter));
+  // Flüge der anderen (schon übernommen): zum gemeinsamen Ankommen
+  const refs = $derived<SyncRef[]>(arrivals(trip).filter(a => (a.arr || a.dep) && !a.ids.some(id => whoIds.includes(id))).map(a => ({ who: a.who, arr: a.arr, dep: a.dep })));
+  const filtered = $derived(applyFilter(list || [], filter, refs));
   const shown = $derived(sortFlights(filtered, sort).slice(0, SHOW));
   const returns = $derived(!!list?.some(o => o.back));
   // Kalender nur, wenn die Treffer an mehr als einem Tag liegen
-  const outCells = $derived(dayCells(list || [], filter, "out"));
-  const backCells = $derived(filter.outDay || outCells.length < 2 ? dayCells(list || [], filter, "back") : []);
+  const outCells = $derived(dayCells(list || [], filter, "out", refs));
+  const backCells = $derived(filter.outDay || outCells.length < 2 ? dayCells(list || [], filter, "back", refs) : []);
+  const hhmm = (m: number) => (m >= 1440 ? tn("n.days", Math.round(m / 1440)) : `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, "0")} h`);
   const dur = (m: number) => `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`;
   const hm = (h: number) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, "0")} h`;
 
@@ -595,7 +599,7 @@
       {:else if returns && backCells.length > 1}
         <div class="pcals"><PriceCalendar cells={backCells} selected={filter.backDay} label={t("fs.cal.back")} onpick={d => (filter.backDay = d)} /></div>
       {/if}
-      <FlightFilters list={list} bind:filter {returns} />
+      <FlightFilters list={list} bind:filter {returns} {refs} />
       <div class="chips fs-sort" role="radiogroup" aria-label={t("search.sort")}>
         <button type="button" role="radio" aria-checked={sort === "price"} class="chip" class:on={sort === "price"} onclick={() => (sort = "price")}>{t("search.cheapest")}</button>
         <button type="button" role="radio" aria-checked={sort === "best"} class="chip" class:on={sort === "best"} onclick={() => (sort = "best")} title={t("fs.bestTitle")}>{t("fs.best")}</button>
@@ -617,6 +621,10 @@
               {#if o.nights != null}<span class="pill-n">{tn("fs.nightsThere", o.nights)}</span>{/if}
               {#if !isNaN(o.home)}<span class="pill-h">{t("fs.homeAt", { t: fmtMin(o.home) })}</span>{/if}
               {#if o.accessHours}<span class="pill-h">{t("fs.accessAbout", { h: hm(o.accessHours) })}</span>{/if}
+              {#if arrivalGap(o, refs)}
+                {@const g = arrivalGap(o, refs)!}
+                <span class="pill-h fs-sync" class:near={Math.abs(g.min) <= 180}>🤝 {Math.abs(g.min) < 15 ? t("fs.sync.same", { who: g.who }) : g.min > 0 ? t("fs.sync.after", { h: hhmm(g.min), who: g.who }) : t("fs.sync.before", { h: hhmm(-g.min), who: g.who })}</span>
+              {/if}
             </div>
             {@render legRow(t("fl.out"), o.out)}
             {#if o.back}{@render legRow(t("fs.backShort"), o.back)}{/if}

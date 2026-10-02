@@ -6,11 +6,12 @@
   import { t, tn } from "../i18n/index.svelte";
   import { eur } from "../calc";
   import DualRange from "./DualRange.svelte";
-  import { activeCount, facets, noFilter, type Filterable, type FlightFilter } from "../flights/filter";
+  import { activeCount, facets, noFilter, type Filterable, type FlightFilter, type SyncRef } from "../flights/filter";
 
-  let { list, filter = $bindable(), returns }: { list: T[]; filter: FlightFilter; returns: boolean } = $props();
+  let { list, filter = $bindable(), returns, refs = [] }: { list: T[]; filter: FlightFilter; returns: boolean; refs?: SyncRef[] } = $props();
 
-  const fc = $derived(facets(list, filter));
+  const fc = $derived(facets(list, filter, refs));
+  const others = $derived([...new Set(refs.map(r => r.who))].join(", "));
   const active = $derived(activeCount(filter));
   let open = $state(false);
   const toggle = (k: "origins" | "airlines", v: string) => (filter[k] = filter[k].includes(v) ? filter[k].filter(x => x !== v) : [...filter[k], v]);
@@ -29,6 +30,16 @@
         onclick={() => (filter.stops = filter.stops === s.key ? null : s.key)}>{s.key ? tn("fs.f.upTo", s.key) : t("fs.f.direct")} <small>{meta(s.count, s.min)}</small></button>
     {/each}
   </div>
+  {#if fc.together.length}
+    <!-- Gruppen: Landung (und Rückflug) nah an den Flügen der anderen -->
+    <div class="chips ff-together" aria-label={t("fs.sync.label", { who: others })}>
+      <span class="muted small">🤝 {t("fs.sync.label", { who: others })}</span>
+      {#each fc.together as x (x.key)}
+        <button type="button" class="chip sm" class:on={filter.together === x.key} aria-pressed={filter.together === x.key}
+          onclick={() => (filter.together = filter.together === x.key ? null : x.key)}>± {x.key} h <small>{meta(x.count, x.min)}</small></button>
+      {/each}
+    </div>
+  {/if}
   {#if fc.origins.length > 1}
     <div class="chips ff-origins" aria-label={t("fs.th.from")}>
       {#each fc.origins as o (o.key)}

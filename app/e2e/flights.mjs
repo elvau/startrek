@@ -256,6 +256,16 @@ try {
   await m.locator(".fs-res").first().waitFor();
   const h = asked.at(-1);
   if (h.adults !== 1 || h.children !== 1) fail("Anfrage Hase ohne Jan: " + JSON.stringify(h));
+  // zusammen ankommen: Abstand zur Landung von Klein an jedem Treffer, Filter ± Stunden
+  const sync = await m.locator(".fs-res .fs-sync").allTextContents();
+  if (!sync.length || !sync.every(x => x.includes("Klein"))) fail("Landung im Vergleich zu Klein fehlt: " + sync);
+  const tg = m.locator(".ff-together .chip").first();
+  if (!(await m.locator(".ff-together").textContent()).includes("Zusammen ankommen mit Klein")) fail("Filter zusammen ankommen fehlt");
+  const nAll = await m.locator(".fs-res").count();
+  await tg.click();
+  const nTg = await m.locator(".fs-res").count();
+  if (!(nTg > 0 && nTg < nAll) || (await m.locator(".fs-res .fs-sync:not(.near)").count())) fail(`zusammen ankommen filtert nicht: ${nAll} → ${nTg}`);
+  log(`Zusammen ankommen: Treffer zeigen „${sync[0]}“, ${(await tg.textContent()).trim()} lässt ${nTg} von ${nAll}`);
   await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
   await p.keyboard.press("Escape");
   await p.locator("#flights .card[data-item]", { hasText: "Hase · 2 Pers." }).waitFor();

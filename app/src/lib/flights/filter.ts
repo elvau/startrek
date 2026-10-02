@@ -27,9 +27,14 @@ export interface FlightFilter {
   /** Reisetage aus dem Kalender (JJJJ-MM-TT) */
   outDay: string | null;
   backDay: string | null;
+  /** zusammen mit den anderen ankommen: Landung (und Rückflug) höchstens so viele Stunden auseinander */
+  together: number | null;
 }
 
-export const noFilter = (): FlightFilter => ({ stops: null, origins: [], airlines: [], outDep: [0, 24], backDep: [0, 24], maxHours: null, outDay: null, backDay: null });
+/** Flug einer anderen Familie der Reise: Landung am Ziel und Abflug zurück (Ortszeit) */
+export interface SyncRef { who: string; arr?: string; dep?: string }
+
+export const noFilter = (): FlightFilter => ({ stops: null, origins: [], airlines: [], outDep: [0, 24], backDep: [0, 24], maxHours: null, outDay: null, backDay: null, together: null });
 
 export type FlightSort = "price" | "best" | "time" | "arrival";
 
@@ -39,9 +44,23 @@ const legs = (o: Filterable) => (o.back ? [o.out, o.back] : [o.out]);
 export const maxStopsOf = (o: Filterable) => Math.max(...legs(o).map(l => l.stops));
 export const airlinesOf = (o: Filterable) => [...new Set(legs(o).flatMap(l => l.carriers))];
 export const dayOf = (iso: string) => iso.slice(0, 10);
+/** Minuten zwischen zwei Ortszeiten (b − a) */
+const gap = (a: string, b: string) => (Date.parse(b.slice(0, 16) + "Z") - Date.parse(a.slice(0, 16) + "Z")) / 60000;
+
+/** passt zeitlich zu allen anderen: Landung und Rückflug höchstens hours auseinander */
+export function together(o: Filterable, refs: SyncRef[], hours: number): boolean {
+  const max = hours * 60;
+  return refs.every(r => (!r.arr || Math.abs(gap(r.arr, o.out.arr)) <= max) && (!r.dep || !o.back || Math.abs(gap(r.dep, o.back.dep)) <= max));
+}
+
+/** Landung im Vergleich zur nächstgelegenen anderen Landung: Minuten (+ später, − früher) und wer */
+export function arrivalGap(o: Filterable, refs: SyncRef[]): { min: number; who: string } | null {
+  const xs = refs.filter(r => r.arr).map(r => ({ min: gap(r.arr!, o.out.arr), who: r.who }));
+  return xs.length ? xs.sort((a, b) => Math.abs(a.min) - Math.abs(b.min))[0] : null;
+}
 
 /** Treffer passt zum Filter; skip lässt einen Filter weg (für die Anzahl an seiner eigenen Auswahl) */
-export function passes(o: Filterable, f: FlightFilter, ...skip: (keyof FlightFilter)[]): boolean {
+export function passes(o: Filterable, f: FlightFilter, refs: SyncRef[], ...skip: (keyof FlightFilter)[]): boolean {
   const on = (k: keyof FlightFilter) => !skip.includes(k);
   if (on("stops") && f.stops != null && maxStopsOf(o) > f.stops) return false;
   if (on("origins") && f.origins.length && !f.origins.includes(o.origin)) return false;
@@ -51,24 +70,28 @@ export function passes(o: Filterable, f: FlightFilter, ...skip: (keyof FlightFil
   if (on("maxHours") && f.maxHours != null && legs(o).some(l => l.minutes > f.maxHours! * 60)) return false;
   if (on("outDay") && f.outDay && dayOf(o.out.dep) !== f.outDay) return false;
   if (on("backDay") && f.backDay && (!o.back || dayOf(o.back.dep) !== f.backDay)) return false;
+  if (on("together") && f.together != null && refs.length && !together(o, refs, f.together)) return false;
   return true;
 }
 
-export const applyFilter = <T extends Filterable>(list: T[], f: FlightFilter) => list.filter(o => passes(o, f));
+export const applyFilter = <T extends Filterable>(list: T[], f: FlightFilter, refs: SyncRef[] = []) => list.filter(o => passes(o, f, refs));
 
 /** wie viele Filter vom Standard abweichen (Kalendertage zählen nicht, die zeigt der Kalender selbst) */
 export function activeCount(f: FlightFilter): number {
   const d = noFilter();
   return [f.stops != null, f.origins.length > 0, f.airlines.length > 0, f.outDep[0] !== d.outDep[0] || f.outDep[1] !== d.outDep[1],
-    f.backDep[0] !== d.backDep[0] || f.backDep[1] !== d.backDep[1], f.maxHours != null].filter(Boolean).length;
+    f.backDep[0] !== d.backDep[0] || f.backDep[1] !== d.backDep[1], f.maxHours != null, f.together != null].filter(Boolean).length;
 }
 
 export interface Facet<K> { key: K; count: number; min: number }
 
-function facet<T extends Filterable, K>(list: T[], f: FlightFilter, skip: keyof FlightFilter, keys: (o: T) => K[]): Facet<K>[] {
+/** Spannen für „zusammen ankommen“ in Stunden */
+export const TOGETHER = [1, 3, 6];
+
+function facet<T extends Filterable, K>(list: T[], f: FlightFilter, refs: SyncRef[], skip: keyof FlightFilter | null, keys: (o: T) => K[]): Facet<K>[] {
   const m = new Map<K, Facet<K>>();
   for (const o of list) {
-    if (!passes(o, f, skip)) continue;
+    if (!passes(o, f, refs, ...(skip ? [skip] : []))) continue;
     for (const k of keys(o)) {
       const x = m.get(k);
       if (x) { x.count++; x.min = Math.min(x.min, o.total); } else m.set(k, { key: k, count: 1, min: o.total });
@@ -78,17 +101,20 @@ function facet<T extends Filterable, K>(list: T[], f: FlightFilter, skip: keyof 
 }
 
 /** Auswahl je Filter mit Anzahl und Preis ab, gerechnet mit allen anderen Filtern */
-export function facets<T extends Filterable>(list: T[], f: FlightFilter) {
+export function facets<T extends Filterable>(list: T[], f: FlightFilter, refs: SyncRef[] = []) {
   // Umstiege kumulativ: „höchstens 1“ enthält die Direktflüge
-  const st = facet(list, f, "stops", o => [maxStopsOf(o)]);
+  const st = facet(list, f, refs, "stops", o => [maxStopsOf(o)]);
   const stops = [0, 1, 2].map(n => {
     const xs = st.filter(x => x.key <= n);
     return { key: n, count: xs.reduce((v, x) => v + x.count, 0), min: Math.min(...xs.map(x => x.min)) };
   }).filter((x, i, a) => x.count > 0 && (i === 0 || x.count > a[i - 1].count));
   return {
     stops,
-    origins: facet(list, f, "origins", o => [o.origin]).sort((a, b) => a.min - b.min),
-    airlines: facet(list, f, "airlines", o => airlinesOf(o)).sort((a, b) => a.min - b.min),
+    origins: facet(list, f, refs, "origins", o => [o.origin]).sort((a, b) => a.min - b.min),
+    airlines: facet(list, f, refs, "airlines", o => airlinesOf(o)).sort((a, b) => a.min - b.min),
+    /** zusammen ankommen: je Spanne (± Stunden) Anzahl und Preis ab; nur Spannen, die etwas ändern */
+    together: refs.some(r => r.arr || r.dep) ? TOGETHER.map(h => facet(list, { ...f, together: h }, refs, null, () => [h])[0] ?? { key: h, count: 0, min: 0 })
+      .filter(x => x.count > 0).filter((x, i, a) => i === 0 || x.count > a[i - 1].count) : [],
     /** längste Flugdauer je Richtung (für den Regler), in ganzen Stunden */
     longest: Math.ceil(Math.max(0, ...list.map(o => Math.max(...legs(o).map(l => l.minutes)))) / 60)
   };
@@ -97,12 +123,12 @@ export function facets<T extends Filterable>(list: T[], f: FlightFilter) {
 /** Kalender: je Tag der günstigste Preis und die wenigsten Umstiege (Hinflug, oder Rückflug zum gewählten Hinflug) */
 export interface DayCell { day: string; min: number; stops: number; count: number }
 
-export function dayCells<T extends Filterable>(list: T[], f: FlightFilter, which: "out" | "back"): DayCell[] {
+export function dayCells<T extends Filterable>(list: T[], f: FlightFilter, which: "out" | "back", refs: SyncRef[] = []): DayCell[] {
   const m = new Map<string, DayCell>();
   for (const o of list) {
     const leg = which === "out" ? o.out : o.back;
     // Hinflug-Tage unabhängig von den gewählten Tagen; Rückflug-Tage nur zum gewählten Hinflug-Tag
-    if (!leg || !(which === "out" ? passes(o, f, "outDay", "backDay") : passes(o, f, "backDay"))) continue;
+    if (!leg || !(which === "out" ? passes(o, f, refs, "outDay", "backDay") : passes(o, f, refs, "backDay"))) continue;
     const d = dayOf(leg.dep), s = maxStopsOf(o), x = m.get(d);
     if (x) { x.count++; if (o.total < x.min) x.min = o.total; x.stops = Math.min(x.stops, s); }
     else m.set(d, { day: d, min: o.total, stops: s, count: 1 });
