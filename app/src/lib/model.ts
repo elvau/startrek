@@ -178,6 +178,8 @@ export interface Option {
   loc?: { lat?: number; lon?: number; q?: string };
   /** Unterkunft aus der Suche: Anfrage, mit der sie gefunden wurde (für die Reisebeobachtung) */
   query?: { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number };
+  /** große Gruppe aufgeteilt: Flug in Buchungen zu höchstens so vielen Personen, Unterkunft auf so viele Unterkünfte */
+  split?: number;
 }
 
 export interface Payment {

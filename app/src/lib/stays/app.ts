@@ -19,6 +19,18 @@ export function guests(people: Traveler[]): Pick<StayQuery, "adults" | "childAge
   return { adults: Math.max(1, adults), childAges };
 }
 
+/** Ferienwohnungen und Häuser: ab 11 Gästen auf mehrere aufteilen, je höchstens UNIT_MAX */
+export const UNIT_MAX = 8;
+export const autoParts = (guests: number, type: StayType) => (type === "hotel" || guests <= 10 ? 1 : Math.ceil(guests / UNIT_MAX));
+/** Zimmer: ganze Unterkunft eine, sonst je zwei Gäste ein Zimmer (höchstens 30) */
+export const autoRooms = (guests: number, type: StayType) => (type === "whole" ? 1 : Math.min(30, Math.max(1, Math.ceil(guests / 2))));
+
+/** Gäste der größten von parts Unterkünften: Erwachsene anteilig aufgerundet, Kinder reihum */
+export function splitGuests(g: Pick<StayQuery, "adults" | "childAges">, parts: number): Pick<StayQuery, "adults" | "childAges"> {
+  if (parts <= 1) return g;
+  return { adults: Math.max(1, Math.ceil(g.adults / parts)), childAges: g.childAges.filter((_, i) => i % parts === 0) };
+}
+
 /** Wer in diesem Posten schläft: eingetragene Beteiligte, sonst alle, die dabei sind */
 export const sleepers = (trip: Trip, item?: Item) =>
   trip.travelers.filter(t => isActive(t) && (!item?.participants || item.participants.includes(t.id)));
@@ -32,13 +44,16 @@ export function defaultStayQuery(trip: Trip, item?: Item, type: StayType = "whol
 }
 
 /** Treffer als Angebot: Gesamtpreis für den Aufenthalt, auf die Gäste verteilt; mit Quelle, Link und Lage */
-export function stayToOption(o: StayOffer, people: number, place?: string): Option {
+export function stayToOption(o: StayOffer, people: number, place?: string, parts = 1): Option {
   const loc = locOf(o.name, place, o);
+  // aufgeteilt: Preis je Unterkunft für so viele Gäste, gebucht werden so viele wie nötig
+  const detail = [o.place, parts > 1 ? t("st.split.note", { n: parts, k: people }) : ""].filter(Boolean).join(" · ");
   return {
     id: uid(),
     label: o.name,
-    detail: o.place,
-    price: { mode: "unit", basis: "stay", currency: o.currency, unit: Math.round(o.total), capacity: Math.max(1, people) },
+    ...(detail ? { detail } : {}),
+    price: { mode: "unit", basis: "stay", currency: o.currency, unit: Math.round(o.total), capacity: Math.max(1, people), ...(parts > 1 ? { multiply: true } : {}) },
+    ...(parts > 1 ? { split: parts } : {}),
     source: { name: o.via && o.via !== o.sourceName ? t("st.via", { a: o.sourceName, b: o.via }) : o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url, ...(o.test ? { test: true } : {}) },
     stay: { stars: o.stars, rating: o.score != null ? Math.round(o.score * 10) : undefined, facts: o.facts?.length ? o.facts : undefined, ...(o.board ? { board: o.board } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) },
     ...(loc ? { loc } : {})
@@ -52,8 +67,8 @@ const blank = (it: Item) => it.options.length === 1 && !it.options[0].label && !
  * Übernehmen: erstes Ergebnis füllt einen leeren Unterkunft-Posten oder legt einen an,
  * weitere kommen als Angebote zum Vergleichen dazu.
  */
-export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, ids?: string[]): Item {
-  const opt = stayToOption(o, q.adults + q.childAges.length, q.place);
+export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, ids?: string[], parts = 1): Item {
+  const opt = stayToOption(o, q.adults + q.childAges.length, q.place, parts);
   opt.query = { place: q.place, country: q.country, checkin: q.checkin, checkout: q.checkout, adults: q.adults, childAges: [...q.childAges], rooms: q.rooms };
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   if (target) { addOffer(target, opt); return target; }

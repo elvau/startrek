@@ -15,7 +15,7 @@
   import { untrack } from "svelte";
   import { stationName } from "../stays/stationName";
   import { FLIGHTS_URL } from "../flights/app";
-  import { guests, searchStaysRemote, takeStay } from "../stays/app";
+  import { autoParts, autoRooms, guests, searchStaysRemote, splitGuests, takeStay } from "../stays/app";
   import { arrivals, gaps, guestsIn, hints, stations, stayWindow } from "../stays/presence";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { airportOf, ccOf, cityForAirport, findCity, placesNear, searchParts, stayNear, suggestCities, type CityHit } from "../geo/places";
@@ -96,6 +96,13 @@
   // Wer braucht in diesem Zeitraum ein Bett (laut Flügen), wer nur einen Teil der Nächte
   const who = $derived(nn > 0 ? guestsIn(trip, checkin, checkout, ids) : []);
   const g = $derived(guests(who.map(x => x.t)));
+  // große Gruppen: Ferienwohnungen auf mehrere aufteilen, im Hotel ein Zimmer je zwei Gäste (bis man selbst etwas einstellt)
+  let parts = $state(1);
+  let partsSet = false, roomsSet = false;
+  const all = $derived(g.adults + g.childAges.length);
+  const per = $derived(splitGuests(g, parts));
+  $effect(() => { const p = autoParts(all, type); if (!partsSet) parts = p; });
+  $effect(() => { const r = autoRooms(Math.ceil(all / Math.max(1, parts || 1)), type); if (!roomsSet) rooms = r; });
   const partial = $derived(who.filter(x => x.nights < nn));
   const arr = arrivals(trip).filter(a => !ids || a.ids.some(id => ids.includes(id)));
 
@@ -124,6 +131,7 @@
   let list = $state<StayOffer[] | null>(null);
   let sources = $state<SourceStatus[]>([]);
   let asked = $state<StayQuery | null>(null);
+  let askedParts = $state(1);
   let sort = $state<StaySort>("price");
   let taken = $state<Record<string, boolean>>({});
   let into = $state<string | undefined>(item?.id);
@@ -134,8 +142,10 @@
     const it = into ? trip.items.find(i => i.id === into) : undefined;
     const o = it && activeOption(it, trip);
     if (!o || o.price.mode !== "unit" || !o.price.unit) return null;
-    return { total: o.price.basis === "stay" ? o.price.unit : o.price.unit * (nights(it!.from, it!.to) || 1), url: o.source?.url };
+    return { total: o.price.basis === "stay" ? o.price.unit : o.price.unit * (nights(it!.from, it!.to) || 1), url: o.source?.url, name: o.label };
   });
+  // dasselbe wie das gewählte Angebot: über den Link, ohne Link über den Namen
+  const isCurrent = (o: StayOffer) => !!current && (current.url ? current.url === o.url : current.name === o.name);
 
   // Filter auf die Treffer (keine neue Anfrage); Entfernung zum Zentrum vom Anbieter oder aus den Koordinaten
   let sfilter = $state(noStayFilter());
@@ -201,7 +211,7 @@
     const cc = ccOf(geo, sp.country || trip.country || "") || near[0]?.ap.cc;
     // Mittelpunkt des Orts: für Anbieter, die im Umkreis suchen
     const city = findCity(geo, sp.place, cc || undefined);
-    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type,
+    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin, checkout, ...per, rooms: Math.max(1, Math.min(rooms, per.adults)), type,
       // Quellen nur bei Auswahl mitschicken (ein älterer Such-Dienst kennt neue Quellen noch nicht)
       ...(use.length < SOURCES.length ? { sources: use } : {}), currency: "EUR",
       ...(must.length ? { must } : {}), ...(minStars ? { minStars } : {}), ...(minScore ? { minScore } : {}) };
@@ -217,6 +227,7 @@
       picked = null;
       sources = r.sources;
       asked = q;
+      askedParts = parts;
     } catch (err) {
       if ((err as Error).name !== "AbortError") error = (err as Error).message;
     } finally { busy = false; }
@@ -227,7 +238,7 @@
     // gefundene Unterkünfte rechnen detailliert; weitere Treffer kommen als Angebote in denselben Posten
     app.trip.detail ||= {};
     app.trip.detail.stay = true;
-    into = takeStay(app.trip, o, asked, into, ids ?? who.map(x => x.t.id)).id;
+    into = takeStay(app.trip, o, asked, into, ids ?? who.map(x => x.t.id), askedParts).id;
     taken[o.id] = true;
     // Suche schließen und den Posten zeigen; weitere Angebote: Suche am Posten erneut öffnen
     onclose();
@@ -236,8 +247,8 @@
 </script>
 
 {#snippet res(o: StayOffer, an: number, n: number)}
-  {@const diff = current && current.url !== o.url ? o.total - current.total : null}
-  <article class="fs-res st-res" class:st-cur={current?.url === o.url} class:st-pick={view === "map" && picked === o.id}>
+  {@const diff = current && !isCurrent(o) ? o.total - current.total : null}
+  <article class="fs-res st-res" class:st-cur={isCurrent(o)} class:st-pick={view === "map" && picked === o.id}>
     {#if o.image}<img class="st-img" src={o.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={e => ((e.currentTarget as HTMLImageElement).hidden = true)} />{/if}
     <div class="st-b">
       <div class="fs-top">
@@ -246,6 +257,7 @@
       </div>
       <div class="fs-top">
         <b class="num fs-price">{eur(o.total)}</b>
+        {#if askedParts > 1}<span class="small st-times">× {askedParts} = <b class="num">{eur(o.total * askedParts)}</b></span>{/if}
         {#if o.test}<span class="pill-test" title={t("test.title")}>{t("test.badge")}</span>{/if}
         <span class="muted small">{t("perNight", { v: eur(o.total / an) })}{n > 1 ? ` · ${t("st.ppNight", { v: eur(o.total / an / n) })}` : ""}</span>
         {#if o.orig}<span class="muted small">{t("fx.orig", { v: money(o.orig.amount, o.orig.currency) })}</span>{/if}
@@ -260,7 +272,7 @@
       {#if o.place}<p class="muted small fs-sub">{o.place}</p>{/if}
       {#if dist(o).length}<div class="fs-pills st-dist">{#each dist(o) as d (d)}<span class="pill-h">{d}</span>{/each}</div>{/if}
       <div class="fs-acts">
-        {#if !taken[o.id] && current?.url === o.url}<span class="pill-n">{t("st.chosen")}</span>
+        {#if !taken[o.id] && isCurrent(o)}<span class="pill-n">{t("st.chosen")}</span>
         {:else}<button class="btn primary sm" disabled={taken[o.id]} onclick={() => take(o)}>{taken[o.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>{/if}
         {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel="noopener noreferrer">{t("search.atProvider")} ↗</a>{/if}
         {#if mapLink(o)}<a class="btn sm st-gmap" href={mapLink(o)} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
@@ -300,8 +312,10 @@
       </label>
       <label class="f">{t("st.checkin")}<input type="date" bind:value={checkin} required /></label>
       <label class="f">{t("st.checkout")}<input type="date" bind:value={checkout} min={checkin} required /></label>
-      <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(10, g.adults)} bind:value={rooms} /></label>
+      {#if type !== "hotel" || parts > 1}<label class="f">{t("st.parts")}<input class="n sm st-parts" type="number" min="1" max="10" bind:value={parts} oninput={() => (partsSet = true)} /></label>{/if}
+      <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(30, per.adults)} bind:value={rooms} oninput={() => (roomsSet = true)} /></label>
     </div>
+    {#if parts > 1}<p class="small st-split-hint">{t("st.split.hint", { all, n: parts, k: per.adults + per.childAges.length })}</p>{/if}
     {#if blocked}<p class="warnline">{t("st.avoided")}</p>{/if}
     {#if sts.length > 1}
       <div class="st-stations">
@@ -400,7 +414,7 @@
         </div>
       {/if}
       <StayFilters {list} bind:filter={sfilter} {ctx} />
-      <p class="muted small">{filtered.length < list.length ? `${t("fs.f.shown", { n: filtered.length, of: list.length })} · ` : ""}{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(list[0].total) })}</p>
+      <p class="muted small">{filtered.length < list.length ? `${t("fs.f.shown", { n: filtered.length, of: list.length })} · ` : ""}{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(Math.min(...list.map(o => o.total))) })}</p>
       {#if view === "map" && located.length}
         <MapView {points} selected={picked} onselect={id => { if (located.some(o => o.id === id)) picked = id; }} onbounds={b => (bounds = b)} />
         <p class="muted small st-maphint">{tn("map.inView", inView.length)}{located.length < shown.length ? ` · ${tn("map.missing", shown.length - located.length)}` : ""} · {t("map.pick")}</p>

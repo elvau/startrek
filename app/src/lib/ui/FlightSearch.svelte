@@ -19,6 +19,7 @@
   import { airportsNear, areaAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { addDays } from "../flights/kiwi";
   import { alternatives, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
+  import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
   import { FLIGHTS_URL, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import type { FlightScope } from "../flights/open.svelte";
@@ -159,6 +160,12 @@
   const bags = $derived(Math.min(bagCount ?? ((prefs.bags ?? saved.bags !== false) ? seats : 0), 2 * seats));
   const n = $derived(pax.adults + pax.children + pax.infants);
   const people = $derived([`${pax.adults} ${t("age.adultShort")}`, pax.children && tn("n.kids", pax.children), pax.infants && tn("n.babies", pax.infants)].filter(Boolean).join(" · "));
+  // große Gruppen in Buchungen aufteilen (Vorschlag ab 10 Sitzen: je 5): gesucht wird für eine, hochgerechnet auf alle
+  let bookSize = $state<number | null>(null);
+  const split = $derived(splitPax(pax, bookSize ?? (seats >= SPLIT_FROM ? BOOKING_SIZE : MAX_PAX)));
+  const qBags = $derived(split.bookings > 1 ? Math.min(2 * split.size, Math.ceil(bags / split.bookings)) : bags);
+  const splitInfo = $derived(split.bookings > 1 ? { size: split.size, note: t("fs.split.note", { n: split.bookings, k: split.size }) } : undefined);
+  const searchAll = (q: FlightQuery, signal?: AbortSignal) => { const f = split.factor; return searchFlights(q, signal).then(r => scaleResult(r, f)); };
 
   let busy = $state(false);
   let progress = $state("");
@@ -223,7 +230,7 @@
 
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
-    const common = { ...toQ, ...pax, maxStops, bags: bags > 0, bagCount: bags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
+    const common = { ...toQ, ...split.q, maxStops, bags: qBags > 0, bagCount: qBags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
     const q: Omit<FlightQuery, "from"> = kind === "oneway"
       ? mode === "flex" ? { ...common, depart: rFrom, departTo: wTo } : { ...common, depart: out, flexDays }
       : mode === "flex" ? { ...common, depart: rFrom, latest: rTo, nightsMin: lo, nightsMax: hi } : { ...common, depart: out, ret: ret || undefined, flexDays };
@@ -234,7 +241,7 @@
       for (const [i, code] of aps.entries()) {
         progress = t("fs.progress", { code, i: i + 1, n: aps.length });
         try {
-          const r = await searchFlights({ ...q, ...fromQ(code) }, ctrl.signal);
+          const r = await searchAll({ ...q, ...fromQ(code) }, ctrl.signal);
           r.sources.forEach(s => { const p = src.get(s.id); src.set(s.id, p ? { ...p, ok: p.ok || s.ok, count: p.count + s.count, error: p.ok ? p.error : s.error } : { ...s }); });
           const ok = r.offers.filter(o => !touchesAvoided(o, avoid, ccOfAp));
           avoidedOut += r.offers.length - ok.length;
@@ -296,8 +303,8 @@
     ctrl?.abort(); ctrl = new AbortController();
     const signal = ctrl.signal;
     try {
-      const plan = { from, stops, home, depart: rFrom, departTo: wTo, ...pax, maxStops, bags: bags > 0, bagCount: bags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
-      const run = (p: typeof plan, what: string) => searchRound(p, q => searchFlights(q, signal), (k, of) => (progress = `${what}${t("fs.leg", { k, n: of })}`));
+      const plan = { from, stops, home, depart: rFrom, departTo: wTo, ...split.q, maxStops, bags: qBags > 0, bagCount: qBags, selfTransfer: !noSelf, ...(avoid.length ? { avoidCountries: avoid } : {}), ...(prefs.maxHours ? { maxHours: prefs.maxHours } : {}), currency: "EUR" };
+      const run = (p: typeof plan, what: string) => searchRound(p, q => searchAll(q, signal), (k, of) => (progress = `${what}${t("fs.leg", { k, n: of })}`));
       // getrennte Flüge; kurze Stationen (unter 48 h) zusätzlich als Gabelflug mit langem Umstieg auf einem Ticket
       const res = [await run(plan, "")];
       const short = stops.slice(0, home ? stops.length : -1).some(isShort);
@@ -334,7 +341,7 @@
   function takeR(rt: RoundTrip) {
     app.trip.detail ||= {};
     app.trip.detail.flights = true;
-    into = takeRound(app.trip, rt, home, into, who).id;
+    into = takeRound(app.trip, rt, home, into, who, splitInfo).id;
     taken[rt.id] = true;
     // Suche schließen und den Posten zeigen; weitere Angebote: Suche am Posten erneut öffnen
     onclose();
@@ -345,7 +352,7 @@
     // gefundene Flüge rechnen detailliert; weitere Treffer kommen als Angebote in denselben Posten
     app.trip.detail ||= {};
     app.trip.detail.flights = true;
-    into = takeOffer(app.trip, o, into, who).id;
+    into = takeOffer(app.trip, o, into, who, splitInfo).id;
     taken[o.id + o.origin] = true;
     onclose();
     showItem(into);
@@ -486,16 +493,20 @@
       <label class="f fs-sel">{t("fs.bags")}<select value={bags} onchange={e => (bagCount = Number(e.currentTarget.value))}>
         {#each Array.from({ length: 2 * seats + 1 }, (_, i) => i) as v (v)}<option value={v}>{v === 0 ? t("fs.bagsNone") : v}</option>{/each}
       </select></label>
+      {#if seats >= 4}<label class="f fs-sel fs-split">{t("fs.split.label")}<select value={split.bookings > 1 ? split.size : MAX_PAX} onchange={e => (bookSize = Number(e.currentTarget.value))}>
+        {#each [MAX_PAX, 6, 5, 4, 3, 2].filter(v => v < seats || v === MAX_PAX) as v (v)}<option value={v}>{v >= seats ? t("fs.split.none") : v}</option>{/each}
+      </select></label>{/if}
       <label class="in-row"><input type="checkbox" bind:checked={noSelf} /> {t("fs.noSelf")}</label>
       <label class="in-row"><input type="checkbox" bind:checked={withAccess} /> {t("fs.withAccess")}</label>
     </div>
+    {#if split.bookings > 1}<p class="small fs-split-hint">{t("fs.split.hint", { n: split.bookings, k: split.size, all: n })}</p>{/if}
     <p class="muted small">{people}{who ? ` (${[...new Set(flyers(trip, who).map(hhKey))].join(", ")})` : ` (${t("fs.allTrav")})`}. {who ? ([...new Set(flyers(trip, who).map(hhKey))].length === 1 ? t("fs.pricesOne") : t("fs.pricesSome")) : t("fs.pricesAll")}</p>
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `${t("fs.busy")} ${progress}` : kind === "round" ? t("fs.roundBtn") : aps.length > 1 ? t("fs.compareN", { n: aps.length }) : t("fs.searchBtn")}</button>
     {#if kind !== "round" && to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
       {@const d0 = toLoc ?? resolveLoc(airportData, to, cc)}
       {@const o0 = originLoc(aps[0])}
-      {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: kind === "oneway" ? undefined : mode === "flex" ? rTo || undefined : ret || undefined, ...pax }}
+      {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: kind === "oneway" ? undefined : mode === "flex" ? rTo || undefined : ret || undefined, ...split.q }}
       {@const sky = skyscannerLink(lq)}
       <p class="muted small fs-direct">{t("fs.directFrom", { ap: aps[0] })} <a href={googleFlightsLink({ ...lq, from: o0?.kind === "city" ? o0.city : lq.from, to: d0 && d0.kind !== "airport" ? d0.city : lq.to })} target="_blank" rel="noopener noreferrer">{t("fs.googleFlights")} ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
     {/if}

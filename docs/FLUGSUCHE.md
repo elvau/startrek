@@ -188,3 +188,13 @@ Reisezeit von Tür zu Tür (eine Richtung) für jede Art, die schnellste ist mar
 
 Links: bahn.de und Google Maps mit Start, Ziel und Tag vorbefüllt; Omio, Trainline, FlixBus (später mit Partnerlinks);
 für den Reisebus FlixBus Mieten und 11880 (Anfrage bei Busunternehmen).
+
+## Große Gruppen
+
+- **Flüge:** ab 10 Sitzen schlägt die Suche Buchungen zu höchstens 5 Personen vor (wählbar 2–9; die Anbieter suchen
+  höchstens 9 auf einmal). Gesucht wird für die größte Buchung (Erwachsene und Kinder anteilig, Babys bei Erwachsenen),
+  die Preise werden nach Köpfen auf alle hochgerechnet (`splitPax`, `scaleResult` in `app/src/lib/flights/app.ts`).
+  Das Angebot merkt sich die Buchungsgröße (`Option.split`), die Preisprüfung sucht wieder für eine Buchung.
+- **Unterkünfte:** Ferienwohnungen und „Alle“ ab 11 Gästen auf mehrere Unterkünfte zu je höchstens 8 (änderbar),
+  gesucht für die größte; der Preis gilt je Unterkunft und wird mit `multiply` so oft gezählt wie nötig. Hotels:
+  ein Zimmer je zwei Gäste (höchstens 30).
