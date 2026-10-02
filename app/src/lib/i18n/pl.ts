@@ -282,6 +282,7 @@ export const pl: Dict = {
   "fs.sync.before": "ląduje {h} przed: {who}",
   "fs.sync.label": "Przylot razem z: {who}",
   "fs.sync.same": "ląduje razem z: {who}",
+  "fx.orig": "przeliczone z {v}",
   "ins.add": "Oszacuj ubezpieczenie",
   "ins.compare": "Ubezpieczenie podróżne u:",
   "ins.estimate": "Szacunek (rezygnacja + leczenie za granicą)",

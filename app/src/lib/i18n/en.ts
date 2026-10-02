@@ -264,6 +264,7 @@ export const en: Dict = {
   "fs.sync.before": "lands {h} before {who}",
   "fs.sync.label": "Arrive together with {who}",
   "fs.sync.same": "lands with {who}",
+  "fx.orig": "converted from {v}",
   "ins.add": "Estimate travel insurance",
   "ins.compare": "Travel insurance at:",
   "ins.estimate": "Estimate (cancellation + health abroad)",

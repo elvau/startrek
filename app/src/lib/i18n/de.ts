@@ -262,6 +262,7 @@ export const de = {
   "fs.sync.before": "landet {h} vor {who}",
   "fs.sync.label": "Zusammen ankommen mit {who}",
   "fs.sync.same": "landet mit {who}",
+  "fx.orig": "umgerechnet aus {v}",
   "ins.add": "Reiseversicherung schätzen",
   "ins.compare": "Reiseversicherung bei:",
   "ins.estimate": "Richtwert (Reiserücktritt + Auslandskranken)",

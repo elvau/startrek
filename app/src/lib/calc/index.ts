@@ -287,6 +287,18 @@ export const eur = (v: number) => {
   return cur.get(l)!.format(Math.round(v || 0));
 };
 
+const curX = new Map<string, Intl.NumberFormat>();
+/** Betrag in beliebiger Währung, gerundet, im Format der Sprache (z. B. „512 £“, „1.234 zł“) */
+export const money = (v: number, currency: string) => {
+  if (currency === "EUR") return eur(v);
+  const k = locale() + currency;
+  if (!curX.has(k)) {
+    try { curX.set(k, new Intl.NumberFormat(locale(), { style: "currency", currency, maximumFractionDigits: 0, minimumFractionDigits: 0 })); }
+    catch { return `${Math.round(v || 0)} ${currency}`; }
+  }
+  return curX.get(k)!.format(Math.round(v || 0));
+};
+
 const fmt2 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const cur2 = new Map<string, Intl.NumberFormat>();
 /** Anteil pro Person: unter 100 € mit Cent, wenn er nicht glatt aufgeht (20 € für 3 → „6,67 €“ statt „7 €“) */

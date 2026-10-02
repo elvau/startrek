@@ -4,9 +4,14 @@ import { searchTravelpayouts } from "./travelpayouts";
 import { searchDuffel } from "./duffel";
 import type { FlightOffer, FlightQuery, SearchResult, SourceStatus } from "./types";
 import { partnerOn } from "../partner";
+import { inCurrency, type Rates } from "../fx";
 
 /** Schlüssel des Such-Dienstes (Cloudflare-Secrets); fehlt einer, bleibt die Quelle aus */
-export interface FlightEnv { DUFFEL_TOKEN?: string; TRAVELPAYOUTS_TOKEN?: string; TRAVELPAYOUTS_MARKER?: string; KIWI_MCP_URL?: string; PARTNER_LINKS?: string }
+export interface FlightEnv {
+  DUFFEL_TOKEN?: string; TRAVELPAYOUTS_TOKEN?: string; TRAVELPAYOUTS_MARKER?: string; KIWI_MCP_URL?: string; PARTNER_LINKS?: string;
+  /** Tageskurse (EZB), vom Such-Dienst gesetzt: Preise in fremder Währung werden umgerechnet */
+  FX?: Rates | null;
+}
 
 interface Provider {
   id: string;
@@ -57,7 +62,7 @@ export async function searchAll(q: FlightQuery, env: FlightEnv = {}, f: typeof f
   const lists = await Promise.all(active.map(async p => {
     const t0 = Date.now();
     try {
-      const offers = await withTimeout(p.search(q, env, f), timeoutMs);
+      const offers = inCurrency(await withTimeout(p.search(q, env, f), timeoutMs), "price", q.currency || "EUR", env.FX);
       sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0 });
       return offers;
     } catch (e) {

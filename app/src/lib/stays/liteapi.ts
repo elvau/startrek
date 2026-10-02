@@ -68,7 +68,7 @@ export function fromLite(hotels: any[], rates: any[], q: StayQuery, link?: strin
   return rates.map((r: any): StayOffer | null => {
     const h = meta.get(r.hotelId);
     const c = cheapest(r, must.includes("breakfast"), must.includes("freeCancel"));
-    if (!h || !c || c.currency !== (q.currency || "EUR")) return null;
+    if (!h || !c) return null;
     const facts = c.free ? ["Kostenlos stornierbar"] : [];
     const url = link ? `${link.replace(/\/$/, "")}/hotels/${encodeURIComponent(r.hotelId)}?checkin=${q.checkin}&checkout=${q.checkout}&adults=${q.adults}${q.childAges.length ? `&children=${q.childAges.join(",")}` : ""}` : undefined;
     return {

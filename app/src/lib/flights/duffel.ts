@@ -2,7 +2,8 @@
  * Duffel (Flug-API mit echten Airline-Tarifen, auch NDC wie Lufthansa und British Airways).
  * Selbst angemeldet, Token als Cloudflare-Secret DUFFEL_TOKEN. Suchen sind bis 1500 je Buchung frei, darüber 0,005 $.
  * Nur feste Daten (Duffel kennt keine Zeitfenster); flexible Suchen übernehmen Kiwi und Travelpayouts.
- * Preise gelten für alle Reisenden. Duffel nennt keinen Link zum Buchen, gebucht würde später in der App.
+ * Preise gelten für alle Reisenden, in der Währung der Airline. Duffel nennt keinen Link zum Buchen, gebucht würde
+ * später in der App.
  */
 import type { FlightOffer, FlightQuery, OfferLeg } from "./types";
 
@@ -53,14 +54,14 @@ function checkedBags(o: any): number | undefined {
   return Math.min(...pax.map(p => (p.baggages || []).filter((b: any) => b.type === "checked").reduce((v: number, b: any) => v + (b.quantity || 0), 0)));
 }
 
-/** Antwort in unser Format; nur Euro (ohne Kurs wäre ein Pfundpreis falsch), günstigste zuerst */
+/** Antwort in unser Format, in der Währung der Airline (der Such-Dienst rechnet mit dem Tageskurs um), günstigste zuerst */
 export function fromDuffel(data: any): FlightOffer[] {
-  return (data?.data?.offers || []).filter((o: any) => o.total_currency === "EUR" && o.slices?.length).map((o: any): FlightOffer => {
+  return (data?.data?.offers || []).filter((o: any) => /^[A-Z]{3}$/.test(o.total_currency || "") && o.slices?.length).map((o: any): FlightOffer => {
     const [out, back] = o.slices.map(legOf);
     const checked = checkedBags(o);
     return {
       id: "duffel:" + o.id, source: "duffel", sourceName: o.owner?.name ? `Duffel · ${o.owner.name}` : "Duffel",
-      price: Math.round(parseFloat(o.total_amount)), currency: "EUR", out, ...(back ? { back } : {}),
+      price: Math.round(parseFloat(o.total_amount)), currency: o.total_currency, out, ...(back ? { back } : {}),
       ...(checked != null ? { baggage: { personal: 1, cabin: 0, checked } } : {})
     };
   }).filter((o: FlightOffer) => o.price > 0 && o.out.dep).sort((a: FlightOffer, b: FlightOffer) => a.price - b.price).slice(0, 40);

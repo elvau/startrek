@@ -78,6 +78,8 @@ export interface FlightOffer {
   /** Gesamtpreis für alle Reisenden */
   price: number;
   currency: string;
+  /** Preis in der Währung des Anbieters, falls umgerechnet (z. B. 512 GBP) */
+  orig?: { amount: number; currency: string };
   url?: string;
   /** Link mit Partner-Kennung (Provision bei Buchung), in der App als „Partner“ gekennzeichnet */
   sponsored?: boolean;

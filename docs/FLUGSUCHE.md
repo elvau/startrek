@@ -61,7 +61,7 @@ Sobald ein Secret da ist, taucht der Anbieter in der Suche als „eingerichtet�
    Freischaltung des Kontos mit Firmenangaben und Karte).
 2. Im Worker `DUFFEL_TOKEN` als **Secret** anlegen.
 3. Duffel wird nur bei **festen Daten** gefragt (ohne ± Tage); flexible Zeiträume und Nur-Hinflug-Fenster bleiben bei
-   Kiwi und Travelpayouts. Nur Angebote in Euro (ohne Kurs wäre ein Pfundpreis falsch). Kinder schickt die App mit
+   Kiwi und Travelpayouts. Preise in anderer Währung (z. B. Pfund) rechnet der Such-Dienst mit dem Tageskurs um. Kinder schickt die App mit
    10 Jahren (Duffel braucht ein Alter). Kosten: Suchen frei bis 1500 je Buchung, darüber 0,005 $ je Suche.
    Code: `app/src/lib/flights/duffel.ts`.
 
@@ -114,6 +114,12 @@ Treffer an anderen Flughäfen fallen raus.
   als ein Ticket über diese Station (Kiwi: `stopover_airports`, Aufenthalt 4–48 h je nach Nächten). Beide Varianten
   stehen gemischt in der Liste; „2 Tickets“ statt „3 Tickets“ zeigt den Gabelflug. Travelpayouts kennt keine
   Umstiegsorte und bleibt bei diesen Anfragen still.
+
+## Währungen
+
+Preise der Anbieter in anderer Währung als die Suche (meist Euro) rechnet der Such-Dienst mit den Referenzkursen der
+EZB um (`app/src/lib/fx.ts`, einmal am Tag geholt, 12 Stunden zwischengespeichert); die App zeigt dann „umgerechnet aus
+512 £“. Ohne Kurs fällt so ein Angebot weg. `GET /rates` liefert die Kurse auch der App.
 
 ## Unterkünfte
 

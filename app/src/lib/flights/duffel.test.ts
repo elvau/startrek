@@ -36,9 +36,11 @@ describe("Duffel", () => {
     expect(isoMinutes("P1DT3H")).toBe(1620);
     expect(isoMinutes(undefined)).toBe(0);
   });
-  it("Angebote: Strecken, Umstiege, Koffer; nur Euro, günstigste zuerst", () => {
+  it("Angebote: Strecken, Umstiege, Koffer; Währung der Airline (umgerechnet wird in der Suche), günstigste zuerst", () => {
     const l = fromDuffel({ data: { offers: [offer("b", "812.40"), offer("a", "640.00"), offer("c", "300.00", "GBP")] } });
-    expect(l.map(o => o.id)).toEqual(["duffel:a", "duffel:b"]);
+    expect(l.map(o => o.id)).toEqual(["duffel:c", "duffel:a", "duffel:b"]);
+    expect(l[0].currency).toBe("GBP");
+    l.shift();
     const o = l[0];
     expect(o.price).toBe(640);
     expect(o.sourceName).toBe("Duffel · Lufthansa");

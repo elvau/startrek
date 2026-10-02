@@ -15,6 +15,7 @@ import type { EventEnv } from "../../app/src/lib/events/types";
 import { blockedResult, parseActivityQuery, searchActivities, viatorBlock } from "../../app/src/lib/activities/search";
 import type { ActivityEnv } from "../../app/src/lib/activities/types";
 import { parseCalendarQuery, searchCalendar, type CalendarResult } from "../../app/src/lib/flights/calendar";
+import { fetchEcb, type Rates } from "../../app/src/lib/fx";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller } from "./gemini";
@@ -97,11 +98,19 @@ export default {
       if (hit) return json(await hit.json(), 200, { ...h, "x-cache": "hit" });
 
       const net = meter(env);
-      const result = route === "flights" ? await searchAll(q as FlightQuery, env, net) : await searchStays(q as StayQuery, env, net);
+      const fx = await rates(env, ctx);
+      const result = route === "flights" ? await searchAll(q as FlightQuery, { ...env, FX: fx }, net) : await searchStays(q as StayQuery, { ...env, FX: fx }, net);
       if (result.offers.length) {
         ctx.waitUntil(cache.put(key, new Response(JSON.stringify(result), { headers: { "content-type": "application/json", "cache-control": "max-age=600" } })));
       }
       return json(result, 200, { ...h, "x-cache": "miss" });
+    }
+
+    // Tageskurse für die App (Anzeige in anderen Währungen)
+    if (url.pathname === "/rates" && req.method === "GET") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      const r = await rates(env, ctx);
+      return r ? json(r, 200, { ...h, "cache-control": "max-age=3600" }) : json({ error: "Kurse gerade nicht erreichbar" }, 503, h);
     }
 
     if (url.pathname === "/flights/calendar" && req.method === "POST") {
@@ -219,7 +228,8 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   // überlastet: kurz warten und wiederholen, dann das Ausweichmodell
   const gemini = geminiCaller({ key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], f: net, onCall: () => { budget.used++; } });
   try {
-    const result = await runAgent(r, { gemini, flights: q => searchAll(q, env, budget.fetch), stays: q => searchStays(q, env, budget.fetch), canSearch: budget.canSearch });
+    const fx = await rates(env);
+    const result = await runAgent(r, { gemini, flights: q => searchAll(q, { ...env, FX: fx }, budget.fetch), stays: q => searchStays(q, { ...env, FX: fx }, budget.fetch), canSearch: budget.canSearch });
     // eine Rückfrage zählt nicht gegen das Tageslimit, erst die Suche danach
     if (result.question) return json({ ...result, remaining: Math.max(0, limit - quota.used) }, 200, h);
     await quota.bump();
@@ -273,8 +283,8 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
   const offerKey = (id: string) => new Request(`https://mcp.splitandfly/offer/${user.kid}/${encodeURIComponent(id)}`);
   const limit = Number(env.MCP_DAILY) || 50;
   const res = await mcpMessage(msg, user, {
-    flights: q => searchAll(q, env, net),
-    stays: q => searchStays(q, env, net),
+    flights: async q => searchAll(q, { ...env, FX: await rates(env) }, net),
+    stays: async q => searchStays(q, { ...env, FX: await rates(env) }, net),
     events: q => cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, net, cachedJson), r => r.events.length > 0, ctx),
     store: tripStore(env, net),
     offers: {
@@ -318,6 +328,12 @@ async function admin(req: Request, env: Env, h: Record<string, string>): Promise
 }
 
 /** JSON im Zwischenspeicher des Rechenzentrums (z. B. Mannschaftslisten für eine Woche) */
+/** Tageskurse der EZB, 12 Stunden zwischengespeichert; ohne Kurse bleibt es bei Preisen in der Suchwährung */
+async function rates(env: Env, ctx?: ExecutionContext): Promise<Rates | null> {
+  try { return await cachedJson("fx/ecb", 12 * 3600, () => fetchEcb(meter(env)), r => Object.keys(r.rates).length > 10, ctx); }
+  catch { return null; }
+}
+
 async function cachedJson<T>(key: string, ttlSec: number, load: () => Promise<T>, keep: (v: T) => boolean = () => true, ctx?: ExecutionContext): Promise<T> {
   const k = new Request(`https://cache.splitandfly/${key}`);
   const hit = await caches.default.match(k);

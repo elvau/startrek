@@ -6,7 +6,7 @@
    * Treffer kommen als Angebote in einen Unterkunft-Posten, Preis für den ganzen Aufenthalt.
    */
   import { app } from "../store.svelte";
-  import { activeOption, eur } from "../calc";
+  import { activeOption, eur, money } from "../calc";
   import { dateDE, dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
@@ -245,6 +245,7 @@
       <div class="fs-top">
         <b class="num fs-price">{eur(o.total)}</b>
         <span class="muted small">{t("perNight", { v: eur(o.total / an) })}{n > 1 ? ` · ${t("st.ppNight", { v: eur(o.total / an / n) })}` : ""}</span>
+        {#if o.orig}<span class="muted small">{t("fx.orig", { v: money(o.orig.amount, o.orig.currency) })}</span>{/if}
         {#if diff != null && Math.abs(diff) >= 1}<span class="st-diff" class:good={diff < 0}>{diff < 0 ? "−" : "+"}{eur(Math.abs(diff))} {t("st.vsCurrent")}</span>{/if}
       </div>
       <div class="fs-pills">

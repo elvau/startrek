@@ -45,6 +45,8 @@ export interface StayOffer {
   /** Gesamtpreis für den ganzen Aufenthalt, alle Gäste */
   total: number;
   currency: string;
+  /** Preis in der Währung des Anbieters, falls umgerechnet */
+  orig?: { amount: number; currency: string };
   url?: string;
   /** Gästebewertung 0–10 */
   score?: number;

@@ -299,6 +299,7 @@ export const ar: Dict = {
   "fs.sync.before": "يهبط قبل {who} بـ {h}",
   "fs.sync.label": "الوصول مع {who}",
   "fs.sync.same": "يهبط مع {who}",
+  "fx.orig": "محوّل من {v}",
   "ins.add": "تقدير تأمين السفر",
   "ins.compare": "تأمين السفر لدى:",
   "ins.estimate": "تقدير (إلغاء الرحلة + علاج في الخارج)",

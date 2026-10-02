@@ -5,7 +5,7 @@
    * feste Daten (± Tage) oder flexibler Zeitraum mit „spätestens zuhause“ und Nächten per Schieberegler.
    */
   import { app, calc } from "../store.svelte";
-  import { eur } from "../calc";
+  import { eur, money } from "../calc";
   import { airportsOf } from "../calc/travel";
   import { dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
@@ -633,7 +633,7 @@
               <span class="fs-badge">{o.sourceName}</span>
             </div>
             {#if alongCost != null && Math.abs(o.total - alongCost) >= 1}<p class="st-diff fs-sub" class:good={o.total < alongCost}>{o.total < alongCost ? t("fs.cheaperAlong", { v: eur(alongCost - o.total) }) : t("fs.dearerAlong", { v: eur(o.total - alongCost) })}</p>{/if}
-            <p class="muted small fs-sub">{t("fs.flightPrice", { v: eur(o.price) })}{withAccess && o.access ? ` + ${t("fs.accessPrice", { v: eur(o.access) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(o.total / n) })}` : ""}{o.baggage ? ` · ${tn("n.bags", o.baggage.checked)}` : ""}</p>
+            <p class="muted small fs-sub">{t("fs.flightPrice", { v: eur(o.price) })}{withAccess && o.access ? ` + ${t("fs.accessPrice", { v: eur(o.access) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(o.total / n) })}` : ""}{o.baggage ? ` · ${tn("n.bags", o.baggage.checked)}` : ""}{o.orig ? ` · ${t("fx.orig", { v: money(o.orig.amount, o.orig.currency) })}` : ""}</p>
             <div class="fs-pills">
               {#if o.nights != null}<span class="pill-n">{tn("fs.nightsThere", o.nights)}</span>{/if}
               {#if !isNaN(o.home)}<span class="pill-h">{t("fs.homeAt", { t: fmtMin(o.home) })}</span>{/if}

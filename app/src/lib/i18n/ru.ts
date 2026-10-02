@@ -282,6 +282,7 @@ export const ru: Dict = {
   "fs.sync.before": "садится за {h} до: {who}",
   "fs.sync.label": "Прилететь вместе с: {who}",
   "fs.sync.same": "садится вместе с: {who}",
+  "fx.orig": "пересчитано из {v}",
   "ins.add": "Оценить страховку",
   "ins.compare": "Страховка у:",
   "ins.estimate": "Оценка (отмена поездки + медицина за рубежом)",

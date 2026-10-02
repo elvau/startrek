@@ -2,6 +2,7 @@
 import type { SourceStatus } from "../flights/types";
 import { searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
 import { searchLite } from "./liteapi";
+import { inCurrency, type Rates } from "../fx";
 import { keepStays } from "./sort";
 import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StaySearchResult } from "./types";
 
@@ -10,6 +11,8 @@ export interface StayEnv {
   BOOKING_MCP_URL?: string; TRIVAGO_MCP_URL?: string;
   /** liteAPI: Schlüssel (Secret) und optional die eigene Buchungsseite (White Label) für die Links */
   LITEAPI_KEY?: string; LITEAPI_LINK?: string;
+  /** Tageskurse (EZB), vom Such-Dienst gesetzt */
+  FX?: Rates | null;
 }
 
 interface Provider {
@@ -50,7 +53,7 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
   const lists = await Promise.all(active.map(async p => {
     const t0 = Date.now();
     try {
-      const offers = await withTimeout(p.search(q, env, f), timeoutMs);
+      const offers = inCurrency(await withTimeout(p.search(q, env, f), timeoutMs), "total", q.currency || "EUR", env.FX);
       sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0 });
       return offers;
     } catch (e) {
