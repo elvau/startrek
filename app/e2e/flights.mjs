@@ -55,6 +55,14 @@ try {
     await new Promise(res => setTimeout(res, 200));
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body.departTo ? oneWay(body) : RESULT) });
   });
+  // Preiskalender (Richtpreise pro Person): drei Tage im März
+  const calAsked = [];
+  await p.route("https://flights.test/flights/calendar", async r => {
+    const q = JSON.parse(r.request().postData());
+    calAsked.push(q);
+    const days = q.month === "2027-03" ? [{ out: "2027-03-02", price: 210, stops: 1 }, { out: "2027-03-04", price: 180, stops: 0 }, { out: "2027-03-09", price: 260, stops: 0 }] : [];
+    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ days, configured: true }) });
+  });
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   await p.goto(URL);
@@ -165,8 +173,14 @@ try {
   await m.locator(".fs-res").first().waitFor();
   const f = asked.at(-1);
   if (f.ret !== "2027-07-29" || f.flexDays !== 2 || f.latest) fail("feste Anfrage: " + JSON.stringify(f));
-  await m.locator(".chip", { hasText: "Nur direkt" }).click();
+  // Filterleiste: „Direkt“ mit Anzahl und Preis ab, ein zweiter Tipp hebt den Filter auf
+  const direct = m.locator(".ff-stops .chip", { hasText: "Direkt" });
+  if (!/Direkt\s*2 · ab/.test(await direct.textContent())) fail("Chip Direkt: " + await direct.textContent());
+  await direct.click();
   if ((await m.locator(".fs-res").count()) !== 2) fail("Filter direkt (je Flughafen einer)");
+  if (!(await m.locator(".fs-res").first().textContent()).includes("Eurowings")) fail("Direktflug fehlt");
+  await direct.click();
+  if ((await m.locator(".fs-res").count()) !== 4) fail("Filter direkt nicht aufgehoben");
   await m.locator(".chip", { hasText: "Günstigste" }).click();
   await m.locator(".fs-res").nth(0).locator(".btn", { hasText: "Übernehmen" }).click();
   // Übernehmen schließt die Suche und zeigt den Posten
@@ -250,6 +264,16 @@ try {
   await m.locator(".fs-res").first().waitFor();
   const h = asked.at(-1);
   if (h.adults !== 1 || h.children !== 1) fail("Anfrage Hase ohne Jan: " + JSON.stringify(h));
+  // zusammen ankommen: Abstand zur Landung von Klein an jedem Treffer, Filter ± Stunden
+  const sync = await m.locator(".fs-res .fs-sync").allTextContents();
+  if (!sync.length || !sync.every(x => x.includes("Klein"))) fail("Landung im Vergleich zu Klein fehlt: " + sync);
+  const tg = m.locator(".ff-together .chip").first();
+  if (!(await m.locator(".ff-together").textContent()).includes("Zusammen ankommen mit Klein")) fail("Filter zusammen ankommen fehlt");
+  const nAll = await m.locator(".fs-res").count();
+  await tg.click();
+  const nTg = await m.locator(".fs-res").count();
+  if (!(nTg > 0 && nTg < nAll) || (await m.locator(".fs-res .fs-sync:not(.near)").count())) fail(`zusammen ankommen filtert nicht: ${nAll} → ${nTg}`);
+  log(`Zusammen ankommen: Treffer zeigen „${sync[0]}“, ${(await tg.textContent()).trim()} lässt ${nTg} von ${nAll}`);
   await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
   await p.keyboard.press("Escape");
   await p.locator("#flights .card[data-item]", { hasText: "Hase · 2 Pers." }).waitFor();
@@ -332,6 +356,38 @@ try {
   if (ow.departTo !== "2027-03-05" || ow.depart !== "2027-03-01" || ow.ret || ow.latest || ow.to !== "GIG") fail("Anfrage nur Hinflug: " + JSON.stringify(ow));
   if (await m.locator(".fs-res .fs-leg", { hasText: "Rück" }).count()) fail("nur Hinflug zeigt Rückflug");
   log("Nur Hinflug: nach GIG, Abflug irgendwann 01.03. bis 05.03., ohne Rückflug");
+  // Preiskalender: je Tag der günstigste Preis und die Umstiege, günstig grün, teuer rot; Tipp zeigt nur diesen Tag
+  const days = m.locator(".pcal .pcal-d:not(.off)");
+  if ((await days.count()) !== 5) fail("Kalender: " + await days.count() + " Tage");
+  if (!(await days.first().getAttribute("class")).includes("t0") || !(await days.last().getAttribute("class")).includes("t2")) fail("Kalender-Farben");
+  if (!(await days.first().textContent()).includes("(0)")) fail("Kalender ohne Umstiege: " + await days.first().textContent());
+  const all = await m.locator(".fs-res").count();
+  await days.nth(2).click();
+  await until(async () => (await m.locator(".fs-res").count()) === all / 5, "nur Flüge am 03.03.");
+  if (!(await m.locator(".fs-res").first().textContent()).includes("03.03")) fail("Flug nicht am 03.03.: " + await m.locator(".fs-res").first().textContent());
+  await days.nth(2).click();
+  await until(async () => (await m.locator(".fs-res").count()) === all, "Kalender aufgehoben");
+  log(`Preiskalender: 5 Tage von grün bis rot mit Umstiegen, Tipp auf den 03.03. zeigt ${all / 5} Flüge, zweiter Tipp alle`);
+  // Preiskalender vor der Suche: Richtpreise für den Monat, Tipp auf einen Tag sucht genau diesen Tag
+  await m.locator(".rc > summary").click();
+  const rcDays = m.locator(".rc .pcal-d:not(.off)");
+  await until(async () => (await rcDays.count()) === 3, "Richtpreise im Kalender");
+  const cq = calAsked.at(-1);
+  if (cq.month !== "2027-03" || !cq.oneWay || cq.to.join() !== "GIG" || !cq.from.length) fail("Kalender-Anfrage: " + JSON.stringify(cq));
+  if (!(await rcDays.nth(1).getAttribute("class")).includes("t0")) fail("günstigster Richtpreis nicht grün");
+  await m.locator(".rc .rc-nav .btn", { hasText: "›" }).click();
+  await until(async () => calAsked.at(-1).month === "2027-04", "nächster Monat");
+  await m.locator(".rc").locator("text=noch keine Richtpreise").waitFor();
+  await m.locator(".rc .rc-nav .btn", { hasText: "‹" }).click();
+  await until(async () => (await rcDays.count()) === 3, "zurück im März");
+  const nAsk = asked.length;
+  await rcDays.nth(1).click();
+  await until(async () => asked.length > nAsk, "Suche nach Tipp im Kalender");
+  const calQ = asked.at(-1);
+  if (calQ.depart !== "2027-03-04" || calQ.departTo || calQ.ret || calQ.flexDays) fail("Suche aus dem Kalender: " + JSON.stringify(calQ));
+  if (!(await m.locator(".fs-mode .chip.on").textContent()).includes("Feste Daten")) fail("Kalender stellt nicht auf feste Daten");
+  await m.locator(".fs-res").first().waitFor();
+  log("Preiskalender vor der Suche: Richtpreise März (180 € grün), Monat vor und zurück, Tipp auf den 04.03. sucht genau diesen Tag");
 
   // Rundreise: DUS → Rio (5–7 Nächte) → Buenos Aires (3–4 Nächte) → zurück
   await m.locator(".fs-kind .chip", { hasText: "Rundreise" }).click();

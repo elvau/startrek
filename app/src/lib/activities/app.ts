@@ -4,6 +4,7 @@ import { FLIGHTS_URL } from "../flights/app";
 import { uid, type Item, type Trip } from "../model";
 import { dayShort } from "../format";
 import type { EventHit, EventQuery, EventSearchResult } from "../events/types";
+import { locOf } from "../geo/maps";
 import type { ActivityHit, ActivityQuery, ActivitySearchResult } from "./types";
 
 async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
@@ -25,13 +26,15 @@ export function eventItem(h: EventHit): Item {
   const when = `${dayShort(h.start.slice(0, 10))}${h.start.length > 10 ? ` ${h.start.slice(11, 16)}` : ""}`;
   const where = [h.venue, h.city].filter(Boolean).join(", ");
   const adult = eur(h.price?.min, h.price?.currency || "");
+  const loc = h.venue || h.address ? locOf(h.venue || h.address, h.venue ? h.city || h.address : h.city, h) : locOf(undefined, undefined, h);
   return {
     id: uid(), cat: "attractions", name: h.name, status: "idea",
     note: [when, where].filter(Boolean).join(" · "),
     options: [{
       id: uid(), label: h.name, detail: [when, where].filter(Boolean).join(" · "),
       price: { mode: "person", currency: "EUR", adult }, ...(adult ? {} : { estimate: true }),
-      source: { name: h.sourceName, at: new Date().toISOString().slice(0, 10), ...(h.url ? { url: h.url } : {}) }
+      source: { name: h.sourceName, at: new Date().toISOString().slice(0, 10), ...(h.url ? { url: h.url } : {}) },
+      ...(loc ? { loc } : {})
     }]
   };
 }

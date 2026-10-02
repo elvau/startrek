@@ -24,6 +24,11 @@
   import type { FlightScope } from "../flights/open.svelte";
   import { googleFlightsLink, skyscannerLink } from "../links";
   import type { FlightOffer, FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
+  import { applyFilter, arrivalGap, dayCells, noFilter, sortFlights, type FlightSort, type SyncRef } from "../flights/filter";
+  import { arrivals } from "../stays/presence";
+  import FlightFilters from "./FlightFilters.svelte";
+  import PriceCalendar from "./PriceCalendar.svelte";
+  import RoughCalendar from "./RoughCalendar.svelte";
 
   let { onclose, scope = {}, inline = false }: { onclose: () => void; scope?: FlightScope; inline?: boolean } = $props();
 
@@ -162,7 +167,9 @@
   let rows = $state<CompareRow[]>([]);
   let sources = $state<SourceStatus[]>([]);
   let lateOut = $state(0);
-  let sort = $state<"price" | "time" | "direct">("price");
+  let sort = $state<FlightSort>("price");
+  // Filter auf die Treffer (keine neue Anfrage); Kalender wählt Hin- und Rücktag
+  let filter = $state(noFilter());
   let taken = $state<Record<string, boolean>>({});
   let into = $state<string | undefined>(item?.id);
   let ctrl: AbortController | undefined;
@@ -177,18 +184,22 @@
   }
   function resetAps() { aps = nearestAirports(trip, 4, who); custom = false; }
 
-  const shown = $derived.by(() => {
-    const l = [...(list || [])];
-    if (sort === "direct") return l.filter(o => !o.out.stops && !o.back?.stops);
-    if (sort === "time") return l.sort((a, b) => a.out.minutes + (a.back?.minutes || 0) + 120 * a.accessHours - (b.out.minutes + (b.back?.minutes || 0) + 120 * b.accessHours));
-    return l;
-  });
+  const SHOW = 40;
+  // Flüge der anderen (schon übernommen): zum gemeinsamen Ankommen
+  const refs = $derived<SyncRef[]>(arrivals(trip).filter(a => (a.arr || a.dep) && !a.ids.some(id => whoIds.includes(id))).map(a => ({ who: a.who, arr: a.arr, dep: a.dep })));
+  const filtered = $derived(applyFilter(list || [], filter, refs));
+  const shown = $derived(sortFlights(filtered, sort).slice(0, SHOW));
+  const returns = $derived(!!list?.some(o => o.back));
+  // Kalender nur, wenn die Treffer an mehr als einem Tag liegen
+  const outCells = $derived(dayCells(list || [], filter, "out", refs));
+  const backCells = $derived(filter.outDay || outCells.length < 2 ? dayCells(list || [], filter, "back", refs) : []);
+  const hhmm = (m: number) => (m >= 1440 ? tn("n.days", Math.round(m / 1440)) : `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, "0")} h`);
   const dur = (m: number) => `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`;
   const hm = (h: number) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, "0")} h`;
 
   async function search(e: Event) {
     e.preventDefault();
-    error = ""; list = null; rows = []; sources = []; lateOut = 0; avoidedOut = 0; rounds = null; roundErrors = [];
+    error = ""; list = null; rows = []; sources = []; lateOut = 0; avoidedOut = 0; rounds = null; roundErrors = []; filter = noFilter();
     if (!aps.length) { error = t("fs.errAirport"); return; }
     if (kind === "round") return roundSearch();
     if (kind === "oneway") {
@@ -238,13 +249,28 @@
           cmp.push(compareRow(code, [], (err as Error).message));
         }
       }
-      list = all.sort((a, b) => a.total - b.total).slice(0, 40);
+      // mehr behalten als gezeigt: Filter und Kalender arbeiten auf allen Treffern
+      list = all.sort((a, b) => a.total - b.total).slice(0, 400);
       rows = cmp.sort((a, b) => (a.count ? a.total : Infinity) - (b.count ? b.total : Infinity));
       sources = [...src.values()];
       lateOut = late;
     } catch (err) {
       if ((err as Error).name !== "AbortError") error = (err as Error).message;
     } finally { busy = false; progress = ""; }
+  }
+
+  /** Preiskalender vor der Suche: Abflug-Codes (Städte mit Stadt-Code) und Ziel (Stadt-Code oder bis zu 2 Flughäfen) */
+  const roughQuery = $derived.by(() => {
+    if (kind === "round" || !aps.length) return null;
+    const dest = toLoc ?? (to.trim() ? resolveLoc(airportData, to, cc) ?? areaFor(to) : null);
+    const toCodes = dest ? (dest.kind === "city" ? [dest.code] : dest.airports.slice(0, 2)) : /^[A-Za-z]{3}$/.test(to.trim()) ? [to.trim().toUpperCase()] : [];
+    return toCodes.length ? { from: aps.slice(0, 4), to: toCodes, oneWay: kind === "oneway", ...(maxStops === 0 ? { direct: true } : {}) } : null;
+  });
+  const roughStart = $derived(((mode === "flex" ? rFrom : out) || addDays(new Date().toISOString().slice(0, 10), 30)).slice(0, 7));
+  /** Tag(e) im Preiskalender gewählt: feste Daten eintragen und gleich suchen */
+  function roughPick(o: string, b?: string) {
+    mode = "fixed"; out = o; ret = b || ""; flexDays = 0;
+    void search(new Event("submit"));
   }
 
   /** Ort der Auswahl als Liste von Codes für die Rundreise */
@@ -453,6 +479,8 @@
       </div>
     {/if}
 
+    {#if kind !== "round" && FLIGHTS_URL}<RoughCalendar query={roughQuery} start={roughStart} onpick={roughPick} />{/if}
+
     <div class="ed-row fs-opts">
       <label class="f fs-sel">{t("fs.maxStops")}<select bind:value={maxStops}>{#each [0, 1, 2] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
       <label class="f fs-sel">{t("fs.bags")}<select value={bags} onchange={e => (bagCount = Number(e.currentTarget.value))}>
@@ -577,12 +605,25 @@
     {#if avoidedOut}<p class="muted small">{tn("fs.avoidedOut", avoidedOut)}</p>{/if}
 
     {#if list.length}
+      {#if outCells.length > 1}
+        <div class="pcals">
+          <PriceCalendar cells={outCells} selected={filter.outDay} label={returns ? t("fs.cal.out") : t("fs.cal.oneway")} onpick={d => { filter.outDay = d; filter.backDay = null; }} />
+          {#if returns && filter.outDay && backCells.length}
+            <PriceCalendar cells={backCells} selected={filter.backDay} label={t("fs.cal.back")} onpick={d => (filter.backDay = d)} />
+          {/if}
+        </div>
+        <p class="muted small">{returns ? (filter.outDay ? t("fs.cal.hintBack") : t("fs.cal.hintOut")) : t("fs.cal.hintOne")}</p>
+      {:else if returns && backCells.length > 1}
+        <div class="pcals"><PriceCalendar cells={backCells} selected={filter.backDay} label={t("fs.cal.back")} onpick={d => (filter.backDay = d)} /></div>
+      {/if}
+      <FlightFilters list={list} bind:filter {returns} {refs} />
       <div class="chips fs-sort" role="radiogroup" aria-label={t("search.sort")}>
-        <button type="button" class="chip" class:on={sort === "price"} onclick={() => (sort = "price")}>{t("search.cheapest")}</button>
-        <button type="button" class="chip" class:on={sort === "time"} onclick={() => (sort = "time")}>{t("fs.fastest")}</button>
-        <button type="button" class="chip" class:on={sort === "direct"} onclick={() => (sort = "direct")}>{t("fs.directOnly")}</button>
+        <button type="button" role="radio" aria-checked={sort === "price"} class="chip" class:on={sort === "price"} onclick={() => (sort = "price")}>{t("search.cheapest")}</button>
+        <button type="button" role="radio" aria-checked={sort === "best"} class="chip" class:on={sort === "best"} onclick={() => (sort = "best")} title={t("fs.bestTitle")}>{t("fs.best")}</button>
+        <button type="button" role="radio" aria-checked={sort === "time"} class="chip" class:on={sort === "time"} onclick={() => (sort = "time")}>{t("fs.fastest")}</button>
+        <button type="button" role="radio" aria-checked={sort === "arrival"} class="chip" class:on={sort === "arrival"} onclick={() => (sort = "arrival")}>{t("fs.earliest")}</button>
       </div>
-      <p class="muted small">{t("fs.listSummary", { n: list.length, over: rows.length > 1 ? t("fs.allAirports") : aps[0] })} · {withAccess ? t("fs.byPriceIncl") : t("fs.byPrice")} · {t("persShort", { n })}</p>
+      <p class="muted small">{filtered.length < list.length ? `${t("fs.f.shown", { n: filtered.length, of: list.length })} · ` : ""}{t("fs.listSummary", { n: Math.min(SHOW, filtered.length), over: rows.length > 1 ? t("fs.allAirports") : aps[0] })} · {withAccess ? t("fs.byPriceIncl") : t("fs.byPrice")} · {t("persShort", { n })}</p>
       <div class="fs-list">
         {#each shown as o (o.id + o.origin)}
           <article class="fs-res">
@@ -597,6 +638,10 @@
               {#if o.nights != null}<span class="pill-n">{tn("fs.nightsThere", o.nights)}</span>{/if}
               {#if !isNaN(o.home)}<span class="pill-h">{t("fs.homeAt", { t: fmtMin(o.home) })}</span>{/if}
               {#if o.accessHours}<span class="pill-h">{t("fs.accessAbout", { h: hm(o.accessHours) })}</span>{/if}
+              {#if arrivalGap(o, refs)}
+                {@const g = arrivalGap(o, refs)!}
+                <span class="pill-h fs-sync" class:near={Math.abs(g.min) <= 180}>🤝 {Math.abs(g.min) < 15 ? t("fs.sync.same", { who: g.who }) : g.min > 0 ? t("fs.sync.after", { h: hhmm(g.min), who: g.who }) : t("fs.sync.before", { h: hhmm(-g.min), who: g.who })}</span>
+              {/if}
             </div>
             {@render legRow(t("fl.out"), o.out)}
             {#if o.back}{@render legRow(t("fs.backShort"), o.back)}{/if}
@@ -607,7 +652,7 @@
             </div>
           </article>
         {:else}
-          <p class="muted small">{t("fs.noDirect")}</p>
+          <p class="muted small">{t("fs.f.none")}</p>
         {/each}
       </div>
       {#if list.some(o => o.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}

@@ -14,6 +14,7 @@ import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
 import { blockedResult, parseActivityQuery, searchActivities, viatorBlock } from "../../app/src/lib/activities/search";
 import type { ActivityEnv } from "../../app/src/lib/activities/types";
+import { parseCalendarQuery, searchCalendar, type CalendarResult } from "../../app/src/lib/flights/calendar";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller } from "./gemini";
@@ -44,7 +45,7 @@ interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEn
   AGENT_KV?: KVNamespace;
 }
 
-const SEARCHES = new Set(["/flights/search", "/stays/search", "/events/search", "/activities/search"]);
+const SEARCHES = new Set(["/flights/search", "/flights/calendar", "/stays/search", "/events/search", "/activities/search"]);
 
 const DEFAULT_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https://www.splitandfly.com,https://startrek-1b6a7.web.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173";
 
@@ -101,6 +102,24 @@ export default {
         ctx.waitUntil(cache.put(key, new Response(JSON.stringify(result), { headers: { "content-type": "application/json", "cache-control": "max-age=600" } })));
       }
       return json(result, 200, { ...h, "x-cache": "miss" });
+    }
+
+    if (url.pathname === "/flights/calendar" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      let body: unknown;
+      try { body = await req.json(); } catch { return json({ error: "Anfrage ist kein JSON" }, 400, h); }
+      const q = parseCalendarQuery(body);
+      if (typeof q === "string") return json({ error: q }, 400, h);
+      noteRoute(env, "calendar");
+      if (!env.TRAVELPAYOUTS_TOKEN) return json({ days: [], configured: false } satisfies CalendarResult, 200, h);
+      // Richtpreise ändern sich langsam: 6 Stunden aus dem Zwischenspeicher
+      try {
+        const result = await cachedJson<CalendarResult>(`calendar/${encodeURIComponent(JSON.stringify(q))}`, 6 * 3600,
+          async () => ({ days: await searchCalendar(q, env.TRAVELPAYOUTS_TOKEN!, meter(env)), configured: true }), r => r.days.length > 0, ctx);
+        return json(result, 200, h);
+      } catch (e) {
+        return json({ days: [], configured: true, error: (e as Error).message } satisfies CalendarResult, 200, h);
+      }
     }
 
     if (url.pathname === "/events/search" && req.method === "POST") {

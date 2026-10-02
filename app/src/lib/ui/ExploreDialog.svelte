@@ -3,10 +3,11 @@
    * Erlebnisse finden: was am Reiseort im Reisezeitraum läuft (Ticketmaster, Fußball-Spielpläne) und
    * buchbare Touren und Tickets (Viator). Antippen legt einen Posten in „Erlebnisse“ an, der Dialog bleibt offen.
    */
-  import { i18n, t } from "../i18n/index.svelte";
+  import { i18n, t, type Key } from "../i18n/index.svelte";
   import { app, setDetailed } from "../store.svelte";
   import { eur } from "../calc";
-  import { dayShort, range } from "../format";
+  import { dayShort, nights, range } from "../format";
+  import { evFacets, evPasses, noEvFilter, noTourFilter, sortTours, tourFacets, tourPasses, type TourSort } from "../activities/filter";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { stationName } from "../stays/stationName";
   import { eventWindow, inWindow } from "../activities/window";
@@ -39,6 +40,21 @@
   let evBusy = $state(false), evErr = $state(""), events = $state<EventHit[] | null>(null);
   let toBusy = $state(false), toErr = $state(""), tours = $state<ActivityHit[] | null>(null), toursOff = $state(false), toursWhy = $state("");
   let taken = $state<Record<string, boolean>>({});
+  // Filter auf die Treffer (keine neue Anfrage)
+  let evf = $state(noEvFilter());
+  let tof = $state(noTourFilter());
+  let tsort = $state<TourSort>("default");
+  const evShown = $derived((events || []).filter(h => evPasses(h, evf)));
+  const evFc = $derived(evFacets(events || [], evf));
+  const toShown = $derived(sortTours((tours || []).filter(a => tourPasses(a, tof)), tsort));
+  const toFc = $derived(tourFacets(tours || [], tof));
+  const toggleCat = (c: string) => (evf.cats = evf.cats.includes(c) ? evf.cats.filter(x => x !== c) : [...evf.cats, c]);
+  /** „Tag 3 · Sa 14.08.“: Reisetag ab dem ersten Tag des Zeitfensters */
+  const dayLabel = (d: string) => (win.from && d >= win.from ? `${t("xp.f.dayN", { n: nights(win.from, d) + 1 })} · ${dayShort(d)}` : dayShort(d));
+  // Regler Preis pro Person (Touren): ganz rechts heißt egal
+  let priceMax = $state(0);
+  $effect(() => { if (tof.maxPrice == null && toFc.price) priceMax = toFc.price.hi; });
+  $effect(() => { const v = priceMax; tof.maxPrice = toFc.price && v && v < toFc.price.hi ? v : null; });
 
   /** Stadtmitte und englischer Name aus den Ortsdaten (für den Umkreis bei Ticketmaster und die Vereine) */
   async function where() {
@@ -52,7 +68,7 @@
   async function findEvents(e?: Event) {
     e?.preventDefault();
     if (!city) return;
-    evBusy = true; evErr = ""; events = null;
+    evBusy = true; evErr = ""; events = null; evf = noEvFilter();
     try {
       const res = await searchLocalEvents({ q: kw.trim(), ...(await where()), ...span });
       if (!res.sources.some(s => s.configured)) { evErr = t("evs.notReady"); return; }
@@ -115,8 +131,34 @@
         {#if evBusy && !events}<p class="muted small">{t("evs.busy")}</p>{/if}
         {#if events}
           {#if !events.length && !evErr}<p class="muted small">{t("xp.noEvents")}</p>{/if}
+          {#if events.length > 1}
+            <div class="ff xp-f">
+              {#if evFc.days.length > 1}
+                <div class="chips xp-days" aria-label={t("xp.f.days")}>
+                  {#each evFc.days as d (d.key)}
+                    <button type="button" class="chip sm" class:on={evf.day === d.key} aria-pressed={evf.day === d.key} onclick={() => (evf.day = evf.day === d.key ? null : d.key)}>{dayLabel(d.key)} <small>{d.count}</small></button>
+                  {/each}
+                </div>
+              {/if}
+              {#if evFc.parts.length > 1 || evFc.cats.length > 1}
+                <div class="chips xp-parts">
+                  {#if evFc.parts.length > 1}
+                    {#each evFc.parts as p (p.key)}
+                      <button type="button" class="chip sm" class:on={evf.part === p.key} aria-pressed={evf.part === p.key} onclick={() => (evf.part = evf.part === p.key ? null : p.key)}>{t(`xp.f.${p.key}` as Key)} <small>{p.count}</small></button>
+                    {/each}
+                  {/if}
+                  {#if evFc.cats.length > 1}
+                    {#each evFc.cats as c (c.key)}
+                      <button type="button" class="chip sm" class:on={evf.cats.includes(c.key)} aria-pressed={evf.cats.includes(c.key)} onclick={() => toggleCat(c.key)}>{c.key} <small>{c.count}</small></button>
+                    {/each}
+                  {/if}
+                </div>
+              {/if}
+              {#if evShown.length < events.length}<p class="muted small">{t("fs.f.shown", { n: evShown.length, of: events.length })} · <button type="button" class="linkbtn" onclick={() => (evf = noEvFilter())}>{t("fs.f.reset")}</button></p>{/if}
+            </div>
+          {/if}
           <div class="xp-list">
-            {#each events as h (h.id)}
+            {#each evShown as h (h.id)}
               <article class="xp-card xp-ev">
                 <div class="xp-b">
                   <b>{h.name}</b>
@@ -138,8 +180,30 @@
           <p class="muted small">{toursWhy === "domain" ? t("xp.toursLiveOnly") : t("xp.toursSetup")}</p>
         {:else if tours}
           {#if !tours.length && !toErr}<p class="muted small">{t("xp.noTours")}</p>{/if}
+          {#if tours.length > 1}
+            <div class="ff xp-f">
+              <div class="chips fs-sort" role="radiogroup" aria-label={t("search.sort")}>
+                {#each [["default", "xp.s.default"], ["popular", "xp.s.popular"], ["rating", "st.bestRated"], ["price", "search.cheapest"], ["short", "xp.s.short"]] as [k, l] (k)}
+                  <button type="button" role="radio" aria-checked={tsort === k} class="chip" class:on={tsort === k} onclick={() => (tsort = k as TourSort)}>{t(l as Key)}</button>
+                {/each}
+              </div>
+              <div class="chips xp-lens">
+                {#each toFc.lens as x (x.key)}
+                  <button type="button" class="chip sm" class:on={tof.len === x.key} aria-pressed={tof.len === x.key} onclick={() => (tof.len = tof.len === x.key ? null : x.key)}>{t(`xp.f.${x.key}` as Key)} <small>{x.count}{x.min ? ` · ${t("fs.cal.from", { v: eur(x.min) })}` : ""}</small></button>
+                {/each}
+                {#each toFc.ratings as x (x.key)}
+                  <button type="button" class="chip sm" class:on={tof.minRating === x.key} aria-pressed={tof.minRating === x.key} onclick={() => (tof.minRating = tof.minRating === x.key ? null : x.key)}>★ {t("xp.f.ratingFrom", { n: String(x.key).replace(".", i18n.lang === "en" ? "." : ",") })} <small>{x.count}</small></button>
+                {/each}
+              </div>
+              {#if toFc.price && toFc.price.hi > toFc.price.lo}
+                <label class="f ff-hours"><span class="dual-head"><span class="dlabel">{t("xp.f.price")}</span><b class="num">{tof.maxPrice != null ? t("sf.upTo", { v: eur(tof.maxPrice) }) : t("st.any")}</b></span>
+                  <input type="range" min={toFc.price.lo} max={toFc.price.hi} step="5" bind:value={priceMax} aria-label={t("xp.f.price")} /></label>
+              {/if}
+              {#if toShown.length < tours.length}<p class="muted small">{t("fs.f.shown", { n: toShown.length, of: tours.length })} · <button type="button" class="linkbtn" onclick={() => { tof = noTourFilter(); priceMax = toFc.price?.hi || 0; }}>{t("fs.f.reset")}</button></p>{/if}
+            </div>
+          {/if}
           <div class="xp-list">
-            {#each tours as a (a.id)}
+            {#each toShown as a (a.id)}
               <article class="xp-card xp-tour">
                 {#if a.image}<img class="xp-img" src={a.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={e => ((e.currentTarget as HTMLImageElement).hidden = true)} />{/if}
                 <div class="xp-b">
