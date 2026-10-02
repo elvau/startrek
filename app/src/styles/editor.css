@@ -897,3 +897,7 @@ body[data-ch="split"] .amb-split{opacity:1}
 .ff-together{align-items:center}
 .fs-sync.near{background:var(--good-soft);color:var(--good)}
 .xp-f{margin:4px 0 8px}
+/* Preiskalender vor der Suche (Richtpreise) */
+.rc[open]{display:flex;flex-direction:column;gap:8px}
+.rc-nav{display:flex;align-items:center;gap:10px}
+.rc-month{min-width:9em;text-align:center;text-transform:capitalize}

@@ -28,6 +28,7 @@
   import { arrivals } from "../stays/presence";
   import FlightFilters from "./FlightFilters.svelte";
   import PriceCalendar from "./PriceCalendar.svelte";
+  import RoughCalendar from "./RoughCalendar.svelte";
 
   let { onclose, scope = {}, inline = false }: { onclose: () => void; scope?: FlightScope; inline?: boolean } = $props();
 
@@ -258,6 +259,20 @@
     } finally { busy = false; progress = ""; }
   }
 
+  /** Preiskalender vor der Suche: Abflug-Codes (Städte mit Stadt-Code) und Ziel (Stadt-Code oder bis zu 2 Flughäfen) */
+  const roughQuery = $derived.by(() => {
+    if (kind === "round" || !aps.length) return null;
+    const dest = toLoc ?? (to.trim() ? resolveLoc(airportData, to, cc) ?? areaFor(to) : null);
+    const toCodes = dest ? (dest.kind === "city" ? [dest.code] : dest.airports.slice(0, 2)) : /^[A-Za-z]{3}$/.test(to.trim()) ? [to.trim().toUpperCase()] : [];
+    return toCodes.length ? { from: aps.slice(0, 4), to: toCodes, oneWay: kind === "oneway", ...(maxStops === 0 ? { direct: true } : {}) } : null;
+  });
+  const roughStart = $derived(((mode === "flex" ? rFrom : out) || addDays(new Date().toISOString().slice(0, 10), 30)).slice(0, 7));
+  /** Tag(e) im Preiskalender gewählt: feste Daten eintragen und gleich suchen */
+  function roughPick(o: string, b?: string) {
+    mode = "fixed"; out = o; ret = b || ""; flexDays = 0;
+    void search(new Event("submit"));
+  }
+
   /** Ort der Auswahl als Liste von Codes für die Rundreise */
   const placeOf = (l: Loc): RoundPlace => ({ name: l.kind === "airport" ? l.code : l.city, code: l.code, airports: l.airports, ...(l.kind === "city" ? { cityCode: l.code } : {}) });
 
@@ -463,6 +478,8 @@
         <label class="f fs-sel">{t("fs.plusMinus")}<select bind:value={flexDays}>{#each [0, 1, 2, 3] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
       </div>
     {/if}
+
+    {#if kind !== "round" && FLIGHTS_URL}<RoughCalendar query={roughQuery} start={roughStart} onpick={roughPick} />{/if}
 
     <div class="ed-row fs-opts">
       <label class="f fs-sel">{t("fs.maxStops")}<select bind:value={maxStops}>{#each [0, 1, 2] as v (v)}<option value={v}>{v}</option>{/each}</select></label>

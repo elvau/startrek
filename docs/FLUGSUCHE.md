@@ -64,6 +64,11 @@ Sobald ein Secret da ist, taucht der Anbieter in der Suche als „eingerichtet�
 
 Hinweise: Travelpayouts liefert Preise aus dem Zwischenspeicher von Aviasales (Suchen der letzten Tage),
 pro Person; die App rechnet sie auf alle Reisenden hoch. Start und Ziel schickt die App als Code (DUS, SPU oder Stadt-Code wie TYO).
+
+**Preiskalender vor der Suche:** `POST /flights/calendar` (`from`, `to` als Codes, `month` JJJJ-MM, `oneWay`) holt aus
+derselben Schnittstelle die Richtpreise pro Person für einen ganzen Monat (je Abflughafen; hin und zurück mit Rückflug im
+selben und im nächsten Monat), 6 Stunden zwischengespeichert. Ohne `TRAVELPAYOUTS_TOKEN` meldet er „nicht eingerichtet“.
+Tippt man in der App zwei Tage an, läuft die echte Suche für genau diese Daten. Code: `app/src/lib/flights/calendar.ts`.
 Duffel ist noch nicht angebunden.
 
 ## Flughäfen und Städte
