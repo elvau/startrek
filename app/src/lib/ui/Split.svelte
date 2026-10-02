@@ -6,6 +6,7 @@
   import { CAT_CHAPTERS } from "../chapters";
   import { reveal } from "./reveal";
   import Icon from "./Icon.svelte";
+  import FundsCard from "./FundsCard.svelte";
   import type { Key } from "../i18n/index.svelte";
 
   const shares = $derived(householdShares(app.trip, calc.T));
@@ -19,6 +20,7 @@
   }
 </script>
 
+<FundsCard />
 {#if tests.length && shares.length}<p class="warnline test-banner">⚠ {tn("test.inSplit", tests.length)}</p>{/if}
 {#each shares as h (h.name)}
   <article class="card share" id="hh-{h.name}" use:reveal>
@@ -27,7 +29,7 @@
         <h3>{h.name}</h3>
         <span class="muted">{tn("n.persons", h.members.length)} · {t("perPerson", { v: eurPP(h.members.length ? h.total / h.members.length : 0) })}</span>
       </div>
-      <div class="sh-tot"><b class="num">{eur(h.total)}</b><span>{t("split.share", { p: calc.T.total ? Math.round((h.total / calc.T.total) * 100) : 0 })}</span></div>
+      <div class="sh-tot"><b class="num">{eur(h.total)}</b><span>{t("split.share", { p: calc.T.due > 0 ? Math.round((h.total / calc.T.due) * 100) : 0 })}</span></div>
     </div>
     <div class="fix">
       <div class="bar"><i style="background:var(--good)" style:width="{h.total ? (h.fixed / h.total) * 100 : 0}%"></i><i style="background:var(--idea);opacity:.55" style:width="{h.total ? (h.open / h.total) * 100 : 0}%"></i></div>
@@ -52,6 +54,18 @@
           </ul>
         </details>
       {/each}
+      {#if h.funds.length}
+        <!-- Zuschüsse: senken den Eigenanteil des Haushalts -->
+        <details open class="sh-funds">
+          <summary style="--cc:var(--good)"><i></i><span aria-hidden="true">💰</span><span>{t("fund.title")}</span><b class="num">−{eur(h.costs - h.total)}</b></summary>
+          <ul>
+            {#each h.funds as f (f.id)}
+              <li><span class="sh-l sh-fl"><span class="sh-n">{f.name}<small>{f.received ? t("fund.received") : t("fund.pledged")}</small></span><span class="num fixed">−{eur(f.v)}</span></span></li>
+            {/each}
+            <li><span class="sh-l sh-fl"><span class="sh-n"><b>{t("fund.own")}</b><small>{t("fund.ownHint", { v: eur(h.costs) })}</small></span><b class="num">{eur(h.total)}</b></span></li>
+          </ul>
+        </details>
+      {/if}
     </div>
   </article>
 {:else}

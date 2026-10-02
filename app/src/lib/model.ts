@@ -279,6 +279,23 @@ export interface TripEvent {
   url?: string;
 }
 
+/** Zuschuss zur Reise (Kasse, Sponsor, Familie): wird von den Kosten der Begünstigten abgezogen */
+export interface Fund {
+  id: string;
+  /** von wem, z. B. „Mannschaftskasse“, „Oma & Opa“ */
+  name: string;
+  /** Betrag in Euro */
+  amount: number;
+  /** für wen (Reisende); fehlt: alle, die dabei sind */
+  for?: string[];
+  /** nur für diese Kosten (z. B. nur den Bus); fehlt: alle Kosten */
+  cat?: CatKey;
+  /** gleich je Person (Standard) oder nach Anteil an den Kosten */
+  split?: "equal" | "share";
+  /** Geld ist schon da (sonst nur zugesagt) */
+  received?: boolean;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -298,6 +315,8 @@ export interface Trip {
   simple?: Partial<Record<CatKey, number>>;
   /** Einfacher Modus: einzelne Einträge mit Text, Betrag und wer dabei ist (zusätzlich zum Betrag für alle) */
   lines?: SimpleLine[];
+  /** Zuschüsse: Mannschaftskasse, Oma und Opa, Sponsor … senken den Eigenanteil */
+  funds?: Fund[];
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
   detail?: Partial<Record<CatKey, boolean>>;
   tiers: Partial<Record<CatKey, Tier[]>>;

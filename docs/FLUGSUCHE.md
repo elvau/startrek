@@ -165,3 +165,26 @@ VITE_FLIGHTS_URL=http://127.0.0.1:8787 npm run dev
 - `app/src/lib/flights/app.ts`: in der App: Anfrage aus der Reise, Treffer als Angebot übernehmen
 - `worker/src/index.ts`: der Dienst selbst (`/flights/search`, `/stays/search`, Herkunftsprüfung, Zwischenspeicher); Konfiguration in `wrangler.toml` im Hauptordner
 - `app/src/lib/ui/FlightSearch.svelte`: der Such-Dialog; „Hier buchen“ ist vorbereitet, aber noch ausgegraut
+
+## Bahn, Fernbus, Auto, Reisebus
+
+Bei Zielen zwischen 30 und 700 km Luftlinie vom Wohnort der Gruppe (Haushalt mit den meisten Mitreisenden, PLZ im Haushalt)
+zeigt das Kapitel „Unterwegs“ Richtwerte pro Person für Hin- und Rückfahrt (`app/src/lib/ground.ts`, Anzeige
+`app/src/lib/ui/GroundOptions.svelte`). Keine Schnittstelle, nur Schätzung:
+
+- Bahn: Spanne vom Sparpreis bis zum Flexpreis nach Schienen-km (Luftlinie × 1,2)
+- Fernbus: Spanne nach Straßen-km (Luftlinie × 1,3)
+- Auto: Kilometerkosten der Reise, ein Auto je 5 Personen
+- Reisebus ab 8 Personen: Klein-, Midi- oder Reisebus mit Fahrer, Tagessatz plus km; bleibt vor Ort oder fährt zweimal
+  als Transfer, das Günstigere zählt. Mit einem Klick als Posten „Reisebus“ (Richtwert).
+
+Reisezeit von Tür zu Tür (eine Richtung) für jede Art, die schnellste ist markiert:
+
+- Flug: Auto zum Abflughafen, 2 Stunden vorher da, Flug, 30 min Gepäck, mit Bus oder Bahn in die Stadt. Mit Flug-Posten
+  dessen Flughäfen, Flugdauer und Preis pro Person (mit Anfahrt), sonst geschätzt vom nächsten eigenen Abflughafen
+  (Einstellungen) zum nächsten großen Flughafen am Ziel (`airports.json`).
+- Bahn und Fernbus: je 30 min zum und vom Bahnhof bzw. Halt dazu
+- Auto: 15 min Pause alle 2 Stunden; Reisebus: 45 min nach 4,5 Stunden Lenkzeit
+
+Links: bahn.de und Google Maps mit Start, Ziel und Tag vorbefüllt; Omio, Trainline, FlixBus (später mit Partnerlinks);
+für den Reisebus FlixBus Mieten und 11880 (Anfrage bei Busunternehmen).

@@ -31,6 +31,10 @@ const TRIPS = [
   // ohne Ziel, nur Flug nach Palma: Events zwischen Landung + 5 h und Rückflug − 5 h
   { id: "mallorca", name: "Mallorca-Kurztrip", place: "", country: "", travelers: people, ...base,
     items: [{ id: "mf", cat: "flights", name: "Flug", status: "chosen", options: [{ ...flightOpt("o5", 138, [L("out", "EIN", "PMI", "2027-10-15T10:00", "2027-10-15T12:20"), L("back", "PMI", "EIN", "2027-10-19T18:00", "2027-10-19T20:20")]), source: undefined }] }] },
+  // nahes Ziel mit 9 Personen aus Köln: Bahn, Fernbus, Auto und Reisebus statt Flug
+  { id: "berlin", name: "Berlin-Wochenende", place: "Berlin", country: "Deutschland", from: "2027-06-04", to: "2027-06-06", ...base,
+    travelers: Array.from({ length: 9 }, (_, i) => ({ id: "k" + i, name: "Kegler " + (i + 1), household: "Kegelclub" })),
+    households: { Kegelclub: { plz: "50667", geo: { ort: "Köln", lat: 50.94, lon: 6.96 } } }, items: [] },
   { id: "rom", name: "Rom 2025", place: "Rom", country: "Italien", from: "2025-04-01", to: "2025-04-05", travelers: people, ...base, items: [] }
 ];
 
@@ -168,6 +172,29 @@ try {
   await p.waitForTimeout(500);
   if (await p.locator(".modal.inline").count()) fail("Suche aus der anderen Reise noch offen");
   log("Reise gewechselt: aufgeklappte Flugsuche der vorigen Reise ist zu");
+  if (await p.locator("#transport .ground").count()) fail("Palma ist kein nahes Ziel");
+
+  // nahes Ziel: Bahn, Fernbus, Auto, Reisebus mit Richtwerten; bahn.de vorbefüllt; Reisebus als Posten
+  await p.locator(".top .brand-btn").click();
+  await p.locator(".start .home-trip", { hasText: "Berlin-Wochenende" }).click();
+  const gr = p.locator("#transport .ground");
+  await gr.waitFor();
+  const grText = await gr.innerText();
+  for (const w of ["Köln", "Berlin", "Bahn", "Fernbus", "Auto", "Reisebus"]) if (!grText.includes(w)) fail("Bahn/Bus-Vorschlag ohne " + w + ": " + grText);
+  // Flug zum Vergleich von Tür zu Tür: nächster eigener Flughafen (CGN), 2 h vorher da, eine Art am schnellsten
+  await until(async () => (await gr.locator(".gr-flight").count()) > 0, "Flug im Zeitvergleich");
+  const grFl = await gr.locator(".gr-flight").innerText();
+  if (!grFl.includes("CGN → BER") || !grFl.includes("2 h vorher da") || !grFl.includes("zum Flughafen")) fail("Flug von Tür zu Tür: " + grFl);
+  if ((await gr.locator(".gr-best").count()) !== 1) fail("schnellste Art nicht markiert");
+  await gr.screenshot({ path: process.env.SHOT || "/dev/null" }).catch(() => {});
+  const bahn = await gr.locator("a", { hasText: "bahn.de" }).getAttribute("href");
+  if (!bahn.includes("so=K%C3%B6ln") || !bahn.includes("zo=Berlin") || !bahn.includes("hd=2027-06-04")) fail("bahn.de-Link: " + bahn);
+  await gr.locator(".gr-coach-add").click();
+  const coach = p.locator("#transport .card[data-item]", { hasText: "Reisebus" });
+  await coach.waitFor();
+  await until(async () => /Köln → Berlin[\s\S]*\d €/.test(await coach.innerText()), "Reisebus-Posten mit Richtwert");
+  await p.keyboard.press("Escape");
+  log("Köln → Berlin, 9 Personen: Flug von Tür zu Tür (2 h vorher), Bahn, Fernbus, Auto, Reisebus mit Richtwerten, bahn.de vorbefüllt, Reisebus als Posten");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Reisebeobachtung ok");

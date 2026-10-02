@@ -78,7 +78,7 @@
     {/if}
     <div class="total">
       <b class="num">{eur(value)}</b>
-      <span>{n ? t("perPerson", { v: eurPP(calc.T.total / n) }) : t("nobody")}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
+      <span>{n ? t("perPerson", { v: eurPP(calc.T.due / n) }) : t("nobody")}{calc.T.funds ? ` · ${t("fund.minus", { v: eur(calc.T.funds) })}` : ""}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
     </div>
   </div>
   <button class="hint" onclick={() => document.getElementById("trav")?.scrollIntoView({ behavior: "smooth", block: "start" })} aria-label={t("hero.discoverAria")}>
