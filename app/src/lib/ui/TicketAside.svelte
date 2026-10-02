@@ -15,6 +15,7 @@
   let { sheet = false, onpick }: { sheet?: boolean; onpick?: () => void } = $props();
 
   const T = $derived(calc.T);
+  let openCat = $state<Record<string, boolean>>({});
   // Testpreise (Sandbox) in der Summe: deutlich sagen, dass die Summe nicht echt ist
   const tests = $derived(testItems(app.trip));
   const n = $derived(T.active);
@@ -59,18 +60,23 @@
       </div>{/if}
       <div class="cats">
         {#each CAT_CHAPTERS as c (c.k)}
-          <a class="cat" class:on={view.active === c.k} href="#{c.k}" style="--cc:var(--c-{c.k})">
-            <i></i><span>{c.label}</span><b>{eur(T.byCat[c.k])}</b>
+          <!-- Posten der Kategorie nur auf Wunsch (▾), sonst wird die Leiste bei vielen Posten zu lang -->
+          <div class="cat" class:on={view.active === c.k} class:open={!!openCat[c.k]} style="--cc:var(--c-{c.k})">
+            <a class="cat-a" href="#{c.k}"><i></i><span>{c.label}</span><b>{eur(T.byCat[c.k])}</b></a>
+            <button type="button" class="cat-t" aria-expanded={!!openCat[c.k]} title={t("aside.details")} aria-label="{c.label}: {t('aside.details')}" onclick={() => (openCat[c.k] = !openCat[c.k])}>▾</button>
             <span class="cat-d">{detailText(c.k, c.label)}</span>
-          </a>
+          </div>
         {/each}
       </div>
       {#if Object.keys(T.byHousehold).length > 1}
+        <!-- viele Familien: zugeklappt, auf Wunsch aufklappen -->
         <div class="fam">
-          <span class="sect">{t("aside.perFamily")}</span>
-          {#each Object.entries(T.byHousehold) as [h, v] (h)}
-            <a class="fam-l" href="#hh-{h}"><span>{h}</span><b class="num">{eur(v)}</b></a>
-          {/each}
+          <details class="fam-d" open={Object.keys(T.byHousehold).length <= 3}>
+            <summary class="sect">{t("aside.perFamily")} ({Object.keys(T.byHousehold).length})</summary>
+            {#each Object.entries(T.byHousehold) as [h, v] (h)}
+              <a class="fam-l" href="#hh-{h}"><span>{h}</span><b class="num">{eur(v)}</b></a>
+            {/each}
+          </details>
           <a class="fam-more" href="#split">{t("aside.whoPays")} {arrow()}</a>
         </div>
       {:else}

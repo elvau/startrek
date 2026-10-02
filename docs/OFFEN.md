@@ -74,3 +74,5 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [x] KI-Konnektor (MCP) Schritt 1 und 2: Suchen und Reisen im Konto mit persönlichem Schlüssel (docs/KONNEKTOR.md).
 - [ ] KI-Konnektor Schritt 3: OAuth über die Firebase-Anmeldung für Chat-Apps (Claude, ChatGPT). Vor dem offenen Anbieten
   Partnerbedingungen prüfen (Weitergabe der Suchergebnisse, Affiliate-Links).
+
+- Flughafentransfer: Partnerprogramme Kiwitaxi, GetTransfer, Intui.travel bei Travelpayouts beantragen (Dani), dann Links mit Partnerkennung; später Preise über deren Schnittstelle statt Richtwert.

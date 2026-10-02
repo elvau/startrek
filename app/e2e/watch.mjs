@@ -157,6 +157,16 @@ try {
   // Spanien: Preisniveau 0,8 → 34 € am Tag statt 40 €
   if (!(await car.innerText()).includes("170")) fail("Mietwagen-Richtwert (5 Tage × 34 €): " + await car.innerText());
   await p.keyboard.press("Escape");
+  // Flughafentransfer PMI → Palma: Taxi für 2, Richtwert hin und zurück, Anbieter zum Vergleichen
+  const trInfo = p.locator("#transport .tr-links");
+  await until(async () => (await trInfo.count()) && (await trInfo.innerText()).includes("PMI → Palma"), "Transfer PMI → Palma", 10000);
+  if (!(await trInfo.innerText()).includes("Taxi") || !(await trInfo.locator("a", { hasText: "Kiwitaxi" }).count())) fail("Transfer-Hinweis: " + await trInfo.innerText());
+  await p.locator("#transport .tr-add").click();
+  const tr = p.locator("#transport .card[data-item]", { hasText: "Flughafentransfer" });
+  await tr.waitFor();
+  await until(async () => /\d+ €/.test(await tr.innerText()), "Transfer-Posten mit Richtwert");
+  await p.keyboard.press("Escape");
+  log("Flughafentransfer PMI → Palma: Taxi für 2, Richtwert hin und zurück als Posten, Kiwitaxi & Co. zum Vergleichen");
   await p.locator("#misc .ins-add").click();
   const ins = p.locator("#misc .card", { hasText: "Reiseversicherung" });
   await ins.waitFor();
@@ -180,6 +190,7 @@ try {
   const gr = p.locator("#transport .ground");
   await gr.waitFor();
   const grText = await gr.innerText();
+  if (await p.locator("#transport .tr-links").count()) fail("nahes Ziel ohne Flug: kein Flughafentransfer");
   for (const w of ["Köln", "Berlin", "Bahn", "Fernbus", "Auto", "Reisebus"]) if (!grText.includes(w)) fail("Bahn/Bus-Vorschlag ohne " + w + ": " + grText);
   // Flug zum Vergleich von Tür zu Tür: nächster eigener Flughafen (CGN), 2 h vorher da, eine Art am schnellsten
   await until(async () => (await gr.locator(".gr-flight").count()) > 0, "Flug im Zeitvergleich");
@@ -231,6 +242,18 @@ try {
   const fin = p.locator("#stay .card[data-item]", { hasText: "Hostal Sol" });
   await fin.waitFor();
   await until(async () => (await fin.innerText()).includes("960"), "Unterkunft 2 × 480 €");
+  // Gesamtanzeige bei kleinem Fenster: passt hinein, scrollt selbst; Posten einer Kategorie erst auf ▾
+  await p.setViewportSize({ width: 1280, height: 480 });
+  await p.locator("#stay").scrollIntoViewIfNeeded();
+  await p.waitForTimeout(600);
+  const tk = await p.evaluate(() => { const a = document.querySelector(".aside").getBoundingClientRect(), b = document.querySelector(".aside .tk-b"); return { bottom: a.bottom, h: innerHeight, scroll: b.scrollHeight > b.clientHeight, ov: getComputedStyle(b).overflowY }; });
+  if (tk.bottom > tk.h + 1 || !tk.scroll || tk.ov !== "auto") fail("Gesamtanzeige ragt aus dem Fenster oder scrollt nicht: " + JSON.stringify(tk));
+  const stayCat = p.locator(".aside .cat", { hasText: "Unterkunft" });
+  if (await stayCat.locator(".cat-d").isVisible()) fail("Posten der Kategorie ohne Wunsch aufgeklappt");
+  await stayCat.locator(".cat-t").click();
+  if (!(await stayCat.locator(".cat-d").innerText()).includes("960")) fail("Posten nach ▾ nicht sichtbar");
+  await p.setViewportSize({ width: 1280, height: 900 });
+  log("Gesamtanzeige: passt ins Fenster (eigener Scrollbalken), Posten je Kategorie auf ▾");
   log("Große Gruppe: Flug in 3 Buchungen à 4, gesucht für 4, Preise × 3 (wählbar, max. 9 je Suche); Ferienwohnung auf 2 Unterkünfte à 6, gesucht für 6, übernommen 2 × 480 €");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
