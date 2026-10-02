@@ -39,8 +39,9 @@
   {:else}
     <ItemRow {item} {icon} />
   {/if}
-  {#if src?.url || gmap}
+  {#if src?.url || gmap || src?.test}
     <p class="src-link">
+      {#if src?.test}<span class="pill-test" title={t("test.title")}>{t("test.price")}</span> {/if}
       {#if src?.url}<a href={src.url} target="_blank" rel={src.sponsored ? "noopener noreferrer sponsored" : "noopener noreferrer"} title={src.sponsored ? t("fs.partnerNote") : undefined}>{t("search.atProvider")}{src.name ? ` · ${src.name}` : ""} ↗</a>{#if src.sponsored} <small>{t("fs.partner")}*</small>{/if}{/if}
       {#if src?.url && gmap} · {/if}
       {#if gmap}<a class="gmap" href={gmap} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}

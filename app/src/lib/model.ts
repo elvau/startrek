@@ -168,7 +168,8 @@ export interface Option {
   estimate?: boolean;
   /** Herkunft und Stand des Preises */
   /** sponsored: Link mit Partnerkennung (in der App als Partner-Link gekennzeichnet) */
-  source?: { name: string; at?: string; url?: string; sponsored?: boolean };
+  /** test: aus einem Testzugang übernommen, Preis nicht echt */
+  source?: { name: string; at?: string; url?: string; sponsored?: boolean; test?: boolean };
   legs?: FlightLeg[];
   stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string };
   /** Foto vom Anbieter (nur https), z. B. einer Tour */

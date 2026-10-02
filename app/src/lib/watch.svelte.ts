@@ -8,7 +8,11 @@ export const watchRun = $state({ busy: false, done: 0, of: 0, err: "" });
 /** Posten, für die gerade ein günstigeres Angebot gesucht wird */
 export const cheaperRun = $state<Record<string, boolean>>({});
 
-const searchers: Searchers = { flights: q => searchFlights(q), stays: q => searchStaysRemote(q) };
+// Preisbeobachtung: keine Testpreise (Sandbox-Zugänge), sonst meldet sie ein Schnäppchen, das es nicht gibt
+const searchers: Searchers = {
+  flights: q => searchFlights(q).then(r => ({ ...r, offers: r.offers.filter(o => !o.test) })),
+  stays: q => searchStaysRemote(q).then(r => ({ ...r, offers: r.offers.filter(o => !o.test) }))
+};
 
 export async function runWatch() {
   if (watchRun.busy) return;

@@ -2,7 +2,7 @@
   import { arrow, t, tn } from "../i18n/index.svelte";
   import { access, app, calc } from "../store.svelte";
   import { cloud, isCloud } from "../cloud/cloud.svelte";
-  import { activeOption, eur, eurPP } from "../calc";
+  import { activeOption, eur, eurPP, testItems } from "../calc";
   import { isDetailed } from "../model";
   import { CAT_CHAPTERS } from "../chapters";
   import { nights } from "../format";
@@ -15,6 +15,8 @@
   let { sheet = false, onpick }: { sheet?: boolean; onpick?: () => void } = $props();
 
   const T = $derived(calc.T);
+  // Testpreise (Sandbox) in der Summe: deutlich sagen, dass die Summe nicht echt ist
+  const tests = $derived(testItems(app.trip));
   const n = $derived(T.active);
   const nn = $derived(nights(app.trip.from, app.trip.to));
   // Fest/offen und bezahlt gibt es nur mit detaillierten Posten
@@ -33,7 +35,7 @@
       return v ? t("aside.simple", { label }) : t("aside.noAmount");
     }
     const its = app.trip.items.filter(x => x.cat === k && x.status !== "dropped");
-    return its.length ? its.map(x => `${x.name || activeOption(x, app.trip)?.label || t("item.new")} ${eur(T.items[x.id]?.net || 0)}`).join(" · ") : t("aside.noItems");
+    return its.length ? its.map(x => `${x.name || activeOption(x, app.trip)?.label || t("item.new")} ${eur(T.items[x.id]?.net || 0)}${activeOption(x, app.trip)?.source?.test ? ` (${t("test.badge")})` : ""}`).join(" · ") : t("aside.noItems");
   }
 </script>
 
@@ -44,6 +46,7 @@
       <small>{t("total")}</small>
       <b class="num">{eur(T.total)}</b>
       <span>{n ? `${t("perPerson", { v: eurPP(T.total / n) })} · ${tn("n.persons", n)}` : t("nobody")}</span>
+      {#if tests.length}<span class="tk-test" title={tests.map(x => x.name).join(", ")}>⚠ {tn("test.inTotal", tests.length)}</span>{/if}
     </div>
     <div class="tk-b">
       {#if anyDetail}<div class="fix">

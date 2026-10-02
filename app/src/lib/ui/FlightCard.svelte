@@ -74,7 +74,7 @@
       {@const lo = o.legs?.find(l => l.dir === "out")}
       <button class="opt" class:sel={o.id === opt?.id} onclick={e => choose(o.id, e)}>
         <i></i>
-        <span>{o.label}<small>{lo ? `${time(lo.dep)} ${arrow()} ${time(lo.arr)} · ${legDuration(lo)}` : ""}{o.detail ? ` · ${o.detail}` : ""}{c.access?.cost ? ` · ${t("fl.inclAccess", { v: eur(c.access.cost) })}` : ""}</small></span>
+        <span>{o.label}{#if o.source?.test} <span class="pill-test">{t("test.badge")}</span>{/if}<small>{lo ? `${time(lo.dep)} ${arrow()} ${time(lo.arr)} · ${legDuration(lo)}` : ""}{o.detail ? ` · ${o.detail}` : ""}{c.access?.cost ? ` · ${t("fl.inclAccess", { v: eur(c.access.cost) })}` : ""}</small></span>
         <span class="num">{eur(c.net)} {#if o.id !== opt?.id && Math.round(diff)}<span class="d" class:down={diff < 0} class:up={diff > 0}>{diff > 0 ? "+" : "−"}{Math.abs(Math.round(diff))}</span>{/if}</span>
       </button>
     {/each}

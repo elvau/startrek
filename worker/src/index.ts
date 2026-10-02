@@ -229,7 +229,7 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   const gemini = geminiCaller({ key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], f: net, onCall: () => { budget.used++; } });
   try {
     const fx = await rates(env);
-    const result = await runAgent(r, { gemini, flights: q => searchAll(q, { ...env, FX: fx }, budget.fetch), stays: q => searchStays(q, { ...env, FX: fx }, budget.fetch), canSearch: budget.canSearch });
+    const result = await runAgent(r, { gemini, flights: q => searchAll(q, { ...env, FX: fx }, budget.fetch).then(real), stays: q => searchStays(q, { ...env, FX: fx }, budget.fetch).then(real), canSearch: budget.canSearch });
     // eine Rückfrage zählt nicht gegen das Tageslimit, erst die Suche danach
     if (result.question) return json({ ...result, remaining: Math.max(0, limit - quota.used) }, 200, h);
     await quota.bump();
@@ -283,8 +283,8 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
   const offerKey = (id: string) => new Request(`https://mcp.splitandfly/offer/${user.kid}/${encodeURIComponent(id)}`);
   const limit = Number(env.MCP_DAILY) || 50;
   const res = await mcpMessage(msg, user, {
-    flights: async q => searchAll(q, { ...env, FX: await rates(env) }, net),
-    stays: async q => searchStays(q, { ...env, FX: await rates(env) }, net),
+    flights: async q => real(await searchAll(q, { ...env, FX: await rates(env) }, net)),
+    stays: async q => real(await searchStays(q, { ...env, FX: await rates(env) }, net)),
     events: q => cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, net, cachedJson), r => r.events.length > 0, ctx),
     store: tripStore(env, net),
     offers: {
@@ -328,6 +328,9 @@ async function admin(req: Request, env: Env, h: Record<string, string>): Promise
 }
 
 /** JSON im Zwischenspeicher des Rechenzentrums (z. B. Mannschaftslisten für eine Woche) */
+/** KI und Konnektor bekommen keine Testpreise (Sandbox-Zugänge), nur die App zeigt sie mit Hinweis */
+const real = <R extends { offers: { test?: boolean }[] }>(r: R): R => ({ ...r, offers: r.offers.filter(o => !o.test) });
+
 /** Tageskurse der EZB, 12 Stunden zwischengespeichert; ohne Kurse bleibt es bei Preisen in der Suchwährung */
 async function rates(env: Env, ctx?: ExecutionContext): Promise<Rates | null> {
   try { return await cachedJson("fx/ecb", 12 * 3600, () => fetchEcb(meter(env)), r => Object.keys(r.rates).length > 10, ctx); }

@@ -174,9 +174,9 @@
           }, signal),
           v.nights ? searchStaysRemote(q, signal) : Promise.resolve(null)
         ]);
-        const flights = fl.status === "fulfilled" ? fl.value.offers.filter(o => fits(o, v)).map(o => rate(trip, o, o.out.from, true)) : [];
+        const flights = fl.status === "fulfilled" ? fl.value.offers.filter(o => !o.test && fits(o, v)).map(o => rate(trip, o, o.out.from, true)) : [];
         const flight = flights.length ? flights.reduce((a, b) => (b.total < a.total ? b : a)) : null;
-        const stay = st.status === "fulfilled" && st.value ? pickStayNear(st.value.offers, ev) : null;
+        const stay = st.status === "fulfilled" && st.value ? pickStayNear(st.value.offers.filter(o => !o.test), ev) : null;
         // Quelle auch nach dem zweiten Versuch ohne Antwort: nicht als „kein Flug“ ausgeben
         const error = fl.status === "rejected" ? (fl.reason as Error).message : worthRetry(fl.value) ? t("ev.flightsDown") : undefined;
         return { v, flight, stay, stayQ: v.nights ? q : null, total: (flight?.total || 0) + (stay ? Math.round(stay.total) : 0), error };

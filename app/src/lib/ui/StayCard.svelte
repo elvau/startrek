@@ -103,7 +103,7 @@
         {@const sel = o.id === r?.option?.id}
         <div class="cmp-t" class:sel>
           {#if o.stay?.image && !broken[o.id]}<img src={o.stay.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={() => (broken[o.id] = true)} />{:else}<div class="cmp-ph" aria-hidden="true">🏨</div>{/if}
-          <b class="cmp-n">{o.label || t("ie.offerN", { n: i + 1 })}</b>
+          <b class="cmp-n">{o.label || t("ie.offerN", { n: i + 1 })}{#if o.source?.test} <span class="pill-test">{t("test.badge")}</span>{/if}</b>
           {#if o.source?.name}<small class="muted">{o.source.name}</small>{/if}
           <div class="facts">
             {#if o.stay?.stars}<span class="fact">{"★".repeat(o.stay.stars)}</span>{/if}
