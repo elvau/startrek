@@ -232,7 +232,7 @@ body:has(.chapter.on .card.edit) .aside{opacity:.5}
 .bp-stub{border-inline-start:2px dashed var(--line);padding:18px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;background:var(--paper-2);position:relative}
 .bp-stub::before,.bp-stub::after{content:"";position:absolute;inset-inline-start:-12px;width:22px;height:22px;border-radius:50%;background:var(--bg)}
 .bp-stub::before{top:-12px}.bp-stub::after{bottom:-12px}
-.price b{display:block;font:800 24px "Bricolage Grotesque Variable",sans-serif}
+.price b{display:block;font:800 24px "Bricolage Grotesque Variable",sans-serif;white-space:nowrap}
 .price span{font-size:12px;color:var(--ink-2)}
 @media (max-width:640px){.bp{grid-template-columns:1fr}.bp-stub{border-inline-start:0;border-top:2px dashed var(--line);flex-direction:row;align-items:center}.bp-stub::before,.bp-stub::after{display:none}.bp-ap b{font-size:28px}}
 

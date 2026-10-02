@@ -173,7 +173,7 @@
           <p class="search-row muted small fs-direct car-links">{t("car.compare")}
             {#if cw}<a href={kayakCarLink(cw, evWin.city)} target="_blank" rel="noopener noreferrer">KAYAK ↗</a> ·{/if}
             {#each CAR_LINKS as l, i (l.name)}{i ? " · " : ""}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>{/each}
-            {#if cw}<br />{t("car.when", { a: `${cw.ap ? `${cw.ap} ` : ""}${cw.pick.slice(8, 10)}.${cw.pick.slice(5, 7)}. ${cw.pick.slice(11, 16)}`, b: `${cw.drop.slice(8, 10)}.${cw.drop.slice(5, 7)}. ${cw.drop.slice(11, 16)}`, n: cw.days })}{/if}
+            {#if cw}<br />{t(cw.ap ? "car.when" : "car.whenTrip", { a: `${cw.ap ? `${cw.ap} ` : ""}${cw.pick.slice(8, 10)}.${cw.pick.slice(5, 7)}. ${cw.pick.slice(11, 16)}`, b: `${cw.drop.slice(8, 10)}.${cw.drop.slice(5, 7)}. ${cw.drop.slice(11, 16)}`, d: tn("n.days", cw.days) })}{/if}
           </p>
         {:else if ch.k === "misc"}
           <!-- Reiseversicherung: neutrale Schätzung (keine Beratung), Links zu Anbietern -->

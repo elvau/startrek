@@ -55,12 +55,15 @@ const fmt = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}. ${iso.slic
 /** Tagespreis am Ziel: Richtwert × Preisniveau des Landes (wie bei der Verpflegung gedämpft), mindestens 15 € */
 export const carPerDay = (pli?: number) => Math.max(15, Math.round(CAR_PER_DAY * Math.pow(pli || 1, 0.7)));
 
-/** Mietwagen-Posten mit Richtwert für die Tage am Ziel */
+/** Plätze je Mietwagen (Kompaktklasse mit Gepäck) */
+export const CAR_SEATS = 5;
+
+/** Mietwagen-Posten mit Richtwert für die Tage am Ziel; größere Gruppen brauchen mehrere Autos (je 5 Plätze) */
 export function carItem(w: CarWindow, perDay = CAR_PER_DAY): Item {
   return {
     id: uid(), cat: "transport", name: t("car.name"), icon: "car", status: "idea",
     note: t("car.note", { ap: w.ap || "", a: fmt(w.pick), b: fmt(w.drop) }).replace(/\s+/g, " "),
-    options: [{ id: uid(), label: t("car.estimate"), estimate: true, price: { mode: "unit", currency: "EUR", unit: perDay, qty: w.days } }]
+    options: [{ id: uid(), label: t("car.estimate"), estimate: true, price: { mode: "unit", currency: "EUR", unit: perDay, qty: w.days, capacity: CAR_SEATS, multiply: true } }]
   };
 }
 

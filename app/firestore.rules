@@ -45,6 +45,29 @@ service cloud.firestore {
         && request.resource.data.data is string && request.resource.data.data.size() < 200000;
     }
 
+    // Aktionsseite zum Mitfinanzieren: jeder mit dem Link darf lesen (nur Titel, Beträge, Kontoinhaber, IBAN, PayPal-Name;
+    // keine Mitreisenden). Anlegen, ändern und löschen nur das Konto, das veröffentlicht hat.
+    function validCampaign(d) {
+      return d.keys().hasOnly(['owner', 'trip', 'title', 'text', 'place', 'from', 'to', 'goal', 'raised', 'pledged', 'holder', 'iban', 'paypal', 'updatedAt'])
+        && d.owner == uid()
+        && d.trip is string && d.trip.size() < 64
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 100
+        && d.text is string && d.text.size() <= 600
+        && d.place is string && d.place.size() <= 100
+        && d.from is string && d.from.size() <= 10 && d.to is string && d.to.size() <= 10
+        && d.goal is number && d.goal >= 0 && d.goal < 10000000
+        && d.raised is number && d.raised >= 0 && d.pledged is number && d.pledged >= 0
+        && d.holder is string && d.holder.size() > 0 && d.holder.size() <= 70
+        && d.iban is string && d.iban.matches('^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$')
+        && d.paypal is string && d.paypal.matches('^[A-Za-z0-9._-]{0,40}$');
+    }
+    match /campaigns/{campaignId} {
+      allow read: if true;
+      allow create: if signedIn() && validCampaign(request.resource.data);
+      allow update: if signedIn() && resource.data.owner == uid() && validCampaign(request.resource.data);
+      allow delete: if signedIn() && resource.data.owner == uid();
+    }
+
     match /trips/{tripId} {
       // Nicht vorhandene Reisen dürfen angemeldete Nutzer "lesen" (verrät nur, dass die zufällige ID frei ist);
       // nötig, damit das Anlegen prüfen kann, ob es die Reise schon gibt, statt sie zu überschreiben.

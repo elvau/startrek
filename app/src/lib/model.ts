@@ -298,6 +298,24 @@ export interface Fund {
   received?: boolean;
 }
 
+/** öffentliche Aktionsseite zum Mitfinanzieren (Zuschüsse Stufe 2), siehe campaign.ts */
+export interface Campaign {
+  /** zufällige Kennung der öffentlichen Seite */
+  id: string;
+  /** Konto, das veröffentlicht hat (nur dieses darf die Seite ändern) */
+  owner?: string;
+  title: string;
+  text?: string;
+  /** Ziel in Euro; fehlt: Reisekosten */
+  goal?: number;
+  holder: string;
+  iban: string;
+  /** PayPal.me-Name (ohne Adresse) */
+  paypal?: string;
+  /** zuletzt veröffentlicht (ISO) */
+  at?: string;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -319,6 +337,8 @@ export interface Trip {
   lines?: SimpleLine[];
   /** Zuschüsse: Mannschaftskasse, Oma und Opa, Sponsor … senken den Eigenanteil */
   funds?: Fund[];
+  /** öffentliche Aktionsseite zum Mitfinanzieren (Zuschüsse Stufe 2), nur mit Einwilligung zu Name und IBAN */
+  campaign?: Campaign;
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
   detail?: Partial<Record<CatKey, boolean>>;
   tiers: Partial<Record<CatKey, Tier[]>>;

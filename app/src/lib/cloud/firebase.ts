@@ -29,6 +29,7 @@ export interface TripDoc {
 }
 
 import { emulator } from "./config";
+import type { CampaignDoc } from "../campaign";
 
 const env = import.meta.env;
 
@@ -160,6 +161,11 @@ export function newKey(): string {
   crypto.getRandomValues(a);
   return [...a].map(x => x.toString(36).padStart(2, "0")).join("").slice(0, 24);
 }
+
+/* ---------- Aktionsseite (campaigns/{id}): öffentlich lesbar, nur das veröffentlichende Konto schreibt ---------- */
+
+export const publishCampaign = (id: string, d: CampaignDoc) => setDoc(doc(start().db, "campaigns", id), { ...d, updatedAt: serverTimestamp() });
+export const removeCampaign = (id: string) => deleteDoc(doc(start().db, "campaigns", id));
 
 /* ---------- Gespeicherte Personen und Gruppen (profiles/{uid}) ---------- */
 

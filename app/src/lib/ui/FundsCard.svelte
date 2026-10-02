@@ -11,6 +11,7 @@
   import { hhKey, isActive, uid, type CatKey, type Fund } from "../model";
   import { fromShown, symbol, toShown } from "../currency.svelte";
   import { reveal } from "./reveal";
+  import CampaignCard from "./CampaignCard.svelte";
 
   const funds = $derived(app.trip.funds || []);
   const T = $derived(calc.T);
@@ -132,4 +133,5 @@
   {:else}
     <p class="muted small">{t("fund.empty")}</p>
   {/if}
+  <CampaignCard />
 </article>
