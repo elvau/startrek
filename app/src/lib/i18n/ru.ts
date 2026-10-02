@@ -825,6 +825,7 @@ export const ru: Dict = {
   "n.tickets.one": "{n} билет",
   "n.tickets.other": "{n} билета",
   "nav.chapters": "Главы",
+  "nav.currency": "Валюта",
   "nav.language": "Язык",
   "nav.more": "Ещё",
   "nav.theme": "Светлая или тёмная тема",

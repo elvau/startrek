@@ -35,7 +35,8 @@
   });
   // Wochentage in der App-Sprache, Montag zuerst (5.1.2026 ist ein Montag)
   const wd = $derived(Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(locale(), { weekday: "narrow", timeZone: "UTC" }).format(new Date(Date.UTC(2026, 0, 5 + i)))));
-  const price = (v: number) => eur(v).replace(/\s?€/, " €");
+  // schmales Leerzeichen vor dem Währungszeichen, damit der Preis in die Kachel passt
+  const price = (v: number) => eur(v).replace(/\s(?=\D+$)/, "\u202f");
 </script>
 
 <div class="pcal" role="group" aria-label={label}>

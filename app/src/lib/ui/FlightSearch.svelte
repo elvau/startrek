@@ -329,7 +329,7 @@
     swapped[rt.id] = i + 1;
     altOpen = null;
   }
-  const signed = (v: number) => (v > 0 ? `+${eur(v)}` : v < 0 ? `−${eur(-v)}` : "±0 €");
+  const signed = (v: number) => (v > 0 ? `+${eur(v)}` : v < 0 ? `−${eur(-v)}` : `±${eur(0)}`);
 
   function takeR(rt: RoundTrip) {
     app.trip.detail ||= {};
@@ -586,7 +586,7 @@
                 <tr class:cheap={i === 0}>
                   <td><b>{r.code}</b><small class="muted fs-apn">{known.find(a => a.code === r.code)?.name || ""}</small></td>
                   <td class="num">{eur(r.price)}</td>
-                  <td class="num muted c-x">{r.access ? eur(r.access) : "0 €"}</td>
+                  <td class="num muted c-x">{eur(r.access || 0)}</td>
                   <td class="num"><b>{eur(r.total)}</b></td>
                   <td class="num c-x">{Math.round(r.hours)} h</td>
                   <td class="num">{r.direct != null ? eur(r.direct) : t("no")}</td>

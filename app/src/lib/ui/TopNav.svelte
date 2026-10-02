@@ -6,6 +6,7 @@
    */
   import { t } from "../i18n/index.svelte";
   import LangSelect from "./LangSelect.svelte";
+  import CurrencySelect from "./CurrencySelect.svelte";
   import { CHAPTERS } from "../chapters";
   import { view } from "../scroll.svelte";
   import Icon from "./Icon.svelte";
@@ -77,6 +78,7 @@
       <Account compact />
       <button class="tbtn top-wide" onclick={toggleTheme} aria-label={t("nav.theme")} title={t("nav.theme")}><Icon name="moon" size={18} /></button>
       <span class="top-wide"><LangSelect short /></span>
+      <span class="top-wide"><CurrencySelect /></span>
       <div class="top-more" bind:this={moreEl}>
         <button class="tbtn" onclick={() => (more = !more)} aria-expanded={more} aria-label={t("nav.more")} title={t("nav.more")}><span aria-hidden="true">⋯</span></button>
         {#if more}
@@ -85,6 +87,7 @@
             <button class="tm-act" onclick={() => { more = false; prefs = true; }}><Icon name="sliders" size={16} /> {t("prefs.title")}</button>
             <button class="tm-act" onclick={toggleTheme}><Icon name="moon" size={16} /> {t("nav.theme")}</button>
             <label class="top-lang"><span>{t("nav.language")}</span><LangSelect short /></label>
+            <label class="top-lang"><span>{t("nav.currency")}</span><CurrencySelect /></label>
           </div>
         {/if}
       </div>

@@ -765,6 +765,7 @@ export const en: Dict = {
   "n.tickets.one": "{n} ticket",
   "n.tickets.other": "{n} tickets",
   "nav.chapters": "Chapters",
+  "nav.currency": "Currency",
   "nav.language": "Language",
   "nav.more": "More",
   "nav.theme": "Light or dark",

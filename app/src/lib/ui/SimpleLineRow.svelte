@@ -4,18 +4,21 @@
   import type { SimpleLine } from "../model";
   import { access, app, removeLine, toggleLineWho } from "../store.svelte";
   import { eurPP, lineWho, parseNum } from "../calc";
+  import { fromShown, symbol, toShown } from "../currency.svelte";
+  import { locale } from "../i18n/index.svelte";
 
   let { line, ph }: { line: SimpleLine; ph: string } = $props();
   const people = $derived(app.trip.travelers.filter(x => x.active !== false));
   const who = $derived(lineWho(line, app.trip));
   let text = $state("");
   let focused = $state(false);
-  $effect(() => { if (!focused) text = line.amount ? String(line.amount).replace(".", ",") : ""; });
+  // Betrag in der Währung der Person (gespeichert in Euro)
+  $effect(() => { if (!focused) text = line.amount ? String(toShown(line.amount)).replace(".", ",") : ""; });
 
   function input(e: Event) {
     text = (e.currentTarget as HTMLInputElement).value;
     const x = parseNum(text);
-    line.amount = text.trim() === "" ? 0 : isNaN(x) ? line.amount : Math.max(0, x);
+    line.amount = text.trim() === "" ? 0 : isNaN(x) ? line.amount : Math.max(0, fromShown(x));
   }
 </script>
 
@@ -24,7 +27,7 @@
     <input class="inp sl-t" bind:value={line.label} placeholder={ph} disabled={access.readonly} aria-label={t("simple.lineText")} />
     <span class="sl-v">
       <input class="inp" inputmode="decimal" placeholder="0" value={text} oninput={input} onfocus={() => (focused = true)} onblur={() => (focused = false)} disabled={access.readonly} aria-label={t("simple.lineAmount")} />
-      <span>€</span>
+      <span>{symbol(locale())}</span>
     </span>
     {#if !access.readonly}<button class="x sl-x" onclick={() => removeLine(line.id)} aria-label={t("simple.lineRemove")}>✕</button>{/if}
   </div>

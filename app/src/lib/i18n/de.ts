@@ -763,6 +763,7 @@ export const de = {
   "n.tickets.one": "{n} Ticket",
   "n.tickets.other": "{n} Tickets",
   "nav.chapters": "Kapitel",
+  "nav.currency": "Währung",
   "nav.language": "Sprache",
   "nav.more": "Mehr",
   "nav.theme": "Hell oder dunkel",

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { entryCurrency } from "../currency.svelte";
   import { t } from "../i18n/index.svelte";
   /* Bearbeiten eines Postens im Fokusmodus: Status, Angebote, Preis, Beteiligte */
   import { hhKey, isActive, uid, type FlightLeg, type Item, type Status } from "../model";
@@ -16,7 +17,7 @@
   const all = $derived(!item.participants);
 
   function addOption() {
-    const base = opt ? JSON.parse(JSON.stringify(opt)) : { price: { mode: "person", currency: "EUR" } };
+    const base = opt ? JSON.parse(JSON.stringify(opt)) : { price: { mode: "person", currency: entryCurrency() } };
     const o = { ...base, id: uid(), label: "", legs: undefined, source: undefined };
     item.options.push(o);
     item.chosen = o.id;
@@ -61,7 +62,7 @@
   const others = $derived(isFlight ? app.trip.items.filter(x => x.cat === "flights" && x.id !== item.id && !x.follow && x.status !== "dropped") : []);
   function setFollow(id: string | undefined) {
     item.follow = id;
-    if (!id && !item.options.length) item.options.push({ id: uid(), label: "", price: { mode: "person", currency: "EUR" } });
+    if (!id && !item.options.length) item.options.push({ id: uid(), label: "", price: { mode: "person", currency: entryCurrency() } });
   }
   const num = (v: string) => (v === "" ? undefined : Number(String(v).replace(",", ".")));
 </script>

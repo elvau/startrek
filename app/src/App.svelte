@@ -1,6 +1,7 @@
 <script lang="ts">
   import { applyDocument, t, tn } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
+  import { loadRates } from "./lib/currency.svelte";
   import { access, app, calc, addItem, discardDetails, setDetailed } from "./lib/store.svelte";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
@@ -57,6 +58,8 @@
   // Karte der Reise, aufgeklappt im Kapitel Unterkunft oder Erlebnisse
   let mapOpen = $state<"stay" | "attractions" | null>(null);
 
+  // Tageskurse für die Anzeige in anderer Währung und für Preise in Fremdwährung (einmal am Tag)
+  onMount(() => { void loadRates(); });
   onMount(() => {
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
     applyDocument();

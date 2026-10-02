@@ -882,6 +882,7 @@ export const ar: Dict = {
   "n.tickets.two": "تذكرتان",
   "n.tickets.zero": "لا تذاكر",
   "nav.chapters": "الفصول",
+  "nav.currency": "العملة",
   "nav.language": "اللغة",
   "nav.more": "المزيد",
   "nav.theme": "فاتح أو داكن",
