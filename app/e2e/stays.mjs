@@ -99,7 +99,9 @@ try {
 
   // nach Bewertung sortieren
   await m.locator(".chip", { hasText: "Beste Bewertung" }).click();
-  if (!(await m.locator(".fs-res").first().textContent()).includes("Cornaro Hotel")) fail("Sortierung nach Bewertung");
+  // Testangebote stehen immer hinter den echten (Cornaro ist hier ein Testtreffer, obwohl am besten bewertet)
+  if (!(await m.locator(".fs-res").first().textContent()).includes("Rooms")) fail("Sortierung nach Bewertung");
+  if (!(await m.locator(".fs-res").last().textContent()).includes("Cornaro Hotel")) fail("Testangebot nicht hinten");
   // nach Nähe zum Zentrum (aus „x km bis Zentrum“)
   await m.locator(".chip", { hasText: "Nähe Zentrum" }).click();
   if (!(await m.locator(".fs-res").first().textContent()).includes("Cornaro Hotel")) fail("Sortierung nach Nähe Zentrum");

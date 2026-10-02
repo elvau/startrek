@@ -328,7 +328,7 @@
     {#if sts.length > 1}
       <div class="st-stations">
         <span class="muted small">{t("st.stations")}</span>
-        {#each sts as s (s.ap + s.from)}
+        {#each sts as s (`${s.ap}|${s.from}|${s.to}`)}
           {@const nm = stationName(geo, airportData, s.ap, s.city)}
           <button type="button" class="chip sm" class:on={place === nm && checkin === s.from && checkout === s.to} onclick={() => pickStation(s)}>{nm} <small>{dayShort(s.from)}–{dayShort(s.to)} · {tn("n.nights", nights(s.from, s.to))}</small></button>
         {/each}

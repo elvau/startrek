@@ -151,6 +151,11 @@ const travelMin = (o: Filterable) => legs(o).reduce((v, l) => v + l.minutes, 0) 
  * „Beste“: jede Stunde unterwegs zählt wie 15 € pro Treffer, jeder Umstieg wie 30 €.
  */
 export function sortFlights<T extends Filterable>(list: T[], sort: FlightSort): T[] {
+  // Testangebote (Sandbox) hinter die echten
+  const l = sortFlightsBy(list, sort);
+  return [...l.filter(o => !(o as { test?: boolean }).test), ...l.filter(o => (o as { test?: boolean }).test)];
+}
+function sortFlightsBy<T extends Filterable>(list: T[], sort: FlightSort): T[] {
   const l = [...list];
   if (sort === "time") return l.sort((a, b) => travelMin(a) - travelMin(b) || a.total - b.total);
   if (sort === "arrival") return l.sort((a, b) => a.out.arr.localeCompare(b.out.arr) || a.total - b.total);

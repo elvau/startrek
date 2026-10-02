@@ -36,8 +36,9 @@ describe("Flugsuche in der App", () => {
     // flexibel: Reisezeitraum als Fenster, 11 Nächte → 9 bis 11
     expect(defaultQuery(trip())).toMatchObject({ latest: "2027-07-29", nightsMin: 9, nightsMax: 11 });
     expect(defaultQuery({ ...trip(), from: undefined, to: undefined })).toMatchObject({ latest: "", nightsMin: 7, nightsMax: 14 });
-    // kurze Reise: nicht auf 1 Nacht schrumpfen (3 Nächte → 2–3)
-    expect(defaultQuery({ ...trip(), from: "2027-05-13", to: "2027-05-16" })).toMatchObject({ nightsMin: 2, nightsMax: 3 });
+    // kurze Reise (bis 3 Nächte): die ganze Zeit, damit alle Gruppen dieselben Tage fliegen
+    expect(defaultQuery({ ...trip(), from: "2027-05-13", to: "2027-05-16" })).toMatchObject({ nightsMin: 3, nightsMax: 3 });
+    expect(defaultQuery({ ...trip(), from: "2027-05-13", to: "2027-05-20" })).toMatchObject({ nightsMin: 6, nightsMax: 7 });
   });
   it("macht aus einem Treffer ein Angebot mit Quelle, Link und Hin- und Rückflug", () => {
     const o = offerToOption(fromKiwi(fixture)[0]);

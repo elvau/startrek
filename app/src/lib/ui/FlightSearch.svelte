@@ -22,6 +22,7 @@
   import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
   import { FLIGHTS_URL, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
+  import { loadPlz } from "../plz";
   import type { FlightScope } from "../flights/open.svelte";
   import { googleFlightsLink, skyscannerLink } from "../links";
   import type { FlightOffer, FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
@@ -77,7 +78,8 @@
   const savedAps = Array.isArray(saved.aps) && (saved.aps as string[]).length ? (saved.aps as string[]) : prefs.airports?.length ? prefs.airports : null;
   let custom = $state(!!savedAps);
   let aps = $state<string[]>(savedAps ?? nearestAirports(trip, 4, start.ids ?? item?.participants ?? defaultFlyers(trip)));
-  const allCodes = $derived([...new Set([...known.map(a => a.code), ...aps])]);
+  // zur Auswahl: die nächsten Flughäfen zum Wohnort der Mitfliegenden (ohne Wohnort die ersten der Liste) und die gewählten
+  const allCodes = $derived([...new Set([...nearestAirports(trip, 8, who), ...aps])]);
   // aus der Liste gewählte Abflug-Städte (z. B. LON = alle Londoner Flughäfen); alles andere ist ein Flughafen
   let apCities = $state<string[]>(Array.isArray(saved.apCities) ? (saved.apCities as string[]) : []);
   const originLoc = (code: string): Loc | null => (apCities.includes(code) ? locOf(airportData, code, "city") : locOf(airportData, code, "airport"));
@@ -140,6 +142,7 @@
   const span = $derived(rFrom && rTo ? nights(rFrom, rTo) : null);
   // feste Daten
   let out = $state(base.depart);
+  const farOut = $derived(((mode === "flex" ? rFrom : out) || "") > new Date(Date.now() + 330 * 86400000).toISOString().slice(0, 10));
   let ret = $state(base.ret || "");
   let flexDays = $state(Number(saved.flexDays ?? 0));
   // für beide
@@ -190,6 +193,18 @@
     apCities = l.kind === "city" ? [...new Set([...apCities, l.code])] : apCities.filter(c => c !== l.code);
   }
   function resetAps() { aps = nearestAirports(trip, 4, who); custom = false; }
+  // ohne Wohnort schlägt die Suche Flughäfen aus der Standardliste (NRW) vor: PLZ gleich hier eintragen
+  const noHome = $derived(flyers(trip, who).some(x => !trip.households?.[hhKey(x)]?.geo));
+  let plzErr = $state(false);
+  async function setPlz(v: string) {
+    plzErr = false;
+    if (!/^\d{5}$/.test(v.trim())) return;
+    const pl = (await loadPlz().catch(() => null))?.get(v.trim());
+    if (!pl) { plzErr = true; return; }
+    trip.households ||= {};
+    for (const h of new Set(flyers(trip, who).map(hhKey))) if (!trip.households[h]?.geo) trip.households[h] = { ...trip.households[h], plz: v.trim(), geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
+    resetAps();
+  }
 
   const SHOW = 40;
   // Flüge der anderen (schon übernommen): zum gemeinsamen Ankommen
@@ -407,6 +422,7 @@
         {/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
       </div>
+      {#if noHome}<p class="warnline fs-nohome">{t("fs.noHome")} <input class="fs-plz" inputmode="numeric" maxlength="5" placeholder={t("fs.plzPh")} aria-label={t("fs.plzPh")} oninput={e => setPlz(e.currentTarget.value)} />{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</p>{/if}
       <p class="muted small">
         {#if custom}{t("fs.custom")} <button type="button" class="linkbtn" onclick={resetAps}>{t("fs.reset")}</button>
         {:else}{t("fs.default")}{/if}
@@ -676,6 +692,8 @@
       {#if into}<p class="muted small">{t("fs.takenHint")}</p>{/if}
     {:else}
       <p class="muted small">{t("fs.none")}</p>
+      <!-- Airlines verkaufen meist erst rund 11 Monate im Voraus: dann nicht „gibt es nicht“, sondern „noch nicht“ -->
+      {#if farOut}<p class="warnline fs-farout">{t("fs.farOut")}</p>{/if}
     {/if}
   {/if}
 </Modal>

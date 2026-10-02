@@ -175,6 +175,13 @@ try {
   // aufgeklappte Suche gehört zur Reise: nach dem Wechsel in eine andere Reise ist sie zu
   await p.locator("#flights .fs-open").click();
   await p.locator("#flights .modal.inline").waitFor();
+  // ohne Wohnort: Hinweis mit PLZ-Feld; Hamburger PLZ → Hamburg als Abflughafen (nicht mehr nur NRW)
+  const fsm = p.locator("#flights .modal.inline");
+  if (!(await fsm.locator(".fs-nohome").isVisible())) fail("Hinweis „Wohnort fehlt“ fehlt");
+  await fsm.locator(".fs-plz").fill("20095");
+  await until(async () => (await fsm.locator(".fs-aps .chip.on").allInnerTexts()).join() .startsWith("HAM"), "Hamburg als Abflughafen", 10000);
+  if (await fsm.locator(".fs-nohome").count()) fail("Hinweis bleibt nach PLZ");
+  log("Ohne Wohnort: PLZ in der Flugsuche, danach Hamburg zuerst (" + (await fsm.locator(".fs-aps .chip.on").allInnerTexts()).join(", ") + ")");
   await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
   await p.locator(".top .brand-btn").click();
   await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();

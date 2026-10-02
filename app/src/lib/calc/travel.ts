@@ -85,6 +85,9 @@ export function roadKm(g: { lat: number; lon: number } | undefined, ap: Airport)
   return 2 * R * Math.asin(Math.sqrt(a)) * 1.3;
 }
 
+/** Bahn zum Flughafen, pro Person hin und zurück, aus der Straßenentfernung (für Flughäfen ohne festen Preis) */
+export const trainPP = (km: number) => Math.round((2 * Math.min(80, Math.max(5, 0.15 * km))) / 5) * 5;
+
 export interface Access { cost: number; hours: number; km: number | null; info: string }
 
 /** Anreise eines Haushalts zum Flughafen, hin und zurück, mit Parken */
@@ -97,7 +100,8 @@ export function accessFor(name: string, ap: Airport, persons: number, days: numb
   const km = roadKm(h.geo, ap);
   const driveH = km != null ? km / 85 + 0.25 : ap.h;
   if (h.mode === "train" || km == null) {
-    return { cost: ap.pp * persons, hours: km != null ? driveH * 1.4 : ap.h, km, info: `${t("hh.train")} ${ap.pp} € × ${persons}${km == null && h.mode !== "train" ? ` (${t("acc.noPlz")})` : ""}` };
+    const pp = ap.pp || (km != null ? trainPP(km) : 0);
+    return { cost: pp * persons, hours: km != null ? driveH * 1.4 : ap.h, km, info: `${t("hh.train")} ${pp} € × ${persons}${km == null && h.mode !== "train" ? ` (${t("acc.noPlz")})` : ""}` };
   }
   const cars = Math.max(1, h.cars || 1);
   const drive = 2 * km * (trip.settings.kmCost ?? 0.3) * cars, park = ap.park * days * cars;

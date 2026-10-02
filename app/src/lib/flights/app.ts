@@ -99,7 +99,7 @@ export function defaultFlyers(trip: Trip): string[] | undefined {
 /**
  * Vorschlag für die Suche: Wohnort der ersten Familie, Ort und Daten der Reise.
  * Flexibel: Reisezeitraum als Fenster, Nächte von (Dauer − ein Viertel, mindestens − 1) bis Dauer; ohne Daten 7 bis 14 Nächte.
- * (3 Nächte: 2–3, 7 Nächte: 6–7, 14 Nächte: 11–14)
+ * Kurze Reisen bis 3 Nächte (Wochenende, JGA) ganz, sonst kommen Gruppen an verschiedenen Tagen (7 Nächte: 6–7, 14: 11–14).
  */
 export function defaultQuery(trip: Trip, lastFrom = "", ids?: string[]): FlightQuery {
   const first = flyers(trip, ids)[0];
@@ -107,7 +107,7 @@ export function defaultQuery(trip: Trip, lastFrom = "", ids?: string[]): FlightQ
   const n = nights(trip.from, trip.to);
   return {
     from: lastFrom || home || "", to: trip.place || "", depart: trip.from || "", ret: trip.to || undefined,
-    latest: trip.to || "", nightsMin: n ? Math.max(1, n - Math.max(1, Math.floor(n / 4))) : 7, nightsMax: n || 14,
+    latest: trip.to || "", nightsMin: n ? (n <= 3 ? n : n - Math.max(1, Math.floor(n / 4))) : 7, nightsMax: n || 14,
     ...passengers(trip, ids), currency: "EUR"
   };
 }
