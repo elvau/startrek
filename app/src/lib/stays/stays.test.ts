@@ -74,7 +74,7 @@ describe("Unterkunftssuche: zusammenführen", () => {
   });
   it("Booking.com erst mit Adresse; fragt nur gewählte Quellen", async () => {
     const r = await searchStays(q, {}, fakeMcp({ structuredContent: trivago }));
-    expect(r.sources.map(s => [s.id, s.configured, s.ok, s.count])).toEqual([["booking", false, false, 0], ["trivago", true, true, 4]]);
+    expect(r.sources.map(s => [s.id, s.configured, s.ok, s.count])).toEqual([["booking", false, false, 0], ["trivago", true, true, 4], ["liteapi", false, false, 0]]);
     const calls: { method: string; tool?: string }[] = [];
     const both = await searchStays(q, { BOOKING_MCP_URL: "https://b.test/mcp" }, (async (u: RequestInfo | URL, i?: RequestInit) =>
       fakeMcp({ structuredContent: String(u).startsWith("https://b.test") ? booking : trivago }, calls)(u, i)) as typeof fetch);

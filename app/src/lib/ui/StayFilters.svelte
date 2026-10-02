@@ -13,7 +13,7 @@
   const fc = $derived(stayFacets(list, filter, ctx));
   const active = $derived(stayActive(filter));
   const meta = (c: number, min: number) => `${c} · ${t("fs.cal.from", { v: eur(min) })}`;
-  const SRC: Record<string, string> = { booking: "Booking.com", trivago: "Trivago" };
+  const SRC: Record<string, string> = { booking: "Booking.com", trivago: "Trivago", liteapi: "liteAPI" };
   const toggleFact = (x: string) => (filter.facts = filter.facts.includes(x) ? filter.facts.filter(y => y !== x) : [...filter.facts, x]);
   const toggleSrc = (x: string) => (filter.sources = filter.sources.includes(x) ? filter.sources.filter(y => y !== x) : [...filter.sources, x]);
   // Regler pro Person und Nacht: ganz rechts heißt egal

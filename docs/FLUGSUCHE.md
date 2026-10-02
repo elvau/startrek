@@ -50,8 +50,20 @@ Cloudflare-Dashboard → **Workers & Pages → startrek → Settings → Variabl
 |---|---|---|
 | `DUFFEL_TOKEN` | Duffel: Live-Preise der Airlines, später direkt buchbar | <https://app.duffel.com> (Test-Token reicht zum Ausprobieren) |
 | `TRAVELPAYOUTS_TOKEN` | Travelpayouts/Aviasales: Tiefpreise, Provisions-Links | <https://www.travelpayouts.com> |
+| `LITEAPI_KEY` | liteAPI: Hotelpreise vieler Anbieter, Provision je Buchung | <https://www.liteapi.travel> (Test-Schlüssel sofort) |
 
 Sobald ein Secret da ist, taucht der Anbieter in der Suche als „eingerichtet“ auf.
+
+### Duffel (angebunden)
+
+1. Auf <https://app.duffel.com> anmelden. Unter **Developers → Access tokens** einen Token anlegen
+   (Test-Token beginnt mit `duffel_test_`, liefert die Testairline „Duffel Airways“; Live-Token erst nach der
+   Freischaltung des Kontos mit Firmenangaben und Karte).
+2. Im Worker `DUFFEL_TOKEN` als **Secret** anlegen.
+3. Duffel wird nur bei **festen Daten** gefragt (ohne ± Tage); flexible Zeiträume und Nur-Hinflug-Fenster bleiben bei
+   Kiwi und Travelpayouts. Nur Angebote in Euro (ohne Kurs wäre ein Pfundpreis falsch). Kinder schickt die App mit
+   10 Jahren (Duffel braucht ein Alter). Kosten: Suchen frei bis 1500 je Buchung, darüber 0,005 $ je Suche.
+   Code: `app/src/lib/flights/duffel.ts`.
 
 ### Travelpayouts (angebunden)
 
@@ -111,7 +123,14 @@ Treffer an anderen Flughäfen fallen raus.
   Cloudflare-Dashboard → **Workers & Pages → startrek → Settings → Variables and Secrets → Add**,
   Typ „Text“, Name `BOOKING_MCP_URL`. Bis dahin zeigt die Suche „Booking.com: noch nicht eingerichtet“.
 
-Die Suche fragt beide gleichzeitig, führt gleiche Unterkünfte zusammen (gleicher Name, gleiche Lage,
+- **liteAPI** (Nuitée) wird gefragt, sobald `LITEAPI_KEY` als **Secret** eingetragen ist: auf <https://www.liteapi.travel>
+  anmelden, im Dashboard unter **Developer → API Keys** den Schlüssel kopieren (Test-Schlüssel sofort, echte Preise
+  nach Hinterlegen einer Karte; Provision je Buchung). Zwei Schritte: Hotels am Ort (`/data/hotels`, Name, Lage, Sterne,
+  Foto), dann Preise (`/hotels/rates`). Nur Hotels; bei „Ganze Unterkunft“ oder Pool/Küche/Klima/Parkplatz als Pflicht
+  bleibt liteAPI still. Braucht das Land als Code (die App schickt `cc`). Optional `LITEAPI_LINK` (Text): Adresse der
+  eigenen liteAPI-Buchungsseite (White Label) für „Beim Anbieter“. Code: `app/src/lib/stays/liteapi.ts`.
+
+Die Suche fragt alle gleichzeitig, führt gleiche Unterkünfte zusammen (gleicher Name, gleiche Lage,
 die günstigere bleibt) und liefert Gesamtpreise für den ganzen Aufenthalt.
 
 Filter (Pool, Frühstück inklusive, Küche, Klimaanlage, Parkplatz, kostenlos stornierbar, Sterne ab, Bewertung ab)

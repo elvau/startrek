@@ -12,6 +12,8 @@ export interface StayQuery {
   place: string;
   /** Land zur Unterscheidung (Paris, Frankreich statt Paris, Texas) */
   country?: string;
+  /** Land als ISO-Code (ES), für Anbieter, die ihn brauchen (liteAPI) */
+  cc?: string;
   /** JJJJ-MM-TT */
   checkin: string;
   checkout: string;

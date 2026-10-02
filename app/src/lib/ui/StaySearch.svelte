@@ -37,7 +37,7 @@
   try { saved = JSON.parse(localStorage.getItem(K) || "{}"); } catch {}
 
   const trip = app.trip;
-  const SOURCES = [{ id: "booking", name: "Booking.com" }, { id: "trivago", name: "Trivago" }];
+  const SOURCES = [{ id: "booking", name: "Booking.com" }, { id: "trivago", name: "Trivago" }, { id: "liteapi", name: "liteAPI" }];
   // Anfangswerte aus dem Aufruf: Posten, Lücke im Plan oder ganze Reise
   const start = (() => ({ ...scope }))();
   const item = start.itemId ? trip.items.find(i => i.id === start.itemId) : undefined;
@@ -198,7 +198,10 @@
     if (!use.length) { error = t("st.errSource"); return; }
     try { localStorage.setItem(K, JSON.stringify({ type, sources: use.length < SOURCES.length ? use : [], must, minStars, minScore })); } catch {}
     const sp = searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc);
-    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type, sources: use, currency: "EUR",
+    const cc = ccOf(geo, sp.country || trip.country || "") || near[0]?.ap.cc;
+    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type,
+      // Quellen nur bei Auswahl mitschicken (ein älterer Such-Dienst kennt neue Quellen noch nicht)
+      ...(use.length < SOURCES.length ? { sources: use } : {}), currency: "EUR",
       ...(must.length ? { must } : {}), ...(minStars ? { minStars } : {}), ...(minScore ? { minScore } : {}) };
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();

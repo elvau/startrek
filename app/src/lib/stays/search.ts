@@ -1,11 +1,16 @@
 /* Unterkünfte: alle Quellen gleichzeitig fragen, Doppelte zusammenführen, nach Preis sortieren */
 import type { SourceStatus } from "../flights/types";
 import { searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
+import { searchLite } from "./liteapi";
 import { keepStays } from "./sort";
 import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StaySearchResult } from "./types";
 
 /** Adressen der MCP-Server (Cloudflare-Variablen); Booking.com erst mit eingetragener Adresse */
-export interface StayEnv { BOOKING_MCP_URL?: string; TRIVAGO_MCP_URL?: string }
+export interface StayEnv {
+  BOOKING_MCP_URL?: string; TRIVAGO_MCP_URL?: string;
+  /** liteAPI: Schlüssel (Secret) und optional die eigene Buchungsseite (White Label) für die Links */
+  LITEAPI_KEY?: string; LITEAPI_LINK?: string;
+}
 
 interface Provider {
   id: string;
@@ -16,7 +21,8 @@ interface Provider {
 
 export const STAY_PROVIDERS: Provider[] = [
   { id: "booking", name: "Booking.com", configured: env => !!env.BOOKING_MCP_URL, search: (q, env, f) => searchBooking(q, env.BOOKING_MCP_URL!, f) },
-  { id: "trivago", name: "Trivago", configured: () => true, search: (q, env, f) => searchTrivago(q, env.TRIVAGO_MCP_URL || TRIVAGO_MCP, f) }
+  { id: "trivago", name: "Trivago", configured: () => true, search: (q, env, f) => searchTrivago(q, env.TRIVAGO_MCP_URL || TRIVAGO_MCP, f) },
+  { id: "liteapi", name: "liteAPI", configured: env => !!env.LITEAPI_KEY, search: (q, env, f) => searchLite(q, env.LITEAPI_KEY!, f, env.LITEAPI_LINK || undefined) }
 ];
 
 const withTimeout = <T>(p: Promise<T>, ms: number) =>
@@ -65,6 +71,8 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   const o = (b || {}) as Record<string, unknown>;
   const str = (k: string) => (typeof o[k] === "string" ? (o[k] as string).trim() : "");
   const place = str("place"), country = str("country"), checkin = str("checkin"), checkout = str("checkout");
+  const cc = str("cc").toUpperCase();
+  if (cc && !/^[A-Z]{2}$/.test(cc)) return "Land als ISO-Code (z. B. ES)";
   if (!place || place.length > 80 || country.length > 60) return "Ort angeben";
   if (!DATE.test(checkin) || !DATE.test(checkout)) return "Datum im Format JJJJ-MM-TT";
   const n = (Date.parse(checkout) - Date.parse(checkin)) / DAY;
@@ -91,7 +99,7 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   if (o.minStars != null && !int(o.minStars, 1, 5)) return "Sterne: 1 bis 5";
   if (o.minScore != null && !(typeof o.minScore === "number" && o.minScore >= 0 && o.minScore <= 10)) return "Bewertung: 0 bis 10";
   return {
-    place, ...(country ? { country } : {}), checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type,
+    place, ...(country ? { country } : {}), ...(cc ? { cc } : {}), checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type,
     ...(sources ? { sources } : {}), currency, ...(must ? { must } : {}),
     ...(o.minStars != null ? { minStars: o.minStars as number } : {}), ...(o.minScore ? { minScore: o.minScore as number } : {})
   };
