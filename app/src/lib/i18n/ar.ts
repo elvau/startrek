@@ -840,6 +840,7 @@ export const ar: Dict = {
   "map.missing.other": "{n} بلا موقع",
   "map.missing.two": "اثنان بلا موقع",
   "map.missing.zero": "لا شيء بلا موقع",
+  "map.onMap": "على الخريطة",
   "map.pick": "اضغط على سعر لعرض مكان الإقامة.",
   "map.title": "الخريطة",
   "map.view": "العرض",

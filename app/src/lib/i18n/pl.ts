@@ -809,6 +809,7 @@ export const pl: Dict = {
   "map.missing.many": "{n} bez lokalizacji",
   "map.missing.one": "{n} bez lokalizacji",
   "map.missing.other": "{n} bez lokalizacji",
+  "map.onMap": "Na mapie",
   "map.pick": "Dotknij ceny, aby zobaczyć nocleg.",
   "map.title": "Mapa",
   "map.view": "Widok",

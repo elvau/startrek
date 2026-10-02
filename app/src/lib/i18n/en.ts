@@ -775,6 +775,7 @@ export const en: Dict = {
   "map.map": "Map",
   "map.missing.one": "{n} without location",
   "map.missing.other": "{n} without location",
+  "map.onMap": "On the map",
   "map.pick": "Tap a price to see the place.",
   "map.title": "Map",
   "map.view": "View",

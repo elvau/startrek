@@ -124,7 +124,12 @@ try {
   if (!(await m.locator(".map-stay.on", { hasText: "2.364" }).count())) fail("Preisschild nicht markiert");
   await m.locator(".st-view .chip", { hasText: "Liste" }).click();
   if ((await m.locator(".fs-res").count()) !== 3) fail("zurück zur Liste");
-  log("Karte mit Preisschildern, Google-Maps-Link je Treffer");
+  // „Auf der Karte“ am Treffer: Karte auf, Unterkunft markiert und zuerst
+  await m.locator(".fs-res", { hasText: "Cornaro Hotel" }).locator(".st-onmap").click();
+  await until(async () => (await m.locator(".map-stay.on", { hasText: "2.364" }).count()) === 1, "Cornaro auf der Karte markiert");
+  if (!(await m.locator(".fs-res").first().textContent()).includes("Cornaro Hotel")) fail("markierte Unterkunft nicht zuerst");
+  await m.locator(".st-view .chip", { hasText: "Liste" }).click();
+  log("Karte mit Preisschildern, „Auf der Karte“ je Treffer, Google-Maps-Link je Treffer");
   // Filterleiste: Ausstattung „Küche“ mit Anzahl, filtert ohne neue Anfrage; zurücksetzen
   const nAsked = asked.length;
   await m.locator(".sf .ff-more > summary").click();

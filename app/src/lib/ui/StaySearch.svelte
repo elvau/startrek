@@ -12,7 +12,7 @@
   import { showItem } from "./showItem";
   import { dir } from "../directory.svelte";
   import { prefsFor } from "../prefs";
-  import { untrack } from "svelte";
+  import { tick, untrack } from "svelte";
   import { stationName } from "../stays/stationName";
   import { FLIGHTS_URL } from "../flights/app";
   import { autoParts, autoRooms, guests, searchStaysRemote, splitGuests, takeStay } from "../stays/app";
@@ -162,6 +162,13 @@
   let view = $state<"list" | "map">((() => { try { return localStorage.getItem(VIEW) === "map" ? "map" : "list"; } catch { return "list"; } })());
   $effect(() => { const v = view; try { localStorage.setItem(VIEW, v); } catch {} });
   let picked = $state<string | null>(null);
+  let mapWrap = $state<HTMLElement>();
+  /** „Auf der Karte“ am Treffer: Karte zeigen, Unterkunft markieren, hinscrollen */
+  async function onMap(o: StayOffer) {
+    view = "map"; picked = o.id;
+    await tick();
+    mapWrap?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
   const located = $derived(shown.filter(hasCoords));
   const points = $derived<MapPoint[]>([
     ...located.map(o => ({ id: o.id, lat: o.lat!, lon: o.lon!, kind: "stay" as const, label: eur(o.total), title: o.name })),
@@ -275,6 +282,7 @@
         {#if !taken[o.id] && isCurrent(o)}<span class="pill-n">{t("st.chosen")}</span>
         {:else}<button class="btn primary sm" disabled={taken[o.id]} onclick={() => take(o)}>{taken[o.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>{/if}
         {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel="noopener noreferrer">{t("search.atProvider")} ↗</a>{/if}
+        {#if hasCoords(o)}<button type="button" class="btn sm st-onmap" onclick={() => onMap(o)}>🗺 {t("map.onMap")}</button>{/if}
         {#if mapLink(o)}<a class="btn sm st-gmap" href={mapLink(o)} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
         <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
       </div>
@@ -407,15 +415,19 @@
         {#if hasKm}<button type="button" class="chip" class:on={sort === "center"} onclick={() => (sort = "center")}>{t("st.nearCenter")}</button>{/if}
         {#if asked.childAges.length}<button type="button" class="chip" class:on={sort === "family"} onclick={() => (sort = "family")}>{t("st.forFamilies")}</button>{/if}
       </div>
-      {#if located.length}
-        <div class="chips st-view" role="radiogroup" aria-label={t("map.view")}>
-          <button type="button" role="radio" aria-checked={view === "list"} class="chip" class:on={view === "list"} onclick={() => (view = "list")}>☰ {t("map.list")}</button>
-          <button type="button" role="radio" aria-checked={view === "map"} class="chip" class:on={view === "map"} onclick={() => (view = "map")}>🗺 {t("map.map")}</button>
-        </div>
-      {/if}
       <StayFilters {list} bind:filter={sfilter} {ctx} />
-      <p class="muted small">{filtered.length < list.length ? `${t("fs.f.shown", { n: filtered.length, of: list.length })} · ` : ""}{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(Math.min(...list.map(o => o.total))) })}</p>
+      <!-- Liste oder Karte direkt über den Treffern, gut sichtbar -->
+      <div class="st-bar">
+        <p class="muted small st-sum">{filtered.length < list.length ? `${t("fs.f.shown", { n: filtered.length, of: list.length })} · ` : ""}{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(Math.min(...list.map(o => o.total))) })}</p>
+        {#if located.length}
+          <div class="chips st-view" role="radiogroup" aria-label={t("map.view")}>
+            <button type="button" role="radio" aria-checked={view === "list"} class="chip" class:on={view === "list"} onclick={() => (view = "list")}>☰ {t("map.list")}</button>
+            <button type="button" role="radio" aria-checked={view === "map"} class="chip" class:on={view === "map"} onclick={() => (view = "map")}>🗺 {t("map.map")}</button>
+          </div>
+        {/if}
+      </div>
       {#if view === "map" && located.length}
+        <div bind:this={mapWrap}></div>
         <MapView {points} selected={picked} onselect={id => { if (located.some(o => o.id === id)) picked = id; }} onbounds={b => (bounds = b)} />
         <p class="muted small st-maphint">{tn("map.inView", inView.length)}{located.length < shown.length ? ` · ${tn("map.missing", shown.length - located.length)}` : ""} · {t("map.pick")}</p>
         <div class="fs-list">

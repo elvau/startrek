@@ -773,6 +773,7 @@ export const de = {
   "map.map": "Karte",
   "map.missing.one": "{n} ohne Lage",
   "map.missing.other": "{n} ohne Lage",
+  "map.onMap": "Auf der Karte",
   "map.pick": "Tippe auf einen Preis, um die Unterkunft zu sehen.",
   "map.title": "Karte",
   "map.view": "Ansicht",

@@ -775,6 +775,7 @@ export const fr: Dict = {
   "map.map": "Carte",
   "map.missing.one": "{n} sans emplacement",
   "map.missing.other": "{n} sans emplacement",
+  "map.onMap": "Sur la carte",
   "map.pick": "Touchez un prix pour voir l'hébergement.",
   "map.title": "Carte",
   "map.view": "Affichage",

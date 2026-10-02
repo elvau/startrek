@@ -809,6 +809,7 @@ export const ru: Dict = {
   "map.missing.many": "{n} без местоположения",
   "map.missing.one": "{n} без местоположения",
   "map.missing.other": "{n} без местоположения",
+  "map.onMap": "На карте",
   "map.pick": "Нажмите на цену, чтобы увидеть жильё.",
   "map.title": "Карта",
   "map.view": "Вид",
