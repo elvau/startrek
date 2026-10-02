@@ -14,6 +14,9 @@ export interface StayQuery {
   country?: string;
   /** Land als ISO-Code (ES), für Anbieter, die ihn brauchen (liteAPI) */
   cc?: string;
+  /** Mittelpunkt des Orts, für Anbieter, die im Umkreis suchen (liteAPI, wenn der Name nicht passt) */
+  lat?: number;
+  lon?: number;
   /** JJJJ-MM-TT */
   checkin: string;
   checkout: string;

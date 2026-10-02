@@ -96,7 +96,12 @@ export async function searchLite(q: StayQuery, key: string, f: typeof fetch = fe
   if (!liteFits(q)) return [];
   if (!q.cc) throw new Error("liteAPI braucht das Land des Orts");
   const p = new URLSearchParams({ countryCode: q.cc, cityName: q.place, limit: "60" });
-  const hotels: any[] = (await call(f, key, `/data/hotels?${p}`)).data || [];
+  let hotels: any[] = (await call(f, key, `/data/hotels?${p}`)).data || [];
+  // Name nicht bekannt (z. B. „Palma“ statt „Palma de Mallorca“): im Umkreis von 10 km um den Ort
+  if (!hotels.length && q.lat != null && q.lon != null) {
+    const g = new URLSearchParams({ countryCode: q.cc, latitude: String(q.lat), longitude: String(q.lon), radius: "10000", limit: "60" });
+    hotels = (await call(f, key, `/data/hotels?${g}`)).data || [];
+  }
   const ids = hotels.filter(h => !q.minStars || (num(h.stars) ?? 0) >= q.minStars).map(h => h.id).filter(Boolean).slice(0, 60);
   if (!ids.length) return [];
   const rates = await call(f, key, "/hotels/rates", {

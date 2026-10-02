@@ -76,6 +76,7 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   const place = str("place"), country = str("country"), checkin = str("checkin"), checkout = str("checkout");
   const cc = str("cc").toUpperCase();
   if (cc && !/^[A-Z]{2}$/.test(cc)) return "Land als ISO-Code (z. B. ES)";
+  const geo = typeof o.lat === "number" && typeof o.lon === "number" && Math.abs(o.lat) <= 90 && Math.abs(o.lon) <= 180 ? { lat: o.lat, lon: o.lon } : {};
   if (!place || place.length > 80 || country.length > 60) return "Ort angeben";
   if (!DATE.test(checkin) || !DATE.test(checkout)) return "Datum im Format JJJJ-MM-TT";
   const n = (Date.parse(checkout) - Date.parse(checkin)) / DAY;
@@ -102,7 +103,7 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   if (o.minStars != null && !int(o.minStars, 1, 5)) return "Sterne: 1 bis 5";
   if (o.minScore != null && !(typeof o.minScore === "number" && o.minScore >= 0 && o.minScore <= 10)) return "Bewertung: 0 bis 10";
   return {
-    place, ...(country ? { country } : {}), ...(cc ? { cc } : {}), checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type,
+    place, ...(country ? { country } : {}), ...(cc ? { cc } : {}), ...geo, checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type,
     ...(sources ? { sources } : {}), currency, ...(must ? { must } : {}),
     ...(o.minStars != null ? { minStars: o.minStars as number } : {}), ...(o.minScore ? { minScore: o.minScore as number } : {})
   };
