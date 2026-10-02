@@ -181,6 +181,12 @@ try {
   await gr.waitFor();
   const grText = await gr.innerText();
   for (const w of ["Köln", "Berlin", "Bahn", "Fernbus", "Auto", "Reisebus"]) if (!grText.includes(w)) fail("Bahn/Bus-Vorschlag ohne " + w + ": " + grText);
+  // Flug zum Vergleich von Tür zu Tür: nächster eigener Flughafen (CGN), 2 h vorher da, eine Art am schnellsten
+  await until(async () => (await gr.locator(".gr-flight").count()) > 0, "Flug im Zeitvergleich");
+  const grFl = await gr.locator(".gr-flight").innerText();
+  if (!grFl.includes("CGN → BER") || !grFl.includes("2 h vorher da") || !grFl.includes("zum Flughafen")) fail("Flug von Tür zu Tür: " + grFl);
+  if ((await gr.locator(".gr-best").count()) !== 1) fail("schnellste Art nicht markiert");
+  await gr.screenshot({ path: process.env.SHOT || "/dev/null" }).catch(() => {});
   const bahn = await gr.locator("a", { hasText: "bahn.de" }).getAttribute("href");
   if (!bahn.includes("so=K%C3%B6ln") || !bahn.includes("zo=Berlin") || !bahn.includes("hd=2027-06-04")) fail("bahn.de-Link: " + bahn);
   await gr.locator(".gr-coach-add").click();
@@ -188,7 +194,7 @@ try {
   await coach.waitFor();
   await until(async () => /Köln → Berlin[\s\S]*\d €/.test(await coach.innerText()), "Reisebus-Posten mit Richtwert");
   await p.keyboard.press("Escape");
-  log("Köln → Berlin, 9 Personen: Bahn, Fernbus, Auto, Reisebus mit Richtwerten, bahn.de vorbefüllt, Reisebus als Posten");
+  log("Köln → Berlin, 9 Personen: Flug von Tür zu Tür (2 h vorher), Bahn, Fernbus, Auto, Reisebus mit Richtwerten, bahn.de vorbefüllt, Reisebus als Posten");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Reisebeobachtung ok");

@@ -178,5 +178,13 @@ zeigt das Kapitel „Unterwegs“ Richtwerte pro Person für Hin- und Rückfahrt
 - Reisebus ab 8 Personen: Klein-, Midi- oder Reisebus mit Fahrer, Tagessatz plus km; bleibt vor Ort oder fährt zweimal
   als Transfer, das Günstigere zählt. Mit einem Klick als Posten „Reisebus“ (Richtwert).
 
+Reisezeit von Tür zu Tür (eine Richtung) für jede Art, die schnellste ist markiert:
+
+- Flug: Auto zum Abflughafen, 2 Stunden vorher da, Flug, 30 min Gepäck, mit Bus oder Bahn in die Stadt. Mit Flug-Posten
+  dessen Flughäfen, Flugdauer und Preis pro Person (mit Anfahrt), sonst geschätzt vom nächsten eigenen Abflughafen
+  (Einstellungen) zum nächsten großen Flughafen am Ziel (`airports.json`).
+- Bahn und Fernbus: je 30 min zum und vom Bahnhof bzw. Halt dazu
+- Auto: 15 min Pause alle 2 Stunden; Reisebus: 45 min nach 4,5 Stunden Lenkzeit
+
 Links: bahn.de und Google Maps mit Start, Ziel und Tag vorbefüllt; Omio, Trainline, FlixBus (später mit Partnerlinks);
 für den Reisebus FlixBus Mieten und 11880 (Anfrage bei Busunternehmen).
