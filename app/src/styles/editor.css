@@ -447,6 +447,7 @@ body[data-ch="split"] .amb-split{opacity:1}
 .map-airport{background:#2B6F8F;color:#fff;border-color:transparent}
 .map-event{background:#C4513C;color:#fff;border-color:transparent;max-width:180px;overflow:hidden;text-overflow:ellipsis}
 .st-maphint{margin:6px 2px 0}
+.st-res.st-pick{outline:2.5px solid var(--a);outline-offset:-1px}
 .st-pres{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:14px;background:var(--paper-2)}
 .st-pres ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .st-pres li{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:13.5px;align-items:baseline}

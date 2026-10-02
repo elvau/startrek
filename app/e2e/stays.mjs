@@ -17,7 +17,7 @@ async function until(fn, what, ms = 10000) {
 }
 const RESULT = {
   offers: [
-    { id: "booking:496993", source: "booking", sourceName: "Booking.com", name: "Rooms Šećer", total: 720, currency: "EUR", url: "https://www.booking.com/hotel/hr/sobe-a-eaer.html", score: 9.4, reviews: 416, stars: 1, place: "Split Stadtzentrum, Split", facts: ["Parkplatz", "Familienzimmer"], lat: 43.5089, lon: 16.4392 },
+    { id: "booking:496993", source: "booking", sourceName: "Booking.com", name: "Rooms Šećer", total: 720, currency: "EUR", url: "https://www.booking.com/hotel/hr/sobe-a-eaer.html", score: 9.4, reviews: 416, stars: 1, place: "Split Stadtzentrum, Split", facts: ["Parkplatz", "Familienzimmer"], lat: 43.515, lon: 16.47 },
     { id: "trivago:c89342aae3a0", source: "trivago", sourceName: "Trivago", via: "Airbnb", name: "Ferienwohnung Klara", total: 783, currency: "EUR", url: "https://www.trivago.de/de/lm/klara", score: 9.4, reviews: 194, place: "Split, 0.9 km bis Zentrum", facts: ["Küche", "Parkplatz"] },
     { id: "trivago:9c4d6ea1f5e0", source: "trivago", sourceName: "Trivago", via: "Trip.com", name: "Cornaro Hotel", total: 2364, currency: "EUR", url: "https://www.trivago.de/de/lm/cornaro", score: 9.6, reviews: 4022, stars: 5, place: "Split, 0.4 km bis Zentrum", lat: 43.5081, lon: 16.4402 }
   ],
@@ -102,14 +102,27 @@ try {
   await m.locator(".st-view .chip", { hasText: "Karte" }).click();
   await until(async () => (await m.locator(".mapbox .map-stay").count()) === 2, "zwei Preisschilder auf der Karte");
   if (!(await m.locator(".st-maphint").textContent()).includes("1 ohne Lage")) fail("Hinweis ohne Lage: " + await m.locator(".st-maphint").textContent());
-  if (await m.locator(".fs-res").count()) fail("Karte zeigt schon eine Unterkunft");
+  // unter der Karte: alle im Ausschnitt; die angetippte zuerst und markiert
+  await until(async () => (await m.locator(".fs-res").count()) === 2, "Unterkünfte im Kartenausschnitt");
+  if (!(await m.locator(".st-maphint").textContent()).includes("2 Unterkünfte im Kartenausschnitt")) fail("Hinweis Ausschnitt: " + await m.locator(".st-maphint").textContent());
   await m.locator(".map-stay", { hasText: "2.364" }).click();
-  await until(async () => (await m.locator(".fs-res").count()) === 1, "Unterkunft unter der Karte");
-  if (!(await m.locator(".fs-res").textContent()).includes("Cornaro Hotel")) fail("falsche Unterkunft unter der Karte");
+  await until(async () => (await m.locator(".fs-res").first().textContent()).includes("Cornaro Hotel"), "angetippte Unterkunft zuerst");
+  if (!(await m.locator(".fs-res.st-pick").count())) fail("angetippte Unterkunft nicht markiert");
   if (!(await m.locator(".map-stay.on", { hasText: "2.364" }).count())) fail("Preisschild nicht markiert");
   await m.locator(".st-view .chip", { hasText: "Liste" }).click();
   if ((await m.locator(".fs-res").count()) !== 3) fail("zurück zur Liste");
   log("Karte mit Preisschildern, Google-Maps-Link je Treffer");
+  // Filterleiste: Ausstattung „Küche“ mit Anzahl, filtert ohne neue Anfrage; zurücksetzen
+  const nAsked = asked.length;
+  await m.locator(".sf .ff-more > summary").click();
+  const kitchen = m.locator(".sf .chip", { hasText: "Küche" });
+  if (!/Küche\s*1 · ab 783/.test(await kitchen.textContent())) fail("Chip Küche: " + await kitchen.textContent());
+  await kitchen.click();
+  if ((await m.locator(".fs-res").count()) !== 1 || !(await m.locator(".fs-res").textContent()).includes("Klara")) fail("Filter Küche");
+  if (!(await m.locator(".sf .pill-n").textContent()).includes("1 aktiv")) fail("Anzahl aktiver Filter");
+  await m.locator(".sf .ff-reset").click();
+  if ((await m.locator(".fs-res").count()) !== 3 || asked.length !== nAsked) fail("Filter zurücksetzen / keine neue Anfrage");
+  log("Filterleiste: Küche → 1 von 3, ohne neue Anfrage, zurückgesetzt");
 
   // zwei übernehmen → ein Posten mit 2 Angeboten, Preis für den ganzen Aufenthalt
   await m.locator(".fs-res", { hasText: "Ferienwohnung Klara" }).locator(".btn", { hasText: "Übernehmen" }).click();

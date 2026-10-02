@@ -18,10 +18,12 @@
   import { guests, searchStaysRemote, takeStay } from "../stays/app";
   import { arrivals, gaps, guestsIn, hints, stations, stayWindow } from "../stays/presence";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
-  import { airportOf, ccOf, cityForAirport, placesNear, searchParts, stayNear, suggestCities, type CityHit } from "../geo/places";
+  import { airportOf, ccOf, cityForAirport, findCity, placesNear, searchParts, stayNear, suggestCities, type CityHit } from "../geo/places";
   import type { StayScope } from "../stays/open.svelte";
   import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StayType } from "../stays/types";
-  import { centerKm, keepStays, sortStays, type StaySort } from "../stays/sort";
+  import { keepStays, sortStays, type StaySort } from "../stays/sort";
+  import { applyStayFilter, kmToCenter, noStayFilter, type StayCtx } from "../stays/filter";
+  import StayFilters from "./StayFilters.svelte";
   import type { SourceStatus } from "../flights/types";
   import { airbnbLink, bookingLink } from "../links";
   import { hasCoords, locText, mapsUrl } from "../geo/maps";
@@ -134,7 +136,16 @@
     return { total: o.price.basis === "stay" ? o.price.unit : o.price.unit * (nights(it!.from, it!.to) || 1), url: o.source?.url };
   });
 
-  const shown = $derived(sortStays(list || [], sort));
+  // Filter auf die Treffer (keine neue Anfrage); Entfernung zum Zentrum vom Anbieter oder aus den Koordinaten
+  let sfilter = $state(noStayFilter());
+  const ctx = $derived<StayCtx>({
+    nights: asked ? nights(asked.checkin, asked.checkout) || 1 : 1, people: asked ? asked.adults + asked.childAges.length : 1,
+    center: asked ? findCity(geo, asked.place.split(",")[0].trim(), ccOf(geo, asked.country || "")) : null
+  });
+  const filtered = $derived(applyStayFilter(list || [], sfilter, ctx));
+  const shown = $derived(sort === "center"
+    ? [...filtered].sort((a, b) => (kmToCenter(a, ctx) ?? Infinity) - (kmToCenter(b, ctx) ?? Infinity) || a.total - b.total)
+    : sortStays(filtered, sort));
   // Liste oder Karte (gemerkt); auf der Karte zeigt ein Tipp auf den Preis die Unterkunft darunter
   const VIEW = "rk-st-view";
   let view = $state<"list" | "map">((() => { try { return localStorage.getItem(VIEW) === "map" ? "map" : "list"; } catch { return "list"; } })());
@@ -150,9 +161,15 @@
       return hasCoords(l) ? [{ id: "ev:" + i.id, lat: l.lat, lon: l.lon, kind: "event" as const, label: `★ ${i.name.length > 22 ? i.name.slice(0, 21) + "…" : i.name}`, title: i.name }] : [];
     })
   ]);
-  const pickedOffer = $derived(picked ? shown.find(o => o.id === picked) : undefined);
+  // Karte: darunter die Unterkünfte im sichtbaren Ausschnitt, die angetippte zuerst
+  let bounds = $state<{ w: number; s: number; e: number; n: number } | null>(null);
+  const inView = $derived.by(() => {
+    const xs = bounds ? located.filter(o => o.lon! >= bounds!.w && o.lon! <= bounds!.e && o.lat! >= bounds!.s && o.lat! <= bounds!.n) : located;
+    const p = picked ? xs.find(o => o.id === picked) ?? located.find(o => o.id === picked) : undefined;
+    return p ? [p, ...xs.filter(o => o !== p)] : xs;
+  });
   const mapLink = (o: StayOffer) => mapsUrl({ q: locText(o.name, asked?.place), lat: o.lat, lon: o.lon });
-  const hasKm = $derived((list || []).some(o => centerKm(o) != null));
+  const hasKm = $derived((list || []).some(o => kmToCenter(o, ctx) != null));
   const toggleSrc = (id: string) => (use = use.includes(id) ? use.filter(x => x !== id) : [...use, id]);
   const score = (s: number) => s.toFixed(1).replace(".", ",");
   const people = (a: number, kids: number[]) => `${a} ${t("age.adultShort")}${kids.length ? `, ${tn("n.kids", kids.length)} (${kids.join(", ")} ${t("st.yearsShort")})` : ""}`;
@@ -173,7 +190,9 @@
     try {
       const r = await searchStaysRemote(q, ctrl.signal);
       // auch hier filtern: ein älterer Such-Dienst kennt Sterne und Bewertung noch nicht
-      list = keepStays(r.offers, q).slice(0, 40);
+      list = keepStays(r.offers, q).slice(0, 100);
+      sfilter = noStayFilter();
+      bounds = null;
       sort = q.childAges.length ? "family" : "price";
       picked = null;
       sources = r.sources;
@@ -198,7 +217,7 @@
 
 {#snippet res(o: StayOffer, an: number, n: number)}
   {@const diff = current && current.url !== o.url ? o.total - current.total : null}
-  <article class="fs-res st-res" class:st-cur={current?.url === o.url}>
+  <article class="fs-res st-res" class:st-cur={current?.url === o.url} class:st-pick={view === "map" && picked === o.id}>
     {#if o.image}<img class="st-img" src={o.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={e => ((e.currentTarget as HTMLImageElement).hidden = true)} />{/if}
     <div class="st-b">
       <div class="fs-top">
@@ -356,11 +375,14 @@
           <button type="button" role="radio" aria-checked={view === "map"} class="chip" class:on={view === "map"} onclick={() => (view = "map")}>🗺 {t("map.map")}</button>
         </div>
       {/if}
-      <p class="muted small">{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(list[0].total) })}</p>
+      <StayFilters {list} bind:filter={sfilter} {ctx} />
+      <p class="muted small">{filtered.length < list.length ? `${t("fs.f.shown", { n: filtered.length, of: list.length })} · ` : ""}{t("st.summary", { offers: tn("n.offers", list.length), place: asked.place, guests: tn("n.guests", n), people: people(asked.adults, asked.childAges), nights: tn("n.nights", an), d: dateDE(asked.checkin), rooms: asked.rooms, min: eur(list[0].total) })}</p>
       {#if view === "map" && located.length}
-        <MapView {points} selected={picked} onselect={id => (picked = id)} />
-        <p class="muted small st-maphint">{located.length < shown.length ? `${tn("map.missing", shown.length - located.length)} · ` : ""}{pickedOffer ? "" : t("map.pick")}</p>
-        {#if pickedOffer}<div class="fs-list">{@render res(pickedOffer, an, n)}</div>{/if}
+        <MapView {points} selected={picked} onselect={id => (picked = id)} onbounds={b => (bounds = b)} />
+        <p class="muted small st-maphint">{tn("map.inView", inView.length)}{located.length < shown.length ? ` · ${tn("map.missing", shown.length - located.length)}` : ""} · {t("map.pick")}</p>
+        <div class="fs-list">
+          {#each inView as o (o.id)}{@render res(o, an, n)}{/each}
+        </div>
       {:else}
         <div class="fs-list">
           {#each shown as o (o.id)}{@render res(o, an, n)}{/each}

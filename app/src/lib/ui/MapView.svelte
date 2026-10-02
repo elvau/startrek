@@ -12,7 +12,11 @@
   import { t } from "../i18n/index.svelte";
   import type { Map as MlMap, Marker } from "maplibre-gl";
 
-  let { points, selected = null, onselect }: { points: MapPoint[]; selected?: string | null; onselect?: (id: string) => void } = $props();
+  let { points, selected = null, onselect, onbounds }: {
+    points: MapPoint[]; selected?: string | null; onselect?: (id: string) => void;
+    /** sichtbarer Ausschnitt nach jedem Verschieben oder Zoomen */
+    onbounds?: (b: { w: number; s: number; e: number; n: number }) => void;
+  } = $props();
 
   const STYLE = "https://tiles.openfreemap.org/styles/liberty";
   let box: HTMLDivElement;
@@ -29,6 +33,7 @@
       if (!box) return;
       map = new m.Map({ container: box, style: STYLE, center: [0, 30], zoom: 1.5, attributionControl: { compact: true }, cooperativeGestures: true });
       map.addControl(new m.NavigationControl({ showCompass: false }), "top-right");
+      map.on("moveend", () => { const b = map!.getBounds(); onbounds?.({ w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() }); });
       draw();
     } catch { failed = true; }
   }
