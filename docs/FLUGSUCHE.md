@@ -198,3 +198,12 @@ für den Reisebus FlixBus Mieten und 11880 (Anfrage bei Busunternehmen).
 - **Unterkünfte:** ab 11 Gästen auf mehrere Unterkünfte zu je höchstens 8 (änderbar), auch bei Hotels: die Anbieter
   liefern für mehr als etwa 10 Gäste kaum etwas (live: Trivago 0 Hotels für 15, 25 für 8). Gesucht für die größte;
   der Preis gilt je Unterkunft und wird mit `multiply` so oft gezählt wie nötig. Hotels: ein Zimmer je zwei Gäste.
+
+## Flughafentransfer
+
+Kapitel „Vor Ort“, bei Reisen mit Flug (oder fernem Ziel): vom Ankunftsflughafen (sonst dem nächsten großen Flughafen
+am Ziel) zur Unterkunft mit Lage, sonst zum Anlass oder in die Ortsmitte (`app/src/lib/transfer.ts`,
+`app/src/lib/ui/TransferOptions.svelte`). Fahrzeug nach Gruppengröße mit Gepäck (Taxi bis 3, Van bis 7, Kleinbus bis 16,
+darüber Reisebusse), Richtwert je Fahrt aus Grundpreis und Straßen-km, angepasst ans Preisniveau des Landes;
+Posten „Flughafentransfer“ mit zwei Fahrten. Links: Kiwitaxi, GetTransfer, Intui.travel (Partnerprogramme über
+Travelpayouts), Welcome Pickups, Booking.com Taxi, Route in Google Maps.

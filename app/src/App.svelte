@@ -39,6 +39,7 @@
   import FoodCard from "./lib/ui/FoodCard.svelte";
   import TripMap from "./lib/ui/TripMap.svelte";
   import GroundOptions from "./lib/ui/GroundOptions.svelte";
+  import TransferOptions from "./lib/ui/TransferOptions.svelte";
   import { getYourGuideLink, tiqetsLink } from "./lib/links";
   import ViatorLink from "./lib/ui/ViatorLink.svelte";
   import { partner } from "./lib/partnerState.svelte";
@@ -167,6 +168,7 @@
           <!-- Mietwagen: Richtwert-Posten aus den Flugzeiten, dazu Vergleich mit Ort und Zeiten -->
           {@const cw = carWindow(app.trip)}
           <GroundOptions city={evWin.city} />
+          <TransferOptions city={evWin.city} />
           {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.add")}</button></div>{/if}
           <p class="search-row muted small fs-direct car-links">{t("car.compare")}
             {#if cw}<a href={kayakCarLink(cw, evWin.city)} target="_blank" rel="noopener noreferrer">KAYAK ↗</a> ·{/if}

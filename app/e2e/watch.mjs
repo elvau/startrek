@@ -157,6 +157,16 @@ try {
   // Spanien: Preisniveau 0,8 → 34 € am Tag statt 40 €
   if (!(await car.innerText()).includes("170")) fail("Mietwagen-Richtwert (5 Tage × 34 €): " + await car.innerText());
   await p.keyboard.press("Escape");
+  // Flughafentransfer PMI → Palma: Taxi für 2, Richtwert hin und zurück, Anbieter zum Vergleichen
+  const trInfo = p.locator("#transport .tr-links");
+  await until(async () => (await trInfo.count()) && (await trInfo.innerText()).includes("PMI → Palma"), "Transfer PMI → Palma", 10000);
+  if (!(await trInfo.innerText()).includes("Taxi") || !(await trInfo.locator("a", { hasText: "Kiwitaxi" }).count())) fail("Transfer-Hinweis: " + await trInfo.innerText());
+  await p.locator("#transport .tr-add").click();
+  const tr = p.locator("#transport .card[data-item]", { hasText: "Flughafentransfer" });
+  await tr.waitFor();
+  await until(async () => /\d+ €/.test(await tr.innerText()), "Transfer-Posten mit Richtwert");
+  await p.keyboard.press("Escape");
+  log("Flughafentransfer PMI → Palma: Taxi für 2, Richtwert hin und zurück als Posten, Kiwitaxi & Co. zum Vergleichen");
   await p.locator("#misc .ins-add").click();
   const ins = p.locator("#misc .card", { hasText: "Reiseversicherung" });
   await ins.waitFor();
@@ -180,6 +190,7 @@ try {
   const gr = p.locator("#transport .ground");
   await gr.waitFor();
   const grText = await gr.innerText();
+  if (await p.locator("#transport .tr-links").count()) fail("nahes Ziel ohne Flug: kein Flughafentransfer");
   for (const w of ["Köln", "Berlin", "Bahn", "Fernbus", "Auto", "Reisebus"]) if (!grText.includes(w)) fail("Bahn/Bus-Vorschlag ohne " + w + ": " + grText);
   // Flug zum Vergleich von Tür zu Tür: nächster eigener Flughafen (CGN), 2 h vorher da, eine Art am schnellsten
   await until(async () => (await gr.locator(".gr-flight").count()) > 0, "Flug im Zeitvergleich");
