@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasCoords, itemLoc, locOf, locText, mapsUrl } from "./maps";
+import { hasCoords, itemLoc, locText, mapsUrl } from "./maps";
 import { stayToOption } from "../stays/app";
 import { eventItem } from "../activities/app";
 import type { Item, Trip } from "../model";
@@ -41,7 +41,7 @@ describe("Lage und Google-Maps-Link", () => {
   it("ältere Unterkunft ohne gespeicherte Lage: Name und Ort der Suche", () => {
     const trip = { place: "Mallorca" } as Trip;
     const item = { cat: "stay", options: [] } as unknown as Item;
-    expect(itemLoc(item, { id: "o", label: "Finca Luna", price: { mode: "unit" }, query: { place: "Pollença", checkin: "", checkout: "", adults: 2, childAges: [], rooms: 1 } }, trip)).toEqual({ q: "Finca Luna, Pollença" });
-    expect(itemLoc({ ...item, cat: "misc" } as Item, { id: "o", label: "Taxi", price: { mode: "unit" } }, trip)).toBeUndefined();
+    expect(itemLoc(item, { id: "o", label: "Finca Luna", price: { mode: "unit", currency: "EUR" }, query: { place: "Pollença", checkin: "", checkout: "", adults: 2, childAges: [], rooms: 1 } }, trip)).toEqual({ q: "Finca Luna, Pollença" });
+    expect(itemLoc({ ...item, cat: "misc" } as Item, { id: "o", label: "Taxi", price: { mode: "unit", currency: "EUR" } }, trip)).toBeUndefined();
   });
 });

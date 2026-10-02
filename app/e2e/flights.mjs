@@ -165,8 +165,14 @@ try {
   await m.locator(".fs-res").first().waitFor();
   const f = asked.at(-1);
   if (f.ret !== "2027-07-29" || f.flexDays !== 2 || f.latest) fail("feste Anfrage: " + JSON.stringify(f));
-  await m.locator(".chip", { hasText: "Nur direkt" }).click();
+  // Filterleiste: „Direkt“ mit Anzahl und Preis ab, ein zweiter Tipp hebt den Filter auf
+  const direct = m.locator(".ff-stops .chip", { hasText: "Direkt" });
+  if (!/Direkt\s*2 · ab/.test(await direct.textContent())) fail("Chip Direkt: " + await direct.textContent());
+  await direct.click();
   if ((await m.locator(".fs-res").count()) !== 2) fail("Filter direkt (je Flughafen einer)");
+  if (!(await m.locator(".fs-res").first().textContent()).includes("Eurowings")) fail("Direktflug fehlt");
+  await direct.click();
+  if ((await m.locator(".fs-res").count()) !== 4) fail("Filter direkt nicht aufgehoben");
   await m.locator(".chip", { hasText: "Günstigste" }).click();
   await m.locator(".fs-res").nth(0).locator(".btn", { hasText: "Übernehmen" }).click();
   // Übernehmen schließt die Suche und zeigt den Posten
@@ -332,6 +338,18 @@ try {
   if (ow.departTo !== "2027-03-05" || ow.depart !== "2027-03-01" || ow.ret || ow.latest || ow.to !== "GIG") fail("Anfrage nur Hinflug: " + JSON.stringify(ow));
   if (await m.locator(".fs-res .fs-leg", { hasText: "Rück" }).count()) fail("nur Hinflug zeigt Rückflug");
   log("Nur Hinflug: nach GIG, Abflug irgendwann 01.03. bis 05.03., ohne Rückflug");
+  // Preiskalender: je Tag der günstigste Preis und die Umstiege, günstig grün, teuer rot; Tipp zeigt nur diesen Tag
+  const days = m.locator(".pcal .pcal-d:not(.off)");
+  if ((await days.count()) !== 5) fail("Kalender: " + await days.count() + " Tage");
+  if (!(await days.first().getAttribute("class")).includes("t0") || !(await days.last().getAttribute("class")).includes("t2")) fail("Kalender-Farben");
+  if (!(await days.first().textContent()).includes("(0)")) fail("Kalender ohne Umstiege: " + await days.first().textContent());
+  const all = await m.locator(".fs-res").count();
+  await days.nth(2).click();
+  await until(async () => (await m.locator(".fs-res").count()) === all / 5, "nur Flüge am 03.03.");
+  if (!(await m.locator(".fs-res").first().textContent()).includes("03.03")) fail("Flug nicht am 03.03.: " + await m.locator(".fs-res").first().textContent());
+  await days.nth(2).click();
+  await until(async () => (await m.locator(".fs-res").count()) === all, "Kalender aufgehoben");
+  log(`Preiskalender: 5 Tage von grün bis rot mit Umstiegen, Tipp auf den 03.03. zeigt ${all / 5} Flüge, zweiter Tipp alle`);
 
   // Rundreise: DUS → Rio (5–7 Nächte) → Buenos Aires (3–4 Nächte) → zurück
   await m.locator(".fs-kind .chip", { hasText: "Rundreise" }).click();
