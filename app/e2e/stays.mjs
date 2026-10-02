@@ -19,11 +19,12 @@ const RESULT = {
   offers: [
     { id: "booking:496993", source: "booking", sourceName: "Booking.com", name: "Rooms Šećer", total: 720, currency: "EUR", url: "https://www.booking.com/hotel/hr/sobe-a-eaer.html", score: 9.4, reviews: 416, stars: 1, place: "Split Stadtzentrum, Split", facts: ["Parkplatz", "Familienzimmer"], lat: 43.515, lon: 16.47 },
     { id: "trivago:c89342aae3a0", source: "trivago", sourceName: "Trivago", via: "Airbnb", name: "Ferienwohnung Klara", total: 783, currency: "EUR", url: "https://www.trivago.de/de/lm/klara", score: 9.4, reviews: 194, place: "Split, 0.9 km bis Zentrum", facts: ["Küche", "Parkplatz"] },
-    { id: "trivago:9c4d6ea1f5e0", source: "trivago", sourceName: "Trivago", via: "Trip.com", name: "Cornaro Hotel", total: 2364, currency: "EUR", url: "https://www.trivago.de/de/lm/cornaro", score: 9.6, reviews: 4022, stars: 5, place: "Split, 0.4 km bis Zentrum", lat: 43.5081, lon: 16.4402 }
+    { id: "trivago:9c4d6ea1f5e0", source: "trivago", sourceName: "Trivago", via: "Trip.com", name: "Cornaro Hotel", total: 2364, currency: "EUR", url: "https://www.trivago.de/de/lm/cornaro", score: 9.6, reviews: 4022, stars: 5, place: "Split, 0.4 km bis Zentrum", lat: 43.5081, lon: 16.4402, test: true }
   ],
   sources: [
     { id: "booking", name: "Booking.com", configured: true, ok: true, count: 1, ms: 2100 },
-    { id: "trivago", name: "Trivago", configured: true, ok: true, count: 2, ms: 1800 }
+    { id: "trivago", name: "Trivago", configured: true, ok: true, count: 2, ms: 1800 },
+    { id: "liteapi", name: "liteAPI", configured: true, ok: true, count: 1, ms: 900, test: true }
   ]
 };
 
@@ -89,6 +90,12 @@ try {
   if (!t.includes("Rooms Šećer") || !t.includes("720") || !t.includes("103 € pro Nacht") || !t.includes("9,4 (416 Bew.)")) fail("Treffer: " + t);
   if (!(await m.locator(".fs-res", { hasText: "Ferienwohnung Klara" }).locator(".fs-badge", { hasText: "Trivago · Airbnb" }).count())) fail("Portal fehlt");
   log("Treffer mit Preis pro Nacht, Bewertung und Quelle");
+  // Treffer aus einem Testzugang (Sandbox): Hinweis über der Liste, Kennzeichen am Treffer, Quelle mit „(Test)“
+  if (!(await m.locator(".test-banner").textContent()).includes("liteAPI")) fail("Hinweis Testangebote fehlt");
+  if (!(await m.locator(".fs-res", { hasText: "Cornaro Hotel" }).locator(".pill-test").count())) fail("Kennzeichen Test fehlt");
+  if (await m.locator(".fs-res", { hasText: "Rooms" }).locator(".pill-test").count()) fail("echter Treffer als Test markiert");
+  if (!(await m.locator(".fs-src").textContent()).includes("liteAPI (Test)")) fail("Quelle ohne (Test)");
+  log("Testangebote: Hinweis über der Liste, Kennzeichen „Test“ nur am Testtreffer");
 
   // nach Bewertung sortieren
   await m.locator(".chip", { hasText: "Beste Bewertung" }).click();

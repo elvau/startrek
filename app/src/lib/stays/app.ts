@@ -39,7 +39,7 @@ export function stayToOption(o: StayOffer, people: number, place?: string): Opti
     label: o.name,
     detail: o.place,
     price: { mode: "unit", basis: "stay", currency: o.currency, unit: Math.round(o.total), capacity: Math.max(1, people) },
-    source: { name: o.via && o.via !== o.sourceName ? t("st.via", { a: o.sourceName, b: o.via }) : o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url },
+    source: { name: o.via && o.via !== o.sourceName ? t("st.via", { a: o.sourceName, b: o.via }) : o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url, ...(o.test ? { test: true } : {}) },
     stay: { stars: o.stars, rating: o.score != null ? Math.round(o.score * 10) : undefined, facts: o.facts?.length ? o.facts : undefined, ...(o.board ? { board: o.board } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) },
     ...(loc ? { loc } : {})
   };

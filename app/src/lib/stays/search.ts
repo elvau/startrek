@@ -19,13 +19,15 @@ interface Provider {
   id: string;
   name: string;
   configured: (env: StayEnv) => boolean;
+  /** Testzugang (Sandbox-Schlüssel): Treffer werden als Test markiert */
+  test?: (env: StayEnv) => boolean;
   search: (q: StayQuery, env: StayEnv, f: typeof fetch) => Promise<StayOffer[]>;
 }
 
 export const STAY_PROVIDERS: Provider[] = [
   { id: "booking", name: "Booking.com", configured: env => !!env.BOOKING_MCP_URL, search: (q, env, f) => searchBooking(q, env.BOOKING_MCP_URL!, f) },
   { id: "trivago", name: "Trivago", configured: () => true, search: (q, env, f) => searchTrivago(q, env.TRIVAGO_MCP_URL || TRIVAGO_MCP, f) },
-  { id: "liteapi", name: "liteAPI", configured: env => !!env.LITEAPI_KEY, search: (q, env, f) => searchLite(q, env.LITEAPI_KEY!, f, env.LITEAPI_LINK || undefined) }
+  { id: "liteapi", name: "liteAPI", configured: env => !!env.LITEAPI_KEY, test: env => !!env.LITEAPI_KEY?.startsWith("sand_"), search: (q, env, f) => searchLite(q, env.LITEAPI_KEY!, f, env.LITEAPI_LINK || undefined) }
 ];
 
 const withTimeout = <T>(p: Promise<T>, ms: number) =>
@@ -41,7 +43,8 @@ export function mergeStays(lists: StayOffer[][]): StayOffer[] {
   for (const o of lists.flat()) {
     const i = out.findIndex(x => norm(x.name) === norm(o.name) && near(x, o));
     if (i < 0) out.push(o);
-    else if (o.total < out[i].total) out[i] = o;
+    // echter Preis geht vor einem Testpreis (Sandbox)
+    else if (!!out[i].test === !!o.test ? o.total < out[i].total : out[i].test) out[i] = o;
   }
   return out.sort((a, b) => a.total - b.total);
 }
@@ -53,8 +56,9 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
   const lists = await Promise.all(active.map(async p => {
     const t0 = Date.now();
     try {
-      const offers = inCurrency(await withTimeout(p.search(q, env, f), timeoutMs), "total", q.currency || "EUR", env.FX);
-      sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0 });
+      const test = !!p.test?.(env);
+      const offers = inCurrency(await withTimeout(p.search(q, env, f), timeoutMs), "total", q.currency || "EUR", env.FX).map(o => (test ? { ...o, test } : o));
+      sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0, ...(test ? { test } : {}) });
       return offers;
     } catch (e) {
       sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: (e as Error).message });

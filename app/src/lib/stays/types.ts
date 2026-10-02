@@ -50,6 +50,8 @@ export interface StayOffer {
   currency: string;
   /** Preis in der Währung des Anbieters, falls umgerechnet */
   orig?: { amount: number; currency: string };
+  /** aus einem Testzugang (Sandbox): kein echter Preis */
+  test?: boolean;
   url?: string;
   /** Gästebewertung 0–10 */
   score?: number;

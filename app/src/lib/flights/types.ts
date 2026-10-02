@@ -80,6 +80,8 @@ export interface FlightOffer {
   currency: string;
   /** Preis in der Währung des Anbieters, falls umgerechnet (z. B. 512 GBP) */
   orig?: { amount: number; currency: string };
+  /** aus einem Testzugang (Sandbox): kein echter Preis */
+  test?: boolean;
   url?: string;
   /** Link mit Partner-Kennung (Provision bei Buchung), in der App als „Partner“ gekennzeichnet */
   sponsored?: boolean;
@@ -99,6 +101,8 @@ export interface SourceStatus {
   count: number;
   ms?: number;
   error?: string;
+  /** Testzugang (Sandbox): Preise sind nicht echt */
+  test?: boolean;
 }
 
 export interface SearchResult {

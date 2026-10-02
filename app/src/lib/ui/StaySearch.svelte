@@ -246,6 +246,7 @@
       </div>
       <div class="fs-top">
         <b class="num fs-price">{eur(o.total)}</b>
+        {#if o.test}<span class="pill-test" title={t("test.title")}>{t("test.badge")}</span>{/if}
         <span class="muted small">{t("perNight", { v: eur(o.total / an) })}{n > 1 ? ` · ${t("st.ppNight", { v: eur(o.total / an / n) })}` : ""}</span>
         {#if o.orig}<span class="muted small">{t("fx.orig", { v: money(o.orig.amount, o.orig.currency) })}</span>{/if}
         {#if diff != null && Math.abs(diff) >= 1}<span class="st-diff" class:good={diff < 0}>{diff < 0 ? "−" : "+"}{eur(Math.abs(diff))} {t("st.vsCurrent")}</span>{/if}
@@ -378,9 +379,10 @@
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
-          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
+          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}{s.test ? ` (${t("test.badge")})` : ""}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
         {/each}
       </div>
+      {#if sources.some(s => s.test && s.count)}<p class="warnline test-banner">⚠ {t("test.banner", { list: sources.filter(s => s.test && s.count).map(s => s.name).join(", ") })}</p>{/if}
     {/if}
     {#if list.length}
       {@const an = nights(asked.checkin, asked.checkout) || 1}

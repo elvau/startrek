@@ -90,7 +90,7 @@ export function offerToOption(o: FlightOffer): Option {
     label: `${o.out.carriers.join(" / ")} ${t("fs.from", { ap: o.out.from })}, ${stopsText(o.out.stops)}`,
     detail: [o.out.route.join(" → "), o.back ? o.back.route.join(" → ") : ""].filter(Boolean).join(" · "),
     price: { mode: "unit", currency: o.currency, unit: o.price },
-    source: { name: o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url, ...(o.sponsored ? { sponsored: true } : {}) },
+    source: { name: o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url, ...(o.sponsored ? { sponsored: true } : {}), ...(o.test ? { test: true } : {}) },
     legs: [legOf("out", o.out), ...(o.back ? [legOf("back", o.back)] : [])]
   };
 }
@@ -121,7 +121,7 @@ export function roundToOption(rt: RoundTrip, home: boolean): Option {
     label: `${t("fs.round")} ${route.join(" → ")}`,
     detail: `${n === 1 ? tn("n.tickets", 1) : t("round.separate", { n: tn("n.tickets", n) })}${rt.stays?.length ? ` · ${rt.stays.map(s => (s.hours != null ? `${s.name} ${Math.round(s.hours)} h` : `${s.name} ${t("round.nightsShort", { n: s.nights ?? 0 })}`)).join(" / ")}` : ""}`,
     price: { mode: "unit", currency: rt.legs[0].currency, unit: rt.price },
-    source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: new Date().toISOString().slice(0, 10), url: rt.legs[0].url, ...(rt.legs[0].sponsored ? { sponsored: true } : {}) },
+    source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: new Date().toISOString().slice(0, 10), url: rt.legs[0].url, ...(rt.legs[0].sponsored ? { sponsored: true } : {}), ...(rt.legs.some(l => l.test) ? { test: true } : {}) },
     legs: rt.legs.map((l, i) => legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out))
   };
 }

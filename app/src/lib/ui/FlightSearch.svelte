@@ -507,9 +507,10 @@
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
-          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
+          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}{s.test ? ` (${t("test.badge")})` : ""}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
         {/each}
       </div>
+      {#if sources.some(s => s.test && s.count)}<p class="warnline test-banner">⚠ {t("test.banner", { list: sources.filter(s => s.test && s.count).map(s => s.name).join(", ") })}</p>{/if}
     {/if}
     {#if rounds.length}
       <p class="muted small">{tn("n.rounds", rounds.length)} · {withAccess ? t("fs.cheapestInclAccess") : t("fs.cheapestFirst")} · {t("persShort", { n })} · {t("fs.ticketsSeparate")}</p>
@@ -519,6 +520,7 @@
             <div class="fs-top">
               <span class="pill-ap">{t("fs.from", { ap: x.rt.legs[0].out.from })}</span>
               <b class="num fs-price">{eur(x.r.total)}</b>
+              {#if x.rt.legs.some(l => l.test)}<span class="pill-test">{t("test.badge")}</span>{/if}
               <span class="fs-badge">{tn("n.tickets", x.rt.legs.length)}</span>
             </div>
             <p class="muted small fs-sub">{t("fs.flightsPrice", { v: eur(x.rt.price) })}{withAccess && x.r.access ? ` + ${t("fs.accessPrice", { v: eur(x.r.access) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(x.r.total / n) })}` : ""}</p>
@@ -572,9 +574,10 @@
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
-          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
+          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}{s.test ? ` (${t("test.badge")})` : ""}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
         {/each}
       </div>
+      {#if sources.some(s => s.test && s.count)}<p class="warnline test-banner">⚠ {t("test.banner", { list: sources.filter(s => s.test && s.count).map(s => s.name).join(", ") })}</p>{/if}
     {/if}
     {#if rows.length > 1}
       <div class="fs-cmp-wrap">
@@ -630,6 +633,7 @@
             <div class="fs-top">
               <span class="pill-ap">{t("fs.from", { ap: o.out.from })}</span>
               <b class="num fs-price">{eur(o.total)}</b>
+              {#if o.test}<span class="pill-test" title={t("test.title")}>{t("test.badge")}</span>{/if}
               <span class="fs-badge">{o.sourceName}</span>
             </div>
             {#if alongCost != null && Math.abs(o.total - alongCost) >= 1}<p class="st-diff fs-sub" class:good={o.total < alongCost}>{o.total < alongCost ? t("fs.cheaperAlong", { v: eur(alongCost - o.total) }) : t("fs.dearerAlong", { v: eur(o.total - alongCost) })}</p>{/if}
