@@ -7,23 +7,9 @@
  */
 import { emulator } from "./cloud/config";
 import type { Key } from "./i18n/types";
+import type { Campaign } from "./model";
 
-export interface Campaign {
-  /** zufällige Kennung der öffentlichen Seite */
-  id: string;
-  /** Konto, das veröffentlicht hat (nur dieses darf die Seite ändern) */
-  owner?: string;
-  title: string;
-  text?: string;
-  /** Ziel in Euro; fehlt: Reisekosten */
-  goal?: number;
-  holder: string;
-  iban: string;
-  /** PayPal.me-Name (ohne Adresse) */
-  paypal?: string;
-  /** zuletzt veröffentlicht (ISO) */
-  at?: string;
-}
+export type { Campaign };
 
 /** was öffentlich steht */
 export interface CampaignDoc {

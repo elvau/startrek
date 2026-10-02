@@ -1,5 +1,4 @@
 /* Datenmodell der Reisekasse. Siehe docs/KONZEPT.md, Abschnitte 2 und 4. */
-import type { Campaign } from "./campaign";
 
 export type CatKey = "flights" | "stay" | "transport" | "attractions" | "misc";
 export const CAT_KEYS: CatKey[] = ["flights", "stay", "transport", "attractions", "misc"];
@@ -297,6 +296,24 @@ export interface Fund {
   split?: "equal" | "share";
   /** Geld ist schon da (sonst nur zugesagt) */
   received?: boolean;
+}
+
+/** öffentliche Aktionsseite zum Mitfinanzieren (Zuschüsse Stufe 2), siehe campaign.ts */
+export interface Campaign {
+  /** zufällige Kennung der öffentlichen Seite */
+  id: string;
+  /** Konto, das veröffentlicht hat (nur dieses darf die Seite ändern) */
+  owner?: string;
+  title: string;
+  text?: string;
+  /** Ziel in Euro; fehlt: Reisekosten */
+  goal?: number;
+  holder: string;
+  iban: string;
+  /** PayPal.me-Name (ohne Adresse) */
+  paypal?: string;
+  /** zuletzt veröffentlicht (ISO) */
+  at?: string;
 }
 
 export interface Trip {
