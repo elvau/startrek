@@ -211,7 +211,7 @@ export interface Item {
   access?: boolean;
   /** automatisch gerechnet (Verpflegung je Familie), wird bei Änderungen neu gesetzt */
   auto?: "food";
-  /** Familie des automatischen Postens */
+  /** automatische Verpflegung: Familien des Postens („Klein“, „Klein|Hase“, „*“ für alle) */
   hh?: string;
   /** Flug: fliegt mit im Flug dieses Postens (gleicher Flug, gleicher Preis pro Person, wie im Artefakt „Wie Klein“) */
   follow?: string;

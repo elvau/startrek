@@ -1,12 +1,11 @@
 <script lang="ts">
-  import { i18n, t, tn, type Key } from "../i18n/index.svelte";
+  import { i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Startseite bei jedem Besuch: Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
   import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
-  import { FOOD_STYLES } from "../food";
   import { summarize, type TripState, type TripSummary } from "../overview";
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
@@ -57,7 +56,13 @@
   const firstOpen = $derived(groups.find(g => !(g.k === "past" && sort !== "country"))?.k);
   // Länder für Rundreisen: Weltdaten nur laden, wenn es Flüge gibt
   $effect(() => { if (rows.some(r => r.s && tripFor(r.id)?.items.some(i => i.cat === "flights"))) loadGeo(geo, []); });
-  const foodLabel = (f: TripSummary["food"]) => (f === "hh" ? t("home.foodHh") : FOOD_STYLES.find(x => x.k === f)?.l || "");
+  // „in 12 Tagen“, „in 7 Monaten“, „morgen“
+  function until(from: string): string {
+    const d = Math.round((Date.parse(from + "T00:00:00Z") - Date.parse(new Date().toISOString().slice(0, 10) + "T00:00:00Z")) / 86400000);
+    if (d < 0) return "";
+    const rtf = new Intl.RelativeTimeFormat(locale(), { numeric: "auto" });
+    return d < 60 ? rtf.format(d, "day") : rtf.format(Math.round(d / 30.4), "month");
+  }
   // zuletzt geöffnete Reise (bleibt im Hintergrund offen): oben direkt weiterplanen
   const last = $derived(rows.find(r => r.id === app.trip.id));
   function event() { startTrip(); openEventPlanner(); }
@@ -79,7 +84,7 @@
 </script>
 
 <TopNav home />
-<section class="start" data-ch="hero">
+<section class="start" class:has-trips={rows.length > 0} data-ch="hero">
   <div class="home-in">
     <h1 class="home-title">{t("home.title")}</h1>
     <p class="home-lead">{t("home.lead")}</p>
@@ -130,21 +135,26 @@
             <button class="home-row" class:past={isPast} onclick={() => openTrip(m.id, "Liste")}>
               <span class="hr-name"><span class="hr-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if stateOf(m) === "booked"}<span class="ht-tag">✓</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
                 <small class="muted">{[x?.where, m.from ? range(m.from, m.to) : "", m.people ? tn("n.persons", m.people) : ""].filter(Boolean).join(" · ")}</small></span>
-              <span class="hr-total num">{x && x.total > 0 ? eur(x.total) : ""}</span>
+              <span class="hr-total num">{x && x.total > 0 ? eur(x.total) : ""}{#if x && (m.people || 0) > 1 && x.perPerson > 0}<small class="muted">{t("perPerson", { v: eur(x.perPerson) })}</small>{/if}</span>
             </button>
             {:else}
             <button class="home-trip" class:past={isPast} onclick={() => openTrip(m.id, "Liste")}>
               <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
               {#if x}
                 {#if x.where}<span class="ht-where">{x.round ? `🔁 ${t("home.round")}: ` : "📍 "}{x.where}</span>{/if}
-                {#if m.from}<span class="ht-when">📅 {range(m.from, m.to)}{x.nights ? ` · ${tn("n.nights", x.nights)}` : ""}</span>{/if}
+                {#if m.from}<span class="ht-when">📅 {range(m.from, m.to)}{x.nights ? ` · ${tn("n.nights", x.nights)}` : ""}{#if !isPast && until(m.from)} <span class="ht-soon">{until(m.from)}</span>{/if}</span>{/if}
                 <span class="ht-facts">
                   {#if m.people}<span>👥 {tn("n.persons", m.people)}</span>{/if}
+                  {#if m.members?.length}<span class="ht-mem" title={m.members.join(", ")}>☁ {t("home.with", { names: m.members.length > 3 ? `${m.members.slice(0, 3).join(", ")} +${m.members.length - 3}` : m.members.join(", ") })}</span>{/if}
+                  <!-- Stand der Planung statt Essensstil: was steht schon, was fehlt noch -->
+                  {#if !isPast}
+                    <span class="ht-st st-{x.plan.flights}" title={t(`home.st.${x.plan.flights}`)}>✈ {t(`home.st.${x.plan.flights}`)}</span>
+                    <span class="ht-st st-{x.plan.stay}" title={t(`home.st.${x.plan.stay}`)}>🛏 {t(`home.st.${x.plan.stay}`)}</span>
+                  {/if}
                   {#if x.events}<span>🎟 {tn("n.events", x.events)}</span>{/if}
-                  {#if x.food}<span>🍽 {foodLabel(x.food)}</span>{/if}
                 </span>
                 {#if x.total > 0 || x.potential > 0}<span class="ht-foot">
-                  {#if x.total > 0}<span class="ht-total">{t("home.total", { v: eur(x.total) })}</span>{/if}
+                  {#if x.total > 0}<span class="ht-total">{t("home.total", { v: eur(x.total) })}{#if (m.people || 0) > 1 && x.perPerson > 0} <small class="ht-pp">· {t("perPerson", { v: eur(x.perPerson) })}</small>{/if}</span>{/if}
                   {#if x.potential > 0}<span class="ht-save">↓ {t("home.save", { v: eur(x.potential) })}</span>{/if}
                 </span>{/if}
               {:else}

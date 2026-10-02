@@ -35,6 +35,10 @@ const TRIPS = [
   { id: "berlin", name: "Berlin-Wochenende", place: "Berlin", country: "Deutschland", from: "2027-06-04", to: "2027-06-06", ...base,
     travelers: Array.from({ length: 12 }, (_, i) => ({ id: "k" + i, name: "Kegler " + (i + 1), household: "Kegelclub" })),
     households: { Kegelclub: { plz: "50667", geo: { ort: "Köln", lat: 50.94, lon: 6.96 } } }, items: [] },
+  // Gruppe: jede Person rechnet für sich ab (eigener Haushalt), Verpflegung an
+  { id: "gruppe", name: "Stammtisch Wien", place: "Wien", country: "Österreich", from: "2027-03-12", to: "2027-03-14", ...base,
+    travelers: ["Löwe", "Panda", "Fuchs", "Biber", "Wolf", "Koala"].map((n, i) => ({ id: "s" + i, name: n, household: n })), food: { on: true, style: "mix" },
+    items: [{ id: "gs", cat: "stay", name: "Hotel Wien", status: "idea", from: "2027-03-12", to: "2027-03-14", options: [{ id: "go", label: "Hotel", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 600, capacity: 6 } }] }] },
   { id: "rom", name: "Rom 2025", place: "Rom", country: "Italien", from: "2025-04-01", to: "2025-04-05", travelers: people, ...base, items: [] }
 ];
 
@@ -84,13 +88,15 @@ try {
   const heads = await p.locator(".start .home-h").allInnerTexts();
   if (heads.map(h => h.replace(/🧹[\s\S]*$/, "").replace(/\s*\(\d+\)/, "").trim()).join("|") !== "Geplante Reisen|Gebuchte Reisen|Vergangene Reisen") fail("Gruppen: " + heads.join("|"));
   const palma = await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).innerText();
-  for (const s of ["Palma, Spanien", "3 Nächte", "2 Events", "Halbpension", "ca. "]) if (!palma.includes(s)) fail(`Karte Palma ohne „${s}“: ${palma}`);
+  // Karte: Ziel, Nächte, Countdown, Stand von Flug (gewählt) und Unterkunft (Idee), Events, Summe; kein Essensstil mehr
+  for (const s of ["Palma, Spanien", "3 Nächte", "2 Events", "✈ geplant", "🛏 geplant", "ca. "]) if (!palma.includes(s)) fail(`Karte Palma ohne „${s}“: ${palma}`);
+  if (palma.includes("Halbpension")) fail("Essensstil noch auf der Karte");
   await until(async () => (await p.locator(".start .home-trip", { hasText: "Balkan" }).innerText()).includes("Rundreise: Kroatien, Montenegro"), "Rundreise mit Ländern");
   if (!(await p.locator(".start .home-trip", { hasText: "Balkan" }).innerText()).includes("gebucht")) fail("Balkan nicht als gebucht markiert");
   if (await p.locator(".start .home-trip", { hasText: "Rom 2025" }).isVisible()) fail("Archiv nicht zugeklappt");
   await p.locator(".start .home-past summary").click();
   await p.locator(".start .home-trip", { hasText: "Rom 2025" }).waitFor();
-  log("Startseite: geplant, gebucht (Rundreise Kroatien, Montenegro), Archiv zugeklappt; Karte mit Ziel, Nächten, Events, Verpflegung, Kosten");
+  log("Startseite: geplant, gebucht (Rundreise Kroatien, Montenegro), Archiv zugeklappt; Karte mit Ziel, Nächten, Stand von Flug und Unterkunft, Events, Kosten");
   if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/w-home.png`, fullPage: true });
 
   // Reise öffnen, Preise prüfen (an der Gesamtkalkulation): dieselben Angebote zum heutigen Preis
@@ -262,6 +268,33 @@ try {
   await p.setViewportSize({ width: 1280, height: 900 });
   log("Gesamtanzeige: passt ins Fenster (eigener Scrollbalken), Posten je Kategorie auf ▾");
   log("Große Gruppe: Flug in 3 Buchungen à 4, gesucht für 4, Preise × 3 (wählbar, max. 9 je Suche); Ferienwohnung auf 2 Unterkünfte à 6, gesucht für 6, übernommen 2 × 480 €");
+
+  // Gruppe mit 6 Einzelnen: ein Posten „Verpflegung“ statt 6; Abrechnung als Tabelle, gleiche Aufschlüsselung nur einmal
+  await p.locator(".top .brand-btn").click();
+  const gcard = p.locator(".start .home-trip", { hasText: "Stammtisch Wien" });
+  const gtxt = await gcard.innerText();
+  if (gtxt.includes("Gemischt") || !gtxt.includes("🛏 geplant") || !gtxt.includes("✈ fehlt")) fail("Startseite: Planungsstand statt Essensstil: " + gtxt);
+  await gcard.click();
+  await p.locator("#misc").scrollIntoViewIfNeeded();
+  await until(async () => (await p.locator("#misc .card[data-item]", { hasText: "Verpflegung" }).count()) === 1, "ein Posten Verpflegung", 10000);
+  await p.locator("#split").scrollIntoViewIfNeeded();
+  await p.locator("#split .sh-table").waitFor();
+  if ((await p.locator("#split .sh-table tbody tr").count()) !== 6) fail("Tabelle nicht 6 Zeilen");
+  if ((await p.locator("#split article.share").count()) !== 2) fail("statt 6 Karten: Tabelle und einmal „Für jede Person gleich“ erwartet, " + await p.locator("#split article.share").count());
+  await p.locator("#split .sh-table tbody tr", { hasText: "Panda" }).click();
+  await until(async () => (await p.locator("#split article.share").count()) === 3, "Einzelheiten zu Panda");
+  log("Gruppe mit 6 Einzelnen: Startseite mit Planungsstand, ein Posten Verpflegung, Abrechnung als Tabelle, Einzelheiten auf Klick");
+
+  // Reise ohne Flug und ohne Wohnort: „Unterwegs“ fragt nach der PLZ für den Bahn/Bus-Vergleich
+  await p.locator(".top .brand-btn").click();
+  if (!(await p.locator(".start .home-trip", { hasText: "Rom 2025" }).isVisible())) await p.locator(".start .home-past summary").click();
+  await p.locator(".start .home-trip", { hasText: "Rom 2025" }).click();
+  await p.locator("#transport").scrollIntoViewIfNeeded();
+  const ask = p.locator("#transport .gr-askhome");
+  await ask.waitFor({ timeout: 10000 });
+  await ask.locator(".fs-plz").fill("50667");
+  await until(async () => (await ask.count()) === 0, "PLZ übernommen");
+  log("Ohne Flug und Wohnort: „Unterwegs“ fragt nach der PLZ, danach verschwindet die Frage");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Reisebeobachtung ok");

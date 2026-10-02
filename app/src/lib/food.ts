@@ -83,6 +83,25 @@ export function foodPlan(trip: Trip, g: GeoData): FoodRow[] {
   }).filter(r => r.days > 0);
 }
 
+/** Familien mit gleichem Stil, Tagen und Satz zusammen: ein Posten statt einer für jede (Gruppe mit 15 Personen: einer) */
+export interface FoodGroup extends Omit<FoodRow, "hh"> { key: string; hhs: string[] }
+export function foodGroups(rows: FoodRow[]): FoodGroup[] {
+  const map = new Map<string, FoodGroup>();
+  for (const r of rows) {
+    const k = [r.style, r.eur, r.days, r.board || "", r.own ? "own" : ""].join("|");
+    const g = map.get(k);
+    if (g) { g.hhs.push(r.hh); g.ids.push(...r.ids); }
+    else { const { hh, ...rest } = r; map.set(k, { ...rest, ids: [...r.ids], key: k, hhs: [hh] }); }
+  }
+  // Schlüssel des Postens: die Familien darin (bleibt stabil, solange sich die Zusammensetzung nicht ändert)
+  return [...map.values()].map(g => ({ ...g, key: g.hhs.length === rows.length && rows.length > 1 ? "*" : g.hhs.join("|") }));
+}
+/** Name des Postens: „Verpflegung“ (alle), „Verpflegung Klein“ (eine Familie), „Verpflegung (3 Familien)“ */
+export function foodGroupName(g: FoodGroup, all: number): string {
+  if (g.hhs.length === 1) return t("food.itemName", { hh: g.hhs[0] });
+  return g.hhs.length === all ? t("food.itemAll") : t("food.itemSome", { n: g.hhs.length });
+}
+
 /** Posten „Verpflegung …“ angleichen; schreibt nur bei echten Änderungen (sonst Endlosschleife im Effekt) */
 export function syncFood(trip: Trip, g: GeoData): boolean {
   const cfg = foodCfg(trip);
@@ -92,17 +111,18 @@ export function syncFood(trip: Trip, g: GeoData): boolean {
     return false;
   }
   const rows = foodPlan(trip, g);
+  const groups = foodGroups(rows);
   const keep = new Set<string>();
-  for (const r of rows) {
-    let it = trip.items.find(i => i.auto === "food" && i.hh === r.hh);
+  for (const r of groups) {
+    let it = trip.items.find(i => i.auto === "food" && i.hh === r.key);
     const style = FOOD_STYLES.find(s => s.k === r.style)!;
     const want = {
-      name: t("food.itemName", { hh: r.hh }), participants: r.ids,
+      name: foodGroupName(r, rows.length), participants: r.ids,
       label: style.l, detail: `${r.board ? `${t("food.byStay", { b: t(`board.${r.board}` as Key) })}. ` : ""}${r.note}. ${r.est ? t("food.detailEst", { c: cfg.child, i: cfg.infant }) : t("food.detail", { c: cfg.child, i: cfg.infant })}`,
       price: { mode: "person" as const, currency: "EUR", adult: r.eur, child: Math.round(r.eur * cfg.child / 100), infant: Math.round(r.eur * cfg.infant / 100), qty: r.days }
     };
     if (!it) {
-      it = { id: uid(), cat: "misc", auto: "food", hh: r.hh, name: want.name, status: "idea", options: [{ id: uid(), label: "", price: { mode: "person", currency: "EUR" } }] } as Item;
+      it = { id: uid(), cat: "misc", auto: "food", hh: r.key, name: want.name, status: "idea", options: [{ id: uid(), label: "", price: { mode: "person", currency: "EUR" } }] } as Item;
       trip.items.push(it);
     }
     keep.add(it.id);

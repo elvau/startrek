@@ -18,6 +18,9 @@
   const act = $derived(app.trip.travelers.filter(isActive));
   const hhs = $derived([...new Set(act.map(hhKey))]);
   let open = $state<string | null>(null);
+  // noch nichts eingetragen: nur eine Zeile, damit die Abrechnung darunter gleich sichtbar ist
+  const compact = $derived(!funds.length && !app.trip.campaign);
+  let showCmp = $state(false);
   let amountText = $state("");
 
   function add() {
@@ -130,8 +133,8 @@
         </li>
       {/each}
     </ul>
-  {:else}
+  {:else if !compact || showCmp}
     <p class="muted small">{t("fund.empty")}</p>
   {/if}
-  <CampaignCard />
+  {#if !compact || showCmp}<CampaignCard />{:else if !access.readonly}<button class="linkbtn small fu-cmp" onclick={() => (showCmp = true)}>📣 {t("cmp.create")}</button>{/if}
 </article>

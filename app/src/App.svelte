@@ -107,6 +107,8 @@
     app.trip.items.push(it);
     showItem(it.id);
   }
+  // Gruppe aus Einzelnen (jede Person ein eigener Haushalt): „15 Personen“ statt „15 Familien“
+  const hhLabel = $derived(households > 1 && households === calc.T.active ? tn("n.persons", households) : tn("n.families", households));
   const evWin = $derived(eventWindow(app.trip, ap => stationName(geo, airportData, ap)));
   $effect(() => { if (!app.trip.place && app.trip.items.some(i => i.cat === "flights")) void ensureAirports(); });
 </script>
@@ -121,7 +123,7 @@
 
 <div class="wrap">
   <main>
-    <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{tn('n.families', households)}">
+    <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>
     </Chapter>
 
@@ -202,7 +204,7 @@
       </Chapter>
     {/each}
 
-    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.due)} sub={tn("n.families", households)}>
+    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.due)} sub={hhLabel}>
       <Split />
     </Chapter>
   </main>

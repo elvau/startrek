@@ -291,7 +291,7 @@ try {
   await p.locator(".top .brand-btn").click();
   await p.locator(".home-sort .chip", { hasText: "Preis" }).click();
   const prices = await p.locator(".home-trips").first().locator(".ht-total").allInnerTexts();
-  const num = s => Number(s.replace(/[^\d,]/g, "").replace(",", "."));
+  const num = s => Number(s.replace(/·[\s\S]*$/, "").replace(/[^\d,]/g, "").replace(",", "."));
   if (prices.length < 2 || prices.some((x, i) => i && num(x) < num(prices[i - 1]))) fail("nicht nach Preis sortiert: " + prices);
   await p.locator(".home-sort .chip", { hasText: "Zuletzt bearbeitet" }).click();
   await p.locator(".home-h", { hasText: "Zuletzt bearbeitet" }).waitFor();
@@ -316,21 +316,21 @@ try {
     const base = { country: "", travelers: [{ id: "x", name: "Reh", household: "Reh", placeholder: true }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 } } };
     localStorage.setItem("rk2-t:leer1", JSON.stringify({ ...base, id: "leer1", name: "", autoName: true, place: "" }));
     localStorage.setItem("rk2-t:idee1", JSON.stringify({ ...base, id: "idee1", name: "Idee Lissabon", place: "Lissabon", from: "2027-09-01", to: "2027-09-05" }));
-    idx.push({ id: "leer1", name: "", place: "" }, { id: "idee1", name: "Idee Lissabon", place: "Lissabon", from: "2027-09-01", to: "2027-09-05" });
+    localStorage.setItem("rk2-t:leer2", JSON.stringify({ ...base, id: "leer2", name: "Irgendwas", place: "" }));
+    idx.push({ id: "leer1", name: "", place: "" }, { id: "idee1", name: "Idee Lissabon", place: "Lissabon", from: "2027-09-01", to: "2027-09-05" }, { id: "leer2", name: "Irgendwas", place: "" });
     localStorage.setItem("rk2-index", JSON.stringify(idx));
   });
   await p.reload();
-  await p.locator(".home-clean", { hasText: "ohne Kosten aufräumen" }).waitFor();
-  if (!(await p.locator(".home-h .home-clean").count())) fail("„aufräumen“ nicht neben der Überschrift");
-  if (process.env.SHOTS) { await p.locator(".home-h .home-clean").scrollIntoViewIfNeeded(); await p.emulateMedia({ colorScheme: "dark" }); await p.waitForTimeout(400); await p.screenshot({ path: `${process.env.SHOTS}/clean.png` }); await p.emulateMedia({ colorScheme: "light" }); }
   await until(() => p.evaluate(() => localStorage.getItem("rk2-t:leer1") === null), "unberührter Entwurf gelöscht");
+  // nur leere Reisen (ohne Ort, Daten und Kosten) aufräumen; „Idee Lissabon“ hat Ort und Daten und bleibt
   let asked2 = "";
   p.once("dialog", d => { asked2 = d.message(); void d.accept(); });
-  await p.locator(".home-clean").click();
-  await until(() => p.locator(".home-row", { hasText: "Idee Lissabon" }).count().then(n => n === 0), "Idee aufgeräumt");
-  if (!asked2.includes("Idee Lissabon")) fail("Rückfrage ohne Namen: " + asked2);
+  await p.locator(".home-clean", { hasText: "1 Reise" }).click();
+  await until(() => p.locator(".home-row", { hasText: "Irgendwas" }).count().then(n => n === 0), "leere Reise aufgeräumt");
+  if (!asked2.includes("Irgendwas") || asked2.includes("Idee Lissabon")) fail("Rückfrage: " + asked2);
+  if (!(await p.locator(".home-row", { hasText: "Idee Lissabon" }).count())) fail("Idee Lissabon weg");
   if (!(await p.locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
-  log("Aufräumen: unberührter Entwurf still gelöscht, „Idee Lissabon“ (ohne Kosten) nach Rückfrage, Reisen mit Kosten bleiben");
+  log("Aufräumen: unberührter Entwurf still gelöscht; Reisen mit Ort oder Daten (auch ohne Kosten) bleiben");
 
   // „Zu einem Event“ direkt nach dem Laden, das Konto ist noch nicht da: Kommt es danach, bleibt die neue Reise offen
   // (früher wurde sie gegen die erste Konto-Reise getauscht und der Event-Plan landete dort)
