@@ -28,6 +28,18 @@ export interface TripSummary {
   state: TripState;
   /** vom KI-Assistenten vorgeschlagen */
   ai: boolean;
+  /** Eigenanteil pro Person (nach Zuschüssen) */
+  perPerson: number;
+  /** Stand der Planung: Flug und Unterkunft gebucht, geplant (Idee/gewählt/Betrag) oder noch nichts */
+  plan: { flights: PlanState; stay: PlanState };
+}
+export type PlanState = "booked" | "planned" | "none";
+
+/** Stand eines Bereichs: Posten (ohne automatische) oder ein einfacher Betrag */
+export function planState(trip: Trip, cat: "flights" | "stay"): PlanState {
+  const its = trip.items.filter(i => i.cat === cat && i.status !== "dropped" && !i.auto);
+  if (its.length && its.every(i => FIXED.includes(i.status))) return "booked";
+  return its.length || (trip.simple?.[cat] || 0) > 0 ? "planned" : "none";
 }
 
 /** Länder der Flugziele (Hinflug und weitere Flüge), in Reihenfolge; braucht die Weltdaten */
@@ -59,6 +71,7 @@ export function summarize(trip: Trip, today: string, g?: GeoData, lang = "de"): 
   const cfg = foodCfg(trip);
   const styles = new Set([cfg.style, ...Object.values(cfg.hh || {})]);
   const end = trip.to || trip.from;
+  const T = totals(trip);
   return {
     where: round ? cs.join(", ") : [trip.place, trip.country].filter(Boolean).join(", "),
     country: trip.country?.trim() || cs[0] || "",
@@ -66,7 +79,9 @@ export function summarize(trip: Trip, today: string, g?: GeoData, lang = "de"): 
     nights: trip.from && trip.to ? nights(trip.from, trip.to) : 0,
     events: (trip.event ? 1 : 0) + trip.items.filter(i => i.cat === "attractions" && i.status !== "dropped").length,
     food: trip.food?.on ? (styles.size > 1 ? "hh" : cfg.style) : null,
-    total: totals(trip).total,
+    total: T.total,
+    perPerson: T.active ? T.due / T.active : 0,
+    plan: { flights: planState(trip, "flights"), stay: planState(trip, "stay") },
     potential: potential(trip),
     state: end && end < today ? "past" : isBooked(trip) ? "booked" : "planned",
     ai: !!trip.ai

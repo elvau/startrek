@@ -291,7 +291,7 @@ try {
   await p.locator(".top .brand-btn").click();
   await p.locator(".home-sort .chip", { hasText: "Preis" }).click();
   const prices = await p.locator(".home-trips").first().locator(".ht-total").allInnerTexts();
-  const num = s => Number(s.replace(/[^\d,]/g, "").replace(",", "."));
+  const num = s => Number(s.replace(/·[\s\S]*$/, "").replace(/[^\d,]/g, "").replace(",", "."));
   if (prices.length < 2 || prices.some((x, i) => i && num(x) < num(prices[i - 1]))) fail("nicht nach Preis sortiert: " + prices);
   await p.locator(".home-sort .chip", { hasText: "Zuletzt bearbeitet" }).click();
   await p.locator(".home-h", { hasText: "Zuletzt bearbeitet" }).waitFor();

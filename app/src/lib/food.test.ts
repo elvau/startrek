@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import world from "../../../public/world.json";
 import packs from "../../../public/packs.json";
 import places from "../../../public/places/pa.json";
-import { foodPlan, foodRate, syncFood } from "./food";
+import { foodGroups, foodPlan, foodRate, syncFood } from "./food";
 import { totals } from "./calc";
 import type { GeoData } from "./geo/places";
 import type { Trip } from "./model";
@@ -66,5 +66,23 @@ describe("Verpflegung wie im Artefakt", () => {
     // Posten sagt, woher die Verpflegung kommt
     syncFood(t, g);
     expect(t.items.find(i => i.hh === "Klein")!.options[0].detail).toContain("Verpflegung laut Unterkunft: Frühstück");
+  });
+
+  it("Gruppe mit 15 Personen (jede eine eigene Familie): ein Posten „Verpflegung“ statt 15", () => {
+    const t = trip();
+    t.households = {};
+    t.travelers = Array.from({ length: 15 }, (_, i) => ({ id: "p" + i, name: "P" + i, household: "P" + i }));
+    t.food = { on: true, style: "mix" };
+    syncFood(t, g);
+    const food = t.items.filter(i => i.auto === "food");
+    expect(food).toHaveLength(1);
+    expect(food[0]).toMatchObject({ name: "Verpflegung", hh: "*" });
+    expect(food[0].participants).toHaveLength(15);
+    // eine Person isst anders: zwei Posten (14 und 1)
+    t.food.hh = { P3: "treat" };
+    syncFood(t, g);
+    const two = t.items.filter(i => i.auto === "food").map(i => [i.name, i.participants?.length]);
+    expect(two).toEqual([["Verpflegung (14 Familien)", 14], ["Verpflegung P3", 1]]);
+    expect(foodGroups(foodPlan(t, g)).map(x => x.hhs.length)).toEqual([14, 1]);
   });
 });
