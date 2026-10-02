@@ -79,7 +79,7 @@ try {
   log("Filter (Pool, Bewertung ab 7) in der Anfrage");
   if (q.place !== "Split" || q.checkin !== "2027-07-18" || q.checkout !== "2027-07-25" || q.type !== "whole" || q.adults !== 1 || q.rooms !== 1) fail("Anfrage falsch: " + JSON.stringify(q));
   // alle Quellen an: keine Liste (ein älterer Such-Dienst kennt neue Quellen nicht); Land als Code für liteAPI
-  if (q.sources || q.cc !== "HR") fail("Quellen/Land falsch: " + JSON.stringify(q));
+  if (q.sources || q.cc !== "HR" || !(Math.abs(q.lat - 43.51) < 0.1 && Math.abs(q.lon - 16.44) < 0.1)) fail("Quellen/Land/Lage falsch: " + JSON.stringify(q));
   log("Anfrage an den Such-Dienst stimmt");
 
   const src = await m.locator(".fs-src").textContent();

@@ -58,6 +58,14 @@ describe("liteAPI", () => {
     expect(calls.every(c => c.key === "k")).toBe(true);
     expect(l.map(o => o.name)).toEqual(["Hotel Sol"]);
     await expect(searchLite({ ...q, cc: undefined }, "k", f)).rejects.toThrow(/Land/);
+    // Ort unter dem Namen unbekannt („Palma“ statt „Palma de Mallorca“): Umkreis um die Koordinaten
+    const seen: string[] = [];
+    const g = (async (url: string) => {
+      seen.push(url);
+      return new Response(JSON.stringify(url.includes("/data/hotels") ? { data: url.includes("cityName") ? [] : HOTELS } : { data: RATES }));
+    }) as unknown as typeof fetch;
+    expect((await searchLite({ ...q, lat: 39.57, lon: 2.65 }, "k", g)).length).toBe(2);
+    expect(seen[1]).toBe("https://api.liteapi.travel/v3.0/data/hotels?countryCode=ES&latitude=39.57&longitude=2.65&radius=10000&limit=60");
     expect(await searchLite({ ...q, type: "whole" }, "k", f)).toEqual([]);
   });
 });

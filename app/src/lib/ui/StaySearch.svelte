@@ -199,7 +199,9 @@
     try { localStorage.setItem(K, JSON.stringify({ type, sources: use.length < SOURCES.length ? use : [], must, minStars, minScore })); } catch {}
     const sp = searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc);
     const cc = ccOf(geo, sp.country || trip.country || "") || near[0]?.ap.cc;
-    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type,
+    // Mittelpunkt des Orts: für Anbieter, die im Umkreis suchen
+    const city = findCity(geo, sp.place, cc || undefined);
+    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), type,
       // Quellen nur bei Auswahl mitschicken (ein älterer Such-Dienst kennt neue Quellen noch nicht)
       ...(use.length < SOURCES.length ? { sources: use } : {}), currency: "EUR",
       ...(must.length ? { must } : {}), ...(minStars ? { minStars } : {}), ...(minScore ? { minScore } : {}) };
