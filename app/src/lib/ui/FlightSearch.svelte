@@ -218,7 +218,8 @@
       if (span == null) { error = t("fs.errFlex"); return; }
       if (span < 1) { error = t("fs.errFlexOrder"); return; }
     } else if (!out) { error = t("fs.errOut"); return; }
-    if (n > 9) { error = t("fs.errMax", { n }); return; }
+    // je Suche höchstens 9 (große Gruppen werden in Buchungen aufgeteilt)
+    if (split.q.adults + split.q.children + split.q.infants > MAX_PAX) { error = t("fs.errMax", { n }); return; }
     if (!whoIds.length) { error = t("fs.errWho"); return; }
     // Ziel: gewählte Stadt oder Flughafen; Freitext wird nachgeschlagen („Split“ → SPU)
     const dest = toLoc ?? resolveLoc(airportData, to, cc) ?? areaFor(to);
@@ -285,7 +286,8 @@
 
   async function roundSearch() {
     if (!rFrom || !wTo || wTo < rFrom) { error = t("fs.errWindow"); return; }
-    if (n > 9) { error = t("fs.errMax", { n }); return; }
+    // je Suche höchstens 9 (große Gruppen werden in Buchungen aufgeteilt)
+    if (split.q.adults + split.q.children + split.q.infants > MAX_PAX) { error = t("fs.errMax", { n }); return; }
     if (!whoIds.length) { error = t("fs.errWho"); return; }
     const stops: RoundStop[] = [];
     for (const [i, st] of stations.entries()) {

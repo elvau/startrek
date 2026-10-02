@@ -195,6 +195,6 @@ für den Reisebus FlixBus Mieten und 11880 (Anfrage bei Busunternehmen).
   höchstens 9 auf einmal). Gesucht wird für die größte Buchung (Erwachsene und Kinder anteilig, Babys bei Erwachsenen),
   die Preise werden nach Köpfen auf alle hochgerechnet (`splitPax`, `scaleResult` in `app/src/lib/flights/app.ts`).
   Das Angebot merkt sich die Buchungsgröße (`Option.split`), die Preisprüfung sucht wieder für eine Buchung.
-- **Unterkünfte:** Ferienwohnungen und „Alle“ ab 11 Gästen auf mehrere Unterkünfte zu je höchstens 8 (änderbar),
-  gesucht für die größte; der Preis gilt je Unterkunft und wird mit `multiply` so oft gezählt wie nötig. Hotels:
-  ein Zimmer je zwei Gäste (höchstens 30).
+- **Unterkünfte:** ab 11 Gästen auf mehrere Unterkünfte zu je höchstens 8 (änderbar), auch bei Hotels: die Anbieter
+  liefern für mehr als etwa 10 Gäste kaum etwas (live: Trivago 0 Hotels für 15, 25 für 8). Gesucht für die größte;
+  der Preis gilt je Unterkunft und wird mit `multiply` so oft gezählt wie nötig. Hotels: ein Zimmer je zwei Gäste.

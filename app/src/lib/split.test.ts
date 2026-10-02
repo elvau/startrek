@@ -49,11 +49,11 @@ describe("Flüge für große Gruppen aufteilen", () => {
 });
 
 describe("Unterkünfte für große Gruppen", () => {
-  it("Ferienwohnung ab 11 Gästen aufteilen (je bis 8), Hotel nie", () => {
+  it("ab 11 Gästen aufteilen (je bis 8), auch Hotels (Anbieter liefern für mehr kaum etwas)", () => {
     expect(autoParts(10, "whole")).toBe(1);
     expect(autoParts(15, "whole")).toBe(2);
     expect(autoParts(25, "all")).toBe(4);
-    expect(autoParts(15, "hotel")).toBe(1);
+    expect(autoParts(15, "hotel")).toBe(2);
   });
   it("Zimmer: ganze Unterkunft eins, sonst je zwei Gäste eins", () => {
     expect(autoRooms(15, "whole")).toBe(1);

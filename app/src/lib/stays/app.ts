@@ -19,9 +19,12 @@ export function guests(people: Traveler[]): Pick<StayQuery, "adults" | "childAge
   return { adults: Math.max(1, adults), childAges };
 }
 
-/** Ferienwohnungen und Häuser: ab 11 Gästen auf mehrere aufteilen, je höchstens UNIT_MAX */
+/**
+ * Ab 11 Gästen aufteilen, je höchstens UNIT_MAX: Ferienwohnungen für so viele gibt es kaum, und die Anbieter liefern
+ * auch für Hotels bei mehr als etwa 10 Gästen nichts mehr (live geprüft: Trivago 0 Treffer für 15, 25 für 8).
+ */
 export const UNIT_MAX = 8;
-export const autoParts = (guests: number, type: StayType) => (type === "hotel" || guests <= 10 ? 1 : Math.ceil(guests / UNIT_MAX));
+export const autoParts = (guests: number, _type?: StayType) => (guests <= 10 ? 1 : Math.ceil(guests / UNIT_MAX));
 /** Zimmer: ganze Unterkunft eine, sonst je zwei Gäste ein Zimmer (höchstens 30) */
 export const autoRooms = (guests: number, type: StayType) => (type === "whole" ? 1 : Math.min(30, Math.max(1, Math.ceil(guests / 2))));
 

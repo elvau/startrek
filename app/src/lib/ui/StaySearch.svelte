@@ -312,7 +312,7 @@
       </label>
       <label class="f">{t("st.checkin")}<input type="date" bind:value={checkin} required /></label>
       <label class="f">{t("st.checkout")}<input type="date" bind:value={checkout} min={checkin} required /></label>
-      {#if type !== "hotel" || parts > 1}<label class="f">{t("st.parts")}<input class="n sm st-parts" type="number" min="1" max="10" bind:value={parts} oninput={() => (partsSet = true)} /></label>{/if}
+      {#if type !== "hotel" || parts > 1 || all > 10}<label class="f">{t("st.parts")}<input class="n sm st-parts" type="number" min="1" max="10" bind:value={parts} oninput={() => (partsSet = true)} /></label>{/if}
       <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(30, per.adults)} bind:value={rooms} oninput={() => (roomsSet = true)} /></label>
     </div>
     {#if parts > 1}<p class="small st-split-hint">{t("st.split.hint", { all, n: parts, k: per.adults + per.childAges.length })}</p>{/if}
