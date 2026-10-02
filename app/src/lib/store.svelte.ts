@@ -12,7 +12,7 @@ import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLo
 import { pruneIndex } from "./cloud/prune";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
-export interface TripEntry extends TripMeta { cloud: boolean; role?: Role; shared?: boolean; /** zuletzt bearbeitet (ISO), für die Sortierung */ edited?: string }
+export interface TripEntry extends TripMeta { cloud: boolean; role?: Role; shared?: boolean; /** zuletzt bearbeitet (ISO), für die Sortierung */ edited?: string; /** geteilte Reise: Vornamen der anderen Mitglieder */ members?: string[] }
 
 const K_INDEX = "rk2-index", K_CUR = "rk2-current", K_TRIP = (id: string) => "rk2-t:" + id, K_OLD = "rk2-trip";
 /** Konto-Reisen, die dieses Gerät zuletzt in der Liste gesehen hat (je Konto) */
@@ -263,7 +263,8 @@ export function allTrips(): TripEntry[] {
   // Der Name der offenen Reise ist frischer als der im Konto (dort erst nach dem verzögerten Speichern); steht im Konto
   // noch der Platzhalter „Reise“ (gerade angelegt, Name noch nicht gespeichert), gilt der Name der Kopie auf dem Gerät
   const local = (id: string) => { const t = tripFor(id); return t ? meta(t) : null; };
-  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1, edited: later(editedAt[t.id], foreign(t)) }; });
+  const c: TripEntry[] = cloud.trips.map(t => { const l = local(t.id); return { place: "", ...l, id: t.id, name: t.id === app.trip.id ? app.trip.name : (t.name === tr("trip") || !t.name) && l?.name ? l.name : t.name, cloud: true, role: t.role, shared: Object.keys(t.members).length > 1, edited: later(editedAt[t.id], foreign(t)),
+    members: Object.keys(t.members).filter(u => u !== cloud.user?.uid).map(u => (t.memberNames[u] || "").split(/\s+/)[0]).filter(Boolean).map(n => n[0].toUpperCase() + n.slice(1)) }; });
   const l: TripEntry[] = app.index.filter(m => !isCloud(m.id)).map(m => ({ ...m, ...(m.id === app.trip.id ? meta(app.trip) : {}), cloud: false, edited: editedAt[m.id] }));
   return [...c, ...l];
 }
@@ -478,7 +479,8 @@ export async function deleteIf(id: string, test: (t: Trip) => boolean): Promise<
 
 /** eigene Reisen ohne Kosten (zum Aufräumen nach Rückfrage) */
 export function emptyTrips(): TripEntry[] {
-  return allTrips().filter(m => { if (!mine(m.id)) return false; const tr = tripFor(m.id); return !!tr && costless(tr); });
+  // nur wirklich leere: ohne Kosten, ohne Ziel und ohne Daten (eine Reise mit Ort oder Zeitraum ist schon geplant)
+  return allTrips().filter(m => { if (!mine(m.id)) return false; const tr = tripFor(m.id); return !!tr && costless(tr) && !tr.place?.trim() && !tr.from; });
 }
 
 /** Reise zum Anzeigen: die offene oder die Kopie auf dem Gerät (Konto-Reisen, die hier nie offen waren: null) */

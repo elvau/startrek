@@ -427,6 +427,7 @@ export const ar: Dict = {
   "home.st.booked": "محجوز",
   "home.st.none": "ناقص",
   "home.st.planned": "مخطط",
+  "home.with": "مع {names}",
   "ins.add": "تقدير تأمين السفر",
   "ins.compare": "تأمين السفر لدى:",
   "ins.estimate": "تقدير (إلغاء الرحلة + علاج في الخارج)",

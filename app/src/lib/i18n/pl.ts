@@ -408,6 +408,7 @@ export const pl: Dict = {
   "home.st.booked": "zarezerw.",
   "home.st.none": "brak",
   "home.st.planned": "zaplan.",
+  "home.with": "z: {names}",
   "ins.add": "Oszacuj ubezpieczenie",
   "ins.compare": "Ubezpieczenie podróżne u:",
   "ins.estimate": "Szacunek (rezygnacja + leczenie za granicą)",

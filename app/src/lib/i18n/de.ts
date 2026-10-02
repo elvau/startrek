@@ -386,6 +386,7 @@ export const de = {
   "home.st.booked": "gebucht",
   "home.st.none": "fehlt",
   "home.st.planned": "geplant",
+  "home.with": "mit {names}",
   "ins.add": "Reiseversicherung schätzen",
   "ins.compare": "Reiseversicherung bei:",
   "ins.estimate": "Richtwert (Reiserücktritt + Auslandskranken)",

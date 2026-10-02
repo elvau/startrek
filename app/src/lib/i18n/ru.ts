@@ -408,6 +408,7 @@ export const ru: Dict = {
   "home.st.booked": "забронировано",
   "home.st.none": "нет",
   "home.st.planned": "в плане",
+  "home.with": "с: {names}",
   "ins.add": "Оценить страховку",
   "ins.compare": "Страховка у:",
   "ins.estimate": "Оценка (отмена поездки + медицина за рубежом)",

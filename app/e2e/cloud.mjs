@@ -239,6 +239,11 @@ try {
   await until(async () => (await gast.locator(".cmp").innerText()).includes("gibt es nicht"), "zurückgezogene Aktionsseite");
   log("Aktionsseite zurückgezogen: Link zeigt „gibt es nicht (mehr)“");
 
+  // Startseite: geteilte Reise zeigt die anderen Mitglieder
+  await anna.locator(".top .brand-btn").click();
+  await until(async () => (await anna.locator(".start").innerText()).includes("mit Oma"), "Mitglieder auf der Karte").catch(async e => { console.log("HOME:", (await anna.locator(".start").innerText()).replace(/\s+/g, " ").slice(0, 900)); throw e; });
+  log("Startseite: geteilte Reise „☁ mit Oma“");
+
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");
 } finally {

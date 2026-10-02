@@ -145,6 +145,7 @@
                 {#if m.from}<span class="ht-when">📅 {range(m.from, m.to)}{x.nights ? ` · ${tn("n.nights", x.nights)}` : ""}{#if !isPast && until(m.from)} <span class="ht-soon">{until(m.from)}</span>{/if}</span>{/if}
                 <span class="ht-facts">
                   {#if m.people}<span>👥 {tn("n.persons", m.people)}</span>{/if}
+                  {#if m.members?.length}<span class="ht-mem" title={m.members.join(", ")}>☁ {t("home.with", { names: m.members.length > 3 ? `${m.members.slice(0, 3).join(", ")} +${m.members.length - 3}` : m.members.join(", ") })}</span>{/if}
                   <!-- Stand der Planung statt Essensstil: was steht schon, was fehlt noch -->
                   {#if !isPast}
                     <span class="ht-st st-{x.plan.flights}" title={t(`home.st.${x.plan.flights}`)}>✈ {t(`home.st.${x.plan.flights}`)}</span>

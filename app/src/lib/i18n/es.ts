@@ -388,6 +388,7 @@ export const es: Dict = {
   "home.st.booked": "reservado",
   "home.st.none": "falta",
   "home.st.planned": "planeado",
+  "home.with": "con {names}",
   "ins.add": "Estimar seguro de viaje",
   "ins.compare": "Seguro de viaje en:",
   "ins.estimate": "Estimación (cancelación + salud en el extranjero)",
