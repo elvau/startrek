@@ -14,6 +14,15 @@ function load(): Directory {
   return { people: [], groups: [] };
 }
 
+/** Postleitzahl bleibt nur im Konto: nie in den Browser-Speicher */
+export function localJson(json: string): string {
+  try {
+    const d = JSON.parse(json);
+    if (d?.prefs && "plz" in d.prefs) { delete d.prefs.plz; return JSON.stringify(d); }
+  } catch {}
+  return json;
+}
+
 export const dir = $state<Directory>(load());
 
 let fromCloud = "";
@@ -50,7 +59,7 @@ $effect.root(() => {
   // lokal speichern und ins Konto schreiben
   $effect(() => {
     const json = JSON.stringify(dir);
-    try { localStorage.setItem(KEY, json); } catch {}
+    try { localStorage.setItem(KEY, localJson(json)); } catch {}
     const u = cloud.user;
     if (!u || sync.loaded !== u.uid || json === fromCloud || canonDir(json) === canonDir(fromCloud)) return;
     clearTimeout(timer);

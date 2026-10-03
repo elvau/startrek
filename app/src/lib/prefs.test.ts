@@ -1,3 +1,4 @@
+import { localJson } from "./directory.svelte";
 import { describe, expect, it } from "vitest";
 import { agentPrefs, groupFor, mergePrefs, prefsFor, touchesAvoided } from "./prefs";
 import { DEFAULT_SETTINGS, type Directory, type Trip } from "./model";
@@ -36,5 +37,13 @@ describe("Vorlieben", () => {
   it("für die KI nur Vorlieben, keine leeren Felder", () => {
     expect(agentPrefs({ avoid: [], styles: ["city"], note: "x".repeat(400) })).toEqual({ styles: ["city"], note: "x".repeat(300) });
     expect(agentPrefs({})).toBeUndefined();
+  });
+  it("Postleitzahl bleibt bei den eigenen Vorlieben und geht nicht an die KI", () => {
+    expect(prefsFor(null, { ...dir, prefs: { plz: "12345" } }).plz).toBe("12345");
+    expect(agentPrefs({ plz: "12345" })).toBeUndefined();
+  });
+  it("Postleitzahl kommt nicht in den Browser-Speicher", () => {
+    const j = JSON.parse(localJson(JSON.stringify({ people: [], groups: [], prefs: { plz: "12345", bags: true } })));
+    expect(j.prefs).toEqual({ bags: true });
   });
 });

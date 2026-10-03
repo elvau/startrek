@@ -207,15 +207,23 @@
   // ohne Wohnort schlägt die Suche Flughäfen aus der Standardliste (NRW) vor: PLZ gleich hier eintragen
   const noHome = $derived(flyers(trip, who).some(x => !trip.households?.[hhKey(x)]?.geo));
   let plzErr = $state(false);
-  async function setPlz(v: string) {
+  async function setPlz(v: string, quiet = false): Promise<boolean> {
     plzErr = false;
-    if (!/^\d{5}$/.test(v.trim())) return;
+    if (!/^\d{5}$/.test(v.trim())) return false;
     const pl = (await loadPlz().catch(() => null))?.get(v.trim());
-    if (!pl) { plzErr = true; return; }
+    if (!pl) { if (!quiet) plzErr = true; return false; }
     trip.households ||= {};
     for (const h of new Set(flyers(trip, who).map(hhKey))) if (!trip.households[h]?.geo) trip.households[h] = { ...trip.households[h], plz: v.trim(), geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
     resetAps();
+    return true;
   }
+  // gespeicherte PLZ aus den Einstellungen als Wohnort übernehmen, solange einer fehlt; ein Fehlschlag bleibt still
+  // (ein Versuch je PLZ und Flieger-Auswahl, damit ein Wechsel der Reise oder des Fliegers neu übernimmt)
+  let plzTried = "";
+  $effect(() => {
+    const p = dir.prefs?.plz, k = p ? `${p}|${flyers(trip, who).map(hhKey).join(",")}` : "";
+    if (noHome && p && k !== plzTried) { plzTried = k; void setPlz(p, true); }
+  });
 
   const SHOW = 40;
   // Flüge der anderen (schon übernommen): zum gemeinsamen Ankommen
