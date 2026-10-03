@@ -185,9 +185,28 @@ export interface Option {
 export interface Payment {
   amount: number;
   at?: string;
+  /** wer bezahlt hat: Familie (Haushalt) */
   by?: string;
   note?: string;
 }
+
+/** Ausgabe unterwegs (Kasse): Restaurant, Taxi, Eintritt … ausgelegt von einer Familie, geteilt auf die Familien in for */
+export interface Expense {
+  id: string;
+  text: string;
+  amount: number;
+  /** fehlt: EUR */
+  currency?: string;
+  /** JJJJ-MM-TT */
+  date?: string;
+  /** ausgelegt von dieser Familie */
+  by: string;
+  /** für diese Familien (nach Personen geteilt); fehlt: alle */
+  for?: string[];
+  cat?: CatKey;
+}
+/** Ausgleich: Familie from hat Familie to diesen Betrag gegeben */
+export interface Transfer { id: string; from: string; to: string; amount: number; at?: string }
 
 export interface Item {
   id: string;
@@ -359,6 +378,9 @@ export interface Trip {
   lines?: SimpleLine[];
   /** Zuschüsse: Mannschaftskasse, Oma und Opa, Sponsor … senken den Eigenanteil */
   funds?: Fund[];
+  /** Kasse: Ausgaben unterwegs und Ausgleichszahlungen zwischen Familien */
+  expenses?: Expense[];
+  transfers?: Transfer[];
   /** Tagesplan: je Tag (JJJJ-MM-TT) Überschrift und eigene Einträge; Flüge, Unterkünfte und Erlebnisse kommen automatisch dazu */
   days?: Record<string, DayPlan>;
   /** öffentliche Aktionsseite zum Mitfinanzieren (Zuschüsse Stufe 2), nur mit Einwilligung zu Name und IBAN */

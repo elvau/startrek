@@ -319,6 +319,30 @@ try {
   await until(async () => (await p.locator("#split .sh-table tbody tr").count()) === 7, "Gruppe aufgeklappt");
   await p.locator("#split .sh-table tbody tr", { hasText: "Panda" }).click();
   await until(async () => (await p.locator("#split article.share").count()) === 3, "Einzelheiten zu Panda");
+  // Kasse: Abendessen ausgelegt von Löwe, Hotel bezahlt von Panda → wer wem wie viel; „Erledigt“ trägt die Überweisung ein
+  const ks = p.locator("#split .kasse");
+  await ks.scrollIntoViewIfNeeded();
+  await ks.locator(".ks-add").click();
+  await ks.locator(".ks-text").fill("Abendessen");
+  await ks.locator(".ks-amount").fill("120");
+  await ks.locator(".ks-amt select").selectOption("EUR");
+  await ks.locator(".ks-by").selectOption("Löwe");
+  await ks.locator(".ks-form .btn.primary").click();
+  // fünf gleiche Überweisungen an Löwe: eine Zeile „Panda, Fuchs +3 → Löwe · jeweils 20 €“
+  await until(async () => (await ks.locator(".ks-moves li").count()) === 1, "eine Zeile Überweisungen an Löwe");
+  const mv = await ks.locator(".ks-moves li").first().innerText();
+  if (!mv.includes("+3") || !mv.includes("Löwe") || !mv.includes("20")) fail("Ausgleich Abendessen: " + mv);
+  await p.locator("#stay .card[data-item]", { hasText: "Hotel Wien" }).locator("h3").click();
+  await p.locator("#stay .editor .seg button", { hasText: "Gebucht" }).click();
+  await p.locator("#stay .editor .ie-payby").selectOption("Panda");
+  await p.locator("#stay .editor .ie-payadd").click();
+  await until(async () => (await p.locator("#stay .card[data-item]", { hasText: "Hotel Wien" }).innerText()).includes("Bezahlt"), "Hotel bezahlt");
+  await ks.scrollIntoViewIfNeeded();
+  await until(async () => (await ks.locator(".ks-moves li").count()) === 1 && (await ks.locator(".ks-moves").innerText()).includes("→ Panda") && (await ks.locator(".ks-moves").innerText()).includes("120"), "4 Überweisungen an Panda in einer Zeile");
+  await ks.locator(".ks-done").first().click();
+  await until(async () => (await ks.locator(".ks-even").count()) === 1 && (await ks.locator(".ks-tr").count()) === 4, "Überweisungen eingetragen, alles ausgeglichen");
+  log("Kasse: Abendessen von Löwe (je 20 €), Hotel von Panda bezahlt (Posten „Bezahlt“), Ausgleich: gleiche Überweisungen in einer Zeile, „Erledigt“ trägt alle 4 ein");
+
   log("Gruppe mit 6 Einzelnen: Startseite mit Planungsstand, ein Posten Verpflegung, Abrechnung als eine Zeile „Alle (6)“, aufklappbar, Einzelheiten auf Klick");
 
   // Anreise zum Flughafen: für alle Gruppenbus (Kosten nach Personen), dann Fahrgemeinschaft und Fahrdienst

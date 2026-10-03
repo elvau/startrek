@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { entryCurrency } from "../currency.svelte";
+  import { entryCurrency, fromShown, toShown } from "../currency.svelte";
   import { t } from "../i18n/index.svelte";
   /* Bearbeiten eines Postens im Fokusmodus: Status, Angebote, Preis, Beteiligte */
   import { hhKey, isActive, uid, type FlightLeg, type Item, type Status } from "../model";
-  import { app, removeItem } from "../store.svelte";
+  import { app, calc, removeItem } from "../store.svelte";
   import type { Key } from "../i18n/index.svelte";
-  import { activeOption, ageClass, eur, followed } from "../calc";
-  import { dayShort, time } from "../format";
+  import { activeOption, ageClass, eur, followed, parseNum } from "../calc";
+  import { dateDE, dayShort, time } from "../format";
   import { openStaySearch } from "../stays/open.svelte";
   import { openFlightSearch } from "../flights/open.svelte";
 
@@ -64,6 +64,24 @@
     item.follow = id;
     if (!id && !item.options.length) item.options.push({ id: uid(), label: "", price: { mode: "person", currency: entryCurrency() } });
   }
+  // Bezahlt: wer hat wie viel gezahlt (für die Kasse); reicht es, ist der Posten bezahlt
+  const hhList = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))]);
+  const net = $derived(calc.T.items[item.id]?.net || 0);
+  const paidSum = $derived((item.payments || []).reduce((a, p) => a + (p.amount || 0), 0));
+  let payBy = $state("");
+  let payAmt = $state("");
+  function addPay() {
+    const x = payAmt.trim() ? parseNum(payAmt) : toShown(Math.max(0, net - paidSum));
+    const by = payBy || hhList[0];
+    if (!(x > 0) || !by) return;
+    item.payments = [...(item.payments || []), { amount: Math.round(fromShown(x) * 100) / 100, by, at: new Date().toISOString().slice(0, 10) }];
+    if (paidSum + fromShown(x) >= net - 0.5 && item.status !== "dropped") item.status = "paid";
+    payAmt = "";
+  }
+  function dropPay(i: number) {
+    item.payments = (item.payments || []).filter((_, k) => k !== i);
+    if (!item.payments.length) delete item.payments;
+  }
   const num = (v: string) => (v === "" ? undefined : Number(String(v).replace(",", ".")));
 </script>
 
@@ -81,6 +99,21 @@
       {/each}
     </div>
   </div>
+
+  {#if item.status !== "idea" && item.status !== "dropped"}
+    <div class="ed-sec ie-pay">
+      <span class="dlabel">{t("ie.paidBy")}</span>
+      {#each item.payments || [] as p, i (i)}
+        <div class="ie-p"><span>{p.by || "?"}</span><b class="num">{eur(p.amount)}</b>{#if p.at}<small class="muted">{dateDE(p.at)}</small>{/if}
+          <button class="dp-del" aria-label={t("ks.remove", { text: `${p.by} ${eur(p.amount)}` })} onclick={() => dropPay(i)}>×</button></div>
+      {/each}
+      <div class="ed-row">
+        <label class="f">{t("ks.paidBy")}<select class="ie-payby" value={payBy || hhList[0]} onchange={e => (payBy = e.currentTarget.value)}>{#each hhList as h (h)}<option value={h}>{h}</option>{/each}</select></label>
+        <label class="f">{t("ks.amount")}<input class="n ie-payamt" inputmode="decimal" bind:value={payAmt} placeholder={String(toShown(Math.max(0, net - paidSum)))} /></label>
+        <button class="btn sm ie-payadd" onclick={addPay}>+ {t("ie.payAdd")}</button>
+      </div>
+    </div>
+  {/if}
 
   {#if item.options.length > 1}
     <div class="ed-sec">
@@ -206,3 +239,8 @@
     <button class="btn primary" onclick={() => (app.editing = null)}>{t("done")}</button>
   </div>
 </div>
+
+<style>
+  .ie-p { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
+  .ie-p .dp-del { border: 0; background: none; color: var(--ink-3); font-size: 16px; cursor: pointer; }
+</style>
