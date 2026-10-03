@@ -94,6 +94,31 @@ try {
   log("Omas Änderung ist bei Anna angekommen:", omaTotal);
   await dbState("danach");
 
+  // Kasse: Oma reicht eine Ausgabe ein → wartet auf Bestätigung; Anna (Admin) erhebt Einspruch, entscheidet, bestätigt
+  const oks = oma.locator("#split .kasse"), aks = anna.locator("#split .kasse");
+  await oks.scrollIntoViewIfNeeded();
+  await oks.locator(".ks-add").click();
+  await oks.locator(".ks-text").fill("Eis am Strand");
+  await oks.locator(".ks-amount").fill("30");
+  await oks.locator(".ks-amt select").selectOption("EUR");
+  await oks.locator(".ks-form .btn.primary").click();
+  await until(async () => (await oks.locator(".ks-pend").count()) === 1 && !(await oks.locator(".ks-list li", { hasText: "Eis am Strand" }).locator(".ks-yes").count()), "Oma: wartet auf Bestätigung, kann selbst nicht bestätigen");
+  await aks.scrollIntoViewIfNeeded();
+  const eis = aks.locator(".ks-list li", { hasText: "Eis am Strand" });
+  await until(async () => (await eis.count()) === 1 && (await eis.innerText()).includes("wartet auf Bestätigung") && (await eis.innerText()).includes("eingereicht von Oma"), "Anna sieht Omas Ausgabe offen").catch(async e => { console.log("ANNA:", (await aks.innerText()).replace(/\s+/g, " ").slice(0, 600)); console.log("OMA:", (await oks.innerText()).replace(/\s+/g, " ").slice(0, 600)); throw e; });
+  await eis.locator(".ks-noBtn").click();
+  await eis.locator(".ks-why input").fill("war privat");
+  await eis.locator(".ks-send").click();
+  await until(async () => (await aks.locator(".ks-pend.ks-alert").count()) === 1 && (await eis.innerText()).includes("„war privat“"), "Einspruch mit Grund, Admin soll entscheiden");
+  await until(async () => (await oma.locator("#split .kasse .ks-list li", { hasText: "Eis am Strand" }).innerText()).includes("Einspruch"), "Oma sieht den Einspruch");
+  await eis.locator(".ks-reject").click();
+  await until(async () => (await oma.locator("#split .kasse .ks-list li", { hasText: "Eis am Strand" }).innerText()).includes("abgelehnt") && !(await oks.locator(".ks-pend").count()), "Oma sieht: abgelehnt");
+  await eis.locator(".ks-restore").click();
+  await eis.locator(".ks-approve").click();
+  await until(async () => !(await eis.locator(".ks-st").count()) || !(await eis.innerText()).includes("wartet"), "übernommen");
+  await until(async () => !(await oks.locator(".ks-pend").count()) && !(await oma.locator("#split .kasse .ks-list li", { hasText: "Eis am Strand" }).innerText()).includes("abgelehnt"), "bei Oma zählt die Ausgabe");
+  log("Kasse: Omas Ausgabe wartet auf Bestätigung, Anna erhebt Einspruch mit Grund, lehnt ab, stellt wieder her und übernimmt; Oma sieht jeden Schritt");
+
   // Anna macht Oma zur Zuschauerin
   await anna.locator(".top .tm-btn").first().click();
   await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();

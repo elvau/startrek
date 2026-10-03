@@ -6,6 +6,20 @@
 import { activeTravelers, rateOf, type Totals } from "./calc";
 import { hhKey, type CatKey, type Expense, type Trip } from "./model";
 
+/**
+ * Freigabe einer Ausgabe in einer geteilten Reise: was jemand anderes einreicht, zählt erst, wenn es eine weitere Person
+ * bestätigt (✅) oder der Admin übernimmt. Bei Einspruch (❌) entscheidet der Admin: ablehnen oder doch übernehmen.
+ * Ohne Konto (lokale Reise) und vom Admin selbst eingetragen: zählt sofort.
+ */
+export type ExpState = "ok" | "open" | "disputed" | "rejected";
+export function expState(e: Expense, owner?: string): ExpState {
+  if (e.state === "rejected") return "rejected";
+  if (e.state === "approved" || !e.uid || (owner && e.uid === owner)) return "ok";
+  if (Object.keys(e.no || {}).length) return "disputed";
+  if (Object.keys(e.ok || {}).some(u => u !== e.uid)) return "ok";
+  return "open";
+}
+
 export interface LedgerEntry {
   key: string;
   kind: "pay" | "exp";
@@ -20,14 +34,17 @@ export interface LedgerEntry {
   payIdx?: number;
   /** Familien, für die es war (fehlt: alle) */
   for?: string[];
+  /** Ausgabe: Freigabe (nur „ok“ zählt im Saldo) */
+  state?: ExpState;
+  exp?: Expense;
 }
 export interface LedgerRow { hh: string; paid: number; owed: number; bal: number }
 export interface Move { from: string; to: string; v: number }
-export interface Ledger { entries: LedgerEntry[]; rows: LedgerRow[]; spent: number; moves: Move[]; settled: number }
+export interface Ledger { entries: LedgerEntry[]; rows: LedgerRow[]; spent: number; moves: Move[]; settled: number; pending: { n: number; v: number; disputed: number } }
 
 export const expEur = (e: Expense, trip: Trip) => (e.amount || 0) / rateOf(e.currency || "EUR", trip.settings);
 
-export function ledger(trip: Trip, T: Totals): Ledger {
+export function ledger(trip: Trip, T: Totals, owner?: string): Ledger {
   const act = activeTravelers(trip);
   const hhs = [...new Set(act.map(hhKey))];
   const size = (h: string) => act.filter(t => hhKey(t) === h).length;
@@ -54,13 +71,21 @@ export function ledger(trip: Trip, T: Totals): Ledger {
       entries.push({ key: `${it.id}:${i}`, kind: "pay", label: it.name, by: p.by, v: p.amount, date: p.at, cat: it.cat, itemId: it.id, payIdx: i });
     });
   }
+  const pending = { n: 0, v: 0, disputed: 0 };
   for (const e of trip.expenses || []) {
     const v = expEur(e, trip);
     if (!(v > 0) || !e.by) continue;
+    const state = expState(e, owner);
+    const base: LedgerEntry = { key: e.id, kind: "exp", label: e.text, by: e.by, v, date: e.date, cat: e.cat, expId: e.id, ...(e.for?.length ? { for: e.for } : {}), state, exp: e };
+    if (state !== "ok") {
+      if (state !== "rejected") { pending.n++; pending.v += v; if (state === "disputed") pending.disputed++; }
+      entries.push(base);
+      continue;
+    }
     add(paid, e.by, v);
     const fs = e.for?.length ? e.for.filter(h => hhs.includes(h)) : hhs;
     spread(v, Object.fromEntries(fs.map(h => [h, size(h)])));
-    entries.push({ key: e.id, kind: "exp", label: e.text, by: e.by, v, date: e.date, cat: e.cat, expId: e.id, ...(e.for?.length ? { for: e.for } : {}) });
+    entries.push(base);
   }
   let settled = 0;
   for (const x of trip.transfers || []) {
@@ -71,9 +96,9 @@ export function ledger(trip: Trip, T: Totals): Ledger {
   }
   const names = [...new Set([...hhs, ...Object.keys(paid), ...Object.keys(owed)])];
   const rows = names.map(hh => ({ hh, paid: paid[hh] || 0, owed: owed[hh] || 0, bal: (paid[hh] || 0) - (owed[hh] || 0) }));
-  const spent = entries.reduce((a, e) => a + e.v, 0);
+  const spent = entries.filter(e => !e.state || e.state === "ok").reduce((a, e) => a + e.v, 0);
   entries.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  return { entries, rows, spent, moves: settle(rows), settled };
+  return { entries, rows, spent, moves: settle(rows), settled, pending };
 }
 
 /** Ausgleich mit möglichst wenigen Überweisungen: größter Schuldner zahlt an größten Gläubiger */

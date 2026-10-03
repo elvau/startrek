@@ -204,6 +204,15 @@ export interface Expense {
   /** für diese Familien (nach Personen geteilt); fehlt: alle */
   for?: string[];
   cat?: CatKey;
+  /** geteilte Reise: eingereicht von diesem Konto (ID, Name); ohne: zählt sofort */
+  uid?: string;
+  who?: string;
+  /** bestätigt (✅) von Konto-ID → Name */
+  ok?: Record<string, string>;
+  /** Einspruch (❌) von Konto-ID → Name und Grund */
+  no?: Record<string, { name: string; why?: string }>;
+  /** Entscheidung des Admins (Besitzer der Reise) */
+  state?: "approved" | "rejected";
 }
 /** Ausgleich: Familie from hat Familie to diesen Betrag gegeben */
 export interface Transfer { id: string; from: string; to: string; amount: number; at?: string }

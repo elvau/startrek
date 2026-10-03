@@ -3,7 +3,7 @@
    * Kasse unterwegs: tatsächliche Ausgaben eintragen (wer hat ausgelegt, für wen), Zahlungen zu Posten (im Posten unter
    * „Bezahlt“), Salden je Familie und wer wem wie viel überweist. Ein Tipp auf „Erledigt“ trägt die Überweisung ein.
    */
-  import { t } from "../i18n/index.svelte";
+  import { t, tn } from "../i18n/index.svelte";
   import { access, app, calc } from "../store.svelte";
   import { eur, parseNum } from "../calc";
   import { CAT_CHAPTERS } from "../chapters";
@@ -11,13 +11,44 @@
   import { CURRENCIES, entryCurrency } from "../currency.svelte";
   import { geo } from "../geo/geo.svelte";
   import { ccOf } from "../geo/places";
-  import { ledger } from "../ledger";
+  import { ledger, type LedgerEntry } from "../ledger";
+  import { cloud, cloudTrip } from "../cloud/cloud.svelte";
   import { dateDE } from "../format";
   import { showItem } from "./showItem";
   import { reveal } from "./reveal";
   import { cluster, groupLabel } from "../groups";
 
-  const L = $derived(ledger(app.trip, calc.T));
+  // geteilte Reise: Eingereichtes von anderen braucht ✅, bei ❌ entscheidet der Admin (Besitzer)
+  const ct = $derived(cloudTrip(app.trip.id));
+  const shared = $derived(!!ct && Object.keys(ct.members).length > 1);
+  const me = $derived(cloud.user);
+  const admin = $derived(access.role === "owner");
+  const L = $derived(ledger(app.trip, calc.T, ct?.owner));
+  let objecting = $state<string | null>(null);
+  let why = $state("");
+  const exp = (id: string) => app.trip.expenses?.find(x => x.id === id);
+  const mine = (e: LedgerEntry) => !!me && e.exp?.uid === me.uid;
+  const canDelete = (e: LedgerEntry) => !e.exp?.uid || !shared || admin || mine(e);
+  const canVote = (e: LedgerEntry) => shared && !!me && !access.readonly && !!e.exp?.uid && !mine(e) && (e.state === "open" || e.state === "disputed");
+  function vote(id: string, ok: boolean) {
+    const x = exp(id);
+    if (!x || !me) return;
+    const okMap = { ...(x.ok || {}) }, noMap = { ...(x.no || {}) };
+    delete okMap[me.uid]; delete noMap[me.uid];
+    if (ok) okMap[me.uid] = me.name || "?";
+    else noMap[me.uid] = { name: me.name || "?", ...(why.trim() ? { why: why.trim() } : {}) };
+    if (Object.keys(okMap).length) x.ok = okMap; else delete x.ok;
+    if (Object.keys(noMap).length) x.no = noMap; else delete x.no;
+    objecting = null; why = "";
+  }
+  function decide(id: string, state: "approved" | "rejected" | undefined) {
+    const x = exp(id);
+    if (!x) return;
+    if (state) x.state = state; else delete x.state;
+  }
+  /** Kontoname wie bei den Mitgliedern: erster Buchstabe groß („oma“ → „Oma“) */
+  const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
+  const noText = (e: LedgerEntry) => Object.values(e.exp?.no || {}).map(n => (n.why ? `${cap(n.name)}: „${n.why}“` : cap(n.name))).join(" · ");
   const hhs = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))]);
   const today = () => new Date().toISOString().slice(0, 10);
   // Währung am Ziel (Kuna, Złoty …) zur Auswahl, dazu die eigene
@@ -46,7 +77,7 @@
   function save(e: Event) {
     e.preventDefault();
     if (!text.trim() || !(amt > 0) || !by) return;
-    const x: Expense = { id: uid(), text: text.trim(), amount: Math.round(amt * 100) / 100, by, cat, ...(cur !== "EUR" ? { currency: cur } : {}), ...(date ? { date } : {}), ...(forHh.length && forHh.length < hhs.length ? { for: [...forHh] } : {}) };
+    const x: Expense = { id: uid(), text: text.trim(), amount: Math.round(amt * 100) / 100, by, cat, ...(shared && me ? { uid: me.uid, who: me.name || "?" } : {}), ...(cur !== "EUR" ? { currency: cur } : {}), ...(date ? { date } : {}), ...(forHh.length && forHh.length < hhs.length ? { for: [...forHh] } : {}) };
     app.trip.expenses = [...(app.trip.expenses || []), x];
     try { localStorage.setItem(KEY, by); } catch { /* egal */ }
     adding = false;
@@ -91,6 +122,9 @@
     {#if !access.readonly && !adding}<button class="btn sm ks-add" onclick={start}>+ {t("ks.add")}</button>{/if}
   </div>
 
+  {#if L.pending.n}
+    <p class="ks-pend" class:ks-alert={admin && L.pending.disputed}>{admin && L.pending.disputed ? `⚠ ${tn("ks.decide", L.pending.disputed)}` : `⏳ ${tn("ks.pending", L.pending.n, { v: eur(L.pending.v) })}`}</p>
+  {/if}
   {#if adding}
     <form class="ks-form" onsubmit={save}>
       <div class="ed-row">
@@ -148,14 +182,35 @@
 
     <ul class="ks-list">
       {#each showAll ? L.entries : L.entries.slice(0, SHOW) as e (e.key)}
-        <li>
+        <li class:ks-wait={e.state === "open" || e.state === "disputed"} class:ks-rej={e.state === "rejected"}>
           <span class="ks-ic" aria-hidden="true">{catIcon(e.cat)}</span>
           <span class="ks-n">
             {#if e.itemId}<button class="linkbtn" onclick={() => showItem(e.itemId!)}>{e.label}</button>{:else}{e.label}{/if}
-            <small class="muted">{[t("ks.byWho", { name: e.by }), e.for ? t("ks.forWho", { list: e.for.join(", ") }) : "", e.date ? dateDE(e.date) : ""].filter(Boolean).join(" · ")}</small>
+            <small class="muted">{[t("ks.byWho", { name: e.by }), e.for ? t("ks.forWho", { list: e.for.join(", ") }) : "", e.date ? dateDE(e.date) : "", e.exp?.who && shared ? t("ks.sentBy", { name: cap(e.exp.who) }) : ""].filter(Boolean).join(" · ")}</small>
+            {#if e.state === "open"}<small class="ks-st">⏳ {t("ks.waiting")}</small>
+            {:else if e.state === "disputed"}<small class="ks-st ks-no">❌ {t("ks.disputed", { list: noText(e) })}</small>
+            {:else if e.state === "rejected"}<small class="ks-st ks-no">{t("ks.rejected")}</small>
+            {:else if e.exp?.uid && shared && Object.keys(e.exp.ok || {}).length}<small class="ks-st ks-ok">✅ {Object.values(e.exp.ok || {}).map(cap).join(", ")}</small>{/if}
+            {#if canVote(e)}
+              <span class="ks-vote">
+                <button class="btn sm ks-yes" class:on={!!me && !!e.exp?.ok?.[me.uid]} onclick={() => vote(e.expId!, true)} aria-label={t("ks.confirm")}>✅ {t("ks.confirm")}</button>
+                <button class="btn sm ks-noBtn" class:on={!!me && !!e.exp?.no?.[me.uid]} onclick={() => { objecting = objecting === e.expId ? null : e.expId!; why = ""; }} aria-label={t("ks.object")}>❌ {t("ks.object")}</button>
+              </span>
+              {#if objecting === e.expId}
+                <span class="ks-why"><input bind:value={why} placeholder={t("ks.whyPh")} aria-label={t("ks.why")} />
+                  <button class="btn sm primary ks-send" onclick={() => vote(e.expId!, false)}>{t("ks.send")}</button></span>
+              {/if}
+            {/if}
+            {#if admin && shared && e.exp?.uid && !mine(e) && e.state !== "ok" && !access.readonly}
+              <span class="ks-vote ks-admin">
+                {#if e.state === "rejected"}<button class="btn sm ks-restore" onclick={() => decide(e.expId!, undefined)}>{t("ks.restore")}</button>
+                {:else}<button class="btn sm ks-approve" onclick={() => decide(e.expId!, "approved")}>{t("ks.approve")}</button>
+                  <button class="btn sm ks-reject" onclick={() => decide(e.expId!, "rejected")}>{t("ks.reject")}</button>{/if}
+              </span>
+            {/if}
           </span>
           <b class="num">{eur(e.v)}</b>
-          {#if !access.readonly}<button class="dp-del" aria-label={t("ks.remove", { text: e.label })} onclick={() => (e.expId ? removeExp(e.expId) : removePay(e.itemId!, e.payIdx!))}>×</button>{/if}
+          {#if !access.readonly && canDelete(e)}<button class="dp-del" aria-label={t("ks.remove", { text: e.label })} onclick={() => (e.expId ? removeExp(e.expId) : removePay(e.itemId!, e.payIdx!))}>×</button>{/if}
         </li>
       {/each}
       {#each app.trip.transfers || [] as x (x.id)}
@@ -195,5 +250,16 @@
   .ks-n { flex: 1; display: flex; flex-direction: column; }
   .ks-n small { font-size: 12px; }
   .ks-tr { color: var(--ink-2); }
+  .ks-wait .num { color: var(--ink-3); }
+  .ks-rej .ks-n, .ks-rej .num { text-decoration: line-through; color: var(--ink-3); }
+  .ks-st { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+  .ks-ok { color: var(--good); }
+  .ks-no { color: var(--bad, #c0392b); }
+  .ks-vote { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .ks-vote .on { outline: 2px solid var(--c-split, var(--ink-2)); }
+  .ks-why { display: flex; gap: 6px; margin-top: 4px; }
+  .ks-why input { flex: 1; min-width: 0; }
+  .ks-pend { margin: 0; padding: 6px 10px; border-radius: 12px; background: var(--paper-2); font-size: 14px; }
+  .ks-alert { background: color-mix(in srgb, var(--bad, #c0392b) 12%, transparent); font-weight: 600; }
   .dp-del { border: 0; background: none; color: var(--ink-3); font-size: 16px; cursor: pointer; }
 </style>

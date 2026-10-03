@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ledger, settle } from "./ledger";
+import { expState, ledger, settle } from "./ledger";
 import { totals } from "./calc";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
@@ -40,5 +40,31 @@ describe("Kasse", () => {
   });
   it("wenige Überweisungen", () => {
     expect(settle([{ hh: "A", bal: 50 }, { hh: "B", bal: -30 }, { hh: "C", bal: -20 }, { hh: "D", bal: 0.2 }])).toEqual([{ from: "B", to: "A", v: 30 }, { from: "C", to: "A", v: 20 }]);
+  });
+  it("geteilte Reise: Eingereichtes zählt erst nach ✅, bei ❌ entscheidet der Admin", () => {
+    const t = trip(); t.items = [];
+    const e = { id: "x", text: "Taxi", amount: 50, by: "Solo", uid: "u-emil", who: "Emil" } as NonNullable<Trip["expenses"]>[number];
+    t.expenses = [e];
+    let L = ledger(t, totals(t), "u-owner");
+    expect(L.entries[0].state).toBe("open");
+    expect(L.rows.find(r => r.hh === "Solo")?.bal || 0).toBe(0);
+    expect(L.pending).toEqual({ n: 1, v: 50, disputed: 0 });
+    // selbst bestätigen zählt nicht
+    e.ok = { "u-emil": "Emil" };
+    expect(expState(e, "u-owner")).toBe("open");
+    e.ok["u-anna"] = "Anna";
+    L = ledger(t, totals(t), "u-owner");
+    expect(L.rows.find(r => r.hh === "Solo")!.bal).toBeCloseTo(40);
+    // Einspruch: wartet auf den Admin, zählt nicht
+    e.no = { "u-carl": { name: "Carl", why: "war privat" } };
+    expect(expState(e, "u-owner")).toBe("disputed");
+    expect(ledger(t, totals(t), "u-owner").pending.disputed).toBe(1);
+    e.state = "rejected";
+    expect(ledger(t, totals(t), "u-owner").pending.n).toBe(0);
+    e.state = "approved";
+    expect(expState(e, "u-owner")).toBe("ok");
+    // vom Admin selbst oder ohne Konto: sofort
+    expect(expState({ ...e, state: undefined, no: undefined, ok: undefined, uid: "u-owner" }, "u-owner")).toBe("ok");
+    expect(expState({ id: "y", text: "", amount: 1, by: "Klein" })).toBe("ok");
   });
 });
