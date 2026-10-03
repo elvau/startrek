@@ -1,7 +1,7 @@
 <script lang="ts">
   /*
    * Kasse unterwegs: tatsächliche Ausgaben eintragen (wer hat ausgelegt, für wen), Zahlungen zu Posten (im Posten unter
-   * „Bezahlt“), Salden je Familie und wer wem wie viel überweist. Ein Tipp auf „Erledigt“ trägt die Überweisung ein.
+   * „Bezahlt“), Salden je Kasse (Familie mit gemeinsamer Kasse oder einzelne Erwachsene) und wer wem wie viel überweist. Ein Tipp auf „Erledigt“ trägt die Überweisung ein.
    */
   import { t, tn } from "../i18n/index.svelte";
   import { access, app, calc } from "../store.svelte";
@@ -11,7 +11,8 @@
   import { CURRENCIES, entryCurrency } from "../currency.svelte";
   import { geo } from "../geo/geo.svelte";
   import { ccOf } from "../geo/places";
-  import { ledger, type LedgerEntry } from "../ledger";
+  import { kassen, kasseName, jointKasse, ledger, type LedgerEntry } from "../ledger";
+  import { ageClass } from "../calc";
   import { cloud, cloudTrip } from "../cloud/cloud.svelte";
   import { dateDE } from "../format";
   import { showItem } from "./showItem";
@@ -50,6 +51,24 @@
   const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
   const noText = (e: LedgerEntry) => Object.values(e.exp?.no || {}).map(n => (n.why ? `${cap(n.name)}: „${n.why}“` : cap(n.name))).join(" · ");
   const hhs = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))]);
+  // Kassen: wer zahlt und am Ende ausgleicht (Mannschaft: jeder selbst, Familie: gemeinsam)
+  const ks = $derived(kassen(app.trip));
+  const kids = $derived(ks.map(k => k.id));
+  const nm = (id: string) => kasseName(app.trip, id);
+  // Familien mit mehr als einem Erwachsenen: gemeinsame oder getrennte Kassen; Kinder bei getrennten Kassen
+  const adultsOf = (h: string) => app.trip.travelers.filter(x => isActive(x) && hhKey(x) === h && ageClass(x.age, app.trip.settings, x.kind) === "adult");
+  const kidsOf = (h: string) => app.trip.travelers.filter(x => isActive(x) && hhKey(x) === h && ageClass(x.age, app.trip.settings, x.kind) !== "adult");
+  const multi = $derived(hhs.filter(h => adultsOf(h).length > 1));
+  function setMode(h: string, joint: boolean) {
+    app.trip.households ||= {};
+    const H = (app.trip.households[h] ||= {});
+    H.kasse = joint ? "joint" : "each";
+  }
+  function setPayer(id: string, payer: string) {
+    const x = app.trip.travelers.find(y => y.id === id);
+    if (!x) return;
+    if (payer) x.payer = payer; else delete x.payer;
+  }
   const today = () => new Date().toISOString().slice(0, 10);
   // Währung am Ziel (Kuna, Złoty …) zur Auswahl, dazu die eigene
   const destCur = $derived(geo.world.find(w => w.k === ccOf(geo, app.trip.country))?.cur);
@@ -57,7 +76,7 @@
 
   // zuletzt gewählte Familie merken (auf diesem Gerät)
   const KEY = "rk2-kasse-by";
-  const lastBy = () => { try { const v = localStorage.getItem(KEY); return v && hhs.includes(v) ? v : hhs[0]; } catch { return hhs[0]; } };
+  const lastBy = () => { try { const v = localStorage.getItem(KEY); return v && kids.includes(v) ? v : kids[0]; } catch { return kids[0]; } };
 
   let adding = $state(false);
   let text = $state("");
@@ -77,15 +96,15 @@
   function save(e: Event) {
     e.preventDefault();
     if (!text.trim() || !(amt > 0) || !by) return;
-    const x: Expense = { id: uid(), text: text.trim(), amount: Math.round(amt * 100) / 100, by, cat, ...(shared && me ? { uid: me.uid, who: me.name || "?" } : {}), ...(cur !== "EUR" ? { currency: cur } : {}), ...(date ? { date } : {}), ...(forHh.length && forHh.length < hhs.length ? { for: [...forHh] } : {}) };
+    const x: Expense = { id: uid(), text: text.trim(), amount: Math.round(amt * 100) / 100, by, cat, ...(shared && me ? { uid: me.uid, who: me.name || "?" } : {}), ...(cur !== "EUR" ? { currency: cur } : {}), ...(date ? { date } : {}), ...(forHh.length && forHh.length < kids.length ? { for: [...forHh] } : {}) };
     app.trip.expenses = [...(app.trip.expenses || []), x];
     try { localStorage.setItem(KEY, by); } catch { /* egal */ }
     adding = false;
   }
   function toggleFor(h: string) {
-    const curSel = forHh.length ? forHh : hhs;
+    const curSel = forHh.length ? forHh : kids;
     const next = curSel.includes(h) ? curSel.filter(x => x !== h) : [...curSel, h];
-    forHh = next.length === hhs.length ? [] : next;
+    forHh = next.length === kids.length ? [] : next;
   }
   function removeExp(id: string) {
     app.trip.expenses = (app.trip.expenses || []).filter(x => x.id !== id);
@@ -122,6 +141,32 @@
     {#if !access.readonly && !adding}<button class="btn sm ks-add" onclick={start}>+ {t("ks.add")}</button>{/if}
   </div>
 
+  {#if multi.length && !access.readonly}
+    <!-- wer zahlt: Familie gemeinsam oder jeder Erwachsene selbst; Kinder über die Eltern -->
+    <details class="ks-modes">
+      <summary class="muted small">{t("ks.modes", { list: ks.length > 6 ? tn("ks.kassen", ks.length) : ks.map(k => k.name).join(", ") })}</summary>
+      {#each multi as h (h)}
+        {@const joint = jointKasse(app.trip, h)}
+        <div class="ks-mode">
+          <b>{h}</b>
+          <div class="chips" role="radiogroup" aria-label={t("ks.modeOf", { name: h })}>
+            <button type="button" role="radio" aria-checked={joint} class="chip sm" class:on={joint} onclick={() => setMode(h, true)}>{t("ks.joint")}</button>
+            <button type="button" role="radio" aria-checked={!joint} class="chip sm" class:on={!joint} onclick={() => setMode(h, false)}>{t("ks.each2")}</button>
+          </div>
+          {#if !joint}
+            {#each kidsOf(h) as c (c.id)}
+              <label class="ks-kid">{c.name || "?"}: {t("ks.paidByParents")}
+                <select value={c.payer || ""} onchange={e => setPayer(c.id, e.currentTarget.value)}>
+                  <option value="">{t("ks.allParents")}</option>
+                  {#each adultsOf(h) as a (a.id)}<option value={a.id}>{a.name}</option>{/each}
+                </select>
+              </label>
+            {/each}
+          {/if}
+        </div>
+      {/each}
+    </details>
+  {/if}
   {#if L.pending.n}
     <p class="ks-pend" class:ks-alert={admin && L.pending.disputed}>{admin && L.pending.disputed ? `⚠ ${tn("ks.decide", L.pending.disputed)}` : `⏳ ${tn("ks.pending", L.pending.n, { v: eur(L.pending.v) })}`}</p>
   {/if}
@@ -133,15 +178,15 @@
           <select bind:value={cur} aria-label={t("ks.currency")}>{#each curs as c (c)}<option value={c}>{c}</option>{/each}</select></span></label>
       </div>
       <div class="ed-row">
-        <label class="f">{t("ks.paidBy")}<select class="ks-by" bind:value={by}>{#each hhs as h (h)}<option value={h}>{h}</option>{/each}</select></label>
+        <label class="f">{t("ks.paidBy")}<select class="ks-by" bind:value={by}>{#each ks as k (k.id)}<option value={k.id}>{k.name}{k.person && multi.includes(k.hh) && hhs.length > 1 ? ` (${k.hh})` : ""}</option>{/each}</select></label>
         <label class="f">{t("ks.date")}<input type="date" bind:value={date} /></label>
         <label class="f">{t("ks.cat")}<select bind:value={cat}>{#each CAT_CHAPTERS as c (c.k)}<option value={c.k}>{c.label}</option>{/each}</select></label>
       </div>
-      {#if hhs.length > 1}
+      {#if ks.length > 1}
         <div class="f"><span class="dlabel">{t("ks.for")}</span>
           <div class="chips">
             <button type="button" class="chip sm" class:on={!forHh.length} onclick={() => (forHh = [])}>{t("fund.forAll")}</button>
-            {#each hhs as h (h)}<button type="button" class="chip sm" class:on={!!forHh.length && forHh.includes(h)} aria-pressed={!forHh.length || forHh.includes(h)} onclick={() => toggleFor(h)}>{h}</button>{/each}
+            {#each ks as k (k.id)}<button type="button" class="chip sm" class:on={!!forHh.length && forHh.includes(k.id)} aria-pressed={!forHh.length || forHh.includes(k.id)} onclick={() => toggleFor(k.id)}>{k.name}</button>{/each}
           </div>
         </div>
       {/if}
@@ -158,7 +203,7 @@
         <span class="dlabel">{t("ks.settle")}</span>
         <ul>
           {#each moveGroups as g (g[0].from + g[0].to)}
-            <li><span><b>{groupLabel(g.map(m => m.from), -1)}</b> → <b>{g[0].to}</b>{#if g.length > 1}<small class="muted">&nbsp;· {t("ks.each")}</small>{/if}</span><b class="num">{eur(g[0].v)}</b>
+            <li><span><b>{groupLabel(g.map(m => nm(m.from)), -1)}</b> → <b>{nm(g[0].to)}</b>{#if g.length > 1}<small class="muted">&nbsp;· {t("ks.each")}</small>{/if}</span><b class="num">{eur(g[0].v)}</b>
               {#if !access.readonly}<button class="btn sm ks-done" onclick={() => doneAll(g)}>{t("ks.done")}</button>{/if}</li>
           {/each}
         </ul>
@@ -174,7 +219,7 @@
         <tbody>
           {#each rowGroups as g (g[0].hh)}
             {@const r = g[0]}
-            <tr><td>{groupLabel(g.map(x => x.hh), L.rows.length)}{#if g.length > 1}<small class="muted">&nbsp;· {t("ks.each")}</small>{/if}</td><td class="num">{eur(r.paid)}</td><td class="num">{eur(r.owed)}</td><td class="num" class:pos={r.bal > 0.5} class:neg={r.bal < -0.5}>{r.bal > 0.5 ? "+" : ""}{eur(r.bal)}</td></tr>
+            <tr><td>{groupLabel(g.map(x => nm(x.hh)), L.rows.length)}{#if g.length > 1}<small class="muted">&nbsp;· {t("ks.each")}</small>{/if}</td><td class="num">{eur(r.paid)}</td><td class="num">{eur(r.owed)}</td><td class="num" class:pos={r.bal > 0.5} class:neg={r.bal < -0.5}>{r.bal > 0.5 ? "+" : ""}{eur(r.bal)}</td></tr>
           {/each}
         </tbody>
       </table>
@@ -186,7 +231,7 @@
           <span class="ks-ic" aria-hidden="true">{catIcon(e.cat)}</span>
           <span class="ks-n">
             {#if e.itemId}<button class="linkbtn" onclick={() => showItem(e.itemId!)}>{e.label}</button>{:else}{e.label}{/if}
-            <small class="muted">{[t("ks.byWho", { name: e.by }), e.for ? t("ks.forWho", { list: e.for.join(", ") }) : "", e.date ? dateDE(e.date) : "", e.exp?.who && shared ? t("ks.sentBy", { name: cap(e.exp.who) }) : ""].filter(Boolean).join(" · ")}</small>
+            <small class="muted">{[t("ks.byWho", { name: nm(e.by) }), e.for ? t("ks.forWho", { list: e.for.map(nm).join(", ") }) : "", e.date ? dateDE(e.date) : "", e.exp?.who && shared ? t("ks.sentBy", { name: cap(e.exp.who) }) : ""].filter(Boolean).join(" · ")}</small>
             {#if e.state === "open"}<small class="ks-st">⏳ {t("ks.waiting")}</small>
             {:else if e.state === "disputed"}<small class="ks-st ks-no">❌ {t("ks.disputed", { list: noText(e) })}</small>
             {:else if e.state === "rejected"}<small class="ks-st ks-no">{t("ks.rejected")}</small>
@@ -216,9 +261,9 @@
       {#each app.trip.transfers || [] as x (x.id)}
         <li class="ks-tr">
           <span class="ks-ic" aria-hidden="true">↔</span>
-          <span class="ks-n">{t("ks.transfer", { from: x.from, to: x.to })}<small class="muted">{x.at ? dateDE(x.at) : ""}</small></span>
+          <span class="ks-n">{t("ks.transfer", { from: nm(x.from), to: nm(x.to) })}<small class="muted">{x.at ? dateDE(x.at) : ""}</small></span>
           <b class="num">{eur(x.amount)}</b>
-          {#if !access.readonly}<button class="dp-del" aria-label={t("ks.remove", { text: t("ks.transfer", { from: x.from, to: x.to }) })} onclick={() => removeTransfer(x.id)}>×</button>{/if}
+          {#if !access.readonly}<button class="dp-del" aria-label={t("ks.remove", { text: t("ks.transfer", { from: nm(x.from), to: nm(x.to) }) })} onclick={() => removeTransfer(x.id)}>×</button>{/if}
         </li>
       {/each}
     </ul>
@@ -238,6 +283,9 @@
   .ks-moves li { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 12px; background: color-mix(in srgb, var(--good) 10%, transparent); }
   .ks-moves li span { flex: 1; }
   .ks-even { margin: 0; color: var(--good); font-weight: 600; }
+  .ks-modes summary { cursor: pointer; }
+  .ks-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .ks-kid { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); flex-basis: 100%; }
   .ks-bal summary { cursor: pointer; font-size: 14px; color: var(--ink-2); }
   .ks-bal table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
   .ks-bal th, .ks-bal td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: start; }

@@ -77,13 +77,23 @@ export function itinerary(trip: Trip): Day[] {
   const byDay = new Map<string, DayEntry[]>(dates.map(d => [d, []]));
   const add = (d: string | undefined, e: DayEntry) => { if (d && byDay.has(d.slice(0, 10))) byDay.get(d.slice(0, 10))!.push(e); };
   const live = trip.items.filter(i => i.status !== "dropped");
+  const flightSeen = new Map<string, DayEntry & { ids?: string[] }>();
+  const act = trip.travelers.filter(isActive);
+  // Kopie: die Liste wird beim Zusammenfassen erweitert (nie die Teilnehmer des Postens selbst)
+  const ids = (it: Item) => (it.participants?.length ? [...it.participants] : act.map(x => x.id));
 
   for (const it of live) {
     const o = activeOption(it, trip);
     if (it.cat === "flights" && !it.follow) {
       for (const [i, l] of (o?.legs || []).entries()) {
-        add(l.dep, { key: `${it.id}:${i}`, kind: "flight", itemId: it.id, text: `${l.from} → ${l.to}`, time: hm(l.dep),
-          sub: [hm(l.arr) ? t("day.lands", { t: hm(l.arr)! }) : "", l.carrier || ""].filter(Boolean).join(" · "), who: whoOf(trip, it), order: hm(l.dep) || "12:00" });
+        // derselbe Flug für mehrere Familien (je Familie ein Posten): eine Zeile, Familien zusammen
+        const fk = `${l.from}|${l.to}|${(l.dep || "").slice(0, 16)}`;
+        const prev = flightSeen.get(fk);
+        if (prev) { (prev.ids ||= []).push(...ids(it)); continue; }
+        const e: DayEntry & { ids?: string[] } = { key: `${it.id}:${i}`, kind: "flight", itemId: it.id, text: `${l.from} → ${l.to}`, time: hm(l.dep),
+          sub: [hm(l.arr) ? t("day.lands", { t: hm(l.arr)! }) : "", l.carrier || ""].filter(Boolean).join(" · "), ids: ids(it), order: hm(l.dep) || "12:00" };
+        flightSeen.set(fk, e);
+        add(l.dep, e);
       }
     } else if (it.cat === "stay" && it.from && it.to) {
       const name = o?.label || it.name;
@@ -92,6 +102,12 @@ export function itinerary(trip: Trip): Day[] {
     } else if (it.day && it.cat !== "flights" && it.cat !== "stay") {
       add(it.day, { key: it.id, kind: "item", itemId: it.id, text: it.name || o?.label || "", time: hm(it.day), sub: o?.detail, who: whoOf(trip, it), order: hm(it.day) || "22:00" });
     }
+  }
+  // Familien je Flug: alle dabei → keine Angabe, sonst die Familien (bzw. „Anna, Ben +3“)
+  for (const e of flightSeen.values()) {
+    const inn = act.filter(x => e.ids!.includes(x.id));
+    if (inn.length < act.length) { const hs = [...new Set(inn.map(hhKey))]; e.who = hs.length > 3 ? t("grp.more", { names: hs.slice(0, 2).join(", "), n: hs.length - 2 }) : hs.join(", "); }
+    delete e.ids;
   }
   if (trip.event?.start) add(trip.event.start, { key: "event", kind: "event", text: trip.event.name, time: hm(trip.event.start), sub: trip.event.venue, order: hm(trip.event.start) || "20:00" });
   for (const [d, p] of Object.entries(trip.days || {})) {

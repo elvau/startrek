@@ -116,7 +116,8 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
     it.ai = { at, kind: "suggested" };
     // Verpflegung an der Unterkunft: aus der Suche, sonst laut KI; die Verpflegung unter „Sonstiges“ richtet sich danach
     const o = it.options.at(-1);
-    if (o && !o.stay?.board && a.board) o.stay = { ...(o.stay || {}), board: a.board };
+    // „ohne Verpflegung“ nur, wenn es die Unterkunft sagt: eine Vermutung der KI übernimmt die App nicht
+    if (o && !o.stay?.board && a.board && a.board !== "self") o.stay = { ...(o.stay || {}), board: a.board };
   }
   trip.ai = { at };
   trip.food = { ...(trip.food || {}), on: true };

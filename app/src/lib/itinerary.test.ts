@@ -54,4 +54,15 @@ describe("Tagesplan", () => {
       legs: [{ ...L("out", "CGN", "SPU", "2027-06-05T10:00", "2027-06-05T12:00"), toCity: "Split" }, { ...L("via", "SPU", "DBV", "2027-06-07T10:00", "2027-06-07T11:00"), toCity: "Dubrovnik" }, L("back", "DBV", "CGN", "2027-06-10T18:00", "2027-06-10T20:20")] }] }];
     expect(itinerary(t).map(d => d.place)).toEqual(["Split", "Split", "Dubrovnik", "Dubrovnik", "Dubrovnik", "Dubrovnik"]);
   });
+  it("derselbe Flug mehrerer Familien: eine Zeile", () => {
+    const t = trip();
+    t.travelers.push({ id: "c", name: "Cem", household: "Hase" });
+    const f = t.items[0];
+    t.items = [{ ...f, id: "f1", participants: ["a", "b"] }, { ...f, id: "f2", participants: ["c"] }, ...t.items.slice(1)];
+    const d1 = itinerary(t)[0].entries.filter(e => e.kind === "flight");
+    expect(d1).toHaveLength(1);
+    expect(d1[0].who).toBeUndefined();
+    t.travelers.push({ id: "d", name: "Dora", household: "Fuchs" });
+    expect(itinerary(t)[0].entries.find(e => e.kind === "flight")!.who).toBe("Klein, Hase");
+  });
 });

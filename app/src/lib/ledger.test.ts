@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expState, ledger, settle } from "./ledger";
+import { expState, kassen, kasseOf, ledger, settle } from "./ledger";
 import { totals } from "./calc";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
@@ -66,5 +66,34 @@ describe("Kasse", () => {
     // vom Admin selbst oder ohne Konto: sofort
     expect(expState({ ...e, state: undefined, no: undefined, ok: undefined, uid: "u-owner" }, "u-owner")).toBe("ok");
     expect(expState({ id: "y", text: "", amount: 1, by: "Klein" })).toBe("ok");
+  });
+});
+
+describe("Kassen", () => {
+  const team = (): Trip => ({ ...trip(), items: [], travelers: ["A", "B", "C", "D"].map(n => ({ id: n, name: n, household: "Biber" })) });
+  it("Mannschaft in einer Gruppe: jeder Erwachsene eine Kasse", () => {
+    const t = team();
+    expect(kassen(t).map(k => k.id)).toEqual(["p:A", "p:B", "p:C", "p:D"]);
+    t.expenses = [{ id: "x", text: "Bier", amount: 40, by: "p:A" }];
+    const L = ledger(t, totals(t));
+    expect(L.rows.find(r => r.hh === "p:A")!.bal).toBeCloseTo(30);
+    expect(L.moves).toEqual([{ from: "p:B", to: "p:A", v: 10 }, { from: "p:C", to: "p:A", v: 10 }, { from: "p:D", to: "p:A", v: 10 }]);
+    // ältere Einträge mit dem Gruppennamen: auf alle verteilt, gleicht sich aus
+    t.expenses = [{ id: "y", text: "alt", amount: 40, by: "Biber" }];
+    expect(ledger(t, totals(t)).moves).toEqual([]);
+  });
+  it("Familie: gemeinsam, oder Eltern getrennt mit Kindern bei beiden bzw. einem", () => {
+    const t: Trip = { ...trip(), items: [], travelers: [{ id: "m", name: "Mama", household: "Klein", age: 40 }, { id: "p", name: "Papa", household: "Klein", age: 41 }, { id: "k", name: "Kind", household: "Klein", age: 8 }] };
+    expect(kassen(t).map(k => k.id)).toEqual(["Klein"]);
+    t.households = { Klein: { kasse: "each" } };
+    expect(kassen(t).map(k => k.id)).toEqual(["p:m", "p:p"]);
+    expect(kasseOf(t, t.travelers[2])).toEqual([["p:m", 0.5], ["p:p", 0.5]]);
+    t.expenses = [{ id: "x", text: "Eis", amount: 30, by: "p:m" }];
+    expect(ledger(t, totals(t)).rows.find(r => r.hh === "p:p")!.bal).toBeCloseTo(-15);
+    t.travelers[2].payer = "m";
+    expect(ledger(t, totals(t)).rows.find(r => r.hh === "p:p")!.bal).toBeCloseTo(-10);
+    // nur für Papa
+    t.expenses = [{ id: "x", text: "Zigarren", amount: 30, by: "p:m", for: ["p:p"] }];
+    expect(ledger(t, totals(t)).moves).toEqual([{ from: "p:p", to: "p:m", v: 30 }]);
   });
 });

@@ -29,6 +29,10 @@ const TRIPS = [
       flight("k", ["Klein0", "Klein1", "Klein2", "Klein3", "Klein4"], [L("out", "FRA", "HND", "2027-04-01T13:00", "2027-04-02T09:00", "Tokio"), L("back", "HND", "FRA", "2027-04-28T11:00", "2027-04-28T18:00")]),
       flight("o", ["o1", "o2"], [L("out", "MUC", "HND", "2027-04-07T13:00", "2027-04-08T09:00", "Tokio"), L("back", "HND", "MUC", "2027-04-28T11:00", "2027-04-28T18:00")])
     ] },
+  // Mannschaftsfahrt: 4 Spieler als eine Gruppe „Biber“, dazu Trainer-Familie mit Kind
+  { id: "team", name: "Mannschaftsfahrt", place: "Palma", country: "Spanien", from: "2027-05-27", to: "2027-05-30", ...base,
+    travelers: [...["Ali", "Ben", "Cem", "Dan"].map(n => ({ id: n, name: n, household: "Biber" })), { id: "tm", name: "Tina", household: "Trainer", age: 40 }, { id: "tp", name: "Tom", household: "Trainer", age: 42 }, { id: "tk", name: "Kim", household: "Trainer", age: 9 }],
+    items: [] },
   { id: "oz", name: "Ozeanien", place: "Sydney", country: "Australien", from: "2027-02-01", to: "2027-03-07", ...base, travelers: fam("Paar", [34, 33]), households: { Paar: geo.München }, items: [] },
   { id: "ca", name: "Kalifornien", place: "San Francisco", country: "USA", from: "2027-08-01", to: "2027-08-22", ...base,
     travelers: [...fam("Klein", [42, 40, 12, 9]), ...fam("Hase", [38, 37, 5])], households: { Klein: geo.Köln, Hase: geo.Hamburg },
@@ -132,6 +136,30 @@ try {
   if (asked.tours.at(-1).place !== "Hakone") fail("Touren-Anfrage nicht für Hakone");
   await p.keyboard.press("Escape");
   log("Japan: Touren für Hakone gesucht (Hakone Freepass gefunden)");
+
+  // ---- Mannschaft: jeder Spieler eine Kasse; Trainer-Familie gemeinsam, dann getrennt mit Kind bei Tina
+  await open("Mannschaftsfahrt");
+  const ks = p.locator("#split .kasse");
+  await ks.scrollIntoViewIfNeeded();
+  await ks.locator(".ks-add").click();
+  const byOpts = await ks.locator(".ks-by option").allInnerTexts();
+  if (byOpts.join("|") !== "Ali (Biber)|Ben (Biber)|Cem (Biber)|Dan (Biber)|Trainer") fail("Kassen bei „Bezahlt von“: " + byOpts.join("|"));
+  await ks.locator(".ks-text").fill("Mannschaftsessen");
+  await ks.locator(".ks-amount").fill("140");
+  await ks.locator(".ks-amt select").selectOption("EUR");
+  await ks.locator(".ks-by").selectOption("p:Ali");
+  await ks.locator(".ks-form .btn.primary").click();
+  // 140 € für 7 Personen: je 20 €; Trainer (3 Personen) 60 €
+  await until(async () => (await ks.locator(".ks-moves").innerText()).includes("→ Ali"), "Ausgleich an Ali");
+  const mv = await ks.locator(".ks-moves").innerText();
+  if (!/Trainer → Ali\s*60/.test(mv.replace(/\s+/g, " ")) || !mv.includes("+1")) fail("Ausgleich Mannschaft: " + mv);
+  await ks.locator(".ks-modes summary").click();
+  await ks.locator(".ks-mode", { hasText: "Trainer" }).locator(".chip", { hasText: "jeder Erwachsene" }).click();
+  await ks.locator(".ks-mode", { hasText: "Trainer" }).locator("select").selectOption("tm");
+  // Kim zahlt Tina: Tina 40 €, Tom 20 €
+  await until(async () => { const t = (await ks.locator(".ks-moves").innerText()).replace(/\s+/g, " "); return /Tina → Ali 40/.test(t) && /\+2 → Ali · jeweils 20/.test(t); }, "getrennte Kassen mit Kind bei Tina")
+    .catch(async e => { console.log("MOVES:", (await ks.innerText()).replace(/\s+/g, " ").slice(0, 900), "ERR:", errors.join(" / ")); throw e; });
+  log("Mannschaft: jeder Spieler eine Kasse, Trainer-Familie gemeinsam (60 €), getrennt mit Kind bei Tina (Tina 40 €, Tom wie die Spieler 20 €)");
 
   // ---- Ozeanien: Fidschi → München nur mit 2 Umstiegen; danach Reisezeitraum = Flüge
   await open("Ozeanien");

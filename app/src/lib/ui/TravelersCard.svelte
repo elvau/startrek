@@ -10,9 +10,16 @@
   import GroupsDialog from "./GroupsDialog.svelte";
   import QuickFamilies from "./QuickFamilies.svelte";
   import { animalEmoji, nextAnimal, placeholderTravelers, type FamilyRow } from "../placeholders";
+  import { countryName } from "../geo/locations";
+  import { flagOf } from "../format";
+  import { loadVisa } from "../visa";
 
   const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"];
   const L = (c: string) => t(`age.class.${c}` as Key);
+  // Staatsangehörigkeiten zur Auswahl: alle Pässe der Einreise-Daten, nach Name sortiert (Deutschland ist leer = Standard)
+  let natCodes = $state<string[]>([]);
+  $effect(() => { void loadVisa().then(d => { if (d) natCodes = Object.keys(d.m); }); });
+  const natList = $derived(natCodes.filter(c => c !== "DE").sort((a, b) => countryName(a).localeCompare(countryName(b))));
   let edit = $state(false);
   let pick = $state(false);
   let groups = $state(false);
@@ -105,10 +112,15 @@
         <input class="inp" class:need={missing(t.name)} bind:value={t.name} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.first')} *" aria-label={tt("trav.first")} />
         <input class="inp" class:need={missing(t.household)} bind:value={t.household} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.last')} *" aria-label={tt("trav.last")} />
         <label class="in-row"><input class="inp num" type="number" min="0" max="120" bind:value={t.age} placeholder="?" aria-label={tt("trav.age")} /> {tt("trav.years")}</label>
+        <!-- Staatsangehörigkeit: für die Einreise-Hinweise (Visum, Reisegenehmigung); leer = deutsch -->
+        <select class="inp t-nat" value={t.nat || ""} aria-label={tt("trav.nat")} title={tt("trav.nat")} onchange={e => { const v = e.currentTarget.value; if (v && v !== "DE") t.nat = v; else delete t.nat; }}>
+          <option value="">{flagOf("DE")} {countryName("DE")}</option>
+          {#each natList as c (c)}<option value={c}>{flagOf(c)} {countryName(c)}</option>{/each}
+        </select>
         <button class="linkbtn danger" onclick={() => remove(t.id)}>{tt("remove")}</button>
       {:else}
         <b>{t.placeholder ? t.name : `${t.name || tt("trav.noName")} ${t.household}`}</b>
-        <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}</span>
+        <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}{#if t.nat} <span title={countryName(t.nat)}>· {flagOf(t.nat)}</span>{/if}</span>
         <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
           onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? `✓ ${tt("trav.in")}` : tt("trav.out")}</button>
         {#if t.placeholder && !access.readonly}

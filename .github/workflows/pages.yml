@@ -40,6 +40,9 @@ jobs:
       - name: Flughafendaten aktualisieren
         # neue Daten von OurAirports; klappt das nicht, bleibt public/airports.json aus dem Projekt
         run: node scripts/airports.mjs || echo "::warning::Flughafendaten nicht aktualisiert, alte Datei bleibt"
+      - name: Einreisedaten aktualisieren
+        # Passport Index Data (MIT); klappt das nicht, bleibt public/visa.json aus dem Projekt
+        run: node scripts/visa.mjs || echo "::warning::Einreisedaten nicht aktualisiert, alte Datei bleibt"
       - name: Seite zusammenstellen
         run: scripts/site.sh _site
       - uses: actions/configure-pages@v5

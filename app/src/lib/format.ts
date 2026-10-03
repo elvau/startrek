@@ -63,3 +63,6 @@ export function shiftLocal(iso: string, h: number): string {
   d.setUTCHours(d.getUTCHours() + h);
   return d.toISOString().slice(0, 16);
 }
+
+/** Flagge aus dem Ländercode („EC“ → 🇪🇨) */
+export const flagOf = (cc: string) => (/^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map(c => 0x1f1a5 + c.charCodeAt(0))) : "");

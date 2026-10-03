@@ -3,6 +3,7 @@
   import type { Item } from "../model";
   import { app, calc } from "../store.svelte";
   import { ageClass, eur, participantsOf } from "../calc";
+  import { dayShort } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
   import Icon from "./Icon.svelte";
 
@@ -33,7 +34,7 @@
   {:else}<div class="ic"><Icon name={item.icon || icon} /></div>{/if}
   <div>
     <h3>{item.name || opt?.label || t("item.new")}</h3>
-    <p>{item.note || auto}{#if opt?.price.multiply && (r?.units || 0) > 1}<span class="row-units"> · {item.icon === "car" ? t("item.cars", { n: r!.units, c: opt.price.capacity || 0 }) : t("item.units", { n: r!.units })}</span>{/if}</p>
+    <p>{item.note || auto}{#if item.day}<span class="row-day">&nbsp;· 📅 {dayShort(item.day.slice(0, 10))}{item.day.length >= 16 ? ` ${item.day.slice(11, 16)}` : ""}</span>{/if}{#if opt?.price.multiply && (r?.units || 0) > 1}<span class="row-units">&nbsp;· {item.icon === "car" ? t("item.cars", { n: r!.units, c: opt.price.capacity || 0 }) : t("item.units", { n: r!.units })}</span>{/if}</p>
   </div>
   <div class="r">
     <b class="num">{eur(r?.net || 0)}</b>

@@ -126,5 +126,22 @@ export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[]
 }
 
 export async function searchTrivago(q: StayQuery, url = TRIVAGO_MCP, f: typeof fetch = fetch): Promise<StayOffer[]> {
-  return fromTrivago(await callTool(url, "trivago-accommodation-search", trivagoArgs(q), "Trivago", f), q);
+  // Trivago nennt die Verpflegung selten. Dieselbe Suche mit „Frühstück inklusive“: was dort zum selben Preis
+  // auftaucht, hat Frühstück dabei (live: Welikehotel Triton Beach, sonst als „unbekannt“ übernommen)
+  const withBreakfast = !(q.must || []).includes("breakfast") && q.type !== "whole";
+  const [all, bf] = await Promise.all([
+    callTool(url, "trivago-accommodation-search", trivagoArgs(q), "Trivago", f),
+    withBreakfast ? callTool(url, "trivago-accommodation-search", trivagoArgs({ ...q, must: [...(q.must || []), "breakfast"] }), "Trivago", f).catch(() => null) : null
+  ]);
+  return markBreakfast(fromTrivago(all, q), bf ? fromTrivago(bf, q) : (q.must || []).includes("breakfast") ? "all" : []);
+}
+
+/** Frühstück inklusive: Treffer der Suche mit Frühstücks-Filter (gleiches Haus, Preis höchstens 1 % höher) oder alle */
+export function markBreakfast(offers: StayOffer[], bf: StayOffer[] | "all"): StayOffer[] {
+  const price = new Map((bf === "all" ? [] : bf).map(o => [o.id, o.total]));
+  return offers.map(o => {
+    if (o.board) return o;
+    const p = price.get(o.id);
+    return bf === "all" || (p != null && p <= o.total * 1.01) ? { ...o, board: "breakfast" } : o;
+  });
 }

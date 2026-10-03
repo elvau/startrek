@@ -16,6 +16,7 @@ import { blockedResult, parseActivityQuery, searchActivities, viatorBlock } from
 import type { ActivityEnv } from "../../app/src/lib/activities/types";
 import { parseCalendarQuery, searchCalendar, type CalendarResult } from "../../app/src/lib/flights/calendar";
 import { fetchEcb, type Rates } from "../../app/src/lib/fx";
+import { AA_LIST, parseAdvice, type AdviceMap } from "../../app/src/lib/advice";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller } from "./gemini";
@@ -111,6 +112,19 @@ export default {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
       const r = await rates(env, ctx);
       return r ? json(r, 200, { ...h, "cache-control": "max-age=3600" }) : json({ error: "Kurse gerade nicht erreichbar" }, 503, h);
+    }
+
+    // Reise- und Sicherheitshinweise des Auswärtigen Amts (OpenData, alle Länder), 6 Stunden zwischengespeichert
+    if (url.pathname === "/advice" && req.method === "GET") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      try {
+        const countries = await cachedJson<AdviceMap>("aa/travelwarning", 6 * 3600, async () => {
+          const r = await fetch(AA_LIST, { headers: { accept: "application/json", "user-agent": "SplitAndFly/1.0 (+https://splitandfly.com)" } });
+          if (!r.ok) throw new Error("AA " + r.status);
+          return parseAdvice(await r.json());
+        }, m => Object.keys(m).length > 100, ctx);
+        return json({ countries, source: "Auswärtiges Amt (OpenData)" }, 200, { ...h, "cache-control": "max-age=3600" });
+      } catch { return json({ error: "Hinweise gerade nicht erreichbar" }, 503, h); }
     }
 
     if (url.pathname === "/flights/calendar" && req.method === "POST") {
