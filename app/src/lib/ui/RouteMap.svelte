@@ -143,7 +143,11 @@
 
   async function save(blob: Blob, name: string) {
     const file = new File([blob], name, { type: blob.type });
-    try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title }); return; } } catch { /* abgebrochen: herunterladen */ }
+    try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title }); return; } }
+    catch (e) {
+      // selbst abgebrochen: nichts tun; sonst (z. B. Teilen nicht mehr erlaubt nach langem Video) herunterladen
+      if ((e as Error)?.name === "AbortError") return;
+    }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
