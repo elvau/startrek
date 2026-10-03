@@ -3,7 +3,8 @@ import { i18n, t, type Key } from "../i18n/index.svelte";
 import { FLIGHTS_URL } from "../flights/app";
 import { dayShort, range } from "../format";
 import { inCity, mergeEvents } from "./search";
-import { searchSports } from "./sports";
+import { searchSports, SPORTS, type SportEvent } from "./sports";
+import { mergeFeed, type SportFeed } from "./feed";
 import { searchLocs, type AirportData } from "../geo/locations";
 import { findCity, type GeoData } from "../geo/places";
 import type { EventHit, EventQuery, EventSearchResult } from "./types";
@@ -22,7 +23,7 @@ async function remote(q: EventQuery, signal?: AbortSignal): Promise<EventSearchR
  */
 export async function searchEventsRemote(q0: EventQuery, signal?: AbortSignal): Promise<EventSearchResult> {
   const q = { ...q0, lang: i18n.lang };
-  const local = searchSports(q).filter(e => !q.city || inCity(e, q));
+  const local = searchSports(q, undefined, await sportList()).filter(e => !q.city || inCity(e, q));
   const mine = { id: "sports", name: "Sportkalender", configured: true, ok: true, count: local.length };
   if (q.sport) return { events: local, sources: [mine] };
   try {
@@ -34,8 +35,16 @@ export async function searchEventsRemote(q0: EventQuery, signal?: AbortSignal): 
   }
 }
 
+const base = () => (import.meta.env?.BASE_URL as string | undefined) || "/";
+let feed: Promise<SportEvent[]> | undefined;
+/** kuratierte Liste plus public/sports.json (Formel 1, Wikidata); fehlt die Datei oder dauert sie, nur die Liste */
+export function sportList(fetchFn: typeof fetch = fetch): Promise<SportEvent[]> {
+  feed ??= fetchFn(base() + "sports.json").then(r => (r.ok ? r.json() : null)).then((d: SportFeed | null) => mergeFeed(SPORTS, d?.events || [])).catch(() => SPORTS);
+  return Promise.race([feed, new Promise<SportEvent[]>(ok => setTimeout(() => ok(SPORTS), 4000))]);
+}
+
 export const SPORT_ICON: Record<string, string> = { multi: "🏅", join: "🏁", run: "🏃", tri: "🏊", bike: "🚴", ski: "⛷", tennis: "🎾", motor: "🏎", golf: "⛳", team: "🏆",
-  hand: "🤾", hockey: "🏒", rugby: "🏉", basket: "🏀", nfl: "🏈", athletics: "🏟", darts: "🎯" };
+  hand: "🤾", hockey: "🏒", rugby: "🏉", basket: "🏀", nfl: "🏈", athletics: "🏟", darts: "🎯", other: "🎽" };
 
 /** Termin: Tag mit Uhrzeit oder Zeitraum (mehrtägig) */
 export const evWhen = (h: EventHit) => (h.end && h.end > h.start.slice(0, 10) ? range(h.start.slice(0, 10), h.end) : `${dayShort(h.start.slice(0, 10))}${h.start.length > 10 ? ` ${h.start.slice(11, 16)}` : ""}`);

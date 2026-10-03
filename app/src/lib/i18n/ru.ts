@@ -1438,6 +1438,7 @@ export const ru: Dict = {
   "sp.motor": "Автоспорт",
   "sp.multi": "Олимпийские игры",
   "sp.nfl": "Американский футбол",
+  "sp.other": "Спорт",
   "sp.reg": "Регистрация",
   "sp.rugby": "Регби",
   "sp.run": "Бег",

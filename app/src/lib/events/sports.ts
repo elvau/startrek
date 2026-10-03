@@ -3,10 +3,11 @@
  * Formel 1) und Rennen, bei denen man selbst starten kann (Marathons, Triathlon, Volksläufe auf Ski).
  * Ohne Schlüssel, in App und Such-Dienst gleich. Termine recherchiert im Oktober 2026 (Quellen: Veranstalter,
  * Verbände, Sportpresse); vorbei ist vorbei, neue Jahrgänge kommen von Hand dazu (siehe docs/EVENT.md).
+ * Weitere Events (Formel 1, Wikidata) kommen automatisch aus public/sports.json (feed.ts).
  */
 import type { EventHit, EventQuery } from "./types";
 
-export type Sport = "multi" | "run" | "tri" | "bike" | "ski" | "tennis" | "motor" | "golf" | "hand" | "hockey" | "rugby" | "basket" | "nfl" | "athletics" | "darts";
+export type Sport = "multi" | "run" | "tri" | "bike" | "ski" | "tennis" | "motor" | "golf" | "hand" | "hockey" | "rugby" | "basket" | "nfl" | "athletics" | "darts" | "other";
 export type Join = "open" | "lottery" | "qualify";
 interface Where { city: string; cc: string; lat: number; lon: number; venue?: string }
 export interface SportEvent extends Where {
@@ -31,7 +32,7 @@ export interface SportEvent extends Where {
 
 export const TEAM: Sport[] = ["hand", "hockey", "rugby", "basket", "nfl"];
 /** Auswahl in der Suche: Sportarten, Mannschaftssport, selbst mitmachen */
-export const SPORT_FILTERS = ["multi", "join", "run", "tri", "bike", "ski", "tennis", "motor", "golf", "team", "athletics", "darts", "hand", "hockey", "rugby", "basket", "nfl"];
+export const SPORT_FILTERS = ["multi", "join", "run", "tri", "bike", "ski", "tennis", "motor", "golf", "team", "athletics", "darts", "hand", "hockey", "rugby", "basket", "nfl", "other"];
 
 /** Suchwörter je Sportart, in den Sprachen der App */
 const SPORT_WORDS: Record<Sport, string> = {
@@ -49,7 +50,8 @@ const SPORT_WORDS: Record<Sport, string> = {
   basket: "basketball baloncesto koszykówka баскетбол mannschaftssport team",
   nfl: "american football nfl super bowl футбол американский mannschaftssport team",
   athletics: "leichtathletik athletics athletisme atletismo lekkoatletyka легкая атлетика",
-  darts: "darts dart дартс"
+  darts: "darts dart дартс",
+  other: "sport"
 };
 /** „selbst mitmachen“ */
 const JOIN_WORDS = "mitmachen selbst starten teilnehmen anmelden anmeldung startplatz join participate register inscription participar inscripcion udział zapisy участие регистрация";
@@ -147,12 +149,12 @@ export const sportMatches = (e: Pick<SportEvent, "sport" | "join">, s: string) =
  * Treffer aus dem Sportkalender: Stichwort (alle Wörter müssen vorkommen), Sportart oder Ort (Umkreis macht search.ts);
  * ohne alles keine Treffer. Vorbei ist vorbei; mehrtägige Events zählen, solange sie laufen (Beginn dann der erste Tag im Zeitraum).
  */
-export function searchSports(q: EventQuery, today = new Date().toISOString().slice(0, 10)): EventHit[] {
+export function searchSports(q: EventQuery, today = new Date().toISOString().slice(0, 10), list: SportEvent[] = SPORTS): EventHit[] {
   const from = q.from && q.from > today ? q.from : today;
   const words = plain(q.q || "").split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 2);
   if (!words.length && !q.sport && !q.city) return [];
   const near = q.lat != null && q.lon != null ? { lat: q.lat, lon: q.lon } : null;
-  return SPORTS.filter(e => (e.end || e.start) >= from && (!q.to || e.start <= q.to))
+  return list.filter(e => (e.end || e.start) >= from && (!q.to || e.start <= q.to))
     .filter(e => !q.sport || sportMatches(e, q.sport))
     .filter(e => {
       if (!words.length) return true;

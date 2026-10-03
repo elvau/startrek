@@ -1438,6 +1438,7 @@ export const pl: Dict = {
   "sp.motor": "Sporty motorowe",
   "sp.multi": "Igrzyska olimpijskie",
   "sp.nfl": "Futbol amerykański",
+  "sp.other": "Sport",
   "sp.reg": "Zapisy",
   "sp.rugby": "Rugby",
   "sp.run": "Bieganie",

@@ -56,6 +56,9 @@ jobs:
       - name: Einreisedaten aktualisieren
         # Passport Index Data (MIT); klappt das nicht, bleibt public/visa.json aus dem Projekt
         run: node scripts/visa.mjs || echo "::warning::Einreisedaten nicht aktualisiert, alte Datei bleibt"
+      - name: Sportkalender aktualisieren
+        # Formel 1 (Jolpica) und große Sportevents (Wikidata); klappt das nicht, bleibt public/sports.json, wie sie ist
+        run: node scripts/sports.mjs || echo "::warning::Sportkalender nicht aktualisiert"
       - name: Seite zusammenstellen
         run: scripts/site.sh app/_hosting
       - name: Auf splitandfly.com veröffentlichen

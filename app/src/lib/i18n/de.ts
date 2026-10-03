@@ -1368,6 +1368,7 @@ export const de = {
   "sp.motor": "Motorsport",
   "sp.multi": "Olympia",
   "sp.nfl": "American Football",
+  "sp.other": "Sport",
   "sp.reg": "Anmeldung",
   "sp.rugby": "Rugby",
   "sp.run": "Laufen",
