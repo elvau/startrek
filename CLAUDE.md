@@ -14,6 +14,16 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
 - Version in `app/package.json` (`npm version X --no-git-tag-version`) im Release-PR: größere Funktionen mittlere Stelle,
   sonst Patch. Lieber langsam hochzählen.
 
+## Arbeitsteilung (Routinen)
+Fehler und QA laufen über drei Routinen auf einem eigenen Konto: **SAF 1 – Triage** macht aus Fehlerberichten Issues
+hier im Repo (Labels `bug`, `change_request`, `question`, dazu `from-triage`), **SAF 2 – Umsetzung** bearbeitet diese
+Issues, **SAF 2 – Review** prüft deren Pull Requests und nimmt sie an oder lehnt sie ab.
+- Sitzungen mit Dani zur Weiterentwicklung (neue Funktionen): Fällt dabei ein Fehler auf, der nicht zur laufenden Aufgabe
+  gehört, als Issue melden (gleiches Format: Kategorie, Beschreibung, Akzeptanzkriterien, Begründung; ohne `from-triage`)
+  statt ihn selbst zu fixen. Fehler in gerade gebautem Code gehören zur Aufgabe und werden gleich behoben.
+- Die Umsetzungs-Routine ist davon ausgenommen: Sie fixt die Issues, dafür ist sie da.
+- Issues sind öffentlich: keine E-Mails, Namen, Kontokennungen, Bilder oder Inhalte aus Fehlerberichten (siehe Datenschutz).
+
 ## Prüfen
 Push auf die Testumgebung soll schnell gehen: GitHub baut dort nur (`pages.yml`), die volle Prüfung läuft beim PR nach
 `main` (`pruefen.yml`). Vor jedem Push lokal die schnellen Prüfungen und nur die e2e-Schritte der geänderten Bereiche:
