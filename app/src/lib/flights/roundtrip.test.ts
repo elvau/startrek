@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alternatives, isShort, legQuery, nightsBetween, roundLegs, searchRound, swapLeg, viaHours, type RoundPlan } from "./roundtrip";
+import { alternatives, anyReal, isShort, legQuery, nightsBetween, roundLegs, searchRound, swapLeg, viaHours, type RoundPlan } from "./roundtrip";
 import { roundToOption } from "./app";
 import type { FlightOffer, FlightQuery, SearchResult } from "./types";
 
@@ -74,6 +74,16 @@ describe("Rundreise", () => {
     expect(res.trips.length).toBeGreaterThan(0);
     expect(res.moreStops).toEqual(["EZE → DUS"]);
     expect(asked.filter(q => q.from === "EZE").every(q => q.maxStops === 2)).toBe(true);
+  });
+
+  it("nur ein Testangebot (Duffel im Testmodus, Galápagos): trotzdem mit 2 Umstiegen nachgesucht", async () => {
+    const asked: FlightQuery[] = [];
+    const base = fake(asked);
+    const res = await searchRound(plan, async q => (q.from === "EZE" && (q.maxStops ?? 0) < 2 ? { offers: [{ ...offer(q.from, q.to, q.depart, 50), test: true }], sources: [] } : base(q)));
+    expect(res.moreStops).toEqual(["EZE → DUS"]);
+    expect(res.trips.every(t => t.legs.every(l => !l.test))).toBe(true);
+    expect(anyReal([{ test: true }])).toBe(false);
+    expect(anyReal([{ test: true }, {}])).toBe(true);
   });
 
   it("Fehler einer Strecke wird gemeldet", async () => {
