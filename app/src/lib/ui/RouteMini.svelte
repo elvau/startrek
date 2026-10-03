@@ -1,13 +1,15 @@
 <script lang="ts">
   /* Reiseroute als kleines Bild (Startseite, Vorschau): Kartenbild darunter, Flüge als Bögen, Weiterreise als Linie, Stationen als Punkte */
-  import { arc, focus, mapView, project, type Route } from "../route";
+  import { arc, mapView, outline, project, type Route } from "../route";
   import { cachedSnap, mapSnap } from "./mapSnap";
 
   let { route, w = 160, h = 72, label = "" }: { route: Route; w?: number; h?: number; label?: string } = $props();
-  const PAD = 14;
+  const PAD = 10;
   const clip = `rmc-${Math.random().toString(36).slice(2, 8)}`;
-  const pr = $derived(project(focus(route), w, h, PAD));
-  const view = $derived(mapView(focus(route), w, h, PAD));
+  // ganze Route samt Flugbögen im Bild, auch bei langen Strecken
+  const shape = $derived(outline(route));
+  const pr = $derived(project(shape, w, h, PAD));
+  const view = $derived(mapView(shape, w, h, PAD));
   let bg = $state<string | null>(null);
   $effect(() => {
     const v = view;

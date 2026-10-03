@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arc, buildRoute, mapView, project } from "./route";
+import { arc, buildRoute, mapView, outline, project } from "./route";
 import { itinerary } from "./itinerary";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
@@ -51,5 +51,11 @@ describe("Reiseroute", () => {
     const [x1] = pr({ lat: 0, lon: 0 }), [x2] = pr({ lat: 0, lon: 1 });
     expect(x2 - x1).toBeCloseTo((512 * 2 ** v.zoom) / 360, 3);
     expect(mapView([pts[0]], 160, 72)!.zoom).toBe(11);
+  });
+  it("Mini-Bild: ganze Route samt Flugbogen im Rechteck", () => {
+    const t = trip();
+    const R = buildRoute(t, itinerary(t), r, { name: "Köln", lat: 50.94, lon: 6.96 });
+    const shape = outline(R), pr = project(shape, 280, 80, 10);
+    for (const p of shape) { const [x, y] = pr(p); expect(x).toBeGreaterThanOrEqual(9.9); expect(x).toBeLessThanOrEqual(270.1); expect(y).toBeGreaterThanOrEqual(9.9); expect(y).toBeLessThanOrEqual(70.1); }
   });
 });

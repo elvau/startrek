@@ -141,7 +141,7 @@
             </button>
             {:else}
             <button class="home-trip" class:past={isPast} onclick={() => openTrip(m.id, "Liste")}>
-              {#if m.route && m.route.points.length > 2}<span class="ht-route" aria-hidden="true"><RouteMini route={m.route} w={280} h={64} /></span>{/if}
+              {#if m.route && m.route.points.length > 2}<span class="ht-route" aria-hidden="true"><RouteMini route={m.route} w={280} h={96} /></span>{/if}
               <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
               {#if x}
                 {#if x.where}<span class="ht-where">{x.round ? `🔁 ${t("home.round")}: ` : "📍 "}{x.where}</span>{/if}

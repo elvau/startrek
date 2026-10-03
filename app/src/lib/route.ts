@@ -77,6 +77,14 @@ export function focus(r: Route): RPoint[] {
   return st.length > 1 ? st : r.points;
 }
 
+/** alle gezeichneten Punkte der Route, auch die Bögen der Flüge: damit passt die ganze Route ins Mini-Bild */
+export function outline(r: Route): LatLon[] {
+  return r.segs.flatMap(sg => {
+    const a = r.points[sg.a], b = r.points[sg.b];
+    return sg.mode === "flight" ? arc(a, b, 16).map(([lon, lat]) => ({ lat, lon })) : [a, b];
+  }).concat(r.points);
+}
+
 /** Bogen für Flüge (für Karte und Animation): Punkte auf einem flachen Bogen zwischen a und b */
 export function arc(a: LatLon, b: LatLon, n = 32): [number, number][] {
   const dx = b.lon - a.lon, dy = b.lat - a.lat, len = Math.hypot(dx, dy);
@@ -96,7 +104,9 @@ const unY = (y: number) => (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) /
 function frame(points: LatLon[], w: number, h: number, pad: number) {
   const xs = points.map(p => mx(p.lon)), ys = points.map(p => my(p.lat));
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const s = Math.min((w - 2 * pad) / (x1 - x0 || 1e-9), (h - 2 * pad) / (y1 - y0 || 1e-9), 512 * 2 ** 11);
+  let s = Math.min((w - 2 * pad) / (x1 - x0 || 1e-9), (h - 2 * pad) / (y1 - y0 || 1e-9), 512 * 2 ** 11);
+  // nicht weiter als Zoom 0 (ganze Welt), sonst passen Karte und Linien nicht mehr zusammen
+  if (s < 512) s = 512;
   return { s, left: (x0 + x1) / 2 - w / 2 / s, top: (y0 + y1) / 2 - h / 2 / s };
 }
 
