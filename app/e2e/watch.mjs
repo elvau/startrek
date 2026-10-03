@@ -306,11 +306,15 @@ try {
   await until(async () => (await p.locator("#misc .card[data-item]", { hasText: "Verpflegung" }).count()) === 1, "ein Posten Verpflegung", 10000);
   await p.locator("#split").scrollIntoViewIfNeeded();
   await p.locator("#split .sh-table").waitFor();
-  if ((await p.locator("#split .sh-table tbody tr").count()) !== 6) fail("Tabelle nicht 6 Zeilen");
+  // alle zahlen gleich: eine Zeile „Alle (6)“, aufklappbar
+  if ((await p.locator("#split .sh-table tbody tr").count()) !== 1) fail("Tabelle: eine Zeile „Alle (6)“ erwartet, " + await p.locator("#split .sh-table tbody tr").count());
+  if (!(await p.locator("#split .sh-grp").innerText()).includes("Alle (6)")) fail("Gruppenzeile ohne „Alle (6)“");
   if ((await p.locator("#split article.share").count()) !== 2) fail("statt 6 Karten: Tabelle und einmal „Für jede Person gleich“ erwartet, " + await p.locator("#split article.share").count());
+  await p.locator("#split .sh-grp").click();
+  await until(async () => (await p.locator("#split .sh-table tbody tr").count()) === 7, "Gruppe aufgeklappt");
   await p.locator("#split .sh-table tbody tr", { hasText: "Panda" }).click();
   await until(async () => (await p.locator("#split article.share").count()) === 3, "Einzelheiten zu Panda");
-  log("Gruppe mit 6 Einzelnen: Startseite mit Planungsstand, ein Posten Verpflegung, Abrechnung als Tabelle, Einzelheiten auf Klick");
+  log("Gruppe mit 6 Einzelnen: Startseite mit Planungsstand, ein Posten Verpflegung, Abrechnung als eine Zeile „Alle (6)“, aufklappbar, Einzelheiten auf Klick");
 
   // Reise ohne Flug und ohne Wohnort: „Unterwegs“ fragt nach der PLZ für den Bahn/Bus-Vergleich
   await p.locator(".top .brand-btn").click();

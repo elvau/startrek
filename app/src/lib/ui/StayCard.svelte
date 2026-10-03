@@ -5,6 +5,7 @@
   import { calcOption, eur } from "../calc";
   import { dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
+  import { cluster, groupLabel } from "../groups";
 
   let { item }: { item: Item } = $props();
   const r = $derived(calc.T.items[item.id]);
@@ -12,7 +13,8 @@
   const sc = $derived(r?.stay);
   const nn = $derived(sc ? sc.nights.length : s?.nights || r?.option?.price.qty || 0);
   // Gäste, die nicht alle Nächte da sind
-  const partial = $derived(sc ? Object.entries(sc.w).filter(([, w]) => w < sc.nights.length).map(([id, w]) => `${app.trip.travelers.find(x => x.id === id)?.name || "?"} ${tn("n.nights", w)}`) : []);
+  const partial = $derived(sc ? cluster(Object.entries(sc.w).filter(([, w]) => w < sc.nights.length), (a, b) => a[1] === b[1])
+    .map(g => `${groupLabel(g.map(([id]) => app.trip.travelers.find(x => x.id === id)?.name || "?"), -1)} ${tn("n.nights", g[0][1])}`) : []);
   const absent = $derived(sc ? sc.nights.filter(x => !sc.occ[x]).length : 0);
   const pct = $derived(r && r.net ? Math.min(100, (r.paid / r.net) * 100) : 0);
   /** Verpflegung am gewählten Angebot setzen (die Verpflegung unter „Sonstiges“ folgt automatisch) */
