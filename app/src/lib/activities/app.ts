@@ -2,8 +2,8 @@
 import { t } from "../i18n/index.svelte";
 import { FLIGHTS_URL } from "../flights/app";
 import { uid, type Item, type Trip } from "../model";
-import { dayShort } from "../format";
 import type { EventHit, EventQuery, EventSearchResult } from "../events/types";
+import { evWhen, searchEventsRemote } from "../events/app";
 import { locOf } from "../geo/maps";
 import type { ActivityHit, ActivityQuery, ActivitySearchResult } from "./types";
 
@@ -15,7 +15,8 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
   return data as T;
 }
 
-export const searchLocalEvents = (q: EventQuery, signal?: AbortSignal) => post<EventSearchResult>("/events/search", q, signal);
+// mit dem Sportkalender (events/app.ts)
+export const searchLocalEvents = (q: EventQuery, signal?: AbortSignal): Promise<EventSearchResult> => searchEventsRemote(q, signal);
 export const searchActivitiesRemote = (q: ActivityQuery, signal?: AbortSignal) => post<ActivitySearchResult>("/activities/search", q, signal);
 
 /** Preis nur in Euro übernehmen (ohne Kurs würde ein Dollarpreis als Euro zählen); sonst trägt man ihn selbst ein */
@@ -23,7 +24,7 @@ const eur = (price: number | undefined, currency: string) => (price != null && p
 
 /** Posten für ein Event: Name, Termin und Ort als Notiz, Ticketpreis ab pro Person, Link zu den Tickets */
 export function eventItem(h: EventHit): Item {
-  const when = `${dayShort(h.start.slice(0, 10))}${h.start.length > 10 ? ` ${h.start.slice(11, 16)}` : ""}`;
+  const when = evWhen(h);
   const where = [h.venue, h.city].filter(Boolean).join(", ");
   const adult = eur(h.price?.min, h.price?.currency || "");
   const loc = h.venue || h.address ? locOf(h.venue || h.address, h.venue ? h.city || h.address : h.city, h) : locOf(undefined, undefined, h);

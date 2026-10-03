@@ -53,6 +53,7 @@ describe("Events vor Ort", () => {
     expect(inCity({ id: "c", source: "", sourceName: "", name: "", start: "", city: "Milan" }, { q: "", city: "Mailand", cityEn: "Milan" })).toBe(true);
     expect(inCity({ id: "d", source: "", sourceName: "", name: "", start: "", address: "Via Roma 1 Torino" }, { q: "", city: "Mailand", cityEn: "Milan" })).toBe(false);
     const res = await searchEvents({ q: "", city: "Rom" }, {});
-    expect(res.sources.every(s => !s.configured)).toBe(true);
+    // ohne Schlüssel bleibt nur der Sportkalender
+    expect(res.sources.filter(s => s.configured).map(s => s.id)).toEqual(["sports"]);
   });
 });

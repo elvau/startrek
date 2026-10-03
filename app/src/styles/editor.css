@@ -547,6 +547,8 @@ body[data-ch="split"] .amb-split{opacity:1}
 .ev-hits{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:260px;overflow:auto}
 .ev-hit{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:start;border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:8px 12px;font-size:14px}
 .ev-hit:hover{border-color:var(--a)}
+.ev-sports{align-items:center;margin:6px 0 2px}
+.ev-sport{color:var(--ink-2)}
 .ev-or{margin:10px 0 0}
 
 /* Kopf der Reise: Event als Knopf, Überschrift ohne Namen blasser */

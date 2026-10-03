@@ -21,6 +21,7 @@
   import { explore } from "../activities/open.svelte";
   import { itinerary, stations } from "../itinerary";
   import type { EventHit } from "../events/types";
+  import { evWhen, sportTag } from "../events/app";
   import type { ActivityHit } from "../activities/types";
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
@@ -193,11 +194,12 @@
               <article class="xp-card xp-ev">
                 <div class="xp-b">
                   <b>{h.name}</b>
-                  <span class="muted small">{dayShort(h.start.slice(0, 10))}{h.start.length > 10 ? ` ${h.start.slice(11, 16)}` : ""}{h.venue ? ` · ${h.venue}` : ""}{h.category ? ` · ${h.category}` : ""}</span>
+                  <span class="muted small">{evWhen(h)}{h.venue ? ` · ${h.venue}` : ""}{h.category ? ` · ${h.category}` : ""}</span>
+                  {#if h.sport}<span class="small ev-sport">{sportTag(h)}</span>{/if}
                   {#if h.price}<span class="xp-price">{t("xp.from", { p: money(h.price.min, h.price.currency) })}</span>{/if}
                 </div>
                 <div class="xp-acts">
-                  {#if h.url}<a class="linkbtn" href={h.url} target="_blank" rel="noopener noreferrer">{t("xp.tickets")} ↗</a>{/if}
+                  {#if h.url}<a class="linkbtn" href={h.url} target="_blank" rel="noopener noreferrer">{h.join ? t("sp.reg") : h.sport ? t("sp.info") : t("xp.tickets")} ↗</a>{/if}
                   <button class="btn xp-take" class:primary={!taken[h.id]} disabled={taken[h.id]} onclick={() => take(h.id, () => eventItem(h))}>{taken[h.id] ? t("xp.taken") : t("xp.take")}</button>
                 </div>
               </article>

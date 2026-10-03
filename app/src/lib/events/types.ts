@@ -13,6 +13,10 @@ export interface EventQuery {
   /** Zeitraum JJJJ-MM-TT (fehlt: ab heute, ein Jahr) */
   from?: string;
   to?: string;
+  /** Sportart aus dem Sportkalender (z. B. „run“, „ski“, „team“) oder „join“ (selbst mitmachen); dann ist q optional */
+  sport?: string;
+  /** Sprache für Namen aus dem Sportkalender */
+  lang?: string;
 }
 
 export interface EventHit {
@@ -35,6 +39,11 @@ export interface EventHit {
   category?: string;
   /** Ticketpreise, soweit die Quelle sie nennt */
   price?: { min: number; max?: number; currency: string };
+  /** Sportkalender: letzter Tag (mehrtägig), Sportart, Anmeldung für alle, Termin noch vorläufig */
+  end?: string;
+  sport?: string;
+  join?: "open" | "lottery" | "qualify";
+  tbc?: boolean;
 }
 
 export interface EventSearchResult {
