@@ -55,10 +55,10 @@ Große Sportevents außerhalb des Fußballs und Rennen, bei denen man selbst sta
   ihn ebenfalls (`POST /events/search` mit `sport`, für den KI-Konnektor); doppelte Treffer fallen weg.
 - Automatisch dazu: `scripts/sports.mjs` holt beim Deploy (wie Flughafen- und Einreisedaten) die Formel 1 von Jolpica
   (api.jolpi.ca, dieses und nächstes Jahr) und große Sportevents der nächsten drei Jahre von Wikidata (CC0, mindestens
-  8 Wikipedia-Artikel, ohne Fußball und Teilwettbewerbe) nach `public/sports.json`; die App lädt die Datei dazu.
+  5 Wikipedia-Artikel und tagesgenauem Beginn, ohne Fußball und Teilwettbewerbe) nach `public/sports.json`; die App lädt die Datei dazu.
   Doppelte (gleiche Sportart, höchstens 3 Tage und 150 km auseinander) fallen weg, die kuratierte Fassung gewinnt.
   Logik und Tests: `app/src/lib/events/feed.ts`. Das Skript warnt im GitHub-Lauf, wenn die kuratierte Liste
-  weniger als ein halbes Jahr in die Zukunft reicht.
+  weniger als ein halbes Jahr in die Zukunft reicht. Fällt eine Quelle aus, bleiben ihre Events aus der alten Datei.
 - Pflege: Termine sind im Oktober 2026 recherchiert. Vorbei ist vorbei; neue Jahrgänge von Hand eintragen
   (Quelle prüfen, `tbc: true` solange vorläufig). Offen: Étape du Tour 2027 (Strecke kommt am 22.10.2026),
   Ironman Frankfurt 2027, UTMB 2027, Formel 1 2027.

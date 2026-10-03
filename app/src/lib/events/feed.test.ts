@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromJolpica, fromWikidata, horizon, mergeFeed, sportOf, wikidataQuery } from "./feed";
+import { fromJolpica, fromWikidata, horizon, keepOld, mergeFeed, sportOf, wikidataQuery } from "./feed";
 import { searchSports, SPORTS } from "./sports";
 
 // Ausschnitt im Format der Jolpica-/Ergast-Schnittstelle
@@ -60,7 +60,14 @@ describe("Sportkalender aus offenen Quellen", () => {
     const q = wikidataQuery("2026-10-03", "2029-10-03", 8);
     expect(q).toContain('"2026-10-03T00:00:00Z"^^xsd:dateTime');
     expect(q).toContain("?links >= 8");
+    expect(q).toContain("wikibase:timePrecision ?prec . FILTER(?prec >= 11)");
     expect(horizon(SPORTS) < "2028-01-01").toBe(true);
     expect(horizon(SPORTS) >= "2027-06-01").toBe(true);
+  });
+  it("Quelle ausgefallen: deren alte Events bleiben (ohne vergangene), die der anderen kommen neu", () => {
+    const f1 = fromJolpica(JOLPICA), wd = fromWikidata(WIKIDATA);
+    const old = [...f1, { ...wd[0], id: "wd-Q9", start: "2026-01-01", end: "2026-01-05" }, wd[1]];
+    expect(keepOld(f1, old, ["wd-"], "2026-10-03").map(e => e.id)).toEqual(["f1-2027-1", "f1-2027-9", "wd-Q1005"]);
+    expect(keepOld([...f1, ...wd], old, [], "2026-10-03")).toHaveLength(4);
   });
 });

@@ -7,8 +7,8 @@
  *
  * Die Logik steht in app/src/lib/events/feed.ts (mit Tests); Node lädt die TypeScript-Dateien direkt.
  */
-import { existsSync, writeFileSync } from "node:fs";
-import { fromJolpica, fromWikidata, horizon, mergeFeed, wikidataQuery } from "../app/src/lib/events/feed.ts";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { fromJolpica, fromWikidata, horizon, keepOld, mergeFeed, wikidataQuery } from "../app/src/lib/events/feed.ts";
 import { SPORTS } from "../app/src/lib/events/sports.ts";
 
 const OUT = new URL("../public/sports.json", import.meta.url);
@@ -24,18 +24,22 @@ async function get(url, init = {}) {
   return res.json();
 }
 
+const failed = [];
 const f1 = [];
 for (const y of [year, year + 1]) {
   try { f1.push(...fromJolpica(await get(`https://api.jolpi.ca/ergast/f1/${y}.json?limit=100`))); }
-  catch (e) { warn(`Formel 1 ${y} nicht geladen: ${e.message}`); }
+  catch (e) { warn(`Formel 1 ${y} nicht geladen: ${e.message}`); failed.push("f1-"); }
 }
 let wd = [];
 try {
   const q = wikidataQuery(today, until);
   wd = fromWikidata(await get("https://query.wikidata.org/sparql", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/sparql-results+json" }, body: new URLSearchParams({ query: q }) }));
-} catch (e) { warn(`Wikidata nicht geladen: ${e.message}`); }
+} catch (e) { warn(`Wikidata nicht geladen: ${e.message}`); failed.push("wd-"); }
 
-const events = mergeFeed([], [...f1, ...wd]).filter(e => (e.end || e.start) >= today);
+// fällt eine Quelle aus, bleiben ihre Events aus der alten Datei
+let old = [];
+try { old = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")).events || [] : []; } catch { /* kaputt: neu */ }
+const events = mergeFeed([], keepOld([...f1, ...wd], old, failed, today)).filter(e => (e.end || e.start) >= today);
 if (!events.length) {
   warn("Sportkalender nicht aktualisiert, " + (existsSync(OUT) ? "alte Datei bleibt" : "keine Datei"));
 } else {

@@ -52,10 +52,12 @@ export function fromJolpica(data: any): SportEvent[] {
 }
 
 /** Wikidata: Sportevents mit Sportart (P641), Beginn (P580) im Zeitraum, Koordinaten am Event, Ort oder dessen Verwaltungseinheit */
-export function wikidataQuery(from: string, to: string, minLinks = 8): string {
+export function wikidataQuery(from: string, to: string, minLinks = 5): string {
+  // Beginn tagesgenau (Genauigkeit 11); nur das Jahr bekannt hieße sonst 1. Januar
   return `SELECT ?e ?en ?de ?start ?end ?sportEn ?c0 ?c1 ?c2 ?locEn ?locDe ?cc ?links ?wpEn ?wpDe WHERE {
   ?e wdt:P641 ?sport ; wdt:P580 ?start ; wikibase:sitelinks ?links .
   FILTER(?start >= "${from}T00:00:00Z"^^xsd:dateTime && ?start < "${to}T00:00:00Z"^^xsd:dateTime && ?links >= ${minLinks})
+  ?e p:P580/psv:P580 ?sv . ?sv wikibase:timeValue ?start ; wikibase:timePrecision ?prec . FILTER(?prec >= 11)
   ?sport rdfs:label ?sportEn . FILTER(LANG(?sportEn) = "en")
   OPTIONAL { ?e wdt:P582 ?end }
   OPTIONAL { ?e wdt:P625 ?c0 }
@@ -117,6 +119,12 @@ export function mergeFeed(curated: SportEvent[], feed: SportEvent[]): SportEvent
   const out = [...curated];
   for (const e of feed) if (!out.some(c => same(c, e))) out.push(e);
   return out.sort((a, b) => a.start.localeCompare(b.start));
+}
+
+/** Quelle fiel aus: deren Events aus der alten Datei behalten (Formel 1 „f1-“, Wikidata „wd-“) */
+export function keepOld(fresh: SportEvent[], old: SportEvent[], failed: string[], today: string): SportEvent[] {
+  const kept = old.filter(e => failed.some(p => e.id.startsWith(p)) && (e.end || e.start) >= today);
+  return [...fresh, ...kept];
 }
 
 /** bis wann reicht die kuratierte Liste (letzter Beginn ohne Olympia, das steht Jahre vorher fest)? */
