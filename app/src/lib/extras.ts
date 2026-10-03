@@ -11,6 +11,8 @@ import { arrivals } from "./stays/presence";
 export interface CarWindow {
   /** Flughafen am Ziel (IATA), falls aus Flügen bekannt */
   ap?: string;
+  /** Rückgabe an einem anderen Flughafen (Rundreise SFO → SAN): Einwegmiete */
+  dropAp?: string;
   /** JJJJ-MM-TTTHH:MM */
   pick: string;
   drop: string;
@@ -30,14 +32,15 @@ export function carWindow(trip: Trip): CarWindow | null {
   const drop = outs[0] ? shiftLocal(outs[0].dep!, -2) : trip.to ? `${trip.to}T10:00` : "";
   if (!pick || !drop || drop <= pick) return null;
   const days = Math.max(1, Math.ceil((Date.parse(`${drop}:00Z`) - Date.parse(`${pick}:00Z`)) / 86400000));
-  return { ...(ins[0]?.arrAp ? { ap: ins[0].arrAp } : {}), pick, drop, days };
+  const ap = ins[0]?.arrAp, dropAp = outs[0]?.depAp;
+  return { ...(ap ? { ap } : {}), ...(ap && dropAp && dropAp !== ap ? { dropAp } : {}), pick, drop, days };
 }
 
 /** KAYAK-Mietwagensuche mit Ort und Zeiten (volle Stunden) */
 export function kayakCarLink(w: CarWindow, place = ""): string {
   const at = (iso: string) => `${iso.slice(0, 10)}-${iso.slice(11, 13)}h`;
   const where = w.ap || encodeURIComponent(place);
-  return `https://www.kayak.de/cars/${where}/${at(w.pick)}/${at(w.drop)}`;
+  return `https://www.kayak.de/cars/${where}${w.dropAp ? `/${w.dropAp}` : ""}/${at(w.pick)}/${at(w.drop)}`;
 }
 export const CAR_LINKS = [
   { name: "CHECK24", url: "https://www.check24.de/mietwagen/" },
@@ -55,6 +58,9 @@ const fmt = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}. ${iso.slic
 /** Tagespreis am Ziel: Richtwert × Preisniveau des Landes (wie bei der Verpflegung gedämpft), mindestens 15 € */
 export const carPerDay = (pli?: number) => Math.max(15, Math.round(CAR_PER_DAY * Math.pow(pli || 1, 0.7)));
 
+/** Einwegmiete (Rückgabe woanders): Richtwert Aufpreis, je Auto */
+export const ONE_WAY_FEE = 150;
+
 /** Plätze je Mietwagen (Kompaktklasse mit Gepäck) */
 export const CAR_SEATS = 5;
 
@@ -62,8 +68,9 @@ export const CAR_SEATS = 5;
 export function carItem(w: CarWindow, perDay = CAR_PER_DAY): Item {
   return {
     id: uid(), cat: "transport", name: t("car.name"), icon: "car", status: "idea",
-    note: t("car.note", { ap: w.ap || "", a: fmt(w.pick), b: fmt(w.drop) }).replace(/\s+/g, " "),
-    options: [{ id: uid(), label: t("car.estimate"), estimate: true, price: { mode: "unit", currency: "EUR", unit: perDay, qty: w.days, capacity: CAR_SEATS, multiply: true } }]
+    note: (w.dropAp ? t("car.noteOneWay", { ap: w.ap || "", a: fmt(w.pick), ap2: w.dropAp, b: fmt(w.drop), fee: ONE_WAY_FEE }) : t("car.note", { ap: w.ap || "", a: fmt(w.pick), b: fmt(w.drop) })).replace(/\s+/g, " "),
+    // Einweg-Aufpreis auf die Tage verteilt, damit er mit der Zahl der Autos mitwächst
+    options: [{ id: uid(), label: t("car.estimate"), estimate: true, price: { mode: "unit", currency: "EUR", unit: Math.round((perDay + (w.dropAp ? ONE_WAY_FEE / Math.max(1, w.days) : 0)) * 100) / 100, qty: w.days, capacity: CAR_SEATS, multiply: true } }]
   };
 }
 

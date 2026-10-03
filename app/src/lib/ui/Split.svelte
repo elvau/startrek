@@ -7,6 +7,7 @@
   import { reveal } from "./reveal";
   import Icon from "./Icon.svelte";
   import FundsCard from "./FundsCard.svelte";
+  import Ledger from "./Ledger.svelte";
   import type { Key } from "../i18n/index.svelte";
   import { groupLabel, perPerson, persons, pp, shareGroups } from "../groups";
 
@@ -32,6 +33,7 @@
 </script>
 
 <FundsCard />
+{#if shares.length}<Ledger />{/if}
 {#if tests.length && shares.length}<p class="warnline test-banner">⚠ {tn("test.inSplit", tests.length)}</p>{/if}
 {#snippet card(h: HouseholdShare, same = false)}
   <article class="card share" id={same ? undefined : `hh-${h.name}`} use:reveal>

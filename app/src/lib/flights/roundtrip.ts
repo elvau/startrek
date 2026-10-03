@@ -68,7 +68,7 @@ export interface RoundTrip {
 /** eine Strecke der Suche; after: Station davor (Nächte von–bis), via: Station als Umstieg */
 export interface RoundLeg { from: RoundPlace; to: RoundPlace; after?: RoundStop; via?: RoundStop }
 
-export interface RoundResult { trips: RoundTrip[]; sources: SourceStatus[]; errors: string[] }
+export interface RoundResult { trips: RoundTrip[]; sources: SourceStatus[]; errors: string[]; moreStops?: string[] }
 
 /** Strecken der Reise: Start → Station 1 → … → (Start); eine Umstiegs-Station steckt in der Strecke darüber hinweg */
 export function roundLegs(p: RoundPlan): RoundLeg[] {
@@ -116,17 +116,25 @@ export async function searchRound(p: RoundPlan, search: (q: FlightQuery) => Prom
   const note = (r: SearchResult) => r.sources.forEach(s => { const o = sources.get(s.id); sources.set(s.id, o ? { ...o, ok: o.ok || s.ok, count: o.count + s.count, error: o.ok ? o.error : s.error } : { ...s }); });
   let partial: { legs: FlightOffer[]; price: number }[] = [{ legs: [], price: 0 }];
   const pool = new RoundPool(legs, []);
+  /** Strecken, die erst mit zwei Umstiegen Treffer hatten */
+  const moreStops: string[] = [];
 
   for (const [k, { from, to, after, via }] of legs.entries()) {
     progress?.(k + 1, legs.length);
     const stop = after ?? null;
     // Zeitfenster: erste Strecke aus dem Plan, sonst je Ankunftstag der besten Kombinationen
     const days = stop ? [...new Set(partial.map(x => dayOf(x.legs.at(-1)!.out.arr)))].slice(0, DAYS) : [""];
-    const found = await Promise.all(days.map(async d => {
-      const q = stop ? legQuery(p, from, to, addDays(d, stop.min), addDays(d, stop.max), via) : legQuery(p, from, to, p.depart, p.departTo, via);
+    const run = (extra: Partial<FlightQuery>) => Promise.all(days.map(async d => {
+      const q = { ...(stop ? legQuery(p, from, to, addDays(d, stop.min), addDays(d, stop.max), via) : legQuery(p, from, to, p.depart, p.departTo, via)), ...extra };
       try { const r = await search(q); note(r); return r.offers; }
       catch (e) { if ((e as Error).name === "AbortError") throw e; errors.push(`${from.name} → ${to.name}: ${(e as Error).message}`); return []; }
     }));
+    let found = await run({});
+    // abgelegene Strecken (Fidschi → München) gehen oft nur mit zwei Umstiegen: dann damit nachsuchen
+    if (!found.flat().length && p.maxStops === 1) {
+      found = await run({ maxStops: 2 });
+      if (found.flat().length) moreStops.push(`${from.name} → ${to.name}`);
+    }
     // derselbe Flug kann in mehreren Fenstern auftauchen: nur einmal
     const byId = new Map<string, FlightOffer>();
     found.flat().forEach(o => { if (!byId.has(o.id)) byId.set(o.id, o); });
@@ -152,7 +160,7 @@ export async function searchRound(p: RoundPlan, search: (q: FlightQuery) => Prom
     }
   }
   const trips = partial.filter(x => x.legs.length === legs.length).slice(0, 20).map(x => makeTrip(pool, x.legs));
-  return { trips, sources: [...sources.values()], errors };
+  return { trips, sources: [...sources.values()], errors, moreStops };
 }
 
 /** Rundreise aus gewählten Flügen je Strecke: Preis, Nächte und Stationen */

@@ -21,6 +21,16 @@ describe("Mietwagen", () => {
     expect(it).toMatchObject({ cat: "transport", icon: "car", options: [{ estimate: true, price: { mode: "unit", unit: 40, qty: 5 } }] });
     expect(it.note).toContain("PMI");
   });
+  it("Rückgabe an anderem Flughafen (Rundreise): Einwegmiete mit Aufpreis, KAYAK mit beiden Orten", () => {
+    const t = trip();
+    t.items[0].options[0].legs = [leg("out", "FRA", "SFO", "2027-08-20T10:00", "2027-08-20T15:50"), leg("back", "SAN", "FRA", "2027-09-02T17:15", "2027-09-03T12:40")];
+    const w = carWindow(t)!;
+    expect(w).toMatchObject({ ap: "SFO", dropAp: "SAN" });
+    expect(kayakCarLink(w)).toMatch(/cars\/SFO\/SAN\//);
+    const it = carItem(w);
+    expect(it.note).toContain("SAN");
+    expect(calcItem(it, t).net).toBeCloseTo(40 * w.days + 150, 0);
+  });
   it("größere Gruppe: ein Auto je 5 Personen", () => {
     const t = trip();
     const w = carWindow(t)!;

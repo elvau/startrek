@@ -67,6 +67,15 @@ describe("Rundreise", () => {
     expect(res.errors[0]).toMatch(/GIG → EZE/);
   });
 
+  it("Strecke ohne Treffer: mit 2 Umstiegen nachgesucht (Fidschi → München)", async () => {
+    const asked: FlightQuery[] = [];
+    const base = fake(asked);
+    const res = await searchRound(plan, async q => (q.from === "EZE" && (q.maxStops ?? 0) < 2 ? { offers: [], sources: [] } : base(q)));
+    expect(res.trips.length).toBeGreaterThan(0);
+    expect(res.moreStops).toEqual(["EZE → DUS"]);
+    expect(asked.filter(q => q.from === "EZE").every(q => q.maxStops === 2)).toBe(true);
+  });
+
   it("Fehler einer Strecke wird gemeldet", async () => {
     const res = await searchRound(plan, async () => { throw new Error("Kiwi antwortet nicht"); });
     expect(res.errors[0]).toBe("DUS → GIG: Kiwi antwortet nicht");

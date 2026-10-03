@@ -97,8 +97,37 @@ export function stations(trip: Trip): (Stop & { ids: string[] })[] {
       map.get(k)!.ids.push(t.id);
     }
   }
-  return [...map.values()].sort((a, b) => a.from.localeCompare(b.from));
+  // dieselbe Stadt aus mehreren Flügen (Familien kommen zu verschiedenen Zeiten nach Tokio): eine Station über alle
+  const out: (Stop & { ids: string[] })[] = [];
+  for (const st of [...map.values()].sort((a, b) => a.from.localeCompare(b.from))) {
+    const same = out.find(o => (o.city && st.city ? o.city === st.city : o.ap === st.ap) && st.from <= o.to && o.from <= st.to);
+    if (!same) { out.push({ ...st, ids: [...st.ids] }); continue; }
+    if (st.from < same.from) same.from = st.from;
+    if (st.to > same.to) same.to = st.to;
+    same.ids = [...new Set([...same.ids, ...st.ids])];
+  }
+  return out;
 }
+
+/**
+ * Zeitabschnitte, in denen dieselben Leute da sind (Familie Klein allein, dann Oma und Opa dazu, dann alle):
+ * für die Unterkunftssuche, z. B. „wenn alle zusammen sind, gemeinsam ein Haus“.
+ */
+export function segments(trip: Trip, ids?: string[]): { from: string; to: string; ids: string[] }[] {
+  const w = stayWindow(trip, ids);
+  if (!w) return [];
+  const pres = presences(trip);
+  const act = trip.travelers.filter(t => isActive(t) && (!ids || ids.includes(t.id)));
+  const out: { from: string; to: string; ids: string[] }[] = [];
+  for (const x of nightsList(w.from, w.to)) {
+    const here = act.filter(t => pres[t.id] ? needs(pres[t.id], x) : true).map(t => t.id);
+    const last = out.at(-1);
+    if (last && last.ids.join() === here.join() && last.to === x) last.to = addDay(x);
+    else if (here.length) out.push({ from: x, to: addDay(x), ids: here });
+  }
+  return out.length > 1 ? out : [];
+}
+const addDay = (d: string) => new Date(Date.parse(d + "T12:00:00Z") + 86400000).toISOString().slice(0, 10);
 
 /** Nächte ohne Unterkunft, zusammengefasst nach gleichem Zeitraum (nur wer bekannte Anwesenheit hat) */
 export function gaps(trip: Trip): Gap[] {

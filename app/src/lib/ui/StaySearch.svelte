@@ -16,7 +16,9 @@
   import { stationName } from "../stays/stationName";
   import { FLIGHTS_URL } from "../flights/app";
   import { autoParts, autoRooms, guests, searchStaysRemote, splitGuests, takeStay } from "../stays/app";
-  import { arrivals, gaps, guestsIn, hints, stations, stayWindow } from "../stays/presence";
+  import { arrivals, gaps, guestsIn, hints, segments, stations, stayWindow } from "../stays/presence";
+  import { groupLabel } from "../groups";
+  import { hhKey, isActive } from "../model";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { airportOf, ccOf, cityForAirport, findCity, placesNear, searchParts, stayNear, suggestCities, type CityHit } from "../geo/places";
   import type { StayScope } from "../stays/open.svelte";
@@ -48,10 +50,14 @@
   const had = item?.options.find(o => o.query)?.query;
   // Rundreise: Stationen aus den Flügen; ohne Vorgabe die erste Lücke (Stadt und Nächte) statt der ganzen Reise
   const sts = stations(trip).filter(s => !ids || s.ids.some(id => ids.includes(id)));
+  // Zeitabschnitte nach Anwesenheit; ohne Vorgabe startet die Suche mit dem ersten (nicht mit der ganzen Reise für alle)
+  const segs = segments(trip, ids);
+  // nur wenn jemand einen großen Teil der Zeit fehlt (später kommt, früher fährt); kleine Abweichungen rechnet die Unterkunft je Nacht
+  const segStart = (() => { if (!segs.length || !win) return undefined; const n = nights(win.from, win.to); return guestsIn(trip, win.from, win.to, ids).some(x => x.nights < n * 0.75) ? segs[0] : undefined; })();
   const firstGap = !start.from && !item && sts.length > 1 ? gaps(trip).find(g => g.ap && (!ids || g.ids.some(id => ids.includes(id)))) : undefined;
   let place = $state(start.place || had?.place || (firstGap ? untrack(() => stationName(geo, airportData, firstGap.ap, firstGap.city)) : "") || trip.place || "");
-  let checkin = $state(start.from || item?.from || had?.checkin || firstGap?.from || win?.from || "");
-  let checkout = $state(start.to || item?.to || had?.checkout || firstGap?.to || win?.to || "");
+  let checkin = $state(start.from || item?.from || had?.checkin || segStart?.from || firstGap?.from || win?.from || "");
+  let checkout = $state(start.to || item?.to || had?.checkout || segStart?.to || firstGap?.to || win?.to || "");
   // ohne Stadt im Flug: Name erst, wenn die Ortsdaten geladen sind
   // Name der Station verbessert sich, sobald Flughafen- und Ortsdaten da sind (solange man den Ort nicht selbst geändert hat)
   let auto: string | null = firstGap ? untrack(() => place) : null;
@@ -61,6 +67,14 @@
     const n = stationName(geo, airportData, firstGap.ap, firstGap.city);
     if (n !== place) { place = n; auto = n; }
   });
+  // Zeitabschnitte nach Anwesenheit (wer ist wann da): z. B. wenn alle zusammen sind, ein gemeinsames Haus
+  const actAll = trip.travelers.filter(isActive);
+  function segLabel(sg: (typeof segs)[number]) {
+    if (sg.ids.length === actAll.length) return t("st.together", { n: sg.ids.length });
+    const hs = [...new Set(sg.ids.map(id => hhKey(actAll.find(x => x.id === id)!)))];
+    const names = hs.flatMap(h => { const ms = actAll.filter(x => hhKey(x) === h); const inn = ms.filter(x => sg.ids.includes(x.id)); return inn.length === ms.length ? [h] : inn.map(x => x.name); });
+    return `${groupLabel(names, -1)} (${sg.ids.length})`;
+  }
   function pickStation(s: (typeof sts)[number]) {
     place = stationName(geo, airportData, s.ap, s.city);
     checkin = s.from; checkout = s.to;
@@ -98,6 +112,8 @@
   const g = $derived(guests(who.map(x => x.t)));
   // große Gruppen: Ferienwohnungen auf mehrere aufteilen, im Hotel ein Zimmer je zwei Gäste (bis man selbst etwas einstellt)
   let parts = $state(1);
+  // keine Treffer wie gesucht: worauf ausgewichen wurde
+  let fellBack = $state("");
   let partsSet = false, roomsSet = false;
   const all = $derived(g.adults + g.childAges.length);
   const per = $derived(splitGuests(g, parts));
@@ -218,22 +234,38 @@
     const cc = ccOf(geo, sp.country || trip.country || "") || near[0]?.ap.cc;
     // Mittelpunkt des Orts: für Anbieter, die im Umkreis suchen
     const city = findCity(geo, sp.place, cc || undefined);
-    const q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin, checkout, ...per, rooms: Math.max(1, Math.min(rooms, per.adults)), type,
+    let q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin, checkout, ...per, rooms: Math.max(1, Math.min(rooms, per.adults)), type,
       // Quellen nur bei Auswahl mitschicken (ein älterer Such-Dienst kennt neue Quellen noch nicht)
       ...(use.length < SOURCES.length ? { sources: use } : {}), currency: "EUR",
       ...(must.length ? { must } : {}), ...(minStars ? { minStars } : {}), ...(minScore ? { minScore } : {}) };
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
+    fellBack = "";
     try {
-      const r = await searchStaysRemote(q, ctrl.signal);
+      let r = await searchStaysRemote(q, ctrl.signal);
+      let got = keepStays(r.offers, q);
+      // große Gruppe, keine Ferienwohnung für alle (Tokio, 9 Gäste): zwei Unterkünfte, sonst Hotels und Wohnungen mit Zimmern
+      if (!got.length && all > 4) {
+        const tries: { parts: number; type: StayType }[] = [
+          ...(type === "whole" && parts === 1 ? [{ parts: 2, type: "whole" as StayType }] : []),
+          ...(type !== "all" ? [{ parts, type: "all" as StayType }] : [])
+        ];
+        for (const tr of tries) {
+          const g2 = splitGuests(g, tr.parts);
+          const q2: StayQuery = { ...q, ...g2, type: tr.type, rooms: tr.type === "whole" ? 1 : Math.max(1, Math.min(autoRooms(g2.adults + g2.childAges.length, tr.type), g2.adults)) };
+          const r2 = await searchStaysRemote(q2, ctrl.signal);
+          const got2 = keepStays(r2.offers, q2);
+          if (got2.length) { r = r2; got = got2; q = q2; parts = tr.parts; partsSet = true; fellBack = tr.type === "whole" ? t("st.fallbackParts", { n: tr.parts }) : t("st.fallbackAll"); break; }
+        }
+      }
       // auch hier filtern: ein älterer Such-Dienst kennt Sterne und Bewertung noch nicht
-      list = keepStays(r.offers, q).slice(0, 100);
+      list = got.slice(0, 100);
       sfilter = noStayFilter();
       bounds = null;
       sort = q.childAges.length ? "family" : "price";
       picked = null;
       sources = r.sources;
-      asked = q;
+      asked = { ...q, place: place.trim().split(",")[0].trim() || q.place };
       askedParts = parts;
     } catch (err) {
       if ((err as Error).name !== "AbortError") error = (err as Error).message;
@@ -334,6 +366,14 @@
         {/each}
       </div>
     {/if}
+    {#if segs.length}
+      <div class="st-stations st-segs">
+        <span class="muted small">{t("st.segments")}</span>
+        {#each segs as sg (sg.from)}
+          <button type="button" class="chip sm" class:on={checkin === sg.from && checkout === sg.to} onclick={() => { checkin = sg.from; checkout = sg.to; }}>{segLabel(sg)} <small>{dayShort(sg.from)}–{dayShort(sg.to)} · {tn("n.nights", nights(sg.from, sg.to))}</small></button>
+        {/each}
+      </div>
+    {/if}
     {#if near.length || trip.place}
       <div class="st-near">
         {#if trip.place}<span class="muted small">{t("st.dest")}</span><button type="button" class="chip sm" class:on={place === trip.place} onclick={() => (place = trip.place)}>{trip.place}</button>{/if}
@@ -406,6 +446,7 @@
       </div>
       {#if sources.some(s => s.test && s.count)}<p class="warnline test-banner">⚠ {t("test.banner", { list: sources.filter(s => s.test && s.count).map(s => s.name).join(", ") })}</p>{/if}
     {/if}
+    {#if fellBack}<p class="warnline st-fallback">{fellBack}</p>{/if}
     {#if list.length}
       {@const an = nights(asked.checkin, asked.checkout) || 1}
       {@const n = asked.adults + asked.childAges.length}

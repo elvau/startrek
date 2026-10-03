@@ -5,7 +5,7 @@
  */
 import { t } from "./i18n/index.svelte";
 import { activeOption } from "./calc";
-import { addDays, okDate } from "./calc/travel";
+import { addDays, okDate, stopsOf } from "./calc/travel";
 import { hhKey, isActive, type Item, type NoteKind, type Trip } from "./model";
 
 export type EntryKind = NoteKind | "flight" | "stay" | "event" | "item";
@@ -100,7 +100,14 @@ export function itinerary(trip: Trip): Day[] {
 
   // Ort je Nacht: Unterkunft, die diese Nacht abdeckt (erste gefundene), sonst Ziel der Reise
   const stays = live.filter(i => i.cat === "stay" && i.from && i.to);
-  const placeOf = (d: string) => { const s = stays.find(i => i.from! <= d && d < i.to!); return s ? stayPlace(trip, s) : ""; };
+  // ohne Unterkunft: Station aus den Flügen (Rundreise Bangkok → Chiang Mai → Phuket)
+  const stops = trip.travelers.filter(isActive).flatMap(x => stopsOf(x, trip, it => activeOption(it, trip)));
+  const placeOf = (d: string) => {
+    const s = stays.find(i => i.from! <= d && d < i.to!);
+    if (s) return stayPlace(trip, s);
+    const st = stops.find(x => x.from <= d && d < x.to);
+    return st ? st.city || st.ap : "";
+  };
   const home = trip.place || "";
   let prev = "";
   return dates.map((d, i) => {
