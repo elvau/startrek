@@ -8,6 +8,7 @@
   import { activeOption, ageClass, eur, followed, parseNum } from "../calc";
   import { dateDE, dayShort, time } from "../format";
   import { dayRange } from "../itinerary";
+  import { kassen, kasseName } from "../ledger";
   import { openStaySearch } from "../stays/open.svelte";
   import { openFlightSearch } from "../flights/open.svelte";
 
@@ -66,7 +67,9 @@
     if (!id && !item.options.length) item.options.push({ id: uid(), label: "", price: { mode: "person", currency: entryCurrency() } });
   }
   // Bezahlt: wer hat wie viel gezahlt (für die Kasse); reicht es, ist der Posten bezahlt
-  const hhList = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))]);
+  // Kassen wie in der Kasse: Familie gemeinsam oder einzelne Erwachsene (Mannschaft)
+  const kList = $derived(kassen(app.trip));
+  const hhList = $derived(kList.map(k => k.id));
   const net = $derived(calc.T.items[item.id]?.net || 0);
   const paidSum = $derived((item.payments || []).reduce((a, p) => a + (p.amount || 0), 0));
   let payBy = $state("");
@@ -124,11 +127,11 @@
     <div class="ed-sec ie-pay">
       <span class="dlabel">{t("ie.paidBy")}</span>
       {#each item.payments || [] as p, i (i)}
-        <div class="ie-p"><span>{p.by || "?"}</span><b class="num">{eur(p.amount)}</b>{#if p.at}<small class="muted">{dateDE(p.at)}</small>{/if}
-          <button class="dp-del" aria-label={t("ks.remove", { text: `${p.by} ${eur(p.amount)}` })} onclick={() => dropPay(i)}>×</button></div>
+        <div class="ie-p"><span>{p.by ? kasseName(app.trip, p.by) : "?"}</span><b class="num">{eur(p.amount)}</b>{#if p.at}<small class="muted">{dateDE(p.at)}</small>{/if}
+          <button class="dp-del" aria-label={t("ks.remove", { text: `${p.by ? kasseName(app.trip, p.by) : ""} ${eur(p.amount)}` })} onclick={() => dropPay(i)}>×</button></div>
       {/each}
       <div class="ed-row">
-        <label class="f">{t("ks.paidBy")}<select class="ie-payby" value={payBy || hhList[0]} onchange={e => (payBy = e.currentTarget.value)}>{#each hhList as h (h)}<option value={h}>{h}</option>{/each}</select></label>
+        <label class="f">{t("ks.paidBy")}<select class="ie-payby" value={payBy || hhList[0]} onchange={e => (payBy = e.currentTarget.value)}>{#each kList as k (k.id)}<option value={k.id}>{k.name}</option>{/each}</select></label>
         <label class="f">{t("ks.amount")}<input class="n ie-payamt" inputmode="decimal" bind:value={payAmt} placeholder={String(toShown(Math.max(0, net - paidSum)))} /></label>
         <button class="btn sm ie-payadd" onclick={addPay}>+ {t("ie.payAdd")}</button>
       </div>

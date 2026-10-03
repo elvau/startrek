@@ -26,6 +26,8 @@ export interface Traveler {
   kind?: "adult" | "child" | "infant";
   /** Platzhalter mit Tiernamen („Reh Kind 1“), nur in dieser Reise, nicht in Gruppen gespeichert */
   placeholder?: boolean;
+  /** Kasse: Kind wird von diesem Erwachsenen (ID) bezahlt, wenn die Eltern getrennte Kassen haben; fehlt: von allen Erwachsenen der Familie */
+  payer?: string;
 }
 
 /** Gespeicherte Person (im Konto), unabhängig von Reisen */
@@ -199,9 +201,9 @@ export interface Expense {
   currency?: string;
   /** JJJJ-MM-TT */
   date?: string;
-  /** ausgelegt von dieser Familie */
+  /** ausgelegt von dieser Kasse (Familie mit gemeinsamer Kasse: ihr Name, sonst „p:“ + Personen-ID) */
   by: string;
-  /** für diese Familien (nach Personen geteilt); fehlt: alle */
+  /** für diese Kassen bzw. Familien (nach Personen geteilt); fehlt: alle */
   for?: string[];
   cat?: CatKey;
   /** geteilte Reise: eingereicht von diesem Konto (ID, Name); ohne: zählt sofort */
@@ -214,7 +216,7 @@ export interface Expense {
   /** Entscheidung des Admins (Besitzer der Reise) */
   state?: "approved" | "rejected";
 }
-/** Ausgleich: Familie from hat Familie to diesen Betrag gegeben */
+/** Ausgleich: Kasse from hat Kasse to diesen Betrag gegeben */
 export interface Transfer { id: string; from: string; to: string; amount: number; at?: string }
 
 export interface Item {
@@ -282,6 +284,8 @@ export interface Household {
   link?: string;
   /** Fahrdienst/Taxi: Preis je Fahrt für alle Fahrzeuge (leer = Richtwert) */
   ride?: number;
+  /** Kasse: gemeinsam (eine Kasse für die Familie) oder jeder Erwachsene zahlt selbst; fehlt: bis 2 Erwachsene gemeinsam */
+  kasse?: "joint" | "each";
   /** eigene Anwesenheit statt aus dem Flug: erste Nacht, Abreisetag */
   arrive?: string;
   depart?: string;
