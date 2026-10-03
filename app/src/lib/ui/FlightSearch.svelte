@@ -216,6 +216,9 @@
     for (const h of new Set(flyers(trip, who).map(hhKey))) if (!trip.households[h]?.geo) trip.households[h] = { ...trip.households[h], plz: v.trim(), geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
     resetAps();
   }
+  // gespeicherte PLZ aus den Einstellungen: einmal als Wohnort übernehmen
+  let plzTried = false;
+  $effect(() => { if (noHome && !plzTried && dir.prefs?.plz) { plzTried = true; void setPlz(dir.prefs.plz); } });
 
   const SHOW = 40;
   // Flüge der anderen (schon übernommen): zum gemeinsamen Ankommen

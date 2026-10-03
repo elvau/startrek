@@ -1173,6 +1173,8 @@ export const de = {
   "prefs.access": "Anfahrt zum Flughafen",
   "prefs.airports": "Bevorzugte Abflughäfen",
   "prefs.airportsPh": "z. B. DUS, CGN",
+  "prefs.plz": "Postleitzahl (Wohnort)",
+  "prefs.plzHint": "Für die Flugsuche, damit Abflughäfen in der Nähe vorgeschlagen werden",
   "prefs.anyType": "egal",
   "prefs.avoid": "Gesperrte Länder",
   "prefs.avoidHint": "Nie als Ziel und nie zum Umsteigen.",

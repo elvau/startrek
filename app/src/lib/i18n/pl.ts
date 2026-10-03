@@ -1243,6 +1243,8 @@ export const pl: Dict = {
   "prefs.access": "Dojazd na lotnisko",
   "prefs.airports": "Preferowane lotniska wylotu",
   "prefs.airportsPh": "np. DUS, CGN",
+  "prefs.plz": "Kod pocztowy (miejsce zamieszkania)",
+  "prefs.plzHint": "Do wyszukiwania lotów, aby podpowiadać pobliskie lotniska wylotu",
   "prefs.anyType": "obojętnie",
   "prefs.avoid": "Zablokowane kraje",
   "prefs.avoidHint": "Nigdy jako cel ani do przesiadki.",

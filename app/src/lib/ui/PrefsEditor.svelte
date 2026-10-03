@@ -82,6 +82,10 @@
 
   <div class="pr-sec">
     <span class="dlabel">{t("prefs.flights")}</span>
+    {#if !group}
+      <label class="f plzf">{t("prefs.plz")}<input class="fs-plz" inputmode="numeric" maxlength="5" value={p.plz ?? ""} oninput={e => set("plz", /^\d{5}$/.test(e.currentTarget.value.trim()) ? e.currentTarget.value.trim() : undefined)} placeholder={t("fs.plzPh")} /></label>
+      <p class="muted small">{t("prefs.plzHint")}</p>
+    {/if}
     <div class="ed-row">
       <label class="f grow">{t("prefs.airports")}<input value={aps} oninput={e => setAps(e.currentTarget.value)} placeholder={group && base?.airports?.length ? base.airports.join(", ") : t("prefs.airportsPh")} /></label>
       <label class="f">{t("prefs.maxStops")}

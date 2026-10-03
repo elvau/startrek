@@ -1175,6 +1175,8 @@ export const en: Dict = {
   "prefs.access": "Getting to the airport",
   "prefs.airports": "Preferred departure airports",
   "prefs.airportsPh": "e.g. DUS, CGN",
+  "prefs.plz": "Postcode (home)",
+  "prefs.plzHint": "For flight search, so nearby departure airports are suggested",
   "prefs.anyType": "any",
   "prefs.avoid": "Blocked countries",
   "prefs.avoidHint": "Never as a destination, never for connections.",

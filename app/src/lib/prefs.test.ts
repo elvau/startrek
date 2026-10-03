@@ -37,4 +37,8 @@ describe("Vorlieben", () => {
     expect(agentPrefs({ avoid: [], styles: ["city"], note: "x".repeat(400) })).toEqual({ styles: ["city"], note: "x".repeat(300) });
     expect(agentPrefs({})).toBeUndefined();
   });
+  it("Postleitzahl bleibt bei den eigenen Vorlieben und geht nicht an die KI", () => {
+    expect(prefsFor(null, { ...dir, prefs: { plz: "12345" } }).plz).toBe("12345");
+    expect(agentPrefs({ plz: "12345" })).toBeUndefined();
+  });
 });

@@ -1308,6 +1308,8 @@ export const ar: Dict = {
   "prefs.access": "الوصول إلى المطار",
   "prefs.airports": "مطارات المغادرة المفضلة",
   "prefs.airportsPh": "مثل DUS, CGN",
+  "prefs.plz": "الرمز البريدي (مكان الإقامة)",
+  "prefs.plzHint": "للبحث عن الرحلات الجوية، لاقتراح مطارات المغادرة القريبة",
   "prefs.anyType": "لا يهم",
   "prefs.avoid": "الدول المحظورة",
   "prefs.avoidHint": "أبدًا كوجهة ولا للتوقف.",
