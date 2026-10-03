@@ -1245,6 +1245,7 @@ export const pl: Dict = {
   "prefs.airportsPh": "np. DUS, CGN",
   "prefs.plz": "Kod pocztowy (miejsce zamieszkania)",
   "prefs.plzHint": "Do wyszukiwania lotów, aby podpowiadać pobliskie lotniska wylotu",
+  "prefs.plzAccount": "Zapisywany tylko na koncie.",
   "prefs.anyType": "obojętnie",
   "prefs.avoid": "Zablokowane kraje",
   "prefs.avoidHint": "Nigdy jako cel ani do przesiadki.",

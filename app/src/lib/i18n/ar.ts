@@ -1310,6 +1310,7 @@ export const ar: Dict = {
   "prefs.airportsPh": "مثل DUS, CGN",
   "prefs.plz": "الرمز البريدي (مكان الإقامة)",
   "prefs.plzHint": "للبحث عن الرحلات الجوية، لاقتراح مطارات المغادرة القريبة",
+  "prefs.plzAccount": "يُحفظ في الحساب فقط.",
   "prefs.anyType": "لا يهم",
   "prefs.avoid": "الدول المحظورة",
   "prefs.avoidHint": "أبدًا كوجهة ولا للتوقف.",

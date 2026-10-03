@@ -1175,6 +1175,7 @@ export const de = {
   "prefs.airportsPh": "z. B. DUS, CGN",
   "prefs.plz": "Postleitzahl (Wohnort)",
   "prefs.plzHint": "Für die Flugsuche, damit Abflughäfen in der Nähe vorgeschlagen werden",
+  "prefs.plzAccount": "Wird nur im Konto gespeichert.",
   "prefs.anyType": "egal",
   "prefs.avoid": "Gesperrte Länder",
   "prefs.avoidHint": "Nie als Ziel und nie zum Umsteigen.",

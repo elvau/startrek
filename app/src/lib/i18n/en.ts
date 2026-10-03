@@ -1177,6 +1177,7 @@ export const en: Dict = {
   "prefs.airportsPh": "e.g. DUS, CGN",
   "prefs.plz": "Postcode (home)",
   "prefs.plzHint": "For flight search, so nearby departure airports are suggested",
+  "prefs.plzAccount": "Stored in your account only.",
   "prefs.anyType": "any",
   "prefs.avoid": "Blocked countries",
   "prefs.avoidHint": "Never as a destination, never for connections.",
