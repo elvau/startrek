@@ -7,6 +7,7 @@
   import type { Key } from "../i18n/index.svelte";
   import { activeOption, ageClass, eur, followed, parseNum } from "../calc";
   import { dateDE, dayShort, time } from "../format";
+  import { dayRange } from "../itinerary";
   import { openStaySearch } from "../stays/open.svelte";
   import { openFlightSearch } from "../flights/open.svelte";
 
@@ -82,6 +83,11 @@
     item.payments = (item.payments || []).filter((_, k) => k !== i);
     if (!item.payments.length) delete item.payments;
   }
+  // Tag im Plan (Erlebnisse, Transport …): Tag und optional Uhrzeit, wie „Noch ohne Tag“ im Tagesplan
+  const planDays = $derived(item.cat === "flights" || item.cat === "stay" ? [] : dayRange(app.trip));
+  const dayOf = $derived(item.day?.slice(0, 10) || "");
+  const timeOf = $derived(item.day && item.day.length >= 16 ? item.day.slice(11, 16) : "");
+  function setDay(d: string, tm = timeOf) { if (d) item.day = tm ? `${d}T${tm}` : d; else delete item.day; }
   const num = (v: string) => (v === "" ? undefined : Number(String(v).replace(",", ".")));
 </script>
 
@@ -99,6 +105,20 @@
       {/each}
     </div>
   </div>
+
+  {#if planDays.length}
+    <div class="ed-sec ie-day">
+      <div class="ed-row">
+        <label class="f">{t("ie.day")}
+          <select value={dayOf} onchange={e => setDay(e.currentTarget.value)}>
+            <option value="">{t("ie.dayNone")}</option>
+            {#each planDays as d, i (d)}<option value={d}>{t("day.n", { n: i + 1 })} · {dayShort(d)}</option>{/each}
+          </select>
+        </label>
+        {#if dayOf}<label class="f">{t("ie.dayTime")}<input type="time" value={timeOf} onchange={e => setDay(dayOf, e.currentTarget.value)} /></label>{/if}
+      </div>
+    </div>
+  {/if}
 
   {#if item.status !== "idea" && item.status !== "dropped"}
     <div class="ed-sec ie-pay">

@@ -162,7 +162,7 @@ const PROPOSE =
                   required: ["label", "eur"]
                 },
                 stayId: S("id of the chosen accommodation offer"),
-                board: { type: "STRING", enum: ["self", "breakfast", "half", "full", "all"], description: "Meals included in the accommodation (from its facts; 'self' if unknown or self-catering)" },
+                board: { type: "STRING", enum: ["self", "breakfast", "half", "full", "all"], description: "Meals included in the accommodation, only if its board or facts say so ('self' only for self-catering); leave out if unknown" },
                 transport: {
                   type: "OBJECT", description: "Estimated local transport for the whole group and stay (airport transfers, rental car or public transport)",
                   properties: { label: S("e.g. 'Rental car 7 days' or 'Airport transfer'"), eur: { type: "NUMBER", description: "Estimated total in EUR for all travelers" } },
@@ -206,7 +206,7 @@ export function systemPrompt(r: AgentRequest): string {
     ...prefsLines(r),
     "Use search_flights and search_stays to find real offers. Never invent prices, flights or hotels.",
     "If the travelers say they arrive on their own (by car, train or bus, \"we drive\", \"no flight\", \"Anreise selbst\" …), do not search flights: propose destinations within reach, each with a real accommodation and ownArrival (how, rough round-trip cost for the group), no flightId.",
-    "Otherwise every proposal is a complete package: a real flight AND a real accommodation for the same destination and dates (search both for each destination), plus your estimates for local transport (transfers, rental car or public transport) and up to 3 fitting activities or events. Set board from the accommodation's board or facts (all-inclusive, half board …); if unknown, use 'self'. The app then adds only the meals not covered by the accommodation. Estimates are rough totals in EUR for the whole group.",
+    "Otherwise every proposal is a complete package: a real flight AND a real accommodation for the same destination and dates (search both for each destination), plus your estimates for local transport (transfers, rental car or public transport) and up to 3 fitting activities or events. Set board from the accommodation's board or facts (all-inclusive, half board, breakfast …); if unknown, leave board out (do not guess). The app then adds only the meals not covered by the accommodation. Estimates are rough totals in EUR for the whole group.",
     groupLine(),
     `Be economical: at most ${LIMITS.flights} flight searches and ${LIMITS.stays} accommodation searches in total.`,
     "Match the request (budget, season, length, interests). Budget amounts are per person unless stated otherwise.",

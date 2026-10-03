@@ -76,6 +76,20 @@
 {#if !days.length}
   <p class="muted dp-none">{t("day.none")}</p>
 {:else}
+  {#if open.length && !access.readonly}
+    <div class="dp-open card" use:reveal>
+      <span class="dlabel">{t("day.unplanned")}</span>
+      <p class="muted small">{t("day.unplannedHint")}</p>
+      {#each open as it (it.id)}
+        <label class="dp-o"><span>{it.name}</span>
+          <select value="" onchange={e => plan(it.id, e.currentTarget.value)} aria-label={t("day.pickDay", { name: it.name })}>
+            <option value="">{t("day.pick")}</option>
+            {#each days as d (d.date)}<option value={d.date}>{t("day.n", { n: d.n })} · {wd(d.date)}</option>{/each}
+          </select>
+        </label>
+      {/each}
+    </div>
+  {/if}
   <ol class="dp" use:reveal>
     {#each days as day (day.date)}
       <li class="dp-day" class:moved={day.moved}>
@@ -122,19 +136,6 @@
       </li>
     {/each}
   </ol>
-  {#if open.length && !access.readonly}
-    <div class="dp-open">
-      <span class="dlabel">{t("day.unplanned")}</span>
-      {#each open as it (it.id)}
-        <label class="dp-o"><span>{it.name}</span>
-          <select value="" onchange={e => plan(it.id, e.currentTarget.value)} aria-label={t("day.pickDay", { name: it.name })}>
-            <option value="">{t("day.pick")}</option>
-            {#each days as d (d.date)}<option value={d.date}>{t("day.n", { n: d.n })} · {wd(d.date)}</option>{/each}
-          </select>
-        </label>
-      {/each}
-    </div>
-  {/if}
 {/if}
 
 <style>
@@ -166,7 +167,8 @@
   .dp-text { flex: 1 1 180px; min-width: 0; }
   .dp-to { flex: 0 1 140px; min-width: 0; }
   .dp-time { width: 110px; }
-  .dp-open { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-  .dp-o { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 14px; }
-  .dp-o select { max-width: 55%; }
+  .dp-open { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; margin-bottom: 12px; border-inline-start: 4px solid var(--c-attractions); }
+  .dp-open p { margin: -4px 0 2px; }
+  .dp-o { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 14px; font-weight: 600; flex-wrap: wrap; }
+  .dp-o select { max-width: 60%; font-size: 13.5px; padding-top: 6px; padding-bottom: 6px; }
 </style>

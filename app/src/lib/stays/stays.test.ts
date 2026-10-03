@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import trivago from "./trivago.fixture.json";
 import booking from "./booking.fixture.json";
-import { boardOf, bookingArgs, fromBooking, fromTrivago, priceNum, searchTrivago, trivagoArgs } from "./providers";
+import { boardOf, bookingArgs, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs } from "./providers";
 import { mergeStays, parseStayQuery, searchStays } from "./search";
 import { centerKm, keepStays, sortStays } from "./sort";
 import { defaultStayQuery, guests, stayToOption, takeStay } from "./app";
@@ -57,9 +57,18 @@ describe("Unterkunftssuche: Anbieter", () => {
   it("fragt Trivago über MCP (initialize, initialized, tools/call)", async () => {
     const calls: { method: string; tool?: string }[] = [];
     const l = await searchTrivago(q, "https://t.test/mcp", fakeMcp({ content: [{ type: "text", text: JSON.stringify(trivago) }, { type: "image", data: "…" }] }, calls));
-    expect(calls.map(c => c.method)).toEqual(["initialize", "notifications/initialized", "tools/call"]);
-    expect(calls[2].tool).toBe("trivago-accommodation-search");
+    // zweite Suche mit „Frühstück inklusive“ (für die Verpflegung)
+    expect(calls.filter(c => c.method === "initialize")).toHaveLength(2);
+    expect(calls.filter(c => c.method === "tools/call").map(c => c.tool)).toEqual(["trivago-accommodation-search", "trivago-accommodation-search"]);
     expect(l).toHaveLength(4);
+    // dieselben Häuser zum selben Preis im Frühstücks-Filter: Frühstück inklusive (sofern nicht schon bekannt)
+    expect(l.filter(o => !boardOf([], o.name)).every(o => o.board)).toBe(true);
+  });
+  it("Frühstück aus dem Frühstücks-Filter: gleiches Haus, höchstens 1 % teurer", () => {
+    const o = (id: string, total: number, board?: StayOffer["board"]): StayOffer => ({ id, source: "trivago", sourceName: "Trivago", name: id, total, currency: "EUR", ...(board ? { board } : {}) });
+    const m = markBreakfast([o("a", 1236), o("b", 1000), o("c", 900, "all"), o("d", 500)], [o("a", 1236), o("b", 1200), o("c", 900)]);
+    expect(m.map(x => x.board)).toEqual(["breakfast", undefined, "all", undefined]);
+    expect(markBreakfast([o("a", 1)], "all")[0].board).toBe("breakfast");
   });
 });
 
