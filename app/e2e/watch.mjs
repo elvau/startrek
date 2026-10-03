@@ -39,6 +39,11 @@ const TRIPS = [
   { id: "gruppe", name: "Stammtisch Wien", place: "Wien", country: "Österreich", from: "2027-03-12", to: "2027-03-14", ...base,
     travelers: ["Löwe", "Panda", "Fuchs", "Biber", "Wolf", "Koala"].map((n, i) => ({ id: "s" + i, name: n, household: n })), food: { on: true, style: "mix" },
     items: [{ id: "gs", cat: "stay", name: "Hotel Wien", status: "idea", from: "2027-03-12", to: "2027-03-14", options: [{ id: "go", label: "Hotel", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 600, capacity: 6 } }] }] },
+  // Anreise zum Flughafen: drei Familien, alle in den Gruppenbus, dann eine Fahrgemeinschaft
+  { id: "anreise", name: "Ibiza Clique", place: "Ibiza", country: "Spanien", from: "2027-07-02", to: "2027-07-09", ...base,
+    travelers: ["Ali", "Bea", "Cem", "Dio", "Eli", "Fay"].map((n, i) => ({ id: "c" + i, name: n, household: ["Nord", "Süd", "West"][i >> 1] })),
+    households: { Nord: { plz: "40210", geo: { ort: "Düsseldorf", lat: 51.22, lon: 6.78 }, mode: "car" }, Süd: { plz: "41061", geo: { ort: "Mönchengladbach", lat: 51.19, lon: 6.44 }, mode: "car" }, West: { plz: "47051", geo: { ort: "Duisburg", lat: 51.43, lon: 6.76 }, mode: "car" } },
+    items: [{ id: "if", cat: "flights", name: "Flug", status: "chosen", options: [flightOpt("o7", 900, [L("out", "DUS", "IBZ", "2027-07-02T08:00", "2027-07-02T10:30"), L("back", "IBZ", "DUS", "2027-07-09T18:00", "2027-07-09T20:30")])] }] },
   { id: "rom", name: "Rom 2025", place: "Rom", country: "Italien", from: "2025-04-01", to: "2025-04-05", travelers: people, ...base, items: [] }
 ];
 
@@ -315,6 +320,23 @@ try {
   await p.locator("#split .sh-table tbody tr", { hasText: "Panda" }).click();
   await until(async () => (await p.locator("#split article.share").count()) === 3, "Einzelheiten zu Panda");
   log("Gruppe mit 6 Einzelnen: Startseite mit Planungsstand, ein Posten Verpflegung, Abrechnung als eine Zeile „Alle (6)“, aufklappbar, Einzelheiten auf Klick");
+
+  // Anreise zum Flughafen: für alle Gruppenbus (Kosten nach Personen), dann Fahrgemeinschaft und Fahrdienst
+  await p.locator(".top .brand-btn").click();
+  await p.locator(".start .home-trip", { hasText: "Ibiza Clique" }).click();
+  await p.locator(".hhs").scrollIntoViewIfNeeded();
+  await p.locator(".hhs .hh-all").selectOption("bus");
+  const accLines = () => p.locator("#flights .card[data-item]").first().innerText();
+  await until(async () => ((await accLines()).match(/Gruppenbus ab Düsseldorf/g) || []).length === 3, "drei Familien im Gruppenbus");
+  if (!(await accLines()).includes("Anteil 2 von 6 Personen")) fail("Gruppenbus ohne Anteil: " + await accLines());
+  await p.locator(".hh-sum b", { hasText: /^West$/ }).click();
+  await p.locator(".hh.open select").first().selectOption("with");
+  await p.locator(".hh.open label", { hasText: "bei" }).locator("select").selectOption("Nord");
+  await p.locator(".hh-sum b", { hasText: /^Nord$/ }).click();
+  await p.locator(".hh.open select").first().selectOption("taxi");
+  await p.locator(".hh.open .hh-ride").fill("60"); await p.locator(".hh.open .hh-ride").blur();
+  await until(async () => (await accLines()).includes("Fahrgemeinschaft mit Nord · Anteil 2 von 4 Personen") && (await accLines()).includes("Fahrdienst 2 × 60 €"), "Fahrgemeinschaft und Fahrdienst");
+  log("Anreise zum Flughafen: für alle Gruppenbus (Anteil je Person), Fahrgemeinschaft teilt die Kosten, Fahrdienst mit eigenem Preis");
 
   // Reise ohne Flug und ohne Wohnort: „Unterwegs“ fragt nach der PLZ für den Bahn/Bus-Vergleich
   await p.locator(".top .brand-btn").click();
