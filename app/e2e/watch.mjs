@@ -216,7 +216,12 @@ try {
   if (await p.locator("#plan .dp-o", { hasText: "Bootstour" }).count()) fail("Bootstour noch ohne Tag");
   await until(async () => { const sv = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:palma") || "{}").days); return !!sv?.["2027-05-08"]?.notes?.[0]?.text && sv?.["2027-05-09"]?.title === "Ruhetag"; }, "Tagesplan gespeichert");
   if (process.env.SHOTS) await p.locator("#plan").screenshot({ path: `${process.env.SHOTS}/plan.png` });
-  log("Tagesplan: 4 Tage, Flug und Check-in automatisch, „Abendessen am Hafen“ 20:00, Ruhetag, Bootstour an Tag 2");
+  // Reiseroute: Vorschau als kleines Bild (Wohnort fehlt hier: Flughäfen und Ort)
+  if (!(await p.locator("#plan .dp-route svg.rmini path").count())) fail("Routenvorschau fehlt");
+  await p.locator("#plan .dp-rbtn").click();
+  await p.locator("#plan .rmap .rm-play").waitFor();
+  await p.locator("#plan .dp-rbtn").click();
+  log("Tagesplan: 4 Tage, Flug und Check-in automatisch, „Abendessen am Hafen“ 20:00, Ruhetag, Bootstour an Tag 2; Routenvorschau, Karte mit Abspielen, Bild und Video");
   if (await p.locator("#transport .ground").count()) fail("Palma ist kein nahes Ziel");
 
   // nahes Ziel: Bahn, Fernbus, Auto, Reisebus mit Richtwerten; bahn.de vorbefüllt; Reisebus als Posten

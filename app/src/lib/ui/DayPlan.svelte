@@ -8,9 +8,19 @@
   import { uid, type NoteKind } from "../model";
   import { itinerary, KIND_ICON, NOTE_KINDS, unplanned, type Day } from "../itinerary";
   import { showItem } from "./showItem";
+  import { range } from "../format";
+  import { tripRoute } from "../routeApp";
+  import { ensureAirports, ensureGeo } from "../geo/geo.svelte";
+  import RouteMini from "./RouteMini.svelte";
+  import RouteMap from "./RouteMap.svelte";
   import { reveal } from "./reveal";
 
   const days = $derived(itinerary(app.trip));
+  // Reiseroute: Vorschau ohne Karte, auf Klick Karte mit Bild und Animation
+  $effect(() => { void ensureGeo(app.trip).catch(() => {}); void ensureAirports().catch(() => {}); });
+  const route = $derived(tripRoute(app.trip));
+  let mapOpen = $state(false);
+  const sub = $derived([app.trip.place, app.trip.from ? range(app.trip.from, app.trip.to || app.trip.from) : ""].filter(Boolean).join(" · "));
   const open = $derived(unplanned(app.trip));
   const wd = (d: string) => new Intl.DateTimeFormat(locale(), { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(d + "T00:00:00Z"));
 
@@ -55,6 +65,14 @@
   const hint = (day: Day) => day.title || day.auto || "";
 </script>
 
+{#if route.points.length > 1}
+  <article class="card dp-route" use:reveal>
+    <div class="dp-rh"><h3>🗺 {t("route.title")}</h3>
+      <button class="btn sm dp-rbtn" aria-expanded={mapOpen} onclick={() => (mapOpen = !mapOpen)}>{mapOpen ? t("route.close") : t("route.open")}</button></div>
+    {#if mapOpen}<RouteMap {route} {days} title={app.trip.name || app.trip.place || t("trip")} {sub} />
+    {:else}<button class="dp-prev" onclick={() => (mapOpen = true)} aria-label={t("route.open")}><RouteMini {route} w={640} h={180} label={t("route.title")} /></button>{/if}
+  </article>
+{/if}
 {#if !days.length}
   <p class="muted dp-none">{t("day.none")}</p>
 {:else}
@@ -78,8 +96,8 @@
               <span class="dp-ic" aria-hidden="true">{KIND_ICON[e.kind]}</span>
               {#if e.time}<span class="dp-t num">{e.time}</span>{/if}
               {#if e.itemId}<button class="linkbtn dp-x" onclick={() => go(e.itemId)}>{e.text}</button>{:else}<span class="dp-x">{e.text}</span>{/if}
-              {#if e.sub || e.who}<small class="muted">{[e.sub, e.who].filter(Boolean).join(" · ")}</small>{/if}
               {#if e.noteId && !access.readonly}<button class="dp-del" aria-label={t("day.remove", { text: e.text })} onclick={() => remove(day.date, e.noteId!)}>×</button>{/if}
+              {#if e.sub || e.who}<small class="muted">{[e.sub, e.who].filter(Boolean).join(" · ")}</small>{/if}
             </li>
           {/each}
         </ul>
@@ -120,6 +138,11 @@
 {/if}
 
 <style>
+  .dp-route { padding: 14px 16px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .dp-rh { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .dp-rh h3 { margin: 0; font-size: 17px; }
+  .dp-prev { border: 0; background: var(--paper-2); border-radius: 14px; padding: 8px; cursor: pointer; }
+  .dp-prev :global(svg) { width: 100%; height: auto; max-height: 200px; }
   .dp { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
   .dp-day { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; border-inline-start: 4px solid var(--c-plan); }
   .dp-day.moved { border-inline-start-color: var(--c-transport); }

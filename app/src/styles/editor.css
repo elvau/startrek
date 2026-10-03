@@ -653,6 +653,8 @@ body[data-ch="split"] .amb-split{opacity:1}
 .ht-facts:empty,.ht-foot:empty{display:none}
 .ht-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px;width:100%;margin-top:4px;padding-top:8px;border-top:1px solid var(--line)}
 .ht-total{font-weight:800;font-size:15px}
+.ht-route{display:block;margin:-4px -4px 4px;padding:4px;border-radius:12px;background:color-mix(in srgb,var(--paper-2) 60%,transparent)}
+.ht-route svg{width:100%;height:auto}
 .ht-pp{font-weight:600;font-size:12.5px;color:var(--ink-2)}
 .ht-soon{white-space:nowrap;display:inline-block;margin-inline-start:6px;font-size:11.5px;font-weight:700;padding:1px 7px;border-radius:99px;background:var(--a-soft);color:var(--a)}
 .ht-st.st-booked{color:var(--good);font-weight:700}
