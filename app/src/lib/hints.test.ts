@@ -22,4 +22,9 @@ describe("Einreise & Tipps", () => {
     const t: Trip = { ...eduard(), place: "New York", country: "USA", items: [{ id: "a", cat: "attractions", name: "Tagesausflug nach Venedig", status: "idea", options: [] }] };
     expect(hintsFor(t, cc(t), []).map(h => h.id)).toEqual(["us", "venice"]);
   });
+  it("Nordkorea: Warnung für alle, auch ohne Flug (Ort im Namen)", () => {
+    const t: Trip = { ...eduard(), place: "Pjöngjang", country: "Nordkorea", items: [] };
+    expect(hintsFor(t, ["KP"], []).map(h => h.id)).toEqual(["kp"]);
+    expect(hintsFor({ ...t, country: "" }, [], []).map(h => h.id)).toEqual(["kp"]);
+  });
 });

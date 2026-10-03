@@ -26,6 +26,8 @@ export interface Traveler {
   kind?: "adult" | "child" | "infant";
   /** Platzhalter mit Tiernamen („Reh Kind 1“), nur in dieser Reise, nicht in Gruppen gespeichert */
   placeholder?: boolean;
+  /** Staatsangehörigkeit (ISO-2, z. B. „DE“) für die Einreise-Hinweise; fehlt: deutsch angenommen. Nicht aus den Ausweisdaten. */
+  nat?: string;
   /** Kasse: Kind wird von diesem Erwachsenen (ID) bezahlt, wenn die Eltern getrennte Kassen haben; fehlt: von allen Erwachsenen der Familie */
   payer?: string;
 }

@@ -14,8 +14,8 @@ export interface Hint {
   /** Flughäfen und Stichwörter (Orte, Posten), bei denen der Hinweis gilt */
   aps?: string[];
   words?: RegExp;
-  /** Art: Einreise (Land) oder Ort */
-  kind: "entry" | "place";
+  /** Art: Einreise (Land, deutsche Staatsangehörige), Warnung (Land, für alle) oder Ort */
+  kind: "entry" | "warn" | "place";
   links: HintLink[];
   /** Richtwert als Posten (pro Person, in der Währung): Gebühren vor Ort */
   fee?: { adult: number; child?: number; currency: string; cat: Item["cat"] };
@@ -39,6 +39,9 @@ export const HINTS: Hint[] = [
   { id: "in", kind: "entry", cc: ["IN"], links: [{ label: "e-Visa India", url: "https://indianvisaonline.gov.in/evisa/" }] },
   { id: "lk", kind: "entry", cc: ["LK"], links: [{ label: "ETA Sri Lanka", url: "https://www.eta.gov.lk/" }] },
   { id: "eg", kind: "entry", cc: ["EG"], links: [{ label: "Visa2Egypt", url: "https://www.visa2egypt.gov.eg/" }] },
+  // Reisen mit besonderen Risiken: für alle Staatsangehörigkeiten
+  { id: "kp", kind: "warn", cc: ["KP"], words: /nordkorea|north korea|pjöngjang|pyongyang|rason|wonsan/i,
+    links: [{ label: "Koryo Tours", url: "https://koryogroup.com/" }, { label: "Young Pioneer Tours", url: "https://www.youngpioneertours.com/" }] },
   // besondere Orte
   { id: "galapagos", kind: "place", aps: ["GPS", "SCY"], words: /gal[aá]pagos|baltra|puerto ayora|isabela/i,
     links: [{ label: "TCT online (CGREG)", url: "https://siig-cgreg.gobiernogalapagos.gob.ec/" }, { label: "Parque Nacional Galápagos", url: "https://www.galapagos.gob.ec/" }],
@@ -47,6 +50,11 @@ export const HINTS: Hint[] = [
     links: [{ label: "Tickets (Ministerio de Cultura)", url: "https://tuboleto.cultura.pe/" }, { label: "PeruRail", url: "https://www.perurail.com/" }, { label: "Inca Rail", url: "https://incarail.com/" }] },
   { id: "corcovado", kind: "place", aps: ["GIG", "SDU"], words: /rio de janeiro|corcovado|cristo redentor|christ the redeemer/i,
     links: [{ label: "Trem do Corcovado", url: "https://www.tremdocorcovado.rio/" }] },
+  { id: "alhambra", kind: "place", words: /alhambra/i, links: [{ label: "Alhambra (Patronato)", url: "https://tickets.alhambra-patronato.es/" }] },
+  { id: "sagrada", kind: "place", words: /sagrada fam[ií]lia/i, links: [{ label: "Sagrada Família", url: "https://sagradafamilia.org/" }] },
+  { id: "neuschwanstein", kind: "place", words: /neuschwanstein|hohenschwangau/i, links: [{ label: "Ticket-Center Hohenschwangau", url: "https://www.hohenschwangau.de/" }] },
+  { id: "angkor", kind: "place", aps: ["SAI", "REP"], words: /angkor|siem reap/i, links: [{ label: "Angkor Enterprise", url: "https://www.angkorenterprise.gov.kh/" }] },
+  { id: "petra", kind: "place", aps: ["AQJ"], words: /\bpetra\b|wadi rum|jordanien|jordan\b/i, links: [{ label: "Jordan Pass", url: "https://www.jordanpass.jo/" }] },
   { id: "venice", kind: "place", aps: ["VCE", "TSF"], words: /venedig|venezia|venice/i,
     links: [{ label: "Venezia Access Fee", url: "https://cda.veneziaunica.it/en" }] }
 ];
@@ -71,5 +79,5 @@ export function hintsFor(trip: Trip, countries: string[], places: string[]): Hin
   const aps = new Set(trip.items.filter(i => i.status !== "dropped").flatMap(i => i.options.flatMap(o => (o.legs || []).flatMap(l => [l.from, l.to]))));
   const text = [trip.place, ...places, ...trip.items.filter(i => i.status !== "dropped").flatMap(i => [i.name, ...i.options.map(o => o.label), ...i.options.map(o => o.query?.place || "")]),
     ...Object.values(trip.days || {}).flatMap(d => [d.title || "", ...(d.notes || []).flatMap(n => [n.text, n.to || ""])])].filter(Boolean).join(" | ");
-  return HINTS.filter(h => h.kind === "entry" ? h.cc!.some(c => countries.includes(c)) : (h.aps || []).some(a => aps.has(a)) || !!h.words?.test(text));
+  return HINTS.filter(h => (h.cc || []).some(c => countries.includes(c)) || (h.kind !== "entry" && ((h.aps || []).some(a => aps.has(a)) || !!h.words?.test(text))));
 }
