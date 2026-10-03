@@ -141,8 +141,8 @@
   .dp-route { padding: 14px 16px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
   .dp-rh { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .dp-rh h3 { margin: 0; font-size: 17px; }
-  .dp-prev { border: 0; background: var(--paper-2); border-radius: 14px; padding: 8px; cursor: pointer; }
-  .dp-prev :global(svg) { width: 100%; height: auto; max-height: 200px; }
+  .dp-prev { border: 0; background: var(--paper-2); border-radius: 14px; padding: 0; overflow: hidden; cursor: pointer; display: flex; justify-content: center; }
+  .dp-prev :global(svg) { width: 100%; height: auto; }
   .dp { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
   .dp-day { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; border-inline-start: 4px solid var(--c-plan); }
   .dp-day.moved { border-inline-start-color: var(--c-transport); }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arc, buildRoute, project } from "./route";
+import { arc, buildRoute, mapView, project } from "./route";
 import { itinerary } from "./itinerary";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
@@ -40,5 +40,16 @@ describe("Reiseroute", () => {
     const [x1, y1] = pr({ lat: 50, lon: 7 }), [x2, y2] = pr({ lat: 43, lon: 16 });
     expect(x1).toBeLessThan(x2); expect(y1).toBeLessThan(y2);
     for (const v of [x1, x2]) { expect(v).toBeGreaterThanOrEqual(0); expect(v).toBeLessThanOrEqual(120); }
+  });
+  it("Kartenausschnitt passt zur Projektion", () => {
+    const pts = [{ lat: 43.51, lon: 16.44 }, { lat: 42.65, lon: 18.09 }];
+    const v = mapView(pts, 640, 180, 14)!, pr = project(pts, 640, 180, 14);
+    // Mitte des Bildes = Mitte der Karte
+    const [cx, cy] = pr({ lon: v.center[0], lat: v.center[1] });
+    expect(cx).toBeCloseTo(320, 3); expect(cy).toBeCloseTo(90, 3);
+    // Maßstab: bei Zoom z hat die Welt 512·2^z Pixel
+    const [x1] = pr({ lat: 0, lon: 0 }), [x2] = pr({ lat: 0, lon: 1 });
+    expect(x2 - x1).toBeCloseTo((512 * 2 ** v.zoom) / 360, 3);
+    expect(mapView([pts[0]], 160, 72)!.zoom).toBe(11);
   });
 });

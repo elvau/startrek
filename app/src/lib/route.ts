@@ -87,13 +87,29 @@ export function arc(a: LatLon, b: LatLon, n = 32): [number, number][] {
   });
 }
 
-/** einfache Projektion in ein Rechteck (für das Mini-Bild ohne Karte) */
+/** Web-Mercator (0…1), wie die Karte */
+const mx = (lon: number) => (lon + 180) / 360;
+const my = (lat: number) => { const r = (Math.max(-85, Math.min(85, lat)) * Math.PI) / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2; };
+const unY = (y: number) => (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI;
+
+/** Ausschnitt für ein Rechteck w×h: Maßstab (Pixel je Welt) und linke obere Ecke; nicht näher als Zoom 11 */
+function frame(points: LatLon[], w: number, h: number, pad: number) {
+  const xs = points.map(p => mx(p.lon)), ys = points.map(p => my(p.lat));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const s = Math.min((w - 2 * pad) / (x1 - x0 || 1e-9), (h - 2 * pad) / (y1 - y0 || 1e-9), 512 * 2 ** 11);
+  return { s, left: (x0 + x1) / 2 - w / 2 / s, top: (y0 + y1) / 2 - h / 2 / s };
+}
+
+/** Projektion in ein Rechteck (Mini-Bild), passend zu mapView */
 export function project(points: LatLon[], w: number, h: number, pad = 8): (p: LatLon) => [number, number] {
   if (!points.length) return () => [w / 2, h / 2];
-  const k = Math.cos(((points.reduce((a, p) => a + p.lat, 0) / points.length) * Math.PI) / 180);
-  const xs = points.map(p => p.lon * k), ys = points.map(p => -p.lat);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const s = Math.min((w - 2 * pad) / (x1 - x0 || 1), (h - 2 * pad) / (y1 - y0 || 1));
-  const ox = (w - (x1 - x0) * s) / 2, oy = (h - (y1 - y0) * s) / 2;
-  return p => [ox + (p.lon * k - x0) * s, oy + (-p.lat - y0) * s];
+  const f = frame(points, w, h, pad);
+  return p => [(mx(p.lon) - f.left) * f.s, (my(p.lat) - f.top) * f.s];
+}
+
+/** Kartenausschnitt (Mitte, Zoom) zum selben Rechteck wie project: Kartenbild und Linien liegen genau übereinander */
+export function mapView(points: LatLon[], w: number, h: number, pad = 8): { center: [number, number]; zoom: number } | null {
+  if (!points.length) return null;
+  const f = frame(points, w, h, pad);
+  return { center: [f.left * 360 - 180 + (w / 2 / f.s) * 360, unY(f.top + h / 2 / f.s)], zoom: Math.log2(f.s / 512) };
 }
