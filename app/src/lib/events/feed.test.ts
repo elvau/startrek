@@ -65,6 +65,11 @@ describe("Sportkalender aus offenen Quellen", () => {
     expect(horizon(SPORTS) < "2028-01-01").toBe(true);
     expect(horizon(SPORTS) >= "2027-06-01").toBe(true);
   });
+  it("Doppelte auch bei anderem Spielort im selben Land (Eishockey-WM Mannheim statt Düsseldorf, Rugby-WM nur „Australien“)", () => {
+    const ih = { id: "wd-Q2", name: "2027 IIHF World Championship", sport: "hockey" as const, start: "2027-05-14", end: "2027-05-30", city: "Mannheim", cc: "DE", lat: 49.49, lon: 8.47, url: "https://x" };
+    const rwc = { id: "wd-Q3", name: "2027 Rugby World Cup", sport: "rugby" as const, start: "2027-10-01", city: "Australien", cc: "AU", lat: -25, lon: 134, url: "https://x" };
+    expect(mergeFeed(SPORTS, [ih, rwc])).toHaveLength(SPORTS.length);
+  });
   it("Quelle ausgefallen: deren alte Events bleiben (ohne vergangene), die der anderen kommen neu", () => {
     const f1 = fromJolpica(JOLPICA), wd = fromWikidata(WIKIDATA);
     const old = [...f1, { ...wd[0], id: "wd-Q9", start: "2026-01-01", end: "2026-01-05" }, wd[1]];

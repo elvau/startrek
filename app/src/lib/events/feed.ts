@@ -111,9 +111,12 @@ const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) =>
 };
 const daysApart = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86400000;
 
-/** gleiches Event: gleiche Sportart (oder „other“), Beginn höchstens 3 Tage auseinander, Orte höchstens 150 km */
+/**
+ * gleiches Event: gleiche Sportart (oder „other“), Beginn höchstens 3 Tage auseinander und Orte höchstens 150 km
+ * auseinander oder im selben Land (Wikidata nennt oft einen anderen Spielort oder nur das Land, z. B. Rugby-WM „Australien“)
+ */
 const same = (a: SportEvent, b: SportEvent) =>
-  (a.sport === b.sport || (a.sport as string) === "other" || (b.sport as string) === "other") && daysApart(a.start, b.start) <= 3 && km(a, b) <= 150;
+  (a.sport === b.sport || a.sport === "other" || b.sport === "other") && daysApart(a.start, b.start) <= 3 && (km(a, b) <= 150 || (!!a.cc && a.cc === b.cc));
 
 /** kuratierte Liste plus Feed; Doppelte (auch innerhalb des Feeds) fallen weg, die kuratierte Fassung bleibt */
 export function mergeFeed(curated: SportEvent[], feed: SportEvent[]): SportEvent[] {
