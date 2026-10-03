@@ -33,7 +33,7 @@
   {:else}<div class="ic"><Icon name={item.icon || icon} /></div>{/if}
   <div>
     <h3>{item.name || opt?.label || t("item.new")}</h3>
-    <p>{item.note || auto}</p>
+    <p>{item.note || auto}{#if opt?.price.multiply && (r?.units || 0) > 1}<span class="row-units"> · {item.icon === "car" ? t("item.cars", { n: r!.units, c: opt.price.capacity || 0 }) : t("item.units", { n: r!.units })}</span>{/if}</p>
   </div>
   <div class="r">
     <b class="num">{eur(r?.net || 0)}</b>

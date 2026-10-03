@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arrivals, gaps, guestsIn, hints, stations, stayWindow } from "./presence";
+import { arrivals, gaps, guestsIn, hints, segments, stations, stayWindow } from "./presence";
 import { takeStay } from "./app";
 import type { Trip } from "../model";
 import type { StayOffer } from "./types";
@@ -70,6 +70,23 @@ describe("Unterkunft aus der Anwesenheit", () => {
     // 20.04. im Flugzeug: keine Lücke; drei Lücken, je eine Stadt
     expect(gaps(t).map(g => [g.from, g.to, g.nights, g.ap, g.city])).toEqual([
       ["2027-04-07", "2027-04-14", 7, "UIO", "Quito"], ["2027-04-14", "2027-04-20", 6, "LIM", "Lima"], ["2027-04-21", "2027-04-22", 1, "GIG", undefined]
+    ]);
+  });
+});
+
+describe("Gruppe mit verschiedenen Zeiten", () => {
+  const leg = (dir: "out" | "back", from: string, to: string, dep: string, arr: string, toCity?: string) => ({ dir, from, to, dep, arr, ...(toCity ? { toCity } : {}) });
+  const fl = (id: string, who: string[], a: string, b: string, back = "HND") => ({ id, cat: "flights" as const, name: id, status: "idea" as const, participants: who,
+    options: [{ id: id + "o", label: "", price: { mode: "unit" as const, currency: "EUR", unit: 1 }, legs: [leg("out", "FRA", "HND", `${a}T10:00`, `${a}T20:00`, "Tokio"), leg("back", back, "FRA", `${b}T10:00`, `${b}T18:00`)] }] });
+  const t = (): Trip => ({ ...trip(), place: "Tokio", households: {},
+    travelers: [{ id: "a", name: "Anna", household: "Klein" }, { id: "b", name: "Ben", household: "Klein" }, { id: "o", name: "Oma", household: "Oma" }, { id: "j", name: "Jens", household: "Jens" }],
+    items: [fl("k", ["a", "b"], "2027-04-02", "2027-04-28"), fl("o", ["o"], "2027-04-08", "2027-04-28"), fl("j", ["j"], "2027-04-15", "2027-04-22")] });
+  it("eine Station Tokio statt je Flug", () => {
+    expect(stations(t()).map(s => [s.city, s.from, s.to, s.ids.length])).toEqual([["Tokio", "2027-04-02", "2027-04-28", 4]]);
+  });
+  it("Zeitabschnitte nach Anwesenheit, mit „alle zusammen“", () => {
+    expect(segments(t()).map(s => [s.from, s.to, s.ids.join("")])).toEqual([
+      ["2027-04-02", "2027-04-08", "ab"], ["2027-04-08", "2027-04-15", "abo"], ["2027-04-15", "2027-04-22", "aboj"], ["2027-04-22", "2027-04-28", "abo"]
     ]);
   });
 });

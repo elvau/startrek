@@ -19,6 +19,7 @@
   import { uniqueById } from "../events/search";
   import { activityItem, duration, eventItem, searchActivitiesRemote, searchLocalEvents, takeInto } from "../activities/app";
   import { explore } from "../activities/open.svelte";
+  import { itinerary, stations } from "../itinerary";
   import type { EventHit } from "../events/types";
   import type { ActivityHit } from "../activities/types";
   import Modal from "./Modal.svelte";
@@ -28,8 +29,21 @@
   const trip = app.trip;
   // Ort und Zeitraum aus der Reise, sonst aus den Flügen: Landung + 5 h bis Rückflug − 5 h
   $effect(() => { void ensureAirports(); });
-  const win = $derived(eventWindow(trip, ap => stationName(geo, airportData, ap)));
+  const win0 = $derived(eventWindow(trip, ap => stationName(geo, airportData, ap)));
+  // Rundreise: Orte der Reise (Stationen im Tagesplan) zur Wahl, dazu ein eigener Ort (z. B. Hakone für einen Tagesausflug)
+  const places = $derived.by(() => {
+    const days = itinerary(trip);
+    const sts = stations(days).map(s => ({ place: s.place, from: s.from, to: days.find(d => d.date > s.from && d.place !== s.place)?.date || days.at(-1)?.date || s.from }));
+    return sts.length > 1 ? sts : [];
+  });
+  let pick = $state<{ place: string; from?: string; to?: string } | null>(null);
+  let other = $state("");
+  const win = $derived(pick ? { ...win0, city: pick.place, ...(pick.from ? { from: pick.from, to: pick.to, start: undefined, end: undefined } : {}) } : win0);
   const city = $derived(win.city);
+  function choose(p: { place: string; from?: string; to?: string } | null) {
+    pick = p; tours = null; events = null; searchedFor = ""; tof = noTourFilter(); evf = noEvFilter();
+    if (explore.tab === "tours") void findTours();
+  }
   const stamp = (iso: string) => `${dayShort(iso.slice(0, 10))} ${iso.slice(11, 16)}`;
   const when = $derived(win.start || win.end
     ? `${win.start ? stamp(win.start) : dayShort(win.from!)} – ${win.end ? stamp(win.end) : dayShort(win.to!)}`
@@ -83,19 +97,23 @@
     finally { evBusy = false; }
   }
 
+  // Ort, für den die Touren gesucht werden/wurden (wechselt man den Ort während der Suche, zählt nur die neue)
+  let toFor = "";
   async function findTours() {
-    if (!city || tours || toBusy) return;
-    toBusy = true; toErr = "";
+    if (!city || (toFor === city && (tours || toBusy))) return;
+    const c = city;
+    toFor = c; toBusy = true; toErr = "";
     try {
-      const res = await searchActivitiesRemote({ place: city, lang: i18n.lang, ...span });
+      const res = await searchActivitiesRemote({ place: c, lang: i18n.lang, ...span });
+      if (c !== city) return;
       toursOff = !res.sources.some(s => s.configured);
       // Viator nur auf splitandfly.com (Bedingungen der Viator-API): in der Testumgebung Hinweis statt Touren
       toursWhy = res.sources.find(s => s.error === "domain") ? "domain" : "";
       tours = uniqueById(res.activities || []);
       const bad = res.sources.find(s => s.configured && !s.ok);
       if (!tours.length && bad) { toErr = bad.error || t("xp.noTours"); noteError(`Touren: ${bad.error}`); }
-    } catch (err) { toErr = (err as Error).message; noteError(`Touren: ${toErr}`); }
-    finally { toBusy = false; }
+    } catch (err) { if (c === city) { toErr = (err as Error).message; noteError(`Touren: ${toErr}`); } }
+    finally { if (c === city) toBusy = false; }
   }
 
   // Events suchen, sobald der Reiter offen ist und der Ort feststeht; Touren ebenso
@@ -117,8 +135,19 @@
   <div class="xp">
     {#if !city}
       <p class="warnline">{t("xp.noPlace")}</p>
+      <form class="xp-other" onsubmit={e => { e.preventDefault(); if (other.trim()) choose({ place: other.trim() }); }}>
+        <input bind:value={other} placeholder={t("xp.otherPh")} aria-label={t("xp.other")} /><button class="btn sm" disabled={!other.trim()}>{t("xp.otherGo")}</button>
+      </form>
     {:else}
       <p class="muted small xp-where">📍 {city} · 📅 {when}</p>
+      <div class="chips xp-places">
+        {#each places as pl (pl.place + pl.from)}
+          <button type="button" class="chip sm" class:on={city === pl.place} onclick={() => choose(pl)}>{pl.place} <small>{dayShort(pl.from)}</small></button>
+        {/each}
+        <form class="xp-other" onsubmit={e => { e.preventDefault(); if (other.trim()) choose({ place: other.trim() }); }}>
+          <input bind:value={other} placeholder={t("xp.otherPh")} aria-label={t("xp.other")} /><button class="btn sm" disabled={!other.trim()}>{t("xp.otherGo")}</button>
+        </form>
+      </div>
       <div class="xp-tabs" role="tablist">
         <button role="tab" class="xp-tab" class:on={explore.tab === "tours"} aria-selected={explore.tab === "tours"} onclick={() => (explore.tab = "tours")}>🎡 {t("xp.tours")}</button>
         <button role="tab" class="xp-tab" class:on={explore.tab === "events"} aria-selected={explore.tab === "events"} onclick={() => (explore.tab = "events")}>🎟 {t("xp.events")}</button>
@@ -229,3 +258,9 @@
     {/if}
   </div>
 </Modal>
+
+<style>
+  .xp-places { align-items: center; margin-bottom: 6px; }
+  .xp-other { display: flex; gap: 6px; }
+  .xp-other input { width: 170px; min-width: 0; }
+</style>

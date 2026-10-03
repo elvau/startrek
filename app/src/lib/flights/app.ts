@@ -4,6 +4,7 @@ import { t, tn } from "../i18n/index.svelte";
 import { addOffer, hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
 import { dayShort, nights } from "../format";
 import { accessFor, airportsOf, roadKm } from "../calc/travel";
+import { activeOption } from "../calc";
 import type { FlightOffer, FlightQuery, OfferLeg, SearchResult } from "./types";
 import type { RoundTrip } from "./roundtrip";
 
@@ -64,6 +65,29 @@ export function scaleResult(r: SearchResult, factor: number): SearchResult {
 /** Wer fliegt: diese Personen (fehlt: alle, die dabei sind) */
 export const flyers = (trip: Trip, ids?: string[]) => trip.travelers.filter(t => isActive(t) && (!ids || ids.includes(t.id)));
 
+/**
+ * Reisezeitraum an die Flüge anpassen (nach dem Übernehmen): haben alle einen Flug, gilt genau Hinflug bis Rückflug
+ * (Rundreise vom 20.08. bis 02.09. statt der geschätzten 01.–22.08.); sonst nur erweitern, falls ein Flug außerhalb liegt.
+ * Gibt den neuen Zeitraum zurück, wenn er sich geändert hat.
+ */
+export function fitTripDates(trip: Trip): { from: string; to: string } | null {
+  const fl = trip.items.filter(i => i.cat === "flights" && i.status !== "dropped" && !i.follow);
+  const legs = fl.flatMap(i => activeOption(i, trip)?.legs || []).filter(l => l.dep && l.arr);
+  const outs = legs.filter(l => l.dir === "out").map(l => l.dep.slice(0, 10)).sort();
+  const backs = legs.filter(l => l.dir === "back").map(l => l.arr.slice(0, 10)).sort();
+  if (!outs.length || !backs.length) return null;
+  const a = outs[0], b = backs.at(-1)!;
+  if (b < a) return null;
+  const act = trip.travelers.filter(isActive);
+  const cov = covered(trip);
+  const all = act.length > 0 && act.every(t => cov.has(t.id));
+  const from = all || !trip.from || a < trip.from ? a : trip.from;
+  const to = all || !trip.to || b > trip.to ? b : trip.to;
+  if (from === trip.from && to === trip.to) return null;
+  trip.from = from; trip.to = to;
+  return { from, to };
+}
+
 /** wer schon einen eigenen Flug-Posten hat (Posten ohne Beteiligte gelten für alle) */
 export function covered(trip: Trip): Set<string> {
   // Flüge und eigene Anreisen (Auto, Bahn); ohne Teilnehmer gilt ein Posten für alle
@@ -101,13 +125,24 @@ export function defaultFlyers(trip: Trip): string[] | undefined {
  * Flexibel: Reisezeitraum als Fenster, Nächte von (Dauer − ein Viertel, mindestens − 1) bis Dauer; ohne Daten 7 bis 14 Nächte.
  * Kurze Reisen bis 3 Nächte (Wochenende, JGA) ganz, sonst kommen Gruppen an verschiedenen Tagen (7 Nächte: 6–7, 14: 11–14).
  */
+/** eigene Daten der Familien („Wer fährt mit“: erste Nacht, Abreise), wenn alle Fliegenden dieselben haben */
+export function ownDates(trip: Trip, ids?: string[]): { from: string; to: string } | null {
+  const hs = [...new Set(flyers(trip, ids).map(hhKey))].map(h => trip.households?.[h]);
+  const a = hs[0]?.arrive, d = hs[0]?.depart;
+  if (!hs.length || !a || !d || d <= a || hs.some(h => h?.arrive !== a || h?.depart !== d)) return null;
+  return { from: a, to: d };
+}
+
 export function defaultQuery(trip: Trip, lastFrom = "", ids?: string[]): FlightQuery {
   const first = flyers(trip, ids)[0];
   const home = first ? trip.households?.[hhKey(first)]?.geo?.ort : undefined;
-  const n = nights(trip.from, trip.to);
+  // kommt später oder fährt früher (Oma und Opa ab der zweiten Woche): deren Daten statt des Reisezeitraums
+  const own = ownDates(trip, ids);
+  const from = own?.from || trip.from || "", to = own?.to || trip.to || "";
+  const n = nights(from, to);
   return {
-    from: lastFrom || home || "", to: trip.place || "", depart: trip.from || "", ret: trip.to || undefined,
-    latest: trip.to || "", nightsMin: n ? (n <= 3 ? n : n - Math.max(1, Math.floor(n / 4))) : 7, nightsMax: n || 14,
+    from: lastFrom || home || "", to: trip.place || "", depart: from, ret: to || undefined,
+    latest: to, nightsMin: n ? (n <= 3 ? n : n - Math.max(1, Math.floor(n / 4))) : 7, nightsMax: n || 14,
     ...passengers(trip, ids), currency: "EUR"
   };
 }
@@ -191,6 +226,16 @@ export function rateRound(trip: Trip, rt: RoundTrip, home: boolean, withAccess: 
  */
 export const worthRetry = (r: SearchResult) => !r.offers?.length && !!r.sources?.some(s => s.configured && !s.ok && (s.ms || 0) > 0);
 
+/**
+ * Unplausible Preise (Fehler der Anbieter, live gesehen: Los Angeles → San Diego 8.117 € pro Person) aussortieren:
+ * höchstens 600 € plus 400 € je Flugstunde pro Person. Business-Tarife auf Langstrecken bleiben darunter.
+ */
+export function saneOffer(o: FlightOffer, pax: number): boolean {
+  const hours = ((o.out.minutes || 0) + (o.back?.minutes || 0)) / 60;
+  if (!(hours > 0)) return true;
+  return o.price / Math.max(1, pax) <= 600 + 400 * hours;
+}
+
 export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promise<SearchResult> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   let data: SearchResult | null = null;
@@ -199,6 +244,12 @@ export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promi
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(res.status === 429 ? t("search.tooMany") : body.error || t("search.status", { s: res.status }));
     data = body as SearchResult;
+    const pax = (q.adults || 0) + (q.children || 0) || 1;
+    const bad = (data.offers || []).filter(o => !saneOffer(o, pax));
+    if (bad.length) {
+      noteError(`Flugsuche ${q.from}→${q.to}: ${bad.length} unplausible Preise aussortiert (z. B. ${Math.round(bad[0].price / pax)} € p. P., ${bad[0].sourceName})`);
+      data = { ...data, offers: data.offers.filter(o => saneOffer(o, pax)) };
+    }
     if (!worthRetry(data)) break;
     // für Fehlermeldungen: welche Quelle woran gescheitert ist
     noteError(`Flugsuche ${q.from}→${q.to}${attempt ? "" : " (neuer Versuch)"}: ${data.sources.filter(s => s.configured && !s.ok).map(s => `${s.id} ${s.error || "ohne Antwort"} (${s.ms} ms)`).join(", ")}`);

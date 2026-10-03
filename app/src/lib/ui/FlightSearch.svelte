@@ -20,7 +20,7 @@
   import { addDays } from "../flights/kiwi";
   import { alternatives, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
   import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
-  import { FLIGHTS_URL, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import { loadPlz } from "../plz";
   import type { FlightScope } from "../flights/open.svelte";
@@ -51,6 +51,13 @@
   function setWho(ids: string[] | undefined) {
     who = ids && ids.length && ids.length < act.length ? ids : undefined;
     if (!custom) aps = nearestAirports(trip, 4, who);
+    // Daten folgen der Auswahl (eigene Daten der Familie), solange man sie nicht selbst geändert hat
+    const q = defaultQuery(trip, "", who ?? act.map(x => x.id));
+    if (out === shownBase.depart && rFrom === shownBase.depart && (ret || "") === (shownBase.ret || "") && (rTo || "") === (shownBase.latest || "")) {
+      out = rFrom = q.depart; ret = q.ret || ""; rTo = q.latest || ""; wTo = q.depart ? addDays(q.depart, 7) : "";
+      lo = q.nightsMin || lo; hi = q.nightsMax || hi;
+      shownBase = q;
+    }
   }
   const toggleHh = (h: string) => { const ids = act.filter(t => hhKey(t) === h).map(t => t.id); setWho(hhOn(h) ? whoIds.filter(id => !ids.includes(id)) : [...new Set([...(who || []), ...ids])]); };
   // bei „Alle“ nimmt ein Klick die Person heraus, sonst schaltet er sie dazu oder weg
@@ -122,6 +129,8 @@
   });
   // flexibel
   let rFrom = $state(base.depart);
+  // zuletzt automatisch gesetzte Daten (für setWho)
+  let shownBase = base;
   let rTo = $state(base.latest || "");
   // nur hin / Rundreise: spätester Abflug (Zeitfenster)
   let wTo = $state(base.depart ? addDays(base.depart, 7) : "");
@@ -131,6 +140,8 @@
   let home = $state(true);
   let rounds = $state<{ rt: RoundTrip; r: Rated }[] | null>(null);
   let roundErrors = $state<string[]>([]);
+  let roundMore = $state<string[]>([]);
+  let listMore = $state(false);
   function setKind(k: typeof kind) {
     kind = k;
     // erste Station der Rundreise: bisheriges Ziel
@@ -142,7 +153,7 @@
   const span = $derived(rFrom && rTo ? nights(rFrom, rTo) : null);
   // feste Daten
   let out = $state(base.depart);
-  const farOut = $derived(((mode === "flex" ? rFrom : out) || "") > new Date(Date.now() + 330 * 86400000).toISOString().slice(0, 10));
+  const farOut = $derived(((mode === "flex" || kind === "round" ? rFrom : out) || "") > new Date(Date.now() + 330 * 86400000).toISOString().slice(0, 10));
   let ret = $state(base.ret || "");
   let flexDays = $state(Number(saved.flexDays ?? 0));
   // für beide
@@ -250,14 +261,16 @@
     const q: Omit<FlightQuery, "from"> = kind === "oneway"
       ? mode === "flex" ? { ...common, depart: rFrom, departTo: wTo } : { ...common, depart: out, flexDays }
       : mode === "flex" ? { ...common, depart: rFrom, latest: rTo, nightsMin: lo, nightsMax: hi } : { ...common, depart: out, ret: ret || undefined, flexDays };
+    const qq = q;
     const dl = kind === "return" && mode === "flex" ? deadline(rTo, rToTime) : NaN;
     const all: Rated[] = [], cmp: CompareRow[] = [], src = new Map<string, SourceStatus>();
     let late = 0;
+    listMore = false;
     try {
-      for (const [i, code] of aps.entries()) {
+      const pass = async (q: typeof qq) => { for (const [i, code] of aps.entries()) {
         progress = t("fs.progress", { code, i: i + 1, n: aps.length });
         try {
-          const r = await searchAll({ ...q, ...fromQ(code) }, ctrl.signal);
+          const r = await searchAll({ ...q, ...fromQ(code) }, ctrl!.signal);
           r.sources.forEach(s => { const p = src.get(s.id); src.set(s.id, p ? { ...p, ok: p.ok || s.ok, count: p.count + s.count, error: p.ok ? p.error : s.error } : { ...s }); });
           const ok = r.offers.filter(o => !touchesAvoided(o, avoid, ccOfAp));
           avoidedOut += r.offers.length - ok.length;
@@ -271,6 +284,13 @@
           if ((err as Error).name === "AbortError") throw err;
           cmp.push(compareRow(code, [], (err as Error).message));
         }
+      } };
+      await pass(qq);
+      // abgelegene Ziele gehen oft nur mit zwei Umstiegen: dann damit nachsuchen
+      if (!all.length && qq.maxStops === 1) {
+        cmp.length = 0;
+        await pass({ ...qq, maxStops: 2 });
+        listMore = all.length > 0;
       }
       // mehr behalten als gezeigt: Filter und Kalender arbeiten auf allen Treffern
       list = all.sort((a, b) => a.total - b.total).slice(0, 400);
@@ -337,6 +357,7 @@
       sources = [...srcs.values()];
       // Fehler nur zeigen, wenn es gar keine Rundreise gab
       roundErrors = rounds.length ? [] : res.flatMap(r => r.errors);
+      roundMore = [...new Set(res.flatMap(r => r.moreStops || []))];
     } catch (err) {
       if ((err as Error).name !== "AbortError") error = (err as Error).message;
     } finally { busy = false; progress = ""; }
@@ -359,6 +380,7 @@
     app.trip.detail ||= {};
     app.trip.detail.flights = true;
     into = takeRound(app.trip, rt, home, into, who, splitInfo).id;
+    fitTripDates(app.trip);
     taken[rt.id] = true;
     // Suche schließen und den Posten zeigen; weitere Angebote: Suche am Posten erneut öffnen
     onclose();
@@ -370,6 +392,7 @@
     app.trip.detail ||= {};
     app.trip.detail.flights = true;
     into = takeOffer(app.trip, o, into, who, splitInfo).id;
+    fitTripDates(app.trip);
     taken[o.id + o.origin] = true;
     onclose();
     showItem(into);
@@ -596,9 +619,12 @@
       <p class="muted small">{t("fs.roundNone")}</p>
     {/if}
     {#each roundErrors as e (e)}<p class="muted small">{e}</p>{/each}
+    {#if !rounds.length && farOut}<p class="warnline fs-farout">{t("fs.farOut")}</p>{/if}
+    {#if roundMore.length}<p class="muted small fs-morestops">{t("fs.moreStops", { list: roundMore.join(", ") })}</p>{/if}
     {#if avoidedOut}<p class="muted small">{tn("fs.avoidedOut", avoidedOut)}</p>{/if}
   {/if}
 
+  {#if list && listMore}<p class="muted small fs-morestops">{t("fs.moreStops", { list: `${aps.join("/")} → ${to}` })}</p>{/if}
   {#if list}
     {#if sources.length}
       <div class="fs-src small">

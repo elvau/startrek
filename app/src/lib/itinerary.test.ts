@@ -48,4 +48,10 @@ describe("Tagesplan", () => {
     expect(unplanned(trip()).map(i => i.name)).toEqual(["Freizeitpark"]);
     expect(stations(itinerary(trip()))).toEqual([{ place: "Split", from: "2027-06-05", nights: 3 }, { place: "Dubrovnik", from: "2027-06-08", nights: 2 }]);
   });
+  it("ohne Unterkunft: Orte aus den Flügen der Rundreise", () => {
+    const t = trip();
+    t.items = [{ id: "r", cat: "flights", name: "Rundreise", status: "idea", options: [{ id: "ro", label: "", price: { mode: "unit", currency: "EUR", unit: 1 },
+      legs: [{ ...L("out", "CGN", "SPU", "2027-06-05T10:00", "2027-06-05T12:00"), toCity: "Split" }, { ...L("via", "SPU", "DBV", "2027-06-07T10:00", "2027-06-07T11:00"), toCity: "Dubrovnik" }, L("back", "DBV", "CGN", "2027-06-10T18:00", "2027-06-10T20:20")] }] }];
+    expect(itinerary(t).map(d => d.place)).toEqual(["Split", "Split", "Dubrovnik", "Dubrovnik", "Dubrovnik", "Dubrovnik"]);
+  });
 });
