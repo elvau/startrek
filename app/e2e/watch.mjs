@@ -195,6 +195,28 @@ try {
   await p.waitForTimeout(500);
   if (await p.locator(".modal.inline").count()) fail("Suche aus der anderen Reise noch offen");
   log("Reise gewechselt: aufgeklappte Flugsuche der vorigen Reise ist zu");
+
+  // Tagesplan: Tage der Reise, Flug und Unterkunft automatisch; eigener Eintrag; Erlebnis einem Tag zuordnen
+  await p.locator("#plan").scrollIntoViewIfNeeded();
+  const days = p.locator("#plan .dp-day");
+  await until(async () => (await days.count()) === 4, "4 Tage (07.–10.05.)");
+  const d1 = await days.nth(0).innerText();
+  if (!d1.includes("DUS → PMI") || !d1.includes("08:00") || !d1.includes("Check-in")) fail("Tag 1: " + d1);
+  if (!(await days.nth(3).innerText()).includes("PMI → DUS")) fail("Rückflug nicht am letzten Tag");
+  await days.nth(1).locator(".dp-plus").click();
+  await days.nth(1).locator(".dp-add .chip", { hasText: "Essen" }).click();
+  await days.nth(1).locator(".dp-text").fill("Abendessen am Hafen");
+  await days.nth(1).locator(".dp-time").fill("20:00");
+  await days.nth(1).locator(".dp-add .btn.primary").click();
+  await until(async () => (await days.nth(1).innerText()).includes("Abendessen am Hafen"), "eigener Eintrag");
+  await days.nth(2).locator(".dp-title-in").fill("Ruhetag");
+  await days.nth(2).locator(".dp-title-in").press("Tab");
+  await p.locator("#plan .dp-o", { hasText: "Bootstour" }).locator("select").selectOption({ index: 2 });
+  await until(async () => (await days.nth(1).innerText()).includes("Bootstour"), "Bootstour an Tag 2");
+  if (await p.locator("#plan .dp-o", { hasText: "Bootstour" }).count()) fail("Bootstour noch ohne Tag");
+  await until(async () => { const sv = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:palma") || "{}").days); return !!sv?.["2027-05-08"]?.notes?.[0]?.text && sv?.["2027-05-09"]?.title === "Ruhetag"; }, "Tagesplan gespeichert");
+  if (process.env.SHOTS) await p.locator("#plan").screenshot({ path: `${process.env.SHOTS}/plan.png` });
+  log("Tagesplan: 4 Tage, Flug und Check-in automatisch, „Abendessen am Hafen“ 20:00, Ruhetag, Bootstour an Tag 2");
   if (await p.locator("#transport .ground").count()) fail("Palma ist kein nahes Ziel");
 
   // nahes Ziel: Bahn, Fernbus, Auto, Reisebus mit Richtwerten; bahn.de vorbefüllt; Reisebus als Posten

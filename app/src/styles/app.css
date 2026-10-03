@@ -43,6 +43,7 @@ body[data-ch="stay"]{--a:var(--c-stay);--a-soft:var(--c-stay-s)}
 body[data-ch="transport"]{--a:var(--c-transport);--a-soft:var(--c-transport-s)}
 body[data-ch="attractions"]{--a:var(--c-attractions);--a-soft:var(--c-attractions-s)}
 body[data-ch="misc"]{--a:var(--c-misc);--a-soft:var(--c-misc-s)}
+body[data-ch="plan"]{--a:var(--c-plan);--a-soft:var(--c-plan-s)}
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:84px;overflow-x:clip}

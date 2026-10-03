@@ -220,7 +220,22 @@ export interface Item {
   arrival?: boolean;
   /** von der KI: vorgeschlagen (echtes Angebot), erstellt (Schätzung) oder angepasst (ersetzt einen Posten) */
   ai?: AiMark;
+  /** Tagesplan: an diesem Tag (JJJJ-MM-TT, optional mit Uhrzeit JJJJ-MM-TTTHH:MM) */
+  day?: string;
 }
+
+/** eigener Eintrag im Tagesplan („Abendessen“, „Ruhetag“, „Zug nach Dubrovnik“) */
+export type NoteKind = "see" | "food" | "fun" | "rest" | "move" | "note";
+export interface DayNote {
+  id: string;
+  text: string;
+  kind?: NoteKind;
+  /** HH:MM */
+  time?: string;
+  /** Ziel bei „move“ (Ort für die Route) */
+  to?: string;
+}
+export interface DayPlan { title?: string; notes?: DayNote[] }
 
 export interface AiMark { at: string; kind: "suggested" | "created" | "changed" }
 
@@ -337,6 +352,8 @@ export interface Trip {
   lines?: SimpleLine[];
   /** Zuschüsse: Mannschaftskasse, Oma und Opa, Sponsor … senken den Eigenanteil */
   funds?: Fund[];
+  /** Tagesplan: je Tag (JJJJ-MM-TT) Überschrift und eigene Einträge; Flüge, Unterkünfte und Erlebnisse kommen automatisch dazu */
+  days?: Record<string, DayPlan>;
   /** öffentliche Aktionsseite zum Mitfinanzieren (Zuschüsse Stufe 2), nur mit Einwilligung zu Name und IBAN */
   campaign?: Campaign;
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
