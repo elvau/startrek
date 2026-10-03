@@ -87,7 +87,7 @@ describe("Event-Suche", () => {
     expect(m[0]).toMatchObject({ id: "fd:1", venue: "Emirates Stadium", city: "London", lat: 51.5 });
     const res = await searchEvents({ q: "Arsenal" }, {});
     expect(res.events).toEqual([]);
-    expect(res.sources.map(s => [s.id, s.configured])).toEqual([["ticketmaster", false], ["footballdata", false]]);
+    expect(res.sources.map(s => [s.id, s.configured])).toEqual([["ticketmaster", false], ["footballdata", false], ["sports", true]]);
     expect(parseEventQuery({ q: "x" })).toMatch(/Suchbegriff/);
     expect(parseEventQuery({ q: "Arsenal", from: "2027-05-01", to: "2027-04-01" })).toMatch(/endet/);
     expect(parseEventQuery({ q: " Arsenal ", from: "2027-05-01" })).toEqual({ q: "Arsenal", from: "2027-05-01" });

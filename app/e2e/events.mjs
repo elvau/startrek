@@ -228,6 +228,23 @@ try {
   await p.keyboard.press("Escape");
   log("Event nur mit Land (Sabah FK): Hauptstadt Baku angenommen, Hinweis zum Prüfen");
 
+  // Sportkalender: Sportart antippen (ohne Such-Dienst), Termin mit Zeitraum, übernehmen
+  await att.locator(".att-ev", { hasText: "Event ändern" }).click();
+  const m3 = p.locator(".modal");
+  const nEv3 = evAsked.length;
+  await m3.locator(".ev-sports .chip", { hasText: "Olympia" }).click();
+  const bne = m3.locator(".ev-hit", { hasText: "Brisbane 2032" });
+  await bne.waitFor();
+  if (evAsked.length !== nEv3) fail("Sportart fragt den Such-Dienst");
+  if (!(await bne.innerText()).includes("🏅 Olympia") || !(await bne.innerText()).includes("23. Juli bis 8. August")) fail("Sport-Treffer: " + await bne.innerText());
+  await bne.click();
+  if (await val("Was?") !== "Olympische Sommerspiele Brisbane 2032" || await val("Datum") !== "2032-07-23") fail("Sport-Event nicht übernommen");
+  const city3 = m3.locator(".ev-form .lp").first().locator("input");
+  for (let i = 0; i < 40 && !(await city3.inputValue()).includes("Brisbane"); i++) await p.waitForTimeout(150);
+  if (!(await city3.inputValue()).includes("Brisbane")) fail("Ziel Brisbane fehlt: " + await city3.inputValue());
+  await p.keyboard.press("Escape");
+  log("Sportkalender: Olympia antippen → Brisbane 2032 mit Zeitraum, Name, Datum und Ziel übernommen");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Event-Reise ok");
 } finally { await browser.close(); server.kill(); }

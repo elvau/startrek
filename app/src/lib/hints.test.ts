@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hintsFor, tripCountries } from "./hints";
+import { HINTS, hintsFor, tripCountries } from "./hints";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
 const L = (dir: "out" | "via" | "back", from: string, to: string, dep: string) => ({ dir, from, to, dep: `${dep}T10:00`, arr: `${dep}T18:00` });
@@ -26,5 +26,25 @@ describe("Einreise & Tipps", () => {
     const t: Trip = { ...eduard(), place: "Pjöngjang", country: "Nordkorea", items: [] };
     expect(hintsFor(t, ["KP"], []).map(h => h.id)).toEqual(["kp"]);
     expect(hintsFor({ ...t, country: "" }, [], []).map(h => h.id)).toEqual(["kp"]);
+  });
+  it("Neue Ziele: Bali (Flughafen), Fuji-Besteigung, Osterinsel, Akropolis; Kuba und Israel als Einreise", () => {
+    const base: Trip = { ...eduard(), place: "", country: "", items: [] };
+    const named = (name: string): Trip => ({ ...base, items: [{ id: "a", cat: "attractions", name, status: "idea", options: [] }] });
+    const bali: Trip = { ...base, items: [{ id: "f", cat: "flights", name: "Flug", status: "idea", options: [{ id: "o", label: "", price: { mode: "unit", currency: "EUR", unit: 1 }, legs: [L("out", "FRA", "DPS", "2027-05-01")] }] }] };
+    expect(hintsFor(bali, ["ID"], []).map(h => h.id)).toEqual(["idn", "bali"]);
+    expect(hintsFor(named("Fuji besteigen (Yoshida Trail)"), [], []).map(h => h.id)).toEqual(["fuji"]);
+    // Fuji nur beim Aufstieg, nicht bei jedem Blick auf den Berg
+    expect(hintsFor(named("Fuji-Blick vom Kawaguchiko"), [], []).map(h => h.id)).toEqual([]);
+    expect(hintsFor(named("Ahu Tongariki auf der Osterinsel"), [], []).map(h => h.id)).toEqual(["rapanui"]);
+    expect(hintsFor(named("Akropolis am Morgen"), [], []).map(h => h.id)).toEqual(["acropolis"]);
+    expect(hintsFor(base, ["CU", "IL"], []).map(h => h.id)).toEqual(["il", "cu"]);
+  });
+  it("Gebühren als Posten: Bali, Fuji und Osterinsel in Landeswährung", () => {
+    const fee = (id: string) => HINTS.find(h => h.id === id)?.fee;
+    expect(fee("bali")).toMatchObject({ adult: 150000, currency: "IDR" });
+    expect(fee("fuji")).toMatchObject({ adult: 4000, currency: "JPY" });
+    expect(fee("rapanui")).toMatchObject({ adult: 100, currency: "USD" });
+    // jede ID nur einmal
+    expect(new Set(HINTS.map(h => h.id)).size).toBe(HINTS.length);
   });
 });

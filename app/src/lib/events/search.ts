@@ -2,6 +2,7 @@
 import type { SourceStatus } from "../flights/types";
 import { searchFootballData, type Cached } from "./footballdata";
 import { searchTicketmaster } from "./ticketmaster";
+import { searchSports, SPORT_FILTERS } from "./sports";
 import type { EventEnv, EventHit, EventQuery, EventSearchResult } from "./types";
 
 interface Provider {
@@ -13,7 +14,9 @@ interface Provider {
 
 export const EVENT_PROVIDERS: Provider[] = [
   { id: "ticketmaster", name: "Ticketmaster", configured: env => !!env.TICKETMASTER_KEY, search: (q, env, f) => searchTicketmaster(q, env.TICKETMASTER_KEY!, f) },
-  { id: "footballdata", name: "football-data.org", configured: env => !!env.FOOTBALL_DATA_KEY, search: (q, env, f, c) => searchFootballData(q, env.FOOTBALL_DATA_KEY!, f, c) }
+  { id: "footballdata", name: "football-data.org", configured: env => !!env.FOOTBALL_DATA_KEY, search: (q, env, f, c) => searchFootballData(q, env.FOOTBALL_DATA_KEY!, f, c) },
+  // eigener Sportkalender, ohne Schlüssel
+  { id: "sports", name: "Sportkalender", configured: () => true, search: async q => searchSports(q) }
 ];
 
 const withTimeout = <T>(p: Promise<T>, ms: number) =>
@@ -39,8 +42,9 @@ export function uniqueById<T extends { id: string }>(list: T[]): T[] {
 }
 
 export async function searchEvents(q: EventQuery, env: EventEnv = {}, f: typeof fetch = fetch, cached?: Cached, timeoutMs = 20000): Promise<EventSearchResult> {
-  const active = EVENT_PROVIDERS.filter(p => p.configured(env));
-  const sources: SourceStatus[] = EVENT_PROVIDERS.filter(p => !p.configured(env)).map(p => ({ id: p.id, name: p.name, configured: false, ok: false, count: 0 }));
+  // nach Sportart fragt nur der Sportkalender
+  const active = EVENT_PROVIDERS.filter(p => p.configured(env) && (!q.sport || p.id === "sports"));
+  const sources: SourceStatus[] = EVENT_PROVIDERS.filter(p => !p.configured(env) && !q.sport).map(p => ({ id: p.id, name: p.name, configured: false, ok: false, count: 0 }));
   const lists = await Promise.all(active.map(async p => {
     const t0 = Date.now();
     try {
@@ -84,11 +88,13 @@ export function parseEventQuery(b: unknown): EventQuery | string {
   const lat = Number(o.lat), lon = Number(o.lon);
   const at = o.lat != null && o.lon != null && isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat, lon } : {};
   if (city.length > 60) return "Stadt zu lang";
-  // mit Stadt darf der Suchbegriff fehlen („Was läuft vor Ort“)
-  if ((q || !city) && (q.length < 2 || q.length > 80)) return "Suchbegriff angeben (2 bis 80 Zeichen)";
+  const sport = typeof o.sport === "string" && SPORT_FILTERS.includes(o.sport) ? o.sport : undefined;
+  const lang = typeof o.lang === "string" && /^[a-z]{2}$/.test(o.lang) ? o.lang : undefined;
+  // mit Stadt oder Sportart darf der Suchbegriff fehlen („Was läuft vor Ort“, „Wintersport“)
+  if ((q || (!city && !sport)) && (q.length < 2 || q.length > 80)) return "Suchbegriff angeben (2 bis 80 Zeichen)";
   if (city && city.length < 2) return "Stadt angeben";
   const from = typeof o.from === "string" && o.from ? o.from : undefined, to = typeof o.to === "string" && o.to ? o.to : undefined;
   if ((from && !DATE.test(from)) || (to && !DATE.test(to))) return "Datum im Format JJJJ-MM-TT";
   if (from && to && to < from) return "Zeitraum endet vor dem Anfang";
-  return { q, ...(city ? { city, ...(cityEn ? { cityEn } : {}), ...(cc ? { cc } : {}), ...at } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) };
+  return { q, ...(sport ? { sport } : {}), ...(lang ? { lang } : {}), ...(city ? { city, ...(cityEn ? { cityEn } : {}), ...(cc ? { cc } : {}), ...at } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) };
 }

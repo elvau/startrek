@@ -17,7 +17,7 @@
   import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
   import { DEFAULT_H, fits, km, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
-  import { cityFromAddress, searchEventsRemote } from "../events/app";
+  import { cityFromAddress, evWhen, searchEventsRemote, sportTag, SPORT_ICON } from "../events/app";
   import { uniqueById } from "../events/search";
   import { noteError } from "../bugs/log";
   import type { EventHit } from "../events/types";
@@ -44,13 +44,21 @@
   let picked = $state<EventHit | null>(null);
   /** angenommene Stadt (Hauptstadt), solange man sie nicht ändert */
   let guess = $state("");
-  async function find(e: Event) {
-    e.preventDefault();
+  // Sportkalender: Sportart antippen statt Stichwort
+  const SPORT_CHIPS = ["multi", "join", "run", "tri", "bike", "ski", "tennis", "motor", "golf", "team"];
+  let sport = $state("");
+  function findSport(s: string) {
+    sport = sport === s ? "" : s;
+    if (sport) { eq = ""; void find(); } else hits = null;
+  }
+  async function find(e?: Event) {
+    e?.preventDefault();
     evErr = ""; hits = null;
-    if (eq.trim().length < 2) return;
+    if (e) sport = "";
+    if (!sport && eq.trim().length < 2) return;
     evBusy = true;
     try {
-      const res = await searchEventsRemote({ q: eq.trim() });
+      const res = await searchEventsRemote(sport ? { q: "", sport } : { q: eq.trim() });
       if (!res.sources.some(s => s.configured)) { evErr = t("evs.notReady"); return; }
       hits = uniqueById(res.events || []);
       if (!hits.length && res.sources.every(s => !s.ok)) {
@@ -222,6 +230,10 @@
     <label class="f ev-grow">{t("evs.label")}<input type="search" enterkeyhint="search" bind:value={eq} placeholder={t("evs.ph")} /></label>
     <button class="btn" disabled={evBusy}>{evBusy ? t("evs.busy") : t("evs.go")}</button>
   </form>
+  <div class="chips ev-sports" aria-label={t("sp.title")}>
+    <span class="muted small">{t("sp.title")}</span>
+    {#each SPORT_CHIPS as s (s)}<button type="button" class="chip sm" class:on={sport === s} aria-pressed={sport === s} onclick={() => findSport(s)}>{SPORT_ICON[s]} {t(`sp.${s}` as Key)}</button>{/each}
+  </div>
   {#if evErr}<p class="warnline">{evErr}</p>{/if}
   {#if hits}
     {#if !hits.length}<p class="muted small">{t("evs.none")}</p>{/if}
@@ -229,7 +241,8 @@
       {#each hits as h (h.id)}
         <button type="button" class="ev-hit" onclick={() => pick(h)}>
           <b>{h.name}</b>
-          <span class="muted small">{dayShort(h.start.slice(0, 10))}{h.start.length > 10 ? ` ${time(h.start)}` : ""}{h.venue ? ` · ${h.venue}` : ""}{h.city ? `, ${h.city}` : ""}{h.category ? ` · ${h.category}` : ""}</span>
+          <span class="muted small">{evWhen(h)}{h.venue ? ` · ${h.venue}` : ""}{h.city ? `, ${h.city}` : ""}{h.category ? ` · ${h.category}` : ""}</span>
+          {#if h.sport}<span class="small ev-sport">{sportTag(h)}</span>{/if}
         </button>
       {/each}
     </div>
