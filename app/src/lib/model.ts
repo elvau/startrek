@@ -252,6 +252,8 @@ export interface Item {
   ai?: AiMark;
   /** Tagesplan: an diesem Tag (JJJJ-MM-TT, optional mit Uhrzeit JJJJ-MM-TTTHH:MM) */
   day?: string;
+  /** aus einem Hinweis (Einreise & Tipps) übernommen, z. B. „galapagos“ */
+  hint?: string;
 }
 
 /** eigener Eintrag im Tagesplan („Abendessen“, „Ruhetag“, „Zug nach Dubrovnik“) */
