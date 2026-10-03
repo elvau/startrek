@@ -2,8 +2,9 @@
  * Anwesenheit und Anreise, wie in der bisherigen App (presenceOf, stayCalc, accessFor).
  */
 import { t, tn } from "../i18n/index.svelte";
-import { hhKey, type Airport, type FlightLeg, type Household, type Item, type Option, type Traveler, type Trip } from "../model";
+import { hhKey, isActive, type Airport, type FlightLeg, type Household, type Item, type Option, type Traveler, type Trip } from "../model";
 import { DEFAULT_AIRPORTS } from "../airports";
+import { ridePrice } from "../transfer";
 
 const DAY = 86400000;
 const toD = (s: string) => new Date(s.slice(0, 10) + "T12:00:00Z");
@@ -88,14 +89,51 @@ export function roadKm(g: { lat: number; lon: number } | undefined, ap: Airport)
 /** Bahn zum Flughafen, pro Person hin und zurück, aus der Straßenentfernung (für Flughäfen ohne festen Preis) */
 export const trainPP = (km: number) => Math.round((2 * Math.min(80, Math.max(5, 0.15 * km))) / 5) * 5;
 
-export interface Access { cost: number; hours: number; km: number | null; info: string }
+/** cost: Anteil dieses Haushalts; total: ganze Fahrt (Auto, Bus) vor dem Teilen */
+export interface Access { cost: number; total?: number; hours: number; km: number | null; info: string }
 
-/** Anreise eines Haushalts zum Flughafen, hin und zurück, mit Parken */
+/** Plätze je Auto (mit Gepäck zum Flughafen) */
+const SEATS = 5;
+const sizeOf = (trip: Trip, hh: string) => Math.max(1, trip.travelers.filter(x => isActive(x) && hhKey(x) === hh).length);
+/** wer bei diesem Haushalt mitfährt (Fahrgemeinschaft) */
+export const ridersOf = (trip: Trip, name: string) => Object.entries(trip.households || {}).filter(([k, h]) => k !== name && h.mode === "with" && h.link === name).map(([k]) => k);
+/** Familien im Gruppenbus und Abfahrtsort */
+export function busOf(trip: Trip): { hhs: string[]; from?: string; geo?: { lat: number; lon: number; ort: string } } {
+  const hhs = Object.entries(trip.households || {}).filter(([, h]) => h.mode === "bus").map(([k]) => k);
+  const from = (trip.bus?.from && hhs.includes(trip.bus.from) && trip.households?.[trip.bus.from]?.geo ? trip.bus.from : undefined) ?? hhs.find(k => trip.households?.[k]?.geo);
+  return { hhs, from, geo: from ? trip.households?.[from]?.geo : undefined };
+}
+
+/**
+ * Anreise eines Haushalts zum Flughafen, hin und zurück. Auto: Fahrt und Parken; bringen lassen: zweimal hin und zurück,
+ * kein Parken; Fahrdienst: zwei Fahrten; Gruppenbus: zwei Fahrten für alle Familien im Bus. Fahrgemeinschaft und Bus
+ * werden nach Personen geteilt.
+ */
 export function accessFor(name: string, ap: Airport, persons: number, days: number, trip: Trip, depth = 0): Access {
   const h: Household = trip.households?.[name] || {};
+  const kc = trip.settings.kmCost ?? 0.3;
   if (h.mode === "with" && h.link && h.link !== name && depth < 3) {
-    const main = accessFor(h.link, ap, 1, days, trip, depth + 1);
-    return { cost: 0, hours: main.hours, km: main.km, info: t("hh.ridesWith", { name: h.link }) };
+    const host = trip.households?.[h.link] || {};
+    // fährt der andere Haushalt Bahn oder Bus, fährt man eben mit: wie dort, aber für die eigenen Personen
+    if (host.mode === "train" || host.mode === "bus" || host.mode === "with") {
+      const a = accessFor(name, ap, persons, days, { ...trip, households: { ...trip.households, [name]: { ...host, geo: host.geo || h.geo } } }, depth + 1);
+      return { ...a, info: `${t("hh.ridesWith", { name: h.link })} · ${a.info}` };
+    }
+    const main = accessFor(h.link, ap, sizeOf(trip, h.link), days, trip, depth + 1);
+    const group = sizeOf(trip, h.link) + ridersOf(trip, h.link).reduce((a, k) => a + sizeOf(trip, k), 0);
+    const total = main.total ?? main.cost;
+    const mine = sizeOf(trip, name);
+    return { cost: (total * mine) / group, total, hours: main.hours, km: main.km, info: t("acc.pool", { name: h.link, a: mine, b: group }) };
+  }
+  if (h.mode === "bus") {
+    const bus = busOf(trip);
+    const km = roadKm(bus.geo, ap);
+    const n = bus.hhs.reduce((a, k) => a + sizeOf(trip, k), 0) || 1;
+    const est = km != null ? ridePrice(n, km).perRide * 2 : null;
+    const total = trip.bus?.price || est;
+    if (total == null) return { cost: 0, hours: ap.h, km, info: `${t("acc.bus", { from: "?" })} (${t("acc.noPlz")})` };
+    const mine = sizeOf(trip, name);
+    return { cost: (total * mine) / n, total, hours: km != null ? km / 75 + 0.5 : ap.h, km, info: `${t("acc.bus", { from: bus.geo?.ort || "?" })} · ${t("acc.share", { a: mine, b: n })}` };
   }
   const km = roadKm(h.geo, ap);
   const driveH = km != null ? km / 85 + 0.25 : ap.h;
@@ -103,9 +141,23 @@ export function accessFor(name: string, ap: Airport, persons: number, days: numb
     const pp = ap.pp || (km != null ? trainPP(km) : 0);
     return { cost: pp * persons, hours: km != null ? driveH * 1.4 : ap.h, km, info: `${t("hh.train")} ${pp} € × ${persons}${km == null && h.mode !== "train" ? ` (${t("acc.noPlz")})` : ""}` };
   }
-  const cars = Math.max(1, h.cars || 1);
-  const drive = 2 * km * (trip.settings.kmCost ?? 0.3) * cars, park = ap.park * days * cars;
-  return { cost: drive + park, hours: driveH, km, info: t("acc.car", { km: Math.round(km), cars: cars > 1 ? ` ${t("acc.withCars", { n: cars })}` : "", days: tn("n.days", days) }) };
+  // Auto, bringen lassen, Fahrdienst: für den Haushalt und alle, die mitfahren
+  const riders = ridersOf(trip, name);
+  const group = sizeOf(trip, name) + riders.reduce((a, k) => a + sizeOf(trip, k), 0);
+  const share = (total: number, info: string): Access => {
+    if (!riders.length) return { cost: total, total, hours: driveH, km, info };
+    const mine = sizeOf(trip, name);
+    return { cost: (total * mine) / group, total, hours: driveH, km, info: `${info} · ${t("acc.share", { a: mine, b: group })}` };
+  };
+  if (h.mode === "taxi") {
+    const est = ridePrice(group, km);
+    const per = h.ride || est.perRide;
+    return share(2 * per, t("acc.taxi", { v: Math.round(per), km: Math.round(km) }));
+  }
+  const cars = Math.max(1, h.cars || 1, Math.ceil(group / SEATS));
+  const carsTxt = cars > 1 ? ` ${t("acc.withCars", { n: cars })}` : "";
+  if (h.mode === "drop") return share(4 * km * kc * cars, t("acc.drop", { km: Math.round(km), cars: carsTxt }));
+  return share(2 * km * kc * cars + ap.park * days * cars, t("acc.car", { km: Math.round(km), cars: carsTxt, days: tn("n.days", days) }));
 }
 
 export interface AccessCalc { cost: number; per: Record<string, number>; lines: { hh: string; ap: string; a: Access }[]; missing?: string }

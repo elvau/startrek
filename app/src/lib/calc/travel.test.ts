@@ -100,9 +100,39 @@ describe("Anreise zum Flughafen", () => {
     const t = trip(); delete t.households!.Klein.geo;
     expect(accessFor("Klein", DUS, 2, 8, t).info).toContain("PLZ fehlt");
   });
-  it("wer mitfährt, zahlt keine Anreise", () => {
+  it("Fahrgemeinschaft: Kosten nach Personen geteilt", () => {
     const t = trip(); t.households!.Groß = { mode: "with", link: "Klein" };
-    expect(accessFor("Groß", DUS, 2, 8, t).cost).toBe(0);
+    const alone = accessFor("Klein", DUS, 2, 8, trip()).cost;
+    expect(accessFor("Groß", DUS, 2, 8, t).cost).toBeCloseTo(alone / 2);
+    expect(accessFor("Klein", DUS, 2, 8, t).cost).toBeCloseTo(alone / 2);
+    expect(accessFor("Groß", DUS, 2, 8, t).info).toContain("Klein");
+  });
+  it("mehr Mitfahrer als Plätze: zweites Auto", () => {
+    const t = trip();
+    for (const n of ["E", "F", "G"]) t.travelers.push({ id: n, name: n, household: "Groß" });
+    t.households!.Groß = { mode: "with", link: "Klein" };
+    const km = roadKm(t.households!.Klein.geo, DUS)!;
+    expect(accessFor("Klein", DUS, 2, 8, t).total).toBeCloseTo(2 * (2 * km * 0.3 + 8 * 12));
+  });
+  it("bringen und abholen lassen: zweimal hin und zurück, kein Parken", () => {
+    const t = trip(); t.households!.Klein.mode = "drop";
+    const km = roadKm(t.households!.Klein.geo, DUS)!;
+    expect(accessFor("Klein", DUS, 2, 8, t).cost).toBeCloseTo(4 * km * 0.3);
+  });
+  it("Fahrdienst: zwei Fahrten, eigener Preis oder Richtwert", () => {
+    const t = trip(); t.households!.Klein.mode = "taxi";
+    expect(accessFor("Klein", DUS, 2, 8, t).cost).toBeGreaterThan(50);
+    t.households!.Klein.ride = 45;
+    expect(accessFor("Klein", DUS, 2, 8, t).cost).toBe(90);
+  });
+  it("Gruppenbus: ein Preis für alle im Bus, nach Personen geteilt", () => {
+    const t = trip(); t.households!.Klein.mode = "bus"; t.households!.Groß.mode = "bus";
+    t.bus = { price: 400 };
+    expect(accessFor("Klein", DUS, 2, 8, t).cost).toBe(200);
+    expect(accessFor("Groß", DUS, 2, 8, t).cost).toBe(200);
+    expect(accessFor("Groß", DUS, 2, 8, t).info).toContain("Düsseldorf");
+    delete t.bus;
+    expect(accessFor("Klein", DUS, 2, 8, t).cost).toBeGreaterThan(0);
   });
   it("wird beim Flug eingerechnet, Tage vom Hinflug bis zum Rückflug", () => {
     const t = trip();

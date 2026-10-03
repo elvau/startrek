@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dayRange } from "../itinerary";
   import { t, tn } from "../i18n/index.svelte";
   import { app, calc } from "../store.svelte";
   import { eur, testItems } from "../calc";
@@ -9,7 +10,7 @@
   let { onopen }: { onopen: () => void } = $props();
 
   const ch = $derived(CHAPTERS.find(c => c.k === view.active) || CHAPTERS[0]);
-  const val = $derived(ch.k === "trav" ? tn("n.persons", calc.T.active) : ch.k === "split" ? (Object.keys(calc.T.byHousehold).length > 1 && Object.keys(calc.T.byHousehold).length === calc.T.active ? tn("n.persons", calc.T.active) : tn("n.families", Object.keys(calc.T.byHousehold).length)) : eur(calc.T.byCat[ch.k]));
+  const val = $derived(ch.k === "plan" ? tn("n.days", dayRange(app.trip).length) : ch.k === "trav" ? tn("n.persons", calc.T.active) : ch.k === "split" ? (Object.keys(calc.T.byHousehold).length > 1 && Object.keys(calc.T.byHousehold).length === calc.T.active ? tn("n.persons", calc.T.active) : tn("n.families", Object.keys(calc.T.byHousehold).length)) : eur(calc.T.byCat[ch.k]));
 </script>
 
 <button class="dock" onclick={onopen} aria-label={t("dock.open", { total: eur(calc.T.total) })}>

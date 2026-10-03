@@ -37,12 +37,16 @@ export function vehicleFor(persons: number): { vehicle: Vehicle; count: number }
   return v ? { vehicle: v, count: 1 } : { vehicle: "coach", count: Math.ceil(n / RATES.coach.seats) };
 }
 
-export function transferPlan(ap: { code: string } & Pt, dest: { name: string } & Pt, persons: number, pli = 1): TransferPlan {
-  const km = Math.max(3, kmBetween(ap, dest) * 1.3);
+/** Preis je Fahrt für alle Fahrzeuge (Fahrdienst, Taxi, Bus) bei km Straße */
+export function ridePrice(persons: number, km: number, pli = 1): { vehicle: Vehicle; count: number; perRide: number } {
   const { vehicle, count } = vehicleFor(persons);
   const r = RATES[vehicle], level = Math.pow(pli || 1, 0.7);
-  const perRide = Math.round((r.base + r.km * km) * level * count);
-  return { ap: ap.code, to: dest.name, km, vehicle, count, perRide };
+  return { vehicle, count, perRide: Math.round((r.base + r.km * km) * level * count) };
+}
+
+export function transferPlan(ap: { code: string } & Pt, dest: { name: string } & Pt, persons: number, pli = 1): TransferPlan {
+  const km = Math.max(3, kmBetween(ap, dest) * 1.3);
+  return { ap: ap.code, to: dest.name, km, ...ridePrice(persons, km, pli) };
 }
 
 /** Posten „Flughafentransfer“: zwei Fahrten (hin und zurück), Preis für die ganze Gruppe */

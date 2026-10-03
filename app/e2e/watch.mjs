@@ -39,6 +39,11 @@ const TRIPS = [
   { id: "gruppe", name: "Stammtisch Wien", place: "Wien", country: "Österreich", from: "2027-03-12", to: "2027-03-14", ...base,
     travelers: ["Löwe", "Panda", "Fuchs", "Biber", "Wolf", "Koala"].map((n, i) => ({ id: "s" + i, name: n, household: n })), food: { on: true, style: "mix" },
     items: [{ id: "gs", cat: "stay", name: "Hotel Wien", status: "idea", from: "2027-03-12", to: "2027-03-14", options: [{ id: "go", label: "Hotel", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 600, capacity: 6 } }] }] },
+  // Anreise zum Flughafen: drei Familien, alle in den Gruppenbus, dann eine Fahrgemeinschaft
+  { id: "anreise", name: "Ibiza Clique", place: "Ibiza", country: "Spanien", from: "2027-07-02", to: "2027-07-09", ...base,
+    travelers: ["Ali", "Bea", "Cem", "Dio", "Eli", "Fay"].map((n, i) => ({ id: "c" + i, name: n, household: ["Nord", "Süd", "West"][i >> 1] })),
+    households: { Nord: { plz: "40210", geo: { ort: "Düsseldorf", lat: 51.22, lon: 6.78 }, mode: "car" }, Süd: { plz: "41061", geo: { ort: "Mönchengladbach", lat: 51.19, lon: 6.44 }, mode: "car" }, West: { plz: "47051", geo: { ort: "Duisburg", lat: 51.43, lon: 6.76 }, mode: "car" } },
+    items: [{ id: "if", cat: "flights", name: "Flug", status: "chosen", options: [flightOpt("o7", 900, [L("out", "DUS", "IBZ", "2027-07-02T08:00", "2027-07-02T10:30"), L("back", "IBZ", "DUS", "2027-07-09T18:00", "2027-07-09T20:30")])] }] },
   { id: "rom", name: "Rom 2025", place: "Rom", country: "Italien", from: "2025-04-01", to: "2025-04-05", travelers: people, ...base, items: [] }
 ];
 
@@ -195,6 +200,33 @@ try {
   await p.waitForTimeout(500);
   if (await p.locator(".modal.inline").count()) fail("Suche aus der anderen Reise noch offen");
   log("Reise gewechselt: aufgeklappte Flugsuche der vorigen Reise ist zu");
+
+  // Tagesplan: Tage der Reise, Flug und Unterkunft automatisch; eigener Eintrag; Erlebnis einem Tag zuordnen
+  await p.locator("#plan").scrollIntoViewIfNeeded();
+  const days = p.locator("#plan .dp-day");
+  await until(async () => (await days.count()) === 4, "4 Tage (07.–10.05.)");
+  const d1 = await days.nth(0).innerText();
+  if (!d1.includes("DUS → PMI") || !d1.includes("08:00") || !d1.includes("Check-in")) fail("Tag 1: " + d1);
+  if (!(await days.nth(3).innerText()).includes("PMI → DUS")) fail("Rückflug nicht am letzten Tag");
+  await days.nth(1).locator(".dp-plus").click();
+  await days.nth(1).locator(".dp-add .chip", { hasText: "Essen" }).click();
+  await days.nth(1).locator(".dp-text").fill("Abendessen am Hafen");
+  await days.nth(1).locator(".dp-time").fill("20:00");
+  await days.nth(1).locator(".dp-add .btn.primary").click();
+  await until(async () => (await days.nth(1).innerText()).includes("Abendessen am Hafen"), "eigener Eintrag");
+  await days.nth(2).locator(".dp-title-in").fill("Ruhetag");
+  await days.nth(2).locator(".dp-title-in").press("Tab");
+  await p.locator("#plan .dp-o", { hasText: "Bootstour" }).locator("select").selectOption({ index: 2 });
+  await until(async () => (await days.nth(1).innerText()).includes("Bootstour"), "Bootstour an Tag 2");
+  if (await p.locator("#plan .dp-o", { hasText: "Bootstour" }).count()) fail("Bootstour noch ohne Tag");
+  await until(async () => { const sv = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:palma") || "{}").days); return !!sv?.["2027-05-08"]?.notes?.[0]?.text && sv?.["2027-05-09"]?.title === "Ruhetag"; }, "Tagesplan gespeichert");
+  if (process.env.SHOTS) await p.locator("#plan").screenshot({ path: `${process.env.SHOTS}/plan.png` });
+  // Reiseroute: Vorschau als kleines Bild (Wohnort fehlt hier: Flughäfen und Ort)
+  if (!(await p.locator("#plan .dp-route svg.rmini path").count())) fail("Routenvorschau fehlt");
+  await p.locator("#plan .dp-rbtn").click();
+  await p.locator("#plan .rmap .rm-play").waitFor();
+  await p.locator("#plan .dp-rbtn").click();
+  log("Tagesplan: 4 Tage, Flug und Check-in automatisch, „Abendessen am Hafen“ 20:00, Ruhetag, Bootstour an Tag 2; Routenvorschau, Karte mit Abspielen, Bild und Video");
   if (await p.locator("#transport .ground").count()) fail("Palma ist kein nahes Ziel");
 
   // nahes Ziel: Bahn, Fernbus, Auto, Reisebus mit Richtwerten; bahn.de vorbefüllt; Reisebus als Posten
@@ -279,11 +311,32 @@ try {
   await until(async () => (await p.locator("#misc .card[data-item]", { hasText: "Verpflegung" }).count()) === 1, "ein Posten Verpflegung", 10000);
   await p.locator("#split").scrollIntoViewIfNeeded();
   await p.locator("#split .sh-table").waitFor();
-  if ((await p.locator("#split .sh-table tbody tr").count()) !== 6) fail("Tabelle nicht 6 Zeilen");
+  // alle zahlen gleich: eine Zeile „Alle (6)“, aufklappbar
+  if ((await p.locator("#split .sh-table tbody tr").count()) !== 1) fail("Tabelle: eine Zeile „Alle (6)“ erwartet, " + await p.locator("#split .sh-table tbody tr").count());
+  if (!(await p.locator("#split .sh-grp").innerText()).includes("Alle (6)")) fail("Gruppenzeile ohne „Alle (6)“");
   if ((await p.locator("#split article.share").count()) !== 2) fail("statt 6 Karten: Tabelle und einmal „Für jede Person gleich“ erwartet, " + await p.locator("#split article.share").count());
+  await p.locator("#split .sh-grp").click();
+  await until(async () => (await p.locator("#split .sh-table tbody tr").count()) === 7, "Gruppe aufgeklappt");
   await p.locator("#split .sh-table tbody tr", { hasText: "Panda" }).click();
   await until(async () => (await p.locator("#split article.share").count()) === 3, "Einzelheiten zu Panda");
-  log("Gruppe mit 6 Einzelnen: Startseite mit Planungsstand, ein Posten Verpflegung, Abrechnung als Tabelle, Einzelheiten auf Klick");
+  log("Gruppe mit 6 Einzelnen: Startseite mit Planungsstand, ein Posten Verpflegung, Abrechnung als eine Zeile „Alle (6)“, aufklappbar, Einzelheiten auf Klick");
+
+  // Anreise zum Flughafen: für alle Gruppenbus (Kosten nach Personen), dann Fahrgemeinschaft und Fahrdienst
+  await p.locator(".top .brand-btn").click();
+  await p.locator(".start .home-trip", { hasText: "Ibiza Clique" }).click();
+  await p.locator(".hhs").scrollIntoViewIfNeeded();
+  await p.locator(".hhs .hh-all").selectOption("bus");
+  const accLines = () => p.locator("#flights .card[data-item]").first().innerText();
+  await until(async () => ((await accLines()).match(/Gruppenbus ab Düsseldorf/g) || []).length === 3, "drei Familien im Gruppenbus");
+  if (!(await accLines()).includes("Anteil 2 von 6 Personen")) fail("Gruppenbus ohne Anteil: " + await accLines());
+  await p.locator(".hh-sum b", { hasText: /^West$/ }).click();
+  await p.locator(".hh.open select").first().selectOption("with");
+  await p.locator(".hh.open label", { hasText: "bei" }).locator("select").selectOption("Nord");
+  await p.locator(".hh-sum b", { hasText: /^Nord$/ }).click();
+  await p.locator(".hh.open select").first().selectOption("taxi");
+  await p.locator(".hh.open .hh-ride").fill("60"); await p.locator(".hh.open .hh-ride").blur();
+  await until(async () => (await accLines()).includes("Fahrgemeinschaft mit Nord · Anteil 2 von 4 Personen") && (await accLines()).includes("Fahrdienst 2 × 60 €"), "Fahrgemeinschaft und Fahrdienst");
+  log("Anreise zum Flughafen: für alle Gruppenbus (Anteil je Person), Fahrgemeinschaft teilt die Kosten, Fahrdienst mit eigenem Preis");
 
   // Reise ohne Flug und ohne Wohnort: „Unterwegs“ fragt nach der PLZ für den Bahn/Bus-Vergleich
   await p.locator(".top .brand-btn").click();

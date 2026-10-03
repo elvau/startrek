@@ -7,7 +7,9 @@
   import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { summarize, type TripState, type TripSummary } from "../overview";
-  import { geo } from "../geo/geo.svelte";
+  import { ensureAirports, geo } from "../geo/geo.svelte";
+  import { tripRoute } from "../routeApp";
+  import RouteMini from "./RouteMini.svelte";
   import { loadGeo } from "../geo/places";
   import { cloud } from "../cloud/cloud.svelte";
   import { range } from "../format";
@@ -20,8 +22,8 @@
 
   let picking = $state(false);
   const today = new Date().toISOString().slice(0, 10);
-  type Row = TripEntry & { s: TripSummary | null };
-  const rows = $derived<Row[]>(homeTrips().map(m => { const tr = tripFor(m.id); return { ...m, s: tr ? summarize(tr, today, geo, i18n.lang) : null }; }));
+  type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null };
+  const rows = $derived<Row[]>(homeTrips().map(m => { const tr = tripFor(m.id); return { ...m, s: tr ? summarize(tr, today, geo, i18n.lang) : null, route: tr ? tripRoute(tr) : null }; }));
   const stateOf = (r: Row): TripState => r.s?.state ?? (r.to && r.to < today ? "past" : "planned");
   const byDate = (dir: number) => (a: Row, b: Row) => dir * (a.from || "9999").localeCompare(b.from || "9999");
   // Sortierung und Ansicht, je Gerät gemerkt
@@ -55,7 +57,7 @@
   // erste Gruppe mit offener Überschrift (Vergangene sind zugeklappt): dort steht „aufräumen“
   const firstOpen = $derived(groups.find(g => !(g.k === "past" && sort !== "country"))?.k);
   // Länder für Rundreisen: Weltdaten nur laden, wenn es Flüge gibt
-  $effect(() => { if (rows.some(r => r.s && tripFor(r.id)?.items.some(i => i.cat === "flights"))) loadGeo(geo, []); });
+  $effect(() => { if (rows.some(r => r.s && tripFor(r.id)?.items.some(i => i.cat === "flights"))) { loadGeo(geo, []); void ensureAirports().catch(() => {}); } });
   // „in 12 Tagen“, „in 7 Monaten“, „morgen“
   function until(from: string): string {
     const d = Math.round((Date.parse(from + "T00:00:00Z") - Date.parse(new Date().toISOString().slice(0, 10) + "T00:00:00Z")) / 86400000);
@@ -139,6 +141,7 @@
             </button>
             {:else}
             <button class="home-trip" class:past={isPast} onclick={() => openTrip(m.id, "Liste")}>
+              {#if m.route && m.route.points.length > 2}<span class="ht-route" aria-hidden="true"><RouteMini route={m.route} w={280} h={96} /></span>{/if}
               <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
               {#if x}
                 {#if x.where}<span class="ht-where">{x.round ? `🔁 ${t("home.round")}: ` : "📍 "}{x.where}</span>{/if}

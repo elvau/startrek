@@ -220,20 +220,40 @@ export interface Item {
   arrival?: boolean;
   /** von der KI: vorgeschlagen (echtes Angebot), erstellt (Schätzung) oder angepasst (ersetzt einen Posten) */
   ai?: AiMark;
+  /** Tagesplan: an diesem Tag (JJJJ-MM-TT, optional mit Uhrzeit JJJJ-MM-TTTHH:MM) */
+  day?: string;
 }
 
+/** eigener Eintrag im Tagesplan („Abendessen“, „Ruhetag“, „Zug nach Dubrovnik“) */
+export type NoteKind = "see" | "food" | "fun" | "rest" | "move" | "note";
+export interface DayNote {
+  id: string;
+  text: string;
+  kind?: NoteKind;
+  /** HH:MM */
+  time?: string;
+  /** Ziel bei „move“ (Ort für die Route) */
+  to?: string;
+}
+export interface DayPlan { title?: string; notes?: DayNote[] }
+
 export interface AiMark { at: string; kind: "suggested" | "created" | "changed" }
+
+export type AccessMode = "car" | "drop" | "taxi" | "train" | "bus" | "with";
+export const ACCESS_MODES: AccessMode[] = ["car", "drop", "taxi", "train", "bus", "with"];
 
 export interface Household {
   /** Postleitzahl des Wohnorts */
   plz?: string;
   /** aufgelöster Wohnort, wird beim Eintippen der PLZ gesetzt */
   geo?: { lat: number; lon: number; ort: string };
-  /** Anreise zum Flughafen */
-  mode?: "car" | "train" | "with";
+  /** Anreise zum Flughafen: selbst fahren und parken, bringen und abholen lassen, Fahrdienst/Taxi, Bahn, Gruppenbus, Fahrgemeinschaft */
+  mode?: AccessMode;
   cars?: number;
-  /** fährt mit diesem Haushalt mit */
+  /** Fahrgemeinschaft: fährt mit diesem Haushalt mit (Kosten nach Personen geteilt) */
   link?: string;
+  /** Fahrdienst/Taxi: Preis je Fahrt für alle Fahrzeuge (leer = Richtwert) */
+  ride?: number;
   /** eigene Anwesenheit statt aus dem Flug: erste Nacht, Abreisetag */
   arrive?: string;
   depart?: string;
@@ -330,6 +350,8 @@ export interface Trip {
   event?: TripEvent;
   travelers: Traveler[];
   households?: Record<string, Household>;
+  /** Gruppenbus zum Flughafen für alle Familien mit Anreise „Gruppenbus“: Abfahrt beim Wohnort dieser Familie, Preis gesamt (leer = Richtwert) */
+  bus?: { from?: string; price?: number };
   items: Item[];
   /** Einfacher Modus: ein Betrag je Bereich, gleich auf alle Aktiven verteilt */
   simple?: Partial<Record<CatKey, number>>;
@@ -337,6 +359,8 @@ export interface Trip {
   lines?: SimpleLine[];
   /** Zuschüsse: Mannschaftskasse, Oma und Opa, Sponsor … senken den Eigenanteil */
   funds?: Fund[];
+  /** Tagesplan: je Tag (JJJJ-MM-TT) Überschrift und eigene Einträge; Flüge, Unterkünfte und Erlebnisse kommen automatisch dazu */
+  days?: Record<string, DayPlan>;
   /** öffentliche Aktionsseite zum Mitfinanzieren (Zuschüsse Stufe 2), nur mit Einwilligung zu Name und IBAN */
   campaign?: Campaign;
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */

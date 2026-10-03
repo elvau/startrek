@@ -12,6 +12,7 @@
   import { openStaySearch } from "../stays/open.svelte";
   import { airportNights } from "../stays/airports";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
+  import { cluster, groupLabel } from "../groups";
 
   // Orts- und Flughafendaten für die Vorschläge am Flughafen (einmal laden)
   $effect(() => { ensureGeo(app.trip); void ensureAirports(); });
@@ -28,10 +29,12 @@
     if (!nights.length || nights.length > 120) return null;
     const act = trip.travelers.filter(isActive);
     const hhs = [...new Set(act.map(hhKey))];
-    const notes: { crit: boolean; text: string }[] = [];
+    // Hinweise je Familie: gleiche Hinweise mehrerer Familien in einer Zeile
+    const noteBy = new Map<string, string[]>();
+    const note = (h: string, text: string) => noteBy.set(text, [...(noteBy.get(text) || []), h]);
     // Nächte im Flugzeug (Rundreise mit Nachtflug): kein Bett nötig
     const air = Object.fromEntries(act.map(t => [t.id, pres[t.id]?.src === "flight" ? airNights(t, trip, it => activeOption(it, trip)) : new Set<string>()]));
-    const rows = hhs.map(h => {
+    const hhRows = hhs.map(h => {
       const ms = act.filter(t => hhKey(t) === h);
       const known = ms.some(t => pres[t.id]);
       const cells = nights.map(x => {
@@ -44,17 +47,25 @@
         return { k: cover.length > 1 ? ("dbl" as const) : ("ok" as const), s: stays.indexOf(cover[0]) };
       });
       const dbl = nights.filter((_, i) => cells[i].k === "dbl");
-      if (dbl.length) notes.push({ crit: false, text: `${h}: ${t("plan.double", { n: tn("n.nights", dbl.length), list: dbl.slice(0, 4).map(dateDE).join(", ") })}` });
-      if (!known) notes.push({ crit: false, text: `${h}: ${t("plan.unknown")}` });
+      if (dbl.length) note(h, t("plan.double", { n: tn("n.nights", dbl.length), list: dbl.slice(0, 4).map(dateDE).join(", ") }));
+      if (!known) note(h, t("plan.unknown"));
       return { h, cells };
     });
+    const notes = [...noteBy].map(([text, hs]) => ({ crit: false, text: `${groupLabel(hs, hhs.length)}: ${text}` }));
+    // Familien mit denselben Nächten in denselben Unterkünften: eine Zeile (Gruppenreise: „Alle (15)“)
+    const rows = cluster(hhRows, (a, b) => JSON.stringify(a.cells) === JSON.stringify(b.cells))
+      .map(g => ({ h: groupLabel(g.map(r => r.h), hhs.length), cells: g[0].cells }));
     // wie im Artefakt: Lücken zuerst (mit „Unterkunft suchen“), dann Hinweise zu An- und Abreise
     const gs = gaps(trip);
     const aps = airportNights(trip, geo);
     // Hinweis „sehr früh“ nur, wenn es dafür noch keinen Vorschlag am Flughafen gibt
-    const info = arrivals(trip).flatMap(a => hintList(a).filter(h => !(h.kind === "early" && aps.some(x => x.kind === "last" && x.ids.join() === a.ids.join()))).map(h => `${a.who}: ${h.text}`));
+    const infoBy = new Map<string, string[]>();
+    for (const a of arrivals(trip)) for (const h of hintList(a).filter(h => !(h.kind === "early" && aps.some(x => x.kind === "last" && x.ids.join() === a.ids.join())))) infoBy.set(h.text, [...(infoBy.get(h.text) || []), a.who]);
+    const info = [...infoBy].map(([text, ws]) => `${groupLabel(ws, ws.length === hhs.length && ws.every(w => hhs.includes(w)) ? hhs.length : -1)}: ${text}`);
+    // wer ohne Unterkunft ist: alle → „Alle (15)“, sonst kurz
+    const whoShort = (ids: string[], who: string) => groupLabel(who.split(", "), ids.length === act.length ? who.split(", ").length : -1);
     const open = stays.filter(s => s.options.every(o => !o.label && !o.price.unit && !o.price.adult));
-    return { nights, rows, stays, notes, gs, info, open, aps };
+    return { nights, rows, stays, notes, gs, info, open, aps, whoShort };
   });
 
   // aufeinanderfolgende gleiche Zellen zu Balken zusammenfassen
@@ -96,7 +107,7 @@
       <ul class="pl-notes">
         {#each plan.gs as g (g.from + g.to + g.who)}
           {@const where = stationName(geo, airportData, g.ap, g.city)}
-          <li class="crit"><b>{g.who}</b>{where ? ` · ${where}` : ""}: {g.nights === 1 ? t("plan.gapOne", { d: dayShort(g.from) }) : t("plan.gap", { a: dayShort(g.from), b: dayShort(g.to), n: tn("n.nights", g.nights) })}
+          <li class="crit"><b title={g.who}>{plan.whoShort(g.ids, g.who)}</b>{where ? ` · ${where}` : ""}: {g.nights === 1 ? t("plan.gapOne", { d: dayShort(g.from) }) : t("plan.gap", { a: dayShort(g.from), b: dayShort(g.to), n: tn("n.nights", g.nights) })}
             {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ from: g.from, to: g.to, ids: g.ids, ...(where ? { place: where } : {}) })}>{t("st.open")}</button>{/if}</li>
         {/each}
         {#each plan.aps as a (a.kind + a.from + a.ids.join())}

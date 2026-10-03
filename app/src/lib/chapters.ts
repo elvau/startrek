@@ -1,7 +1,7 @@
 import type { CatKey } from "./model";
 import { t, type Key } from "./i18n/index.svelte";
 
-export type ChapterKey = "trav" | CatKey | "split";
+export type ChapterKey = "trav" | CatKey | "plan" | "split";
 
 export interface Chapter { k: ChapterKey; readonly label: string; readonly title: string; icon: string; readonly sub: string }
 
@@ -15,11 +15,12 @@ const ch = (k: ChapterKey, icon: string): Chapter => ({
 
 export const CHAPTERS: Chapter[] = [
   ch("trav", "users"), ch("flights", "plane"), ch("stay", "bed"), ch("transport", "car"),
-  ch("attractions", "ticket"), ch("misc", "bag"), ch("split", "wallet")
+  ch("attractions", "ticket"), ch("misc", "bag"), ch("plan", "calendar"), ch("split", "wallet")
 ];
 
 export const chLabel = (c: Chapter) => c.label;
 export const chTitle = (c: Chapter) => c.title;
 
-export const CAT_CHAPTERS = CHAPTERS.filter(c => c.k !== "trav" && c.k !== "split") as (Chapter & { k: CatKey })[];
+export const CAT_CHAPTERS = CHAPTERS.filter(c => c.k !== "trav" && c.k !== "split" && c.k !== "plan") as (Chapter & { k: CatKey })[];
+export const PLAN = CHAPTERS.find(c => c.k === "plan")!;
 export const SPLIT = CHAPTERS.find(c => c.k === "split")!;

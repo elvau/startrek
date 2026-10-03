@@ -8,7 +8,9 @@
   import { cloud } from "./lib/cloud/cloud.svelte";
   import LoginDialog from "./lib/ui/LoginDialog.svelte";
   import { eur } from "./lib/calc";
-  import { CHAPTERS, CAT_CHAPTERS, SPLIT } from "./lib/chapters";
+  import { CHAPTERS, CAT_CHAPTERS, PLAN, SPLIT } from "./lib/chapters";
+  import DayPlan from "./lib/ui/DayPlan.svelte";
+  import { dayRange } from "./lib/itinerary";
   import { initScroll } from "./lib/scroll.svelte";
   import { dayShort, nights } from "./lib/format";
   import Sprite from "./lib/ui/Sprite.svelte";
@@ -203,6 +205,11 @@
         {/if}
       </Chapter>
     {/each}
+
+    <!-- Tagesplan: was an welchem Tag passiert (keine Kosten) -->
+    <Chapter ch={PLAN} n={CHAPTERS.length - 1} sum={String(dayRange(app.trip).length)} sub={t("ch.plan.sub")}>
+      <DayPlan />
+    </Chapter>
 
     <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.due)} sub={hhLabel}>
       <Split />

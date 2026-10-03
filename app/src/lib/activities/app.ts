@@ -30,6 +30,8 @@ export function eventItem(h: EventHit): Item {
   return {
     id: uid(), cat: "attractions", name: h.name, status: "idea",
     note: [when, where].filter(Boolean).join(" · "),
+    // Tagesplan: Events haben ihren Termin
+    ...(/^\d{4}-\d{2}-\d{2}/.test(h.start) ? { day: h.start.slice(0, 16) } : {}),
     options: [{
       id: uid(), label: h.name, detail: [when, where].filter(Boolean).join(" · "),
       price: { mode: "person", currency: "EUR", adult }, ...(adult ? {} : { estimate: true }),
