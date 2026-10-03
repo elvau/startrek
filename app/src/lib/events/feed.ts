@@ -52,12 +52,11 @@ export function fromJolpica(data: any): SportEvent[] {
 }
 
 /** Wikidata: Sportevents mit Sportart (P641), Beginn (P580) im Zeitraum, Koordinaten am Event, Ort oder dessen Verwaltungseinheit */
-export function wikidataQuery(from: string, to: string, minLinks = 5): string {
-  // Beginn tagesgenau (Genauigkeit 11); nur das Jahr bekannt hieße sonst 1. Januar
+export function wikidataQuery(from: string, to: string, minLinks = 8): string {
+  // schlank halten: Wikidata bricht nach 60 Sekunden ab (die Genauigkeit des Datums abzufragen war schon zu viel)
   return `SELECT ?e ?en ?de ?start ?end ?sportEn ?c0 ?c1 ?c2 ?locEn ?locDe ?cc ?links ?wpEn ?wpDe WHERE {
   ?e wdt:P641 ?sport ; wdt:P580 ?start ; wikibase:sitelinks ?links .
   FILTER(?start >= "${from}T00:00:00Z"^^xsd:dateTime && ?start < "${to}T00:00:00Z"^^xsd:dateTime && ?links >= ${minLinks})
-  ?e p:P580/psv:P580 ?sv . ?sv wikibase:timeValue ?start ; wikibase:timePrecision ?prec . FILTER(?prec >= 11)
   ?sport rdfs:label ?sportEn . FILTER(LANG(?sportEn) = "en")
   OPTIONAL { ?e wdt:P582 ?end }
   OPTIONAL { ?e wdt:P625 ?c0 }
@@ -94,6 +93,8 @@ export function fromWikidata(json: any): SportEvent[] {
     const start = (v("start") || "").slice(0, 10), end = (v("end") || "").slice(0, 10);
     // „Athletics at the 2028 Summer Olympics“, „… – Men's 100 metres“: Teil eines größeren Events
     if (!name || !sport || !at || !/^\d{4}-\d{2}-\d{2}$/.test(start) || /\bat the \d{4}\b| – |—/i.test(name)) continue;
+    // nur das Jahr bekannt: Wikidata liefert dann den 1. Januar (ohne oder mit Ende 31. Dezember)
+    if (start.endsWith("-01-01") && (!end || end.endsWith("-12-31"))) continue;
     const city = v("locDe") || v("locEn") || "";
     out.set(id, {
       id: `wd-${id}`, name, ...(v("de") && v("de") !== name ? { de: v("de") } : {}), sport: sport as Sport, start,

@@ -22,6 +22,8 @@ const WIKIDATA = { results: { bindings: [
   { e: uri("http://www.wikidata.org/entity/Q1001"), en: lit("2027 World Aquatics Championships"), start: lit("2027-07-16T00:00:00Z"), sportEn: lit("swimming"), c1: lit("Point(113.264 23.129)") },
   { e: uri("http://www.wikidata.org/entity/Q1002"), en: lit("2027 FIFA Women's World Cup"), start: lit("2027-06-24T00:00:00Z"), sportEn: lit("association football"), c0: lit("Point(-43.2 -22.9)") },
   { e: uri("http://www.wikidata.org/entity/Q1003"), en: lit("Athletics at the 2028 Summer Olympics"), start: lit("2028-07-15T00:00:00Z"), sportEn: lit("athletics"), c0: lit("Point(-118.2 34.0)") },
+  // nur das Jahr bekannt (1. Januar): fällt weg
+  { e: uri("http://www.wikidata.org/entity/Q1006"), en: lit("2027 World Athletics Championships"), start: lit("2027-01-01T00:00:00Z"), sportEn: lit("athletics"), c0: lit("Point(116.4 39.9)") },
   { e: uri("http://www.wikidata.org/entity/Q1004"), en: lit("2027 World Rowing Championships"), start: lit("2027-08-29T00:00:00Z"), sportEn: lit("rowing") },
   { e: uri("http://www.wikidata.org/entity/Q1005"), en: lit("2027 Men's Handball World Championship"), start: lit("2027-01-14T00:00:00Z"), end: lit("2027-01-31T00:00:00Z"),
     sportEn: lit("handball"), c2: lit("Point(6.95 50.94)"), locEn: lit("Cologne"), cc: lit("DE"), wpEn: uri("https://en.wikipedia.org/wiki/2027_World_Men%27s_Handball_Championship") }
@@ -60,7 +62,6 @@ describe("Sportkalender aus offenen Quellen", () => {
     const q = wikidataQuery("2026-10-03", "2029-10-03", 8);
     expect(q).toContain('"2026-10-03T00:00:00Z"^^xsd:dateTime');
     expect(q).toContain("?links >= 8");
-    expect(q).toContain("wikibase:timePrecision ?prec . FILTER(?prec >= 11)");
     expect(horizon(SPORTS) < "2028-01-01").toBe(true);
     expect(horizon(SPORTS) >= "2027-06-01").toBe(true);
   });
