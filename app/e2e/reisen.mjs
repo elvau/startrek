@@ -66,7 +66,9 @@ try {
     const q = JSON.parse(r.request().postData());
     asked.flights.push(q);
     const from = q.fromAirports?.[0] || q.from, to = q.toAirports?.[0] || q.to;
-    if (from === "NAN" && (q.maxStops ?? 2) < 2) return json(r, { offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0 }] });
+    // mit 1 Umstieg nur ein Testangebot (Duffel im Testmodus): zählt nicht, also trotzdem mit 2 Umstiegen nachsuchen
+    if (from === "NAN" && (q.maxStops ?? 2) < 2) return json(r, { offers: [{ id: "duffel-test", source: "duffel", sourceName: "Duffel", test: true, price: 50, currency: "EUR", url: "https://duffel.test", out: { ...leg(from, to, q.depart, 600), stops: 0, route: [from, to], carriers: ["Duffel Airways"] } }],
+      sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0 }, { id: "duffel", name: "Duffel", configured: true, ok: true, count: 1, test: true }] });
     const days = []; for (let d = q.depart; d <= (q.departTo || q.depart); d = new Date(Date.parse(d) + 86400000).toISOString().slice(0, 10)) days.push(d);
     const pax = (q.adults || 0) + (q.children || 0);
     const offers = days.map((d, i) => ({ id: `${from}${to}${d}`, source: "kiwi", sourceName: "Kiwi.com", price: (from === "LAX" ? 8117 : 300 + 10 * i) * pax, currency: "EUR", url: "https://kiwi.test", out: leg(from, to, d, from === "LAX" ? 60 : 600) }));

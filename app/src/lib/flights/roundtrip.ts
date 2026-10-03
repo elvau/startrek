@@ -109,6 +109,9 @@ const KEEP = 30, DAYS = 3;
  * Suche Stufe für Stufe. Stufe 1: Fenster aus dem Plan. Danach je Ankunftstag der günstigsten Kombinationen
  * (höchstens DAYS) eine Suche mit Abflug zwischen Ankunft + min und Ankunft + max Nächten.
  */
+/** echte Treffer (Testangebote wie „Duffel Airways“ zählen nicht: sonst fiele die Nachsuche mit zwei Umstiegen aus) */
+export const anyReal = (offers: { test?: boolean }[]) => offers.some(o => !o.test);
+
 export async function searchRound(p: RoundPlan, search: (q: FlightQuery) => Promise<SearchResult>, progress?: (leg: number, of: number) => void): Promise<RoundResult> {
   const legs = roundLegs(p);
   const sources = new Map<string, SourceStatus>();
@@ -131,9 +134,9 @@ export async function searchRound(p: RoundPlan, search: (q: FlightQuery) => Prom
     }));
     let found = await run({});
     // abgelegene Strecken (Fidschi → München) gehen oft nur mit zwei Umstiegen: dann damit nachsuchen
-    if (!found.flat().length && p.maxStops === 1) {
-      found = await run({ maxStops: 2 });
-      if (found.flat().length) moreStops.push(`${from.name} → ${to.name}`);
+    if (!anyReal(found.flat()) && p.maxStops === 1) {
+      const more = await run({ maxStops: 2 });
+      if (anyReal(more.flat())) { found = more; moreStops.push(`${from.name} → ${to.name}`); }
     }
     // derselbe Flug kann in mehreren Fenstern auftauchen: nur einmal
     const byId = new Map<string, FlightOffer>();

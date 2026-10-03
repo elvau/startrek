@@ -18,7 +18,7 @@
   import { ccOf, findCity } from "../geo/places";
   import { airportsNear, areaAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { addDays } from "../flights/kiwi";
-  import { alternatives, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
+  import { alternatives, anyReal, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
   import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
   import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
@@ -287,10 +287,11 @@
       } };
       await pass(qq);
       // abgelegene Ziele gehen oft nur mit zwei Umstiegen: dann damit nachsuchen
-      if (!all.length && qq.maxStops === 1) {
-        cmp.length = 0;
+      // Testangebote zählen nicht (Duffel im Testmodus liefert sonst einen erfundenen Direktflug nach Galápagos)
+      if (!anyReal(all) && qq.maxStops === 1) {
+        cmp.length = 0; all.length = 0;
         await pass({ ...qq, maxStops: 2 });
-        listMore = all.length > 0;
+        listMore = anyReal(all);
       }
       // mehr behalten als gezeigt: Filter und Kalender arbeiten auf allen Treffern
       list = all.sort((a, b) => a.total - b.total).slice(0, 400);
