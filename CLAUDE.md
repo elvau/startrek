@@ -16,8 +16,7 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
 - **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: Version auf `pre-release` anheben,
   `test:cloud`, PR `pre-release` → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit); danach `pre-release`
   auf `main` vorspulen (`git push origin origin/main:pre-release`) und den Arbeits-Branch auf `origin/main` zurücksetzen.
-  Issues mit Label `auf-test`, die mitgegangen sind, schließen. Zuletzt Spiegel `starwars` aktualisieren: `main` und alle
-  Tags nach `elvau/starwars` pushen (nach jedem Merge nach `main`, auch Hotfix; `docs/RELEASE.md`, Schritt 7).
+  Issues mit Label `auf-test`, die mitgegangen sind, schließen.
 - Version in `app/package.json` (`npm version X --no-git-tag-version`) im Release-PR: größere Funktionen mittlere Stelle,
   sonst Patch. Lieber langsam hochzählen.
 
