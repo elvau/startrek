@@ -97,13 +97,14 @@ try {
     if (!isAdmin) return r.fulfill({ status: 403, contentType: "application/json", headers, body: JSON.stringify({ error: "Kein Zugriff" }) });
     if (r.request().url().includes("check")) return r.fulfill({ status: 200, contentType: "application/json", headers, body: JSON.stringify({ admin: true }) });
     await r.fulfill({ status: 200, contentType: "application/json", headers, body: JSON.stringify({
-      at: "2026-09-30T12:00:00Z", days, errors: {}, config: { agentDaily: 5, bugDaily: 5, model: "gemini-3.8-flash", fallback: "", geminiPerDay: 0 },
+      at: "2026-09-30T12:00:00Z", days, errors: {}, config: { agentDaily: 5, bugDaily: 5, model: "gemini-3.8-flash", fallback: "", geminiPerDay: 0, partnerLinks: true },
       worker: { requests: [10, 20, 30, 40, 50, 60, 95000], errors: [0, 0, 0, 0, 0, 0, 1], subrequests: [0, 0, 0, 0, 0, 0, 0] },
       r2: { bytes: 2048, objects: 1, classA: 3, classB: 4 },
       series: [
         { kind: "api", name: "app.ticketmaster.com", detail: "", byDay: [0, 0, 0, 0, 0, 1, 12] },
         { kind: "route", name: "flights", detail: "", byDay: [0, 0, 0, 0, 0, 0, 4] },
-        { kind: "route", name: "flights", detail: "hit", byDay: [0, 0, 0, 0, 0, 0, 2] }
+        { kind: "route", name: "flights", detail: "hit", byDay: [0, 0, 0, 0, 0, 0, 2] },
+        { kind: "click", name: "viator", detail: "activity", byDay: [0, 0, 0, 0, 1, 0, 2] }
       ]
     }) });
   });
@@ -122,8 +123,13 @@ try {
   await p.locator(".modal .usage .usage-card[data-id=workers].lv-high .barrel").waitFor();
   const text = await p.locator(".modal .usage").innerText();
   for (const s of ["95\u2009%", "95.000", "100.000 pro Tag", "fast ausgeschöpft", "Ticketmaster", "5.000 pro Tag", "Flugsuche", "aus dem Zwischenspeicher: 2", "Firestore"]) if (!text.includes(s)) fail(`Admin-Ansicht ohne „${s}“: ${text}`);
+  // Klicks und Partnerliste: Viator mit aktiver Kennung und 3 Klicks, Booking.com neutral
+  if (!text.includes("Klicks auf Anbieter-Links") || !text.includes("Viator · activity")) fail("Admin-Ansicht ohne Klicks: " + text);
+  const vi = await p.locator(".modal .pt tr[data-id=viator]").innerText();
+  if (!vi.includes("Kennung aktiv") || !vi.includes("Erlebnisse") || !vi.includes("direkt") || !/\b3\b/.test(vi)) fail("Partnerliste Viator: " + vi);
+  if (!(await p.locator(".modal .pt tr[data-id=booking]").innerText()).includes("neutral")) fail("Partnerliste Booking.com nicht neutral");
   await p.keyboard.press("Escape");
-  log("Admin-Ansicht: Eintrag nur mit Freigabe, Worker-Aufrufe über 90 % rot, Anbieter mit Grenze, Treffer im Zwischenspeicher");
+  log("Admin-Ansicht: Eintrag nur mit Freigabe, Worker-Aufrufe über 90 % rot, Anbieter mit Grenze, Treffer im Zwischenspeicher, Klicks und Partnerliste");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Fehler melden ok");

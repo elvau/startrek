@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { clickCat, clickId, countClick } from "./click";
-import { clickNames } from ".";
-import { clickRows, type UsageReport } from "../admin/usage";
+import { clickNames, partnerList } from ".";
+import { clickRows, partnerRows, type UsageReport } from "../admin/usage";
 
 describe("Klicks auf Anbieter-Links", () => {
   it("Kennungen nur aus Buchstaben, Ziffern und Bindestrich", () => {
@@ -48,5 +48,19 @@ describe("Klicks auf Anbieter-Links", () => {
     expect(rows.map(r => r.label)).toEqual(["GetYourGuide · activity", "Tiqets · activity"]);
     expect(rows[0]).toMatchObject({ value: 3, week: [2, 3], share: null });
     expect(clickRows({ ...rep, series: [] })).toEqual([]);
+  });
+
+  it("Partnerliste: Status nach Kennung und Schalter, Klicks über alle Kategorien", () => {
+    const rep = (on: boolean): UsageReport => ({
+      at: "", days: ["2026-10-03", "2026-10-04"], errors: {}, config: { partnerLinks: on },
+      series: [{ kind: "click", name: "viator", detail: "activity", byDay: [1, 2] }, { kind: "click", name: "viator", detail: "attractions", byDay: [0, 1] }]
+    });
+    const by = (r: UsageReport | null) => Object.fromEntries(partnerRows(r, partnerList()).map(x => [x.id, x]));
+    expect(by(rep(true)).viator).toMatchObject({ state: "active", clicks: 4, net: "direct", cat: "activity" });
+    expect(by(rep(false)).viator.state).toBe("ready");
+    expect(by(rep(true)).booking).toMatchObject({ state: "neutral", clicks: 0 });
+    expect(by(null).viator).toMatchObject({ state: "ready", clicks: 0 });
+    const off = partnerRows(null, [{ id: "x", click: "x", name: "X", cat: "car", tagged: true, off: true }]);
+    expect(off[0].state).toBe("off");
   });
 });

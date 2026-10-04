@@ -103,6 +103,12 @@ export function partnerLink<K extends PartnerId>(id: K, q: PartnerQuery<K>, on: 
   return { id, cat: e.cat, name: e.name, ...(e.nameKey ? { nameKey: e.nameKey } : {}), url: sponsored ? e.tag!(url) : url, sponsored };
 }
 
+/** Verzeichnis für die Admin-Ansicht: je Partner Kennung der Klickzählung, ob eine Partnerkennung hinterlegt ist, ob ausgeblendet */
+export const partnerList = () => (Object.keys(PARTNERS) as PartnerId[]).map(id => {
+  const e = PARTNERS[id] as Partner<never>;
+  return { id, click: clickId(id), name: e.name, cat: e.cat, ...(e.net ? { net: e.net } : {}), tagged: !!e.tag, off: !!e.off };
+});
+
 /** Anzeigenamen nach Kennung der Klickzählung (getYourGuide → getyourguide), für die Admin-Ansicht */
 export const clickNames = (): Record<string, string> =>
   Object.fromEntries((Object.keys(PARTNERS) as PartnerId[]).map(id => [clickId(id), PARTNERS[id].name]));

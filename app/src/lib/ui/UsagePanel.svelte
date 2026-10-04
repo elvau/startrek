@@ -6,6 +6,7 @@
   import { clickNames } from "../partners";
   import Modal from "./Modal.svelte";
   import UsageBarrel from "./UsageBarrel.svelte";
+  import PartnerTable from "./PartnerTable.svelte";
 
   let report = $state<UsageReport | null>(null);
   let err = $state("");
@@ -84,6 +85,8 @@
     {/each}
 
     {#if report}
+      <h4>{t("adm.sec.partners")}</h4>
+      <PartnerTable {report} />
       <p class="muted small usage-cfg">
         {t("adm.c.agent", { n: String(report.config.agentDaily ?? "–") })} · {t("adm.c.bug", { n: String(report.config.bugDaily ?? "–") })}
         · {t("adm.c.model", { m: String(report.config.model || "–") + (report.config.fallback ? ` → ${report.config.fallback}` : "") })}
