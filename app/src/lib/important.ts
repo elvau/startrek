@@ -76,7 +76,7 @@ export function importantPoints({ trip, countries, hints, visa, advice, passport
     const valid = MIN_VALID[cc];
     if (persons.length) out.push({ key: `entry:${cc}`, kind: "entry", prio: PRIO.entry, sig: [...new Set(persons.map(p => `${p.nat}:${p.kind}`))].sort().join(","), cc, ...(hint ? { hint } : {}), ...(valid ? { valid } : {}), persons });
   }
-  // Reisepass läuft zu früh ab: je Person das strengste Reiseland (Regeln gelten für deutsche Pässe, sonst bis Reiseende);
+  // Reisepass läuft zu früh ab: je Person das strengste Reiseland (Regeln des Ziellands gelten für die meisten Pässe);
   // innerhalb von EU/EWR/Schweiz reicht für deren Bürger der Ausweis
   if (trip.from && trip.to) for (const p of act) {
     const exp = passports[p.id], nat = p.nat || "DE";
@@ -84,7 +84,7 @@ export function importantPoints({ trip, countries, hints, visa, advice, passport
     let worst: { cc: string; needed: string } | null = null;
     for (const cc of countries) {
       if (cc === nat || (FREE_MOVEMENT.has(cc) && FREE_MOVEMENT.has(nat))) continue;
-      const needed = validUntil(nat === "DE" ? MIN_VALID[cc] : undefined, trip.from, trip.to);
+      const needed = validUntil(MIN_VALID[cc], trip.from, trip.to);
       if (!worst || needed > worst.needed) worst = { cc, needed };
     }
     if (worst && exp < worst.needed) out.push({ key: `pass:${p.id}`, kind: "pass", prio: PRIO.pass, sig: worst.cc, cc: worst.cc, pass: { expires: exp, needed: worst.needed }, persons: [{ id: p.id, name: p.name, nat }] });
