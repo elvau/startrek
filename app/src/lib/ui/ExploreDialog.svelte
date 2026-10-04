@@ -13,8 +13,9 @@
   import { eventWindow, inWindow } from "../activities/window";
   import { ccOf, findCity } from "../geo/places";
   import { noteError } from "../bugs/log";
-  import { getYourGuideLink, tiqetsLink } from "../links";
-  import ViatorLink from "./ViatorLink.svelte";
+  import PartnerLinks from "./PartnerLinks.svelte";
+  import ExtLink from "./ExtLink.svelte";
+  import { partnersOf, sponsoredAny } from "../partners";
   import { partner } from "../partnerState.svelte";
   import { uniqueById } from "../events/search";
   import { activityItem, duration, eventItem, searchActivitiesRemote, searchLocalEvents, takeInto } from "../activities/app";
@@ -245,7 +246,7 @@
                   {#if a.price}<span class="xp-price">{t("xp.from", { p: money(a.price, a.currency) })}</span>{/if}
                 </div>
                 <div class="xp-acts">
-                  {#if a.url}<a class="linkbtn" href={a.url} target="_blank" rel="noopener noreferrer">{t("xp.details")} ↗</a>{/if}
+                  {#if a.url}<ExtLink cls="linkbtn" href={a.url} sponsored={a.sponsored}>{t("xp.details")} ↗</ExtLink>{/if}
                   <button class="btn xp-take" class:primary={!taken[a.id]} disabled={taken[a.id]} onclick={() => take(a.id, () => activityItem(a))}>{taken[a.id] ? t("xp.taken") : t("xp.take")}</button>
                 </div>
               </article>
@@ -253,8 +254,8 @@
           </div>
           {#if tours.some(a => a.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
         {/if}
-        <p class="muted small xp-more">{t("xp.more")} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <ViatorLink q={aq} /> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a></p>
-        {#if partner.on && !tours?.some(a => a.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+        <p class="muted small xp-more">{t("xp.more")} <PartnerLinks ids={partnersOf("activity")} q={aq} /></p>
+        {#if sponsoredAny(partnersOf("activity"), aq, partner.on) && !tours?.some(a => a.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
       {/if}
       <p class="muted small">{t("xp.hint")}</p>
     {/if}

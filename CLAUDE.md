@@ -2,7 +2,7 @@
 
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
 Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer mit Gemini, Fehlermeldungen), Daten und
-Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste,
+Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, PARTNER, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste,
 `claude2claude.md` = Einrichtung der Routinen, ABLAUF = Planung in Epics/Features).
 
 ## Umgebungen und Ablauf
@@ -42,6 +42,8 @@ Issues, **SAF 2 – Review** prüft deren Pull Requests und nimmt sie an oder le
   „FREIGEGEBEN“ beginnt und danach kein neuer Commit kam.
 - PRs der Routinen zielen auf `pre-release`, nie auf `main`. Einen freigegebenen PR mit grünen Checks merged die
   Review-Routine in `pre-release` (merge commit) und ist damit auf der Testumgebung; nach `main` kommt er mit dem nächsten Release.
+- Bot-Konten nicht als Spam erscheinen lassen: je Lauf/Sitzung höchstens 5 neue Issues und 3 PRs, keine Serien von Kommentaren
+  oder Labels; bei Warnzeichen sofort aufhören (Details: `docs/claude2claude.md`, „Schutz vor Sperre“).
 - Issues sind öffentlich: keine E-Mails, Namen, Kontokennungen, Bilder oder Inhalte aus Fehlerberichten (siehe Datenschutz).
 
 ## Prüfen

@@ -5,7 +5,8 @@
   import { eur } from "../calc";
   import { FOOD_STYLES, foodCfg, foodGroups, foodPlan, syncFood } from "../food";
   import { ensureGeo, geo } from "../geo/geo.svelte";
-  import { mapsSearchLink, tripadvisorRestaurantsLink } from "../links";
+  import { mapsSearchLink } from "../links";
+  import PartnerLinks from "./PartnerLinks.svelte";
   import type { FoodStyle } from "../model";
 
   $effect(() => { ensureGeo(app.trip); });
@@ -71,7 +72,7 @@
       {#if !access.readonly}<button class="linkbtn" onclick={() => (app.trip.food = { ...foodCfg(app.trip), on: false })}>{t("food.off")}</button>{/if}</p>
   {/if}
   {#if place}
-    <p class="muted small fs-direct">{t("food.in", { place })} <a href={mapsSearchLink(t("food.restaurantsQ"), place)} target="_blank" rel="noopener noreferrer">{t("food.restaurants")} ↗</a> · <a href={tripadvisorRestaurantsLink(place)} target="_blank" rel="noopener noreferrer">Tripadvisor ↗</a> · <a href={mapsSearchLink(t("food.supermarketQ"), place)} target="_blank" rel="noopener noreferrer">{t("food.supermarkets")} ↗</a></p>
+    <p class="muted small fs-direct">{t("food.in", { place })} <a href={mapsSearchLink(t("food.restaurantsQ"), place)} target="_blank" rel="noopener noreferrer">{t("food.restaurants")} ↗</a> · <PartnerLinks ids={["tripadvisor"]} q={place} /> · <a href={mapsSearchLink(t("food.supermarketQ"), place)} target="_blank" rel="noopener noreferrer">{t("food.supermarkets")} ↗</a></p>
   {/if}
 </div>
 

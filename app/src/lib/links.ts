@@ -1,9 +1,8 @@
 /*
  * Direkt beim Anbieter suchen: Links mit Ort, Datum und Personen, ohne Schnittstelle und ohne Schlüssel.
  * Unproblematisch, weil nur eine normale Suchseite geöffnet wird (Fallback, wenn eine Quelle ausfällt).
+ * In der Oberfläche laufen die Links über das Partner-Verzeichnis (partners/), das bei Bedarf die Partnerkennung anhängt.
  */
-import { viatorAffiliate } from "./partner";
-
 export interface StayLinkQuery { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number }
 export interface FlightLinkQuery { from: string; to: string; depart: string; ret?: string; adults: number; children: number; infants: number }
 
@@ -50,11 +49,8 @@ export function getYourGuideLink(q: ActivityLinkQuery): string {
   return `https://www.getyourguide.de/s/?${p}`;
 }
 
-/** Viator-Suche nach Ort; partner: mit Partnerkennung (Provision), nur wenn Partner-Links im Such-Dienst an sind */
-export const viatorLink = (q: ActivityLinkQuery, partner = false) => {
-  const url = `https://www.viator.com/de-DE/searchResults/all?text=${encodeURIComponent(q.place)}`;
-  return partner ? viatorAffiliate(url) : url;
-};
+/** Viator-Suche nach Ort (Partnerkennung hängt das Partner-Verzeichnis an) */
+export const viatorLink = (q: ActivityLinkQuery) => `https://www.viator.com/de-DE/searchResults/all?text=${encodeURIComponent(q.place)}`;
 
 export const tiqetsLink = (q: ActivityLinkQuery) => `https://www.tiqets.com/de/search?q=${encodeURIComponent(q.place)}`;
 
