@@ -15,7 +15,8 @@ Die Oberfläche zeigt sie über `app/src/lib/ui/PartnerLinks.svelte`; Links von 
 
 Ein Link mit Kennung bekommt automatisch `rel="sponsored"` und den Zusatz „Partner-Link*“ (`fs.partner`). Darunter steht der
 Hinweis zum Sternchen (`fs.partnerNote`), sobald einer der gezeigten Links ein Partner-Link ist (`sponsoredAny`).
-Treffer aus Schnittstellen (Flüge über Travelpayouts, Touren über Viator) setzen `sponsored` selbst und werden genauso gekennzeichnet.
+Treffer aus Schnittstellen (Flüge über Travelpayouts, Touren über Viator) setzen `sponsored` selbst; ihre Links laufen über
+`app/src/lib/ui/ExtLink.svelte` und werden genauso gekennzeichnet (auch in übernommenen Posten).
 
 ## Einen Partner hinzufügen
 

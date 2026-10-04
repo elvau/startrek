@@ -14,6 +14,7 @@
   import { ccOf, findCity } from "../geo/places";
   import { noteError } from "../bugs/log";
   import PartnerLinks from "./PartnerLinks.svelte";
+  import ExtLink from "./ExtLink.svelte";
   import { partnersOf, sponsoredAny } from "../partners";
   import { partner } from "../partnerState.svelte";
   import { uniqueById } from "../events/search";
@@ -245,7 +246,7 @@
                   {#if a.price}<span class="xp-price">{t("xp.from", { p: money(a.price, a.currency) })}</span>{/if}
                 </div>
                 <div class="xp-acts">
-                  {#if a.url}<a class="linkbtn" href={a.url} target="_blank" rel="noopener noreferrer">{t("xp.details")} ↗</a>{/if}
+                  {#if a.url}<ExtLink cls="linkbtn" href={a.url} sponsored={a.sponsored}>{t("xp.details")} ↗</ExtLink>{/if}
                   <button class="btn xp-take" class:primary={!taken[a.id]} disabled={taken[a.id]} onclick={() => take(a.id, () => activityItem(a))}>{taken[a.id] ? t("xp.taken") : t("xp.take")}</button>
                 </div>
               </article>
