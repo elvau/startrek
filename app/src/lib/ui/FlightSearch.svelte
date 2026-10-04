@@ -25,7 +25,8 @@
   import { loadPlz, withHome } from "../plz";
   import { cloud } from "../cloud/cloud.svelte";
   import type { FlightScope } from "../flights/open.svelte";
-  import { googleFlightsLink, skyscannerLink } from "../links";
+  import PartnerLinks from "./PartnerLinks.svelte";
+  import { partnersOf } from "../partners";
   import type { FlightOffer, FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
   import { applyFilter, arrivalGap, dayCells, noFilter, sortFlights, type FlightSort, type SyncRef } from "../flights/filter";
   import { arrivals } from "../stays/presence";
@@ -552,8 +553,7 @@
       {@const d0 = toLoc ?? resolveLoc(airportData, to, cc)}
       {@const o0 = originLoc(aps[0])}
       {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: kind === "oneway" ? undefined : mode === "flex" ? rTo || undefined : ret || undefined, ...split.q }}
-      {@const sky = skyscannerLink(lq)}
-      <p class="muted small fs-direct">{t("fs.directFrom", { ap: aps[0] })} <a href={googleFlightsLink({ ...lq, from: o0?.kind === "city" ? o0.city : lq.from, to: d0 && d0.kind !== "airport" ? d0.city : lq.to })} target="_blank" rel="noopener noreferrer">{t("fs.googleFlights")} ↗</a>{#if sky} · <a href={sky} target="_blank" rel="noopener noreferrer">Skyscanner ↗</a>{/if}</p>
+      <p class="muted small fs-direct">{t("fs.directFrom", { ap: aps[0] })} <PartnerLinks ids={partnersOf("flight")} q={{ ...lq, ...(o0?.kind === "city" ? { fromName: o0.city } : {}), ...(d0 && d0.kind !== "airport" ? { toName: d0.city } : {}) }} /></p>
     {/if}
   </form>
 

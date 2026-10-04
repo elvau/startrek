@@ -28,7 +28,8 @@
   import StayFilters from "./StayFilters.svelte";
   import { kmText, nearest, tripSpots } from "../geo/spots";
   import type { SourceStatus } from "../flights/types";
-  import { airbnbLink, bookingLink } from "../links";
+  import PartnerLinks from "./PartnerLinks.svelte";
+  import { partnersOf } from "../partners";
   import { hasCoords, locText, mapsUrl } from "../geo/maps";
   import MapView, { type MapPoint } from "./MapView.svelte";
 
@@ -431,7 +432,7 @@
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? t("st.busy", { src: SOURCES.filter(s => use.includes(s.id)).map(s => s.name).join(` ${t("and")} `) }) : t("st.searchBtn")}</button>
     {#if place.trim() && nn > 0}
       {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)) }}
-      <p class="muted small fs-direct">{t("search.direct")} <a href={bookingLink(lq)} target="_blank" rel="noopener noreferrer">Booking.com ↗</a> · <a href={airbnbLink(lq)} target="_blank" rel="noopener noreferrer">Airbnb ↗</a></p>
+      <p class="muted small fs-direct">{t("search.direct")} <PartnerLinks ids={partnersOf("stay")} q={lq} /></p>
     {/if}
   </form>
 

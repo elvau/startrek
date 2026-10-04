@@ -42,8 +42,8 @@
   import TripMap from "./lib/ui/TripMap.svelte";
   import GroundOptions from "./lib/ui/GroundOptions.svelte";
   import TransferOptions from "./lib/ui/TransferOptions.svelte";
-  import { getYourGuideLink, tiqetsLink } from "./lib/links";
-  import ViatorLink from "./lib/ui/ViatorLink.svelte";
+  import PartnerLinks from "./lib/ui/PartnerLinks.svelte";
+  import { partnersOf, sponsoredAny } from "./lib/partners";
   import { partner } from "./lib/partnerState.svelte";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
   import { flightSearch, openFlightSearch } from "./lib/flights/open.svelte";
@@ -52,7 +52,7 @@
   import { explore, openExplore } from "./lib/activities/open.svelte";
   import { openEventPlanner } from "./lib/event/open.svelte";
   import { eventWindow } from "./lib/activities/window";
-  import { CAR_LINKS, INSURANCE_LINKS, carItem, carPerDay, carWindow, insuranceItem, kayakCarLink } from "./lib/extras";
+  import { carItem, carPerDay, carWindow, insuranceItem } from "./lib/extras";
   import { airportOf, ccOf } from "./lib/geo/places";
   import { showItem } from "./lib/ui/showItem";
   import { stationName } from "./lib/stays/stationName";
@@ -164,10 +164,10 @@
             {#if explore.open}<ExploreDialog inline onclose={() => (explore.open = false)} />{/if}
           {/if}
           <p class="search-row muted small fs-direct">
-            {#if evWin.city}{t("att.find", { place: evWin.city })} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <ViatorLink q={aq} /> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a>
+            {#if evWin.city}{t("att.find", { place: evWin.city })} <PartnerLinks ids={partnersOf("activity")} q={aq} />
             {:else}{t("att.noPlace")}{/if}
           </p>
-          {#if evWin.city && partner.on}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+          {#if evWin.city && sponsoredAny(partnersOf("activity"), aq, partner.on)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
         {:else if ch.k === "transport"}
           <!-- Mietwagen: Richtwert-Posten aus den Flugzeiten, dazu Vergleich mit Ort und Zeiten -->
           {@const cw = carWindow(app.trip)}
@@ -175,15 +175,14 @@
           <TransferOptions city={evWin.city} />
           {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.add")}</button></div>{/if}
           <p class="search-row muted small fs-direct car-links">{t("car.compare")}
-            {#if cw}<a href={kayakCarLink(cw, evWin.city)} target="_blank" rel="noopener noreferrer">KAYAK ↗</a> ·{/if}
-            {#each CAR_LINKS as l, i (l.name)}{i ? " · " : ""}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>{/each}
+            <PartnerLinks ids={partnersOf("car")} q={{ w: cw, place: evWin.city }} />
             {#if cw}<br />{t(cw.ap ? "car.when" : "car.whenTrip", { a: `${cw.ap ? `${cw.ap} ` : ""}${cw.pick.slice(8, 10)}.${cw.pick.slice(5, 7)}. ${cw.pick.slice(11, 16)}`, b: `${cw.drop.slice(8, 10)}.${cw.drop.slice(5, 7)}. ${cw.drop.slice(11, 16)}`, d: tn("n.days", cw.days) })}{/if}
           </p>
         {:else if ch.k === "misc"}
           <!-- Reiseversicherung: neutrale Schätzung (keine Beratung), Links zu Anbietern -->
           {#if !access.readonly}<div class="search-row"><button class="btn ins-add" onclick={addInsurance}>🛡 {t("ins.add")}</button></div>{/if}
           <p class="search-row muted small fs-direct ins-links">{t("ins.compare")}
-            {#each INSURANCE_LINKS as l, i (l.name)}{i ? " · " : ""}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>{/each}
+            <PartnerLinks ids={partnersOf("insurance")} />
             <br />{t("ins.hint")}
           </p>
         {:else if ch.k === "stay" && !access.readonly}

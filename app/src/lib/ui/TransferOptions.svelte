@@ -13,7 +13,9 @@
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { arrivals } from "../stays/presence";
   import { GROUND_MAX_KM, homeOf, nearestAirport, routeLink } from "../ground";
-  import { TRANSFER_LINKS, transferItem, transferPlan, vehicleText } from "../transfer";
+  import PartnerLinks from "./PartnerLinks.svelte";
+  import { partnersOf } from "../partners";
+  import { transferItem, transferPlan, vehicleText } from "../transfer";
   import { showItem } from "./showItem";
 
   let { city }: { city: string } = $props();
@@ -61,7 +63,7 @@
   <p class="search-row muted small fs-direct tr-links">
     {t("tr.info", { ap: plan.ap, to: plan.to, km: Math.round(plan.km), v: vehicleText(plan), p: eur(plan.perRide) })}<br />
     {t("tr.compare")}
-    {#each TRANSFER_LINKS as l, i (l.name)}{i ? " · " : ""}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>{/each}
+    <PartnerLinks ids={partnersOf("transfer")} />
     · <a href={routeLink(`${ap.lat},${ap.lon}`, `${dest.lat},${dest.lon}`, "driving")} target="_blank" rel="noopener noreferrer">{t("tr.route")} ↗</a>
   </p>
 {/if}
