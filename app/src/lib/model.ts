@@ -414,6 +414,8 @@ export interface Trip {
   watch?: TripWatch;
   /** vom KI-Assistenten vorgeschlagen (Kennzeichnung in der Übersicht) */
   ai?: { at: string };
+  /** Wichtiges: erledigte Punkte (important.ts), bei Punkten für Personen je Person */
+  done?: Record<string, { sig: string; ids?: string[] }>;
 }
 
 /** Ergebnis der Nachsuche für einen Posten, Beträge für den ganzen Posten */

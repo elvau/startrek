@@ -19,6 +19,7 @@
   import { isActive } from "../model";
   import { groupLabel } from "../groups";
   import { adviceLevel, adviceUrl, type AdviceMap } from "../advice";
+  import { loadAdvice } from "../adviceApp";
 
   const countries = $derived(tripCountries(app.trip, n => (n ? ccOf(geo, n) : null), c => locOf(airportData, c, "airport")?.cc));
   const places = $derived([...new Set(itinerary(app.trip).map(d => d.place).filter(Boolean))]);
@@ -57,16 +58,6 @@
       options: [{ id: uid(), label: t("hint.estimate"), estimate: true, price: { mode: "person" as const, currency: h.fee.currency, adult: h.fee.adult, ...(h.fee.child != null ? { child: h.fee.child, infant: h.fee.child } : {}) } }] };
     app.trip.items.push(it);
     showItem(it.id);
-  }
-</script>
-
-<script lang="ts" module>
-  import { FLIGHTS_URL as URL_ } from "../flights/app";
-  import type { AdviceMap as AM } from "../advice";
-  let adv: Promise<AM> | undefined;
-  /** einmal je Sitzung; ohne Such-Dienst oder bei Fehlern leer (dann nur der allgemeine Link) */
-  function loadAdvice(): Promise<AM> {
-    return (adv ??= URL_ ? fetch(`${URL_}/advice`).then(r => (r.ok ? r.json() : null)).then(d => (d?.countries as AM) || {}).catch(() => ({})) : Promise.resolve({}));
   }
 </script>
 
