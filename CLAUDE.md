@@ -3,7 +3,7 @@
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
 Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer mit Gemini, Fehlermeldungen), Daten und
 Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste,
-`claude2claude.md` = Einrichtung der Routinen).
+`claude2claude.md` = Einrichtung der Routinen, ABLAUF = Planung in Epics/Features).
 
 ## Umgebungen und Ablauf
 - Branches: Arbeits-Branch je Sitzung oder Routine (`claude/…`) → **`pre-release`** (Sammelstand) → `main` (Produktion).
@@ -19,6 +19,11 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
   Issues mit Label `auf-test`, die mitgegangen sind, schließen.
 - Version in `app/package.json` (`npm version X --no-git-tag-version`) im Release-PR: größere Funktionen mittlere Stelle,
   sonst Patch. Lieber langsam hochzählen.
+
+## Planung
+Weiterentwicklung gebündelt in Epics (`epic`, mittlere Version), Features (`feature`) und Pflege (`maintenance`, Patch);
+Ablauf und „fertig ist, wenn …“ in `docs/ABLAUF.md`. In Sitzungen mit Dani ein Epic Feature für Feature abarbeiten,
+offene Entscheidungen zur Oberfläche vorher mit Entwurf klären.
 
 ## Arbeitsteilung (Routinen)
 Fehler und QA laufen über Routinen auf einem eigenen Konto (Einrichtung und Prompts: `docs/claude2claude.md`): **SAF 1 – Triage** macht aus Fehlerberichten Issues
