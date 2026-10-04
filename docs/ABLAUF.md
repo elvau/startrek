@@ -30,7 +30,7 @@ einem Pull Request erledigt ist: Text, Anordnung, ein zusätzliches Feld, ein St
 Funktion. Alles Größere ist ein `feature` (Entwicklung): neue Funktionen, neue Partner, neue Ansichten, Entscheidungen zur
 Oberfläche oder Änderungen über mehrere Bereiche. Im Zweifel eine Frage an Dani (`entscheidung`).
 
-- Roadmap: Epics mit Zielversion (0.26.0 … ) und der Ideenspeicher (#110). Ein Epic nennt im Titel seine Zielversion, z. B. „Epic: Suchen & Posten aufräumen (0.26.0)“. Wer mag, legt dazu in
+- Roadmap: Epics mit Zielversion (0.26.0 … ) und der Ideenspeicher (#144). Ein Epic nennt im Titel seine Zielversion, z. B. „Epic: Suchen & Posten aufräumen (0.26.0)“. Wer mag, legt dazu in
   GitHub einen Meilenstein mit derselben Nummer an und hängt die Issues daran.
 - Neue Ideen von Dani: als Issue mit `feature` oder `maintenance` anlegen (oder in `docs/OFFEN.md` merken) und einem Epic zuordnen.
 - Reihenfolge legt Dani fest; in einer Sitzung wird ein Epic Feature für Feature abgearbeitet.
