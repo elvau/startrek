@@ -22,10 +22,13 @@ Issues, **SAF 2 – Review** prüft deren Pull Requests und nimmt sie an oder le
   gehört, als Issue melden (gleiches Format: Kategorie, Beschreibung, Akzeptanzkriterien, Begründung; ohne `from-triage`)
   statt ihn selbst zu fixen. Fehler in gerade gebautem Code gehören zur Aufgabe und werden gleich behoben.
 - Die Umsetzungs-Routine ist davon ausgenommen: Sie fixt die Issues, dafür ist sie da.
-- **Die Review-Routine merged nicht.** Sie gibt Pull Requests frei (Approve) oder fordert Änderungen an; nach `main` kommt
-  ein PR nur mit einem Release (Regel oben: nur auf ausdrückliches „Release“ von Dani). Beim Release werden die
-  freigegebenen, grünen PRs der Routinen zuerst in den Arbeits-Branch gemergt (merge commit, Konflikte lösen), dann
-  läuft der Release wie oben beschrieben (Version, `test:cloud`, Release-PR) und schließt sie mit.
+- **Die Review-Routine merged nicht.** Umsetzung und Review laufen unter demselben Konto, eine GitHub-Freigabe (Approve)
+  ist daher nicht möglich; die Review antwortet per Kommentar: „ÄNDERUNGEN ANGEFORDERT“ (Umsetzung antwortet nach dem
+  Nachbessern mit „NACHGEBESSERT“) oder **„FREIGEGEBEN“**. Freigegeben ist ein PR, wenn der letzte Review-Kommentar mit
+  „FREIGEGEBEN“ beginnt und danach kein neuer Commit kam.
+- Nach `main` kommt ein PR der Routinen nur mit einem Release (Regel oben: nur auf ausdrückliches „Release“ von Dani).
+  Beim Release werden die freigegebenen PRs mit grünen Checks zuerst in den Arbeits-Branch gemergt (merge commit,
+  Konflikte lösen), dann läuft der Release wie oben beschrieben (Version, `test:cloud`, Release-PR) und schließt sie mit.
 - Issues sind öffentlich: keine E-Mails, Namen, Kontokennungen, Bilder oder Inhalte aus Fehlerberichten (siehe Datenschutz).
 
 ## Prüfen
