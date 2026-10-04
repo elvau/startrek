@@ -55,6 +55,17 @@ Kurze Hinweise, keine Rechtsberatung: maßgeblich ist immer der verlinkte offizi
 | gorilla | Gorilla-Trekking | Permits (Uganda 800 USD, Ruanda 1.500 USD), 8 pro Gruppe, ab 15 Jahren | – |
 | aq | Antarktis | Genehmigung durch das Umweltbundesamt (über Veranstalter), IAATO | – |
 
+### Grenzregeln und Reisepass (`app/src/lib/borders.ts`, angezeigt unter „Wichtiges“)
+| Was | Regel | Quelle |
+|---|---|---|
+| EES | Pässe von außerhalb EU/EWR/Schweiz: Erfassung bei der ersten Einreise in den Schengen-Raum (seit 12.10.2025, vollständig ab 10.04.2026) | travel-europe.europa.eu/ees |
+| ETIAS | Reisegenehmigung für visumfreie Pässe von außerhalb der EU, Start angekündigt, noch nicht in Kraft (Stand Oktober 2026) | travel-europe.europa.eu/etias |
+| Mindestgültigkeit Reisepass (deutsche Staatsangehörige) | 6 Monate ab Einreise: TH, ID, VN, KH, LA, MM, LK, IN, NP, MY, SG, CN, EG, AE, JO, OM, SA, KE, TZ, UG, RW; 6 Monate über Aufenthalt: PH; 150 Tage ab Einreise: TR; 3 Monate über Ausreise: NZ; 30 Tage über Ausreise: ZA; sonst bis Reiseende | Länderseiten des Auswärtigen Amts |
+
+Die Prüfung des eigenen Reisepasses nutzt das Ablaufdatum aus den Buchungsdaten im Konto, nur im Browser; in der Reise
+steht nur „erledigt“ je Person, ohne Datum. Wird ETIAS eingeführt: Text `imp.border.x` und die Signatur `ees` in
+`important.ts` anpassen, damit der Punkt bei allen wieder als offen erscheint.
+
 ## Merkliste (noch nicht eingebaut, vor dem Einbau Fakten prüfen)
 - Louvre, Vatikanische Museen, Kolosseum, Park Güell: Zeitfenster-Tickets
 - Plitvicer Seen (Tickets mit Zeitfenster im Sommer), Cinque Terre (Wanderpass)

@@ -3,6 +3,7 @@ import { HINTS } from "./hints";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 import { doneIds, importantPoints, isOpen, isUrgent, markDone, openCount, reopen, type DoneMap } from "./important";
 import type { VisaData } from "./visa";
+import { MIN_VALID, validUntil } from "./borders";
 
 // Ausschnitt aus visa.json: Pässe DE und GB, Ziele US, TH, DE (t = Reisegenehmigung, f90 = 90 Tage visumfrei)
 const visa: VisaData = { cc: ["US", "TH", "DE", "GB"], m: { DE: "t,f60,,f180", GB: "t,f60,f90," } };
@@ -85,5 +86,41 @@ describe("Wichtiges zur Reise", () => {
     const e2 = importantPoints({ trip: trip([anna, ben]), countries: ["US"], hints: us, visa, advice: {} })[0];
     expect(isOpen(e2, done)).toBe(true);
     expect(doneIds(e2, done)).toEqual(["a"]);
+  });
+});
+
+describe("Grenzregeln und Reisepass", () => {
+  const th = (travelers: Trip["travelers"]): Trip => ({ ...trip(travelers), place: "Bangkok", country: "Thailand", from: "2027-03-01", to: "2027-03-15" });
+
+  it("Mindestgültigkeit: Thailand 6 Monate ab Einreise, Neuseeland 3 Monate über die Ausreise hinaus", () => {
+    expect(validUntil(MIN_VALID.TH, "2027-03-01", "2027-03-15")).toBe("2027-09-01");
+    expect(validUntil(MIN_VALID.NZ, "2027-03-01", "2027-03-15")).toBe("2027-06-15");
+    expect(validUntil(undefined, "2027-03-01", "2027-03-15")).toBe("2027-03-15");
+    const ps = importantPoints({ trip: th([anna]), countries: ["TH"], hints: HINTS.filter(h => h.id === "th"), visa, advice: {} });
+    expect(ps.find(p => p.key === "entry:TH")!.valid).toEqual({ months: 6, from: "entry" });
+  });
+
+  it("Reisepass läuft zu früh ab: nur mit hinterlegtem Datum, ohne Datum in Schlüssel und Signatur", () => {
+    const run = (passports: Record<string, string>) => importantPoints({ trip: th([anna, ben]), countries: ["TH"], hints: [], visa, advice: {}, passports });
+    const ps = run({ a: "2027-08-01", b: "2030-01-01" }).filter(p => p.kind === "pass");
+    expect(ps).toHaveLength(1);
+    expect(ps[0]).toMatchObject({ key: "pass:a", sig: "TH", pass: { expires: "2027-08-01", needed: "2027-09-01" } });
+    expect(ps[0].persons!.map(p => p.name)).toEqual(["Anna"]);
+    expect(run({}).some(p => p.kind === "pass")).toBe(false);
+  });
+
+  it("innerhalb der EU reicht der Ausweis; außerhalb mindestens bis Reiseende", () => {
+    const es = { ...trip([anna]), country: "Spanien", from: "2027-03-01", to: "2027-03-15" };
+    expect(importantPoints({ trip: es, countries: ["ES"], hints: [], visa, advice: {}, passports: { a: "2027-03-02" } }).some(p => p.kind === "pass")).toBe(false);
+    const us = { ...trip([anna]), from: "2027-03-01", to: "2027-03-15" };
+    expect(importantPoints({ trip: us, countries: ["US"], hints: [], visa, advice: {}, passports: { a: "2027-03-10" } }).find(p => p.kind === "pass")?.pass).toEqual({ expires: "2027-03-10", needed: "2027-03-15" });
+  });
+
+  it("Schengen: EES nur für Pässe von außerhalb der EU", () => {
+    const fr = { ...trip([anna, tom, { id: "u", name: "Uma", household: "Lee", nat: "US" }]), country: "Frankreich" };
+    const b = importantPoints({ trip: fr, countries: ["FR"], hints: [], visa, advice: {} }).find(p => p.kind === "border")!;
+    expect(b.persons!.map(p => p.name)).toEqual(["Tom", "Uma"]);
+    expect(isUrgent(b)).toBe(true);
+    expect(importantPoints({ trip: { ...fr, travelers: [anna] }, countries: ["FR"], hints: [], visa, advice: {} }).some(p => p.kind === "border")).toBe(false);
   });
 });
