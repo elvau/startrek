@@ -2,7 +2,8 @@
 
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
 Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer mit Gemini, Fehlermeldungen), Daten und
-Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste).
+Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste,
+`claude2claude.md` = Einrichtung der Routinen).
 
 ## Umgebungen und Ablauf
 - Branches: Arbeits-Branch je Sitzung oder Routine (`claude/…`) → **`pre-release`** (Sammelstand) → `main` (Produktion).
@@ -15,11 +16,12 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
 - **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: Version auf `pre-release` anheben,
   `test:cloud`, PR `pre-release` → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit); danach `pre-release`
   auf `main` vorspulen (`git push origin origin/main:pre-release`) und den Arbeits-Branch auf `origin/main` zurücksetzen.
+  Issues mit Label `auf-test`, die mitgegangen sind, schließen.
 - Version in `app/package.json` (`npm version X --no-git-tag-version`) im Release-PR: größere Funktionen mittlere Stelle,
   sonst Patch. Lieber langsam hochzählen.
 
 ## Arbeitsteilung (Routinen)
-Fehler und QA laufen über drei Routinen auf einem eigenen Konto: **SAF 1 – Triage** macht aus Fehlerberichten Issues
+Fehler und QA laufen über Routinen auf einem eigenen Konto (Einrichtung und Prompts: `docs/claude2claude.md`): **SAF 1 – Triage** macht aus Fehlerberichten Issues
 hier im Repo (Labels `bug`, `change_request`, `question`, dazu `from-triage`), **SAF 2 – Umsetzung** bearbeitet diese
 Issues, **SAF 2 – Review** prüft deren Pull Requests und nimmt sie an oder lehnt sie ab.
 - Sitzungen mit Dani zur Weiterentwicklung (neue Funktionen): Fällt dabei ein Fehler auf, der nicht zur laufenden Aufgabe
