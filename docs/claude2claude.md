@@ -1,7 +1,7 @@
 # Claude ↔ Claude: Routinen für Fehler und QA
 
-Einrichtung der Routinen auf dem eigenen Konto (Claude Code, Routinen, Ausführung „Cloud“). Die Regeln stehen in der
-`CLAUDE.md`; die Prompts unten enthalten das Wichtigste selbst, damit sie auch unabhängig davon funktionieren.
+Einrichtung der Routinen auf dem eigenen Konto (Claude Code, Routinen, Ausführung „Cloud“). Die Routinen lesen ihre
+Anweisungen bei jedem Lauf aus dieser Datei (siehe „Start-Prompts“); die Regeln stehen außerdem in der `CLAUDE.md`.
 
 ## Ablauf
 
@@ -16,8 +16,17 @@ Fehlerbericht (elvau/splitandfly-bugs, privat)
 Branches: Arbeits-Branch (`claude/…`) → `pre-release` (Sammelstand, Testumgebung https://elvau.github.io/startrek/)
 → `main` (Produktion https://splitandfly.com). Nach `main` merged keine Routine.
 
-Labels: `bug`, `change_request`, `question`, `from-triage`, `in-arbeit`, `needs-human` (Entscheidung von Dani nötig),
+Labels: `bug`, `change_request`, `question`, `from-triage`, `in-arbeit`, `entscheidung` (Frage an Dani, zusammen mit `zuständig: Dani`),
 `auf-test` (in pre-release, kommt mit dem nächsten Release), `release-review` (Release-Kandidat).
+
+Zuständigkeit (genau ein Label je offenem Ticket): `zuständig: QA-Routinen` (Bugs und kleine Änderungswünsche, diese
+Routinen), `zuständig: Entwicklung` (Features, Entwicklungssitzungen mit Dani), `zuständig: Dani` (Entscheidungen,
+Einrichtungen). Die Routinen arbeiten nur Tickets mit `zuständig: QA-Routinen` ab.
+
+**change_request oder feature?** change_request = kleine Änderung an bestehendem Verhalten, in einem Pull Request
+erledigt (Text, Anordnung, ein zusätzliches Feld, ein Standardwert, Verhalten einer bestehenden Funktion). Größeres –
+neue Funktionen, neue Partner, neue Ansichten, Entscheidungen zur Oberfläche, Änderungen über mehrere Bereiche – ist ein
+feature und gehört der Entwicklung.
 
 ## Einstellungen für alle Routinen
 
@@ -25,6 +34,23 @@ Labels: `bug`, `change_request`, `question`, `from-triage`, `in-arbeit`, `needs-
 - Repos: `elvau/startrek` mit Schreibrecht; die Triage zusätzlich `elvau/splitandfly-bugs`
 - Zeitplan versetzt, z. B. 3× täglich: Triage 8:00 / 13:00 / 18:00, Umsetzung 20 Minuten später, Review 40 Minuten
   später. Ohne Arbeit beendet sich jede Routine sofort.
+
+## Start-Prompts (einmalig in den Routinen eintragen)
+
+Die Routinen tragen nur diesen kurzen Prompt. Die eigentlichen Anweisungen lesen sie bei jedem Lauf aus dieser Datei auf
+`main`. Änderungen am Vorgehen wirken damit ab dem nächsten Release automatisch, ohne die Routinen anzufassen; vorher
+prüft sie die Release-Prüfung, und nur Dani gibt Releases frei.
+
+```
+Du bist „SAF 1 – Triage“ für Split&Fly. Lies im Repo elvau/startrek auf Branch main die Dateien CLAUDE.md und
+docs/claude2claude.md und befolge genau den Abschnitt „SAF 1 – Triage“. Die Datei gilt vor allem anderen in diesem
+Prompt. Gibt es nichts zu tun, sofort beenden.
+```
+
+Für die anderen Routinen genauso, nur mit „SAF 2 – Umsetzung“, „SAF 2 – Review“ bzw. „SAF 3 – Release-Review“ statt
+„SAF 1 – Triage“ (Name am Anfang und Abschnitt).
+
+Die Abschnitte unten sind die verbindlichen Anweisungen. Wer das Vorgehen ändert, ändert sie hier (und die `CLAUDE.md`).
 
 ## SAF 1 – Triage
 
@@ -38,7 +64,11 @@ Suche im privaten Repo elvau/splitandfly-bugs offene Fehlerberichte ohne Label �
    Ticket darauf verweisen.
 3. Sonst Issue in elvau/startrek anlegen: verständlicher Titel; im Text „Kategorie“, „Fehlerbericht #N“ (ohne Link),
    „Beschreibung“, „Akzeptanzkriterien“ (Checkboxen, inkl. Tests und Texte in allen 7 Sprachen, falls nötig),
-   „Begründung der Kategorie“. Labels: die Kategorie und „from-triage“.
+   „Begründung der Kategorie“. Labels: die Kategorie, „from-triage“ und „zuständig: QA-Routinen“.
+   Ist der Wunsch größer als eine kleine Änderung (neue Funktion, neuer Partner, neue Ansicht, Entscheidung zur
+   Oberfläche, mehrere Bereiche): stattdessen Labels „feature“, „from-triage“ und „zuständig: Entwicklung“.
+   Ist unklar, was gemeint ist oder ob es gewollt ist: Labels Kategorie, „from-triage“, „zuständig: Dani“ und
+   „entscheidung“, mit einer konkreten Frage im Text.
 4. Im privaten Ticket Label „triagiert“ setzen und das neue Issue verlinken.
 
 Das Issue ist öffentlich: keine Namen, E-Mail-Adressen, Kontokennungen, Bilder oder Bild-Links, keine wörtlichen
@@ -55,14 +85,17 @@ Datenschutz, Commit-Konventionen).
 1. Zuerst eigene offene Pull Requests: Ist der letzte Review-Kommentar „ÄNDERUNGEN ANGEFORDERT“, alle Punkte
    nachbessern, pushen und mit einem Kommentar antworten, der mit „NACHGEBESSERT“ beginnt und je Punkt sagt, was
    geändert wurde.
-2. Danach höchstens ein neues Issue pro Lauf: offen, Label „from-triage“, ohne „in-arbeit“, „auf-test“ und
-   „needs-human“; bug vor change_request, ältestes zuerst. Label „in-arbeit“ setzen.
+2. Danach höchstens ein neues Issue pro Lauf: offen, Label „zuständig: QA-Routinen“, ohne „in-arbeit“, „auf-test“
+   und „needs-human“; bug vor change_request, ältestes zuerst. Label „in-arbeit“ setzen. Tickets mit
+   „zuständig: Entwicklung“ oder „zuständig: Dani“ nie anfassen.
 3. Branch „claude/issue-<Nummer>“ von origin/pre-release anlegen, umsetzen, prüfen mit
    „cd app && npx svelte-check --threshold warning && npx vitest run“.
 4. Pull Request gegen „pre-release“ öffnen, niemals gegen „main“. Im Text: Bezug „Issue #N“, was geändert wurde,
    wie geprüft wurde.
-5. Ist das Issue unklar, zu groß oder braucht es eine Entscheidung: im Issue eine konkrete Frage stellen, Label
-   „needs-human“ setzen, „in-arbeit“ entfernen, nichts umsetzen.
+5. Ist das Issue unklar oder braucht es eine Entscheidung: im Issue eine konkrete Frage stellen, „zuständig: QA-Routinen“
+   durch „zuständig: Dani“ ersetzen, Label „entscheidung“ setzen, „in-arbeit“ entfernen, nichts umsetzen.
+   Ist es größer als eine kleine Änderung: „zuständig: QA-Routinen“ durch „zuständig: Entwicklung“ ersetzen, Label
+   „feature“ setzen, kurz begründen, „in-arbeit“ entfernen.
 Niemals nach main oder pre-release pushen oder mergen. Gibt es nichts zu tun, sofort beenden.
 ```
 
@@ -82,7 +115,8 @@ Antworte mit genau einem Kommentar:
 
 Bei FREIGEGEBEN und grünen Checks: den Pull Request in „pre-release“ mergen (merge commit), Branch löschen, im Issue
 kommentieren „Auf der Testumgebung, kommt mit dem nächsten Release“ und Label „in-arbeit“ durch „auf-test“ ersetzen.
-Nach drei Runden ohne Freigabe: Label „needs-human“ am Issue setzen und aufhören.
+Nach drei Runden ohne Freigabe: am Issue „zuständig: QA-Routinen“ durch „zuständig: Dani“ ersetzen, Label
+„entscheidung“ setzen, kurz zusammenfassen, woran es hängt, und aufhören.
 Niemals nach main mergen, niemals selbst Code ändern. Gibt es nichts zu tun, sofort beenden.
 ```
 
@@ -106,4 +140,5 @@ Niemals mergen, niemals Code ändern. Gibt es nichts zu tun, sofort beenden.
   Request auf GitHub (`pruefen.yml`) und vor jedem Release (`npm run test:cloud`).
 - Umsetzung und Review laufen unter demselben GitHub-Konto, deshalb gibt es keine GitHub-Freigabe (Approve), sondern
   die Kommentare „FREIGEGEBEN“ / „ÄNDERUNGEN ANGEFORDERT“.
-- Ändert sich der Ablauf, diese Datei und die `CLAUDE.md` mitziehen und die Prompts in den Routinen anpassen.
+- Ändert sich der Ablauf: diese Datei und die `CLAUDE.md` anpassen; mit dem nächsten Release übernehmen die Routinen es von selbst.
+  Nur wenn sich der Start-Prompt selbst ändert (selten), müssen die Routinen angefasst werden.
