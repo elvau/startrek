@@ -122,6 +122,11 @@ try {
   await sky.locator(".imp-add").click();
   await p.locator("#attractions .card[data-item]", { hasText: "Shibuya Sky" }).first().waitFor();
   log("Japan: Früh buchen für Tokio gebündelt, Shibuya Sky (14 Tage vorher, 00:00 Ortszeit) als Posten übernommen");
+  // Kalender-Export des Tagesplans: Flüge in Ortszeit, Reisezeitraum ganztägig
+  const cal = decodeURIComponent((await p.locator(".dp-cal a").getAttribute("href")).split(",").slice(1).join(","));
+  for (const x of ["BEGIN:VCALENDAR", "DTSTART;VALUE=DATE:20270401", "SUMMARY:✈ FRA → HND", "DTSTART:20270401T130000"]) if (!cal.includes(x)) fail(`Kalender ohne „${x}“: ${cal.slice(0, 400)}`);
+  if (!(await p.locator(".dp-cal a").getAttribute("download")).endsWith(".ics")) fail("Kalender-Datei ohne Namen");
+  log("Japan: Tagesplan als .ics (Reisezeitraum, Flüge in Ortszeit)");
 
   // Unterkunft: eine Station Tokio, Zeitabschnitte, erst Familie Klein allein; „alle zusammen“ ohne Ferienwohnung für 9 → 2 Häuser
   await p.locator("#stay .st-open").click();
