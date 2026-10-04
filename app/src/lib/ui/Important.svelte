@@ -13,6 +13,7 @@
   import { GENERAL_LINKS, hintsFor, tripAps, tripCountries, tripText, type Hint } from "../hints";
   import { bookAheadFor, icsFor, type BookAhead, type BookWindow, type Sale } from "../bookahead";
   import PartnerLinks from "./PartnerLinks.svelte";
+  import { cancelEvents, icsHref as calHref, icsName, toIcs, type CalEvent } from "../calendar";
   import { itinerary } from "../itinerary";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { ccOf } from "../geo/places";
@@ -119,6 +120,20 @@
     app.trip.items.push(it);
     showItem(it.id);
   }
+
+  // Fristen in den Kalender: Verkaufsstarts, Einreise vorab (zwei Wochen vor Abreise), kostenlos stornieren bis
+  const deadlines = $derived.by(() => {
+    const ev: CalEvent[] = [];
+    for (const p of points) {
+      if (p.book) for (const x of p.book.entries) if (x.sale.at && !x.sale.monthOnly && x.sale.at.getTime() > Date.now())
+        ev.push({ uid: `sale-${x.e.id}`, summary: t("book.icsTitle", { name: x.e.name }), at: x.sale.at, url: x.e.links[0]?.url, alarm: 15 });
+      if (p.kind === "entry" && app.trip.from) {
+        const d = new Date(Date.parse(`${app.trip.from}T00:00:00Z`) - 14 * 86400000).toISOString().slice(0, 10);
+        if (d >= new Date().toISOString().slice(0, 10)) ev.push({ uid: `entry-${p.cc}`, summary: `${t("imp.entry", { c: countryName(p.cc!) })}: ${p.hint?.links[0]?.label || text(p)}`, start: d, url: p.hint?.links[0]?.url, alarm: 9 * 60 });
+      }
+    }
+    return [...ev, ...cancelEvents(app.trip, n => t("cal.cancel", { name: n }))];
+  });
 
   // Gebühren vor Ort (z. B. Galápagos) als Posten
   const hasFee = (h: Hint) => app.trip.items.some(i => i.hint === h.id);
@@ -232,6 +247,7 @@
             {/each}
           </ul>
         {/if}
+        {#if deadlines.length}<p class="small"><a class="imp-cal" href={calHref(toIcs(deadlines, t("cal.deadlinesName", { trip: app.trip.name || app.trip.place })))} download={icsName(`${app.trip.name || app.trip.place}-fristen`)}>📅 {t("cal.deadlines", { n: deadlines.length })}</a></p>{/if}
         {#if canCheck}<p class="small"><button class="linkbtn imp-check" onclick={() => void loadDocs()}>🪪 {t("imp.checkPass")}</button> <span class="muted">{t("imp.checkPassNote")}</span></p>{/if}
         <p class="muted small">{mixed ? t("hint.leadMixed") : t("hint.lead")}{#if visa?.asOf} {t("hint.visaSource", { d: visa.asOf.split("-").reverse().join(".") })}{/if}</p>
         <p class="small">{t("hint.general")}{#each GENERAL_LINKS as l (l.url)} <a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}</p>
