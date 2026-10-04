@@ -389,6 +389,7 @@ export const pl: Dict = {
   "fs.noHome": "Brak miejsca zamieszkania: bez niemieckiego kodu pocztowego wyszukiwarka proponuje lotniska w Nadrenii Północnej-Westfalii i nie liczy dojazdu.",
   "fs.plzPh": "Kod",
   "fs.plzUnknown": "Nie znaleziono kodu",
+  "fs.usePlz": "Użyj zapisanego kodu",
   "fs.split.hint": "{all} osób w {n} rezerwacjach po {k}: szukamy dla {k}, ceny przeliczamy na wszystkich. Tanie taryfy są często ograniczone do kilku miejsc na lot, a dostawcy szukają najwyżej 9 osób naraz. Ceny mogą rosnąć z rezerwacji na rezerwację.",
   "fs.split.label": "Rezerwacje po maks.",
   "fs.split.none": "nie dziel",

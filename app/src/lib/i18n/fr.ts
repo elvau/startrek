@@ -371,6 +371,7 @@ export const fr: Dict = {
   "fs.noHome": "Domicile manquant : sans code postal allemand, la recherche propose des aéroports de Rhénanie-du-Nord-Westphalie et ne calcule pas le trajet vers l’aéroport.",
   "fs.plzPh": "Code postal",
   "fs.plzUnknown": "Code postal introuvable",
+  "fs.usePlz": "Utiliser le code postal enregistré",
   "fs.split.hint": "{all} personnes en {n} réservations de {k} : on cherche pour {k} et les prix sont extrapolés à tous. Les tarifs bas sont souvent limités à quelques places par vol, et les fournisseurs cherchent au plus 9 personnes à la fois. Les prix peuvent augmenter d’une réservation à l’autre.",
   "fs.split.label": "Réservations de max.",
   "fs.split.none": "ne pas diviser",

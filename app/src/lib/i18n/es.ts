@@ -371,6 +371,7 @@ export const es: Dict = {
   "fs.noHome": "Falta el domicilio: sin código postal alemán la búsqueda propone aeropuertos de Renania del Norte-Westfalia y no calcula el trayecto al aeropuerto.",
   "fs.plzPh": "C. P.",
   "fs.plzUnknown": "Código postal no encontrado",
+  "fs.usePlz": "Usar el C. P. guardado",
   "fs.split.hint": "{all} personas en {n} reservas de {k}: se busca para {k} y los precios se extrapolan a todos. Las tarifas baratas suelen limitarse a pocas plazas por vuelo y los proveedores buscan como máximo 9 personas a la vez. Los precios pueden subir de una reserva a otra.",
   "fs.split.label": "Reservas de máximo",
   "fs.split.none": "no dividir",

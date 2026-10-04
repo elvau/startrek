@@ -369,6 +369,7 @@ export const de = {
   "fs.noHome": "Wohnort fehlt: Ohne Postleitzahl schlägt die Suche Flughäfen in NRW vor und kann die Anfahrt nicht rechnen.",
   "fs.plzPh": "PLZ",
   "fs.plzUnknown": "PLZ nicht gefunden",
+  "fs.usePlz": "Gespeicherte PLZ übernehmen",
   "fs.split.hint": "{all} Personen in {n} Buchungen à {k}: gesucht wird für {k}, die Preise sind auf alle hochgerechnet. Günstige Tarife gibt es je Flug oft nur für wenige Plätze, und die Anbieter suchen höchstens 9 Personen auf einmal. Beim Buchen können die Preise je Buchung steigen.",
   "fs.split.label": "Buchungen à höchstens",
   "fs.split.none": "nicht aufteilen",

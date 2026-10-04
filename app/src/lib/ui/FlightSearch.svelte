@@ -22,7 +22,8 @@
   import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
   import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
-  import { loadPlz } from "../plz";
+  import { loadPlz, withHome } from "../plz";
+  import { cloud } from "../cloud/cloud.svelte";
   import type { FlightScope } from "../flights/open.svelte";
   import { googleFlightsLink, skyscannerLink } from "../links";
   import type { FlightOffer, FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
@@ -207,23 +208,17 @@
   // ohne Wohnort schlägt die Suche Flughäfen aus der Standardliste (NRW) vor: PLZ gleich hier eintragen
   const noHome = $derived(flyers(trip, who).some(x => !trip.households?.[hhKey(x)]?.geo));
   let plzErr = $state(false);
-  async function setPlz(v: string, quiet = false): Promise<boolean> {
+  async function setPlz(v: string): Promise<boolean> {
     plzErr = false;
     if (!/^\d{5}$/.test(v.trim())) return false;
     const pl = (await loadPlz().catch(() => null))?.get(v.trim());
-    if (!pl) { if (!quiet) plzErr = true; return false; }
-    trip.households ||= {};
-    for (const h of new Set(flyers(trip, who).map(hhKey))) if (!trip.households[h]?.geo) trip.households[h] = { ...trip.households[h], plz: v.trim(), geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
+    if (!pl) { plzErr = true; return false; }
+    trip.households = withHome(trip.households, flyers(trip, who).map(hhKey), v.trim(), pl);
     resetAps();
     return true;
   }
-  // gespeicherte PLZ aus den Einstellungen als Wohnort übernehmen, solange einer fehlt; ein Fehlschlag bleibt still
-  // (ein Versuch je PLZ und Flieger-Auswahl, damit ein Wechsel der Reise oder des Fliegers neu übernimmt)
-  let plzTried = "";
-  $effect(() => {
-    const p = dir.prefs?.plz, k = p ? `${p}|${flyers(trip, who).map(hhKey).join(",")}` : "";
-    if (noHome && p && k !== plzTried) { plzTried = k; void setPlz(p, true); }
-  });
+  // gespeicherte PLZ (nur mit Konto) erst auf Knopfdruck übernehmen: sie wird dann Teil der Reise
+  const savedPlz = $derived(cloud.user ? dir.prefs?.plz : undefined);
 
   const SHOW = 40;
   // Flüge der anderen (schon übernommen): zum gemeinsamen Ankommen
@@ -454,7 +449,7 @@
         {/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
       </div>
-      {#if noHome}<p class="warnline fs-nohome">{t("fs.noHome")} <input class="fs-plz" inputmode="numeric" maxlength="5" placeholder={t("fs.plzPh")} aria-label={t("fs.plzPh")} oninput={e => setPlz(e.currentTarget.value)} />{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</p>{/if}
+      {#if noHome}<p class="warnline fs-nohome">{t("fs.noHome")} <input class="fs-plz" inputmode="numeric" maxlength="5" placeholder={t("fs.plzPh")} aria-label={t("fs.plzPh")} oninput={e => setPlz(e.currentTarget.value)} />{#if savedPlz} <button class="btn sm" onclick={() => setPlz(savedPlz)}>{t("fs.usePlz")}</button>{/if}{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</p>{/if}
       <p class="muted small">
         {#if custom}{t("fs.custom")} <button type="button" class="linkbtn" onclick={resetAps}>{t("fs.reset")}</button>
         {:else}{t("fs.default")}{/if}

@@ -371,6 +371,7 @@ export const en: Dict = {
   "fs.noHome": "Home missing: without a German postcode the search suggests airports in North Rhine-Westphalia and can't estimate the trip to the airport.",
   "fs.plzPh": "Postcode",
   "fs.plzUnknown": "Postcode not found",
+  "fs.usePlz": "Use saved postcode",
   "fs.split.hint": "{all} people in {n} bookings of {k}: we search for {k} and extrapolate prices to everyone. Cheap fares are often limited to a few seats per flight, and providers search at most 9 people at once. Prices may rise from booking to booking.",
   "fs.split.label": "Bookings of at most",
   "fs.split.none": "don't split",
