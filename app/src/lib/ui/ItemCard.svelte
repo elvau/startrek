@@ -43,7 +43,7 @@
   {#if src?.url || gmap || src?.test}
     <p class="src-link">
       {#if src?.test}<span class="pill-test" title={t("test.title")}>{t("test.price")}</span> {/if}
-      {#if src?.url}<ExtLink href={src.url} sponsored={src.sponsored}>{t("search.atProvider")}{src.name ? ` · ${src.name}` : ""} ↗</ExtLink>{/if}
+      {#if src?.url}<ExtLink href={src.url} sponsored={src.sponsored} track={[src.name, item.cat]}>{t("search.atProvider")}{src.name ? ` · ${src.name}` : ""} ↗</ExtLink>{/if}
       {#if src?.url && gmap} · {/if}
       {#if gmap}<a class="gmap" href={gmap} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
     </p>

@@ -246,7 +246,7 @@
                   {#if a.price}<span class="xp-price">{t("xp.from", { p: money(a.price, a.currency) })}</span>{/if}
                 </div>
                 <div class="xp-acts">
-                  {#if a.url}<ExtLink cls="linkbtn" href={a.url} sponsored={a.sponsored}>{t("xp.details")} ↗</ExtLink>{/if}
+                  {#if a.url}<ExtLink cls="linkbtn" href={a.url} sponsored={a.sponsored} track={[a.source, "activity"]}>{t("xp.details")} ↗</ExtLink>{/if}
                   <button class="btn xp-take" class:primary={!taken[a.id]} disabled={taken[a.id]} onclick={() => take(a.id, () => activityItem(a))}>{taken[a.id] ? t("xp.taken") : t("xp.take")}</button>
                 </div>
               </article>

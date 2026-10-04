@@ -95,10 +95,16 @@ export function tripCountries(trip: Trip, ccOfCountry: (name?: string) => string
   return [...out];
 }
 
+/** Flughäfen der Reise (Flüge, auch Umstiege) */
+export const tripAps = (trip: Trip) => new Set(trip.items.filter(i => i.status !== "dropped").flatMap(i => i.options.flatMap(o => (o.legs || []).flatMap(l => [l.from, l.to]))));
+
+/** Text der Reise zum Erkennen von Orten: Ziel, Stationen, Posten, Tagesplan */
+export const tripText = (trip: Trip, places: string[]) =>
+  [trip.place, ...places, ...trip.items.filter(i => i.status !== "dropped").flatMap(i => [i.name, ...i.options.map(o => o.label), ...i.options.map(o => o.query?.place || "")]),
+    ...Object.values(trip.days || {}).flatMap(d => [d.title || "", ...(d.notes || []).flatMap(n => [n.text, n.to || ""])])].filter(Boolean).join(" | ");
+
 /** Hinweise für die Reise: je Land die Einreise, je Ort die Besonderheiten (Flughäfen, Orte, Posten, Tagesplan) */
 export function hintsFor(trip: Trip, countries: string[], places: string[]): Hint[] {
-  const aps = new Set(trip.items.filter(i => i.status !== "dropped").flatMap(i => i.options.flatMap(o => (o.legs || []).flatMap(l => [l.from, l.to]))));
-  const text = [trip.place, ...places, ...trip.items.filter(i => i.status !== "dropped").flatMap(i => [i.name, ...i.options.map(o => o.label), ...i.options.map(o => o.query?.place || "")]),
-    ...Object.values(trip.days || {}).flatMap(d => [d.title || "", ...(d.notes || []).flatMap(n => [n.text, n.to || ""])])].filter(Boolean).join(" | ");
+  const aps = tripAps(trip), text = tripText(trip, places);
   return HINTS.filter(h => (h.cc || []).some(c => countries.includes(c)) || (h.kind !== "entry" && ((h.aps || []).some(a => aps.has(a)) || !!h.words?.test(text))));
 }

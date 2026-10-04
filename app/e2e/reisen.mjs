@@ -53,11 +53,14 @@ try {
   }, TRIPS);
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(e.message));
-  for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+  for (const f of ["airports.json", "world.json", "packs.json", "visa.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
   const json = (r, body) => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
   const asked = { flights: [], stays: [], tours: [] };
+  // Auswärtiges Amt: Teilreisewarnung USA, Änderungsdatum lässt sich im Test umstellen
+  let aaMod = "2026-09-01";
+  await p.route("https://flights.test/advice", r => json(r, { countries: { US: { id: "usa-node", name: "USA", warning: false, partial: true, situation: false, situationPart: false, modified: aaMod } } }));
 
   // Flüge: je Tag im Fenster ein Flug; Fidschi → München nur mit 2 Umstiegen; Los Angeles → San Diego zum Fehlerpreis
   const leg = (from, to, dep, minutes) => ({ from, to, dep: `${dep}T10:00:00`, arr: `${dep}T${String(10 + Math.min(13, Math.round(minutes / 60))).padStart(2, "0")}:00:00`, minutes, stops: 1, route: [from, "XXX", to], carriers: ["Sun Air"], flights: ["SA1"] });
@@ -107,6 +110,23 @@ try {
   await until(async () => (await fm.locator(".fs-form input[type=date]").first().inputValue()) === "2027-04-01", "Daten folgen der Auswahl (Klein: Reisezeitraum)");
   await p.keyboard.press("Escape");
   log("Japan: Flugsuche für den Onkel ab seiner ersten Nacht (15.04.), bei Familie Klein wieder der Reisezeitraum");
+  // Früh buchen: ein Punkt für Tokio unter „Wichtiges“ mit Shibuya Sky, Fenster in Worten, als Posten übernehmen
+  await p.keyboard.press("Escape");
+  const tokyo = p.locator(".imp [data-key='book:tokyo']");
+  await tokyo.scrollIntoViewIfNeeded();
+  if (await tokyo.evaluate(el => el.tagName === "BUTTON")) await tokyo.click();
+  const sky = p.locator(".imp-card[data-key='book:tokyo'] li[data-book='shibuya-sky']");
+  await sky.waitFor();
+  if (!(await sky.innerText()).includes("Verkauf 14 Tage vorher, 00:00 Uhr Ortszeit")) fail("Shibuya Sky ohne Fenster: " + (await sky.innerText()));
+  if ((await p.locator(".imp [data-key='book:tokyo']").count()) !== 1 || (await p.locator(".imp li[data-book='shibuya-sky']").count()) !== 1) fail("Früh buchen nicht je Reiseziel gebündelt");
+  await sky.locator(".imp-add").click();
+  await p.locator("#attractions .card[data-item]", { hasText: "Shibuya Sky" }).first().waitFor();
+  log("Japan: Früh buchen für Tokio gebündelt, Shibuya Sky (14 Tage vorher, 00:00 Ortszeit) als Posten übernommen");
+  // Kalender-Export des Tagesplans: Flüge in Ortszeit, Reisezeitraum ganztägig
+  const cal = decodeURIComponent((await p.locator(".dp-cal a").getAttribute("href")).split(",").slice(1).join(","));
+  for (const x of ["BEGIN:VCALENDAR", "DTSTART;VALUE=DATE:20270401", "SUMMARY:✈ FRA → HND", "DTSTART:20270401T130000"]) if (!cal.includes(x)) fail(`Kalender ohne „${x}“: ${cal.slice(0, 400)}`);
+  if (!(await p.locator(".dp-cal a").getAttribute("download")).endsWith(".ics")) fail("Kalender-Datei ohne Namen");
+  log("Japan: Tagesplan als .ics (Reisezeitraum, Flüge in Ortszeit)");
 
   // Unterkunft: eine Station Tokio, Zeitabschnitte, erst Familie Klein allein; „alle zusammen“ ohne Ferienwohnung für 9 → 2 Häuser
   await p.locator("#stay .st-open").click();
@@ -207,6 +227,39 @@ try {
   if ((await cm.locator(".fs-res").count()) !== 1 || /56\.8|8\.117/.test(await cm.locator(".fs-res").first().innerText())) fail("unplausibler Preis nicht aussortiert: " + (await cm.locator(".fs-res").allInnerTexts()).join(" | ").slice(0, 300));
   await p.keyboard.press("Escape");
   log("Kalifornien: Mietwagen SFO → SAN als Einwegmiete, 7 Personen = 2 Autos; Fehlerpreis LAX → SAN (8.117 € p. P.) aussortiert");
+
+  // ---- Wichtiges: Einreise USA (ESTA) oben an der Reise, je Person abhaken, Zähler, minimiert, wieder öffnen
+  const imp = p.locator(".imp");
+  await imp.scrollIntoViewIfNeeded();
+  const aa = imp.locator(".imp-card[data-key='aa:US']");
+  await aa.waitFor();
+  if (!(await aa.innerText()).includes("01.09.2026")) fail("Teilreisewarnung ohne Änderungsdatum: " + (await aa.innerText()));
+  await aa.locator(".linkbtn", { hasText: "alle erledigt" }).click();
+  const esta = imp.locator(".imp-card[data-key='entry:US']");
+  await esta.waitFor();
+  // weitere offene Punkte (z. B. Früh buchen in San Francisco) zählen mit: relativ prüfen
+  const badge = async () => ((await imp.locator(".imp-badge").count()) ? Number(await imp.locator(".imp-badge").innerText()) : 0);
+  const n0 = await badge();
+  if (n0 < 1) fail("Zähler Wichtiges: " + (await imp.innerText()).slice(0, 200));
+  const who = await esta.locator(".chip").allInnerTexts();
+  if (who.length !== 7) fail("ESTA nicht je Person: " + who.join(", "));
+  await esta.locator(".chip").first().click();
+  if (!(await esta.innerText()).includes("Erledigt: 1 von 7")) fail("ESTA je Person: " + (await esta.innerText()));
+  await esta.locator(".linkbtn", { hasText: "alle erledigt" }).click();
+  await esta.waitFor({ state: "detached" });
+  if ((await badge()) !== n0 - 1) fail("Zähler nach Abhaken nicht gesunken");
+  await imp.locator(".imp-more").click();
+  await imp.locator(".imp-closed li", { hasText: "Einreise" }).locator(".linkbtn").click();
+  if ((await badge()) !== n0) fail("wieder geöffnet, Zähler nicht zurück");
+  if (!(await imp.locator(".imp-entries").innerText()).includes("Vereinigte Staaten")) fail("Einreise im Überblick fehlt");
+  if (await p.locator(".hints").count()) fail("alte Karte „Einreise & Tipps“ noch da");
+  log("Wichtiges: ESTA für 7 Personen oben an der Reise, je Person abhaken, Zähler sinkt, wieder öffnen; alte Karte entfällt");
+  // neue Fassung beim Auswärtigen Amt: Punkt ist wieder offen
+  aaMod = "2026-10-02";
+  await open("Kalifornien");
+  await p.locator(".imp-card[data-key='aa:US']", { hasText: "02.10.2026" }).waitFor();
+  if ((await p.locator(".imp .imp-badge").innerText()) !== String(n0 + 1)) fail("geänderte Warnung nicht wieder offen");
+  log("Wichtiges: Teilreisewarnung gelesen, nach Änderung beim Auswärtigen Amt wieder offen");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nGruppenreisen: alles in Ordnung");

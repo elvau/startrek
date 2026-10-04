@@ -13,8 +13,8 @@
   import { ensureAirports, ensureGeo } from "../geo/geo.svelte";
   import RouteMini from "./RouteMini.svelte";
   import RouteMap from "./RouteMap.svelte";
-  import HintsCard from "./HintsCard.svelte";
   import { reveal } from "./reveal";
+  import { icsHref, icsName, planEvents, toIcs } from "../calendar";
 
   const days = $derived(itinerary(app.trip));
   // Reiseroute: Vorschau ohne Karte, auf Klick Karte mit Bild und Animation
@@ -74,10 +74,11 @@
     {:else}<button class="dp-prev" onclick={() => (mapOpen = true)} aria-label={t("route.open")}><RouteMini {route} w={640} h={180} label={t("route.title")} /></button>{/if}
   </article>
 {/if}
-<HintsCard />
 {#if !days.length}
   <p class="muted dp-none">{t("day.none")}</p>
 {:else}
+  <!-- Kalender-Export: Tagesplan mit Flügen, Check-in/-out und Einträgen (Ortszeiten) -->
+  <p class="dp-cal small"><a class="btn sm" href={icsHref(toIcs(planEvents(app.trip, days), app.trip.name || app.trip.place))} download={icsName(app.trip.name || app.trip.place)}>📅 {t("cal.plan")}</a> <span class="muted">{t("cal.planNote")}</span></p>
   {#if open.length && !access.readonly}
     <div class="dp-open card" use:reveal>
       <span class="dlabel">{t("day.unplanned")}</span>
@@ -173,4 +174,5 @@
   .dp-open p { margin: -4px 0 2px; }
   .dp-o { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 14px; font-weight: 600; flex-wrap: wrap; }
   .dp-o select { max-width: 60%; font-size: 13.5px; padding-top: 6px; padding-bottom: 6px; }
+  .dp-cal { margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 </style>

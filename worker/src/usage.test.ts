@@ -1,6 +1,6 @@
 /* Läuft mit den Tests der App (cd app && npx vitest run) */
 import { describe as group, expect, it } from "vitest";
-import { describe, isAdmin, lastDays, meter, noteRoute, usageReport } from "./usage";
+import { describe, isAdmin, lastDays, meter, noteClick, noteRoute, usageReport } from "./usage";
 
 const dataset = () => {
   const points: { blobs?: unknown[]; doubles?: number[] }[] = [];
@@ -24,6 +24,19 @@ group("Zählen", () => {
     expect(JSON.stringify(USAGE.points)).not.toContain("geheim");
     noteRoute({ USAGE }, "flights", true);
     expect(USAGE.points[2].blobs).toEqual(["route", "flights", "hit"]);
+  });
+
+  it("Klicks je Partner und Kategorie, nur bekanntes Format", () => {
+    const USAGE = dataset();
+    expect(noteClick({ USAGE }, { p: "viator", c: "activity" })).toBe(true);
+    expect(USAGE.points[0]).toEqual({ blobs: ["click", "viator", "activity"], doubles: [1], indexes: ["click"] });
+    // nichts außer Partner und Kategorie wird übernommen
+    expect(noteClick({ USAGE }, { p: "kayakcars", c: "car", uid: "abc", trip: "x" })).toBe(true);
+    expect(USAGE.points[1].blobs).toEqual(["click", "kayakcars", "car"]);
+    for (const bad of [null, "viator", { p: "Viator!", c: "activity" }, { p: "viator" }, { p: "a".repeat(41), c: "car" }, { p: "viator", c: "x1" }])
+      expect(noteClick({ USAGE }, bad)).toBe(false);
+    expect(USAGE.points).toHaveLength(2);
+    expect(noteClick({}, { p: "viator", c: "activity" })).toBe(true);
   });
 
   it("ohne Datensatz unverändert, Fehler beim Zählen stören nicht", async () => {
