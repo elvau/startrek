@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HINTS } from "./hints";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { doneIds, importantPoints, isOpen, markDone, openCount, reopen, type DoneMap } from "./important";
+import { doneIds, importantPoints, isOpen, isUrgent, markDone, openCount, reopen, type DoneMap } from "./important";
 import type { VisaData } from "./visa";
 
 // Ausschnitt aus visa.json: Pässe DE und GB, Ziele US, TH, DE (t = Reisegenehmigung, f90 = 90 Tage visumfrei)
@@ -40,6 +40,20 @@ describe("Wichtiges zur Reise", () => {
   it("besondere Orte und Warnungen als eigene Punkte", () => {
     const ps = importantPoints({ trip: trip([anna]), countries: [], hints: HINTS.filter(h => h.id === "machu" || h.id === "kp"), visa, advice: {} });
     expect(ps.map(p => `${p.key}/${p.kind}`)).toEqual(["hint:kp/warn", "hint:machu/place"]);
+    // gelesen je Person: alle Reisenden
+    expect(ps[1].persons!.map(p => p.name)).toEqual(["Anna"]);
+  });
+
+  it("gelesen je Person; aufgeklappt nur Dringendes", () => {
+    const ps = importantPoints({ trip: trip([anna, ben]), countries: ["US"], hints: HINTS.filter(h => h.id === "machu"), visa,
+      advice: { US: { id: "x", name: "USA", warning: false, partial: false, situation: true, situationPart: false } } });
+    const done: DoneMap = {};
+    const machu = ps.find(p => p.key === "hint:machu")!;
+    markDone(done, machu, "a");
+    expect(isOpen(machu, done)).toBe(true);
+    markDone(done, machu, "b");
+    expect(isOpen(machu, done)).toBe(false);
+    expect(ps.map(p => `${p.key}:${isUrgent(p)}`)).toEqual(["entry:US:true", "aa:US:false", "hint:machu:false"]);
   });
 
   it("abhaken je Person, Zähler, wieder öffnen", () => {

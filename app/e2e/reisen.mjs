@@ -53,7 +53,7 @@ try {
   }, TRIPS);
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(e.message));
-  for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+  for (const f of ["airports.json", "world.json", "packs.json", "visa.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
   const json = (r, body) => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
@@ -207,6 +207,26 @@ try {
   if ((await cm.locator(".fs-res").count()) !== 1 || /56\.8|8\.117/.test(await cm.locator(".fs-res").first().innerText())) fail("unplausibler Preis nicht aussortiert: " + (await cm.locator(".fs-res").allInnerTexts()).join(" | ").slice(0, 300));
   await p.keyboard.press("Escape");
   log("Kalifornien: Mietwagen SFO → SAN als Einwegmiete, 7 Personen = 2 Autos; Fehlerpreis LAX → SAN (8.117 € p. P.) aussortiert");
+
+  // ---- Wichtiges: Einreise USA (ESTA) oben an der Reise, je Person abhaken, Zähler, minimiert, wieder öffnen
+  const imp = p.locator(".imp");
+  await imp.scrollIntoViewIfNeeded();
+  const esta = imp.locator(".imp-card[data-key='entry:US']");
+  await esta.waitFor();
+  if ((await imp.locator(".imp-badge").innerText()) !== "1") fail("Zähler Wichtiges: " + (await imp.innerText()).slice(0, 200));
+  const who = await esta.locator(".chip").allInnerTexts();
+  if (who.length !== 7) fail("ESTA nicht je Person: " + who.join(", "));
+  await esta.locator(".chip").first().click();
+  if (!(await esta.innerText()).includes("Erledigt: 1 von 7")) fail("ESTA je Person: " + (await esta.innerText()));
+  await esta.locator(".linkbtn", { hasText: "alle erledigt" }).click();
+  await imp.locator(".imp-ok").waitFor();
+  if (await imp.locator(".imp-badge").count()) fail("Zähler nach Abhaken nicht weg");
+  await imp.locator(".imp-more").click();
+  await imp.locator(".imp-closed .linkbtn", { hasText: "wieder öffnen" }).click();
+  if ((await imp.locator(".imp-badge").innerText()) !== "1") fail("wieder geöffnet, Zähler fehlt");
+  if (!(await imp.locator(".imp-entries").innerText()).includes("Vereinigte Staaten")) fail("Einreise im Überblick fehlt");
+  if (await p.locator(".hints").count()) fail("alte Karte „Einreise & Tipps“ noch da");
+  log("Wichtiges: ESTA für 7 Personen oben an der Reise, je Person abhaken, Zähler weg, wieder öffnen; alte Karte entfällt");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nGruppenreisen: alles in Ordnung");

@@ -1,8 +1,9 @@
 /*
  * Wichtiges zur Reise: was man vor der Reise unbedingt bedenken muss, als Punkte mit Zähler (Epic „Wichtiges zur Reise“).
  * Quellen: Warnstufen des Auswärtigen Amts (advice.ts), Einreise je Pass (visa.ts) und Hinweise (hints.ts).
- * „Erledigt“ steht in der Reise (trip.done), bei Punkten für Personen je Person. Ändert sich der Inhalt eines Punkts
- * (Signatur), gilt er wieder als offen; kommen Personen dazu, ebenso.
+ * „Erledigt“ bzw. „gelesen“ steht in der Reise (trip.done), je Person: Einreise für alle, die etwas tun müssen,
+ * Warnungen und Hinweise für alle Reisenden. Ändert sich der Inhalt eines Punkts (Signatur), gilt er wieder als offen;
+ * kommen Personen dazu, ebenso.
  */
 import type { Trip } from "./model";
 import { isActive } from "./model";
@@ -28,7 +29,7 @@ export interface Point {
   advice?: Advice;
   /** passender Hinweis aus hints.ts (Text, Links, Gebühr) */
   hint?: Hint;
-  /** Punkte für Personen: wer etwas tun muss (z. B. ESTA je reisende Person) */
+  /** je Person: wer etwas tun muss (Einreise) bzw. wer lesen soll (alle Reisenden) */
   persons?: PointPerson[];
 }
 
@@ -50,10 +51,11 @@ export interface PointInput {
 /** alle wichtigen Punkte der Reise, wichtigste zuerst */
 export function importantPoints({ trip, countries, hints, visa, advice }: PointInput): Point[] {
   const act = trip.travelers.filter(isActive);
+  const all: PointPerson[] | undefined = act.length ? act.map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" })) : undefined;
   const out: Point[] = [];
   for (const cc of countries) {
     const a = advice[cc], level = adviceLevel(a);
-    if (a && level) out.push({ key: `aa:${cc}`, kind: "aa", prio: PRIO[level], sig: `${level}|${a.modified || ""}`, cc, level, advice: a });
+    if (a && level) out.push({ key: `aa:${cc}`, kind: "aa", prio: PRIO[level], sig: `${level}|${a.modified || ""}`, cc, level, advice: a, ...(all ? { persons: all } : {}) });
     // Einreise: wer vorab etwas tun muss (Passport Index) bzw. für wen der Hinweis gilt (deutsche Staatsangehörige)
     const hint = hints.find(h => h.kind === "entry" && h.cc?.includes(cc));
     const persons: PointPerson[] = [];
@@ -66,7 +68,7 @@ export function importantPoints({ trip, countries, hints, visa, advice }: PointI
   }
   for (const h of hints) {
     if (h.kind === "entry") continue;
-    out.push({ key: `hint:${h.id}`, kind: h.kind === "warn" ? "warn" : "place", prio: PRIO[h.kind === "warn" ? "warn" : "place"], sig: h.id, ...(h.cc?.[0] ? { cc: h.cc[0] } : {}), hint: h });
+    out.push({ key: `hint:${h.id}`, kind: h.kind === "warn" ? "warn" : "place", prio: PRIO[h.kind === "warn" ? "warn" : "place"], sig: h.id, ...(h.cc?.[0] ? { cc: h.cc[0] } : {}), hint: h, ...(all ? { persons: all } : {}) });
   }
   return out.sort((a, b) => a.prio - b.prio);
 }
@@ -84,6 +86,9 @@ export function isOpen(p: Point, done: DoneMap = {}): boolean {
   if (!d || d.sig !== p.sig) return true;
   return !!p.persons && p.persons.some(x => !(d.ids || []).includes(x.id));
 }
+
+/** aufgeklappt zeigen (Reisewarnung, Teilreisewarnung, Einreise), sonst einzeilig bis zum Antippen */
+export const isUrgent = (p: Point) => p.kind === "entry" || p.kind === "warn" || p.level === "warning" || p.level === "partial";
 
 export const openCount = (ps: Point[], done?: DoneMap) => ps.filter(p => isOpen(p, done)).length;
 
