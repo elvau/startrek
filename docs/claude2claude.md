@@ -35,6 +35,25 @@ feature und gehört der Entwicklung.
 - Zeitplan versetzt, z. B. 3× täglich: Triage 8:00 / 13:00 / 18:00, Umsetzung 20 Minuten später, Review 40 Minuten
   später. Ohne Arbeit beendet sich jede Routine sofort.
 
+## Schutz vor Sperre des Bot-Kontos
+
+GitHub hat das Konto `daniel-ai-coder` als Spam markiert, nachdem eine Sitzung in kurzer Zeit rund 40 Tickets angelegt
+hatte: Seine Issues und PRs waren für andere unsichtbar, Actions liefen nicht mehr. Das gilt für alle Bot-Konten
+(auch `monika-ai-coder`), deshalb für jede Routine und Sitzung:
+
+- **Maßvoll anlegen:** je Lauf höchstens 5 neue Issues und 3 neue Pull Requests. Mehr zu tun? Rest im nächsten Lauf.
+- **Erst suchen, dann anlegen:** vor jedem neuen Issue nach Doppelten suchen; lieber einen Kommentar ans bestehende
+  Ticket als ein neues. Mehrere kleine Punkte in ein Sammelticket statt je eines.
+- **Keine Serien:** nicht viele Kommentare, Labels oder Änderungen in schneller Folge (keine Schleifen über alle Tickets);
+  je Ticket und Lauf höchstens ein Kommentar.
+- **Keine Links nach außen** in Issues und Kommentaren außer auf `splitandfly.com`, die Testumgebung und dieses Repo.
+- **Kein CI anstoßen** durch leere Commits, Schließen/Wiedereröffnen oder wiederholte Pushes.
+- **Warnzeichen:** Startet bei einem PR keine Prüfung, liefert die Weboberfläche 404 für eigene Issues oder meldet die
+  Schnittstelle „abuse“/„secondary rate limit“: sofort aufhören, nichts weiter anlegen oder pushen, in einem Kommentar
+  am betroffenen Ticket (oder im Ergebnis des Laufs) Dani Bescheid geben. Dani prüft dann das Konto
+  (https://support.github.com/contact/reinstatement).
+- Bot-Konten mit Zwei-Faktor-Anmeldung und bestätigter E-Mail einrichten.
+
 ## Start-Prompts (einmalig in den Routinen eintragen)
 
 Die Routinen tragen nur diesen kurzen Prompt. Die eigentlichen Anweisungen lesen sie bei jedem Lauf aus dieser Datei auf
