@@ -21,8 +21,8 @@ Branches: **Arbeits-Branch** (je Sitzung oder Routine, z. B. `claude/…`) → *
 4. **Release** (nur auf ausdrückliches „Release“): auf `pre-release` die Version anheben, `npm run test:cloud`, Pull Request
    `pre-release` → `main`, warten bis „Prüfen (vor dem Release)“ grün ist, mergen (merge commit). Der Push auf `main` bringt
    den Stand nach 2–3 Minuten auf splitandfly.com (Actions → „Release (splitandfly.com)“). Danach `pre-release` auf `main`
-   vorspulen (`git push origin origin/main:pre-release`) und Arbeits-Branches auf `main` zurücksetzen.
-   Wöchentlich wird `main` zusätzlich neu gebaut (Flughafendaten).
+   vorspulen (`git push origin origin/main:pre-release`), Arbeits-Branches auf `main` zurücksetzen und den Spiegel
+   aktualisieren (Schritt 7). Wöchentlich wird `main` zusätzlich neu gebaut (Flughafendaten).
 5. **Version:** Jeder Release hebt die Version in `app/package.json` an (`npm version 0.3.0 --no-git-tag-version` in `app/`):
    neue Funktionen → mittlere Stelle (0.2.0 → 0.3.0), nur Fehlerbehebungen → letzte Stelle (0.3.0 → 0.3.1).
    Nach dem Veröffentlichen legt der Workflow den Tag `v0.3.0` und eine Release-Seite mit den Änderungen an
@@ -30,6 +30,14 @@ Branches: **Arbeits-Branch** (je Sitzung oder Routine, z. B. `claude/…`) → *
    und in jeder Fehlermeldung (🐞). Bleibt die Version gleich, wird nur veröffentlicht, ohne neues Release.
 6. **Hotfix:** Dringendes kann von einem Arbeits-Branch auf `main` direkt per Release-PR gehen; danach `main` in
    `pre-release` mergen.
+7. **Spiegel `starwars` aktualisieren:** Nach jedem Merge nach `main` (Release oder Hotfix), sobald der Release-Workflow
+   den Tag angelegt hat, `main` und alle Tags in das private Repo `elvau/starwars` pushen (Rückfall, falls dieses Repo
+   oder ein Konto gesperrt wird):
+   ```bash
+   git fetch origin main --tags
+   git push https://github.com/elvau/starwars origin/main:refs/heads/main --tags
+   ```
+   Fehlt der Sitzung das Schreibrecht auf `elvau/starwars`, Dani Bescheid sagen statt den Schritt auszulassen.
 
 **Such-Dienst (Cloudflare):** wird nur beim Push auf `main` neu veröffentlicht. Neue Such-Funktionen (neue Endpunkte) gehen deshalb
 erst mit dem Release; auf der Testumgebung antwortet bis dahin noch der alte Such-Dienst.
