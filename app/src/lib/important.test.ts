@@ -124,3 +124,11 @@ describe("Grenzregeln und Reisepass", () => {
     expect(importantPoints({ trip: { ...fr, travelers: [anna] }, countries: ["FR"], hints: [], visa, advice: {} }).some(p => p.kind === "border")).toBe(false);
   });
 });
+
+describe("Mindestgültigkeit für alle Pässe", () => {
+  it("Brite nach Thailand: Regel des Ziellands gilt auch für ihn", () => {
+    const t: Trip = { ...trip([tom]), country: "Thailand", from: "2027-03-01", to: "2027-03-15" };
+    const p = importantPoints({ trip: t, countries: ["TH"], hints: [], visa, advice: {}, passports: { t: "2027-06-01" } }).find(x => x.kind === "pass");
+    expect(p?.pass).toEqual({ expires: "2027-06-01", needed: "2027-09-01" });
+  });
+});

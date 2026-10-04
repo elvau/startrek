@@ -1,6 +1,7 @@
 /*
  * Grenzregeln: Schengen-Raum mit EES (Ein- und Ausreisesystem) bzw. ETIAS für Pässe von außerhalb der EU, und die
- * Mindestgültigkeit des Reisepasses je Land (deutsche Staatsangehörige). Kurze Hinweise, Stand Oktober 2026;
+ * Mindestgültigkeit des Reisepasses je Zielland (gilt für die meisten Pässe; einzelne Staatsangehörigkeiten haben
+ * Ausnahmen). Kurze Hinweise, Stand Oktober 2026;
  * maßgeblich sind die verlinkten offiziellen Stellen. Quellen in docs/ZIELE.md.
  */
 
