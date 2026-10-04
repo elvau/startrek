@@ -2,6 +2,8 @@
 
 Alle Anbieter, zu denen die App verlinkt, stehen im **Partner-Verzeichnis** `app/src/lib/partners/index.ts`.
 Die Oberfläche zeigt sie über `app/src/lib/ui/PartnerLinks.svelte`; Links von Hand in Komponenten zu bauen ist nicht vorgesehen.
+Übersicht in der App: Admin-Ansicht im Kontomenü, Abschnitt „Partner (Verzeichnis)“ mit Kategorie, Netzwerk, Status
+der Kennung (aktiv, hinterlegt bei ausgeschaltetem Schalter, neutral, ausgeblendet) und Klicks der letzten 7 Tage.
 
 ## Schalter
 
