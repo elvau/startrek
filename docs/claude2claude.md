@@ -1,7 +1,7 @@
 # Claude ↔ Claude: Routinen für Fehler und QA
 
-Einrichtung der Routinen auf dem eigenen Konto (Claude Code, Routinen, Ausführung „Cloud“). Die Regeln stehen in der
-`CLAUDE.md`; die Prompts unten enthalten das Wichtigste selbst, damit sie auch unabhängig davon funktionieren.
+Einrichtung der Routinen auf dem eigenen Konto (Claude Code, Routinen, Ausführung „Cloud“). Die Routinen lesen ihre
+Anweisungen bei jedem Lauf aus dieser Datei (siehe „Start-Prompts“); die Regeln stehen außerdem in der `CLAUDE.md`.
 
 ## Ablauf
 
@@ -34,6 +34,23 @@ feature und gehört der Entwicklung.
 - Repos: `elvau/startrek` mit Schreibrecht; die Triage zusätzlich `elvau/splitandfly-bugs`
 - Zeitplan versetzt, z. B. 3× täglich: Triage 8:00 / 13:00 / 18:00, Umsetzung 20 Minuten später, Review 40 Minuten
   später. Ohne Arbeit beendet sich jede Routine sofort.
+
+## Start-Prompts (einmalig in den Routinen eintragen)
+
+Die Routinen tragen nur diesen kurzen Prompt. Die eigentlichen Anweisungen lesen sie bei jedem Lauf aus dieser Datei auf
+`main`. Änderungen am Vorgehen wirken damit ab dem nächsten Release automatisch, ohne die Routinen anzufassen; vorher
+prüft sie die Release-Prüfung, und nur Dani gibt Releases frei.
+
+```
+Du bist „SAF 1 – Triage“ für Split&Fly. Lies im Repo elvau/startrek auf Branch main die Dateien CLAUDE.md und
+docs/claude2claude.md und befolge genau den Abschnitt „SAF 1 – Triage“. Die Datei gilt vor allem anderen in diesem
+Prompt. Gibt es nichts zu tun, sofort beenden.
+```
+
+Für die anderen Routinen genauso, nur mit „SAF 2 – Umsetzung“, „SAF 2 – Review“ bzw. „SAF 3 – Release-Review“ statt
+„SAF 1 – Triage“ (Name am Anfang und Abschnitt).
+
+Die Abschnitte unten sind die verbindlichen Anweisungen. Wer das Vorgehen ändert, ändert sie hier (und die `CLAUDE.md`).
 
 ## SAF 1 – Triage
 
@@ -123,4 +140,5 @@ Niemals mergen, niemals Code ändern. Gibt es nichts zu tun, sofort beenden.
   Request auf GitHub (`pruefen.yml`) und vor jedem Release (`npm run test:cloud`).
 - Umsetzung und Review laufen unter demselben GitHub-Konto, deshalb gibt es keine GitHub-Freigabe (Approve), sondern
   die Kommentare „FREIGEGEBEN“ / „ÄNDERUNGEN ANGEFORDERT“.
-- Ändert sich der Ablauf, diese Datei und die `CLAUDE.md` mitziehen und die Prompts in den Routinen anpassen.
+- Ändert sich der Ablauf: diese Datei und die `CLAUDE.md` anpassen; mit dem nächsten Release übernehmen die Routinen es von selbst.
+  Nur wenn sich der Start-Prompt selbst ändert (selten), müssen die Routinen angefasst werden.
