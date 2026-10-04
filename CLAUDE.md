@@ -2,7 +2,7 @@
 
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
 Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer mit Gemini, Fehlermeldungen), Daten und
-Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste,
+Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, PARTNER, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste,
 `claude2claude.md` = Einrichtung der Routinen, ABLAUF = Planung in Epics/Features).
 
 ## Umgebungen und Ablauf

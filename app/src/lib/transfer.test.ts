@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TRANSFER_LINKS, transferItem, transferPlan, vehicleFor, vehicleText } from "./transfer";
+import { transferItem, transferPlan, vehicleFor, vehicleText } from "./transfer";
 
 const PMI = { code: "PMI", lat: 39.551, lon: 2.736 }, PALMA = { name: "Palma", lat: 39.57, lon: 2.65 };
 
@@ -28,6 +28,5 @@ describe("Flughafentransfer", () => {
     expect(it).toMatchObject({ cat: "transport", options: [{ estimate: true, price: { mode: "unit", unit: p.perRide, qty: 2 } }] });
     expect(it.note).toContain("PMI");
     expect(vehicleText({ vehicle: "coach", count: 2 })).toMatch(/^2 × /);
-    expect(TRANSFER_LINKS.every(l => l.url.startsWith("https://"))).toBe(true);
   });
 });

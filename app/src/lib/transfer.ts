@@ -1,7 +1,7 @@
 /*
  * Flughafentransfer am Ziel: vom Ankunftsflughafen zur Unterkunft und zurück, als Richtwert-Posten.
  * Fahrzeug nach Gruppengröße (mit Gepäck: Taxi bis 3, Van bis 7, Kleinbus bis 16, darüber Reisebusse),
- * Preis je Fahrt aus Grundpreis und Kilometern, angepasst ans Preisniveau des Landes. Dazu Links zum Vergleichen.
+ * Preis je Fahrt aus Grundpreis und Kilometern, angepasst ans Preisniveau des Landes. Anbieter-Links: partners/.
  */
 import { t } from "./i18n/index.svelte";
 import { uid, type Item } from "./model";
@@ -59,12 +59,3 @@ export function transferItem(p: TransferPlan): Item {
 }
 
 export const vehicleText = (p: Pick<TransferPlan, "vehicle" | "count">) => `${p.count > 1 ? `${p.count} × ` : ""}${t(`tr.v.${p.vehicle}`)}`;
-
-/** Anbieter zum Vergleichen und Buchen (Partnerprogramme: Kiwitaxi, GetTransfer, Intui über Travelpayouts) */
-export const TRANSFER_LINKS = [
-  { name: "Kiwitaxi", url: "https://kiwitaxi.com/de" },
-  { name: "GetTransfer", url: "https://gettransfer.com/de" },
-  { name: "Intui.travel", url: "https://intui.travel/de/" },
-  { name: "Welcome Pickups", url: "https://www.welcomepickups.com/de/" },
-  { name: "Booking.com Taxi", url: "https://taxi.booking.com/" }
-];

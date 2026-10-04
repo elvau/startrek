@@ -2,6 +2,7 @@
  * Mietwagen und Reiseversicherung als Richtwert-Posten, dazu Links zum Vergleichen.
  * Mietwagen: Abholung 1 Stunde nach der Landung, Rückgabe 2 Stunden vor dem Rückflug (aus den Flügen),
  * sonst Reisedaten 10:00. Versicherung: neutrale Schätzung (keine Beratung, kein Tarifvergleich).
+ * Anbieter-Links stehen im Partner-Verzeichnis (partners/).
  */
 import { t } from "./i18n/index.svelte";
 import { uid, type Item, type Trip } from "./model";
@@ -42,16 +43,6 @@ export function kayakCarLink(w: CarWindow, place = ""): string {
   const where = w.ap || encodeURIComponent(place);
   return `https://www.kayak.de/cars/${where}${w.dropAp ? `/${w.dropAp}` : ""}/${at(w.pick)}/${at(w.drop)}`;
 }
-export const CAR_LINKS = [
-  { name: "CHECK24", url: "https://www.check24.de/mietwagen/" },
-  { name: "DiscoverCars", url: "https://www.discovercars.com/de" }
-];
-export const INSURANCE_LINKS = [
-  { name: "CHECK24", url: "https://www.check24.de/reiseversicherung/" },
-  { name: "ERGO Reiseversicherung", url: "https://www.reiseversicherung.de/" },
-  { name: "HanseMerkur", url: "https://www.hansemerkur.de/reiseversicherung" },
-  { name: "Allianz Travel", url: "https://www.allianz-reiseversicherung.de/" }
-];
 
 const fmt = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}. ${iso.slice(11, 16)}`;
 

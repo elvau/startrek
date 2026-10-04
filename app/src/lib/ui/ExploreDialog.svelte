@@ -13,8 +13,8 @@
   import { eventWindow, inWindow } from "../activities/window";
   import { ccOf, findCity } from "../geo/places";
   import { noteError } from "../bugs/log";
-  import { getYourGuideLink, tiqetsLink } from "../links";
-  import ViatorLink from "./ViatorLink.svelte";
+  import PartnerLinks from "./PartnerLinks.svelte";
+  import { partnersOf, sponsoredAny } from "../partners";
   import { partner } from "../partnerState.svelte";
   import { uniqueById } from "../events/search";
   import { activityItem, duration, eventItem, searchActivitiesRemote, searchLocalEvents, takeInto } from "../activities/app";
@@ -253,8 +253,8 @@
           </div>
           {#if tours.some(a => a.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
         {/if}
-        <p class="muted small xp-more">{t("xp.more")} <a href={getYourGuideLink(aq)} target="_blank" rel="noopener noreferrer">GetYourGuide ↗</a> · <ViatorLink q={aq} /> · <a href={tiqetsLink(aq)} target="_blank" rel="noopener noreferrer">Tiqets ↗</a></p>
-        {#if partner.on && !tours?.some(a => a.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+        <p class="muted small xp-more">{t("xp.more")} <PartnerLinks ids={partnersOf("activity")} q={aq} /></p>
+        {#if sponsoredAny(partnersOf("activity"), aq, partner.on) && !tours?.some(a => a.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
       {/if}
       <p class="muted small">{t("xp.hint")}</p>
     {/if}
