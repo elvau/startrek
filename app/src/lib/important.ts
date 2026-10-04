@@ -1,6 +1,8 @@
 /*
  * Wichtiges zur Reise: was man vor der Reise unbedingt bedenken muss, als Punkte mit Zähler (Epic „Wichtiges zur Reise“).
- * Quellen: Warnstufen des Auswärtigen Amts (advice.ts), Einreise je Pass (visa.ts) und Hinweise (hints.ts).
+ * Quellen: Warnstufen des Auswärtigen Amts (advice.ts), Einreise je Pass (visa.ts), Grenzregeln und Mindestgültigkeit
+ * des Reisepasses (borders.ts) und Hinweise (hints.ts). Ablaufdaten der Pässe kommen nur im Browser aus dem Konto dazu
+ * (travelDocs) und landen nie in der Reise: Schlüssel und Signatur enthalten kein Datum.
  * „Erledigt“ bzw. „gelesen“ steht in der Reise (trip.done), je Person: Einreise für alle, die etwas tun müssen,
  * Warnungen und Hinweise für alle Reisenden. Ändert sich der Inhalt eines Punkts (Signatur), gilt er wieder als offen;
  * kommen Personen dazu, ebenso.
@@ -10,8 +12,9 @@ import { isActive } from "./model";
 import { adviceLevel, type Advice, type AdviceMap } from "./advice";
 import { entryFor, needsAction, type EntryKind, type VisaData } from "./visa";
 import type { Hint } from "./hints";
+import { FREE_MOVEMENT, MIN_VALID, SCHENGEN, validUntil, type MinValid } from "./borders";
 
-export type PointKind = "aa" | "warn" | "entry" | "place";
+export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "place";
 
 export interface PointPerson { id: string; name: string; nat: string; kind?: EntryKind; days?: number }
 
@@ -31,12 +34,16 @@ export interface Point {
   hint?: Hint;
   /** je Person: wer etwas tun muss (Einreise) bzw. wer lesen soll (alle Reisenden) */
   persons?: PointPerson[];
+  /** Mindestgültigkeit des Reisepasses im Reiseland */
+  valid?: MinValid;
+  /** Reisepass zu kurz gültig: Ablauf und nötiges Datum (nur zur Anzeige, nie gespeichert) */
+  pass?: { expires: string; needed: string };
 }
 
 /** erledigt je Punkt: Signatur beim Abhaken, bei Punkten für Personen die erledigten Personen */
 export type DoneMap = Record<string, { sig: string; ids?: string[] }>;
 
-const PRIO = { warning: 0, warn: 0, partial: 1, entry: 2, situation: 3, place: 4 } as const;
+const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, situation: 3, place: 4 } as const;
 
 export interface PointInput {
   trip: Trip;
@@ -46,10 +53,12 @@ export interface PointInput {
   hints: Hint[];
   visa: VisaData | null;
   advice: AdviceMap;
+  /** Ablauf der Reisepässe je reisender Person (JJJJ-MM-TT), nur wenn im Konto hinterlegt und geladen */
+  passports?: Record<string, string>;
 }
 
 /** alle wichtigen Punkte der Reise, wichtigste zuerst */
-export function importantPoints({ trip, countries, hints, visa, advice }: PointInput): Point[] {
+export function importantPoints({ trip, countries, hints, visa, advice, passports = {} }: PointInput): Point[] {
   const act = trip.travelers.filter(isActive);
   const all: PointPerson[] | undefined = act.length ? act.map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" })) : undefined;
   const out: Point[] = [];
@@ -64,8 +73,26 @@ export function importantPoints({ trip, countries, hints, visa, advice }: PointI
       if (e.kind === "home") continue;
       if (needsAction(e) || (hint && nat === "DE")) persons.push({ id: p.id, name: p.name, nat, kind: e.kind, ...(e.days != null ? { days: e.days } : {}) });
     }
-    if (persons.length) out.push({ key: `entry:${cc}`, kind: "entry", prio: PRIO.entry, sig: [...new Set(persons.map(p => `${p.nat}:${p.kind}`))].sort().join(","), cc, ...(hint ? { hint } : {}), persons });
+    const valid = MIN_VALID[cc];
+    if (persons.length) out.push({ key: `entry:${cc}`, kind: "entry", prio: PRIO.entry, sig: [...new Set(persons.map(p => `${p.nat}:${p.kind}`))].sort().join(","), cc, ...(hint ? { hint } : {}), ...(valid ? { valid } : {}), persons });
   }
+  // Reisepass läuft zu früh ab: je Person das strengste Reiseland (Regeln gelten für deutsche Pässe, sonst bis Reiseende);
+  // innerhalb von EU/EWR/Schweiz reicht für deren Bürger der Ausweis
+  if (trip.from && trip.to) for (const p of act) {
+    const exp = passports[p.id], nat = p.nat || "DE";
+    if (!exp) continue;
+    let worst: { cc: string; needed: string } | null = null;
+    for (const cc of countries) {
+      if (cc === nat || (FREE_MOVEMENT.has(cc) && FREE_MOVEMENT.has(nat))) continue;
+      const needed = validUntil(nat === "DE" ? MIN_VALID[cc] : undefined, trip.from, trip.to);
+      if (!worst || needed > worst.needed) worst = { cc, needed };
+    }
+    if (worst && exp < worst.needed) out.push({ key: `pass:${p.id}`, kind: "pass", prio: PRIO.pass, sig: worst.cc, cc: worst.cc, pass: { expires: exp, needed: worst.needed }, persons: [{ id: p.id, name: p.name, nat }] });
+  }
+  // Schengen-Raum: EES bei der Einreise (Fingerabdrücke, Foto) bzw. ETIAS für Pässe von außerhalb der EU
+  const schengen = countries.find(c => SCHENGEN.has(c));
+  const outsiders = schengen ? act.filter(p => !FREE_MOVEMENT.has(p.nat || "DE")) : [];
+  if (outsiders.length) out.push({ key: "border:schengen", kind: "border", prio: PRIO.border, sig: "ees", cc: schengen, persons: outsiders.map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" })) });
   for (const h of hints) {
     if (h.kind === "entry") continue;
     out.push({ key: `hint:${h.id}`, kind: h.kind === "warn" ? "warn" : "place", prio: PRIO[h.kind === "warn" ? "warn" : "place"], sig: h.id, ...(h.cc?.[0] ? { cc: h.cc[0] } : {}), hint: h, ...(all ? { persons: all } : {}) });
@@ -88,7 +115,7 @@ export function isOpen(p: Point, done: DoneMap = {}): boolean {
 }
 
 /** aufgeklappt zeigen (Reisewarnung, Teilreisewarnung, Einreise), sonst einzeilig bis zum Antippen */
-export const isUrgent = (p: Point) => p.kind === "entry" || p.kind === "warn" || p.level === "warning" || p.level === "partial";
+export const isUrgent = (p: Point) => p.kind === "entry" || p.kind === "warn" || p.kind === "pass" || p.kind === "border" || p.level === "warning" || p.level === "partial";
 
 export const openCount = (ps: Point[], done?: DoneMap) => ps.filter(p => isOpen(p, done)).length;
 

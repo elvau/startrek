@@ -4,6 +4,8 @@
    * Dringendes (Reisewarnung, Einreise) steht aufgeklappt, Sicherheitshinweise und besondere Orte einzeilig bis zum
    * Antippen. Gelesen bzw. erledigt je Person; wer man selbst ist, kommt aus „Ich bin“ im Personenverzeichnis.
    * Abgehakte sind minimiert und lassen sich wieder öffnen. Zähler in Rot (important.ts).
+   * Reisepässe prüft die Seite nur, wenn die Buchungsdaten im Konto ohnehin geladen sind bzw. auf Knopfdruck; das Ablaufdatum
+   * bleibt im Browser.
    */
   import { t, tn, type Key } from "../i18n/index.svelte";
   import { access, app, setDetailed } from "../store.svelte";
@@ -21,6 +23,9 @@
   import { entryFor, loadVisa, type EntryKind, type VisaData } from "../visa";
   import { doneIds, importantPoints, isOpen, isUrgent, markDone, reopen, type Point } from "../important";
   import { showItem } from "./showItem";
+  import { EES_LINKS, MIN_VALID, type MinValid } from "../borders";
+  import { docs, loadDocs } from "../traveldocs.svelte";
+  import { cloud } from "../cloud/cloud.svelte";
 
   let visa = $state<VisaData | null>(null);
   let advice = $state<AdviceMap>({});
@@ -30,7 +35,10 @@
 
   const countries = $derived(tripCountries(app.trip, n => (n ? ccOf(geo, n) : null), c => locOf(airportData, c, "airport")?.cc));
   const places = $derived([...new Set(itinerary(app.trip).map(d => d.place).filter(Boolean))]);
-  const points = $derived(importantPoints({ trip: app.trip, countries, hints: hintsFor(app.trip, countries, places), visa, advice }));
+  // Ablauf der Reisepässe (nur aus dem Konto, nur im Browser)
+  const passports = $derived(docs.status === "ready" ? Object.fromEntries(app.trip.travelers.filter(x => x.personId && docs.map[x.personId]?.passExpiry).map(x => [x.id, docs.map[x.personId!].passExpiry!])) : {});
+  const canCheck = $derived(!!cloud.user && docs.status !== "ready" && docs.status !== "loading" && app.trip.travelers.some(x => x.personId));
+  const points = $derived(importantPoints({ trip: app.trip, countries, hints: hintsFor(app.trip, countries, places), visa, advice, passports }));
   const done = $derived(app.trip.done || {});
   const open = $derived(points.filter(p => isOpen(p, done)));
   const closed = $derived(points.filter(p => !isOpen(p, done)));
@@ -41,20 +49,28 @@
 
   const LEVEL: Record<string, Key> = { warning: "aa.warning", partial: "aa.partial", situation: "aa.situation" };
   const ENT: Record<EntryKind, Key> = { home: "ent.home", free: "ent.free", eta: "ent.eta", evisa: "ent.evisa", arrival: "ent.arrival", visa: "ent.visa", none: "ent.none", unknown: "ent.unknown" };
-  const icon = (p: Point) => (p.kind === "aa" ? (p.level === "situation" ? "⚠️" : "⛔") : p.kind === "warn" ? "⛔" : p.kind === "entry" ? "🛂" : "📍");
+  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", place: "📍" };
+  const icon = (p: Point) => (p.kind === "aa" ? (p.level === "situation" ? "⚠️" : "⛔") : ICON[p.kind]);
+  const date = (iso: string) => iso.split("-").reverse().join(".");
+  const validText = (v: MinValid) => t(`imp.valid.${v.months ? "m" : "d"}${v.from === "entry" ? "Entry" : "Exit"}` as Key, { n: v.months || v.days || 0 });
   function title(p: Point) {
     if (p.kind === "aa") return `${flagOf(p.cc!)} ${countryName(p.cc!)}: ${t(LEVEL[p.level!])}`;
     if (p.kind === "entry") return `${flagOf(p.cc!)} ${t("imp.entry", { c: countryName(p.cc!) })}`;
+    if (p.kind === "border") return t("imp.border.t");
+    if (p.kind === "pass") return t("imp.pass.t", { name: p.persons![0].name });
     return t(`hint.${p.hint!.id}.t` as Key);
   }
   function text(p: Point) {
-    if (p.kind === "aa") return t("imp.aaText");
+    if (p.kind === "aa") return t("imp.aaText") + (p.advice?.modified ? ` ${t("imp.aaChanged", { d: date(p.advice.modified) })}` : "");
+    if (p.kind === "border") return t("imp.border.x");
+    if (p.kind === "pass") return t("imp.pass.x", { d: date(p.pass!.expires), c: countryName(p.cc!), r: date(p.pass!.needed) });
     if (p.hint) return t(`hint.${p.hint.id}.x` as Key);
     const k = p.persons?.find(x => x.kind && x.kind !== "unknown");
     return k ? t(ENT[k.kind!], { n: k.days ?? 0 }) : t("ent.unknown");
   }
-  const links = (p: Point) => (p.kind === "aa" ? [{ label: t("aa.link"), url: adviceUrl(p.advice!) }] : p.hint?.links || []);
-  const verb = (p: Point) => (p.kind === "entry" ? t("imp.done") : t("imp.read"));
+  const links = (p: Point) => (p.kind === "aa" ? [{ label: t("aa.link"), url: adviceUrl(p.advice!) }] : p.kind === "border" ? EES_LINKS : p.hint?.links || []);
+  const isTask = (p: Point) => p.kind === "entry" || p.kind === "pass";
+  const verb = (p: Point) => (isTask(p) ? t("imp.done") : t("imp.read"));
 
   // abhaken schreibt in die Reise (alle Mitreisenden sehen, wer was erledigt bzw. gelesen hat)
   function edit(fn: (d: NonNullable<typeof app.trip.done>) => void) {
@@ -98,7 +114,7 @@
     {#if meId && p.persons!.some(x => x.id === meId) && !access.readonly}
       <button class="btn sm" class:primary={!ok.includes(meId)} onclick={() => toggle(p, meId)}>{ok.includes(meId) ? `✓ ${t("imp.byMe")}` : `✓ ${verb(p)}`}</button>
     {/if}
-    <span class="muted small">{t(p.kind === "entry" ? "imp.donePersons" : "imp.readPersons", { a: ok.length, b: p.persons!.length })}</span>
+    <span class="muted small">{t(isTask(p) ? "imp.donePersons" : "imp.readPersons", { a: ok.length, b: p.persons!.length })}</span>
     {#each p.persons! as x (x.id)}
       <button class="chip" class:on={ok.includes(x.id)} aria-pressed={ok.includes(x.id)} disabled={access.readonly} onclick={() => toggle(p, x.id)}>{ok.includes(x.id) ? "✓ " : ""}{x.name}</button>
     {/each}
@@ -108,6 +124,7 @@
 
 {#snippet body(p: Point)}
   <p>{text(p)}</p>
+  {#if p.valid}<p class="imp-valid">🪪 {validText(p.valid)}</p>{/if}
   {#if links(p).length || p.hint?.fee}
     <p class="imp-links">
       {#each links(p) as l (l.url)}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}
@@ -153,10 +170,12 @@
             {#each entries as x (x.cc)}
               <li><b>{flagOf(x.cc)} {countryName(x.cc)}</b>
                 {#each x.gs as g (g.nat + g.kind)}<span>{#if mixed}{groupLabel(g.names, -1)} ({flagOf(g.nat)}):&nbsp;{/if}{t(ENT[g.kind], { n: g.days ?? 0 })}</span>{/each}
+                {#if MIN_VALID[x.cc]}<span>🪪 {validText(MIN_VALID[x.cc])}</span>{/if}
               </li>
             {/each}
           </ul>
         {/if}
+        {#if canCheck}<p class="small"><button class="linkbtn imp-check" onclick={() => void loadDocs()}>🪪 {t("imp.checkPass")}</button> <span class="muted">{t("imp.checkPassNote")}</span></p>{/if}
         <p class="muted small">{mixed ? t("hint.leadMixed") : t("hint.lead")}{#if visa?.asOf} {t("hint.visaSource", { d: visa.asOf.split("-").reverse().join(".") })}{/if}</p>
         <p class="small">{t("hint.general")}{#each GENERAL_LINKS as l (l.url)} <a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}</p>
       </div>
@@ -175,6 +194,8 @@
   .imp-card p { margin: 0; }
   .imp-hard { border-inline-start-color: #d0342c; background: color-mix(in srgb, #d0342c 6%, var(--paper, #fff)); }
   .imp-place { border-inline-start-color: var(--c-plan, #3b6fd8); }
+  .imp-pass { border-inline-start-color: #d0342c; }
+  .imp-valid { font-size: 13.5px; color: var(--ink-2); }
   .imp-head { display: flex; gap: 8px; align-items: baseline; }
   .imp-fold { margin-inline-start: auto; }
   .imp-line { display: flex; align-items: center; gap: 8px; width: 100%; text-align: start; padding: 8px 14px; border: 0; border-radius: 12px; background: var(--paper, #fff); box-shadow: var(--shadow); font: inherit; font-size: 14.5px; color: inherit; cursor: pointer; border-inline-start: 4px solid var(--warn, #d08a12); }

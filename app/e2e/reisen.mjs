@@ -58,6 +58,9 @@ try {
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
   const json = (r, body) => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
   const asked = { flights: [], stays: [], tours: [] };
+  // Auswärtiges Amt: Teilreisewarnung USA, Änderungsdatum lässt sich im Test umstellen
+  let aaMod = "2026-09-01";
+  await p.route("https://flights.test/advice", r => json(r, { countries: { US: { id: "usa-node", name: "USA", warning: false, partial: true, situation: false, situationPart: false, modified: aaMod } } }));
 
   // Flüge: je Tag im Fenster ein Flug; Fidschi → München nur mit 2 Umstiegen; Los Angeles → San Diego zum Fehlerpreis
   const leg = (from, to, dep, minutes) => ({ from, to, dep: `${dep}T10:00:00`, arr: `${dep}T${String(10 + Math.min(13, Math.round(minutes / 60))).padStart(2, "0")}:00:00`, minutes, stops: 1, route: [from, "XXX", to], carriers: ["Sun Air"], flights: ["SA1"] });
@@ -211,6 +214,10 @@ try {
   // ---- Wichtiges: Einreise USA (ESTA) oben an der Reise, je Person abhaken, Zähler, minimiert, wieder öffnen
   const imp = p.locator(".imp");
   await imp.scrollIntoViewIfNeeded();
+  const aa = imp.locator(".imp-card[data-key='aa:US']");
+  await aa.waitFor();
+  if (!(await aa.innerText()).includes("01.09.2026")) fail("Teilreisewarnung ohne Änderungsdatum: " + (await aa.innerText()));
+  await aa.locator(".linkbtn", { hasText: "alle erledigt" }).click();
   const esta = imp.locator(".imp-card[data-key='entry:US']");
   await esta.waitFor();
   if ((await imp.locator(".imp-badge").innerText()) !== "1") fail("Zähler Wichtiges: " + (await imp.innerText()).slice(0, 200));
@@ -222,11 +229,17 @@ try {
   await imp.locator(".imp-ok").waitFor();
   if (await imp.locator(".imp-badge").count()) fail("Zähler nach Abhaken nicht weg");
   await imp.locator(".imp-more").click();
-  await imp.locator(".imp-closed .linkbtn", { hasText: "wieder öffnen" }).click();
+  await imp.locator(".imp-closed li", { hasText: "Einreise" }).locator(".linkbtn").click();
   if ((await imp.locator(".imp-badge").innerText()) !== "1") fail("wieder geöffnet, Zähler fehlt");
   if (!(await imp.locator(".imp-entries").innerText()).includes("Vereinigte Staaten")) fail("Einreise im Überblick fehlt");
   if (await p.locator(".hints").count()) fail("alte Karte „Einreise & Tipps“ noch da");
   log("Wichtiges: ESTA für 7 Personen oben an der Reise, je Person abhaken, Zähler weg, wieder öffnen; alte Karte entfällt");
+  // neue Fassung beim Auswärtigen Amt: Punkt ist wieder offen
+  aaMod = "2026-10-02";
+  await open("Kalifornien");
+  await p.locator(".imp-card[data-key='aa:US']", { hasText: "02.10.2026" }).waitFor();
+  if ((await p.locator(".imp .imp-badge").innerText()) !== "2") fail("geänderte Warnung nicht wieder offen");
+  log("Wichtiges: Teilreisewarnung gelesen, nach Änderung beim Auswärtigen Amt wieder offen");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nGruppenreisen: alles in Ordnung");
