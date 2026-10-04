@@ -18,6 +18,13 @@ Hinweis zum Sternchen (`fs.partnerNote`), sobald einer der gezeigten Links ein P
 Treffer aus Schnittstellen (Flüge über Travelpayouts, Touren über Viator) setzen `sponsored` selbst; ihre Links laufen über
 `app/src/lib/ui/ExtLink.svelte` und werden genauso gekennzeichnet (auch in übernommenen Posten).
 
+## Klicks zählen
+
+Jeder Klick auf einen Anbieter-Link (`ExtLink` mit `track`) meldet nebenher Partner und Kategorie an den Such-Dienst
+(`POST /click`, `app/src/lib/partners/click.ts`), der sie je Tag in Analytics Engine zählt (`noteClick` in
+`worker/src/usage.ts`), ohne IP, Konto oder Reise. Auswertung: Admin-Ansicht im Kontomenü, Abschnitt „Klicks auf
+Anbieter-Links“ (letzte 7 Tage). Der Link öffnet sofort, das Zählen läuft nebenher.
+
 ## Einen Partner hinzufügen
 
 1. Eintrag in `PARTNERS` (`app/src/lib/partners/index.ts`) in der passenden Kategorie:

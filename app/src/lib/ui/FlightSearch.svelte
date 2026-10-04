@@ -592,7 +592,7 @@
               {@const alts = alternatives(x.rt, i)}
               {@const key = `${x.rt.id}:${i}`}
               {@render legRow(`${i + 1}.`, l.out)}
-              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<ExtLink href={l.url} sponsored={l.sponsored}>{t("search.atProvider")} ↗</ExtLink>{/if}</p>
+              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<ExtLink href={l.url} sponsored={l.sponsored} track={[l.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}</p>
               {#if alts.length}
                 <button type="button" class="linkbtn fs-altbtn" aria-expanded={altOpen === key} onclick={() => (altOpen = altOpen === key ? null : key)}>{altOpen === key ? t("fs.altHide") : t("fs.altShow", { n: alts.length })} {altOpen === key ? "▴" : "▾"}</button>
                 {#if altOpen === key}
@@ -711,7 +711,7 @@
             {#if o.back}{@render legRow(t("fs.backShort"), o.back)}{/if}
             <div class="fs-acts">
               <button class="btn primary sm" disabled={taken[o.id + o.origin]} onclick={() => take(o)}>{taken[o.id + o.origin] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
-              {#if o.url}<ExtLink cls="btn sm" href={o.url} sponsored={o.sponsored} inside>{t("search.atProvider")} ↗</ExtLink>{/if}
+              {#if o.url}<ExtLink cls="btn sm" href={o.url} sponsored={o.sponsored} inside track={[o.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}
               <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
             </div>
           </article>

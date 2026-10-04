@@ -69,6 +69,7 @@ export const ar: Dict = {
   "adm.sec.cf": "Cloudflare",
   "adm.sec.manual": "فقط في لوحة تحكم المزوّد",
   "adm.sec.routes": "الميزات",
+  "adm.sec.clicks": "النقرات على روابط المزوّدين",
   "adm.setup": "الإعداد: docs/NUTZUNG.md",
   "adm.stand": "آخر تحديث: {t} · الأيام بتوقيت UTC",
   "adm.title": "استخدام الحصص المجانية",

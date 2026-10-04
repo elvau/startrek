@@ -64,6 +64,7 @@ export const de = {
   "adm.sec.cf": "Cloudflare",
   "adm.sec.manual": "Nur in der jeweiligen Konsole",
   "adm.sec.routes": "Funktionen",
+  "adm.sec.clicks": "Klicks auf Anbieter-Links",
   "adm.setup": "Einrichtung: docs/NUTZUNG.md",
   "adm.stand": "Stand {t} · Tage in UTC",
   "adm.title": "Nutzung der kostenlosen Kontingente",

@@ -20,7 +20,7 @@ import { AA_LIST, parseAdvice, type AdviceMap } from "../../app/src/lib/advice";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller } from "./gemini";
-import { isAdmin, meter, noteRoute, usageReport, type UsageEnv } from "./usage";
+import { isAdmin, meter, noteClick, noteRoute, usageReport, type UsageEnv } from "./usage";
 import { checkLimit, searchWindows, type LimitEnv } from "./ratelimit";
 import { issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
 import { tripStore, type StoreEnv } from "./firestore";
@@ -180,6 +180,13 @@ export default {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
       noteRoute(env, "bug");
       return reportBug(req, env, h, json, (uid, kind) => countToday(env, uid, kind), meter(env));
+    }
+
+    // Klick auf einen Anbieter-Link (sendBeacon aus der App), nur zählen
+    if (url.pathname === "/click" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      const body = await req.text().then(s => JSON.parse(s.slice(0, 200))).catch(() => null);
+      return new Response(null, { status: noteClick(env, body) ? 204 : 400, headers: h });
     }
 
     if (url.pathname === "/admin/usage" && req.method === "GET") {

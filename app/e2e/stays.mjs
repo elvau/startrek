@@ -67,6 +67,15 @@ try {
   const bk = await m.locator(".fs-direct a", { hasText: "Booking.com" }).getAttribute("href");
   if (!bk.includes("ss=Split") || !bk.includes("checkin=2027-07-18") || !bk.includes("checkout=2027-07-25")) fail("Booking-Link: " + bk);
   log("Direkt-Link zu Booking.com mit Ort und Daten");
+  // Klick wird nebenher gezählt: nur Partner und Kategorie, der Link öffnet trotzdem
+  const clicks = [];
+  await p.route("https://flights.test/click", r => { clicks.push(r.request().postData()); return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*" } }); });
+  await p.context().route("https://www.booking.com/**", r => r.fulfill({ status: 200, contentType: "text/html", body: "<p>Booking</p>" }));
+  const [tab] = await Promise.all([p.context().waitForEvent("page"), m.locator(".fs-direct a", { hasText: "Booking.com" }).click()]);
+  await tab.close();
+  for (let i = 0; i < 20 && !clicks.length; i++) await p.waitForTimeout(100);
+  if (clicks[0] !== JSON.stringify({ p: "booking", c: "stay" })) fail("Klickzählung: " + JSON.stringify(clicks));
+  log("Klick auf Booking.com gezählt (nur Partner und Kategorie)");
   const gyg = p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" });
   if (await gyg.count()) fail("Erlebnis-Links ohne Reiseziel");
   // Ausstattung und Bewertung gehen an den Such-Dienst
