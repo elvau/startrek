@@ -1,11 +1,12 @@
 name: Testumgebung (GitHub Pages)
 
-# Jeder Push auf einen Feature-Branch: nur bauen und schnell auf die Testumgebung (elvau.github.io/startrek/).
-# Die volle Prüfung (Tests, Typen, Such-Dienst, Emulator) läuft beim Pull Request nach main (pruefen.yml).
-# main geht nicht hierher, sondern nach splitandfly.com (release.yml). Anleitung: docs/RELEASE.md
+# Jeder Push auf pre-release: nur bauen und schnell auf die Testumgebung (elvau.github.io/startrek/), ohne Prüfung.
+# Arbeits-Branches landen dort erst, wenn sie in pre-release gemergt werden; die volle Prüfung (Tests, Typen,
+# Such-Dienst, Emulator) läuft bei Pull Requests (pruefen.yml). main geht nach splitandfly.com (release.yml).
+# Anleitung: docs/RELEASE.md
 on:
   push:
-    branches-ignore: [main]
+    branches: [pre-release]
   workflow_dispatch:
 
 permissions:

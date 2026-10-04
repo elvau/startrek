@@ -9,6 +9,8 @@
   import { dir } from "../directory.svelte";
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
+  import { cloud } from "../cloud/cloud.svelte";
+  import { loadPlz } from "../plz";
 
   let { p, base }: { p: Prefs; base?: Prefs } = $props();
   const group = $derived(!!base);
@@ -35,6 +37,17 @@
 
   // Eingabefeld startet mit den gespeicherten Codes, danach zählt das Getippte
   let aps = $state(untrack(() => (p.airports || []).join(", ")));
+  // PLZ: Eingabe lokal puffern, erst bei 5 bekannten Ziffern speichern, leer löscht
+  let plz = $state(untrack(() => p.plz ?? ""));
+  let plzErr = $state(false);
+  async function setPlz(v: string) {
+    plz = v.trim(); plzErr = false;
+    if (!plz) { set("plz", undefined); return; }
+    if (!/^\d{5}$/.test(plz)) return;
+    const known = (await loadPlz().catch(() => null))?.get(plz);
+    if (plz !== v.trim()) return;
+    if (known) set("plz", plz); else plzErr = true;
+  }
   function setAps(v: string) {
     aps = v;
     const codes = [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(c => /^[A-Z]{3}$/.test(c)))];
@@ -82,6 +95,10 @@
 
   <div class="pr-sec">
     <span class="dlabel">{t("prefs.flights")}</span>
+    {#if !group && cloud.user}
+      <label class="f plzf">{t("prefs.plz")}<input class="fs-plz" inputmode="numeric" maxlength="5" value={plz} oninput={e => setPlz(e.currentTarget.value)} placeholder={t("fs.plzPh")} />{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</label>
+      <p class="muted small">{t("prefs.plzHint")} {t("prefs.plzAccount")}</p>
+    {/if}
     <div class="ed-row">
       <label class="f grow">{t("prefs.airports")}<input value={aps} oninput={e => setAps(e.currentTarget.value)} placeholder={group && base?.airports?.length ? base.airports.join(", ") : t("prefs.airportsPh")} /></label>
       <label class="f">{t("prefs.maxStops")}

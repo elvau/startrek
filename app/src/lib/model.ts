@@ -85,6 +85,8 @@ export interface Prefs {
   avoid?: string[];
   /** Flüge */
   airports?: string[];
+  /** Postleitzahl des Wohnorts (nur eigene Vorlieben, im Konto): belegt die Flugsuche vor */
+  plz?: string;
   maxStops?: number;
   bags?: boolean;
   /** längste Flugzeit je Richtung in Stunden */

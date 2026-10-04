@@ -2,38 +2,43 @@
 
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
 Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer mit Gemini, Fehlermeldungen), Daten und
-Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste).
+Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste,
+`claude2claude.md` = Einrichtung der Routinen).
 
 ## Umgebungen und Ablauf
-- Testumgebung https://elvau.github.io/startrek/: jeder Push auf einen Branch außer `main` (zuletzt gepushter gewinnt), nur gebaut.
+- Branches: Arbeits-Branch je Sitzung oder Routine (`claude/…`) → **`pre-release`** (Sammelstand) → `main` (Produktion).
+- Testumgebung https://elvau.github.io/startrek/: jeder Push auf `pre-release`, nur gebaut, ohne Prüfung. Zum Ausprobieren
+  den Arbeits-Branch nach den schnellen Prüfungen in `pre-release` mergen (merge commit) und pushen. Andere Branches
+  landen nicht auf der Testumgebung.
 - Produktion https://splitandfly.com: jeder Push auf `main` (Firebase Hosting, `release.yml` legt Tag und Release an).
 - Worker: deployt nur von `main` (Cloudflare Workers Builds). Secrets nur in Cloudflare, nie im Code oder Chat.
 - Firestore-Regeln (`app/firestore.rules`) spielt Dani von Hand in der Firebase-Konsole ein: nach Änderungen Bescheid sagen.
-- **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: PR → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit),
-  danach den Arbeits-Branch auf `origin/main` zurücksetzen.
+- **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: Version auf `pre-release` anheben,
+  `test:cloud`, PR `pre-release` → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit); danach `pre-release`
+  auf `main` vorspulen (`git push origin origin/main:pre-release`) und den Arbeits-Branch auf `origin/main` zurücksetzen.
+  Issues mit Label `auf-test`, die mitgegangen sind, schließen.
 - Version in `app/package.json` (`npm version X --no-git-tag-version`) im Release-PR: größere Funktionen mittlere Stelle,
   sonst Patch. Lieber langsam hochzählen.
 
 ## Arbeitsteilung (Routinen)
-Fehler und QA laufen über drei Routinen auf einem eigenen Konto: **SAF 1 – Triage** macht aus Fehlerberichten Issues
+Fehler und QA laufen über Routinen auf einem eigenen Konto (Einrichtung und Prompts: `docs/claude2claude.md`): **SAF 1 – Triage** macht aus Fehlerberichten Issues
 hier im Repo (Labels `bug`, `change_request`, `question`, dazu `from-triage`), **SAF 2 – Umsetzung** bearbeitet diese
 Issues, **SAF 2 – Review** prüft deren Pull Requests und nimmt sie an oder lehnt sie ab.
 - Sitzungen mit Dani zur Weiterentwicklung (neue Funktionen): Fällt dabei ein Fehler auf, der nicht zur laufenden Aufgabe
   gehört, als Issue melden (gleiches Format: Kategorie, Beschreibung, Akzeptanzkriterien, Begründung; ohne `from-triage`)
   statt ihn selbst zu fixen. Fehler in gerade gebautem Code gehören zur Aufgabe und werden gleich behoben.
 - Die Umsetzungs-Routine ist davon ausgenommen: Sie fixt die Issues, dafür ist sie da.
-- **Die Review-Routine merged nicht.** Umsetzung und Review laufen unter demselben Konto, eine GitHub-Freigabe (Approve)
+- **Die Review-Routine merged nie nach `main`.** Umsetzung und Review laufen unter demselben Konto, eine GitHub-Freigabe (Approve)
   ist daher nicht möglich; die Review antwortet per Kommentar: „ÄNDERUNGEN ANGEFORDERT“ (Umsetzung antwortet nach dem
   Nachbessern mit „NACHGEBESSERT“) oder **„FREIGEGEBEN“**. Freigegeben ist ein PR, wenn der letzte Review-Kommentar mit
   „FREIGEGEBEN“ beginnt und danach kein neuer Commit kam.
-- Nach `main` kommt ein PR der Routinen nur mit einem Release (Regel oben: nur auf ausdrückliches „Release“ von Dani).
-  Beim Release werden die freigegebenen PRs mit grünen Checks zuerst in den Arbeits-Branch gemergt (merge commit,
-  Konflikte lösen), dann läuft der Release wie oben beschrieben (Version, `test:cloud`, Release-PR) und schließt sie mit.
+- PRs der Routinen zielen auf `pre-release`, nie auf `main`. Einen freigegebenen PR mit grünen Checks merged die
+  Review-Routine in `pre-release` (merge commit) und ist damit auf der Testumgebung; nach `main` kommt er mit dem nächsten Release.
 - Issues sind öffentlich: keine E-Mails, Namen, Kontokennungen, Bilder oder Inhalte aus Fehlerberichten (siehe Datenschutz).
 
 ## Prüfen
-Push auf die Testumgebung soll schnell gehen: GitHub baut dort nur (`pages.yml`), die volle Prüfung läuft beim PR nach
-`main` (`pruefen.yml`). Vor jedem Push lokal die schnellen Prüfungen und nur die e2e-Schritte der geänderten Bereiche:
+Push auf die Testumgebung (`pre-release`) soll schnell gehen: GitHub baut dort nur (`pages.yml`), die volle Prüfung läuft
+bei PRs nach `main` und `pre-release` (`pruefen.yml`). Vor jedem Push lokal die schnellen Prüfungen und nur die e2e-Schritte der geänderten Bereiche:
 ```bash
 cd app
 npx svelte-check --threshold warning

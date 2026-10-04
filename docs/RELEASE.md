@@ -2,26 +2,34 @@
 
 | Umgebung | Adresse | Wird aktualisiert | Hosting |
 | --- | --- | --- | --- |
-| Testumgebung | https://elvau.github.io/startrek/ | bei jedem Push auf einen Feature-Branch (nur bauen, ohne Tests, ca. 1–2 Minuten) | GitHub Pages (`.github/workflows/pages.yml`) |
-| Produktion | https://splitandfly.com | bei jedem Push auf `main` (Merge eines Feature-Branches) | Firebase Hosting (`.github/workflows/release.yml`) |
+| Testumgebung | https://elvau.github.io/startrek/ | bei jedem Push auf `pre-release` (nur bauen, ohne Tests, ca. 1–2 Minuten) | GitHub Pages (`.github/workflows/pages.yml`) |
+| Produktion | https://splitandfly.com | bei jedem Push auf `main` (Merge von `pre-release`) | Firebase Hosting (`.github/workflows/release.yml`) |
 
 Beide Umgebungen nutzen dasselbe Firebase-Projekt (Konten, geteilte Reisen) und denselben Such-Dienst.
 Die frühere Adresse `…/neu/` leitet auf die App weiter (auch Einladungslinks mit `?join=…`).
 
 ## Ablauf
 
-1. **Entwickeln** auf einem Feature-Branch (z. B. `claude/…` oder `feature/…`). Jeder Push wird nur gebaut und landet
-   nach 1–2 Minuten auf der Testumgebung. Die volle Prüfung (Unit-Tests, Typprüfung, Such-Dienst, Sicherheitsregeln,
-   Browser-Tests gegen den Firebase-Emulator) läuft beim Pull Request nach `main` (`.github/workflows/pruefen.yml`).
-   Mehrere Branches gleichzeitig: Es steht immer der zuletzt gepushte drauf.
-2. **Ausprobieren** auf https://elvau.github.io/startrek/.
-3. **Release:** Pull Request des Feature-Branches nach `main`, warten bis „Prüfen (vor dem Release)“ grün ist, dann mergen. Der Push auf `main` bringt den Stand nach 2–3 Minuten
-   auf splitandfly.com (Actions → „Release (splitandfly.com)“). Wöchentlich wird `main` zusätzlich neu gebaut (Flughafendaten).
-4. **Version:** Jeder Release-PR hebt die Version in `app/package.json` an (`npm version 0.3.0 --no-git-tag-version` in `app/`):
+Branches: **Arbeits-Branch** (je Sitzung oder Routine, z. B. `claude/…`) → **`pre-release`** (Sammelstand, Testumgebung) → **`main`** (Produktion).
+
+1. **Entwickeln** auf dem Arbeits-Branch. Pushes dorthin landen nirgends; vor jedem Push die schnellen Prüfungen
+   (svelte-check, Unit-Tests, e2e der geänderten Bereiche).
+2. **Ausprobieren:** den Arbeits-Branch in `pre-release` mergen (merge commit) und pushen. Nach 1–2 Minuten steht der
+   Stand auf https://elvau.github.io/startrek/, nur gebaut, ohne Tests. Es gibt genau einen Stand auf der Testumgebung.
+3. **Routinen** (Fehler und QA, siehe CLAUDE.md) öffnen Pull Requests nach `pre-release`; dort läuft die volle Prüfung
+   (`.github/workflows/pruefen.yml`). Freigegebene, grüne PRs werden in `pre-release` gemergt.
+4. **Release** (nur auf ausdrückliches „Release“): auf `pre-release` die Version anheben, `npm run test:cloud`, Pull Request
+   `pre-release` → `main`, warten bis „Prüfen (vor dem Release)“ grün ist, mergen (merge commit). Der Push auf `main` bringt
+   den Stand nach 2–3 Minuten auf splitandfly.com (Actions → „Release (splitandfly.com)“). Danach `pre-release` auf `main`
+   vorspulen (`git push origin origin/main:pre-release`) und Arbeits-Branches auf `main` zurücksetzen.
+   Wöchentlich wird `main` zusätzlich neu gebaut (Flughafendaten).
+5. **Version:** Jeder Release hebt die Version in `app/package.json` an (`npm version 0.3.0 --no-git-tag-version` in `app/`):
    neue Funktionen → mittlere Stelle (0.2.0 → 0.3.0), nur Fehlerbehebungen → letzte Stelle (0.3.0 → 0.3.1).
    Nach dem Veröffentlichen legt der Workflow den Tag `v0.3.0` und eine Release-Seite mit den Änderungen an
    (https://github.com/elvau/startrek/releases). Die Version steht in der App unten neben Impressum und Datenschutz
    und in jeder Fehlermeldung (🐞). Bleibt die Version gleich, wird nur veröffentlicht, ohne neues Release.
+6. **Hotfix:** Dringendes kann von einem Arbeits-Branch auf `main` direkt per Release-PR gehen; danach `main` in
+   `pre-release` mergen.
 
 **Such-Dienst (Cloudflare):** wird nur beim Push auf `main` neu veröffentlicht. Neue Such-Funktionen (neue Endpunkte) gehen deshalb
 erst mit dem Release; auf der Testumgebung antwortet bis dahin noch der alte Such-Dienst.
@@ -31,9 +39,9 @@ oder den Merge auf `main` rückgängig machen (Revert), dann läuft der Release 
 
 ## Einmalige Einrichtung
 
-### 0. Testumgebung für Feature-Branches freigeben
+### 0. Testumgebung für pre-release freigeben
 GitHub → Repo **Settings → Environments → github-pages → Deployment branches and tags**:
-„No restriction“ wählen (oder Regeln für `claude/*` und `feature/*` hinzufügen). Sonst darf nur `main` auf die Testumgebung.
+„No restriction“ wählen (oder eine Regel für `pre-release` hinzufügen). Sonst darf nur `main` auf die Testumgebung.
 
 ### 1. Firebase Hosting einschalten
 Firebase Console → Projekt **startrek-1b6a7** → **Hosting** → **Get started** (die Schritte zur Befehlszeile kann man überspringen, das macht der Workflow).

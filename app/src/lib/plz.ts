@@ -30,3 +30,10 @@ export function suggest(m: Map<string, Place>, q: string, max = 6): [string, Pla
   }
   return out;
 }
+
+/** Wohnort (PLZ + Koordinaten) für die Haushalte setzen, die noch keinen haben; vorhandene bleiben unberührt */
+export function withHome<H extends { plz?: string; geo?: Place }>(hh: Record<string, H> | undefined, keys: string[], plz: string, pl: Place): Record<string, H> {
+  const out = { ...hh } as Record<string, H>;
+  for (const k of new Set(keys)) if (!out[k]?.geo) out[k] = { ...out[k], plz, geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
+  return out;
+}
