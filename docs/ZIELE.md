@@ -66,6 +66,37 @@ Die Prüfung des eigenen Reisepasses nutzt das Ablaufdatum aus den Buchungsdaten
 steht nur „erledigt“ je Person, ohne Datum. Wird ETIAS eingeführt: Text `imp.border.x` und die Signatur `ees` in
 `important.ts` anpassen, damit der Punkt bei allen wieder als offen erscheint.
 
+### Früh buchen (`app/src/lib/bookahead.ts`, unter „Wichtiges“ je Reiseziel)
+62 Orte in 33 Reisezielen. Recherche Oktober 2026; belegte Fenster (offizielle Seiten bzw. übereinstimmende Quellen):
+
+| Ort | Fenster |
+|---|---|
+| Shibuya Sky | 14 Tage vorher, 00:00 JST |
+| Ghibli Museum | am 10. um 10:00 JST für den Folgemonat (Lawson Ticket) |
+| Ghibli Park | am 10. um 14:00 JST für den übernächsten Monat |
+| Pokémon Café Tokyo/Osaka | 31 Tage vorher, 18:00 JST |
+| Tokyo Disney Resort | gleicher Tag zwei Monate vorher, 14:00 JST |
+| Nintendo Museum, Katsura/Shugakuin (Kaiserliche Villen) | Verlosung bzw. Anmeldung ab dem 1. des Monats, drei Monate vorher |
+| Forbidden City | 7 Tage vorher, 20:00 Peking |
+| Musei Vaticani | 60 Tage vorher, 00:00 Rom |
+| Colosseo | 30 Tage vorher |
+| Cenacolo Vinciano | Blöcke für drei Monate (März, Juni, September, Dezember) |
+| Alhambra | drei Monate vorher |
+| Sagrada Família | ca. zwei Monate vorher |
+| Tour Eiffel | 60 Tage vorher, 00:00 Paris |
+| Anne Frank Huis | dienstags 10:00 für die Woche in sechs Wochen |
+| Alcatraz | 90 Tage vorher |
+| Statue of Liberty (Krone) | bis ca. sechs Monate vorher |
+| Antelope Canyon | ca. drei Monate vorher |
+| Arches (Timed Entry) | am 1. um 08:00 MT für den Monat in drei Monaten (April bis Oktober) |
+| Inka-Trail | Permits im November des Vorjahres |
+| Milford Track | Buchung meist im Mai für die Saison Juli bis Juni |
+| Half Dome | Vorab-Verlosung im März |
+| Sky Garden | ca. drei Wochen vorher |
+
+Alle übrigen Orte ohne festen Verkaufsstart: Empfehlung „spätestens N Wochen vorher“ (`asap`). Fenster ändern sich;
+vor großen Releases stichprobenartig prüfen. Neuer Ort = ein Eintrag in `BOOK_AHEAD`, neues Reiseziel in `CITIES`.
+
 ## Merkliste (noch nicht eingebaut, vor dem Einbau Fakten prüfen)
 - Louvre, Vatikanische Museen, Kolosseum, Park Güell: Zeitfenster-Tickets
 - Plitvicer Seen (Tickets mit Zeitfenster im Sommer), Cinque Terre (Wanderpass)

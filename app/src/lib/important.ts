@@ -13,8 +13,9 @@ import { adviceLevel, type Advice, type AdviceMap } from "./advice";
 import { entryFor, needsAction, type EntryKind, type VisaData } from "./visa";
 import type { Hint } from "./hints";
 import { FREE_MOVEMENT, MIN_VALID, SCHENGEN, validUntil, type MinValid } from "./borders";
+import { CITIES, saleFor, type BookAhead, type Sale } from "./bookahead";
 
-export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "place";
+export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place";
 
 export interface PointPerson { id: string; name: string; nat: string; kind?: EntryKind; days?: number }
 
@@ -38,12 +39,14 @@ export interface Point {
   valid?: MinValid;
   /** Reisepass zu kurz gültig: Ablauf und nötiges Datum (nur zur Anzeige, nie gespeichert) */
   pass?: { expires: string; needed: string };
+  /** Früh buchen: Reiseziel und Orte mit Verkaufsstart, früheste zuerst */
+  book?: { city: string; label: string; entries: { e: BookAhead; sale: Sale }[]; soon: boolean };
 }
 
 /** erledigt je Punkt: Signatur beim Abhaken, bei Punkten für Personen die erledigten Personen */
 export type DoneMap = Record<string, { sig: string; ids?: string[] }>;
 
-const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, situation: 3, place: 4 } as const;
+const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, book: 3, situation: 3, place: 4 } as const;
 
 export interface PointInput {
   trip: Trip;
@@ -55,10 +58,14 @@ export interface PointInput {
   advice: AdviceMap;
   /** Ablauf der Reisepässe je reisender Person (JJJJ-MM-TT), nur wenn im Konto hinterlegt und geladen */
   passports?: Record<string, string>;
+  /** Früh buchen: passende Orte (bookAheadFor) */
+  book?: BookAhead[];
+  /** jetzt (für Tests) */
+  now?: number;
 }
 
 /** alle wichtigen Punkte der Reise, wichtigste zuerst */
-export function importantPoints({ trip, countries, hints, visa, advice, passports = {} }: PointInput): Point[] {
+export function importantPoints({ trip, countries, hints, visa, advice, passports = {}, book = [], now = Date.now() }: PointInput): Point[] {
   const act = trip.travelers.filter(isActive);
   const all: PointPerson[] | undefined = act.length ? act.map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" })) : undefined;
   const out: Point[] = [];
@@ -93,8 +100,25 @@ export function importantPoints({ trip, countries, hints, visa, advice, passport
   const schengen = countries.find(c => SCHENGEN.has(c));
   const outsiders = schengen ? act.filter(p => !FREE_MOVEMENT.has(p.nat || "DE")) : [];
   if (outsiders.length) out.push({ key: "border:schengen", kind: "border", prio: PRIO.border, sig: "ees", cc: schengen, persons: outsiders.map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" })) });
+  // Früh buchen: je Reiseziel ein Punkt; gebuchte bzw. bezahlte Orte (als Posten übernommen) fallen weg
+  const booked = new Set(trip.items.filter(i => i.hint && (i.status === "booked" || i.status === "paid")).map(i => i.hint!));
+  const visit = trip.from && trip.from >= new Date(now).toISOString().slice(0, 10) ? trip.from : undefined;
+  const byCity = new Map<string, { e: BookAhead; sale: Sale }[]>();
+  for (const e of book) {
+    if (booked.has(e.id)) continue;
+    const sale = visit ? saleFor(e, visit) : {};
+    byCity.set(e.city, [...(byCity.get(e.city) || []), { e, sale }]);
+  }
+  const covered = new Set(book.map(e => e.hint).filter(Boolean));
+  for (const [city, list] of byCity) {
+    const key = (x: { sale: Sale }) => x.sale.date || x.sale.by || "9999";
+    list.sort((a, b) => key(a).localeCompare(key(b)));
+    // bald: Verkaufsstart in den nächsten 14 Tagen bzw. schon offen, oder Empfehlung „bis“ ist erreicht
+    const soon = !!visit && list.some(x => (x.sale.at && x.sale.at.getTime() <= now + 14 * 86400000) || (x.sale.by && Date.parse(`${x.sale.by}T00:00:00Z`) <= now + 14 * 86400000));
+    out.push({ key: `book:${city}`, kind: "book", prio: PRIO.book, sig: list.map(x => `${x.e.id}@${key(x)}`).join(","), cc: list[0].e.cc, book: { city, label: CITIES[city]?.label || city, entries: list, soon }, ...(all ? { persons: all } : {}) });
+  }
   for (const h of hints) {
-    if (h.kind === "entry") continue;
+    if (h.kind === "entry" || covered.has(h.id)) continue;
     out.push({ key: `hint:${h.id}`, kind: h.kind === "warn" ? "warn" : "place", prio: PRIO[h.kind === "warn" ? "warn" : "place"], sig: h.id, ...(h.cc?.[0] ? { cc: h.cc[0] } : {}), hint: h, ...(all ? { persons: all } : {}) });
   }
   return out.sort((a, b) => a.prio - b.prio);
@@ -115,7 +139,7 @@ export function isOpen(p: Point, done: DoneMap = {}): boolean {
 }
 
 /** aufgeklappt zeigen (Reisewarnung, Teilreisewarnung, Einreise), sonst einzeilig bis zum Antippen */
-export const isUrgent = (p: Point) => p.kind === "entry" || p.kind === "warn" || p.kind === "pass" || p.kind === "border" || p.level === "warning" || p.level === "partial";
+export const isUrgent = (p: Point) => p.kind === "entry" || p.kind === "warn" || p.kind === "pass" || p.kind === "border" || !!p.book?.soon || p.level === "warning" || p.level === "partial";
 
 export const openCount = (ps: Point[], done?: DoneMap) => ps.filter(p => isOpen(p, done)).length;
 

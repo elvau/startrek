@@ -7,10 +7,12 @@
    * Reisepässe prüft die Seite nur, wenn die Buchungsdaten im Konto ohnehin geladen sind bzw. auf Knopfdruck; das Ablaufdatum
    * bleibt im Browser.
    */
-  import { t, tn, type Key } from "../i18n/index.svelte";
+  import { locale, t, tn, type Key } from "../i18n/index.svelte";
   import { access, app, setDetailed } from "../store.svelte";
   import { dir } from "../directory.svelte";
-  import { GENERAL_LINKS, hintsFor, tripCountries, type Hint } from "../hints";
+  import { GENERAL_LINKS, hintsFor, tripAps, tripCountries, tripText, type Hint } from "../hints";
+  import { bookAheadFor, icsFor, type BookAhead, type BookWindow, type Sale } from "../bookahead";
+  import PartnerLinks from "./PartnerLinks.svelte";
   import { itinerary } from "../itinerary";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { ccOf } from "../geo/places";
@@ -38,7 +40,8 @@
   // Ablauf der Reisepässe (nur aus dem Konto, nur im Browser)
   const passports = $derived(docs.status === "ready" ? Object.fromEntries(app.trip.travelers.filter(x => x.personId && docs.map[x.personId]?.passExpiry).map(x => [x.id, docs.map[x.personId!].passExpiry!])) : {});
   const canCheck = $derived(!!cloud.user && docs.status !== "ready" && docs.status !== "loading" && app.trip.travelers.some(x => x.personId));
-  const points = $derived(importantPoints({ trip: app.trip, countries, hints: hintsFor(app.trip, countries, places), visa, advice, passports }));
+  const book = $derived(bookAheadFor(tripText(app.trip, places), tripAps(app.trip), app.trip.from));
+  const points = $derived(importantPoints({ trip: app.trip, countries, hints: hintsFor(app.trip, countries, places), visa, advice, passports, book }));
   const done = $derived(app.trip.done || {});
   const open = $derived(points.filter(p => isOpen(p, done)));
   const closed = $derived(points.filter(p => !isOpen(p, done)));
@@ -49,7 +52,7 @@
 
   const LEVEL: Record<string, Key> = { warning: "aa.warning", partial: "aa.partial", situation: "aa.situation" };
   const ENT: Record<EntryKind, Key> = { home: "ent.home", free: "ent.free", eta: "ent.eta", evisa: "ent.evisa", arrival: "ent.arrival", visa: "ent.visa", none: "ent.none", unknown: "ent.unknown" };
-  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", place: "📍" };
+  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", book: "🎟️", place: "📍" };
   const icon = (p: Point) => (p.kind === "aa" ? (p.level === "situation" ? "⚠️" : "⛔") : ICON[p.kind]);
   const date = (iso: string) => iso.split("-").reverse().join(".");
   const validText = (v: MinValid) => t(`imp.valid.${v.months ? "m" : "d"}${v.from === "entry" ? "Entry" : "Exit"}` as Key, { n: v.months || v.days || 0 });
@@ -58,11 +61,13 @@
     if (p.kind === "entry") return `${flagOf(p.cc!)} ${t("imp.entry", { c: countryName(p.cc!) })}`;
     if (p.kind === "border") return t("imp.border.t");
     if (p.kind === "pass") return t("imp.pass.t", { name: p.persons![0].name });
+    if (p.kind === "book") return t("book.title", { place: p.book!.label });
     return t(`hint.${p.hint!.id}.t` as Key);
   }
   function text(p: Point) {
     if (p.kind === "aa") return t("imp.aaText") + (p.advice?.modified ? ` ${t("imp.aaChanged", { d: date(p.advice.modified) })}` : "");
     if (p.kind === "border") return t("imp.border.x");
+    if (p.kind === "book") return t("book.lead");
     if (p.kind === "pass") return t("imp.pass.x", { d: date(p.pass!.expires), c: countryName(p.cc!), r: date(p.pass!.needed) });
     if (p.hint) return t(`hint.${p.hint.id}.x` as Key);
     const k = p.persons?.find(x => x.kind && x.kind !== "unknown");
@@ -79,6 +84,41 @@
     app.trip.done = d;
   }
   const toggle = (p: Point, id: string) => edit(d => (doneIds(p, d).includes(id) ? reopen(d, p, id) : markDone(d, p, id)));
+
+  // Früh buchen: Fenster in Worten, Verkaufsstart in Ortszeit und in der eigenen Zeit, Kalendereintrag, als Posten übernehmen
+  const loc = () => locale();
+  const fmtDay = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(loc(), { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  const fmtMonth = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(loc(), { month: "long", year: "numeric", timeZone: "UTC" });
+  const local = (at: Date) => at.toLocaleString(loc(), { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const lt = (time?: string) => (time ? t("book.localTime", { t: time }) : "");
+  function windowText(w: BookWindow) {
+    if (w.kind === "days") return t("book.w.days", { n: w.days, time: lt(w.time) });
+    if (w.kind === "months") return t("book.w.months", { n: w.months, time: lt(w.time) });
+    if (w.kind === "monthly") return t(w.lottery ? "book.w.lottery" : "book.w.monthly", { day: w.day, n: w.months, time: lt(w.time) });
+    if (w.kind === "weekly") return t("book.w.weekly", { wd: new Date(Date.UTC(2023, 0, 1 + w.weekday)).toLocaleDateString(loc(), { weekday: "long", timeZone: "UTC" }), n: w.weeks, time: lt(w.time) });
+    if (w.kind === "yearly") return t("book.w.yearly", { m: new Date(Date.UTC(2023, w.month - 1, 15)).toLocaleDateString(loc(), { month: "long", timeZone: "UTC" }) });
+    return t("book.w.asap", { n: Math.round(w.lead / 7) });
+  }
+  function saleText(s: Sale) {
+    if (s.monthOnly && s.date) return t("book.month", { m: fmtMonth(s.date) });
+    if (s.at && s.date) {
+      if (s.at.getTime() <= Date.now()) return t("book.open");
+      const days = Math.ceil((s.at.getTime() - Date.now()) / 86400000);
+      return t("book.starts", { d: fmtDay(s.date), time: s.time ? lt(s.time) : "", local: local(s.at), n: tn("n.days", days) });
+    }
+    if (s.by) return Date.parse(`${s.by}T00:00:00Z`) <= Date.now() ? t("book.now") : t("book.by", { d: fmtDay(s.by) });
+    return "";
+  }
+  const icsHref = (e: BookAhead, s: Sale) => `data:text/calendar;charset=utf-8,${encodeURIComponent(icsFor(e, s.at!, t("book.icsTitle", { name: e.name })))}`;
+  const hasBook = (e: BookAhead) => app.trip.items.some(i => i.hint === e.id);
+  function addBook(e: BookAhead) {
+    if (hasBook(e)) return;
+    setDetailed("attractions", true);
+    const it = { id: uid(), cat: "attractions" as const, name: e.name, status: "idea" as const, hint: e.id,
+      options: [{ id: uid(), label: t("book.priceOpen"), estimate: true, price: { mode: "unit" as const, currency: "EUR", unit: 0 } }] };
+    app.trip.items.push(it);
+    showItem(it.id);
+  }
 
   // Gebühren vor Ort (z. B. Galápagos) als Posten
   const hasFee = (h: Hint) => app.trip.items.some(i => i.hint === h.id);
@@ -124,6 +164,23 @@
 
 {#snippet body(p: Point)}
   <p>{text(p)}</p>
+  {#if p.book}
+    <ul class="imp-books">
+      {#each p.book.entries as x (x.e.id)}
+        <li data-book={x.e.id}>
+          <b>{x.e.name}</b>
+          <span class="muted small">{x.e.approx ? `${t("book.approx")} ` : ""}{windowText(x.e.window)}{x.e.tip ? ` · ${t(`book.tip.${x.e.tip}` as Key)}` : ""}</span>
+          {#if saleText(x.sale)}<span class="imp-sale">{saleText(x.sale)}</span>{/if}
+          <span class="imp-links">
+            {#each x.e.links as l (l.url)}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}
+            <PartnerLinks ids={["viator"]} q={{ place: x.e.name }} />
+            {#if x.sale.at && !x.sale.monthOnly && x.sale.at.getTime() > Date.now()}<a class="imp-ics" href={icsHref(x.e, x.sale)} download="{x.e.id}.ics">📅 {t("book.ics")}</a>{/if}
+            {#if !access.readonly}{#if hasBook(x.e)}<small class="muted">✓ {t("book.added")}</small>{:else}<button class="linkbtn imp-add" onclick={() => addBook(x.e)}>+ {t("book.add")}</button>{/if}{/if}
+          </span>
+        </li>
+      {/each}
+    </ul>
+  {/if}
   {#if p.valid}<p class="imp-valid">🪪 {validText(p.valid)}</p>{/if}
   {#if links(p).length || p.hint?.fee}
     <p class="imp-links">
@@ -196,6 +253,10 @@
   .imp-place { border-inline-start-color: var(--c-plan, #3b6fd8); }
   .imp-pass { border-inline-start-color: #d0342c; }
   .imp-valid { font-size: 13.5px; color: var(--ink-2); }
+  .imp-books { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .imp-books li { display: flex; flex-direction: column; gap: 1px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .imp-sale { font-weight: 600; font-size: 14px; }
+  .imp-card.imp-book, .imp-line.imp-book { border-inline-start-color: #7a4fd6; }
   .imp-head { display: flex; gap: 8px; align-items: baseline; }
   .imp-fold { margin-inline-start: auto; }
   .imp-line { display: flex; align-items: center; gap: 8px; width: 100%; text-align: start; padding: 8px 14px; border: 0; border-radius: 12px; background: var(--paper, #fff); box-shadow: var(--shadow); font: inherit; font-size: 14.5px; color: inherit; cursor: pointer; border-inline-start: 4px solid var(--warn, #d08a12); }
