@@ -42,8 +42,8 @@ Issues, **SAF 2 – Review** prüft deren Pull Requests und nimmt sie an oder le
   „FREIGEGEBEN“ beginnt und danach kein neuer Commit kam.
 - PRs der Routinen zielen auf `pre-release`, nie auf `main`. Einen freigegebenen PR mit grünen Checks merged die
   Review-Routine in `pre-release` (merge commit) und ist damit auf der Testumgebung; nach `main` kommt er mit dem nächsten Release.
-- Bot-Konten nicht als Spam erscheinen lassen: je Lauf/Sitzung höchstens 5 neue Issues und 3 PRs, keine Serien von Kommentaren
-  oder Labels; bei Warnzeichen sofort aufhören (Details: `docs/claude2claude.md`, „Schutz vor Sperre“).
+- Bot-Konten nicht als Spam erscheinen lassen: neue Issues, PRs, Kommentare und Labels in Blöcken von höchstens 10, danach
+  5 Minuten Pause (keine Gesamtgrenze); bei Warnzeichen sofort aufhören (Details: `docs/claude2claude.md`, „Schutz vor Sperre“).
 - Issues sind öffentlich: keine E-Mails, Namen, Kontokennungen, Bilder oder Inhalte aus Fehlerberichten (siehe Datenschutz).
 
 ## Prüfen
