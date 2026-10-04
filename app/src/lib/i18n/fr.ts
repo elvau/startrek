@@ -66,6 +66,7 @@ export const fr: Dict = {
   "adm.sec.cf": "Cloudflare",
   "adm.sec.manual": "Uniquement dans la console du fournisseur",
   "adm.sec.routes": "Fonctions",
+  "adm.sec.clicks": "Clics sur les liens des prestataires",
   "adm.setup": "Configuration : docs/NUTZUNG.md",
   "adm.stand": "Mis à jour : {t} · jours en UTC",
   "adm.title": "Utilisation des offres gratuites",

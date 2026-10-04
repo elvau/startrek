@@ -41,6 +41,17 @@ export function noteRoute(env: UsageEnv, route: string, cacheHit = false) {
   try { env.USAGE?.writeDataPoint({ blobs: ["route", route, cacheHit ? "hit" : ""], doubles: [1], indexes: ["route"] }); } catch { /* egal */ }
 }
 
+/**
+ * Klick auf einen Anbieter-Link (App sendet nebenher { p: Partner, c: Kategorie }): je Partner, Kategorie und Tag gezählt,
+ * ohne IP, Konto oder Reise. Unbekanntes Format wird verworfen; true, wenn gezählt.
+ */
+export function noteClick(env: UsageEnv, body: unknown): boolean {
+  const { p, c } = (body && typeof body === "object" ? body : {}) as { p?: unknown; c?: unknown };
+  if (typeof p !== "string" || typeof c !== "string" || !/^[a-z0-9][a-z0-9-]{0,39}$/.test(p) || !/^[a-z]{1,20}$/.test(c)) return false;
+  try { env.USAGE?.writeDataPoint({ blobs: ["click", p, c], doubles: [1], indexes: ["click"] }); } catch { /* egal */ }
+  return true;
+}
+
 export const isAdmin = (env: UsageEnv, uid: string) =>
   (env.ADMIN_UIDS || "").split(",").map(s => s.trim()).filter(Boolean).includes(uid);
 

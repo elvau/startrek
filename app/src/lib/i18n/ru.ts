@@ -68,6 +68,7 @@ export const ru: Dict = {
   "adm.sec.cf": "Cloudflare",
   "adm.sec.manual": "Только в консоли поставщика",
   "adm.sec.routes": "Функции",
+  "adm.sec.clicks": "Переходы по ссылкам на поставщиков",
   "adm.setup": "Настройка: docs/NUTZUNG.md",
   "adm.stand": "Данные на {t} · дни в UTC",
   "adm.title": "Использование бесплатных лимитов",

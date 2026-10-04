@@ -103,6 +103,13 @@ export function routeRows(rep: UsageReport): Row[] {
   }).filter((x): x is Row => !!x);
 }
 
+/** Klicks auf Anbieter-Links (partners/click.ts): je Partner und Kategorie, meistgeklickt zuerst; names: Kennung → Anzeigename */
+export function clickRows(rep: UsageReport, names: Record<string, string> = {}): Row[] {
+  return (rep.series || []).filter(s => s.kind === "click")
+    .map(s => row({ id: `click:${s.name}:${s.detail}`, label: `${names[s.name] || s.name} · ${s.detail}`, value: today(s.byDay), week: s.byDay }))
+    .sort((a, b) => (b.week || []).reduce((x, y) => x + y, 0) - (a.week || []).reduce((x, y) => x + y, 0) || a.label.localeCompare(b.label));
+}
+
 /** Links für das, was der Such-Dienst nicht sieht (Firebase, Gemini-Grenzen) */
 export function consoleLinks(projectId?: string) {
   const fb = projectId ? `https://console.firebase.google.com/project/${projectId}` : "https://console.firebase.google.com";

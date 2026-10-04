@@ -12,4 +12,4 @@
   const links = $derived(ids.map(id => partnerLink(id, q as never, partner.on)).filter(l => l !== null));
 </script>
 
-{#each links as l, i (l.id)}{i ? " · " : ""}<ExtLink href={l.url} sponsored={l.sponsored}>{l.nameKey ? t(l.nameKey) : l.name} ↗</ExtLink>{/each}
+{#each links as l, i (l.id)}{i ? " · " : ""}<ExtLink href={l.url} sponsored={l.sponsored} track={[l.id, l.cat]}>{l.nameKey ? t(l.nameKey) : l.name} ↗</ExtLink>{/each}

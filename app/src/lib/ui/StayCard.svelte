@@ -122,7 +122,7 @@
           <div class="cmp-a">
             {#if sel}<span class="pill-n">✓ {t("st.chosen")}</span>
             {:else}<button class="btn sm primary cmp-pick" disabled={access.readonly} onclick={e => choose(o.id, e)}>{t("fs.pick")}</button>{/if}
-            {#if o.source?.url}<ExtLink cls="btn sm" href={o.source.url} sponsored={o.source.sponsored} inside onclick={e => e.stopPropagation()}>↗</ExtLink>{/if}
+            {#if o.source?.url}<ExtLink cls="btn sm" href={o.source.url} sponsored={o.source.sponsored} inside track={[o.source.name, "stay"]} onclick={e => e.stopPropagation()}>↗</ExtLink>{/if}
             {#if !access.readonly}<button class="btn sm cmp-x" title={t("ie.dropOffer")} aria-label={t("ie.dropOffer")} onclick={e => drop(o.id, e)}>×</button>{/if}
           </div>
         </div>

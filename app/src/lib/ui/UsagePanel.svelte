@@ -2,7 +2,8 @@
   /* Admin: Nutzung der kostenlosen Kontingente (Cloudflare, Anbieter, Funktionen) und Links zu den Konsolen */
   import { locale, t, type Key } from "../i18n/index.svelte";
   import { admin, fetchUsage } from "../admin/app.svelte";
-  import { cloudflareRows, consoleLinks, fmtBytes, providerRows, routeRows, type Row, type UsageReport } from "../admin/usage";
+  import { clickRows, cloudflareRows, consoleLinks, fmtBytes, providerRows, routeRows, type Row, type UsageReport } from "../admin/usage";
+  import { clickNames } from "../partners";
   import Modal from "./Modal.svelte";
   import UsageBarrel from "./UsageBarrel.svelte";
 
@@ -37,7 +38,8 @@
   const sections = $derived(report ? [
     { key: "adm.sec.cf" as Key, rows: cloudflareRows(report), err: [report.errors.worker && `Worker: ${report.errors.worker}`, report.errors.r2 && `R2: ${report.errors.r2}`].filter(Boolean).join(" · ") },
     { key: "adm.sec.api" as Key, rows: providerRows(report, Number(report.config.geminiPerDay) || 0), err: report.errors.own },
-    { key: "adm.sec.routes" as Key, rows: routeRows(report), err: "" }
+    { key: "adm.sec.routes" as Key, rows: routeRows(report), err: "" },
+    { key: "adm.sec.clicks" as Key, rows: clickRows(report, clickNames()), err: "" }
   ] : []);
 </script>
 
