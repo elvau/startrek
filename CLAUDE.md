@@ -24,6 +24,9 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
 Weiterentwicklung gebündelt in Epics (`epic`, mittlere Version), Features (`feature`) und Pflege (`maintenance`, Patch);
 Ablauf und „fertig ist, wenn …“ in `docs/ABLAUF.md`. In Sitzungen mit Dani ein Epic Feature für Feature abarbeiten,
 offene Entscheidungen zur Oberfläche vorher mit Entwurf klären.
+Jedes offene Ticket hat genau ein Zuständigkeits-Label: `zuständig: Entwicklung` (diese Sitzungen), `zuständig: QA-Routinen`
+(Bugs und kleine Änderungswünsche), `zuständig: Dani` (Entscheidungen `entscheidung`, Einrichtungen `einrichtung`; Dani
+schließt sie). Braucht es eine Entscheidung von Dani, ein eigenes Ticket dafür anlegen statt nur im Chat zu fragen.
 
 ## Arbeitsteilung (Routinen)
 Fehler und QA laufen über Routinen auf einem eigenen Konto (Einrichtung und Prompts: `docs/claude2claude.md`): **SAF 1 – Triage** macht aus Fehlerberichten Issues

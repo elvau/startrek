@@ -16,8 +16,17 @@ Fehlerbericht (elvau/splitandfly-bugs, privat)
 Branches: Arbeits-Branch (`claude/…`) → `pre-release` (Sammelstand, Testumgebung https://elvau.github.io/startrek/)
 → `main` (Produktion https://splitandfly.com). Nach `main` merged keine Routine.
 
-Labels: `bug`, `change_request`, `question`, `from-triage`, `in-arbeit`, `needs-human` (Entscheidung von Dani nötig),
+Labels: `bug`, `change_request`, `question`, `from-triage`, `in-arbeit`, `entscheidung` (Frage an Dani, zusammen mit `zuständig: Dani`),
 `auf-test` (in pre-release, kommt mit dem nächsten Release), `release-review` (Release-Kandidat).
+
+Zuständigkeit (genau ein Label je offenem Ticket): `zuständig: QA-Routinen` (Bugs und kleine Änderungswünsche, diese
+Routinen), `zuständig: Entwicklung` (Features, Entwicklungssitzungen mit Dani), `zuständig: Dani` (Entscheidungen,
+Einrichtungen). Die Routinen arbeiten nur Tickets mit `zuständig: QA-Routinen` ab.
+
+**change_request oder feature?** change_request = kleine Änderung an bestehendem Verhalten, in einem Pull Request
+erledigt (Text, Anordnung, ein zusätzliches Feld, ein Standardwert, Verhalten einer bestehenden Funktion). Größeres –
+neue Funktionen, neue Partner, neue Ansichten, Entscheidungen zur Oberfläche, Änderungen über mehrere Bereiche – ist ein
+feature und gehört der Entwicklung.
 
 ## Einstellungen für alle Routinen
 
@@ -38,7 +47,11 @@ Suche im privaten Repo elvau/splitandfly-bugs offene Fehlerberichte ohne Label �
    Ticket darauf verweisen.
 3. Sonst Issue in elvau/startrek anlegen: verständlicher Titel; im Text „Kategorie“, „Fehlerbericht #N“ (ohne Link),
    „Beschreibung“, „Akzeptanzkriterien“ (Checkboxen, inkl. Tests und Texte in allen 7 Sprachen, falls nötig),
-   „Begründung der Kategorie“. Labels: die Kategorie und „from-triage“.
+   „Begründung der Kategorie“. Labels: die Kategorie, „from-triage“ und „zuständig: QA-Routinen“.
+   Ist der Wunsch größer als eine kleine Änderung (neue Funktion, neuer Partner, neue Ansicht, Entscheidung zur
+   Oberfläche, mehrere Bereiche): stattdessen Labels „feature“, „from-triage“ und „zuständig: Entwicklung“.
+   Ist unklar, was gemeint ist oder ob es gewollt ist: Labels Kategorie, „from-triage“, „zuständig: Dani“ und
+   „entscheidung“, mit einer konkreten Frage im Text.
 4. Im privaten Ticket Label „triagiert“ setzen und das neue Issue verlinken.
 
 Das Issue ist öffentlich: keine Namen, E-Mail-Adressen, Kontokennungen, Bilder oder Bild-Links, keine wörtlichen
@@ -55,14 +68,17 @@ Datenschutz, Commit-Konventionen).
 1. Zuerst eigene offene Pull Requests: Ist der letzte Review-Kommentar „ÄNDERUNGEN ANGEFORDERT“, alle Punkte
    nachbessern, pushen und mit einem Kommentar antworten, der mit „NACHGEBESSERT“ beginnt und je Punkt sagt, was
    geändert wurde.
-2. Danach höchstens ein neues Issue pro Lauf: offen, Label „from-triage“, ohne „in-arbeit“, „auf-test“ und
-   „needs-human“; bug vor change_request, ältestes zuerst. Label „in-arbeit“ setzen.
+2. Danach höchstens ein neues Issue pro Lauf: offen, Label „zuständig: QA-Routinen“, ohne „in-arbeit“, „auf-test“
+   und „needs-human“; bug vor change_request, ältestes zuerst. Label „in-arbeit“ setzen. Tickets mit
+   „zuständig: Entwicklung“ oder „zuständig: Dani“ nie anfassen.
 3. Branch „claude/issue-<Nummer>“ von origin/pre-release anlegen, umsetzen, prüfen mit
    „cd app && npx svelte-check --threshold warning && npx vitest run“.
 4. Pull Request gegen „pre-release“ öffnen, niemals gegen „main“. Im Text: Bezug „Issue #N“, was geändert wurde,
    wie geprüft wurde.
-5. Ist das Issue unklar, zu groß oder braucht es eine Entscheidung: im Issue eine konkrete Frage stellen, Label
-   „needs-human“ setzen, „in-arbeit“ entfernen, nichts umsetzen.
+5. Ist das Issue unklar oder braucht es eine Entscheidung: im Issue eine konkrete Frage stellen, „zuständig: QA-Routinen“
+   durch „zuständig: Dani“ ersetzen, Label „entscheidung“ setzen, „in-arbeit“ entfernen, nichts umsetzen.
+   Ist es größer als eine kleine Änderung: „zuständig: QA-Routinen“ durch „zuständig: Entwicklung“ ersetzen, Label
+   „feature“ setzen, kurz begründen, „in-arbeit“ entfernen.
 Niemals nach main oder pre-release pushen oder mergen. Gibt es nichts zu tun, sofort beenden.
 ```
 
@@ -82,7 +98,8 @@ Antworte mit genau einem Kommentar:
 
 Bei FREIGEGEBEN und grünen Checks: den Pull Request in „pre-release“ mergen (merge commit), Branch löschen, im Issue
 kommentieren „Auf der Testumgebung, kommt mit dem nächsten Release“ und Label „in-arbeit“ durch „auf-test“ ersetzen.
-Nach drei Runden ohne Freigabe: Label „needs-human“ am Issue setzen und aufhören.
+Nach drei Runden ohne Freigabe: am Issue „zuständig: QA-Routinen“ durch „zuständig: Dani“ ersetzen, Label
+„entscheidung“ setzen, kurz zusammenfassen, woran es hängt, und aufhören.
 Niemals nach main mergen, niemals selbst Code ändern. Gibt es nichts zu tun, sofort beenden.
 ```
 
