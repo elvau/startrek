@@ -43,6 +43,7 @@
   import GroundOptions from "./lib/ui/GroundOptions.svelte";
   import TransferOptions from "./lib/ui/TransferOptions.svelte";
   import PartnerLinks from "./lib/ui/PartnerLinks.svelte";
+  import Important from "./lib/ui/Important.svelte";
   import { partnersOf, sponsoredAny } from "./lib/partners";
   import { partner } from "./lib/partnerState.svelte";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
@@ -125,6 +126,7 @@
 
 <div class="wrap">
   <main>
+    <Important />
     <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>
     </Chapter>

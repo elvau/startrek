@@ -13,7 +13,6 @@
   import { ensureAirports, ensureGeo } from "../geo/geo.svelte";
   import RouteMini from "./RouteMini.svelte";
   import RouteMap from "./RouteMap.svelte";
-  import HintsCard from "./HintsCard.svelte";
   import { reveal } from "./reveal";
 
   const days = $derived(itinerary(app.trip));
@@ -74,7 +73,6 @@
     {:else}<button class="dp-prev" onclick={() => (mapOpen = true)} aria-label={t("route.open")}><RouteMini {route} w={640} h={180} label={t("route.title")} /></button>{/if}
   </article>
 {/if}
-<HintsCard />
 {#if !days.length}
   <p class="muted dp-none">{t("day.none")}</p>
 {:else}
