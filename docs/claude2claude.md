@@ -41,11 +41,13 @@ GitHub hat das Konto `daniel-ai-coder` als Spam markiert, nachdem eine Sitzung i
 hatte: Seine Issues und PRs waren für andere unsichtbar, Actions liefen nicht mehr. Das gilt für alle Bot-Konten
 (auch `monika-ai-coder`), deshalb für jede Routine und Sitzung:
 
-- **Maßvoll anlegen:** je Lauf höchstens 5 neue Issues und 3 neue Pull Requests. Mehr zu tun? Rest im nächsten Lauf.
+- **Tempo statt Obergrenze:** Ein Lauf darf alles abarbeiten, was anliegt (auch 100 Tickets), aber nicht auf einmal:
+  neue Issues und Pull Requests in Blöcken von höchstens 10, danach mindestens 5 Minuten Pause, bevor der nächste Block
+  angelegt wird. Pause: `sleep 300` als Hintergrund-Befehl und auf dessen Ende warten (keine Schleifen, die GitHub abfragen).
 - **Erst suchen, dann anlegen:** vor jedem neuen Issue nach Doppelten suchen; lieber einen Kommentar ans bestehende
   Ticket als ein neues. Mehrere kleine Punkte in ein Sammelticket statt je eines.
-- **Keine Serien:** nicht viele Kommentare, Labels oder Änderungen in schneller Folge (keine Schleifen über alle Tickets);
-  je Ticket und Lauf höchstens ein Kommentar.
+- **Keine Serien:** Kommentare, Labels und andere Änderungen an Tickets im selben Tempo (höchstens 10, dann 5 Minuten
+  Pause); je Ticket und Lauf höchstens ein Kommentar.
 - **Keine Links nach außen** in Issues und Kommentaren außer auf `splitandfly.com`, die Testumgebung und dieses Repo.
 - **Kein CI anstoßen** durch leere Commits, Schließen/Wiedereröffnen oder wiederholte Pushes.
 - **Warnzeichen:** Startet bei einem PR keine Prüfung, liefert die Weboberfläche 404 für eigene Issues oder meldet die
@@ -104,8 +106,9 @@ Datenschutz, Commit-Konventionen).
 1. Zuerst eigene offene Pull Requests: Ist der letzte Review-Kommentar „ÄNDERUNGEN ANGEFORDERT“, alle Punkte
    nachbessern, pushen und mit einem Kommentar antworten, der mit „NACHGEBESSERT“ beginnt und je Punkt sagt, was
    geändert wurde.
-2. Danach höchstens ein neues Issue pro Lauf: offen, Label „zuständig: QA-Routinen“, ohne „in-arbeit“, „auf-test“
-   und „needs-human“; bug vor change_request, ältestes zuerst. Label „in-arbeit“ setzen. Tickets mit
+2. Danach die offenen Issues eines nach dem anderen (Schritte 2–5 je Issue, bis keins mehr übrig ist; Tempo nach
+   „Schutz vor Sperre“): offen, Label „zuständig: QA-Routinen“, ohne „in-arbeit“, „auf-test“ und „needs-human“;
+   bug vor change_request, ältestes zuerst. Label „in-arbeit“ setzen. Tickets mit
    „zuständig: Entwicklung“ oder „zuständig: Dani“ nie anfassen.
 3. Branch „claude/issue-<Nummer>“ von origin/pre-release anlegen, umsetzen, prüfen mit
    „cd app && npx svelte-check --threshold warning && npx vitest run“.
