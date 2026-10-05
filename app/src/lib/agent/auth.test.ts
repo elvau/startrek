@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetKeys, verifyIdToken } from "./auth";
+import { resetKeys, verifyAnyIdToken, verifyIdToken } from "./auth";
 
 const b64u = (b: Uint8Array | string) => {
   const bytes = typeof b === "string" ? new TextEncoder().encode(b) : b;
@@ -41,5 +41,15 @@ describe("Anmeldung im Such-Dienst", () => {
     const forged = t.split(".").slice(0, 2).join(".") + "." + b64u(new Uint8Array(256));
     await expect(verifyIdToken(forged, "proj", s.fetchFn, NOW)).rejects.toThrow(/ungültig/);
     await expect(verifyIdToken("kein.token", "proj", s.fetchFn, NOW)).rejects.toThrow(/ungültig/);
+  });
+
+  it("Testprojekt: nur wenn angegeben, Kennung mit „test:“; sonst wie bisher abgelehnt", async () => {
+    const s = await setup();
+    const test = await s.sign(claims({ aud: "testproj", iss: "https://securetoken.google.com/testproj", sub: "t1" }));
+    expect(await verifyAnyIdToken(await s.sign(claims()), "proj", "testproj", s.fetchFn, NOW)).toBe("u1");
+    expect(await verifyAnyIdToken(test, "proj", "testproj", s.fetchFn, NOW)).toBe("test:t1");
+    await expect(verifyAnyIdToken(test, "proj", undefined, s.fetchFn, NOW)).rejects.toThrow(/Projekt/);
+    await expect(verifyAnyIdToken(await s.sign(claims({ aud: "andere", iss: "https://securetoken.google.com/andere" })), "proj", "testproj", s.fetchFn, NOW)).rejects.toThrow(/Projekt/);
+    await expect(verifyAnyIdToken(await s.sign(claims({ exp: NOW / 1000 - 1 })), "proj", "testproj", s.fetchFn, NOW)).rejects.toThrow(/abgelaufen/);
   });
 });

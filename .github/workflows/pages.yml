@@ -33,11 +33,11 @@ jobs:
         run: npm ci
       - name: App bauen
         working-directory: app
-        run: npm run build
+        run: npm run build:test
         env:
           # Testumgebung: elvau.github.io/startrek/ (splitandfly.com kommt aus release.yml)
           BASE: /${{ github.event.repository.name }}/
-          # Firebase-Konfiguration kommt aus app/.env.production
+          # Firebase: eigenes Testprojekt aus app/.env.staging, nie das echte (app/.env.production)
       - name: Flughafendaten aktualisieren
         # neue Daten von OurAirports; klappt das nicht, bleibt public/airports.json aus dem Projekt
         run: node scripts/airports.mjs || echo "::warning::Flughafendaten nicht aktualisiert, alte Datei bleibt"
