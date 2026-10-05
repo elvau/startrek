@@ -59,7 +59,8 @@ Einmalig einrichten (Dani):
 1. Zweites Firebase-Projekt anlegen, z. B. `splitandfly-test` (Schritte 1–4 oben: Google-Anmeldung, Firestore,
    Regeln aus `app/firestore.rules`, Web-App).
 2. **Authentication → Einstellungen → Autorisierte Domains:** `elvau.github.io` hinzufügen.
-3. Die vier Werte (`apiKey`, `authDomain` = `<projekt>.firebaseapp.com`, `projectId`, `appId`) in `app/.env.staging`
+3. Die vier Werte (`apiKey`, `authDomain`, `projectId`, `appId`) in `app/.env.staging`; `authDomain` ist
+   `test.splitandfly.com` (Hosting des Testprojekts, OAuth-Client mit `https://test.splitandfly.com/__/auth/handler`)
    eintragen (oder Claude geben).
 4. Such-Dienst: Variable `FIREBASE_TEST_PROJECT_ID = "<projekt>"` in `worker/wrangler.toml` unter `[vars]` (Claude
    trägt sie ein; wirkt nach dem nächsten Release). Dann nimmt der Such-Dienst Anmeldungen aus dem Testprojekt an
