@@ -89,6 +89,8 @@ export interface Prefs {
   plz?: string;
   maxStops?: number;
   bags?: boolean;
+  /** Kinder sitzen im Flugzeug neben den Eltern (fehlt: ja); bei manchen Billigfliegern kostet das die Platzwahl */
+  seatsTogether?: boolean;
   /** längste Flugzeit je Richtung in Stunden */
   maxHours?: number;
   /** Anfahrt zum Flughafen */
@@ -192,6 +194,10 @@ export interface Option {
   deposit?: Deposit;
   /** automatisch geschätzte Nebenkosten (z. B. auto:citytax:rome), die weggeklickt wurden */
   autoOff?: string[];
+  /** Flug aus der Suche: im Preis enthaltenes Gepäck (gesamt für alle); fehlt: nicht angegeben */
+  baggage?: { personal: number; cabin: number; checked: number };
+  /** Hinweise am Flug: früh einchecken (Familie), Kartenaufschlag möglich (Abflug außerhalb EU/EWR) */
+  hints?: ("checkin" | "payfee")[];
 }
 
 export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "vignette" | "visa" | "tips" | "insurance" | "driver" | "other";

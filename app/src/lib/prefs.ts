@@ -35,7 +35,7 @@ export function touchesAvoided(o: FlightOffer, avoid: string[] | undefined, cc: 
 
 /** Vorlieben für die KI: nur was sie braucht, ohne Namen */
 export function agentPrefs(p: Prefs): Prefs | undefined {
-  const keys: (keyof Prefs)[] = ["avoid", "maxStops", "bags", "maxHours", "stayType", "minStars", "board", "styles", "budget", "note", "holidays", "months", "nightsMin", "nightsMax"];
+  const keys: (keyof Prefs)[] = ["avoid", "maxStops", "bags", "seatsTogether", "maxHours", "stayType", "minStars", "board", "styles", "budget", "note", "holidays", "months", "nightsMin", "nightsMax"];
   const out = Object.fromEntries(keys.filter(k => p[k] != null && !(Array.isArray(p[k]) && !(p[k] as unknown[]).length)).map(k => [k, p[k]])) as Prefs;
   if (out.note) out.note = out.note.slice(0, 300);
   return Object.keys(out).length ? out : undefined;

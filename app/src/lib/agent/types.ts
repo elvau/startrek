@@ -186,6 +186,7 @@ export function parsePrefs(v: unknown): Prefs | undefined {
   const avoid = codes(o.avoid, /^[A-Z]{2}$/, 30); if (avoid.length) p.avoid = avoid;
   if (int(o.maxStops, 0, 2)) p.maxStops = o.maxStops as number;
   if (typeof o.bags === "boolean") p.bags = o.bags;
+  if (typeof o.seatsTogether === "boolean") p.seatsTogether = o.seatsTogether;
   if (int(o.maxHours, 1, 48)) p.maxHours = o.maxHours as number;
   if (o.stayType === "whole" || o.stayType === "hotel" || o.stayType === "all") p.stayType = o.stayType;
   if (int(o.minStars, 1, 5)) p.minStars = o.minStars as number;
