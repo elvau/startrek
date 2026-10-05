@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HINTS } from "./hints";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { doneIds, importantPoints, isOpen, isUrgent, markDone, openCount, reopen, type DoneMap } from "./important";
+import { doneIds, importantPoints, isOpen, isUrgent, markDone, openCount, reopen, urgentOpenCount, type DoneMap } from "./important";
 import type { VisaData } from "./visa";
 import { MIN_VALID, validUntil } from "./borders";
 
@@ -55,6 +55,19 @@ describe("Wichtiges zur Reise", () => {
     markDone(done, machu, "b");
     expect(isOpen(machu, done)).toBe(false);
     expect(ps.map(p => `${p.key}:${isUrgent(p)}`)).toEqual(["entry:US:true", "aa:US:false", "hint:machu:false"]);
+  });
+
+  it("roter Zähler nur bei Dringendem (Fehlerbericht #22)", () => {
+    const calm = importantPoints({ trip: trip([anna]), countries: ["US"], hints: [], visa: null,
+      advice: { US: { id: "x", name: "USA", warning: false, partial: false, situation: true, situationPart: false } } });
+    expect(openCount(calm)).toBe(1);
+    expect(urgentOpenCount(calm)).toBe(0);
+    const hot = importantPoints({ trip: trip([anna]), countries: [], hints: HINTS.filter(h => h.id === "kp"), visa, advice: {} });
+    expect(urgentOpenCount(hot)).toBe(1);
+    const done: DoneMap = {};
+    markDone(done, hot[0]);
+    markDone(done, hot[0], "a");
+    expect(urgentOpenCount(hot, done)).toBe(0);
   });
 
   it("abhaken je Person, Zähler, wieder öffnen", () => {
