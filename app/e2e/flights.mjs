@@ -486,6 +486,30 @@ try {
   await p.keyboard.press("Escape");
   log("Vorlieben: 0 Umstiege vorbelegt, Kroatien gesperrt → an den Such-Dienst, Treffer nach Split ausgeblendet mit Hinweis");
 
+  // ohne Wohnort: Abflughäfen aus dem ungefähren Ort der Verbindung (/where), sonst große Flughäfen des Landes
+  const TRIP0 = { id: "wo", name: "Lissabon", place: "Lissabon", country: "Portugal", from: "2027-05-14", to: "2027-05-18",
+    travelers: [{ id: "a", name: "Anna", household: "Klein" }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
+  for (const [where, expect, text, plz] of [
+    [{ cc: "DE", lat: 53.6, lon: 10, city: "Hamburg" }, "HAM", "in der Nähe von Hamburg", true],
+    [{ cc: "AT" }, "VIE", "Große Flughäfen in Österreich", false]
+  ]) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+    await ctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, TRIP0);
+    const q = await ctx.newPage();
+    q.on("pageerror", e => errors.push(e.message));
+    for (const f of ["airports.json", "world.json", "packs.json"]) await q.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+    await q.route("https://flights.test/where", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(where) }));
+    await q.goto(URL);
+    await q.locator(".start .home-trip", { hasText: "Lissabon" }).click();
+    await q.locator("#flights .fs-open").click();
+    const qm = q.locator(".modal-bg .modal");
+    await until(async () => (await qm.locator(".fs-aps .chip.on").allInnerTexts())[0] === expect, `Abflughafen ${expect} zuerst`);
+    const hint = await qm.locator(".fs-nohome").innerText();
+    if (!hint.includes(text) || (await qm.locator(".fs-nohome .fs-plz").count() > 0) !== plz) fail("Hinweis ohne Wohnort: " + hint);
+    await ctx.close();
+  }
+  log("Ohne Wohnort: Hamburg aus der Verbindung → HAM zuerst mit Hinweis und PLZ-Feld; nur Österreich bekannt → VIE, Hinweis auf große Flughäfen, ohne PLZ");
+
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");
 } finally {
