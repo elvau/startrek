@@ -7,6 +7,10 @@ import { accessFor, airportsOf, roadKm } from "../calc/travel";
 import { activeOption } from "../calc";
 import type { FlightOffer, FlightQuery, OfferLeg, SearchResult } from "./types";
 import type { RoundTrip } from "./roundtrip";
+import { guessAirports, type Guess } from "./origin";
+import { origin } from "./origin.svelte";
+import { airportData } from "../geo/geo.svelte";
+import { addOnExtras, addOns, type AddOns, type BagNeed } from "./addons";
 
 /** Adresse des Such-Dienstes (Cloudflare Worker); leer: noch nicht eingerichtet */
 export const FLIGHTS_URL = (import.meta.env.VITE_FLIGHTS_URL as string | undefined)?.replace(/\/$/, "") || "";
@@ -59,7 +63,9 @@ export function splitPax(p: Pax, size: number): PaxSplit {
 /** Preise einer Suche für eine Buchung auf die ganze Gruppe hochrechnen */
 export function scaleResult(r: SearchResult, factor: number): SearchResult {
   if (factor === 1) return r;
-  return { ...r, offers: r.offers.map(o => ({ ...o, price: Math.round(o.price * factor), ...(o.orig ? { orig: { ...o.orig, amount: Math.round(o.orig.amount * factor) } } : {}) })) };
+  const k = (n: number) => Math.round(n * factor);
+  return { ...r, offers: r.offers.map(o => ({ ...o, price: k(o.price), ...(o.orig ? { orig: { ...o.orig, amount: k(o.orig.amount) } } : {}),
+    ...(o.baggage ? { baggage: { personal: k(o.baggage.personal), cabin: k(o.baggage.cabin), checked: k(o.baggage.checked) } } : {}) })) };
 }
 
 /** Wer fliegt: diese Personen (fehlt: alle, die dabei sind) */
@@ -155,7 +161,11 @@ export const stopsText = (n: number) => (n ? tn("n.stops", n) : t("fs.th.direct"
 /** aufgeteilt gesucht: Größe einer Buchung und Hinweis am Angebot */
 export interface SplitInfo { size: number; note: string }
 
-export function offerToOption(o: FlightOffer, split?: SplitInfo): Option {
+/** Zusätze aus der Bewertung (Koffer, Sitzplätze, Hinweise) für das Angebot im Posten */
+export interface OfferExtras { add?: AddOns; hints?: Option["hints"] }
+
+export function offerToOption(o: FlightOffer, split?: SplitInfo, more: OfferExtras = {}): Option {
+  const extras = more.add ? addOnExtras(more.add, { bags: t("fl.addBags", { n: tn("n.bags", more.add.missing) }), seats: t("fl.addSeats") }) : [];
   return {
     id: uid(),
     label: `${o.out.carriers.join(" / ")} ${t("fs.from", { ap: o.out.from })}, ${stopsText(o.out.stops)}`,
@@ -163,13 +173,16 @@ export function offerToOption(o: FlightOffer, split?: SplitInfo): Option {
     ...(split ? { split: split.size } : {}),
     price: { mode: "unit", currency: o.currency, unit: o.price },
     source: { name: o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url, ...(o.sponsored ? { sponsored: true } : {}), ...(o.test ? { test: true } : {}) },
-    legs: [legOf("out", o.out), ...(o.back ? [legOf("back", o.back)] : [])]
+    legs: [legOf("out", o.out), ...(o.back ? [legOf("back", o.back)] : [])],
+    ...(o.baggage ? { baggage: { ...o.baggage } } : {}),
+    ...(extras.length ? { extras } : {}),
+    ...(more.hints?.length ? { hints: [...more.hints] } : {})
   };
 }
 
 /** Übernehmen: erstes Ergebnis legt einen Flug-Posten an, weitere kommen als Angebote zum Vergleichen dazu */
-export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: string[], split?: SplitInfo): Item {
-  const opt = offerToOption(o, split);
+export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: string[], split?: SplitInfo, more?: OfferExtras): Item {
+  const opt = offerToOption(o, split, more);
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   // wer bisher mitflog und einen eigenen Flug übernimmt, fliegt ab jetzt selbst
   if (target?.follow) { target.follow = undefined; target.options = [opt]; target.chosen = undefined; return target; }
@@ -269,10 +282,13 @@ export function followFlight(trip: Trip, mainId: string, ids: string[]): Item {
 }
 
 /** Standard-Auswahl wie im Artefakt: je Familie der Fliegenden die n nächsten Flughäfen zum Wohnort, sonst die ersten der Liste */
+/** ohne Wohnort: Vorschlag aus dem ungefähren Ort der Verbindung bzw. dem Land (null: Standardliste) */
+export const homeGuess = (n = 4): Guess | null => guessAirports(origin.where, airportData, n);
+
 export function nearestAirports(trip: Trip, n = 4, ids?: string[]): string[] {
   const aps = airportsOf(trip);
   const geos = [...new Set(flyers(trip, ids).map(hhKey))].map(h => trip.households?.[h]?.geo).filter(g => !!g);
-  if (!geos.length) return aps.slice(0, n).map(a => a.code);
+  if (!geos.length) return homeGuess(n)?.codes ?? aps.slice(0, n).map(a => a.code);
   const dist = (a: (typeof aps)[number]) => Math.min(...geos.map(g => roadKm(g, a) ?? Infinity));
   const set = new Set(geos.flatMap(g => [...aps].sort((a, b) => (roadKm(g, a) ?? 0) - (roadKm(g, b) ?? 0)).slice(0, n).map(a => a.code)));
   return aps.filter(a => set.has(a.code)).sort((a, b) => dist(a) - dist(b)).map(a => a.code);
@@ -291,23 +307,26 @@ export interface Rated extends FlightOffer {
   origin: string;
   access: number;
   accessHours: number;
-  /** Flug plus Anfahrt (wenn eingerechnet) */
+  /** Flug plus Anfahrt (wenn eingerechnet) plus Koffer und Sitzplätze (geschätzt) */
   total: number;
+  /** Koffer und Sitzplätze dazubuchen (mit Bedarf der Gruppe bewertet) */
+  add?: AddOns;
   /** wieder zu Hause (Minuten seit Epoche), nur mit Rückflug */
   home: number;
   nights: number | null;
 }
 
 /** Anfahrt der Familien, die fliegen, zum Flughafen (hin und zurück, Parken für die Reisetage), dazu „zuhause ca.“ */
-export function rate(trip: Trip, o: FlightOffer, origin: string, withAccess: boolean, ids?: string[]): Rated {
+export function rate(trip: Trip, o: FlightOffer, origin: string, withAccess: boolean, ids?: string[], need?: BagNeed): Rated {
   const ap = airportsOf(trip).find(a => a.code === (o.out.from || origin)) ?? airportsOf(trip).find(a => a.code === origin);
   const counts: Record<string, number> = {};
   flyers(trip, ids).forEach(t => (counts[hhKey(t)] = (counts[hhKey(t)] || 0) + 1));
   const days = o.back ? Math.max(1, nights(o.out.dep.slice(0, 10), o.back.arr.slice(0, 10)) + 1) : Math.max(1, nights(trip.from, trip.to) + 1);
   let cost = 0, hours = 0;
   if (ap) for (const hh in counts) { const a = accessFor(hh, ap, counts[hh], days, trip); cost += a.cost; hours = Math.max(hours, a.hours); }
+  const add = need ? addOns(o, need) : undefined;
   return {
-    ...o, origin, access: Math.round(cost), accessHours: hours, total: o.price + (withAccess ? Math.round(cost) : 0),
+    ...o, origin, access: Math.round(cost), accessHours: hours, total: o.price + (withAccess ? Math.round(cost) : 0) + Math.round(add?.total || 0), ...(add ? { add } : {}),
     home: o.back ? tMin(o.back.arr) + Math.round((hours + EXIT_H) * 60) : NaN,
     nights: o.back ? nights(o.out.arr.slice(0, 10), o.back.dep.slice(0, 10)) : null
   };

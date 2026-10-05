@@ -194,10 +194,11 @@ try {
   if (!(await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).count())) fail("gewähltes Angebot nicht markiert");
   await cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Ferienwohnung Klara" }).waitFor();
-  if (!(await cards.locator(".stay .price b").textContent()).includes("783")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
+  // 783 € + Kurtaxe Split automatisch geschätzt (2 € × 1 Person × 7 Nächte)
+  if (!(await cards.locator(".stay .price b").textContent()).includes("797")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
   await cards.locator(".cmp-t", { hasText: "Rooms Šećer" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).waitFor();
-  log("Vergleich nebeneinander: Klara gewählt (783 €), zurück zu Rooms Šećer");
+  log("Vergleich nebeneinander: Klara gewählt (783 € + ca. 14 € Kurtaxe), zurück zu Rooms Šećer");
 
   // wie im Artefakt: Anwesenheit aus dem Flug, Lücke im Plan → „Unterkunft suchen“ für genau diese Nächte und Personen
   const TRIP = {

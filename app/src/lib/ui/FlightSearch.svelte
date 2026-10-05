@@ -12,6 +12,7 @@
   import { showItem } from "./showItem";
   import { dir } from "../directory.svelte";
   import { prefsFor, touchesAvoided } from "../prefs";
+  import { surchargeBanned, type BagNeed } from "../flights/addons";
   import DualRange from "./DualRange.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
@@ -20,7 +21,7 @@
   import { addDays } from "../flights/kiwi";
   import { alternatives, anyReal, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
   import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
-  import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, homeGuess, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import { loadPlz, withHome } from "../plz";
   import { cloud } from "../cloud/cloud.svelte";
@@ -33,7 +34,10 @@
   import { arrivals } from "../stays/presence";
   import FlightFilters from "./FlightFilters.svelte";
   import PriceCalendar from "./PriceCalendar.svelte";
+  import { untrack } from "svelte";
   import RoughCalendar from "./RoughCalendar.svelte";
+  import HomeHint from "./HomeHint.svelte";
+  import { loadOrigin } from "../flights/origin.svelte";
 
   let { onclose, scope = {}, inline = false }: { onclose: () => void; scope?: FlightScope; inline?: boolean } = $props();
 
@@ -174,7 +178,12 @@
   const pax = $derived(passengers(trip, who));
   // Plätze mit Koffer (Babys auf dem Schoß ohne); ohne eigene Wahl: je Platz einer, bei „nur Handgepäck“ keiner
   const seats = $derived(pax.adults + pax.children);
-  const bags = $derived(Math.min(bagCount ?? ((prefs.bags ?? saved.bags !== false) ? seats : 0), 2 * seats));
+  // ohne Vorliebe: ab 5 Reisetagen mit Koffer, kürzer nur Handgepäck
+  const tripDays = $derived(mode === "flex" ? lo + 1 : out && ret ? nights(out, ret) + 1 : null);
+  const bags = $derived(Math.min(bagCount ?? ((prefs.bags ?? (tripDays == null || tripDays >= 5)) ? seats : 0), 2 * seats));
+  // Koffer und Sitzplätze dazubuchen (#171): Kinder neben den Eltern, wenn nicht anders gewünscht
+  const together = $derived(prefs.seatsTogether !== false);
+  const need = $derived<BagNeed>({ bags, adults: pax.adults, kids: pax.children, together });
   const n = $derived(pax.adults + pax.children + pax.infants);
   const people = $derived([`${pax.adults} ${t("age.adultShort")}`, pax.children && tn("n.kids", pax.children), pax.infants && tn("n.babies", pax.infants)].filter(Boolean).join(" · "));
   // große Gruppen in Buchungen aufteilen (Vorschlag ab 10 Sitzen: je 5): gesucht wird für eine, hochgerechnet auf alle
@@ -219,6 +228,9 @@
     resetAps();
     return true;
   }
+  // ohne Wohnort: ungefährer Ort aus der Verbindung kommt nach; Vorschlag nachziehen, solange nichts selbst gewählt ist
+  loadOrigin();
+  $effect(() => { if (homeGuess(4) && noHome) untrack(() => { if (!custom) aps = nearestAirports(trip, 4, who); }); });
   // gespeicherte PLZ (nur mit Konto) erst auf Knopfdruck übernehmen: sie wird dann Teil der Reise
   const savedPlz = $derived(cloud.user ? dir.prefs?.plz : undefined);
 
@@ -279,7 +291,7 @@
           r.sources.forEach(s => { const p = src.get(s.id); src.set(s.id, p ? { ...p, ok: p.ok || s.ok, count: p.count + s.count, error: p.ok ? p.error : s.error } : { ...s }); });
           const ok = r.offers.filter(o => !touchesAvoided(o, avoid, ccOfAp));
           avoidedOut += r.offers.length - ok.length;
-          let rated = ok.map(o => rate(trip, o, code, withAccess, who));
+          let rated = ok.map(o => rate(trip, o, code, withAccess, who, need));
           if (!isNaN(dl)) { const before = rated.length; rated = rated.filter(o => !isNaN(o.home) && o.home <= dl); late += before - rated.length; }
           all.push(...rated);
           // Fehler nur zeigen, wenn keine Quelle geantwortet hat; sonst gab es schlicht keine passende Verbindung
@@ -397,7 +409,8 @@
     // gefundene Flüge rechnen detailliert; weitere Treffer kommen als Angebote in denselben Posten
     app.trip.detail ||= {};
     app.trip.detail.flights = true;
-    into = takeOffer(app.trip, o, into, who, splitInfo).id;
+    const hints: ("checkin" | "payfee")[] = [...(together && pax.children ? ["checkin" as const] : []), ...(!surchargeBanned(ccOfAp(o.out.from)) ? ["payfee" as const] : [])];
+    into = takeOffer(app.trip, o, into, who, splitInfo, { add: o.add, hints }).id;
     fitTripDates(app.trip);
     taken[o.id + o.origin] = true;
     onclose();
@@ -451,7 +464,7 @@
         {/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
       </div>
-      {#if noHome}<p class="warnline fs-nohome">{t("fs.noHome")} <input class="fs-plz" inputmode="numeric" maxlength="5" placeholder={t("fs.plzPh")} aria-label={t("fs.plzPh")} oninput={e => setPlz(e.currentTarget.value)} />{#if savedPlz} <button class="btn sm" onclick={() => setPlz(savedPlz)}>{t("fs.usePlz")}</button>{/if}{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</p>{/if}
+      {#if noHome}<HomeHint {setPlz} {savedPlz} {plzErr} />{/if}
       <p class="muted small">
         {#if custom}{t("fs.custom")} <button type="button" class="linkbtn" onclick={resetAps}>{t("fs.reset")}</button>
         {:else}{t("fs.default")}{/if}
@@ -686,7 +699,8 @@
         <button type="button" role="radio" aria-checked={sort === "time"} class="chip" class:on={sort === "time"} onclick={() => (sort = "time")}>{t("fs.fastest")}</button>
         <button type="button" role="radio" aria-checked={sort === "arrival"} class="chip" class:on={sort === "arrival"} onclick={() => (sort = "arrival")}>{t("fs.earliest")}</button>
       </div>
-      <p class="muted small">{filtered.length < list.length ? `${t("fs.f.shown", { n: filtered.length, of: list.length })} · ` : ""}{t("fs.listSummary", { n: Math.min(SHOW, filtered.length), over: rows.length > 1 ? t("fs.allAirports") : aps[0] })} · {withAccess ? t("fs.byPriceIncl") : t("fs.byPrice")} · {t("persShort", { n })}</p>
+      <p class="muted small">{filtered.length < list.length ? `${t("fs.f.shown", { n: filtered.length, of: list.length })} · ` : ""}{t("fs.listSummary", { n: Math.min(SHOW, filtered.length), over: rows.length > 1 ? t("fs.allAirports") : aps[0] })} · {withAccess ? t("fs.byPriceIncl") : t("fs.byPrice")}{bags ? ` · ${t("fs.withBags", { n: tn("n.bags", bags) })}` : ""} · {t("persShort", { n })}</p>
+      {#if together && pax.children}<p class="muted small fs-tip">💺 {t("fs.seatTip")}</p>{/if}
       <div class="fs-list">
         {#each shown as o (o.id + o.origin)}
           <article class="fs-res">
@@ -697,8 +711,10 @@
               <span class="fs-badge">{o.sourceName}</span>
             </div>
             {#if alongCost != null && Math.abs(o.total - alongCost) >= 1}<p class="st-diff fs-sub" class:good={o.total < alongCost}>{o.total < alongCost ? t("fs.cheaperAlong", { v: eur(alongCost - o.total) }) : t("fs.dearerAlong", { v: eur(o.total - alongCost) })}</p>{/if}
-            <p class="muted small fs-sub">{t("fs.flightPrice", { v: eur(o.price) })}{withAccess && o.access ? ` + ${t("fs.accessPrice", { v: eur(o.access) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(o.total / n) })}` : ""}{o.baggage ? ` · ${tn("n.bags", o.baggage.checked)}` : ""}{o.orig ? ` · ${t("fx.orig", { v: money(o.orig.amount, o.orig.currency) })}` : ""}</p>
+            <p class="muted small fs-sub">{t("fs.flightPrice", { v: eur(o.price) })}{withAccess && o.access ? ` + ${t("fs.accessPrice", { v: eur(o.access) })}` : ""}{o.add?.bagFee ? ` + ${t("fs.addBags", { v: eur(o.add.bagFee) })}` : ""}{o.add?.seatFee ? ` + ${t("fs.addSeats", { v: eur(o.add.seatFee) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(o.total / n) })}` : ""}{o.orig ? ` · ${t("fx.orig", { v: money(o.orig.amount, o.orig.currency) })}` : ""}</p>
             <div class="fs-pills">
+              {#if o.baggage}<span class="pill-n fs-bag" class:miss={bags > o.baggage.checked}>🧳 {o.baggage.checked ? t("fs.bagsIncl", { n: tn("n.bags", o.baggage.checked) }) : t("fs.bagsNoneIncl")}</span>
+              {:else if bags && !o.add?.bagFee}<span class="pill-n fs-bag unk">🧳 {t("fs.bagsUnknown")}</span>{/if}
               {#if o.nights != null}<span class="pill-n">{tn("fs.nightsThere", o.nights)}</span>{/if}
               {#if !isNaN(o.home)}<span class="pill-h">{t("fs.homeAt", { t: fmtMin(o.home) })}</span>{/if}
               {#if o.accessHours}<span class="pill-h">{t("fs.accessAbout", { h: hm(o.accessHours) })}</span>{/if}

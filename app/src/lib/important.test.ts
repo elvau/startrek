@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HINTS } from "./hints";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { doneIds, importantPoints, isOpen, isUrgent, markDone, openCount, reopen, type DoneMap } from "./important";
+import { doneIds, importantPoints, isOpen, isUrgent, markDone, openCount, reopen, urgentOpenCount, type DoneMap } from "./important";
 import type { VisaData } from "./visa";
 import { MIN_VALID, validUntil } from "./borders";
 
@@ -55,6 +55,19 @@ describe("Wichtiges zur Reise", () => {
     markDone(done, machu, "b");
     expect(isOpen(machu, done)).toBe(false);
     expect(ps.map(p => `${p.key}:${isUrgent(p)}`)).toEqual(["entry:US:true", "aa:US:false", "hint:machu:false"]);
+  });
+
+  it("roter Zähler nur bei Dringendem (Fehlerbericht #22)", () => {
+    const calm = importantPoints({ trip: trip([anna]), countries: ["US"], hints: [], visa: null,
+      advice: { US: { id: "x", name: "USA", warning: false, partial: false, situation: true, situationPart: false } } });
+    expect(openCount(calm)).toBe(1);
+    expect(urgentOpenCount(calm)).toBe(0);
+    const hot = importantPoints({ trip: trip([anna]), countries: [], hints: HINTS.filter(h => h.id === "kp"), visa, advice: {} });
+    expect(urgentOpenCount(hot)).toBe(1);
+    const done: DoneMap = {};
+    markDone(done, hot[0]);
+    markDone(done, hot[0], "a");
+    expect(urgentOpenCount(hot, done)).toBe(0);
   });
 
   it("abhaken je Person, Zähler, wieder öffnen", () => {
@@ -130,5 +143,22 @@ describe("Mindestgültigkeit für alle Pässe", () => {
     const t: Trip = { ...trip([tom]), country: "Thailand", from: "2027-03-01", to: "2027-03-15" };
     const p = importantPoints({ trip: t, countries: ["TH"], hints: [], visa, advice: {}, passports: { t: "2027-06-01" } }).find(x => x.kind === "pass");
     expect(p?.pass).toEqual({ expires: "2027-06-01", needed: "2027-09-01" });
+  });
+
+  it("Kaution: ab 300 € oder nur Kreditkarte ein wichtiger Punkt, eilig bei Kreditkarte", () => {
+    const t0 = trip([anna, tom]);
+    const car = (amount: number, how?: "credit" | "cash") => ({ id: "car", cat: "transport" as const, name: "Mietwagen", status: "idea" as const,
+      options: [{ id: "o", label: "Auto", price: { mode: "unit" as const, currency: "EUR", unit: 200 }, deposit: { amount, ...(how ? { how } : {}) } }] });
+    t0.items = [car(200, "cash")];
+    expect(importantPoints({ trip: t0, countries: [], hints: [], visa, advice: {} })).toEqual([]);
+    t0.items = [car(200, "credit")];
+    const [p] = importantPoints({ trip: t0, countries: [], hints: [], visa, advice: {} });
+    expect(p).toMatchObject({ key: "deposit:car", kind: "deposit", deposit: { amount: 200, how: "credit", name: "Mietwagen" } });
+    expect(p.persons!.map(x => x.name)).toEqual(["Anna", "Tom"]);
+    expect(isUrgent(p)).toBe(true);
+    t0.items = [car(1200, "cash")];
+    const [q] = importantPoints({ trip: t0, countries: [], hints: [], visa, advice: {} });
+    expect(q.sig).toBe("1200|cash");
+    expect(isUrgent(q)).toBe(false);
   });
 });

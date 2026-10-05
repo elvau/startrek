@@ -152,9 +152,14 @@ try {
   await um.locator(".adm-reset-go").click();
   await um.locator(".adm-reset-done").waitFor({ timeout: 15000 });
   const done = await um.locator(".adm-reset-done").innerText();
-  if (!done.includes("Reisen gelöscht: 1, verlassen: 1, Aktionsseiten gelöscht: 1")) fail("Zurücksetzen: " + done);
+  // Kira kann aus früheren Schritten (gemeinsamer Emulator) weitere eigene Reisen haben: mindestens die angelegte
+  const nDel = Number(/Reisen gelöscht: (\d+)/.exec(done)?.[1] || 0);
+  if (nDel < 1 || !done.includes("verlassen: 1, Aktionsseiten gelöscht: 1")) fail("Zurücksetzen: " + done);
   const get = path => fetch(`${FS}/${path}`, { headers: H });
   for (const path of ["trips/reset-own", "campaigns/reset-camp", `profiles/${kira}`, `travelDocs/${kira}`]) if ((await get(path)).status !== 404) fail("nach dem Zurücksetzen noch da: " + path);
+  const all = await (await fetch(`${FS}/trips?pageSize=300`, { headers: H })).json();
+  const mine = (all.documents || []).filter(d => d.fields?.owner?.stringValue === kira || (d.fields?.memberIds?.arrayValue?.values || []).some(v => v.stringValue === kira));
+  if (mine.length) fail("nach dem Zurücksetzen noch Reisen mit Kira: " + mine.map(d => d.fields?.name?.stringValue).join(", "));
   const shared = await (await get("trips/reset-shared")).json();
   if (shared.fields.memberIds.arrayValue.values.some(v => v.stringValue === kira) || !shared.fields.members.mapValue.fields.jemand) fail("geteilte Reise nicht verlassen: " + JSON.stringify(shared.fields.memberIds));
   const left = await p.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith("rk")));

@@ -89,6 +89,8 @@ export interface Prefs {
   plz?: string;
   maxStops?: number;
   bags?: boolean;
+  /** Kinder sitzen im Flugzeug neben den Eltern (fehlt: ja); bei manchen Billigfliegern kostet das die Platzwahl */
+  seatsTogether?: boolean;
   /** längste Flugzeit je Richtung in Stunden */
   maxHours?: number;
   /** Anfahrt zum Flughafen */
@@ -186,6 +188,53 @@ export interface Option {
   query?: { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number };
   /** große Gruppe aufgeteilt: Flug in Buchungen zu höchstens so vielen Personen, Unterkunft auf so viele Unterkünfte */
   split?: number;
+  /** Nebenkosten (Kurtaxe, Endreinigung, Gepäck …): enthalten, vor Ort oder zusätzlich zu zahlen */
+  extras?: Extra[];
+  /** Kaution: wird nur geblockt, zählt nie zu den Kosten */
+  deposit?: Deposit;
+  /** automatisch geschätzte Nebenkosten (z. B. auto:citytax:rome), die weggeklickt wurden */
+  autoOff?: string[];
+  /** Flug aus der Suche: im Preis enthaltenes Gepäck (gesamt für alle); fehlt: nicht angegeben */
+  baggage?: { personal: number; cabin: number; checked: number };
+  /** Hinweise am Flug: früh einchecken (Familie), Kartenaufschlag möglich (Abflug außerhalb EU/EWR) */
+  hints?: ("checkin" | "payfee")[];
+}
+
+export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "vignette" | "visa" | "tips" | "insurance" | "driver" | "other";
+/** pro Person, pro Person und Nacht, pro Nacht, pro Tag, pro Person und Tag, einmal je Buchung, Prozent vom Preis */
+export type ExtraBasis = "person" | "personNight" | "night" | "day" | "personDay" | "booking" | "percent";
+
+export interface Extra {
+  id: string;
+  kind: ExtraKind;
+  /** eigene Bezeichnung (sonst nach Art) */
+  label?: string;
+  amount: number;
+  basis: ExtraBasis;
+  /** im Preis enthalten (nur zur Info), vor Ort zu zahlen, bei der Buchung zusätzlich */
+  pay: "included" | "onsite" | "extra";
+  /** geschätzt („ca.“), sonst laut Anbieter bzw. selbst eingetragen */
+  est?: boolean;
+  /** Kinder bis einschließlich diesem Alter frei (pro Person) */
+  freeUpTo?: number;
+  /** höchstens so viele Nächte bzw. Tage */
+  max?: number;
+  /** Quelle, z. B. „Stadt Split, Stand 2026“ oder „liteAPI“ */
+  source?: string;
+  /** Land (Maut, Vignette): Name in der Sprache der App */
+  cc?: string;
+  /** automatisch vorgeschlagen und weggeklickt */
+  off?: boolean;
+}
+
+export interface Deposit {
+  amount: number;
+  /** wofür, z. B. „Mietwagen“, „Ferienwohnung“ */
+  for?: string;
+  /** nur Kreditkarte (keine Debitkarte), Kredit- oder Debitkarte, bar, Überweisung */
+  how?: "credit" | "card" | "cash" | "transfer";
+  note?: string;
+  est?: boolean;
 }
 
 export interface Payment {

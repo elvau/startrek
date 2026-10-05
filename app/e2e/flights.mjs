@@ -31,6 +31,17 @@ const RESULT = {
   ]
 };
 
+/** Gepäck (#171): Billigflieger ohne Angabe (wie Travelpayouts) gegen Linie mit 4 Koffern im Preis */
+const pmi = (c, f, from = "DUS", to = "PMI", d = "2027-08-12") => ({ ...leg(from, to, `${d}T07:00:00`, `${d}T09:20:00`, 140, [f], [c], [from, to]), fromCity: from, toCity: to });
+const BAGS = {
+  offers: [
+    { id: "tp:fr", source: "travelpayouts", sourceName: "Travelpayouts", price: 400, currency: "EUR", out: pmi("FR", "FR123"), back: pmi("FR", "FR124", "PMI", "DUS", "2027-08-22") },
+    { id: "duffel:lh", source: "duffel", sourceName: "Duffel · Lufthansa", price: 560, currency: "EUR", out: pmi("Lufthansa", "LH2"), back: pmi("Lufthansa", "LH3", "PMI", "DUS", "2027-08-22"),
+      baggage: { personal: 4, cabin: 4, checked: 4 } }
+  ],
+  sources: RESULT.sources
+};
+
 /** nur Hinflug im Zeitfenster: jeden Tag ein Direktflug, jeder Tag 10 € teurer */
 function oneWay(q) {
   const from = q.fromAirports?.[0] || q.from, to = q.toAirports?.[0] || q.to, offers = [];
@@ -53,7 +64,7 @@ try {
     const body = JSON.parse(r.request().postData());
     asked.push(body);
     await new Promise(res => setTimeout(res, 200));
-    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body.departTo ? oneWay(body) : RESULT) });
+    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body.departTo ? oneWay(body) : body.to === "PMI" ? BAGS : RESULT) });
   });
   // Preiskalender (Richtpreise pro Person): drei Tage im März
   const calAsked = [];
@@ -485,6 +496,72 @@ try {
   if (await m.locator(".fs-res").count()) fail("Flüge nach Kroatien nicht ausgeblendet");
   await p.keyboard.press("Escape");
   log("Vorlieben: 0 Umstiege vorbelegt, Kroatien gesperrt → an den Such-Dienst, Treffer nach Split ausgeblendet mit Hinweis");
+
+  // Gepäck (#171): ohne Vorliebe ab 5 Reisetagen mit Koffern; Billigflieger ohne Koffer rutscht mit Gepäck hinter die Linie
+  const FAM = { id: "kb", name: "Mallorca", place: "Mallorca", country: "Spanien", from: "2027-08-12", to: "2027-08-22",
+    travelers: [{ id: "a", name: "Anna", age: 41, household: "Klein" }, { id: "b", name: "Ben", age: 43, household: "Klein" }, { id: "c", name: "Mia", age: 8, household: "Klein" }, { id: "d", name: "Tom", age: 5, household: "Klein" }],
+    households: { Klein: { plz: "40210", geo: { lat: 51.23, lon: 6.78, ort: "Düsseldorf" }, mode: "car" } },
+    items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 }, kmCost: 0.3 } };
+  await p.waitForTimeout(600);
+  await p.evaluate(t => {
+    localStorage.setItem("rk-flight-search", JSON.stringify({ mode: "fixed" }));
+    localStorage.setItem("rk2-dir", JSON.stringify({ people: [], groups: [], prefs: {} }));
+    localStorage.setItem("rk2-t:kb", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "kb", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "kb");
+  }, FAM);
+  await p.reload();
+  await p.locator(".start .home-trip").first().click();
+  await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
+  await p.locator("#flights .fs-open").click();
+  const bagSel = m.locator("label", { hasText: "Koffer gesamt" }).locator("select");
+  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-08-12");
+  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-08-14");
+  if ((await bagSel.inputValue()) !== "0") fail("3 Reisetage ohne Vorliebe: Koffer " + await bagSel.inputValue());
+  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-08-22");
+  if ((await bagSel.inputValue()) !== "4") fail("11 Reisetage ohne Vorliebe: Koffer " + await bagSel.inputValue());
+  const pmiIn = m.locator("label.f", { hasText: "Nach" }).locator("input");
+  await pmiIn.fill("PMI");
+  await m.locator(".lp-list li", { hasText: "PMI" }).first().click();
+  await m.locator(".fs-form .btn.primary").click();
+  await m.locator(".fs-res").first().waitFor();
+  const firstRes = await m.locator(".fs-res").first().textContent();
+  if (!firstRes.includes("Lufthansa") || !firstRes.includes("4 Koffer inklusive")) fail("Linie mit Koffern nicht vorn: " + firstRes.slice(0, 300));
+  const fr = m.locator(".fs-res", { hasText: "Travelpayouts" }).first();
+  const frText = await fr.textContent();
+  if (!frText.includes("+ ca. 320 € Koffer") || !frText.includes("+ ca. 18 € Sitzplätze")) fail("Billigflieger ohne Koffer: " + frText.slice(0, 300));
+  if (!(await m.locator(".fs-tip").textContent()).includes("früh einchecken")) fail("Tipp Sitzplätze fehlt");
+  if (!(await m.locator("p", { hasText: "inkl. 4 Koffer" }).count())) fail("Sortierhinweis mit Koffern fehlt");
+  await fr.locator(".btn", { hasText: "Übernehmen" }).click();
+  const xc = p.locator("#flights .xc").first();
+  await until(async () => (await xc.count()) > 0, "Nebenkosten am Flug");
+  await xc.locator("summary").click();
+  const xt = await xc.textContent();
+  if (!xt.includes("4 Koffer dazubuchen") || !xt.includes("Sitzplätze nebeneinander") || !xt.includes("bei der Buchung") || !xt.includes("Ryanair") || !xt.includes("Gepäck nicht angegeben") || !xt.includes("Früh einchecken"))
+    fail("Flug-Posten Nebenkosten: " + xt.slice(0, 400));
+  log("Gepäck: ohne Vorliebe 3 Tage ohne, 11 Tage mit 4 Koffern; Ryanair 400 € + ca. 320 € Koffer + 18 € Sitzplätze hinter Lufthansa 560 € mit Koffern; übernommen mit Nebenkosten, „nicht angegeben“ und Check-in-Tipp");
+
+  // ohne Wohnort: Abflughäfen aus dem ungefähren Ort der Verbindung (/where), sonst große Flughäfen des Landes
+  const TRIP0 = { id: "wo", name: "Lissabon", place: "Lissabon", country: "Portugal", from: "2027-05-14", to: "2027-05-18",
+    travelers: [{ id: "a", name: "Anna", household: "Klein" }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
+  for (const [where, expect, text, plz] of [
+    [{ cc: "DE", lat: 53.6, lon: 10, city: "Hamburg" }, "HAM", "in der Nähe von Hamburg", true],
+    [{ cc: "AT" }, "VIE", "Große Flughäfen in Österreich", false]
+  ]) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+    await ctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, TRIP0);
+    const q = await ctx.newPage();
+    q.on("pageerror", e => errors.push(e.message));
+    for (const f of ["airports.json", "world.json", "packs.json"]) await q.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+    await q.route("https://flights.test/where", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(where) }));
+    await q.goto(URL);
+    await q.locator(".start .home-trip", { hasText: "Lissabon" }).click();
+    await q.locator("#flights .fs-open").click();
+    const qm = q.locator(".modal-bg .modal");
+    await until(async () => (await qm.locator(".fs-aps .chip.on").allInnerTexts())[0] === expect, `Abflughafen ${expect} zuerst`);
+    const hint = await qm.locator(".fs-nohome").innerText();
+    if (!hint.includes(text) || (await qm.locator(".fs-nohome .fs-plz").count() > 0) !== plz) fail("Hinweis ohne Wohnort: " + hint);
+    await ctx.close();
+  }
+  log("Ohne Wohnort: Hamburg aus der Verbindung → HAM zuerst mit Hinweis und PLZ-Feld; nur Österreich bekannt → VIE, Hinweis auf große Flughäfen, ohne PLZ");
 
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");

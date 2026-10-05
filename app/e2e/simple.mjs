@@ -6,6 +6,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { readFileSync, existsSync } from "node:fs";
 
 const URL = "http://127.0.0.1:4180/";
 const log = (...a) => console.log("•", ...a);
@@ -167,6 +168,116 @@ try {
   await m.locator(".modal-bg .modal .modal-h .x").click();
   log("Handy: Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
   await mctx.close();
+
+  // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
+  const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }, { id: "c", name: "Tom", household: "Smith", age: 38 }, { id: "d", name: "Mia", household: "Smith", age: 36 }],
+    detail: { flights: true, stay: true, transport: true },
+    items: [
+      { id: "s", cat: "stay", name: "Villa am Meer", status: "chosen", from: "2027-07-18", to: "2027-07-25", options: [{ id: "v", label: "Villa Ana", price: { mode: "unit", currency: "EUR", unit: 980, basis: "stay" },
+        extras: [{ id: "x1", kind: "citytax", amount: 2.8, basis: "personNight", pay: "onsite", est: true, freeUpTo: 12, source: "Stadt Split" }] }] },
+      { id: "car", cat: "transport", icon: "car", name: "Mietwagen", status: "idea", options: [{ id: "c", label: "Kompakt", price: { mode: "unit", currency: "EUR", unit: 245 }, deposit: { amount: 1200, how: "credit" } }] }
+    ], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
+  const xctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await xctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, XC);
+  const xp = await xctx.newPage();
+  xp.on("pageerror", e => errors.push(e.message));
+  await xp.goto(URL);
+  await xp.locator(".start .home-trip", { hasText: "Split Nebenkosten" }).click();
+  const tot = async () => (await xp.locator(".aside .tk-top b").innerText()).trim();
+  const xs = xp.locator("[data-xc='s']");
+  await xs.waitFor();
+  const sumTxt = await xs.locator("summary").innerText();
+  if (!sumTxt.includes("Angebot 980 €") || !sumTxt.includes("+ ca. 59 € vor Ort") || !sumTxt.includes("Kurtaxe")) fail("Unterkunft ohne Nebenkosten-Zeile: " + sumTxt);
+  if (await tot() !== "1.284 €") fail("Gesamt mit Kurtaxe: " + await tot());
+  const top = await xp.locator(".aside .tk-xc").innerText();
+  if (!top.includes("inkl. ca. 59 € Nebenkosten")) fail("Gesamtkalkulation ohne Nebenkosten: " + top);
+  const sum = await xp.locator(".aside .xc-sum").innerText();
+  if (!sum.includes("Kautionen, nur geblockt") || !sum.includes("1.200 €") || !sum.includes("nur Kreditkarte")) fail("Kaution nicht im Überblick: " + sum);
+  // Kurtaxe aufgeklappt: 3 Erwachsene zahlen (Ben 9 frei), wegklicken senkt die Summe
+  await xs.locator("summary").click();
+  if (!(await xs.innerText()).includes("3 Pers.") || !(await xs.innerText()).includes("2,80")) fail("Kurtaxe ohne Zahl der Zahlenden: " + await xs.innerText());
+  await xs.locator(".xc-tg").first().click();
+  await until(async () => (await tot()) === "1.225 €", "Summe ohne Kurtaxe");
+  await xs.locator(".xc-tg").first().click();
+  await until(async () => (await tot()) === "1.284 €", "Kurtaxe wieder eingerechnet");
+  // von Hand: Endreinigung 80 € pro Buchung über „Nebenkosten & Kaution“
+  await xs.locator(".xc-edit").click();
+  const ed = xp.locator("article.card[data-item='s'] .editor");
+  await ed.locator("[data-sec=extras] summary").click();
+  await ed.locator(".ie-xadd").click();
+  const xrow = ed.locator(".ie-x").nth(1);
+  await xrow.locator("label", { hasText: "Art" }).locator("select").selectOption("cleaning");
+  await xrow.locator("label", { hasText: "Abrechnung" }).locator("select").selectOption("booking");
+  await xrow.locator(".ie-xamt").fill("80");
+  await until(async () => (await tot()) === "1.364 €", "Endreinigung eingerechnet");
+  await ed.locator(".ed-foot .btn.primary").click();
+  // Kaution nur Kreditkarte steht in Wichtiges (Bubble oben)
+  await xp.locator(".top .imp-btn").click();
+  const dep = xp.locator(".modal .imp-card[data-key='deposit:car']");
+  await dep.waitFor();
+  if (!(await dep.innerText()).includes("Nur Kreditkarte")) fail("Kaution in Wichtiges ohne Kreditkarten-Hinweis: " + await dep.innerText());
+  await xp.keyboard.press("Escape");
+  log("Nebenkosten: Kurtaxe 3 × 2,80 € × 7 Nächte (Kind frei) als „+ ca. 59 € vor Ort“, Gesamt inkl. Nebenkosten, wegklicken und wieder einrechnen, Endreinigung von Hand; Kaution 1.200 € nur Kreditkarte im Überblick und in Wichtiges");
+  await xctx.close();
+
+  // gepflegte Nebenkosten (#170): Kurtaxe in Rom automatisch (4 Sterne), wegklicken bleibt; Auto nach Kroatien: Vignetten, Maut, Trinkgeld
+  const data = async pg => pg.route(/127\.0\.0\.1:4180\/(airports\.json|world\.json|visa\.json|packs\.json|places\/.*)$/, r => {
+    const f = "../public/" + new globalThis.URL(r.request().url()).pathname.slice(1);
+    return existsSync(f) ? r.fulfill({ status: 200, contentType: "application/json", body: readFileSync(f) }) : r.fulfill({ status: 404, body: "" });
+  });
+  const ROM = { id: "rom", name: "Rom", place: "Rom", country: "Italien", from: "2027-07-18", to: "2027-07-25",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }],
+    detail: { stay: true, flights: true }, households: {},
+    items: [{ id: "h", cat: "stay", name: "Hotel", status: "chosen", from: "2027-07-18", to: "2027-07-25", options: [{ id: "o", label: "Hotel Roma", price: { mode: "unit", currency: "EUR", unit: 700, basis: "stay" }, stay: { stars: 4 },
+      query: { place: "Rom", checkin: "2027-07-18", checkout: "2027-07-25", adults: 1, childAges: [9], rooms: 1 } }] }],
+    tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } };
+  const HR = { id: "hr", name: "Kroatien mit dem Auto", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "c", name: "Tom", household: "Klein", age: 42 }],
+    detail: { transport: true, misc: true }, households: { Klein: { plz: "40210", geo: { lat: 51.223, lon: 6.779, ort: "Düsseldorf" } } },
+    items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } };
+  const fctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await fctx.addInitScript(([a, b]) => { if (localStorage.getItem("rk2-index")) return;
+    for (const t of [a, b]) localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
+    localStorage.setItem("rk2-index", JSON.stringify([a, b].map(t => ({ id: t.id, name: t.name, place: t.place })))); localStorage.setItem("rk2-current", a.id); }, [ROM, HR]);
+  const fp = await fctx.newPage();
+  fp.on("pageerror", e => errors.push(e.message));
+  await data(fp);
+  await fp.goto(URL);
+  await fp.locator(".start .home-trip", { hasText: "Rom" }).first().click();
+  const rx = fp.locator("[data-xc='h']");
+  await rx.waitFor();
+  // 7,50 € × 1 Erwachsene × 7 Nächte (Kind 9 frei) = 52,50 €
+  if (!(await rx.locator("summary").innerText()).includes("+ ca. 53 € vor Ort")) fail("Rom ohne automatische Kurtaxe: " + await rx.locator("summary").innerText());
+  await rx.locator("summary").click();
+  if (!(await rx.innerText()).includes("Roma Capitale")) fail("Kurtaxe ohne Quelle: " + await rx.innerText());
+  await rx.locator(".xc-tg").first().click();
+  await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "Kurtaxe weggeklickt");
+  await fp.waitForTimeout(800);
+  await fp.reload();
+  await fp.locator(".start .home-trip", { hasText: "Rom" }).first().click();
+  await fp.locator(".aside .tk-top b").waitFor();
+  await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "weggeklickt bleibt nach dem Neuladen");
+  // Kroatien ohne Flug, Wohnort Düsseldorf: Österreich und Slowenien (Vignetten), Kroatien (Maut)
+  await fp.locator(".top .brand-btn").click();
+  await fp.locator(".start .home-trip", { hasText: "Kroatien mit dem Auto" }).click();
+  const road = fp.locator("#transport .road");
+  await road.waitFor({ timeout: 15000 });
+  const rt = await road.innerText();
+  if (!rt.includes("eigenen Auto") || !rt.includes("Österreich") || !rt.includes("Slowenien") || !rt.includes("Maut in Kroatien")) fail("Auto-Anreise: " + rt);
+  // als Posten: Sprit je Auto, Vignetten und Maut als Nebenkosten; „Wer ist dabei“ entscheidet, wer zahlt
+  await road.locator(".road-add").click();
+  const car = fp.locator("#transport .card[data-item]", { hasText: "Anreise mit dem Auto" });
+  await car.waitFor();
+  await car.locator(".xc summary").click();
+  await until(async () => (await car.innerText()).includes("Maut 🇭🇷 Kroatien"), "Nebenkosten am Auto-Posten");
+  const ct = await car.innerText();
+  if (!ct.includes("Vignette 🇦🇹 Österreich") || !ct.includes("Vignette 🇸🇮 Slowenien") || !ct.includes("Düsseldorf → Split")) fail("Auto-Posten: " + ct);
+  if (!(await road.locator(".road-add").innerText()).includes("weiteres Auto")) fail("zweites Auto nicht anlegbar");
+  const tip = await fp.locator("#misc .food-tip").innerText();
+  if (!tip.includes("10 %") || !tip.includes("Strand")) fail("Trinkgeld-Hinweis Kroatien: " + tip);
+  log("Gepflegte Nebenkosten: Kurtaxe Rom 4 Sterne automatisch (Kind frei, Quelle), wegklicken bleibt nach Neuladen; Auto nach Kroatien als Posten mit Sprit, Vignetten AT/SI und Maut HR als Nebenkosten, weiteres Auto möglich; Trinkgeld-Hinweis");
+  await fctx.close();
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");

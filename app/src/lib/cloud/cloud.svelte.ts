@@ -4,6 +4,7 @@
  * Bei gleichzeitigen Änderungen gewinnt die zuletzt gespeicherte Fassung der ganzen Reise.
  */
 import { t } from "../i18n/index.svelte";
+import { errorMessage } from "./errors";
 import type { User } from "firebase/auth";
 import type { Unsubscribe } from "firebase/firestore";
 import type { Trip } from "../model";
@@ -100,6 +101,8 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
     if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
     cloud.user = { uid: u.uid, name: f.displayName(u), email: u.email || "" };
     cloud.showLogin = false;
+    // Meldung eines abgebrochenen Versuchs soll nach erfolgreicher Anmeldung nicht stehen bleiben
+    cloud.error = "";
     unTrips = f.watchMyTrips(u.uid, (list, fromCache) => {
       const next = list.map(d => ({
         id: d.id, name: d.name, role: d.members[u.uid], owner: d.owner, members: d.members,
@@ -237,7 +240,13 @@ export async function revokeInvite(id: string) { const f = await load(); await f
 export async function changeRole(id: string, uid: string, role: Role) { const f = await load(); await f.setRole(id, uid, role); }
 export async function kick(id: string, uid: string) { const f = await load(); await f.removeMember(id, uid); }
 
-export async function loginGoogle() { cloud.error = ""; try { await (await load()).loginGoogle(); } catch (e) { cloud.error = message(e); } }
+let signing = false;
+/** ein zweiter Klick, während das Anmeldefenster noch offen ist, startet keinen weiteren Versuch */
+export async function loginGoogle() {
+  if (signing) return;
+  signing = true; cloud.error = "";
+  try { await (await load()).loginGoogle(); } catch (e) { cloud.error = message(e); } finally { signing = false; }
+}
 export async function loginEmail(email: string) { cloud.error = ""; await (await load()).sendLoginLink(email); }
 /** Anmelde-Nachweis für den Such-Dienst (KI-Planer); ohne Anmeldung null */
 export async function idToken(): Promise<string | null> { return fbUser ? fbUser.getIdToken() : null; }
@@ -254,15 +263,7 @@ export async function wipeAccount() {
 }
 export async function loginTest(email: string, name: string) { if (emulator) await (await load()).loginTest(email, name); }
 
-function message(e: unknown): string {
-  const code = (e as { code?: string })?.code || "";
-  if (code.includes("popup-closed")) return "";
-  if (code.includes("permission-denied")) return t("cloud.denied");
-  if (code.includes("unavailable")) return t("cloud.offline");
-  if (code.includes("unauthorized-domain")) return t("cloud.domain");
-  if (code.includes("operation-not-allowed")) return t("cloud.method");
-  return (e as Error)?.message || String(e);
-}
+const message = errorMessage;
 
 /* ---------- Aktionsseite ---------- */
 

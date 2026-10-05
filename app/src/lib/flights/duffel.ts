@@ -47,22 +47,23 @@ function legOf(s: any): OfferLeg {
   };
 }
 
-/** aufgegebene Koffer je Reisendem: was jeder auf der ersten Strecke mindestens hat */
-function checkedBags(o: any): number | undefined {
+/** Gepäck im Tarif, gesamt für alle (wie Kiwi): was auf der ersten Strecke enthalten ist */
+function baggageOf(o: any): { personal: number; cabin: number; checked: number } | undefined {
   const pax: any[] = o.slices?.[0]?.segments?.[0]?.passengers || [];
   if (!pax.length) return undefined;
-  return Math.min(...pax.map(p => (p.baggages || []).filter((b: any) => b.type === "checked").reduce((v: number, b: any) => v + (b.quantity || 0), 0)));
+  const sum = (type: string) => pax.reduce((v, p) => v + (p.baggages || []).filter((b: any) => b.type === type).reduce((w: number, b: any) => w + (b.quantity || 0), 0), 0);
+  return { personal: pax.length, cabin: sum("carry_on"), checked: sum("checked") };
 }
 
 /** Antwort in unser Format, in der Währung der Airline (der Such-Dienst rechnet mit dem Tageskurs um), günstigste zuerst */
 export function fromDuffel(data: any): FlightOffer[] {
   return (data?.data?.offers || []).filter((o: any) => /^[A-Z]{3}$/.test(o.total_currency || "") && o.slices?.length).map((o: any): FlightOffer => {
     const [out, back] = o.slices.map(legOf);
-    const checked = checkedBags(o);
+    const baggage = baggageOf(o);
     return {
       id: "duffel:" + o.id, source: "duffel", sourceName: o.owner?.name ? `Duffel · ${o.owner.name}` : "Duffel",
       price: Math.round(parseFloat(o.total_amount)), currency: o.total_currency, out, ...(back ? { back } : {}),
-      ...(checked != null ? { baggage: { personal: 1, cabin: 0, checked } } : {})
+      ...(baggage ? { baggage } : {})
     };
   }).filter((o: FlightOffer) => o.price > 0 && o.out.dep).sort((a: FlightOffer, b: FlightOffer) => a.price - b.price).slice(0, 40);
 }

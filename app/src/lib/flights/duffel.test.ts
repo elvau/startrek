@@ -47,7 +47,7 @@ describe("Duffel", () => {
     expect(o.out).toMatchObject({ from: "DUS", to: "PMI", fromCity: "Düsseldorf", dep: "2027-08-12T06:00:00", arr: "2027-08-12T10:10:00", minutes: 250, stops: 1, route: ["DUS", "FRA", "PMI"], carriers: ["Lufthansa"], flights: ["LH123", "LH1150"] });
     expect(o.out.layovers).toEqual([{ at: "FRA", hours: 1.5 }]);
     expect(o.back).toMatchObject({ from: "PMI", to: "DUS", stops: 0, carriers: ["Eurowings"] });
-    expect(o.baggage).toEqual({ personal: 1, cabin: 0, checked: 1 });
+    expect(o.baggage).toEqual({ personal: 2, cabin: 1, checked: 2 });
   });
   it("Token im Kopf, Fehlertext der Schnittstelle", async () => {
     let auth = "", ver = "";

@@ -38,7 +38,8 @@ const TRIPS = [
   // Gruppe: jede Person rechnet für sich ab (eigener Haushalt), Verpflegung an
   { id: "gruppe", name: "Stammtisch Wien", place: "Wien", country: "Österreich", from: "2027-03-12", to: "2027-03-14", ...base,
     travelers: ["Löwe", "Panda", "Fuchs", "Biber", "Wolf", "Koala"].map((n, i) => ({ id: "s" + i, name: n, household: n })), food: { on: true, style: "mix" },
-    items: [{ id: "gs", cat: "stay", name: "Hotel Wien", status: "idea", from: "2027-03-12", to: "2027-03-14", options: [{ id: "go", label: "Hotel", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 600, capacity: 6 } }] }] },
+    // Kassen-Test: Ortstaxe Wien weggeklickt, damit die Beträge glatt bleiben
+    items: [{ id: "gs", cat: "stay", name: "Hotel Wien", status: "idea", from: "2027-03-12", to: "2027-03-14", options: [{ id: "go", label: "Hotel", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 600, capacity: 6 }, autoOff: ["auto:citytax:vienna"] }] }] },
   // Anreise zum Flughafen: drei Familien, alle in den Gruppenbus, dann eine Fahrgemeinschaft
   { id: "anreise", name: "Ibiza Clique", place: "Ibiza", country: "Spanien", from: "2027-07-02", to: "2027-07-09", ...base,
     travelers: ["Ali", "Bea", "Cem", "Dio", "Eli", "Fay"].map((n, i) => ({ id: "c" + i, name: n, household: ["Nord", "Süd", "West"][i >> 1] })),
@@ -117,9 +118,12 @@ try {
   if (!(await p.locator('[data-item="fl"]').innerText()).includes("470")) fail("neuer Flugpreis nicht übernommen: " + await p.locator('[data-item="fl"]').innerText());
   if (await p.locator('[data-item="st"] .wb-up, [data-item="st"] .wb-down').count()) fail("Unterkunft gleich teuer, trotzdem Pfeil");
   if (await p.locator('[data-item="st"] .wb-best').count()) fail("Preise prüfen schlägt fremde Angebote vor");
+  // je Posten: gleich geblieben bzw. geändert, mit Zeitpunkt der Prüfung
+  if (!(await p.locator('[data-item="st"] .wb-same').count()) || !(await p.locator('[data-item="st"] .wb-at').innerText()).startsWith("Stand ")) fail("Unterkunft ohne „Preis unverändert“ und Zeitpunkt");
+  if (!(await p.locator('[data-item="fl"] .wb-at').count()) || await p.locator('[data-item="fl"] .wb-same').count()) fail("Flug: Zeitpunkt fehlt oder fälschlich unverändert");
   const res = await p.locator(".aside .watch-res").innerText();
   if (!res.includes("1 Preis geändert") || !res.includes("+50")) fail("Ergebnis an der Gesamtkalkulation: " + res);
-  log("Preise geprüft an der Gesamtkalkulation: genau dieselbe Suche, Flug auf 450 € aktualisiert (mit Anfahrt 470 €) (▲ 50 €), Unterkunft unverändert");
+  log("Preise geprüft an der Gesamtkalkulation: genau dieselbe Suche, Flug auf 450 € aktualisiert (mit Anfahrt 470 €) (▲ 50 €), Unterkunft „Preis unverändert“, je Posten mit Zeitpunkt");
   if (process.env.SHOTS) {
     await p.screenshot({ path: `${process.env.SHOTS}/w-aside.png` });
     await p.locator('[data-item="fl"]').scrollIntoViewIfNeeded(); await p.waitForTimeout(500);
@@ -297,7 +301,9 @@ try {
   const stayCat = p.locator(".aside .cat", { hasText: "Unterkunft" });
   if (await stayCat.locator(".cat-d").isVisible()) fail("Posten der Kategorie ohne Wunsch aufgeklappt");
   await stayCat.locator(".cat-t").click();
-  if (!(await stayCat.locator(".cat-d").innerText()).includes("960")) fail("Posten nach ▾ nicht sichtbar");
+  // 2 × 480 € plus City Tax Berlin 7,5 % (automatisch geschätzt) = 1.032 €
+  const catD = await stayCat.locator(".cat-d").innerText();
+  if (!catD.includes("1.032")) fail("Posten nach ▾ nicht sichtbar: " + catD);
   await p.setViewportSize({ width: 1280, height: 900 });
   log("Gesamtanzeige: passt ins Fenster (eigener Scrollbalken), Posten je Kategorie auf ▾");
   log("Große Gruppe: Flug in 3 Buchungen à 4, gesucht für 4, Preise × 3 (wählbar, max. 9 je Suche); Ferienwohnung auf 2 Unterkünfte à 6, gesucht für 6, übernommen 2 × 480 €");
