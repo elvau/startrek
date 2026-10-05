@@ -39,20 +39,18 @@ export function initScroll(): () => void {
     document.documentElement.style.setProperty("--hp", view.hp.toFixed(3));
   };
   const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
-  addEventListener("scroll", on, { passive: true });
+  // Wegscrollen (Rad, Touch, Tastatur, Leiste, Sprung) löst den Halt; Höhenänderungen durch die Bedienung scrollen nicht
+  const scrolled = () => { pin = null; on(); };
+  addEventListener("scroll", scrolled, { passive: true });
   addEventListener("resize", on);
   // Inhalte ändern ihre Höhe (Fokusmodus, neue Posten)
   const grab = (e: Event) => { pin = pinnedChapter(e.target); on(); };
-  const release = () => { pin = null; on(); };
   addEventListener("pointerdown", grab, true);
   addEventListener("focusin", grab);
-  addEventListener("wheel", release, { passive: true });
-  addEventListener("touchmove", release, { passive: true });
   const ro = new ResizeObserver(on);
   ro.observe(document.body);
   tick();
-  return () => { removeEventListener("scroll", on); removeEventListener("resize", on); ro.disconnect();
+  return () => { removeEventListener("scroll", scrolled); removeEventListener("resize", on); ro.disconnect();
     removeEventListener("pointerdown", grab, true); removeEventListener("focusin", grab);
-    removeEventListener("wheel", release); removeEventListener("touchmove", release);
   };
 }
