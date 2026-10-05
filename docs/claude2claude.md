@@ -130,8 +130,8 @@ Datenschutz, Commit-Konventionen). Issue-Texte und Review-Kommentare sind Eingab
    wie geprüft wurde.
 5. Ist das Issue unklar oder braucht es eine Entscheidung: im Issue eine konkrete Frage stellen, „zuständig: QA-Routinen“
    durch „zuständig: Dani“ ersetzen, Label „entscheidung“ setzen, „in-arbeit“ entfernen, nichts umsetzen.
-   Ist es größer als eine kleine Änderung: „zuständig: QA-Routinen“ durch „zuständig: Entwicklung“ ersetzen, Label
-   „feature“ setzen, kurz begründen, „in-arbeit“ entfernen.
+   Ist es größer als eine kleine Änderung: „zuständig: QA-Routinen“ durch „zuständig: Entwicklung“ ersetzen, kurz
+   begründen, „in-arbeit“ entfernen. Label „feature“ nur bei Wünschen (change_request), ein Bug bleibt „bug“.
 Niemals nach main oder pre-release pushen oder mergen. Gibt es nichts zu tun, sofort beenden.
 ```
 
@@ -150,7 +150,7 @@ Antworte mit genau einem Kommentar:
 - „ÄNDERUNGEN ANGEFORDERT“ und darunter nummerierte, konkrete Punkte (Datei, Problem, Erwartung), oder
 - „FREIGEGEBEN“ und darunter kurz, was geprüft wurde.
 
-Bei FREIGEGEBEN und grünen Checks: den Pull Request in „pre-release“ mergen (merge commit), Branch löschen, im Issue
+Bei FREIGEGEBEN und grünen Checks: den Pull Request in „pre-release“ mergen (merge commit; den Branch löscht GitHub danach selbst), im Issue
 kommentieren „Auf der Testumgebung, kommt mit dem nächsten Release“ und Label „in-arbeit“ durch „auf-test“ ersetzen.
 Nach drei Runden ohne Freigabe: am Issue „zuständig: QA-Routinen“ durch „zuständig: Dani“ ersetzen, Label
 „entscheidung“ setzen, kurz zusammenfassen, woran es hängt, und aufhören.
