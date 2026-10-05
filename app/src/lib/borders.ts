@@ -28,7 +28,10 @@ export const MIN_VALID: Record<string, MinValid> = {
   // Naher Osten und Afrika
   EG: { months: 6, from: "entry" }, AE: { months: 6, from: "entry" }, JO: { months: 6, from: "entry" }, OM: { months: 6, from: "entry" },
   SA: { months: 6, from: "entry" }, KE: { months: 6, from: "entry" }, TZ: { months: 6, from: "entry" }, UG: { months: 6, from: "entry" },
-  RW: { months: 6, from: "entry" }, ZA: { days: 30, from: "exit" },
+  RW: { months: 6, from: "entry" }, ZA: { days: 30, from: "exit" }, MA: { months: 6, from: "entry" }, TN: { months: 6, from: "entry" },
+  IL: { months: 6, from: "exit" },
+  // Amerika
+  BR: { months: 6, from: "entry" }, PE: { months: 6, from: "entry" }, CU: { months: 6, from: "entry" },
   // Europa und Ozeanien
   TR: { days: 150, from: "entry" }, NZ: { months: 3, from: "exit" }
 };

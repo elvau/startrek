@@ -59,7 +59,7 @@ Kurze Hinweise, keine Rechtsberatung: maßgeblich ist immer der verlinkte offizi
 | Was | Regel | Quelle |
 |---|---|---|
 | EES | Pässe von außerhalb EU/EWR/Schweiz: Erfassung bei der ersten Einreise in den Schengen-Raum (seit 12.10.2025, vollständig ab 10.04.2026) | travel-europe.europa.eu/ees |
-| ETIAS | Reisegenehmigung für visumfreie Pässe von außerhalb der EU, Start angekündigt, noch nicht in Kraft (Stand Oktober 2026) | travel-europe.europa.eu/etias |
+| ETIAS | Reisegenehmigung für visumfreie Pässe von außerhalb der EU, noch nicht in Kraft; „letztes Quartal 2026“ hat die EU im Juli 2026 von der Seite genommen, 2027 wahrscheinlich (Stand Oktober 2026) | travel-europe.europa.eu/etias |
 | Mindestgültigkeit Reisepass (Regel des Ziellands, gilt für die meisten Pässe) | 6 Monate ab Einreise: TH, ID, VN, KH, LA, MM, LK, IN, NP, MY, SG, CN, EG, AE, JO, OM, SA, KE, TZ, UG, RW; 6 Monate über Aufenthalt: PH; 150 Tage ab Einreise: TR; 3 Monate über Ausreise: NZ; 30 Tage über Ausreise: ZA; sonst bis Reiseende | Länderseiten des Auswärtigen Amts |
 
 Die Prüfung des eigenen Reisepasses nutzt das Ablaufdatum aus den Buchungsdaten im Konto, nur im Browser; in der Reise
@@ -67,7 +67,7 @@ steht nur „erledigt“ je Person, ohne Datum. Wird ETIAS eingeführt: Text `im
 `important.ts` anpassen, damit der Punkt bei allen wieder als offen erscheint.
 
 ### Früh buchen (`app/src/lib/bookahead.ts`, unter „Wichtiges“ je Reiseziel)
-62 Orte in 33 Reisezielen. Recherche Oktober 2026; belegte Fenster (offizielle Seiten bzw. übereinstimmende Quellen):
+60 Orte in 33 Reisezielen. Recherche Oktober 2026; belegte Fenster (offizielle Seiten bzw. übereinstimmende Quellen):
 
 | Ort | Fenster |
 |---|---|
@@ -88,8 +88,8 @@ steht nur „erledigt“ je Person, ohne Datum. Wird ETIAS eingeführt: Text `im
 | Alcatraz | 90 Tage vorher |
 | Statue of Liberty (Krone) | bis ca. sechs Monate vorher |
 | Antelope Canyon | ca. drei Monate vorher |
-| Arches (Timed Entry) | am 1. um 08:00 MT für den Monat in drei Monaten (April bis Oktober) |
-| Inka-Trail | Permits im November des Vorjahres |
+| Arches (Fiery Furnace) | Timed Entry 2026 abgeschafft (NPS, 18.02.2026); nur noch Permit für Fiery Furnace, so früh wie möglich |
+| Inka-Trail | Permits ab Ende Oktober des Vorjahres (2026: ab 27.10.2025, gestaffelt bis 04.11.) |
 | Milford Track | Buchung meist im Mai für die Saison Juli bis Juni |
 | Half Dome | Vorab-Verlosung im März |
 | Sky Garden | ca. drei Wochen vorher |
@@ -98,11 +98,10 @@ Alle übrigen Orte ohne festen Verkaufsstart: Empfehlung „spätestens N Wochen
 vor großen Releases stichprobenartig prüfen. Neuer Ort = ein Eintrag in `BOOK_AHEAD`, neues Reiseziel in `CITIES`.
 
 ## Merkliste (noch nicht eingebaut, vor dem Einbau Fakten prüfen)
-- Louvre, Vatikanische Museen, Kolosseum, Park Güell: Zeitfenster-Tickets
-- Plitvicer Seen (Tickets mit Zeitfenster im Sommer), Cinque Terre (Wanderpass)
+- Cinque Terre (Wanderpass)
 - Taj Mahal (Online-Tickets, freitags geschlossen), Komodo (Parkgebühren), Kilimandscharo (Guide Pflicht)
 - Uluru (Parkpass), Spitzbergen (Regeln außerhalb der Siedlungen)
-- US-Nationalparks mit Timed Entry (Arches, Yosemite …): wechselt jährlich
-- Südkorea K-ETA (Deutsche bis Ende 2026 befreit), weitere ETA-Länder
+- US-Nationalparks: Arches, Yosemite und Glacier verzichten 2026 auf Reservierungen; jährlich neu prüfen
+- Südkorea K-ETA (Deutsche bis 31.12.2026 befreit; vor Jahresende prüfen, ob verlängert), weitere ETA-Länder
 - Länderseiten des AA: Einreisetext auszugsweise anzeigen
 - Staatsangehörigkeit im Personenverzeichnis speichern

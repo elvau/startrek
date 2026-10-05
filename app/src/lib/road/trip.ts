@@ -4,7 +4,7 @@
  * jede zählt zum Land der nächstgelegenen Stadt (Ländergrenzen haben wir nicht, in Europa genau genug für Vignette und Maut).
  */
 import type { Extra, Trip } from "../model";
-import { FEES_AS_OF, TOLLS, VIGNETTES } from "../fees";
+import { FEES_AS_OF, TOLLS, VIGNETTES, safeRate } from "../fees";
 import type { Route } from "../route";
 import { km, thin, type LL, type RoadLeg } from "./ors";
 
@@ -116,7 +116,8 @@ export interface RoadCost { fuel: number; km: number; extras: Extra[]; countries
  * Kosten der ganzen Runde je Auto: Sprit (km × Kosten je km), jede Vignette nur so oft wie nötig, Maut nach den Kilometern
  * im Land. rate: Einheiten der Währung je Euro.
  */
-export function roadTripCost(et: Etappe[], kmCost: number, rate: (cur: string) => number, fallbackDate = ""): RoadCost {
+export function roadTripCost(et: Etappe[], kmCost: number, rate0: (cur: string) => number, fallbackDate = ""): RoadCost {
+  const rate = safeRate(rate0);
   const total = et.reduce((s, e) => s + e.km, 0);
   const byCc: Record<string, { km: number; dates: string[] }> = {};
   for (const e of et) for (const cc in e.cc) {

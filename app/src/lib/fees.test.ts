@@ -19,7 +19,11 @@ describe("Gepflegte Nebenkosten", () => {
     expect(cityTaxFor(stay("Roma"), stay("Roma").options[0], trip("Italien"))?.id).toBe("rome");
     expect(cityTaxFor(stay("Wien"), stay("Wien").options[0], trip("Paris"))?.id).toBe("vienna");
     expect(cityTaxFor(stay("Palma"), stay("Palma").options[0], trip(""))?.id).toBe("balearics");
-    expect(cityTaxFor(stay("Kraków"), stay("Kraków").options[0], trip(""))?.id).toBe("krakow");
+    expect(cityTaxFor(stay("Kraków"), stay("Kraków").options[0], trip(""))).toBeNull();
+    // keine Fehlgriffe: Las Palmas ist nicht Mallorca, Long Island nicht Island, Sequoia nicht Oia, Porto Cervo nicht Porto
+    for (const p of ["Las Palmas", "Long Island", "Sequoia Lodge", "Porto Cervo", "Pulau Weh"]) expect(cityTaxFor(stay(p), stay(p).options[0], trip(""))).toBeNull();
+    expect(cityTaxFor(stay("Palma de Mallorca"), stay("Palma de Mallorca").options[0], trip(""))?.id).toBe("balearics");
+    expect(cityTaxFor(stay("Dubrovnik"), stay("Dubrovnik").options[0], trip(""))?.id).toBe("dubrovnik");
     // „Split“ als Ort, aber nicht im Wort „Splitter“; Rom nicht in „Romantik“
     expect(cityTaxFor(stay("Splitterhof"), stay("Splitterhof").options[0], trip(""))).toBeNull();
     expect(cityTaxFor(stay("Romantikhotel Harz"), stay("Romantikhotel Harz").options[0], trip(""))).toBeNull();

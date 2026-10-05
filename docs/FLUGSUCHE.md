@@ -93,8 +93,10 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
 - **Was enthalten ist:** Kiwi.com rechnet die gewünschten Koffer schon in den Preis ein und meldet sie; Duffel meldet das
   Gepäck des Tarifs. Travelpayouts sagt nichts dazu: bei Billigfliegern schätzen wir die Koffer, bei Linienflügen
   steht „Gepäck nicht angegeben“ (keine Schätzung). Meldet ein Linientarif ausdrücklich keinen Koffer, gilt 35 € je Koffer und Strecke.
-- **Sitzplätze:** Vorliebe „Kinder im Flugzeug“ (fehlt: neben den Eltern). Bei manchen Billigfliegern sitzen Kinder nur
-  mit bezahlter Platzwahl neben einem Erwachsenen; gerechnet wird ein Platz je bis zu 4 Kinder und Strecke. Dazu der
+- **Sitzplätze:** Vorliebe „Kinder im Flugzeug“ (fehlt: neben den Eltern). Verlangt eine Airline eine bezahlte Platzwahl,
+  damit Kinder neben einem Erwachsenen sitzen (`famSeat`), wird ein Platz je bis zu 4 Kinder und Strecke gerechnet. Stand
+  10/2026 trifft das auf keine der Airlines zu (Ryanair und Wizz setzen Kinder kostenlos dazu); ab etwa Mitte 2027 schreibt
+  die überarbeitete EU-Fluggastrechte-Verordnung das für Kinder unter 14 ohnehin vor. Dazu der
   Tipp, früh einzuchecken (viele Airlines setzen Familien dann nebeneinander, ohne Garantie).
 - **Sortierung:** „Günstigste“ sortiert nach dem Preis mit Koffern und Sitzplätzen. Übernommen landen beide als
   geschätzte Nebenkosten „bei der Buchung“ im Posten (wegklickbar), dazu „Enthalten: …“.
@@ -102,8 +104,8 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
 
 | Airline | Codes | Koffer je Strecke | Platzwahl Familie je Strecke | Quelle |
 |---|---|---|---|---|
-| Ryanair | FR, RK, AL | 40 € | 9 € | ryanair.com, Gebühren |
-| Wizz Air | W6, W4, W9 | 45 € | 10 € | wizzair.com, Gebühren |
+| Ryanair | FR, RK, AL, RR | 40 € | – (seit 6/2026 Kinder gratis neben Erwachsenen) | ryanair.com, Gebühren |
+| Wizz Air | W6, W4, W9 | 45 € | – (ein Kind gratis neben einem Erwachsenen) | wizzair.com, Gebühren |
 | easyJet | U2, EC, DS | 35 € | – | easyjet.com, Gebühren |
 | Vueling | VY | 30 € | – | vueling.com, Gebühren |
 | Eurowings | EW | 30 € | – | eurowings.com, Tarif Basic |
@@ -111,7 +113,7 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
 | Volotea | V7 | 30 € | – | volotea.com, Gebühren |
 | Pegasus | PC | 25 € | – | flypgs.com, Tarif Basic |
 | SunExpress | XQ | 25 € | – | sunexpress.com, Tarif SunEco |
-| Jet2 | LS | 35 € | – | jet2.com, Gebühren |
+| Jet2 | LS | 25 € | – | jet2.com, Gebühren |
 | Norwegian | DY, D8 | 35 € | – | norwegian.com, Tarif LowFare |
 
 Eine neue Airline ist eine Zeile in `LOW_COST`.
