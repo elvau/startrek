@@ -8,8 +8,14 @@ function box(el: HTMLElement): { top: number; height: number } {
   return { top: top - scrollY, height: el.offsetHeight };
 }
 
+/** Kapitel, in dem zuletzt gearbeitet wurde: bleibt im Fokus, bis man selbst wegscrollt */
+export function pinnedChapter(target: EventTarget | null): string | null {
+  return (target as HTMLElement | null)?.closest?.<HTMLElement>(".chapter")?.dataset.ch ?? null;
+}
+
 export function initScroll(): () => void {
   let raf = 0;
+  let pin: string | null = null;
   const tick = () => {
     raf = 0;
     const vh = innerHeight, y = scrollY;
@@ -21,6 +27,7 @@ export function initScroll(): () => void {
       const r = box(s);
       if (r.top <= vh * 0.5 && r.top + r.height > vh * 0.5) { cur = s.dataset.ch!; break; }
     }
+    if (pin) cur = pin;
     if (cur) view.active = cur;
     const sec = chapters.find(s => s.dataset.ch === view.active);
     let p = 0;
@@ -35,8 +42,17 @@ export function initScroll(): () => void {
   addEventListener("scroll", on, { passive: true });
   addEventListener("resize", on);
   // Inhalte ändern ihre Höhe (Fokusmodus, neue Posten)
+  const grab = (e: Event) => { pin = pinnedChapter(e.target); on(); };
+  const release = () => { pin = null; on(); };
+  addEventListener("pointerdown", grab, true);
+  addEventListener("focusin", grab);
+  addEventListener("wheel", release, { passive: true });
+  addEventListener("touchmove", release, { passive: true });
   const ro = new ResizeObserver(on);
   ro.observe(document.body);
   tick();
-  return () => { removeEventListener("scroll", on); removeEventListener("resize", on); ro.disconnect(); };
+  return () => { removeEventListener("scroll", on); removeEventListener("resize", on); ro.disconnect();
+    removeEventListener("pointerdown", grab, true); removeEventListener("focusin", grab);
+    removeEventListener("wheel", release); removeEventListener("touchmove", release);
+  };
 }
