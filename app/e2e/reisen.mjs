@@ -215,6 +215,18 @@ try {
   await p.locator("#transport .car-add").click();
   const car = await p.locator("#transport .card[data-item]", { hasText: "Mietwagen" }).first().innerText();
   for (const s of ["SFO", "SAN", "Einwegmiete", "2 Autos"]) if (!car.includes(s)) fail(`Mietwagen ohne „${s}“: ${car}`);
+  // Mietwagen-Checkliste (#172): Kaution geschätzt (nur Kreditkarte, nicht in den Kosten), Vollschutz erst auf Wunsch
+  const carCard = p.locator("#transport .card[data-item]", { hasText: "Mietwagen" }).first();
+  if (!car.includes("Kaution ca. 1.600 € · nur Kreditkarte")) fail("Kaution für 2 Autos fehlt: " + car.replace(/\n/g, " | "));
+  await carCard.locator(".rc summary").click();
+  const rc = await carCard.locator(".rc").innerText();
+  for (const s of ["nur mit Kreditkarte (keine Debitkarte)", "Selbstbeteiligung", "voll/voll", "Maßgeblich sind die Bedingungen des Vermieters"]) if (!rc.includes(s)) fail(`Checkliste ohne „${s}“: ${rc}`);
+  await carCard.locator(".xc summary").click();
+  const cover = carCard.locator(".xc li", { hasText: "Vollschutz" });
+  if (!(await cover.innerText()).includes("einrechnen")) fail("Vollschutz nicht nur auf Wunsch: " + await cover.innerText());
+  await cover.locator(".xc-tg").click();
+  await until(async () => (await carCard.locator(".xc summary").innerText()).includes("Vollschutz"), "Vollschutz eingerechnet");
+  log("Mietwagen-Checkliste: Kaution ca. 1.600 € (2 Autos) nur Kreditkarte, Selbstbeteiligung, Tank, Hinweis auf die Bedingungen; Vollschutz auf Wunsch eingerechnet");
   await p.locator("#flights .fs-open").click();
   const cm = p.locator(".modal-bg .modal");
   await cm.locator(".fs-kind .chip", { hasText: "Nur Hinflug" }).click();

@@ -15,6 +15,7 @@ import type { Hint } from "./hints";
 import { FREE_MOVEMENT, MIN_VALID, SCHENGEN, validUntil, type MinValid } from "./borders";
 import { CITIES, saleFor, type BookAhead, type Sale } from "./bookahead";
 import { activeOption, participantsOf, rateOf } from "./calc";
+import { autoDeposit } from "./fees";
 
 export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place" | "deposit";
 
@@ -125,7 +126,10 @@ export function importantPoints({ trip, countries, hints, visa, advice, passport
   // Kaution: hoher Betrag oder nur mit Kreditkarte (keine Debitkarte) – vorher daran denken
   for (const it of trip.items) {
     if (it.status === "dropped") continue;
-    const o = activeOption(it, trip), d = o?.deposit;
+    const o = activeOption(it, trip);
+    // Mietwagen ohne eigene Angabe: geschätzte Kaution je Auto
+    const cars = o?.price.multiply && o.price.capacity ? Math.ceil(participantsOf(it, trip).length / o.price.capacity) : 1;
+    const d = o && (o.deposit ?? autoDeposit(it, o, rateOf(o.price.currency || "EUR", trip.settings), cars));
     if (!o || !d || !(d.amount > 0)) continue;
     const eurAmt = d.amount / rateOf(o.price.currency || "EUR", trip.settings);
     if (eurAmt < DEPOSIT_MIN && d.how !== "credit") continue;

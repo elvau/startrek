@@ -3,7 +3,7 @@
  * oder in Prozent. „Im Preis enthalten“ wird nur gezeigt, „vor Ort“ und „zusätzlich“ kommen zu den Kosten dazu.
  * Kautionen werden nur geblockt und zählen nie zu den Kosten.
  */
-import type { Extra, Option, Settings, Traveler } from "../model";
+import type { Deposit, Extra, Option, Settings, Traveler } from "../model";
 
 export interface ExtraLine {
   x: Extra;
@@ -29,6 +29,8 @@ export interface ExtrasCalc {
   per: Record<string, number>;
   /** Kaution in Euro (nie in den Kosten) */
   deposit: number;
+  /** die Kaution selbst (eigene oder geschätzte) */
+  dep?: Deposit;
 }
 
 export interface ExtrasCtx {
@@ -59,7 +61,7 @@ const cap = (n: number, max?: number) => (max && max > 0 ? Math.min(n, max) : n)
 
 export function calcExtras(opt: Option, people: Traveler[], c: ExtrasCtx): ExtrasCalc {
   const r: ExtrasCalc = { lines: [], onsite: 0, extra: 0, included: 0, est: 0, added: 0, per: {}, deposit: 0 };
-  if (opt.deposit?.amount && opt.deposit.amount > 0) r.deposit = opt.deposit.amount * c.fx;
+  if (opt.deposit?.amount && opt.deposit.amount > 0) { r.deposit = opt.deposit.amount * c.fx; r.dep = opt.deposit; }
   if (!opt.extras?.length || !people.length) return r;
   // Gewicht je Person für Beträge pro Buchung, Nacht oder Tag: Anwesenheit, sonst gleich
   const wt = (t: Traveler) => (c.w ? c.w[t.id] || 0 : 1);

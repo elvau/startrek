@@ -69,7 +69,7 @@
           {#if T.extras.included}<div class="xc-l muted"><span>{t("aside.xcIncluded")}</span><b class="num">{eur(T.extras.included)}</b></div>{/if}
           {#if T.extras.deposit}
             <div class="xc-l xc-k"><span>🔒 {t("aside.deposits")}</span><b class="num">{eur(T.extras.deposit)}</b></div>
-            {#each T.extras.deposits as id (id)}{@const it = app.trip.items.find(i => i.id === id)}{#if it}<a class="xc-l xc-ki" href="#{it.cat}"><span>{it.name}{T.items[id]?.option?.deposit?.how === "credit" ? ` · ${t("dep.creditShort")}` : ""}</span><b class="num">{eur(T.items[id]?.extras?.deposit || 0)}</b></a>{/if}{/each}
+            {#each T.extras.deposits as id (id)}{@const it = app.trip.items.find(i => i.id === id)}{#if it}<a class="xc-l xc-ki" href="#{it.cat}"><span>{it.name}{T.items[id]?.extras?.dep?.how === "credit" ? ` · ${t("dep.creditShort")}` : ""}</span><b class="num">{eur(T.items[id]?.extras?.deposit || 0)}</b></a>{/if}{/each}
           {/if}
         </details>
       {/if}
