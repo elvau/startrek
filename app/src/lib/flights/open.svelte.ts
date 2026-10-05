@@ -11,7 +11,8 @@ export interface FlightScope {
 export const flightSearch = $state<{ open: boolean; scope: FlightScope }>({ open: false, scope: {} });
 
 export function openFlightSearch(scope: FlightScope = {}) {
-  app.editing = null;
+  // aus einem Posten heraus bleibt er offen (die Suche liegt als Fenster darüber), sonst schließen
+  if (!scope.itemId) app.editing = null;
   flightSearch.scope = scope;
   flightSearch.open = true;
 }

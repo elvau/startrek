@@ -100,7 +100,7 @@ try {
   // ---- Japan: Onkel Jens kommt später – Flugsuche mit seinen Daten
   await open("Japan Großfamilie");
   await p.locator("#flights .fs-open").click();
-  const fm = p.locator("#flights .modal.inline");
+  const fm = p.locator(".modal-bg .modal");
   await fm.waitFor();
   if (!(await fm.locator(".fs-who > .chips > .chip[aria-pressed=true]", { hasText: "Onkel Jens" }).count())) fail("Vorschlag: Onkel Jens (noch ohne Flug)");
   const dates = await fm.locator(".fs-form input[type=date]").evaluateAll(els => els.map(e => e.value));
@@ -132,7 +132,7 @@ try {
 
   // Unterkunft: eine Station Tokio, Zeitabschnitte, erst Familie Klein allein; „alle zusammen“ ohne Ferienwohnung für 9 → 2 Häuser
   await p.locator("#stay .st-open").click();
-  const sm = p.locator("#stay .modal.inline");
+  const sm = p.locator(".modal-bg .modal");
   await sm.waitFor();
   const st = await sm.locator(".st-stations:not(.st-segs)").innerText().catch(() => "");
   if ((st.match(/Tokio/g) || []).length > 1) fail("Tokio mehrfach als Station: " + st);
@@ -188,7 +188,7 @@ try {
   // ---- Ozeanien: Fidschi → München nur mit 2 Umstiegen; danach Reisezeitraum = Flüge
   await open("Ozeanien");
   await p.locator("#flights .fs-open").click();
-  const om = p.locator("#flights .modal.inline");
+  const om = p.locator(".modal-bg .modal");
   await om.locator(".fs-kind .chip", { hasText: "Rundreise" }).click();
   await om.locator(".fs-flexbox label", { hasText: "frühestens" }).locator("input").fill("2027-02-01");
   await om.locator(".fs-flexbox label", { hasText: "spätestens" }).locator("input").fill("2027-02-02");
@@ -216,7 +216,7 @@ try {
   const car = await p.locator("#transport .card[data-item]", { hasText: "Mietwagen" }).first().innerText();
   for (const s of ["SFO", "SAN", "Einwegmiete", "2 Autos"]) if (!car.includes(s)) fail(`Mietwagen ohne „${s}“: ${car}`);
   await p.locator("#flights .fs-open").click();
-  const cm = p.locator("#flights .modal.inline");
+  const cm = p.locator(".modal-bg .modal");
   await cm.locator(".fs-kind .chip", { hasText: "Nur Hinflug" }).click();
   await cm.locator(".fs-mode .chip", { hasText: "Feste Daten" }).click();
   await cm.locator(".fs-aps .chip.on").evaluateAll(els => els.forEach(e => e.click()));

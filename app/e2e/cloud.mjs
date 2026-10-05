@@ -84,6 +84,7 @@ try {
   // Oma ändert den Mietwagen, Anna sieht es live
   await oma.locator("#transport .card", { hasText: "Mietwagen" }).scrollIntoViewIfNeeded();
   await oma.locator("#transport .card", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
+  await oma.locator(".editor [data-sec=price] summary").click();
   await oma.locator(".editor label", { hasText: "Preis" }).locator("input").fill("45");
   await oma.keyboard.press("Escape");
   const omaTotal = await total(oma);

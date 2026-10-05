@@ -72,19 +72,19 @@ try {
   const tiles = (await p.locator(".hero .ht-tile b").allInnerTexts()).join("|");
   if (tiles !== "Zu den Flügen|Zu den Hotels|Events & Aktivitäten|Sonstige Kosten") fail("Kacheln im Kopf: " + tiles);
   await p.locator(".hero .ht-fl").click();
-  await p.locator("#flights .modal.inline").waitFor();
-  await p.locator("#flights .modal.inline .x").click();
-  await p.locator("#flights .modal.inline").waitFor({ state: "detached" });
-  log("Kopf: Zu den Flügen, Zu den Hotels, Events & Aktivitäten, Sonstige Kosten; Flüge öffnet die Suche im Kapitel");
+  await p.locator(".modal-bg .modal").waitFor();
+  await p.locator(".modal-bg .modal .x").click();
+  await p.locator(".modal-bg .modal").waitFor({ state: "detached" });
+  log("Kopf: Zu den Flügen, Zu den Hotels, Events & Aktivitäten, Sonstige Kosten; Flüge öffnet die Suche");
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   const m = p.locator(".modal");
 
   // Abflughäfen: Standard 4, zwei abwählen → DUS und NRN
-  // Suche klappt im Kapitel auf (kein Fenster); Wer, Abflughäfen, Umstiege und Koffer immer sichtbar
-  if (await p.locator(".modal-bg").count() || !(await p.locator("#flights .modal.inline").count())) fail("Flugsuche nicht im Kapitel aufgeklappt");
+  // Suche im eigenen Fenster (nicht mehr im Kapitel aufgeklappt); Wer, Abflughäfen, Umstiege und Koffer immer sichtbar
+  if (await p.locator(".modal.inline").count() || !(await p.locator(".modal-bg .modal").count())) fail("Flugsuche nicht als Fenster");
   if (!(await m.locator(".fs-aps").isVisible()) || !(await m.locator(".fs-who").isVisible()) || !(await m.locator("label", { hasText: "Koffer gesamt" }).isVisible())) fail("Optionen der Flugsuche nicht sichtbar");
-  log("Flugsuche im Kapitel aufgeklappt, Wer, Abflughäfen, Umstiege und Koffer sichtbar");
+  log("Flugsuche als Fenster, Wer, Abflughäfen, Umstiege und Koffer sichtbar");
   const on = await m.locator(".fs-aps .chip.on").allTextContents();
   if (on.length !== 4) fail("Standard-Flughäfen: " + on);
   for (const c of on.slice(2)) await m.locator(".fs-aps .chip", { hasText: c }).click();

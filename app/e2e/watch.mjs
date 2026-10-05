@@ -183,22 +183,23 @@ try {
   await ins.waitFor();
   log("Mietwagen: Abholung PMI 15.10. 13:20 bis 19.10. 16:00, Richtwert 5 × 34 € (Preisniveau Spanien), KAYAK vorbefüllt; Reiseversicherung geschätzt");
 
-  // aufgeklappte Suche gehört zur Reise: nach dem Wechsel in eine andere Reise ist sie zu
+  // Flugsuche als Fenster; nach dem Schließen und dem Wechsel in eine andere Reise bleibt sie zu
   await p.locator("#flights .fs-open").click();
-  await p.locator("#flights .modal.inline").waitFor();
+  await p.locator(".modal-bg .modal").waitFor();
   // ohne Wohnort: Hinweis mit PLZ-Feld; Hamburger PLZ → Hamburg als Abflughafen (nicht mehr nur NRW)
-  const fsm = p.locator("#flights .modal.inline");
+  const fsm = p.locator(".modal-bg .modal");
   if (!(await fsm.locator(".fs-nohome").isVisible())) fail("Hinweis „Wohnort fehlt“ fehlt");
   await fsm.locator(".fs-plz").fill("20095");
   await until(async () => (await fsm.locator(".fs-aps .chip.on").allInnerTexts()).join() .startsWith("HAM"), "Hamburg als Abflughafen", 10000);
   if (await fsm.locator(".fs-nohome").count()) fail("Hinweis bleibt nach PLZ");
   log("Ohne Wohnort: PLZ in der Flugsuche, danach Hamburg zuerst (" + (await fsm.locator(".fs-aps .chip.on").allInnerTexts()).join(", ") + ")");
+  await fsm.locator(".modal-h .x").click();
   await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
   await p.locator(".top .brand-btn").click();
   await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
   await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
   await p.waitForTimeout(500);
-  if (await p.locator(".modal.inline").count()) fail("Suche aus der anderen Reise noch offen");
+  if (await p.locator(".modal-bg .modal").count()) fail("Suche aus der anderen Reise noch offen");
   log("Reise gewechselt: aufgeklappte Flugsuche der vorigen Reise ist zu");
 
   // Tagesplan: Tage der Reise, Flug und Unterkunft automatisch; eigener Eintrag; Erlebnis einem Tag zuordnen
@@ -254,7 +255,7 @@ try {
 
   // große Gruppe: Flüge in Buchungen à höchstens 5 (12 → 3 × 4), Ferienwohnungen auf 2 Unterkünfte à 6
   await p.locator("#flights .fs-open").click();
-  const fm = p.locator("#flights .modal.inline");
+  const fm = p.locator(".modal-bg .modal");
   await fm.waitFor();
   if ((await fm.locator(".fs-split select").inputValue()) !== "4") fail("Buchungsgröße: " + await fm.locator(".fs-split select").inputValue());
   const fh = await fm.locator(".fs-split-hint").innerText();
@@ -268,9 +269,9 @@ try {
   await until(async () => (await fm.innerText()).includes("1.350"), "Preis × 3 (3 × 450 €)", 15000);
   await fm.locator(".fs-split select").selectOption("9");
   await until(async () => (await fm.locator(".fs-split-hint").innerText().catch(() => "")).includes("2 Buchungen à 6"), "höchstens 9 je Suche");
-  await p.locator("#flights .fs-open").click();
+  await fm.locator(".modal-h .x").click();
   await p.locator("#stay .st-open").click();
-  const sm = p.locator("#stay .modal.inline");
+  const sm = p.locator(".modal-bg .modal");
   await sm.waitFor();
   await sm.locator(".chip", { hasText: "Ganze Unterkunft" }).click();
   if ((await sm.locator(".st-parts").inputValue()) !== "2") fail("Unterkünfte für 12: " + await sm.locator(".st-parts").inputValue());
@@ -334,6 +335,7 @@ try {
   if (!mv.includes("+3") || !mv.includes("Löwe") || !mv.includes("20")) fail("Ausgleich Abendessen: " + mv);
   await p.locator("#stay .card[data-item]", { hasText: "Hotel Wien" }).locator("h3").click();
   await p.locator("#stay .editor .seg button", { hasText: "Gebucht" }).click();
+  await p.locator("#stay .editor [data-sec=pay] summary").click();
   await p.locator("#stay .editor .ie-payby").selectOption("Panda");
   await p.locator("#stay .editor .ie-payadd").click();
   await until(async () => (await p.locator("#stay .card[data-item]", { hasText: "Hotel Wien" }).innerText()).includes("Bezahlt"), "Hotel bezahlt");

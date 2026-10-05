@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { entryCurrency, fromShown, toShown } from "../currency.svelte";
-  import { t } from "../i18n/index.svelte";
-  /* Bearbeiten eines Postens im Fokusmodus: Status, Angebote, Preis, Beteiligte */
+  import { t, tn } from "../i18n/index.svelte";
+  /* Bearbeiten eines Postens: oben Name, Status und Suche, der Rest eingeklappt mit Zusammenfassung */
   import { hhKey, isActive, uid, type FlightLeg, type Item, type Status } from "../model";
   import { app, calc, removeItem } from "../store.svelte";
   import type { Key } from "../i18n/index.svelte";
@@ -91,26 +92,54 @@
   const dayOf = $derived(item.day?.slice(0, 10) || "");
   const timeOf = $derived(item.day && item.day.length >= 16 ? item.day.slice(11, 16) : "");
   function setDay(d: string, tm = timeOf) { if (d) item.day = tm ? `${d}T${tm}` : d; else delete item.day; }
+  // Suche im eigenen Fenster; danach ist man wieder am Posten
+  function search() {
+    if (isStay) openStaySearch({ itemId: item.id }); else openFlightSearch({ itemId: item.id });
+  }
+  // neuer Posten ohne Preis: Preis (bei Flügen auch die Zeiten) gleich aufgeklappt; nur beim Öffnen, nicht beim Tippen
+  const fresh = untrack(() => !calc.T.items[item.id]?.net);
+  // Zusammenfassungen der eingeklappten Abschnitte
+  const outL = $derived(opt?.legs?.find(l => l.dir === "out"));
+  const backL = $derived(opt?.legs?.find(l => l.dir === "back"));
+  const legSum = (l: FlightLeg | undefined, w: string) => l?.dep ? `${w} ${dayShort(l.dep)} ${time(l.dep)} ${l.from}→${l.to}` : "";
+  const timesSum = $derived(main ? t("ie.like", { name: main.name }) : [legSum(outL, t("fl.out")), legSum(backL, t("fl.back"))].filter(Boolean).join(" · ") || t("ie.open"));
+  const priceSum = $derived(`${eur(net)}${item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""}`);
+  const whoSum = $derived(all ? t("all") : people.filter(p => item.participants!.includes(p.id)).map(p => p.name).join(", "));
+  const paySum = $derived(paidSum ? t("ie.paidOf", { paid: eur(paidSum), total: eur(net) }) : t("ie.paidNone"));
   const num = (v: string) => (v === "" ? undefined : Number(String(v).replace(",", ".")));
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div class="editor" onclick={e => e.stopPropagation()}>
+  <!-- Das Wesentliche: Name, Status, Suche; der Rest eingeklappt mit Zusammenfassung -->
   <div class="ed-row">
     <label class="f grow">{t("ie.name")}<input bind:value={item.name} placeholder={t("ie.namePh")} /></label>
   </div>
-
-  <div class="ed-sec">
-    <span class="dlabel">{t("ie.status")}</span>
-    <div class="seg" role="radiogroup" aria-label={t("ie.status")}>
-      {#each STATUS as k}
-        <button role="radio" aria-checked={item.status === k} class:on={item.status === k} data-s={k} onclick={() => (item.status = k)}>{t(`status.${k}` as Key)}</button>
-      {/each}
-    </div>
+  <div class="seg" role="radiogroup" aria-label={t("ie.status")}>
+    {#each STATUS as k}
+      <button role="radio" aria-checked={item.status === k} class:on={item.status === k} data-s={k} onclick={() => (item.status = k)}>{t(`status.${k}` as Key)}</button>
+    {/each}
   </div>
+  {#if isStay || isFlight}
+    <!-- mitfliegen „wie Flug …“: Knopf sucht einen eigenen Flug -->
+    <div><button class="btn primary ed-search" class:fs-item={isFlight} class:st-item={isStay} onclick={search}>
+      {isStay ? `🛏 ${t("st.open")}` : main ? `✈ ${t("ie.searchOwn")}` : `✈ ${t("fs.open")}${item.participants ? ` ${t("ie.forWho", { who: [...new Set(app.trip.travelers.filter(x => item.participants!.includes(x.id)).map(hhKey))].join(", ") })}` : ""}`}</button></div>
+  {/if}
+
+  {#if isStay}
+    <details class="ed-acc" data-sec="period">
+      <summary><span class="dlabel">{t("ie.period")}</span><span class="ed-sum">{item.from && item.to ? `${dateDE(item.from)} – ${dateDE(item.to)}` : t("ie.open")}</span></summary>
+      <div class="ed-row">
+        <label class="f">{t("ie.checkin")}<input type="date" bind:value={item.from} /></label>
+        <label class="f">{t("hh.departure")}<input type="date" bind:value={item.to} min={item.from} /></label>
+        <span class="muted ed-note">{t("ie.nightsHint")}</span>
+      </div>
+    </details>
+  {/if}
 
   {#if planDays.length}
-    <div class="ed-sec ie-day">
+    <details class="ed-acc ie-day" data-sec="day">
+      <summary><span class="dlabel">{t("ie.day")}</span><span class="ed-sum">{dayOf ? `${dayShort(dayOf)}${timeOf ? ` ${timeOf}` : ""}` : t("ie.dayNone")}</span></summary>
       <div class="ed-row">
         <label class="f">{t("ie.day")}
           <select value={dayOf} onchange={e => setDay(e.currentTarget.value)}>
@@ -120,87 +149,51 @@
         </label>
         {#if dayOf}<label class="f">{t("ie.dayTime")}<input type="time" value={timeOf} onchange={e => setDay(dayOf, e.currentTarget.value)} /></label>{/if}
       </div>
-    </div>
+    </details>
   {/if}
 
-  {#if item.status !== "idea" && item.status !== "dropped"}
-    <div class="ed-sec ie-pay">
-      <span class="dlabel">{t("ie.paidBy")}</span>
-      {#each item.payments || [] as p, i (i)}
-        <div class="ie-p"><span>{p.by ? kasseName(app.trip, p.by) : "?"}</span><b class="num">{eur(p.amount)}</b>{#if p.at}<small class="muted">{dateDE(p.at)}</small>{/if}
-          <button class="dp-del" aria-label={t("ks.remove", { text: `${p.by ? kasseName(app.trip, p.by) : ""} ${eur(p.amount)}` })} onclick={() => dropPay(i)}>×</button></div>
-      {/each}
-      <div class="ed-row">
-        <label class="f">{t("ks.paidBy")}<select class="ie-payby" value={payBy || hhList[0]} onchange={e => (payBy = e.currentTarget.value)}>{#each kList as k (k.id)}<option value={k.id}>{k.name}</option>{/each}</select></label>
-        <label class="f">{t("ks.amount")}<input class="n ie-payamt" inputmode="decimal" bind:value={payAmt} placeholder={String(toShown(Math.max(0, net - paidSum)))} /></label>
-        <button class="btn sm ie-payadd" onclick={addPay}>+ {t("ie.payAdd")}</button>
-      </div>
-    </div>
-  {/if}
-
-  {#if item.options.length > 1}
-    <div class="ed-sec">
-      <span class="dlabel">{t("ie.offer")}</span>
-      <div class="chips">
-        {#each item.options as o, i (o.id)}
-          <button class="chip" class:on={o.id === opt?.id} onclick={() => (item.chosen = o.id)}>{o.label || t("ie.offerN", { n: i + 1 })}</button>
-        {/each}
-      </div>
-    </div>
-  {/if}
-
-  {#if isStay}
-    <div class="ed-sec">
-      <span class="dlabel">{t("ie.period")}</span>
-      <div class="ed-row">
-        <label class="f">{t("ie.checkin")}<input type="date" bind:value={item.from} /></label>
-        <label class="f">{t("hh.departure")}<input type="date" bind:value={item.to} min={item.from} /></label>
-        <span class="muted ed-note">{t("ie.nightsHint")}</span>
-      </div>
-      <div><button class="btn primary sm st-item" onclick={() => openStaySearch({ itemId: item.id })}>🔎 {t("st.open")}</button></div>
-    </div>
-  {/if}
-
-  {#if isFlight && others.length}
-    <div class="ed-sec">
-      <span class="dlabel">{t("ie.flight")}</span>
-      <div class="chips">
-        <button class="chip" class:on={!main} onclick={() => setFollow(undefined)}>{t("ie.ownFlight")}</button>
-        {#each others as o (o.id)}<button class="chip" class:on={main?.id === o.id} onclick={() => setFollow(o.id)}>{t("ie.like", { name: o.name || t("ie.otherFlight") })}</button>{/each}
-      </div>
-      {#if main}
-        {@const out = opt?.legs?.find(l => l.dir === "out")}
-        {@const back = opt?.legs?.find(l => l.dir === "back")}
-        <p class="muted small">{t("ie.sameFlight", { name: main.name })}{out?.dep ? `: ${t("ie.sameOut", { day: dayShort(out.dep), time: time(out.dep), ap: out.from })}` : ""}{back?.dep ? `, ${t("ie.sameBack", { day: dayShort(back.dep), time: time(back.dep) })}` : ""}. {t("ie.samePrice")}{opt?.price.adult ? ` (${eur(opt.price.adult)})` : ""}, {t("ie.sameRest")}</p>
-        <div><button class="btn sm fs-item" onclick={() => openFlightSearch({ itemId: item.id })}>✈ {t("ie.searchOwn")}</button></div>
-      {/if}
-    </div>
-  {/if}
-
-  {#if isFlight && opt && !main}
-    <div class="ed-sec">
-      <span class="dlabel">{t("ie.times")}</span>
-      {#each [["out", t("ie.outFlight")], ["back", t("ie.backFlight")]] as [dir, l] (dir)}
-        {@const L = legOf(dir as "out" | "back")}
-        <div class="ed-row">
-          <span class="ed-leg">{l}</span>
-          <label class="f">{t("te.from")}<input class="short" maxlength="3" placeholder="DUS" value={L?.from ?? ""} oninput={e => setLeg(dir as "out", "from", e.currentTarget.value)} /></label>
-          <label class="f">{t("ie.to")}<input class="short" maxlength="3" placeholder="SPU" value={L?.to ?? ""} oninput={e => setLeg(dir as "out", "to", e.currentTarget.value)} /></label>
-          <label class="f">{t("ie.dep")}<input type="datetime-local" value={L?.dep ?? ""} oninput={e => setLeg(dir as "out", "dep", e.currentTarget.value)} /></label>
-          <label class="f">{t("ie.arr")}<input type="datetime-local" value={L?.arr ?? ""} oninput={e => setLeg(dir as "out", "arr", e.currentTarget.value)} /></label>
-          <label class="f">{t("ie.stops")}<input class="n sm" type="number" min="0" max="4" value={L?.stops ?? 0} oninput={e => setLeg(dir as "out", "stops", e.currentTarget.value)} /></label>
+  {#if isFlight && (others.length || (opt && !main))}
+    <details class="ed-acc" data-sec="times" open={fresh && !main}>
+      <summary><span class="dlabel">{t("ie.times")}</span><span class="ed-sum">{timesSum}</span></summary>
+      {#if others.length}
+        <div class="chips">
+          <button class="chip" class:on={!main} onclick={() => setFollow(undefined)}>{t("ie.ownFlight")}</button>
+          {#each others as o (o.id)}<button class="chip" class:on={main?.id === o.id} onclick={() => setFollow(o.id)}>{t("ie.like", { name: o.name || t("ie.otherFlight") })}</button>{/each}
         </div>
-      {/each}
-      <div><button class="btn primary sm fs-item" onclick={() => openFlightSearch({ itemId: item.id })}>✈ {t("fs.open")}{item.participants ? ` ${t("ie.forWho", { who: [...new Set(app.trip.travelers.filter(x => item.participants!.includes(x.id)).map(hhKey))].join(", ") })}` : ""}</button></div>
-      <label class="check"><input type="checkbox" checked={item.access !== false} onchange={e => (item.access = e.currentTarget.checked ? undefined : false)} /> {t("ie.access")}</label>
-    </div>
+        {#if main}
+          <p class="muted small">{t("ie.sameFlight", { name: main.name })}. {t("ie.samePrice")}{opt?.price.adult ? ` (${eur(opt.price.adult)})` : ""}, {t("ie.sameRest")}</p>
+        {/if}
+      {/if}
+      {#if opt && !main}
+        {#each [["out", t("ie.outFlight")], ["back", t("ie.backFlight")]] as [dir, l] (dir)}
+          {@const L = legOf(dir as "out" | "back")}
+          <div class="ed-row">
+            <span class="ed-leg">{l}</span>
+            <label class="f">{t("te.from")}<input class="short" maxlength="3" placeholder="DUS" value={L?.from ?? ""} oninput={e => setLeg(dir as "out", "from", e.currentTarget.value)} /></label>
+            <label class="f">{t("ie.to")}<input class="short" maxlength="3" placeholder="SPU" value={L?.to ?? ""} oninput={e => setLeg(dir as "out", "to", e.currentTarget.value)} /></label>
+            <label class="f">{t("ie.dep")}<input type="datetime-local" value={L?.dep ?? ""} oninput={e => setLeg(dir as "out", "dep", e.currentTarget.value)} /></label>
+            <label class="f">{t("ie.arr")}<input type="datetime-local" value={L?.arr ?? ""} oninput={e => setLeg(dir as "out", "arr", e.currentTarget.value)} /></label>
+            <label class="f">{t("ie.stops")}<input class="n sm" type="number" min="0" max="4" value={L?.stops ?? 0} oninput={e => setLeg(dir as "out", "stops", e.currentTarget.value)} /></label>
+          </div>
+        {/each}
+        <label class="check"><input type="checkbox" checked={item.access !== false} onchange={e => (item.access = e.currentTarget.checked ? undefined : false)} /> {t("ie.access")}</label>
+      {/if}
+    </details>
   {/if}
   {#if item.cat === "transport"}
     <label class="check ie-arrival"><input type="checkbox" checked={!!item.arrival} onchange={e => (item.arrival = e.currentTarget.checked || undefined)} /> {t("ie.arrival")}</label>
   {/if}
 
   {#if opt && !main}
-    <div class="ed-sec">
+    <details class="ed-acc" data-sec="price" open={fresh}>
+      <summary><span class="dlabel">{t("ie.priceOffers")}</span><span class="ed-sum">{priceSum}</span></summary>
+      {#if item.options.length > 1}
+        <div class="chips">
+          {#each item.options as o, i (o.id)}
+            <button class="chip" class:on={o.id === opt?.id} onclick={() => (item.chosen = o.id)}>{o.label || t("ie.offerN", { n: i + 1 })}</button>
+          {/each}
+        </div>
+      {/if}
       <div class="ed-row">
         <label class="f grow">{t("ie.offer")}<input bind:value={opt.label} placeholder={t("ie.offerPh")} /></label>
         <label class="f">{t("ie.billing")}
@@ -239,11 +232,11 @@
         <button class="linkbtn" onclick={addOption}>+ {t("ie.addOffer")}</button>
         {#if item.options.length > 1}<button class="linkbtn danger" onclick={dropOption}>{t("ie.dropOffer")}</button>{/if}
       </div>
-    </div>
+    </details>
   {/if}
 
-  <div class="ed-sec">
-    <span class="dlabel">{t("ie.who")}</span>
+  <details class="ed-acc" data-sec="who">
+    <summary><span class="dlabel">{t("ie.who")}</span><span class="ed-sum">{whoSum}</span></summary>
     <div class="chips">
       <button class="chip" class:on={all} onclick={() => (item.participants = undefined)}>{t("all")}</button>
       {#each people as p (p.id)}
@@ -251,11 +244,27 @@
         <button class="chip" class:on={all || item.participants?.includes(p.id)} onclick={() => togglePerson(p.id)}>{p.name || t("trav.noName")}{#if cls !== "adult"} <em class="age-pill {cls}">{t(`age.class.${cls}` as Key)}</em>{/if}</button>
       {/each}
     </div>
-  </div>
+  </details>
 
-  <div class="ed-row">
+  {#if item.status !== "idea" && item.status !== "dropped"}
+    <details class="ed-acc ie-pay" data-sec="pay">
+      <summary><span class="dlabel">{t("ie.paidBy")}</span><span class="ed-sum">{paySum}</span></summary>
+      {#each item.payments || [] as p, i (i)}
+        <div class="ie-p"><span>{p.by ? kasseName(app.trip, p.by) : "?"}</span><b class="num">{eur(p.amount)}</b>{#if p.at}<small class="muted">{dateDE(p.at)}</small>{/if}
+          <button class="dp-del" aria-label={t("ks.remove", { text: `${p.by ? kasseName(app.trip, p.by) : ""} ${eur(p.amount)}` })} onclick={() => dropPay(i)}>×</button></div>
+      {/each}
+      <div class="ed-row">
+        <label class="f">{t("ks.paidBy")}<select class="ie-payby" value={payBy || hhList[0]} onchange={e => (payBy = e.currentTarget.value)}>{#each kList as k (k.id)}<option value={k.id}>{k.name}</option>{/each}</select></label>
+        <label class="f">{t("ks.amount")}<input class="n ie-payamt" inputmode="decimal" bind:value={payAmt} placeholder={String(toShown(Math.max(0, net - paidSum)))} /></label>
+        <button class="btn sm ie-payadd" onclick={addPay}>+ {t("ie.payAdd")}</button>
+      </div>
+    </details>
+  {/if}
+
+  <details class="ed-acc" data-sec="note">
+    <summary><span class="dlabel">{t("ie.note")}</span><span class="ed-sum">{item.note || "—"}</span></summary>
     <label class="f grow">{t("ie.note")}<input bind:value={item.note} placeholder={t("ie.notePh")} /></label>
-  </div>
+  </details>
 
   <div class="ed-foot">
     <button class="linkbtn danger" onclick={() => removeItem(item.id)}>{t("ie.delete")}</button>
@@ -266,4 +275,13 @@
 <style>
   .ie-p { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
   .ie-p .dp-del { border: 0; background: none; color: var(--ink-3); font-size: 16px; cursor: pointer; }
+  .ed-acc { border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; }
+  .ed-acc[open] { padding-bottom: 12px; }
+  .ed-acc > summary { list-style: none; cursor: pointer; display: flex; gap: 10px; align-items: baseline; padding: 10px 0; }
+  .ed-acc > summary::-webkit-details-marker { display: none; }
+  .ed-acc > summary::after { content: "▾"; margin-inline-start: auto; color: var(--ink-3); }
+  .ed-acc[open] > summary::after { content: "▴"; }
+  .ed-acc > summary .dlabel { flex: none; }
+  .ed-sum { font-size: 13.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .ed-acc > :not(summary) + :not(summary) { margin-top: 8px; }
 </style>
