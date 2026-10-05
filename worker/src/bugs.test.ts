@@ -1,7 +1,8 @@
 /* Läuft mit den Tests der App (cd app && npx vitest run) */
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../../app/src/lib/agent/auth", () => ({ verifyIdToken: async (t: string) => { if (t !== "gut") throw new Error("Anmeldung ungültig"); return "uid-anna-123456"; } }));
+const fake = async (t: string) => { if (t !== "gut") throw new Error("Anmeldung ungültig"); return "uid-anna-123456"; };
+vi.mock("../../app/src/lib/agent/auth", () => ({ verifyIdToken: fake, verifyAnyIdToken: fake }));
 const { reportBug, bugImage, sniff } = await import("./bugs");
 
 const json = (body: unknown, status: number, headers: Record<string, string>) => new Response(JSON.stringify(body), { status, headers });

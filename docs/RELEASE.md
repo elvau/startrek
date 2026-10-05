@@ -2,7 +2,7 @@
 
 | Umgebung | Adresse | Wird aktualisiert | Hosting |
 | --- | --- | --- | --- |
-| Testumgebung | https://elvau.github.io/startrek/ | bei jedem Push auf `pre-release` (nur bauen, ohne Tests, ca. 1–2 Minuten) | GitHub Pages (`.github/workflows/pages.yml`) |
+| Testumgebung | https://elvau.github.io/startrek/ | bei jedem Push auf `pre-release` (nur bauen, ohne Tests, ca. 1–2 Minuten) | GitHub Pages (`.github/workflows/pages.yml`), eigenes Firebase-Testprojekt (`app/.env.staging`, siehe docs/FIREBASE.md) |
 | Produktion | https://splitandfly.com | bei jedem Push auf `main` (Merge von `pre-release`) | Firebase Hosting (`.github/workflows/release.yml`) |
 
 Beide Umgebungen nutzen dasselbe Firebase-Projekt (Konten, geteilte Reisen) und denselben Such-Dienst.

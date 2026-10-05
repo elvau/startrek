@@ -41,5 +41,18 @@ export async function verifyIdToken(token: string, projectId: string, fetchFn: t
   return body.sub;
 }
 
+/**
+ * Anmeldung aus dem Hauptprojekt (splitandfly.com) oder, falls angegeben, aus dem Testprojekt (Testumgebung).
+ * Konten aus dem Testprojekt bekommen die Kennung „test:…“, damit sie sich nie mit echten Konten mischen
+ * (Zähler, Admin-Liste, Fehlerberichte).
+ */
+export async function verifyAnyIdToken(token: string, main: string, test?: string, fetchFn: typeof fetch = fetch, now = Date.now()): Promise<string> {
+  try { return await verifyIdToken(token, main, fetchFn, now); }
+  catch (e) {
+    if (!test || test === main || !/anderen Projekt/.test((e as Error).message)) throw e;
+    return `test:${await verifyIdToken(token, test, fetchFn, now)}`;
+  }
+}
+
 /** nur für Tests: Schlüssel-Zwischenspeicher leeren */
 export const resetKeys = () => { cached = null; };
