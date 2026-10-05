@@ -8,7 +8,7 @@ import { parseStayQuery, searchStays, type StayEnv } from "../../app/src/lib/sta
 import type { FlightQuery } from "../../app/src/lib/flights/types";
 import type { StayQuery } from "../../app/src/lib/stays/types";
 import { runAgent } from "../../app/src/lib/agent/agent";
-import { verifyIdToken } from "../../app/src/lib/agent/auth";
+import { verifyAnyIdToken, verifyIdToken } from "../../app/src/lib/agent/auth";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
@@ -43,6 +43,8 @@ interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEn
   /** Anfragen pro Nutzer und Tag (Standard 5) */
   AGENT_DAILY?: string;
   FIREBASE_PROJECT_ID?: string;
+  /** Firebase-Projekt der Testumgebung (elvau.github.io/startrek/); Konten daraus heißen „test:…“ */
+  FIREBASE_TEST_PROJECT_ID?: string;
   /** optional: KV-Speicher für das Tageslimit; ohne ihn zählt der Zwischenspeicher je Rechenzentrum */
   AGENT_KV?: KVNamespace;
 }
@@ -229,7 +231,7 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Bitte anmelden, um den KI-Planer zu nutzen" }, 401, h);
   let uid: string;
-  try { uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); }
+  try { uid = await verifyAnyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7", env.FIREBASE_TEST_PROJECT_ID); }
   catch (e) { console.log(JSON.stringify({ at: "agent", status: 401, error: (e as Error).message })); return json({ error: (e as Error).message }, 401, h); }
 
   let body: unknown;
@@ -270,6 +272,7 @@ async function mcpKey(req: Request, env: Env, h: Record<string, string>): Promis
   if (!env.MCP_KEY_SECRET) return json({ error: "Der KI-Konnektor ist noch nicht eingerichtet" }, 503, h);
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Bitte anmelden" }, 401, h);
+  // nur echte Konten: der Konnektor schreibt in die Reisen des Hauptprojekts (Testprojekt hier nicht)
   let uid: string;
   try { uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); }
   catch (e) { return json({ error: (e as Error).message }, 401, h); }
@@ -333,7 +336,7 @@ async function admin(req: Request, env: Env, h: Record<string, string>): Promise
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Bitte anmelden" }, 401, h);
   let uid: string;
-  try { uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); }
+  try { uid = await verifyAnyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7", env.FIREBASE_TEST_PROJECT_ID); }
   catch (e) { return json({ error: (e as Error).message }, 401, h); }
   if (!isAdmin(env, uid)) return json({ error: "Kein Zugriff" }, 403, h);
   // nur prüfen, ob der Eintrag im Kontomenü erscheint

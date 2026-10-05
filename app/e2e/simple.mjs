@@ -1,6 +1,7 @@
 /*
  * Einfacher Modus mit einzelnen Einträgen (Text, Betrag, wer dabei ist) und Cent bei Anteilen pro Person.
  * Beispiel aus der Beta: zu viert, Stadionführung nur Daniel und Henning, Abendessen alle.
+ * Dazu Posten auf dem Handy: eingeklappt, Suche als Fenster.
  * Start: npm run test:cloud
  */
 import { chromium } from "playwright";
@@ -118,6 +119,54 @@ try {
   if (!(await fc.locator(".fu-row").innerText()).includes("eingegangen")) fail("Status eingegangen fehlt");
   if (!(await p.locator(".aside .tk-fund").innerText()).includes("100")) fail("Summe ohne Zuschuss-Hinweis");
   log("Zuschuss: Kegelkasse 100 € für alle (eingegangen) → Eigenanteil 200 €, Klein 125 €, Hase 75 €");
+
+  // Handy: Posten zeigen oben Name, Status und Suche, der Rest eingeklappt mit Zusammenfassung;
+  // die Suche öffnet als Fenster und danach ist man wieder am Posten (Flüge und Unterkünfte gleich)
+  const PH = { id: "handy", name: "Split mobil", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }],
+    detail: { flights: true, stay: true },
+    items: [
+      { id: "f", cat: "flights", name: "Flug Klein", status: "chosen", chosen: "o", options: [{ id: "o", label: "Eurowings", price: { mode: "person", currency: "EUR", adult: 189, child: 149 },
+        legs: [{ dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T06:10", arr: "2027-07-18T08:05", stops: 0 }, { dir: "back", from: "SPU", to: "DUS", dep: "2027-07-25T18:40", arr: "2027-07-25T20:50", stops: 0 }] }] },
+      { id: "s", cat: "stay", name: "Villa am Meer", status: "idea", from: "2027-07-18", to: "2027-07-25", options: [{ id: "v", label: "Villa Ana", price: { mode: "unit", currency: "EUR", unit: 210, basis: "night" } }] }
+    ], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
+  const mctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
+  await mctx.addInitScript(t => {
+    if (localStorage.getItem("rk2-index")) return;
+    localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
+    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: 2 }]));
+    localStorage.setItem("rk2-current", t.id);
+  }, PH);
+  const m = await mctx.newPage();
+  m.on("pageerror", e => errors.push(e.message));
+  await m.goto(URL);
+  await m.locator(".start .home-trip", { hasText: "Split mobil" }).click();
+  for (const [ch, id, btn, sum] of [["flights", "f", ".fs-item", "DUS→SPU"], ["stay", "s", ".st-item", "18.07. – 25.07."]]) {
+    const c = m.locator(`#${ch} .card[data-item='${id}']`);
+    await c.scrollIntoViewIfNeeded();
+    await c.locator("h3, .fc-route, .st-name").first().click().catch(() => c.click({ position: { x: 20, y: 12 } }));
+    await c.locator(".editor").waitFor();
+    if (!(await c.locator(`.editor ${btn}.ed-search`).isVisible())) fail(`${ch}: Suche oben im Posten fehlt`);
+    if (await c.locator(".editor details[open]").count()) fail(`${ch}: Abschnitte nicht eingeklappt`);
+    const sums = (await c.locator(".editor details summary").allTextContents()).join(" | ");
+    if (!sums.includes(sum) || !sums.includes("Wer ist dabei")) fail(`${ch}: Zusammenfassung „${sum}“ fehlt: ${sums}`);
+    await c.locator(`.editor ${btn}.ed-search`).click();
+    const dlg = m.locator(".modal-bg .modal");
+    await dlg.waitFor();
+    if (!(await dlg.locator(".modal-h h3").innerText()).includes(ch === "flights" ? "Flug Klein" : "Villa am Meer")) fail(`${ch}: Suche nicht für den Posten`);
+    await dlg.locator(".modal-h .x").click();
+    await dlg.waitFor({ state: "detached" });
+    if (!(await c.locator(".editor").isVisible())) fail(`${ch}: nach der Suche nicht mehr am Posten`);
+    await c.locator(".ed-foot .btn.primary").click();
+    await c.locator(".editor").waitFor({ state: "detached" });
+  }
+  // Knopf oben im Kapitel öffnet dasselbe Fenster
+  await m.locator("#flights .fs-open").scrollIntoViewIfNeeded();
+  await m.locator("#flights .fs-open").click();
+  await m.locator(".modal-bg .modal .fs-aps").waitFor();
+  await m.locator(".modal-bg .modal .modal-h .x").click();
+  log("Handy: Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
+  await mctx.close();
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");

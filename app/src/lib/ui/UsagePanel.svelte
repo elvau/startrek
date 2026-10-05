@@ -7,6 +7,8 @@
   import Modal from "./Modal.svelte";
   import UsageBarrel from "./UsageBarrel.svelte";
   import PartnerTable from "./PartnerTable.svelte";
+  import { resetAccount } from "../store.svelte";
+  import type { WipeResult } from "../cloud/firebase";
 
   let report = $state<UsageReport | null>(null);
   let err = $state("");
@@ -21,6 +23,17 @@
     finally { busy = false; }
   }
   $effect(() => { void load(); });
+
+  // eigenes Konto zurücksetzen: erst nachfragen, dann löschen, danach neu laden
+  let confirming = $state(false);
+  let resetting = $state(false);
+  let wiped = $state<WipeResult | null>(null);
+  let rerr = $state("");
+  async function reset() {
+    resetting = true; rerr = "";
+    try { wiped = await resetAccount(); } catch (e) { rerr = (e as Error).message; }
+    finally { resetting = false; confirming = false; }
+  }
 
   const num = (n: number) => n.toLocaleString(locale());
   const val = (r: Row, n: number) => (r.bytes ? fmtBytes(n, locale()) : num(n));
@@ -97,5 +110,29 @@
     <ul class="usage-links">
       {#each consoleLinks(PROJECT) as l (l.href)}<li><a href={l.href} target="_blank" rel="noopener noreferrer">{t(l.label as Key)} ↗</a></li>{/each}
     </ul>
+
+    <h4>{t("adm.reset.title")}</h4>
+    <div class="adm-reset">
+      <p class="muted small">{t("adm.reset.text")}</p>
+      {#if wiped}
+        <p class="adm-reset-done">{t("adm.reset.done", { trips: String(wiped.deleted), left: String(wiped.left), campaigns: String(wiped.campaigns) })}</p>
+        <button class="btn primary adm-reset-reload" onclick={() => location.reload()}>{t("adm.reset.reload")}</button>
+      {:else if confirming}
+        <p class="err">{t("adm.reset.confirm")}</p>
+        <div class="adm-reset-row">
+          <button class="btn adm-reset-go" disabled={resetting} onclick={reset}>{resetting ? t("adm.reset.busy") : t("adm.reset.final")}</button>
+          <button class="btn" disabled={resetting} onclick={() => (confirming = false)}>{t("cancel")}</button>
+        </div>
+      {:else}
+        <button class="btn adm-reset-btn" onclick={() => (confirming = true)}>{t("adm.reset.btn")}</button>
+      {/if}
+      {#if rerr}<p class="err">{rerr}</p>{/if}
+    </div>
   </div>
 </Modal>
+
+<style>
+  .adm-reset { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .adm-reset-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .adm-reset-go { background: #C4452E; border-color: #C4452E; color: #fff; }
+</style>

@@ -1,11 +1,12 @@
 {
   "name": "reisekasse-app",
-  "version": "0.27.1",
+  "version": "0.27.2",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:test": "vite build --mode staging",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",

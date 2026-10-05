@@ -242,6 +242,16 @@ export async function loginEmail(email: string) { cloud.error = ""; await (await
 /** Anmelde-Nachweis für den Such-Dienst (KI-Planer); ohne Anmeldung null */
 export async function idToken(): Promise<string | null> { return fbUser ? fbUser.getIdToken() : null; }
 export async function logout() { await (await load()).logout(); }
+/** Admin: Konto zurücksetzen (Reisen, Aktionsseiten, Personen, Buchungsdaten); danach Seite neu laden */
+export async function wipeAccount() {
+  if (!fbUser) throw new Error("not signed in");
+  const f = await load();
+  // nichts mehr beobachten: gelöschte Reisen sollen nicht als „verschwunden“ gemeldet oder zurückgeschrieben werden
+  unTrips?.(); unTrip?.(); unTrips = unTrip = null; wanted = watching = "";
+  const r = await f.wipeAccount(fbUser.uid);
+  await f.clearCache();
+  return r;
+}
 export async function loginTest(email: string, name: string) { if (emulator) await (await load()).loginTest(email, name); }
 
 function message(e: unknown): string {

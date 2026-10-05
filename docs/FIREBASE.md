@@ -49,6 +49,26 @@ Ohne diese Datei (oder mit leeren Werten) läuft die App nur lokal ohne Konto.
 den „Browser key“ des Projekts auf **HTTP-Verweis-URLs** `https://elvau.github.io/*` und `http://localhost/*`
 beschränken. Dann kann niemand den Schlüssel auf einer anderen Seite verwenden.
 
+## Testprojekt (Testumgebung getrennt von splitandfly.com)
+Die Testumgebung (elvau.github.io/startrek/, Push auf `pre-release`) nutzt **nie** das echte Projekt: sie wird mit
+`npm run build:test` gebaut und liest [`app/.env.staging`](../app/.env.staging). Sind dort keine Werte eingetragen,
+läuft die Testumgebung ohne Anmeldung (nur lokal). So kann dort nichts echte Konten oder Reisen ändern, auch nicht
+„Mein Konto zurücksetzen“ in der Admin-Ansicht.
+
+Einmalig einrichten (Dani):
+1. Zweites Firebase-Projekt anlegen, z. B. `splitandfly-test` (Schritte 1–4 oben: Google-Anmeldung, Firestore,
+   Regeln aus `app/firestore.rules`, Web-App).
+2. **Authentication → Einstellungen → Autorisierte Domains:** `elvau.github.io` hinzufügen.
+3. Die vier Werte (`apiKey`, `authDomain`, `projectId`, `appId`) in `app/.env.staging`; `authDomain` ist
+   `test.splitandfly.com` (Hosting des Testprojekts, OAuth-Client mit `https://test.splitandfly.com/__/auth/handler`)
+   eintragen (oder Claude geben).
+4. Such-Dienst: Variable `FIREBASE_TEST_PROJECT_ID = "<projekt>"` in `worker/wrangler.toml` unter `[vars]` (Claude
+   trägt sie ein; wirkt nach dem nächsten Release). Dann nimmt der Such-Dienst Anmeldungen aus dem Testprojekt an
+   (KI-Planer, Fehler melden, Admin-Ansicht). Konten von dort heißen im Such-Dienst `test:<uid>`; für die
+   Admin-Ansicht auf der Testumgebung `test:<uid>` in `ADMIN_UIDS` ergänzen. Den KI-Konnektor gibt es nur für echte Konten.
+
+Regeländerungen (`app/firestore.rules`) dann in **beiden** Projekten einspielen.
+
 ## Lokal entwickeln
 - Gegen die Emulatoren (kein echtes Projekt nötig): `npm run build:emu`, dann
   `npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "npx vite preview --outDir dist-emu"`.

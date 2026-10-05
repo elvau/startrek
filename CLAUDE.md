@@ -7,12 +7,13 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
 
 ## Umgebungen und Ablauf
 - Branches: Arbeits-Branch je Sitzung oder Routine (`claude/…`) → **`pre-release`** (Sammelstand) → `main` (Produktion).
-- Testumgebung https://elvau.github.io/startrek/: jeder Push auf `pre-release`, nur gebaut, ohne Prüfung. Zum Ausprobieren
+- Testumgebung https://elvau.github.io/startrek/: jeder Push auf `pre-release`, nur gebaut, ohne Prüfung. Eigenes
+  Firebase-Testprojekt (`app/.env.staging`, `npm run build:test`), nie das echte; leer = ohne Anmeldung. Zum Ausprobieren
   den Arbeits-Branch nach den schnellen Prüfungen in `pre-release` mergen (merge commit) und pushen. Andere Branches
   landen nicht auf der Testumgebung.
 - Produktion https://splitandfly.com: jeder Push auf `main` (Firebase Hosting, `release.yml` legt Tag und Release an).
 - Worker: deployt nur von `main` (Cloudflare Workers Builds). Secrets nur in Cloudflare, nie im Code oder Chat.
-- Firestore-Regeln (`app/firestore.rules`) spielt Dani von Hand in der Firebase-Konsole ein: nach Änderungen Bescheid sagen.
+- Firestore-Regeln (`app/firestore.rules`) spielt Dani von Hand in der Firebase-Konsole ein (echtes und Testprojekt): nach Änderungen Bescheid sagen.
 - **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: Version auf `pre-release` anheben,
   `test:cloud`, PR `pre-release` → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit); danach `pre-release`
   auf `main` vorspulen (`git push origin origin/main:pre-release`) und den Arbeits-Branch auf `origin/main` zurücksetzen.
