@@ -1818,6 +1818,7 @@ export const ar: Dict = {
   "watch.moved.zero": "لم يتغير أي سعر",
   "watch.same": "لم يتغير أي سعر",
   "watch.searching": "جارٍ البحث …",
+  "watch.unchanged": "السعر لم يتغير",
   "watch.up": "أغلى الآن بمقدار {v}",
   "watch.upTip": "العرض نفسه أغلى اليوم مما كان عند آخر فحص",
   "watch.check": "تحقق من الأسعار",

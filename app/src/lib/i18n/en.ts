@@ -1669,6 +1669,7 @@ export const en: Dict = {
   "watch.moved.other": "{n} prices changed",
   "watch.same": "no prices changed",
   "watch.searching": "Searching …",
+  "watch.unchanged": "Price unchanged",
   "watch.up": "{v} pricier now",
   "watch.upTip": "The same offer costs more today than at the last check",
   "watch.check": "Check prices",
