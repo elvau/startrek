@@ -58,7 +58,7 @@ export const CAR_SEATS = 5;
 /** Mietwagen-Posten mit Richtwert für die Tage am Ziel; größere Gruppen brauchen mehrere Autos (je 5 Plätze) */
 export function carItem(w: CarWindow, perDay = CAR_PER_DAY): Item {
   return {
-    id: uid(), cat: "transport", name: t("car.name"), icon: "car", status: "idea",
+    id: uid(), cat: "transport", name: t("car.name"), icon: "car", hint: "rental", status: "idea",
     note: (w.dropAp ? t("car.noteOneWay", { ap: w.ap || "", a: fmt(w.pick), ap2: w.dropAp, b: fmt(w.drop), fee: ONE_WAY_FEE }) : t("car.note", { ap: w.ap || "", a: fmt(w.pick), b: fmt(w.drop) })).replace(/\s+/g, " "),
     // Einweg-Aufpreis auf die Tage verteilt, damit er mit der Zahl der Autos mitwächst
     options: [{ id: uid(), label: t("car.estimate"), estimate: true, price: { mode: "unit", currency: "EUR", unit: Math.round((perDay + (w.dropAp ? ONE_WAY_FEE / Math.max(1, w.days) : 0)) * 100) / 100, qty: w.days, capacity: CAR_SEATS, multiply: true } }]

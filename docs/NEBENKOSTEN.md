@@ -76,3 +76,19 @@ eingerechnet, solange der Start nicht feststeht.
 Gepflogenheiten im Restaurant je Land (`TIPS`): USA 18–22 %, Kanada 15–20 %, Japan, Korea, China nicht üblich, sonst
 aufrunden bzw. 5–15 %; dazu Hinweise auf Resortgebühren (USA, Mexiko), Strandliegen (Italien, Kroatien, Griechenland) und
 Bedienungsgeld bzw. Gedeck (Frankreich, Italien, Vereinigtes Königreich, Ungarn, Emirate).
+
+## Mietwagen (#172)
+Richtwerte großer Vermieter (`RENTAL` in `app/src/lib/fees.ts`, Kompaktklasse, Stand 2026). Gilt für Posten aus „Mietwagen
+dazu“ (`hint: "rental"`) und ältere Posten mit Auto-Symbol und Namen wie „Mietwagen“, nicht für Transfer und eigenes Auto.
+
+| Was | Richtwert | In der App |
+|---|---|---|
+| Kaution | 800 € je Auto (üblich 300–1.500 €), nur Kreditkarte | geschätzt, nie in den Kosten, in „Wichtiges“ als dringend; eigene Angabe geht vor, ausblendbar |
+| Junge Fahrer | 12 € pro Tag unter 25 Jahren, unter 21 oft keine Vermietung | eingerechnet, wenn eine erwachsene Person unter 25 dabei ist; wegklickbar |
+| Vollschutz ohne Selbstbeteiligung | 20 € pro Tag | nur auf Wunsch eingerechnet |
+| Zusatzfahrer | 8 € pro Tag | nur auf Wunsch eingerechnet |
+
+Dazu die Checkliste am Posten (Kaution, Selbstbeteiligung, Tank voll/voll, junge Fahrer, Zusatzfahrer und Auslandsfahrten,
+Schäden fotografieren) mit dem Hinweis, dass die Bedingungen des Vermieters maßgeblich sind. Allgemeine Hinweise, keine
+Versicherungsberatung. Führerscheindauer und „Kreditkarte vorhanden“ kommen mit dem Konto-Assistenten (#160) dazu,
+Angaben echter Mietwagen-Angebote mit [114] (#144).

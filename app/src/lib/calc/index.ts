@@ -8,7 +8,7 @@ import { i18n, locale, t, type Key } from "../i18n/index.svelte";
 import { fx, shown } from "../currency.svelte";
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
 import { calcExtras, type ExtrasCalc } from "./extras";
-import { autoExtras } from "../fees";
+import { autoDeposit, autoExtras } from "../fees";
 import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Fund, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number | null | undefined, s: Settings, kind?: AgeClass): AgeClass {
@@ -76,6 +76,8 @@ function withExtras(r: OptionCalc, opt: Option, it: Item, people: Traveler[], ct
   // gepflegte Schätzungen (Kurtaxe je Ort) dazu, solange nicht weggeklickt bzw. vom Anbieter angegeben
   const auto = autoExtras(it, opt, ctx.trip, c => rateOf(c, ctx.trip.settings));
   if (auto.length) opt = { ...opt, extras: [...(opt.extras || []), ...auto] };
+  const dep = autoDeposit(it, opt, rateOf(opt.price.currency || "EUR", ctx.trip.settings), r.units);
+  if (dep) opt = { ...opt, deposit: dep };
   if (!opt.extras?.length && !opt.deposit) return r;
   const basePer: Record<string, number> = { ...r.per };
   if (r.access) for (const id in r.access.per) basePer[id] = (basePer[id] || 0) - r.access.per[id];

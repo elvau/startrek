@@ -68,7 +68,7 @@ export function sampleTrip(): Trip {
         }]
       },
       {
-        id: "auto", cat: "transport", name: t("seed.car"), icon: "car", status: "chosen",
+        id: "auto", cat: "transport", name: t("seed.car"), icon: "car", hint: "rental", status: "chosen",
         note: t("seed.carNote"),
         options: [{ id: "m", label: t("seed.compact"), price: { mode: "unit", currency: "EUR", unit: 35, qty: 11 } }]
       },
