@@ -436,6 +436,8 @@ body[data-ch="split"] .amb-split{opacity:1}
 .fs-pills{display:flex;flex-wrap:wrap;gap:6px}
 .pill-ap,.pill-n,.pill-h{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:99px}
 .pill-ap,.pill-n{background:var(--a-soft);color:var(--a)}
+.fs-bag.miss,.fs-bag.unk{background:var(--paper-2);color:var(--muted)}
+.fs-tip{margin:2px 0 6px}
 .pill-h{background:var(--paper-2);color:var(--ink-2)}
 .modal.wide{width:min(760px,100%)}
 @media (max-width:520px){.fs-cmp .c-x{display:none}}

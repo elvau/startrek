@@ -114,6 +114,12 @@
           <option value="true">{t("prefs.bagsYes")}</option><option value="false">{t("prefs.bagsNo")}</option>
         </select>
       </label>
+      <label class="f">{t("prefs.seats")}
+        <select value={p.seatsTogether == null ? "" : String(p.seatsTogether)} onchange={e => { const v = e.currentTarget.value; set("seatsTogether", v === "" ? undefined : v === "true"); }}>
+          <option value="">{inh(base?.seatsTogether, base?.seatsTogether == null ? undefined : base.seatsTogether ? t("prefs.seatsYes") : t("prefs.seatsNo"))}</option>
+          <option value="true">{t("prefs.seatsYes")}</option><option value="false">{t("prefs.seatsNo")}</option>
+        </select>
+      </label>
       <label class="f">{t("prefs.maxHours")}<input class="n sm" type="number" min="1" max="48" value={p.maxHours ?? ""} placeholder={base?.maxHours ? String(base.maxHours) : ""} oninput={e => set("maxHours", num(e.currentTarget.value))} /></label>
       <label class="f">{t("prefs.access")}
         <select value={p.access ?? ""} onchange={e => set("access", (e.currentTarget.value || undefined) as Prefs["access"])}>

@@ -83,6 +83,39 @@ selben und im nächsten Monat), 6 Stunden zwischengespeichert. Ohne `TRAVELPAYOU
 Tippt man in der App zwei Tage an, läuft die echte Suche für genau diese Daten. Code: `app/src/lib/flights/calendar.ts`.
 Duffel ist noch nicht angebunden.
 
+## Gepäck und Sitzplätze (Flug-Nebenkosten)
+
+Günstige Tarife enthalten oft keinen Koffer. Damit der Vergleich ehrlich bleibt, rechnet die Trefferliste das dazu, was
+die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, Stand 2026):
+
+- **Koffer:** aus dem Feld „Koffer gesamt“. Ohne eigene Wahl gilt die Vorliebe „Gepäck“, ohne Vorliebe ab 5 Reisetagen
+  ein Koffer je Platz, kürzer nur Handgepäck.
+- **Was enthalten ist:** Kiwi.com rechnet die gewünschten Koffer schon in den Preis ein und meldet sie; Duffel meldet das
+  Gepäck des Tarifs. Travelpayouts sagt nichts dazu: bei Billigfliegern schätzen wir die Koffer, bei Linienflügen
+  steht „Gepäck nicht angegeben“ (keine Schätzung). Meldet ein Linientarif ausdrücklich keinen Koffer, gilt 35 € je Koffer und Strecke.
+- **Sitzplätze:** Vorliebe „Kinder im Flugzeug“ (fehlt: neben den Eltern). Bei manchen Billigfliegern sitzen Kinder nur
+  mit bezahlter Platzwahl neben einem Erwachsenen; gerechnet wird ein Platz je bis zu 4 Kinder und Strecke. Dazu der
+  Tipp, früh einzuchecken (viele Airlines setzen Familien dann nebeneinander, ohne Garantie).
+- **Sortierung:** „Günstigste“ sortiert nach dem Preis mit Koffern und Sitzplätzen. Übernommen landen beide als
+  geschätzte Nebenkosten „bei der Buchung“ im Posten (wegklickbar), dazu „Enthalten: …“.
+- **Kartenaufschlag:** in EU/EWR und Großbritannien für Verbraucherkarten verboten; bei Abflug anderswo ein Hinweis im Posten.
+
+| Airline | Codes | Koffer je Strecke | Platzwahl Familie je Strecke | Quelle |
+|---|---|---|---|---|
+| Ryanair | FR, RK, AL | 40 € | 9 € | ryanair.com, Gebühren |
+| Wizz Air | W6, W4, W9 | 45 € | 10 € | wizzair.com, Gebühren |
+| easyJet | U2, EC, DS | 35 € | – | easyjet.com, Gebühren |
+| Vueling | VY | 30 € | – | vueling.com, Gebühren |
+| Eurowings | EW | 30 € | – | eurowings.com, Tarif Basic |
+| Transavia | HV, TO | 35 € | – | transavia.com, Gebühren |
+| Volotea | V7 | 30 € | – | volotea.com, Gebühren |
+| Pegasus | PC | 25 € | – | flypgs.com, Tarif Basic |
+| SunExpress | XQ | 25 € | – | sunexpress.com, Tarif SunEco |
+| Jet2 | LS | 35 € | – | jet2.com, Gebühren |
+| Norwegian | DY, D8 | 35 € | – | norwegian.com, Tarif LowFare |
+
+Eine neue Airline ist eine Zeile in `LOW_COST`.
+
 ## Flughäfen und Städte
 
 Die Auswahl in der App („Nach“, „+ Stadt oder Code“) nutzt `public/airports.json`: rund 4000 Flughäfen mit
