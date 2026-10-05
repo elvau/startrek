@@ -7,6 +7,9 @@ import { accessFor, airportsOf, roadKm } from "../calc/travel";
 import { activeOption } from "../calc";
 import type { FlightOffer, FlightQuery, OfferLeg, SearchResult } from "./types";
 import type { RoundTrip } from "./roundtrip";
+import { guessAirports, type Guess } from "./origin";
+import { origin } from "./origin.svelte";
+import { airportData } from "../geo/geo.svelte";
 
 /** Adresse des Such-Dienstes (Cloudflare Worker); leer: noch nicht eingerichtet */
 export const FLIGHTS_URL = (import.meta.env.VITE_FLIGHTS_URL as string | undefined)?.replace(/\/$/, "") || "";
@@ -269,10 +272,13 @@ export function followFlight(trip: Trip, mainId: string, ids: string[]): Item {
 }
 
 /** Standard-Auswahl wie im Artefakt: je Familie der Fliegenden die n nächsten Flughäfen zum Wohnort, sonst die ersten der Liste */
+/** ohne Wohnort: Vorschlag aus dem ungefähren Ort der Verbindung bzw. dem Land (null: Standardliste) */
+export const homeGuess = (n = 4): Guess | null => guessAirports(origin.where, airportData, n);
+
 export function nearestAirports(trip: Trip, n = 4, ids?: string[]): string[] {
   const aps = airportsOf(trip);
   const geos = [...new Set(flyers(trip, ids).map(hhKey))].map(h => trip.households?.[h]?.geo).filter(g => !!g);
-  if (!geos.length) return aps.slice(0, n).map(a => a.code);
+  if (!geos.length) return homeGuess(n)?.codes ?? aps.slice(0, n).map(a => a.code);
   const dist = (a: (typeof aps)[number]) => Math.min(...geos.map(g => roadKm(g, a) ?? Infinity));
   const set = new Set(geos.flatMap(g => [...aps].sort((a, b) => (roadKm(g, a) ?? 0) - (roadKm(g, b) ?? 0)).slice(0, n).map(a => a.code)));
   return aps.filter(a => set.has(a.code)).sort((a, b) => dist(a) - dist(b)).map(a => a.code);

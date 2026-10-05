@@ -3,7 +3,7 @@
    * Preise am Posten: Änderung seit der letzten Prüfung (▲ teurer, ▼ günstiger geworden),
    * dazu „Günstigeres suchen“ nur für diesen Posten, mit Übernehmen.
    */
-  import { t } from "../i18n/index.svelte";
+  import { locale, t } from "../i18n/index.svelte";
   import type { Item } from "../model";
   import { eur } from "../calc";
   import { access, app } from "../store.svelte";
@@ -18,6 +18,9 @@
   const down = $derived(h ? saving(h) : 0);
   const gone = $derived(!!h && !h.err && h.now == null && !!app.trip.watch?.at);
   const busy = $derived(!!cheaperRun[item.id]);
+  // geprüft und gleich geblieben; wann zuletzt geprüft (je Posten sichtbar)
+  const same = $derived(!!h && !h.err && h.now != null && d === 0 && !!app.trip.watch?.at && h.best == null && !h.noBetter);
+  const at = $derived(h && app.trip.watch?.at ? new Date(app.trip.watch.at).toLocaleString(locale(), { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "");
 </script>
 
 {#if can}
@@ -27,7 +30,9 @@
     {:else}
       {#if d > 0}<span class="wb-up" title={t("watch.upTip")}>▲ {t("watch.up", { v: eur(d) })}</span>
       {:else if d < 0}<span class="wb-down" title={t("watch.downTip")}>▼ {t("watch.cheaperNow", { v: eur(-d) })}</span>
-      {:else if gone}<span class="muted">{t("watch.gone")}</span>{/if}
+      {:else if gone}<span class="wb-gone">{t("watch.gone")}</span>
+      {:else if same}<span class="wb-same">= {t("watch.unchanged")}</span>{/if}
+      {#if at}<small class="muted wb-at">{t("watch.at", { d: at })}</small>{/if}
       {#if h?.best != null && down}
         <span class="wb-down wb-best">▼ {t("watch.down", { v: eur(down) })}</span>
         <span class="wb-what muted" title={h.bestOpt?.label}>{h.bestOpt?.label} · {eur(h.best)}</span>
@@ -43,3 +48,8 @@
     {/if}
   </div>
 {/if}
+
+<style>
+  .wb-same { font-weight: 700; color: var(--ink-2); border-radius: 99px; padding: 2px 10px; background: var(--paper-2); white-space: nowrap; }
+  .wb-gone { font-weight: 700; color: var(--warn); }
+</style>

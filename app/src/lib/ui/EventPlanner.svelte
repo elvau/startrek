@@ -8,13 +8,16 @@
   import { eur } from "../calc";
   import { dayShort, range, time } from "../format";
   import Modal from "./Modal.svelte";
+  import { untrack } from "svelte";
+  import HomeHint from "./HomeHint.svelte";
+  import { loadOrigin } from "../flights/origin.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { capitalOf, ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, destAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { loadPlz } from "../plz";
   import { hhKey } from "../model";
-  import { FLIGHTS_URL, flyers, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
   import { DEFAULT_H, fits, km, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
   import { cityFromAddress, evWhen, searchEventsRemote, sportTag, SPORT_ICON } from "../events/app";
@@ -118,8 +121,13 @@
     for (const h of new Set(flyers(trip).map(hhKey))) if (!trip.households[h]?.geo) trip.households[h] = { ...trip.households[h], plz: v.trim(), geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
     aps = nearestAirports(trip); allCodes = [...new Set([...aps, ...allCodes])];
   }
-  const toggleAp = (c: string) => (aps = aps.includes(c) ? aps.filter(x => x !== c) : [...aps, c]);
+  // ohne Wohnort: ungefährer Ort aus der Verbindung kommt nach; Vorschlag nachziehen, solange nichts selbst gewählt ist
+  let apsTouched = false;
+  loadOrigin();
+  $effect(() => { if (homeGuess(4) && noHome) untrack(() => { if (!apsTouched) { aps = nearestAirports(trip); allCodes = [...new Set([...aps, ...allCodes])]; } }); });
+  const toggleAp = (c: string) => { apsTouched = true; aps = aps.includes(c) ? aps.filter(x => x !== c) : [...aps, c]; };
   function addAp(l: Loc) {
+    apsTouched = true;
     for (const c of l.kind === "airport" ? [l.code] : l.airports) {
       if (!allCodes.includes(c)) allCodes = [...allCodes, c];
       if (!aps.includes(c)) aps = [...aps, c];
@@ -268,7 +276,7 @@
         {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} from={fromPt} />
       </div>
-      {#if noHome}<p class="warnline fs-nohome">{t("fs.noHome")} <input class="fs-plz" inputmode="numeric" maxlength="5" placeholder={t("fs.plzPh")} aria-label={t("fs.plzPh")} oninput={e => setPlz(e.currentTarget.value)} />{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</p>{/if}
+      {#if noHome}<HomeHint {setPlz} {plzErr} />{/if}
     </div>
     <p class="muted small">{t("ev.from", { aps: aps.join(", "), p: tn("n.persons", people.length) })} {t("ev.rule")}</p>
     <button class="btn primary" disabled={busy}>{busy ? t("ev.progress") : t("ev.go")}</button>

@@ -20,7 +20,7 @@
   import { addDays } from "../flights/kiwi";
   import { alternatives, anyReal, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
   import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
-  import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, homeGuess, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import { loadPlz, withHome } from "../plz";
   import { cloud } from "../cloud/cloud.svelte";
@@ -33,7 +33,10 @@
   import { arrivals } from "../stays/presence";
   import FlightFilters from "./FlightFilters.svelte";
   import PriceCalendar from "./PriceCalendar.svelte";
+  import { untrack } from "svelte";
   import RoughCalendar from "./RoughCalendar.svelte";
+  import HomeHint from "./HomeHint.svelte";
+  import { loadOrigin } from "../flights/origin.svelte";
 
   let { onclose, scope = {}, inline = false }: { onclose: () => void; scope?: FlightScope; inline?: boolean } = $props();
 
@@ -219,6 +222,9 @@
     resetAps();
     return true;
   }
+  // ohne Wohnort: ungefährer Ort aus der Verbindung kommt nach; Vorschlag nachziehen, solange nichts selbst gewählt ist
+  loadOrigin();
+  $effect(() => { if (homeGuess(4) && noHome) untrack(() => { if (!custom) aps = nearestAirports(trip, 4, who); }); });
   // gespeicherte PLZ (nur mit Konto) erst auf Knopfdruck übernehmen: sie wird dann Teil der Reise
   const savedPlz = $derived(cloud.user ? dir.prefs?.plz : undefined);
 
@@ -451,7 +457,7 @@
         {/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
       </div>
-      {#if noHome}<p class="warnline fs-nohome">{t("fs.noHome")} <input class="fs-plz" inputmode="numeric" maxlength="5" placeholder={t("fs.plzPh")} aria-label={t("fs.plzPh")} oninput={e => setPlz(e.currentTarget.value)} />{#if savedPlz} <button class="btn sm" onclick={() => setPlz(savedPlz)}>{t("fs.usePlz")}</button>{/if}{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</p>{/if}
+      {#if noHome}<HomeHint {setPlz} {savedPlz} {plzErr} />{/if}
       <p class="muted small">
         {#if custom}{t("fs.custom")} <button type="button" class="linkbtn" onclick={resetAps}>{t("fs.reset")}</button>
         {:else}{t("fs.default")}{/if}

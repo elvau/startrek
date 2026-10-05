@@ -9,6 +9,7 @@ import type { FlightQuery } from "../../app/src/lib/flights/types";
 import type { StayQuery } from "../../app/src/lib/stays/types";
 import { runAgent } from "../../app/src/lib/agent/agent";
 import { verifyAnyIdToken, verifyIdToken } from "../../app/src/lib/agent/auth";
+import { whereFrom } from "./where";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
@@ -107,6 +108,12 @@ export default {
         ctx.waitUntil(cache.put(key, new Response(JSON.stringify(result), { headers: { "content-type": "application/json", "cache-control": "max-age=600" } })));
       }
       return json(result, 200, { ...h, "x-cache": "miss" });
+    }
+
+    // ungefährer Ort aus der Verbindung (für Abflughäfen ohne Wohnort); nichts gespeichert, nicht zwischenspeichern
+    if (url.pathname === "/where" && req.method === "GET") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      return json(whereFrom((req as Request & { cf?: unknown }).cf), 200, { ...h, "cache-control": "private, no-store" });
     }
 
     // Tageskurse für die App (Anzeige in anderen Währungen)

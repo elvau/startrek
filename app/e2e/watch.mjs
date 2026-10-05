@@ -117,9 +117,12 @@ try {
   if (!(await p.locator('[data-item="fl"]').innerText()).includes("470")) fail("neuer Flugpreis nicht übernommen: " + await p.locator('[data-item="fl"]').innerText());
   if (await p.locator('[data-item="st"] .wb-up, [data-item="st"] .wb-down').count()) fail("Unterkunft gleich teuer, trotzdem Pfeil");
   if (await p.locator('[data-item="st"] .wb-best').count()) fail("Preise prüfen schlägt fremde Angebote vor");
+  // je Posten: gleich geblieben bzw. geändert, mit Zeitpunkt der Prüfung
+  if (!(await p.locator('[data-item="st"] .wb-same').count()) || !(await p.locator('[data-item="st"] .wb-at').innerText()).startsWith("Stand ")) fail("Unterkunft ohne „Preis unverändert“ und Zeitpunkt");
+  if (!(await p.locator('[data-item="fl"] .wb-at').count()) || await p.locator('[data-item="fl"] .wb-same').count()) fail("Flug: Zeitpunkt fehlt oder fälschlich unverändert");
   const res = await p.locator(".aside .watch-res").innerText();
   if (!res.includes("1 Preis geändert") || !res.includes("+50")) fail("Ergebnis an der Gesamtkalkulation: " + res);
-  log("Preise geprüft an der Gesamtkalkulation: genau dieselbe Suche, Flug auf 450 € aktualisiert (mit Anfahrt 470 €) (▲ 50 €), Unterkunft unverändert");
+  log("Preise geprüft an der Gesamtkalkulation: genau dieselbe Suche, Flug auf 450 € aktualisiert (mit Anfahrt 470 €) (▲ 50 €), Unterkunft „Preis unverändert“, je Posten mit Zeitpunkt");
   if (process.env.SHOTS) {
     await p.screenshot({ path: `${process.env.SHOTS}/w-aside.png` });
     await p.locator('[data-item="fl"]').scrollIntoViewIfNeeded(); await p.waitForTimeout(500);
