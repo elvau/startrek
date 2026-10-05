@@ -157,6 +157,9 @@ export function isOpen(p: Point, done: DoneMap = {}): boolean {
 /** aufgeklappt zeigen (Reisewarnung, Teilreisewarnung, Einreise), sonst einzeilig bis zum Antippen */
 export const isUrgent = (p: Point) => p.deposit?.how === "credit" || p.kind === "entry" || p.kind === "warn" || p.kind === "pass" || p.kind === "border" || !!p.book?.soon || p.level === "warning" || p.level === "partial";
 
+/** offene Punkte, die wirklich Handlung erfordern (nur für sie ist der Zähler in der Menüleiste rot) */
+export const urgentOpenCount = (ps: Point[], done?: DoneMap) => ps.filter(p => isUrgent(p) && isOpen(p, done)).length;
+
 export const openCount = (ps: Point[], done?: DoneMap) => ps.filter(p => isOpen(p, done)).length;
 
 /** abhaken: ganzer Punkt bzw. eine Person; done wird verändert */
