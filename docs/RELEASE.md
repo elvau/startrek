@@ -21,7 +21,7 @@ Branches: **Arbeits-Branch** (je Sitzung oder Routine, z. B. `claude/…`) → *
 4. **Release** (nur auf ausdrückliches „Release“): auf `pre-release` die Version anheben, `npm run test:cloud`, Pull Request
    `pre-release` → `main`, warten bis „Prüfen (vor dem Release)“ grün ist, mergen (merge commit). Der Push auf `main` bringt
    den Stand nach 2–3 Minuten auf splitandfly.com (Actions → „Release (splitandfly.com)“). Danach `pre-release` auf `main`
-   vorspulen (`git push origin origin/main:pre-release`) und Arbeits-Branches auf `main` zurücksetzen.
+   vorspulen (`git push origin origin/main:refs/heads/pre-release`, legt ihn auch neu an, falls GitHub ihn nach dem Merge gelöscht hat; offene PRs danach wieder auf `pre-release` stellen) und Arbeits-Branches auf `main` zurücksetzen.
    Wöchentlich wird `main` zusätzlich neu gebaut (Flughafendaten).
 5. **Version:** Jeder Release hebt die Version in `app/package.json` an (`npm version 0.3.0 --no-git-tag-version` in `app/`):
    neue Funktionen → mittlere Stelle (0.2.0 → 0.3.0), nur Fehlerbehebungen → letzte Stelle (0.3.0 → 0.3.1).
