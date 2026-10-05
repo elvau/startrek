@@ -194,7 +194,7 @@ export interface Option {
   autoOff?: string[];
 }
 
-export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "visa" | "tips" | "insurance" | "driver" | "other";
+export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "vignette" | "visa" | "tips" | "insurance" | "driver" | "other";
 /** pro Person, pro Person und Nacht, pro Nacht, pro Tag, pro Person und Tag, einmal je Buchung, Prozent vom Preis */
 export type ExtraBasis = "person" | "personNight" | "night" | "day" | "personDay" | "booking" | "percent";
 
@@ -215,6 +215,8 @@ export interface Extra {
   max?: number;
   /** Quelle, z. B. „Stadt Split, Stand 2026“ oder „liteAPI“ */
   source?: string;
+  /** Land (Maut, Vignette): Name in der Sprache der App */
+  cc?: string;
   /** automatisch vorgeschlagen und weggeklickt */
   off?: boolean;
 }

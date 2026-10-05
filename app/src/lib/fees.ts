@@ -104,6 +104,22 @@ export function roadCosts(countries: string[]): { vignettes: Vignette[]; tolls: 
   return { vignettes: VIGNETTES.filter(v => countries.includes(v.cc)), tolls: countries.filter(c => TOLLS[c]) };
 }
 
+/**
+ * Vignetten und Maut als Nebenkosten eines Auto-Postens (je Auto, hin und zurück). Mautstrecke grob: die Straßenkilometer
+ * gleichmäßig auf Heimatland und Länder der Strecke verteilt. rate: Einheiten der Währung je Euro.
+ */
+export function roadExtras(route: string[], roadKm: number, rate: (cur: string) => number): Extra[] {
+  const out: Extra[] = [];
+  const share = route.length ? roadKm / (route.length + 1) : 0;
+  for (const v of VIGNETTES.filter(v => route.includes(v.cc)))
+    out.push({ id: `road:vignette:${v.cc}`, kind: "vignette", cc: v.cc, amount: Math.round((v.amount / rate(v.currency)) * 100) / 100, basis: "booking", pay: "onsite", est: true, source: `${v.source}, ${FEES_AS_OF}` });
+  for (const c of route.filter(c => TOLLS[c])) {
+    const t = TOLLS[c];
+    out.push({ id: `road:toll:${c}`, kind: "toll", cc: c, amount: Math.round(((2 * share * t.per100) / 100 / rate(t.currency)) * 100) / 100, basis: "booking", pay: "onsite", est: true, source: `${t.source}, ${FEES_AS_OF}` });
+  }
+  return out;
+}
+
 /** Trinkgeld-Gepflogenheiten (Restaurant), dazu typische Kosten vor Ort */
 export type TipNorm = "high" | "usual" | "round" | "none";
 export const TIPS: Record<string, { norm: TipNorm; v?: string; local?: ("resort" | "beach" | "service")[] }> = {
