@@ -15,8 +15,8 @@ export interface StayScope {
 export const staySearch = $state<{ open: boolean; scope: StayScope }>({ open: false, scope: {} });
 
 export function openStaySearch(scope: StayScope = {}) {
-  // ein offener Posten würde alle anderen Karten (auch den Plan) ausgrauen, bis man woanders hinklickt
-  app.editing = null;
+  // aus einem Posten heraus bleibt er offen (die Suche liegt als Fenster darüber), sonst schließen
+  if (!scope.itemId) app.editing = null;
   staySearch.scope = scope;
   staySearch.open = true;
 }

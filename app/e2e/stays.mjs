@@ -251,13 +251,15 @@ try {
   if (!(await m.locator(".fs-res", { hasText: "Rooms Šećer" }).locator(".st-diff.good", { hasText: "−680 €" }).count())) fail("Vergleich zum bisherigen Preis fehlt");
   log("Suche aus dem Posten: 720 € ist 680 € günstiger als die Villa");
   await m.locator(".x").click();
-  // Fehler von vorher: der offene Posten graute danach „Wer ist wann wo“ aus
-  if (await p.evaluate(() => document.body.classList.contains("editing"))) fail("Posten nach der Suche noch offen, Plan ausgegraut");
+  // Suche als Fenster über dem Posten: danach ist man wieder am offenen Posten, „Fertig“ schließt ihn
+  if (!(await p.evaluate(() => document.body.classList.contains("editing")))) fail("nach der Suche nicht mehr am Posten");
+  await p.locator("#stay .card.edit .ed-foot .btn.primary").click();
+  if (await p.evaluate(() => document.body.classList.contains("editing"))) fail("Posten nach „Fertig“ noch offen, Plan ausgegraut");
   // nach dem Ausblenden des Postens läuft das Wiedereinblenden kurz als Übergang: auf den Endwert warten
   let op = "";
   for (let i = 0; i < 20; i++) { op = await p.locator("#stay .plan-card").evaluate(el => getComputedStyle(el).opacity); if (op === "1") break; await p.waitForTimeout(100); }
   if (op !== "1") fail("Plan ausgegraut: opacity " + op);
-  log("Nach der Suche aus dem Posten ist der Plan nicht ausgegraut");
+  log("Suche aus dem Posten als Fenster, danach wieder am Posten; nach „Fertig“ ist der Plan nicht ausgegraut");
 
   // wie im Artefakt: sehr früher Rückflug weit weg vom Ziel → letzte Nacht am Flughafen, mit Orten in der Nähe
   const early = JSON.parse(JSON.stringify(TRIP));
