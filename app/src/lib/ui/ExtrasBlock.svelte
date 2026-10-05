@@ -1,9 +1,9 @@
 <script lang="ts">
   /* Nebenkosten und Kaution am Posten: „Angebot 980 € + ca. 112 € vor Ort“, aufklappbar mit der Liste (#169) */
-  import { locale, t, tn, type Key } from "../i18n/index.svelte";
+  import { t, tn, type Key } from "../i18n/index.svelte";
   import type { Extra, Item } from "../model";
   import { access, app, calc } from "../store.svelte";
-  import { eur, money } from "../calc";
+  import { eur, moneyExact } from "../calc";
   import type { ExtraLine } from "../calc/extras";
 
   let { item }: { item: Item } = $props();
@@ -20,8 +20,7 @@
   function how(l: ExtraLine): string {
     const x = l.x, cur = opt?.price.currency || "EUR";
     if (x.basis === "percent") return `${x.amount} % ${t("xc.ofPrice")}`;
-    // Kurtaxe & Co.: Cent zeigen (2,80 €), ganze Beträge ohne
-    const a = Number.isInteger(x.amount) ? money(x.amount, cur) : new Intl.NumberFormat(locale(), { style: "currency", currency: cur, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(x.amount);
+    const a = moneyExact(x.amount, cur);
     const parts = [`${a} ${t(`xc.basis.${x.basis}` as Key)}`];
     if (l.payers != null) parts.push(tn("xc.payers", l.payers));
     if (x.freeUpTo != null) parts.push(t("xc.free", { n: x.freeUpTo }));
@@ -30,7 +29,15 @@
   }
   function toggle(x: Extra) {
     const o = item.options.find(o => o.id === opt?.id);
-    const y = o?.extras?.find(e => e.id === x.id);
+    if (!o) return;
+    // automatisch geschätzt: nur merken, dass weggeklickt
+    if (x.id.startsWith("auto:")) {
+      const off = new Set(o.autoOff || []);
+      if (off.has(x.id)) off.delete(x.id); else off.add(x.id);
+      if (off.size) o.autoOff = [...off]; else delete o.autoOff;
+      return;
+    }
+    const y = o.extras?.find(e => e.id === x.id);
     if (!y) return;
     if (y.off) delete y.off; else y.off = true;
   }

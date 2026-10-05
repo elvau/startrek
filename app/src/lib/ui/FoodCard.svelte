@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { TIPS } from "../fees";
+  import { imp } from "../importantState.svelte";
+  import { flagOf } from "../format";
   import { t, tn, type Key } from "../i18n/index.svelte";
   /* Verpflegung wie im Artefakt: Essensstil für alle oder je Familie, Tagessatz aus den Länderdaten, dazu Restaurants und Supermärkte */
   import { access, app, calc, setDetailed } from "../store.svelte";
@@ -34,6 +37,9 @@
     if (k) map[hh] = k; else delete map[hh];
     app.trip.food = { ...c, hh: map };
   }
+  // Trinkgeld im Reiseland (gepflegte Gepflogenheiten)
+  const tipCc = $derived(imp.countries[0] || "");
+  const tip = $derived(tipCc ? TIPS[tipCc] : undefined);
 </script>
 
 <div class="plan food">
@@ -74,9 +80,14 @@
   {#if place}
     <p class="muted small fs-direct">{t("food.in", { place })} <a href={mapsSearchLink(t("food.restaurantsQ"), place)} target="_blank" rel="noopener noreferrer">{t("food.restaurants")} ↗</a> · <PartnerLinks ids={["tripadvisor"]} q={place} /> · <a href={mapsSearchLink(t("food.supermarketQ"), place)} target="_blank" rel="noopener noreferrer">{t("food.supermarkets")} ↗</a></p>
   {/if}
+  {#if tip}
+    <!-- Trinkgeld und typische Kosten vor Ort: nur als Hinweis, nicht in den Kosten (#170) -->
+    <p class="food-tip small">💶 {flagOf(tipCc)} {t(`tip.${tip.norm}${tip.norm === "round" && !tip.v ? "0" : ""}` as Key, { v: tip.v || "" })}{#each tip.local || [] as l (l)}{" · "}{t(`tip.local.${l}` as Key)}{/each}</p>
+  {/if}
 </div>
 
 <style>
+  .food-tip { margin: 10px 0 0; color: var(--ink-2); }
   .food-own { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin: 6px 0; }
   .food-own select { min-width: 160px; }
 </style>

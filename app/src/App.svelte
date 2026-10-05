@@ -35,6 +35,7 @@
   import { admin } from "./lib/admin/app.svelte";
   import { FLIGHTS_URL } from "./lib/flights/app";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
+  import RoadCosts from "./lib/ui/RoadCosts.svelte";
   import StaySearch from "./lib/ui/StaySearch.svelte";
   import EventPlanner from "./lib/ui/EventPlanner.svelte";
   import { eventPlanner } from "./lib/event/open.svelte";
@@ -172,6 +173,8 @@
         {:else if ch.k === "transport"}
           <!-- Mietwagen: Richtwert-Posten aus den Flugzeiten, dazu Vergleich mit Ort und Zeiten -->
           {@const cw = carWindow(app.trip)}
+          <!-- Anreise mit dem Auto ins Ausland: Vignetten und Maut auf der Strecke -->
+          <RoadCosts />
           <GroundOptions city={evWin.city} />
           <TransferOptions city={evWin.city} />
           {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.add")}</button></div>{/if}

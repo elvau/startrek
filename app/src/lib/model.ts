@@ -190,6 +190,8 @@ export interface Option {
   extras?: Extra[];
   /** Kaution: wird nur geblockt, zählt nie zu den Kosten */
   deposit?: Deposit;
+  /** automatisch geschätzte Nebenkosten (z. B. auto:citytax:rome), die weggeklickt wurden */
+  autoOff?: string[];
 }
 
 export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "visa" | "tips" | "insurance" | "driver" | "other";

@@ -8,6 +8,7 @@ import { i18n, locale, t, type Key } from "../i18n/index.svelte";
 import { fx, shown } from "../currency.svelte";
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
 import { calcExtras, type ExtrasCalc } from "./extras";
+import { autoExtras } from "../fees";
 import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Fund, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number | null | undefined, s: Settings, kind?: AgeClass): AgeClass {
@@ -71,7 +72,10 @@ export interface OptionCalc {
 }
 
 /** Nebenkosten in die Rechnung eines Angebots einbauen */
-function withExtras(r: OptionCalc, opt: Option, people: Traveler[], ctx: { nights: number; days: number; w?: Record<string, number>; fx: number; trip: Trip }): OptionCalc {
+function withExtras(r: OptionCalc, opt: Option, it: Item, people: Traveler[], ctx: { nights: number; days: number; w?: Record<string, number>; fx: number; trip: Trip }): OptionCalc {
+  // gepflegte Schätzungen (Kurtaxe je Ort) dazu, solange nicht weggeklickt bzw. vom Anbieter angegeben
+  const auto = autoExtras(it, opt, ctx.trip, c => rateOf(c, ctx.trip.settings));
+  if (auto.length) opt = { ...opt, extras: [...(opt.extras || []), ...auto] };
   if (!opt.extras?.length && !opt.deposit) return r;
   const basePer: Record<string, number> = { ...r.per };
   if (r.access) for (const id in r.access.per) basePer[id] = (basePer[id] || 0) - r.access.per[id];
@@ -110,7 +114,7 @@ export function calcOption(opt: Option, it: Item, trip: Trip): OptionCalc {
   const acc = access?.cost || 0;
   if (access) for (const id in access.per) per[id] = (per[id] || 0) + access.per[id];
   const tripNights = nightsList(trip.from, trip.to).length;
-  return withExtras({ n, units, gross: gross + acc, net: gross * (1 - d) + acc, saved: gross * d, tier, per, access }, opt, people, {
+  return withExtras({ n, units, gross: gross + acc, net: gross * (1 - d) + acc, saved: gross * d, tier, per, access }, opt, it, people, {
     nights: tripNights, days: p.qty && p.qty > 1 ? p.qty : tripNights + (tripNights ? 1 : 0), fx, trip });
 }
 
@@ -168,7 +172,7 @@ function calcStay(opt: Option, it: Item, trip: Trip): OptionCalc {
     });
   }
   const over = cap > 0 && !multi && maxOcc > cap;
-  return withExtras({ n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc, over } }, opt, guests, {
+  return withExtras({ n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc, over } }, opt, it, guests, {
     nights: nights.length, days: nights.length + 1, w, fx, trip });
 }
 
@@ -382,6 +386,9 @@ export const money = (v: number, currency: string) => {
   return cur.get(k)!.format(Math.round(v || 0));
 };
 /** Betrag in Euro (so rechnet die App), angezeigt in der Währung der Person (siehe currency.svelte.ts) */
+/** Betrag in seiner Währung, Cent nur wenn nötig (2,80 € bzw. 40 €): Gebühren, Kurtaxen, Vignetten */
+export const moneyExact = (v: number, currency: string) =>
+  Number.isInteger(v) ? money(v, currency) : new Intl.NumberFormat(locale(), { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 export const eur = (v: number) => { const s = shown(v || 0); return money(s.v, s.currency); };
 
 const fmt2 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
