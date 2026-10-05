@@ -16,6 +16,7 @@
   import GroupsDialog from "./GroupsDialog.svelte";
   import PrefsButton from "./PrefsButton.svelte";
   import PrefsDialog from "./PrefsDialog.svelte";
+  import ImportantButton from "./ImportantButton.svelte";
   import { access, goHome } from "../store.svelte";
   import { heroEdit } from "./heroEdit.svelte";
 
@@ -73,6 +74,7 @@
       </nav>
     {/if}
     <div class="top-r">
+      {#if !home}<ImportantButton />{/if}
       <span class="top-wide"><GroupsButton /></span>
       <span class="top-wide"><PrefsButton /></span>
       <Account compact />
