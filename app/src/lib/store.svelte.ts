@@ -8,7 +8,7 @@ import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, ty
 import { sampleTrip } from "./seed";
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
-import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
+import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
@@ -21,7 +21,9 @@ const K_SEEN = (uid: string) => "rk2-cloud-seen:" + uid;
 const K_EDITED = "rk2-edited";
 
 const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
-const put = (k: string, v: string) => { try { localStorage.setItem(k, v); return true; } catch { return false; } };
+/** Konto wird zurückgesetzt: nichts mehr auf dem Gerät speichern, bis die Seite neu lädt */
+let wiping = false;
+const put = (k: string, v: string) => { if (wiping) return false; try { localStorage.setItem(k, v); return true; } catch { return false; } };
 const del = (k: string) => { try { localStorage.removeItem(k); } catch {} };
 let editedAt: Record<string, string> = {};
 try { editedAt = JSON.parse(localStorage.getItem(K_EDITED) || "{}"); } catch {}
@@ -340,6 +342,23 @@ export function localTrips(): TripEntry[] {
 
 export async function moveAllToCloud() {
   for (const m of localTrips()) await moveToCloud(m.id);
+}
+
+/**
+ * Admin: eigenes Konto komplett zurücksetzen. Im Konto: eigene Reisen, Aktionsseiten, Personen und Gruppen, Buchungsdaten
+ * löschen, geteilte Reisen verlassen; auf dem Gerät: alle Einstellungen und Reisen der App (rk…) und der Zwischenspeicher.
+ * Angemeldet bleibt man. Danach die Seite neu laden.
+ */
+export async function resetAccount() {
+  clearTimeout(timer); timer = undefined;
+  wiping = true;
+  try {
+    const r = await wipeAccount();
+    for (const st of [localStorage, sessionStorage]) {
+      try { Object.keys(st).filter(k => k.startsWith("rk")).forEach(k => st.removeItem(k)); } catch { /* gesperrt */ }
+    }
+    return r;
+  } catch (e) { wiping = false; throw e; }
 }
 
 export async function logout() {
