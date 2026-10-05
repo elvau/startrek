@@ -628,6 +628,7 @@ export const es: Dict = {
   "imp.read": "Leído",
   "imp.readPersons": "Leído: {a} de {b}",
   "imp.reopen": "volver a abrir",
+  "imp.tips": "Bueno saber",
   "imp.title": "Importante",
   "imp.valid.dEntry": "El pasaporte debe tener al menos {n} días de validez desde la entrada (vale para la mayoría de pasaportes, compruébalo oficialmente)",
   "imp.valid.dExit": "El pasaporte debe tener al menos {n} días de validez tras la salida (vale para la mayoría de pasaportes, compruébalo oficialmente)",
