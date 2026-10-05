@@ -90,7 +90,10 @@ Suche im privaten Repo elvau/splitandfly-bugs offene Fehlerberichte ohne Label �
    Oberfläche, mehrere Bereiche): stattdessen Labels „feature“, „from-triage“ und „zuständig: Entwicklung“.
    Ist unklar, was gemeint ist oder ob es gewollt ist: Labels Kategorie, „from-triage“, „zuständig: Dani“ und
    „entscheidung“, mit einer konkreten Frage im Text.
-4. Im privaten Ticket Label „triagiert“ setzen und das neue Issue verlinken.
+4. Im privaten Ticket Label „triagiert“ setzen, das Issue in elvau/startrek verlinken (neu oder bestehend) und das
+   private Ticket schließen. Der weitere Stand steht nur noch im öffentlichen Issue.
+
+Offene private Tickets, die schon „triagiert“ tragen (aus der Zeit vor dieser Regel), ebenfalls schließen.
 
 Das Issue ist öffentlich: keine Namen, E-Mail-Adressen, Kontokennungen, Bilder oder Bild-Links, keine wörtlichen
 Zitate aus dem Bericht. Orte, Reisedaten und Personenzahlen nur verallgemeinert („Insel im Ausland“, „Gruppe“).
