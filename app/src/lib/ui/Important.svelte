@@ -129,10 +129,13 @@
 
   // Gebühren vor Ort (z. B. Galápagos) als Posten
   const hasFee = (h: Hint) => app.trip.items.some(i => i.hint === h.id);
-  function addFee(h: Hint) {
+  // Einreisegebühr (ESTA, ETA …) nur für die, die sie brauchen
+  function addFee(h: Hint, ids?: string[]) {
     if (!h.fee || hasFee(h)) return;
     setDetailed(h.fee.cat, true);
+    const all = app.trip.travelers.filter(isActive).map(x => x.id);
     const it = { id: uid(), cat: h.fee.cat, name: t(`hint.${h.id}.t` as Key), status: "idea" as const, hint: h.id,
+      ...(ids?.length && ids.length < all.length ? { participants: ids } : {}),
       options: [{ id: uid(), label: t("hint.estimate"), estimate: true, price: { mode: "person" as const, currency: h.fee.currency, adult: h.fee.adult, ...(h.fee.child != null ? { child: h.fee.child, infant: h.fee.child } : {}) } }] };
     app.trip.items.push(it);
     showItem(it.id);
@@ -192,7 +195,7 @@
   {#if links(p).length || p.hint?.fee}
     <p class="imp-links">
       {#each links(p) as l (l.url)}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}
-      {#if p.hint?.fee && !access.readonly}{#if hasFee(p.hint)}<small class="muted">✓ {t("hint.feeAdded")}</small>{:else}<button class="linkbtn imp-fee" onclick={() => addFee(p.hint!)}>+ {t("hint.fee")}</button>{/if}{/if}
+      {#if p.hint?.fee && !access.readonly}{#if hasFee(p.hint)}<small class="muted">✓ {t("hint.feeAdded")}</small>{:else}<button class="linkbtn imp-fee" onclick={() => addFee(p.hint!, p.kind === "entry" ? p.persons?.map(x => x.id) : undefined)}>+ {t("hint.fee")}</button>{/if}{/if}
     </p>
   {/if}
   {#if p.persons}{@render persons(p)}{:else if !access.readonly}<div class="imp-persons"><button class="btn sm" onclick={() => edit(d => markDone(d, p))}>✓ {verb(p)}</button></div>{/if}

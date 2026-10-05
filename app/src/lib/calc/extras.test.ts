@@ -3,7 +3,7 @@ import { totals } from "./index";
 import { DEFAULT_SETTINGS, type Extra, type Item, type Trip } from "../model";
 
 const trip = (items: Item[], extra: Partial<Trip> = {}): Trip => ({
-  id: "t", name: "Split", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25", tiers: {}, settings: DEFAULT_SETTINGS,
+  id: "t", name: "Test", place: "Testort", country: "Testland", from: "2027-07-18", to: "2027-07-25", tiers: {}, settings: DEFAULT_SETTINGS,
   travelers: [
     { id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 },
     { id: "c", name: "Tom", household: "Smith", age: 38 }, { id: "d", name: "Mia", household: "Smith", age: 36 }
@@ -71,5 +71,31 @@ describe("Nebenkosten", () => {
     const it = villa([x({ kind: "citytax", amount: 20, basis: "booking" })]);
     it.status = "paid";
     expect(totals(trip([it])).paid).toBeCloseTo(980);
+  });
+
+  it("automatisch: Kurtaxe aus den gepflegten Daten nach Ort und Sternen, wegklickbar, nicht doppelt zum Anbieter", () => {
+    const rome = (stars?: number, extras: Extra[] = [], autoOff?: string[]): Item => ({ id: "s", cat: "stay", name: "Hotel", status: "chosen", from: "2027-07-18", to: "2027-07-25",
+      options: [{ id: "v", label: "Hotel Roma", price: { mode: "unit", currency: "EUR", unit: 980, basis: "stay" }, query: { place: "Rom", checkin: "2027-07-18", checkout: "2027-07-25", adults: 3, childAges: [9], rooms: 1 },
+        ...(stars ? { stay: { stars } } : {}), extras, ...(autoOff ? { autoOff } : {}) }] });
+    // Rom 4 Sterne: 7,50 € × 3 Erwachsene (Kind 9 frei) × 7 Nächte
+    let T = totals(trip([rome(4)]));
+    expect(T.items.s.extras!.lines[0]).toMatchObject({ x: { id: "auto:citytax:rome", est: true, freeUpTo: 9, max: 10 }, payers: 3 });
+    expect(T.items.s.extras!.lines[0].amount).toBeCloseTo(157.5);
+    // ohne Sterne: Richtwert 6 €
+    expect(totals(trip([rome()])).items.s.extras!.lines[0].amount).toBeCloseTo(126);
+    T = totals(trip([rome(4, [], ["auto:citytax:rome"])]));
+    expect(T.total).toBeCloseTo(980);
+    expect(T.items.s.extras!.lines[0].x.off).toBe(true);
+    T = totals(trip([rome(4, [x({ kind: "citytax", amount: 30, basis: "booking", source: "liteAPI" })])]));
+    expect(T.items.s.extras!.lines).toHaveLength(1);
+    expect(T.total).toBeCloseTo(1010);
+  });
+
+  it("automatisch in fremder Währung: Prag 50 CZK pro Person und Nacht in Euro umgerechnet", () => {
+    const t0 = trip([{ id: "s", cat: "stay", name: "Hotel", status: "chosen", from: "2027-07-18", to: "2027-07-20",
+      options: [{ id: "v", label: "Hotel", price: { mode: "unit", currency: "EUR", unit: 200, basis: "stay" }, query: { place: "Prag", checkin: "2027-07-18", checkout: "2027-07-20", adults: 3, childAges: [9], rooms: 1 } }] }]);
+    t0.settings = { ...t0.settings, rates: { EUR: 1, CZK: 25 } };
+    // 2 € × 3 Erwachsene (Kind frei bis 17: Ben 9) × 2 Nächte
+    expect(totals(t0).items.s.extras!.lines[0].amount).toBeCloseTo(12);
   });
 });
