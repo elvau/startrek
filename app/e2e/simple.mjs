@@ -279,6 +279,65 @@ try {
   log("Gepflegte Nebenkosten: Kurtaxe Rom 4 Sterne automatisch (Kind frei, Quelle), wegklicken bleibt nach Neuladen; Auto nach Kroatien als Posten mit Sprit, Vignetten AT/SI und Maut HR als Nebenkosten, weiteres Auto möglich; Trinkgeld-Hinweis");
   await fctx.close();
 
+  // Roadtrip (#201): Düsseldorf → Verona → Venedig → Ljubljana → zurück, Strecken vom Routen-Dienst (gemockt)
+  const stay = (id, place, from, to) => ({ id, cat: "stay", name: "Unterkunft " + place, status: "chosen", from, to,
+    options: [{ id: "o" + id, label: place, price: { mode: "unit", currency: "EUR", unit: 300, basis: "stay" }, query: { place, checkin: from, checkout: to, adults: 2, childAges: [], rooms: 1 } }] });
+  const RT = { id: "rt", name: "Roadtrip Italien", place: "Verona", country: "Italien", from: "2027-07-12", to: "2027-07-20",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "c", name: "Tom", household: "Klein", age: 42 }],
+    detail: { transport: true, stay: true, misc: true }, households: { Klein: { plz: "40210", geo: { lat: 51.223, lon: 6.779, ort: "Düsseldorf" } } },
+    items: [stay("s1", "Verona", "2027-07-12", "2027-07-15"), stay("s2", "Venedig", "2027-07-15", "2027-07-18"), stay("s3", "Ljubljana", "2027-07-18", "2027-07-20")],
+    tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } };
+  const rctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await rctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
+    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, RT);
+  const rp = await rctx.newPage();
+  rp.on("pageerror", e => errors.push(e.message));
+  await data(rp);
+  const roadAsked = [];
+  const hav = (a, b) => { const r = Math.PI / 180, x = Math.sin((b[0] - a[0]) * r / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin((b[1] - a[1]) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)); };
+  await rp.route("https://flights.test/road/route", async r => {
+    const { points } = JSON.parse(r.request().postData());
+    roadAsked.push(points.length);
+    const legs = points.slice(1).map((b, i) => { const a = points[i], km = Math.round(hav(a, b) * 1.25), n = Math.max(1, Math.ceil(km / 20));
+      return { km, min: Math.round(km / 80 * 60), path: Array.from({ length: n + 1 }, (_, k) => [a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]) }; });
+    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ legs, configured: true, source: "ors" }) });
+  });
+  await rp.goto(URL);
+  await rp.locator(".start .home-trip", { hasText: "Roadtrip Italien" }).click();
+  const trip = rp.locator("#transport .road-trip");
+  await trip.waitFor({ timeout: 15000 });
+  await until(async () => (await trip.innerText()).includes("openrouteservice"), "Strecken vom Routen-Dienst");
+  const legs = trip.locator(".rt-legs li");
+  if ((await legs.count()) !== 4) fail("Etappen: " + (await legs.allInnerTexts()).join(" | "));
+  const l0 = await legs.first().innerText();
+  if (!l0.includes("Düsseldorf → Verona") || !l0.includes("lange Etappe")) fail("erste Etappe: " + l0);
+  const tt = await trip.innerText();
+  if (!tt.includes("🇦🇹 Vignette Österreich") || !tt.includes("🇸🇮 Vignette Slowenien") || !tt.includes("Maut in Italien") || !tt.includes("Di 20.07.")) fail("Kosten der Runde: " + tt.replace(/\n/g, " | "));
+  // Auto als Posten für die ganze Runde
+  await trip.locator(".road-add").click();
+  const rcar = rp.locator("#transport .card[data-item]", { hasText: "Roadtrip mit dem Auto" });
+  await rcar.waitFor();
+  if (!(await rcar.innerText()).includes("Düsseldorf → Verona → Venedig → Ljubljana → Düsseldorf")) fail("Auto-Posten der Runde: " + await rcar.innerText());
+  // Tagesplan: Fahrtag mit Strecke und Fahrzeit
+  const drive = rp.locator(".dp-drive", { hasText: "Düsseldorf → Verona" });
+  await drive.first().waitFor();
+  if (!(await drive.first().innerText()).includes("mit Pausen")) fail("Fahrtag im Tagesplan: " + await drive.first().innerText());
+  // lange Etappe teilen: Zwischenstopp als Unterkunft, Ankunft in Verona einen Tag später, Auto-Posten neu rechnen
+  await legs.first().locator(".rt-split").click();
+  await until(async () => (await legs.count()) === 5, "Etappe geteilt");
+  if (!(await rp.locator("#stay .card[data-item]", { hasText: "Zwischenstopp" }).count())) fail("Zwischenstopp nicht angelegt");
+  await until(async () => roadAsked.at(-1) === 6, "neue Strecke mit Zwischenstopp gefragt");
+  await trip.locator(".rt-refresh").click();
+  await until(async () => !(await trip.locator(".rt-refresh").count()), "Auto-Posten neu gerechnet");
+  // Zwischenstopp suchen auf der Rückfahrt: Stopp angelegt, Unterkunftssuche öffnet sich dafür; Rückkehr einen Tag später
+  await legs.last().locator(".rt-search").click();
+  await rp.locator(".modal-bg .modal").waitFor();
+  await rp.keyboard.press("Escape");
+  await until(async () => (await legs.count()) === 6, "Rückfahrt geteilt");
+  if (!(await rp.locator(".hero").innerText()).includes("21.")) fail("Rückkehr nicht verschoben: " + (await rp.locator(".hero").innerText()).slice(0, 120));
+  log("Roadtrip: 4 Etappen vom Routen-Dienst, lange Etappe markiert, Vignetten AT/SI und Maut IT für die Runde, Auto-Posten der Runde, Fahrtag im Tagesplan; geteilt mit Zwischenstopp, Posten neu gerechnet; Zwischenstopp auf der Rückfahrt gesucht, Rückkehr einen Tag später");
+  await rctx.close();
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");
 } finally { await browser.close(); server.kill(); }

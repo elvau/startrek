@@ -250,3 +250,24 @@ nächsten zum Wohnort der Mitfliegenden. Fehlt der Wohnort, fragen Flugsuche und
 Kurze Reisen (bis 3 Nächte) sucht die flexible Suche mit der ganzen Dauer, damit alle Gruppen dieselben Tage fliegen.
 Für Abflüge in mehr als etwa 11 Monaten erklärt die Suche, dass die Airlines meist noch nicht verkaufen.
 Testangebote (Sandbox) stehen in allen Sortierungen hinter den echten.
+
+## Strecken mit dem Auto (Roadtrip, #201)
+
+Ohne Flug und mit mehreren Stationen (bzw. einem Auto-Posten) gilt eine Reise als Roadtrip. Die Etappen laufen Wohnort →
+Stationen (aus den Unterkünften im Tagesplan) → Wohnort.
+
+- **Routen-Dienst:** `POST /road/route` mit `{ points: [[lat, lon], …] }` (2 bis 25 Punkte, auf etwa 100 m gerundet).
+  Der Worker fragt OpenRouteService (`driving-car`) und gibt je Etappe km, Minuten und einen ausgedünnten Verlauf zurück.
+  Gleiche Strecken kommen 30 Tage aus dem Zwischenspeicher. Code: `app/src/lib/road/ors.ts`.
+- **Schlüssel:** `ORS_KEY` als **Secret** im Worker (kostenlos bis 2.000 Strecken pro Tag, Konto auf openrouteservice.org).
+  Ohne Schlüssel antwortet der Worker `configured: false`, und die App schätzt (Luftlinie × 1,3 bei 85 km/h).
+- **Länder auf der Strecke:** Stichproben etwa alle 10 km entlang des Verlaufs, jede zählt zum Land der nächstgelegenen
+  Stadt aus `world.json`. Daraus kommen die Kilometer je Land: Maut nach den km im Land, jede Vignette nur so oft wie nötig
+  (Fahrtage im Land innerhalb ihrer Gültigkeit). Code: `app/src/lib/road/trip.ts`.
+- **Fahrzeit:** mit 15 Minuten Pause je angefangene 2 Stunden (die erste nicht). Über 8 Stunden: Hinweis „lange Etappe“,
+  dazu „Zwischenstopp suchen“ bzw. „in 2/3 Etappen teilen“ (`road/split.ts`): Zwischenstopps als Unterkunfts-Posten
+  (Richtwert 45 € pro Person und Nacht) bei einer Stadt nahe der Bruchstelle; die Ankunft an der nächsten Station bzw.
+  zu Hause verschiebt sich entsprechend.
+- **Tagesplan:** an jedem Fahrtag ein Eintrag mit Strecke, km und Fahrzeit.
+- **Vergleich Bahn/Bus/Auto/Flug:** bei Roadtrips auch über 700 km Luftlinie.
+- Quellenangabe in der App: „© openrouteservice.org by HeiGIT, Kartendaten © OpenStreetMap-Mitwirkende“.
