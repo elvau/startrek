@@ -16,6 +16,7 @@ import { locOf } from "../geo/maps";
 
 const withLoc = <T>(loc: T | undefined) => (loc ? { loc } : {});
 import type { StayOffer, StayQuery } from "../stays/types";
+import { feeToExtra } from "../stays/fees";
 
 /** Flug aus der Suche als Teilstrecke; Dauer aus der Suche, weil Abflug und Landung Ortszeiten sind */
 const legOf = (dir: "out" | "back", l: OfferLeg) => ({ dir, from: l.from, to: l.to, dep: l.dep.slice(0, 16), arr: l.arr.slice(0, 16), carrier: l.carriers.join(" / "), stops: l.stops, ...(l.minutes > 0 ? { minutes: l.minutes } : {}), ...(l.toCity ? { toCity: l.toCity } : {}) });
@@ -125,7 +126,8 @@ export function addStay(trip: Trip, o: StayOffer, q: StayQuery, lang: string): I
     source: { name: o.sourceName, at: day(), ...(o.url ? { url: o.url } : {}) },
     stay: { ...(o.stars ? { stars: o.stars } : {}), ...(o.score != null ? { rating: Math.round(o.score * 10) } : {}), ...(o.facts?.length ? { facts: o.facts } : {}), ...(o.board ? { board: o.board } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) },
     ...withLoc(locOf(o.name, q.place, o)),
-    query: { place: q.place, country: q.country, checkin: q.checkin, checkout: q.checkout, adults: q.adults, childAges: [...q.childAges], rooms: q.rooms }
+    query: { place: q.place, country: q.country, checkin: q.checkin, checkout: q.checkout, adults: q.adults, childAges: [...q.childAges], rooms: q.rooms },
+    ...(o.fees?.length ? { extras: o.fees.map(f => feeToExtra(f, o.sourceName)) } : {})
   };
   const item: Item = {
     id: uid(), cat: "stay", status: "idea", from: q.checkin, to: q.checkout, options: [opt], ai: { at: at(), kind: "suggested" },
@@ -191,7 +193,10 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
       id: i.id, category: i.cat, name: i.name || o?.label || "", status: i.status,
       ...(eur != null ? { eur } : {}), ...(o?.estimate ? { estimate: true } : {}), ...(i.arrival ? { arrival: true } : {}),
       ...(i.from ? { from: i.from, to: i.to } : {}), ...(o?.source?.url ? { link: partner ? o.source.url : plainLink(o.source.url) } : {}),
-      ...(i.options.length > 1 ? { offers: i.options.length } : {})
+      ...(i.options.length > 1 ? { offers: i.options.length } : {}),
+      // Nebenkosten (nicht enthalten, nicht weggeklickt) und Kaution: die genaue Summe rechnet die App
+      ...(o?.extras?.some(x => !x.off && x.pay !== "included") ? { extraCosts: o.extras.filter(x => !x.off && x.pay !== "included").map(x => ({ kind: x.kind, amount: x.amount, per: x.basis, pay: x.pay, ...(x.est ? { estimate: true } : {}) })) } : {}),
+      ...(o?.deposit?.amount ? { deposit: { amount: o.deposit.amount, currency: o.price.currency, ...(o.deposit.how ? { how: o.deposit.how } : {}) } } : {})
     };
   });
   const cnt = (k: string) => act.filter(t => ageClassOf(t.age, t.kind) === k).length;
@@ -200,6 +205,6 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
     id: trip.id, name: trip.name, place: trip.place, country: trip.country || undefined, from: trip.from, to: trip.to, role,
     travelers: { adults: cnt("adult"), children: cnt("child"), infants: cnt("infant") },
     items, approxTotalEur: total,
-    note: "Approximate total of the items (chosen or cheapest offer); exact split per person and meals are calculated in the Split&Fly app."
+    note: "Approximate total of the items (chosen or cheapest offer), without extraCosts (tourist tax, cleaning, baggage … paid on site or extra; add them when comparing) and without deposits (only blocked, credit card only if how = credit). Exact split per person and meals are calculated in the Split&Fly app."
   };
 }

@@ -16,6 +16,7 @@
   import { countryName } from "../geo/locations";
   import { flagOf } from "../format";
   import { groupLabel } from "../groups";
+  import { money } from "../calc";
   import { isActive, uid } from "../model";
   import { adviceUrl } from "../advice";
   import { entryFor, type EntryKind } from "../visa";
@@ -42,7 +43,7 @@
 
   const LEVEL: Record<string, Key> = { warning: "aa.warning", partial: "aa.partial", situation: "aa.situation" };
   const ENT: Record<EntryKind, Key> = { home: "ent.home", free: "ent.free", eta: "ent.eta", evisa: "ent.evisa", arrival: "ent.arrival", visa: "ent.visa", none: "ent.none", unknown: "ent.unknown" };
-  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", book: "🎟️", place: "📍" };
+  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", book: "🎟️", place: "📍", deposit: "🔒" };
   const icon = (p: Point) => (p.kind === "aa" ? (p.level === "situation" ? "⚠️" : "⛔") : ICON[p.kind]);
   const date = (iso: string) => iso.split("-").reverse().join(".");
   const validText = (v: MinValid) => t(`imp.valid.${v.months ? "m" : "d"}${v.from === "entry" ? "Entry" : "Exit"}` as Key, { n: v.months || v.days || 0 });
@@ -52,12 +53,14 @@
     if (p.kind === "border") return t("imp.border.t");
     if (p.kind === "pass") return t("imp.pass.t", { name: p.persons![0].name });
     if (p.kind === "book") return t("book.title", { place: p.book!.label });
+    if (p.kind === "deposit") return t("imp.dep.title", { v: money(p.deposit!.amount, p.deposit!.currency), name: p.deposit!.name });
     return t(`hint.${p.hint!.id}.t` as Key);
   }
   function text(p: Point) {
     if (p.kind === "aa") return t("imp.aaText") + (p.advice?.modified ? ` ${t("imp.aaChanged", { d: date(p.advice.modified) })}` : "");
     if (p.kind === "border") return t("imp.border.x");
     if (p.kind === "book") return t("book.lead");
+    if (p.kind === "deposit") return p.deposit!.how === "credit" ? t("imp.dep.credit") : t("imp.dep.other", { how: p.deposit!.how ? t(`dep.how.${p.deposit!.how}` as Key) : "–" });
     if (p.kind === "pass") return t("imp.pass.x", { d: date(p.pass!.expires), c: countryName(p.cc!), r: date(p.pass!.needed) });
     if (p.hint) return t(`hint.${p.hint.id}.x` as Key);
     const k = p.persons?.find(x => x.kind && x.kind !== "unknown");

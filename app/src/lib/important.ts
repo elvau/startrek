@@ -14,8 +14,9 @@ import { entryFor, needsAction, type EntryKind, type VisaData } from "./visa";
 import type { Hint } from "./hints";
 import { FREE_MOVEMENT, MIN_VALID, SCHENGEN, validUntil, type MinValid } from "./borders";
 import { CITIES, saleFor, type BookAhead, type Sale } from "./bookahead";
+import { activeOption, participantsOf, rateOf } from "./calc";
 
-export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place";
+export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place" | "deposit";
 
 export interface PointPerson { id: string; name: string; nat: string; kind?: EntryKind; days?: number }
 
@@ -41,12 +42,16 @@ export interface Point {
   pass?: { expires: string; needed: string };
   /** Früh buchen: Reiseziel und Orte mit Verkaufsstart, früheste zuerst */
   book?: { city: string; label: string; entries: { e: BookAhead; sale: Sale }[]; soon: boolean };
+  /** Kaution eines Postens (nur geblockt): Betrag in der Währung des Angebots, wie zu hinterlegen */
+  deposit?: { amount: number; currency: string; how?: string; name: string; item: string };
 }
 
 /** erledigt je Punkt: Signatur beim Abhaken, bei Punkten für Personen die erledigten Personen */
 export type DoneMap = Record<string, { sig: string; ids?: string[] }>;
 
-const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, book: 3, situation: 3, place: 4 } as const;
+const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, deposit: 2, book: 3, situation: 3, place: 4 } as const;
+/** Kautionen ab diesem Betrag (oder nur mit Kreditkarte) sind ein wichtiger Punkt */
+export const DEPOSIT_MIN = 300;
 
 export interface PointInput {
   trip: Trip;
@@ -117,6 +122,17 @@ export function importantPoints({ trip, countries, hints, visa, advice, passport
     const soon = !!visit && list.some(x => (x.sale.at && x.sale.at.getTime() <= now + 14 * 86400000) || (x.sale.by && Date.parse(`${x.sale.by}T00:00:00Z`) <= now + 14 * 86400000));
     out.push({ key: `book:${city}`, kind: "book", prio: PRIO.book, sig: list.map(x => `${x.e.id}@${key(x)}`).join(","), cc: list[0].e.cc, book: { city, label: CITIES[city]?.label || city, entries: list, soon }, ...(all ? { persons: all } : {}) });
   }
+  // Kaution: hoher Betrag oder nur mit Kreditkarte (keine Debitkarte) – vorher daran denken
+  for (const it of trip.items) {
+    if (it.status === "dropped") continue;
+    const o = activeOption(it, trip), d = o?.deposit;
+    if (!o || !d || !(d.amount > 0)) continue;
+    const eurAmt = d.amount / rateOf(o.price.currency || "EUR", trip.settings);
+    if (eurAmt < DEPOSIT_MIN && d.how !== "credit") continue;
+    const ps = participantsOf(it, trip).filter(isActive).map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" }));
+    out.push({ key: `deposit:${it.id}`, kind: "deposit", prio: d.how === "credit" ? 1 : PRIO.deposit, sig: `${d.amount}|${d.how || ""}`,
+      deposit: { amount: d.amount, currency: o.price.currency || "EUR", ...(d.how ? { how: d.how } : {}), name: it.name, item: it.id }, ...(ps.length ? { persons: ps } : {}) });
+  }
   for (const h of hints) {
     if (h.kind === "entry" || covered.has(h.id)) continue;
     out.push({ key: `hint:${h.id}`, kind: h.kind === "warn" ? "warn" : "place", prio: PRIO[h.kind === "warn" ? "warn" : "place"], sig: h.id, ...(h.cc?.[0] ? { cc: h.cc[0] } : {}), hint: h, ...(all ? { persons: all } : {}) });
@@ -139,7 +155,7 @@ export function isOpen(p: Point, done: DoneMap = {}): boolean {
 }
 
 /** aufgeklappt zeigen (Reisewarnung, Teilreisewarnung, Einreise), sonst einzeilig bis zum Antippen */
-export const isUrgent = (p: Point) => p.kind === "entry" || p.kind === "warn" || p.kind === "pass" || p.kind === "border" || !!p.book?.soon || p.level === "warning" || p.level === "partial";
+export const isUrgent = (p: Point) => p.deposit?.how === "credit" || p.kind === "entry" || p.kind === "warn" || p.kind === "pass" || p.kind === "border" || !!p.book?.soon || p.level === "warning" || p.level === "partial";
 
 export const openCount = (ps: Point[], done?: DoneMap) => ps.filter(p => isOpen(p, done)).length;
 

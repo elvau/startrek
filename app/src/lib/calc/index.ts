@@ -7,6 +7,7 @@
 import { i18n, locale, t, type Key } from "../i18n/index.svelte";
 import { fx, shown } from "../currency.svelte";
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
+import { calcExtras, type ExtrasCalc } from "./extras";
 import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Fund, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number | null | undefined, s: Settings, kind?: AgeClass): AgeClass {
@@ -63,6 +64,21 @@ export interface OptionCalc {
   access?: AccessCalc | null;
   /** Unterkunft mit Zeitraum */
   stay?: StayCalc;
+  /** Nebenkosten und Kaution; was dazukommt, ist in gross, net und per enthalten */
+  extras?: ExtrasCalc;
+  /** Angebotspreis ohne Nebenkosten (net ohne extras.added) */
+  base?: number;
+}
+
+/** Nebenkosten in die Rechnung eines Angebots einbauen */
+function withExtras(r: OptionCalc, opt: Option, people: Traveler[], ctx: { nights: number; days: number; w?: Record<string, number>; fx: number; trip: Trip }): OptionCalc {
+  if (!opt.extras?.length && !opt.deposit) return r;
+  const basePer: Record<string, number> = { ...r.per };
+  if (r.access) for (const id in r.access.per) basePer[id] = (basePer[id] || 0) - r.access.per[id];
+  const ex = calcExtras(opt, people, { nights: ctx.nights, days: ctx.days, w: ctx.w, basePer, fx: ctx.fx, settings: ctx.trip.settings, units: r.units });
+  const per = { ...r.per };
+  for (const id in ex.per) per[id] = (per[id] || 0) + ex.per[id];
+  return { ...r, gross: r.gross + ex.added, net: r.net + ex.added, per, extras: ex, base: r.net };
 }
 
 const hasStayDates = (it: Item) => it.cat === "stay" && okDate(it.from) && okDate(it.to) && it.to! > it.from!;
@@ -93,7 +109,9 @@ export function calcOption(opt: Option, it: Item, trip: Trip): OptionCalc {
   const access = it.cat === "flights" && it.access !== false ? flightAccess(opt, people, trip) : null;
   const acc = access?.cost || 0;
   if (access) for (const id in access.per) per[id] = (per[id] || 0) + access.per[id];
-  return { n, units, gross: gross + acc, net: gross * (1 - d) + acc, saved: gross * d, tier, per, access };
+  const tripNights = nightsList(trip.from, trip.to).length;
+  return withExtras({ n, units, gross: gross + acc, net: gross * (1 - d) + acc, saved: gross * d, tier, per, access }, opt, people, {
+    nights: tripNights, days: p.qty && p.qty > 1 ? p.qty : tripNights + (tripNights ? 1 : 0), fx, trip });
 }
 
 function priceFor(t: Traveler, p: Option["price"], trip: Trip): number {
@@ -150,7 +168,8 @@ function calcStay(opt: Option, it: Item, trip: Trip): OptionCalc {
     });
   }
   const over = cap > 0 && !multi && maxOcc > cap;
-  return { n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc, over } };
+  return withExtras({ n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc, over } }, opt, guests, {
+    nights: nights.length, days: nights.length + 1, w, fx, trip });
 }
 
 /** Flug-Posten, dem dieser Posten folgt (nur eine Stufe, nie sich selbst) */
@@ -198,7 +217,8 @@ const EMPTY: OptionCalc = { n: 0, units: 0, gross: 0, net: 0, saved: 0, tier: nu
 export function calcItem(it: Item, trip: Trip): ItemCalc {
   const option = activeOption(it, trip);
   const r = option ? calcOption(option, it, trip) : { ...EMPTY };
-  const paid = it.status === "paid" ? r.net : (it.payments || []).reduce((a, x) => a + (x.amount || 0), 0);
+  // bezahlt: der Preis bei der Buchung; was vor Ort zu zahlen ist, kommt erst dort dazu
+  const paid = it.status === "paid" ? r.net - (r.extras?.onsite || 0) : (it.payments || []).reduce((a, x) => a + (x.amount || 0), 0);
   return { ...r, option, paid, counts: it.status !== "dropped" };
 }
 
@@ -227,6 +247,8 @@ export interface Totals {
   due: number;
   /** Kosten je Person und Bereich (Grundlage für Zuschüsse zu einem Bereich) */
   byPersonCat: Record<string, Partial<Record<CatKey, number>>>;
+  /** Nebenkosten: vor Ort, zusätzlich bei der Buchung, davon geschätzt, im Preis enthalten; Kautionen (nie in total) */
+  extras: { onsite: number; extra: number; est: number; included: number; deposit: number; deposits: string[] };
 }
 
 export function totals(trip: Trip): Totals {
@@ -241,6 +263,7 @@ export function totals(trip: Trip): Totals {
   const addPC = (id: string, cat: CatKey, v: number) => { const m = (byPersonCat[id] ||= {}); m[cat] = (m[cat] || 0) + v; };
   const act = activeTravelers(trip);
   let total = 0, saved = 0, fixed = 0, paid = 0;
+  const extras = { onsite: 0, extra: 0, est: 0, included: 0, deposit: 0, deposits: [] as string[] };
   for (const cat of CAT_KEYS) {
     if (isDetailed(trip, cat)) continue;
     // einfacher Modus: ein Betrag, gleich auf alle Aktiven verteilt
@@ -273,6 +296,10 @@ export function totals(trip: Trip): Totals {
     if (FIXED.includes(it.status)) fixed += r.net;
     byCat[it.cat] += r.net;
     for (const id in r.per) { byPerson[id] = (byPerson[id] || 0) + r.per[id]; addPC(id, it.cat, r.per[id]); }
+    if (r.extras) {
+      extras.onsite += r.extras.onsite; extras.extra += r.extras.extra; extras.est += r.extras.est; extras.included += r.extras.included;
+      if (r.extras.deposit) { extras.deposit += r.extras.deposit; extras.deposits.push(it.id); }
+    }
   }
   const f = applyFunds(trip.funds || [], act, byPerson, byPersonCat);
   trip.travelers.forEach(t => {
@@ -282,7 +309,7 @@ export function totals(trip: Trip): Totals {
     byHousehold[h] = (byHousehold[h] || 0) + (byPerson[t.id] || 0) - (f.by[t.id] || 0);
   });
   return { total, saved, fixed, open: total - fixed, paid, byCat, byPerson, byHousehold, items, simple, active: act.length,
-    funds: f.total, fundsReceived: f.received, fundBy: f.by, fundUse: f.use, due: total - f.total, byPersonCat };
+    funds: f.total, fundsReceived: f.received, fundBy: f.by, fundUse: f.use, due: total - f.total, byPersonCat, extras };
 }
 
 /**

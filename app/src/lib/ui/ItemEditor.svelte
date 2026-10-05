@@ -3,7 +3,7 @@
   import { entryCurrency, fromShown, toShown } from "../currency.svelte";
   import { t, tn } from "../i18n/index.svelte";
   /* Bearbeiten eines Postens: oben Name, Status und Suche, der Rest eingeklappt mit Zusammenfassung */
-  import { hhKey, isActive, uid, type FlightLeg, type Item, type Status } from "../model";
+  import { hhKey, isActive, uid, type Extra, type FlightLeg, type Item, type Option, type Status } from "../model";
   import { app, calc, removeItem } from "../store.svelte";
   import type { Key } from "../i18n/index.svelte";
   import { activeOption, ageClass, eur, followed, parseNum } from "../calc";
@@ -98,6 +98,28 @@
   }
   // neuer Posten ohne Preis: Preis (bei Flügen auch die Zeiten) gleich aufgeklappt; nur beim Öffnen, nicht beim Tippen
   const fresh = untrack(() => !calc.T.items[item.id]?.net);
+  // Nebenkosten und Kaution (#169)
+  const XKINDS: Extra["kind"][] = ["citytax", "tax", "cleaning", "resort", "bag", "seat", "toll", "visa", "tips", "insurance", "driver", "other"];
+  const XBASES: Extra["basis"][] = ["booking", "person", "personNight", "night", "day", "personDay", "percent"];
+  const XPAYS: Extra["pay"][] = ["onsite", "extra", "included"];
+  const DHOWS = ["credit", "card", "cash", "transfer"] as const;
+  function addExtra() {
+    if (!opt) return;
+    opt.extras = [...(opt.extras || []), { id: uid(), kind: isStay ? "citytax" : "other", amount: 0, basis: isStay ? "personNight" : "booking", pay: "onsite" }];
+  }
+  function setDeposit(d: Partial<NonNullable<Option["deposit"]>>) {
+    if (!opt) return;
+    const next = { amount: 0, ...opt.deposit, ...d };
+    if (!next.how) delete next.how;
+    if (!(next.amount > 0) && !next.how) delete opt.deposit; else opt.deposit = next;
+  }
+  const xcSum = $derived.by(() => {
+    const ex = calc.T.items[item.id]?.extras;
+    const parts = [];
+    if (ex?.added) parts.push(`+ ${ex.est ? `${t("xc.ca")} ` : ""}${eur(ex.added)}`);
+    if (ex?.deposit) parts.push(`🔒 ${eur(ex.deposit)}`);
+    return parts.join(" · ") || "—";
+  });
   // Zusammenfassungen der eingeklappten Abschnitte
   const outL = $derived(opt?.legs?.find(l => l.dir === "out"));
   const backL = $derived(opt?.legs?.find(l => l.dir === "back"));
@@ -257,6 +279,32 @@
         <label class="f">{t("ks.paidBy")}<select class="ie-payby" value={payBy || hhList[0]} onchange={e => (payBy = e.currentTarget.value)}>{#each kList as k (k.id)}<option value={k.id}>{k.name}</option>{/each}</select></label>
         <label class="f">{t("ks.amount")}<input class="n ie-payamt" inputmode="decimal" bind:value={payAmt} placeholder={String(toShown(Math.max(0, net - paidSum)))} /></label>
         <button class="btn sm ie-payadd" onclick={addPay}>+ {t("ie.payAdd")}</button>
+      </div>
+    </details>
+  {/if}
+
+  {#if opt && !main}
+    <details class="ed-acc ie-xc" data-sec="extras">
+      <summary><span class="dlabel">{t("ie.extras")}</span><span class="ed-sum">{xcSum}</span></summary>
+      {#each opt.extras || [] as x (x.id)}
+        <div class="ed-row ie-x">
+          <label class="f">{t("ie.xKind")}<select value={x.kind} onchange={e => (x.kind = e.currentTarget.value as Extra["kind"])}>{#each XKINDS as k (k)}<option value={k}>{t(`xc.kind.${k}` as Key)}</option>{/each}</select></label>
+          <label class="f">{t("ie.xAmount")}<input class="n ie-xamt" inputmode="decimal" value={x.amount} oninput={e => (x.amount = num(e.currentTarget.value) ?? 0)} /></label>
+          <label class="f">{t("ie.xBasis")}<select value={x.basis} onchange={e => (x.basis = e.currentTarget.value as Extra["basis"])}>{#each XBASES as b (b)}<option value={b}>{b === "percent" ? `% ${t("xc.ofPrice")}` : t(`xc.basis.${b}` as Key)}</option>{/each}</select></label>
+          <label class="f">{t("ie.xPay")}<select value={x.pay} onchange={e => (x.pay = e.currentTarget.value as Extra["pay"])}>{#each XPAYS as w (w)}<option value={w}>{t(`xc.pay.${w}` as Key)}</option>{/each}</select></label>
+          {#if x.basis === "person" || x.basis === "personNight" || x.basis === "personDay"}
+            <label class="f">{t("ie.xFree")}<input class="n sm" inputmode="numeric" placeholder="–" value={x.freeUpTo ?? ""} oninput={e => { const v = num(e.currentTarget.value); if (v == null) delete x.freeUpTo; else x.freeUpTo = v; }} /></label>
+          {/if}
+          <label class="check"><input type="checkbox" checked={!!x.est} onchange={e => (x.est = e.currentTarget.checked || undefined)} /> {t("xc.estimated")}</label>
+          <button class="linkbtn danger" onclick={() => (opt.extras = (opt.extras || []).filter(y => y.id !== x.id))}>{t("ie.xRemove")}</button>
+        </div>
+      {/each}
+      <div><button class="linkbtn ie-xadd" onclick={addExtra}>+ {t("ie.xAdd")}</button></div>
+      <div class="ed-row ie-dep">
+        <label class="f">🔒 {t("dep.title")}<input class="n ie-depamt" inputmode="decimal" placeholder="0" value={opt.deposit?.amount ?? ""} oninput={e => setDeposit({ amount: num(e.currentTarget.value) ?? 0 })} /></label>
+        <label class="f">{t("ie.depHow")}<select class="ie-dephow" value={opt.deposit?.how ?? ""} onchange={e => setDeposit({ how: (e.currentTarget.value || undefined) as NonNullable<Option["deposit"]>["how"] })}>
+          <option value="">–</option>{#each DHOWS as h (h)}<option value={h}>{t(`dep.how.${h}` as Key)}</option>{/each}
+        </select></label>
       </div>
     </details>
   {/if}
