@@ -131,4 +131,21 @@ describe("Mindestgültigkeit für alle Pässe", () => {
     const p = importantPoints({ trip: t, countries: ["TH"], hints: [], visa, advice: {}, passports: { t: "2027-06-01" } }).find(x => x.kind === "pass");
     expect(p?.pass).toEqual({ expires: "2027-06-01", needed: "2027-09-01" });
   });
+
+  it("Kaution: ab 300 € oder nur Kreditkarte ein wichtiger Punkt, eilig bei Kreditkarte", () => {
+    const t0 = trip([anna, tom]);
+    const car = (amount: number, how?: "credit" | "cash") => ({ id: "car", cat: "transport" as const, name: "Mietwagen", status: "idea" as const,
+      options: [{ id: "o", label: "Auto", price: { mode: "unit" as const, currency: "EUR", unit: 200 }, deposit: { amount, ...(how ? { how } : {}) } }] });
+    t0.items = [car(200, "cash")];
+    expect(importantPoints({ trip: t0, countries: [], hints: [], visa, advice: {} })).toEqual([]);
+    t0.items = [car(200, "credit")];
+    const [p] = importantPoints({ trip: t0, countries: [], hints: [], visa, advice: {} });
+    expect(p).toMatchObject({ key: "deposit:car", kind: "deposit", deposit: { amount: 200, how: "credit", name: "Mietwagen" } });
+    expect(p.persons!.map(x => x.name)).toEqual(["Anna", "Tom"]);
+    expect(isUrgent(p)).toBe(true);
+    t0.items = [car(1200, "cash")];
+    const [q] = importantPoints({ trip: t0, countries: [], hints: [], visa, advice: {} });
+    expect(q.sig).toBe("1200|cash");
+    expect(isUrgent(q)).toBe(false);
+  });
 });

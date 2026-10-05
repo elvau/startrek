@@ -76,4 +76,14 @@ describe("liteAPI", () => {
     expect(seen2.filter(u => u.includes("/data/hotels"))).toHaveLength(2);
     expect(await searchLite({ ...q, type: "whole" }, "k", f)).toEqual([]);
   });
+
+  it("Steuern und Gebühren: vor Ort bzw. enthalten, je Art zusammengefasst, als Nebenkosten übernommen", async () => {
+    const withFees = (occ: number, amount: number) => ({ ...rate(occ, amount), retailRate: { total: [{ amount, currency: "EUR" }], taxesAndFees: [
+      { included: false, description: "City tax", amount: 21, currency: "EUR" }, { included: true, description: "VAT", amount: 50, currency: "EUR" }, { included: false, description: "Resort fee", amount: 5, currency: "USD" }] } });
+    const l = fromLite(HOTELS, [{ hotelId: "lp2", roomTypes: [{ rates: [withFees(1, 300), withFees(2, 310)] }] }], q);
+    expect(l[0].fees).toEqual([{ label: "City tax", amount: 42, included: false }, { label: "VAT", amount: 100, included: true }]);
+    const { stayToOption } = await import("./app");
+    const o = stayToOption(l[0], 3, "Palma");
+    expect(o.extras!.map(x => [x.kind, x.amount, x.pay, x.basis])).toEqual([["citytax", 42, "onsite", "booking"], ["tax", 100, "included", "booking"]]);
+  });
 });

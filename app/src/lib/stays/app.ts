@@ -1,5 +1,6 @@
 /* Unterkunftssuche in der App: Anfrage aus der Reise, Treffer als Angebot in einen Unterkunft-Posten */
 import { t } from "../i18n/index.svelte";
+import { feeToExtra } from "./fees";
 import { addOffer, isActive, uid, type Item, type Option, type Traveler, type Trip } from "../model";
 import { FLIGHTS_URL } from "../flights/app";
 import type { StayOffer, StayQuery, StaySearchResult, StayType } from "./types";
@@ -59,9 +60,11 @@ export function stayToOption(o: StayOffer, people: number, place?: string, parts
     ...(parts > 1 ? { split: parts } : {}),
     source: { name: o.via && o.via !== o.sourceName ? t("st.via", { a: o.sourceName, b: o.via }) : o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url, ...(o.test ? { test: true } : {}) },
     stay: { stars: o.stars, rating: o.score != null ? Math.round(o.score * 10) : undefined, facts: o.facts?.length ? o.facts : undefined, ...(o.board ? { board: o.board } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) },
-    ...(loc ? { loc } : {})
+    ...(loc ? { loc } : {}),
+    ...(o.fees?.length ? { extras: o.fees.map(f => feeToExtra(f, o.sourceName)) } : {})
   };
 }
+
 
 /** leer angelegter Posten („+ Unterkunft“ ohne Angaben) */
 const blank = (it: Item) => it.options.length === 1 && !it.options[0].label && !it.options[0].price.unit && !it.options[0].price.adult;

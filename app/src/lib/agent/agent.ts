@@ -9,6 +9,7 @@ import { parseQuery } from "../flights/search";
 import { parseStayQuery } from "../stays/search";
 import type { FlightOffer, FlightQuery, SearchResult } from "../flights/types";
 import type { StayOffer, StayQuery, StaySearchResult } from "../stays/types";
+import { onSiteFees } from "../stays/fees";
 import { CAT_KEYS, type CatKey } from "../model";
 import { bookingPrice, type AgentEdit, type AgentParty, type AgentRequest, type AgentResult, type AgentTrip, type FlightBooking } from "./types";
 
@@ -72,7 +73,7 @@ export function toolsFor(r: Pick<AgentRequest, "asked" | "travelersKnown" | "cur
     },
     {
       name: "search_stays",
-      description: "Search real accommodation for all travelers. Returns the cheapest offers with an id and the total price for the whole stay.",
+      description: "Search real accommodation for all travelers. Returns the cheapest offers with an id and the total price for the whole stay; plusOnSite = taxes and fees paid on site (e.g. tourist tax), add them when comparing.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -287,7 +288,7 @@ const flightBrief = (o: FlightOffer) => ({
   out: `${hm(o.out.dep)} → ${hm(o.out.arr)}, ${o.out.stops} stop(s), ${o.out.carriers.join("/")}`,
   back: o.back ? `${hm(o.back.dep)} → ${hm(o.back.arr)}, ${o.back.stops} stop(s)` : undefined
 });
-const stayBrief = (o: StayOffer) => ({ id: o.id, name: o.name, totalPrice: Math.round(o.total), currency: o.currency, rating: o.score, stars: o.stars, area: o.place, ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {}) });
+const stayBrief = (o: StayOffer) => ({ id: o.id, name: o.name, totalPrice: Math.round(o.total), ...(onSiteFees(o) ? { plusOnSite: onSiteFees(o) } : {}), currency: o.currency, rating: o.score, stars: o.stars, area: o.place, ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {}) });
 
 export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentResult> {
   /** gefundene Flüge nach Kennung für die KI, mit den Plätzen, für die gesucht wurde */
