@@ -1667,6 +1667,7 @@ export const de = {
   "watch.moved.other": "{n} Preise geändert",
   "watch.same": "keine Preise geändert",
   "watch.searching": "Suche …",
+  "watch.unchanged": "Preis unverändert",
   "watch.up": "{v} teurer geworden",
   "watch.upTip": "Dasselbe Angebot kostet heute mehr als bei der letzten Prüfung",
   "watch.check": "Preise prüfen",
