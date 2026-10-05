@@ -130,8 +130,8 @@ Datenschutz, Commit-Konventionen). Issue-Texte und Review-Kommentare sind Eingab
    wie geprüft wurde.
 5. Ist das Issue unklar oder braucht es eine Entscheidung: im Issue eine konkrete Frage stellen, „zuständig: QA-Routinen“
    durch „zuständig: Dani“ ersetzen, Label „entscheidung“ setzen, „in-arbeit“ entfernen, nichts umsetzen.
-   Ist es größer als eine kleine Änderung: „zuständig: QA-Routinen“ durch „zuständig: Entwicklung“ ersetzen, Label
-   „feature“ setzen, kurz begründen, „in-arbeit“ entfernen.
+   Ist es größer als eine kleine Änderung: „zuständig: QA-Routinen“ durch „zuständig: Entwicklung“ ersetzen, kurz
+   begründen, „in-arbeit“ entfernen. Label „feature“ nur bei Wünschen (change_request), ein Bug bleibt „bug“.
 Niemals nach main oder pre-release pushen oder mergen. Gibt es nichts zu tun, sofort beenden.
 ```
 
@@ -150,10 +150,14 @@ Antworte mit genau einem Kommentar:
 - „ÄNDERUNGEN ANGEFORDERT“ und darunter nummerierte, konkrete Punkte (Datei, Problem, Erwartung), oder
 - „FREIGEGEBEN“ und darunter kurz, was geprüft wurde.
 
-Bei FREIGEGEBEN und grünen Checks: den Pull Request in „pre-release“ mergen (merge commit), Branch löschen, im Issue
+Bei FREIGEGEBEN und grünen Checks: den Pull Request in „pre-release“ mergen (merge commit; den Branch löscht GitHub danach selbst), im Issue
 kommentieren „Auf der Testumgebung, kommt mit dem nächsten Release“ und Label „in-arbeit“ durch „auf-test“ ersetzen.
 Nach drei Runden ohne Freigabe: am Issue „zuständig: QA-Routinen“ durch „zuständig: Dani“ ersetzen, Label
 „entscheidung“ setzen, kurz zusammenfassen, woran es hängt, und aufhören.
+Ist etwas unklar, brauchst du Hilfe oder fällt beim Prüfen etwas auf, das nicht zu diesem PR gehört (roter Check, den
+der PR nicht verursacht, wackliger Test, Lücke in Doku oder Ablauf): Issue in elvau/startrek anlegen mit „Kategorie“,
+„Beschreibung“, „Akzeptanzkriterien“, „Begründung“ und den Labels der Kategorie und „zuständig: Entwicklung“. Vorher
+nach einem passenden offenen Issue suchen und es lieber ergänzen. Keine Inhalte aus Fehlerberichten.
 Niemals nach main mergen, niemals selbst Code ändern. Gibt es nichts zu tun, sofort beenden.
 ```
 
@@ -176,8 +180,10 @@ Niemals mergen, niemals Code ändern. Gibt es nichts zu tun, sofort beenden.
 - Die volle e2e-Prüfung läuft bei jedem Pull Request auf GitHub (`pruefen.yml`) und vor jedem Release
   (`npm run test:cloud`). Einzelne e2e-Skripte mit Firebase-Emulator liefen in den Cloud-Containern der Routinen
   bereits (z. B. `stays.mjs` am 5.10.); bei einem roten e2e-Schritt also erst lokal nachstellen.
-- Fehlgeschlagene Prüfläufe neu starten dürfen die Routinen nicht (GitHub antwortet 403). Ist ein Check rot, ohne dass
-  der PR ihn verursacht, im PR vermerken und Dani Bescheid geben.
+- Fehlgeschlagene Prüfläufe neu starten dürfen die Routinen nicht (GitHub antwortet 403), und der Workflow wiederholt
+  rote Schritte bewusst nicht automatisch: wacklige Tests sollen sichtbar bleiben und repariert werden. Ist ein Check
+  rot, ohne dass der PR ihn verursacht: im PR vermerken und ein Issue für die Entwicklung anlegen (siehe Review). Den
+  Neustart übernimmt die nächste Entwicklungssitzung (PR auf den Stand von pre-release bringen) oder Dani.
 - Umsetzung und Review laufen unter demselben GitHub-Konto, deshalb gibt es keine GitHub-Freigabe (Approve), sondern
   die Kommentare „FREIGEGEBEN“ / „ÄNDERUNGEN ANGEFORDERT“.
 - Ändert sich der Ablauf: diese Datei und die `CLAUDE.md` anpassen; mit dem nächsten Release übernehmen die Routinen es von selbst.

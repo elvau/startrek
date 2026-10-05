@@ -8,6 +8,7 @@
   import ItemEditor from "./ItemEditor.svelte";
   import WatchBadge from "./WatchBadge.svelte";
   import ExtrasBlock from "./ExtrasBlock.svelte";
+  import RentalCheck from "./RentalCheck.svelte";
   import AiMark from "./AiMark.svelte";
   import { t, type Key } from "../i18n/index.svelte";
   import { reveal } from "./reveal";
@@ -24,7 +25,7 @@
 
   function toggle(e: MouseEvent) {
     if (access.readonly) return;
-    if ((e.target as HTMLElement).closest("button,input,select,a,label,.xc")) return;
+    if ((e.target as HTMLElement).closest("button,input,select,a,label,.xc,.rc")) return;
     app.editing = editing ? null : item.id;
   }
   function key(e: KeyboardEvent) {
@@ -42,6 +43,7 @@
     <ItemRow {item} {icon} />
   {/if}
   <ExtrasBlock {item} />
+  <RentalCheck {item} />
   {#if src?.url || gmap || src?.test}
     <p class="src-link">
       {#if src?.test}<span class="pill-test" title={t("test.title")}>{t("test.price")}</span> {/if}

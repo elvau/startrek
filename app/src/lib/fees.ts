@@ -3,7 +3,7 @@
  * Durchfahrten mit dem Auto, Trinkgeld. Richtwerte ohne Gewähr („ca.“), Stand und Quellen in docs/NEBENKOSTEN.md.
  * Ein neuer Ort bzw. ein neues Land ist eine Zeile.
  */
-import type { Extra, Item, Option, Trip } from "./model";
+import { isActive, type Deposit, type Extra, type Item, type Option, type Traveler, type Trip } from "./model";
 
 export const FEES_AS_OF = "2026";
 
@@ -140,6 +140,38 @@ export function cityTaxFor(it: Item, o: Option, trip: Trip): CityTax | null {
   return null;
 }
 
+/**
+ * Mietwagen (#172): Richtwerte großer Vermieter, Kompaktklasse. Kaution nur per Kreditkarte; junge Fahrer zahlen Aufpreis,
+ * unter youngMin vermieten viele gar nicht. Vollschutz und Zusatzfahrer nur auf Wunsch eingerechnet.
+ */
+export const RENTAL = {
+  deposit: 800, depositMin: 300, depositMax: 1500,
+  youngUnder: 25, youngMin: 21, young: 12,
+  cover: 20, driver2: 8,
+  source: "Bedingungen großer Vermieter (Sixt, Europcar, Hertz, Avis)"
+};
+
+/** Mietwagen-Posten: markiert (hint „rental“) oder ältere Posten mit Auto-Symbol und passendem Namen (nicht Transfer, nicht eigenes Auto) */
+const RENTAL_WORDS = /miet|leihwagen|rental|hire|alquiler|location|wynaj|аренд|прокат|مستأجر|تأجير/i;
+export const isRental = (it: Item) => it.hint === "rental" || (it.cat === "transport" && it.icon === "car" && !it.hint && RENTAL_WORDS.test(it.name || ""));
+
+/** automatische Schätzungen, die erst auf Wunsch eingerechnet werden (o.autoOn) */
+export const AUTO_OPTIONAL = new Set(["auto:cover", "auto:driver2"]);
+
+/** wer im Mietwagen sitzt und als junger Fahrer gilt: Erwachsene mit bekanntem Alter unter 25 */
+export function youngDrivers(it: Item, trip: Trip): Traveler[] {
+  const ids = it.participants?.length ? new Set(it.participants) : null;
+  const adult = trip.settings?.adultAge ?? 18;
+  return trip.travelers.filter(t => isActive(t) && (!ids || ids.has(t.id)) && t.age != null && (t.age as unknown) !== ""
+    && isFinite(Number(t.age)) && Number(t.age) >= Math.max(17, adult) && Number(t.age) < RENTAL.youngUnder);
+}
+
+/** geschätzte Kaution am Mietwagen (je Auto), solange keine eigene angegeben bzw. weggeklickt ist; rate: Währung je Euro */
+export function autoDeposit(it: Item, o: Option, rate = 1, cars = 1): Deposit | undefined {
+  if (o.deposit || !isRental(it) || o.autoOff?.includes("auto:deposit")) return undefined;
+  return { amount: Math.round(RENTAL.deposit * rate * Math.max(1, cars)), how: "credit", est: true };
+}
+
 /** automatisch geschätzte Nebenkosten eines Angebots (nicht gespeichert, wegklickbar über autoOff) */
 /** rate: Einheiten der Währung je Euro (wie in der Rechnung) */
 export function autoExtras(it: Item, o: Option, trip: Trip, rate: (cur: string) => number): Extra[] {
@@ -155,6 +187,18 @@ export function autoExtras(it: Item, o: Option, trip: Trip, rate: (cur: string) 
     const conv = c.basis === "percent" ? 1 : rate(o.price.currency || "EUR") / rate(c.currency);
     if (conv && isFinite(conv)) out.push({ id, kind: "citytax", amount: Math.round(amount * conv * 100) / 100, basis: c.basis, pay: "onsite", est: true,
       ...(c.freeUpTo != null ? { freeUpTo: c.freeUpTo } : {}), ...(c.max ? { max: c.max } : {}), source: `${c.source}, ${FEES_AS_OF}`, ...(o.autoOff?.includes(id) ? { off: true } : {}) });
+  }
+  // Mietwagen: junge Fahrer (eingerechnet, wegklickbar), Vollschutz und Zusatzfahrer (nur auf Wunsch)
+  if (isRental(it)) {
+    const r = rate(o.price.currency || "EUR"), src = `${RENTAL.source}, ${FEES_AS_OF}`;
+    const add = (id: string, kind: Extra["kind"], amount: number, optional: boolean) => {
+      if (own.some(x => x.kind === kind)) return;
+      const off = optional ? !o.autoOn?.includes(id) : !!o.autoOff?.includes(id);
+      out.push({ id, kind, amount: Math.round(amount * r * 100) / 100, basis: "day", pay: "onsite", est: true, source: src, ...(off ? { off: true } : {}) });
+    };
+    if (youngDrivers(it, trip).length) add("auto:young", "young", RENTAL.young, false);
+    add("auto:cover", "cover", RENTAL.cover, true);
+    add("auto:driver2", "driver", RENTAL.driver2, true);
   }
   return out;
 }

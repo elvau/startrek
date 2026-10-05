@@ -89,6 +89,8 @@ export interface Prefs {
   plz?: string;
   maxStops?: number;
   bags?: boolean;
+  /** Kinder sitzen im Flugzeug neben den Eltern (fehlt: ja); bei manchen Billigfliegern kostet das die Platzwahl */
+  seatsTogether?: boolean;
   /** längste Flugzeit je Richtung in Stunden */
   maxHours?: number;
   /** Anfahrt zum Flughafen */
@@ -192,9 +194,15 @@ export interface Option {
   deposit?: Deposit;
   /** automatisch geschätzte Nebenkosten (z. B. auto:citytax:rome), die weggeklickt wurden */
   autoOff?: string[];
+  /** automatische Schätzungen, die erst auf Wunsch zählen (Mietwagen: Vollschutz, Zusatzfahrer), eingeschaltet */
+  autoOn?: string[];
+  /** Flug aus der Suche: im Preis enthaltenes Gepäck (gesamt für alle); fehlt: nicht angegeben */
+  baggage?: { personal: number; cabin: number; checked: number };
+  /** Hinweise am Flug: früh einchecken (Familie), Kartenaufschlag möglich (Abflug außerhalb EU/EWR) */
+  hints?: ("checkin" | "payfee")[];
 }
 
-export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "vignette" | "visa" | "tips" | "insurance" | "driver" | "other";
+export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "vignette" | "visa" | "tips" | "insurance" | "driver" | "young" | "cover" | "other";
 /** pro Person, pro Person und Nacht, pro Nacht, pro Tag, pro Person und Tag, einmal je Buchung, Prozent vom Preis */
 export type ExtraBasis = "person" | "personNight" | "night" | "day" | "personDay" | "booking" | "percent";
 
@@ -299,7 +307,7 @@ export interface Item {
   ai?: AiMark;
   /** Tagesplan: an diesem Tag (JJJJ-MM-TT, optional mit Uhrzeit JJJJ-MM-TTTHH:MM) */
   day?: string;
-  /** aus einem Hinweis (Einreise & Tipps) übernommen, z. B. „galapagos“ */
+  /** aus einem Hinweis (Einreise & Tipps) übernommen, z. B. „galapagos“; „rental“ = Mietwagen, „road:car“ = eigenes Auto */
   hint?: string;
 }
 
