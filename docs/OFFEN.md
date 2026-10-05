@@ -57,6 +57,9 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [ ] **Mietwagen-Partnerlinks:** → #147. in Travelpayouts das Programm DiscoverCars (oder EconomyBookings/Localrent) hinzufügen,
       unter Tools → Links einen Link erzeugen und Claude schicken (daraus kommen Programm- und Kampagnen-ID). Bis dahin
       verlinkt die App neutral (KAYAK vorbefüllt, CHECK24, DiscoverCars).
+- [ ] **OpenRouteService-Schlüssel** → #207. Für Roadtrips (Etappen, Fahrzeiten); bis dahin schätzt die App.
+- [ ] **Branch `pre-release` schützen:** GitHub → Settings → Rules → Rulesets → neue Regel für `pre-release` mit
+      „Restrict deletions“. Sonst löscht „Automatically delete head branches“ ihn bei jedem Release (passiert bei 0.29.0).
 - [ ] **Reiseversicherung-Partner (optional):** → #147. über Awin z. B. ERGO Reiseversicherung oder HanseMerkur. Nur als Tippgeber
       verlinken (keine Beratung, kein Tarifvergleich), sonst ist eine Erlaubnis nach § 34d GewO nötig.
 
@@ -79,3 +82,15 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
   Partnerbedingungen prüfen (Weitergabe der Suchergebnisse, Affiliate-Links).
 
 - → #147, #144. Flughafentransfer: Partnerprogramme Kiwitaxi, GetTransfer, Intui.travel bei Travelpayouts beantragen (Dani), dann Links mit Partnerkennung; später Preise über deren Schnittstelle statt Richtwert.
+- [ ] Gepflegte Richtwerte (Prüfung 10/2026, `fees.ts`, `flights/addons.ts`), offen bzw. unsicher:
+  - Slowakei 10-Tages-Vignette: 12 € oder 10,80 € (2026)? Auf eznamka.sk prüfen.
+  - Feste Maut je Durchfahrt als eigene Liste (Brenner A13 ~12,50 €, Tauern A10 ~15 €, Karawanken ~9 €, Arlberg ~13 €,
+    Felbertauern ~13,50 €, Storebælt 235 DKK, Øresund ~745 SEK, Dartford 3,50 £, M50 3,20 €), sobald der Roadtrip die
+    Strecke kennt (Routen-Dienst) und erkennen kann, ob sie darüber führt.
+  - Türkei (Autobahnmaut, Lira schwankt), Bosnien, Montenegro, Moldawien (Vignette) noch ohne Werte.
+  - SunExpress SunEco enthält ab Deutschland teils 20 kg Koffer: dann nicht schätzen. Weitere Billigflieger ohne Werte:
+    AJet, Smartwings, Corendon, airBaltic, Iberia Express, Air Arabia, flydubai.
+  - Mietwagen: Kaution 800 €, Vollschutz 20 €/Tag, Zusatzfahrer 8 €/Tag nicht belegt (nur plausibel); Europcar zählt seit
+    3/2026 Fahrer unter 26 als jung.
+  - Ab etwa Mitte 2027 (überarbeitete EU-Fluggastrechte): Kinder unter 14 kostenlos neben einem Erwachsenen; Hinweis anpassen.
+  - Malediven Mindestgültigkeit Pass (vorübergehend 1 Monat statt 6), Eiffelturm-Verkaufsstart (Uhrzeit uneinheitlich).

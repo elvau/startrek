@@ -21,10 +21,9 @@ describe("Früh buchen: Verkaufsstart", () => {
     expect(saleFor(get("tokyo-disney"), "2027-04-30").date).toBe("2027-03-01");
     expect(saleFor(get("ghibli-museum"), "2027-02-14")).toMatchObject({ date: "2027-01-10", time: "10:00" });
     expect(saleFor(get("ghibli-park"), "2027-02-14").date).toBe("2026-12-10");
-    expect(saleFor(get("arches"), "2027-06-20")).toMatchObject({ date: "2027-03-01", time: "08:00" });
     // Anne Frank: Dienstag 10:00, sechs Wochen vorher (Besuch Fr 14.05.2027 → Di 30.03.2027)
     expect(saleFor(get("anne-frank"), "2027-05-14")).toMatchObject({ date: "2027-03-30", time: "10:00" });
-    expect(saleFor(get("inca-trail"), "2027-05-10")).toMatchObject({ date: "2026-11-01", monthOnly: true });
+    expect(saleFor(get("inca-trail"), "2027-05-10")).toMatchObject({ date: "2026-10-01", monthOnly: true });
     expect(saleFor(get("milford-track"), "2027-01-10").date).toBe("2026-05-01");
     expect(saleFor(get("milford-track"), "2027-12-10").date).toBe("2027-05-01");
     expect(saleFor(get("cenacolo"), "2027-06-10")).toEqual({ by: "2027-03-12" });

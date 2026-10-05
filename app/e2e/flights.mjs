@@ -527,17 +527,17 @@ try {
   if (!firstRes.includes("Lufthansa") || !firstRes.includes("4 Koffer inklusive")) fail("Linie mit Koffern nicht vorn: " + firstRes.slice(0, 300));
   const fr = m.locator(".fs-res", { hasText: "Travelpayouts" }).first();
   const frText = await fr.textContent();
-  if (!frText.includes("+ ca. 320 € Koffer") || !frText.includes("+ ca. 18 € Sitzplätze")) fail("Billigflieger ohne Koffer: " + frText.slice(0, 300));
-  if (!(await m.locator(".fs-tip").textContent()).includes("früh einchecken")) fail("Tipp Sitzplätze fehlt");
+  if (!frText.includes("+ ca. 320 € Koffer") || frText.includes("Sitzplätze")) fail("Billigflieger ohne Koffer (Kinder sitzen bei Ryanair gratis bei den Eltern): " + frText.slice(0, 300));
+  if (!/früh einchecken/i.test(await m.locator(".fs-tip").textContent())) fail("Tipp Sitzplätze fehlt");
   if (!(await m.locator("p", { hasText: "inkl. 4 Koffer" }).count())) fail("Sortierhinweis mit Koffern fehlt");
   await fr.locator(".btn", { hasText: "Übernehmen" }).click();
   const xc = p.locator("#flights .xc").first();
   await until(async () => (await xc.count()) > 0, "Nebenkosten am Flug");
   await xc.locator("summary").click();
   const xt = await xc.textContent();
-  if (!xt.includes("4 Koffer dazubuchen") || !xt.includes("Sitzplätze nebeneinander") || !xt.includes("bei der Buchung") || !xt.includes("Ryanair") || !xt.includes("Gepäck nicht angegeben") || !xt.includes("Früh einchecken"))
+  if (!xt.includes("4 Koffer dazubuchen") || !xt.includes("bei der Buchung") || !xt.includes("Ryanair") || !xt.includes("Gepäck nicht angegeben") || !xt.includes("Früh einchecken"))
     fail("Flug-Posten Nebenkosten: " + xt.slice(0, 400));
-  log("Gepäck: ohne Vorliebe 3 Tage ohne, 11 Tage mit 4 Koffern; Ryanair 400 € + ca. 320 € Koffer + 18 € Sitzplätze hinter Lufthansa 560 € mit Koffern; übernommen mit Nebenkosten, „nicht angegeben“ und Check-in-Tipp");
+  log("Gepäck: ohne Vorliebe 3 Tage ohne, 11 Tage mit 4 Koffern; Ryanair 400 € + ca. 320 € Koffer (Kinder gratis bei den Eltern) hinter Lufthansa 560 € mit Koffern; übernommen mit Nebenkosten, „nicht angegeben“ und Check-in-Tipp");
 
   // ohne Wohnort: Abflughäfen aus dem ungefähren Ort der Verbindung (/where), sonst große Flughäfen des Landes
   const TRIP0 = { id: "wo", name: "Lissabon", place: "Lissabon", country: "Portugal", from: "2027-05-14", to: "2027-05-18",

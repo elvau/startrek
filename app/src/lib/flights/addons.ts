@@ -5,7 +5,7 @@
  */
 import type { Extra } from "../model";
 import { FEES_AS_OF } from "../fees";
-import type { FlightOffer, OfferLeg } from "./types";
+import type { FlightOffer } from "./types";
 
 export interface LowCost {
   id: string;
@@ -23,8 +23,8 @@ export interface LowCost {
 }
 
 export const LOW_COST: LowCost[] = [
-  { id: "ryanair", name: "Ryanair", codes: ["FR", "RK", "AL"], words: /ryanair|buzz|malta air/i, bag: 40, famSeat: 9, source: "ryanair.com, Gebühren" },
-  { id: "wizz", name: "Wizz Air", codes: ["W6", "W4", "W9"], words: /wizz/i, bag: 45, famSeat: 10, source: "wizzair.com, Gebühren" },
+  { id: "ryanair", name: "Ryanair", codes: ["FR", "RK", "AL", "RR"], words: /ryanair|buzz|malta air/i, bag: 40, source: "ryanair.com, Gebühren (Kinder seit 6/2026 gratis neben Erwachsenen)" },
+  { id: "wizz", name: "Wizz Air", codes: ["W6", "W4", "W9"], words: /wizz/i, bag: 45, source: "wizzair.com, Gebühren (ein Kind gratis neben einem Erwachsenen)" },
   { id: "easyjet", name: "easyJet", codes: ["U2", "EC", "DS"], words: /easyjet/i, bag: 35, source: "easyjet.com, Gebühren" },
   { id: "vueling", name: "Vueling", codes: ["VY"], words: /vueling/i, bag: 30, source: "vueling.com, Gebühren" },
   { id: "eurowings", name: "Eurowings", codes: ["EW"], words: /eurowings/i, bag: 30, source: "eurowings.com, Tarif Basic" },
@@ -32,7 +32,7 @@ export const LOW_COST: LowCost[] = [
   { id: "volotea", name: "Volotea", codes: ["V7"], words: /volotea/i, bag: 30, source: "volotea.com, Gebühren" },
   { id: "pegasus", name: "Pegasus", codes: ["PC"], words: /pegasus/i, bag: 25, source: "flypgs.com, Tarif Basic" },
   { id: "sunexpress", name: "SunExpress", codes: ["XQ"], words: /sunexpress/i, bag: 25, source: "sunexpress.com, Tarif SunEco" },
-  { id: "jet2", name: "Jet2", codes: ["LS"], words: /jet2/i, bag: 35, source: "jet2.com, Gebühren" },
+  { id: "jet2", name: "Jet2", codes: ["LS"], words: /jet2/i, bag: 25, source: "jet2.com, Gebühren" },
   { id: "norwegian", name: "Norwegian", codes: ["DY", "D8"], words: /norwegian/i, bag: 35, source: "norwegian.com, Tarif LowFare" }
 ];
 
@@ -43,11 +43,10 @@ export const LINE_BAG = 35;
 const NO_SURCHARGE = new Set("AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE IS LI NO GB".split(" "));
 export const surchargeBanned = (cc?: string) => !cc || NO_SURCHARGE.has(cc.toUpperCase());
 
-export function lowCostOf(carrier: string): LowCost | undefined {
+export function lowCostOf(carrier: string, table: LowCost[] = LOW_COST): LowCost | undefined {
   const c = carrier.trim();
-  return LOW_COST.find(l => l.codes.includes(c.toUpperCase()) || l.words.test(c));
+  return table.find(l => l.codes.includes(c.toUpperCase()) || l.words.test(c));
 }
-const legLow = (l: OfferLeg) => l.carriers.map(lowCostOf).find(Boolean);
 
 /** was die Gruppe braucht: Koffer insgesamt, Plätze, ob Kinder neben den Eltern sitzen sollen */
 export interface BagNeed { bags: number; adults: number; kids: number; together: boolean }
@@ -67,9 +66,10 @@ export interface AddOns {
 }
 
 /** Zuschläge eines Angebots für die Gruppe (Preise in EUR) */
-export function addOns(o: FlightOffer, need: BagNeed): AddOns {
+/** table: Liste der Billigflieger (für Tests austauschbar) */
+export function addOns(o: FlightOffer, need: BagNeed, table: LowCost[] = LOW_COST): AddOns {
   const legs = [o.out, ...(o.back ? [o.back] : [])];
-  const lows = legs.map(legLow);
+  const lows = legs.map(l => l.carriers.map(c => lowCostOf(c, table)).find(Boolean));
   const incl = o.baggage ? o.baggage.checked : null;
   const missing = Math.max(0, need.bags - (incl ?? 0));
   let bagFee = 0, seatFee = 0;
