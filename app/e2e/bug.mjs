@@ -1,6 +1,7 @@
 /*
  * Fehler melden (Beta): 🐞 unten links, ohne Anmeldung nur Hinweis, dann Beschreibung und Bild;
- * Umgebung und letzte Fehler gehen mit. Danach die Admin-Ansicht (Nutzung der Kontingente) im Kontomenü.
+ * Umgebung und letzte Fehler gehen mit. Danach die Admin-Ansicht (Nutzung der Kontingente) im Kontomenü und
+ * „Mein Konto zurücksetzen“.
  * Such-Dienst nachgestellt. Start: npm run test:cloud
  */
 import { chromium } from "playwright";
@@ -128,8 +129,39 @@ try {
   const vi = await p.locator(".modal .pt tr[data-id=viator]").innerText();
   if (!vi.includes("Kennung aktiv") || !vi.includes("Erlebnisse") || !vi.includes("direkt") || !/\b3\b/.test(vi)) fail("Partnerliste Viator: " + vi);
   if (!(await p.locator(".modal .pt tr[data-id=booking]").innerText()).includes("neutral")) fail("Partnerliste Booking.com nicht neutral");
-  await p.keyboard.press("Escape");
   log("Admin-Ansicht: Eintrag nur mit Freigabe, Worker-Aufrufe über 90 % rot, Anbieter mit Grenze, Treffer im Zwischenspeicher, Klicks und Partnerliste");
+
+  // Konto zurücksetzen: eigene Reise, geteilte Reise, Aktionsseite, Personen und Buchungsdaten im Emulator anlegen
+  const FS = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
+  const H = { Authorization: "Bearer owner", "Content-Type": "application/json" };
+  const users = await (await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/demo-reisekasse/accounts:query", { method: "POST", headers: { Authorization: "Bearer owner", "Content-Type": "application/json" }, body: "{}" })).json().catch(() => ({}));
+  const kira = (users.userInfo || users.users || []).find(u => u.displayName === "Kira")?.localId;
+  if (!kira) fail("Konto Kira im Emulator nicht gefunden: " + JSON.stringify(users).slice(0, 200));
+  const sv = v => typeof v === "string" ? { stringValue: v } : { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sv(x)])) } };
+  const arr = a => ({ arrayValue: { values: a.map(sv) } });
+  const tj = (id, name) => sv(JSON.stringify({ id, name, place: "Split", country: "Kroatien", travelers: [{ id: "a", name: "Kira", household: "Kira" }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } }));
+  const put = (path, fields) => fetch(`${FS}/${path}`, { method: "PATCH", headers: H, body: JSON.stringify({ fields }) });
+  await put("trips/reset-own", { name: sv("Eigene"), data: tj("reset-own", "Eigene"), owner: sv(kira), memberIds: arr([kira]), members: sv({ [kira]: "owner" }), memberNames: sv({ [kira]: "Kira" }) });
+  await put("trips/reset-shared", { name: sv("Geteilt"), data: tj("reset-shared", "Geteilt"), owner: sv("jemand"), memberIds: arr(["jemand", kira]), members: sv({ jemand: "owner", [kira]: "editor" }), memberNames: sv({ jemand: "Jemand", [kira]: "Kira" }) });
+  await put("campaigns/reset-camp", { owner: sv(kira), title: sv("Aktion") });
+  await put(`profiles/${kira}`, { data: sv("{}") });
+  await put(`travelDocs/${kira}`, { data: sv("{}") });
+  await p.evaluate(() => { localStorage.setItem("rk-theme", "dark"); localStorage.setItem("rk2-dir", "{}"); });
+  const um = p.locator(".modal .usage");
+  await um.locator(".adm-reset-btn").click();
+  await um.locator(".adm-reset-go").click();
+  await um.locator(".adm-reset-done").waitFor({ timeout: 15000 });
+  const done = await um.locator(".adm-reset-done").innerText();
+  if (!done.includes("Reisen gelöscht: 1, verlassen: 1, Aktionsseiten gelöscht: 1")) fail("Zurücksetzen: " + done);
+  const get = path => fetch(`${FS}/${path}`, { headers: H });
+  for (const path of ["trips/reset-own", "campaigns/reset-camp", `profiles/${kira}`, `travelDocs/${kira}`]) if ((await get(path)).status !== 404) fail("nach dem Zurücksetzen noch da: " + path);
+  const shared = await (await get("trips/reset-shared")).json();
+  if (shared.fields.memberIds.arrayValue.values.some(v => v.stringValue === kira) || !shared.fields.members.mapValue.fields.jemand) fail("geteilte Reise nicht verlassen: " + JSON.stringify(shared.fields.memberIds));
+  const left = await p.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith("rk")));
+  if (left.length) fail("auf dem Gerät noch: " + left.join(", "));
+  await um.locator(".adm-reset-reload").click();
+  await p.locator(".top .acct-btn").waitFor();
+  log("Konto zurücksetzen: eigene Reise, Aktionsseite, Personen und Buchungsdaten gelöscht, geteilte Reise verlassen, Gerät leer, weiter angemeldet");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Fehler melden ok");

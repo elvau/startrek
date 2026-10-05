@@ -9,7 +9,8 @@ import {
   updateProfile, type Auth, type User
 } from "firebase/auth";
 import {
-  arrayRemove, arrayUnion, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDocFromServer, initializeFirestore, onSnapshot,
+  arrayRemove, arrayUnion, clearIndexedDbPersistence, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDocFromServer, getDocsFromServer,
+  initializeFirestore, onSnapshot, terminate,
   persistentLocalCache, persistentMultipleTabManager, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, collection,
   type Firestore, type Unsubscribe
 } from "firebase/firestore";
@@ -215,4 +216,34 @@ export async function saveTravelDocs(uid: string, data: string) {
 export async function deleteTravelDocs(uid: string) {
   const r = await docsFetch(uid, { method: "DELETE" });
   if (!r.ok && r.status !== 404) throw new Error(`travelDocs ${r.status}`);
+}
+
+/* ---------- Admin: eigenes Konto zurücksetzen ---------- */
+
+export interface WipeResult { deleted: number; left: number; campaigns: number }
+
+/**
+ * Alles, was im Konto liegt: eigene Reisen löschen, geteilte Reisen verlassen, eigene Aktionsseiten, gespeicherte
+ * Personen und Gruppen sowie Buchungsdaten löschen. Die Anmeldung selbst bleibt (sonst neue Konto-ID, Admin weg).
+ */
+export async function wipeAccount(uid: string): Promise<WipeResult> {
+  const { db } = start();
+  const trips = await getDocsFromServer(query(collection(db, "trips"), where("memberIds", "array-contains", uid)));
+  let deleted = 0, left = 0;
+  for (const d of trips.docs) {
+    if ((d.data() as TripDoc).owner === uid) { await deleteDoc(d.ref); deleted++; }
+    else { await removeMember(d.id, uid); left++; }
+  }
+  const camps = await getDocsFromServer(query(collection(db, "campaigns"), where("owner", "==", uid)));
+  for (const d of camps.docs) await deleteDoc(d.ref);
+  await deleteDoc(profileRef(uid));
+  await deleteTravelDocs(uid);
+  return { deleted, left, campaigns: camps.size };
+}
+
+/** Zwischenspeicher des Firestore-Clients im Browser leeren (danach ist der Client beendet: Seite neu laden) */
+export async function clearCache() {
+  const { db } = start();
+  await terminate(db);
+  await clearIndexedDbPersistence(db);
 }
