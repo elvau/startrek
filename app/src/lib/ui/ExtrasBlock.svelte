@@ -5,6 +5,8 @@
   import { access, app, calc } from "../store.svelte";
   import { eur, moneyExact } from "../calc";
   import type { ExtraLine } from "../calc/extras";
+  import { flagOf } from "../format";
+  import { countryName } from "../geo/locations";
 
   let { item }: { item: Item } = $props();
   const r = $derived(calc.T.items[item.id]);
@@ -14,8 +16,8 @@
   const onKinds = $derived((ex?.lines || []).filter(l => !l.x.off && l.x.pay !== "included" && l.amount > 0));
   const ca = $derived(ex?.est ? `${t("xc.ca")} ` : "");
 
-  const ICON: Record<Extra["kind"], string> = { citytax: "🏛", tax: "🧾", cleaning: "🧹", resort: "🏨", bag: "🧳", seat: "💺", toll: "🛣", visa: "🛂", tips: "💶", insurance: "🛡", driver: "🚗", other: "➕" };
-  const name = (x: Extra) => x.label || t(`xc.kind.${x.kind}` as Key);
+  const ICON: Record<Extra["kind"], string> = { citytax: "🏛", tax: "🧾", cleaning: "🧹", resort: "🏨", bag: "🧳", seat: "💺", toll: "🛣", vignette: "🎫", visa: "🛂", tips: "💶", insurance: "🛡", driver: "🚗", other: "➕" };
+  const name = (x: Extra) => x.label || `${t(`xc.kind.${x.kind}` as Key)}${x.cc ? ` ${flagOf(x.cc)} ${countryName(x.cc)}` : ""}`;
   // Rechnung in Worten: „2,80 € × 3 Pers. × 7 Nächte“ bzw. „pro Buchung“
   function how(l: ExtraLine): string {
     const x = l.x, cur = opt?.price.currency || "EUR";

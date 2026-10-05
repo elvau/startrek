@@ -174,7 +174,7 @@
           <!-- Mietwagen: Richtwert-Posten aus den Flugzeiten, dazu Vergleich mit Ort und Zeiten -->
           {@const cw = carWindow(app.trip)}
           <!-- Anreise mit dem Auto ins Ausland: Vignetten und Maut auf der Strecke -->
-          <RoadCosts />
+          <RoadCosts city={evWin.city} />
           <GroundOptions city={evWin.city} />
           <TransferOptions city={evWin.city} />
           {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.add")}</button></div>{/if}

@@ -8,8 +8,11 @@ Kurtaxen bzw. City Tax, Vignetten, Maut, Durchfahrten, Trinkgeld und Einreisegeb
 - **Kurtaxe:** An jeder Unterkunft, deren Ort erkannt wird (Suchort, Name, Lage, Ziel der Reise), als geschätzte Nebenkosten
   „vor Ort“ automatisch eingerechnet, nach Sternen gestaffelt, Kinder frei bis zur Altersgrenze, höchstens so viele Nächte wie angegeben.
   Wegklicken merkt sich die App am Angebot (`autoOff`). Gibt der Anbieter eine Kurtaxe an (z. B. liteAPI), wird keine geschätzt.
-- **Vignetten und Maut:** Bei Anreise mit dem Auto ins Ausland (Reise ohne Flug) im Kapitel „Vor Ort“ als Vorschlag; Vignetten mit
-  „+ als Posten“ (je Auto). Mietwagen aus Österreich bzw. der Schweiz haben die Vignette meist schon, daher keine Automatik am Mietwagen.
+- **Anreise mit dem eigenen Auto:** In Reisen ohne Flug im Kapitel „Vor Ort“ der Kasten „Anreise mit dem eigenen Auto“: legt je Auto
+  einen Posten an (Sprit und Verschleiß hin und zurück aus Entfernung × km-Satz), Vignetten und Maut der Strecke hängen als
+  geschätzte Nebenkosten daran. Wer zahlt, bestimmt „Wer ist dabei“ am Posten (Mitfahrende teilen, oder nur der Fahrer).
+  Weitere Autos als eigene Posten, vorbelegt mit denen, die noch in keinem Auto sitzen. Bahn oder Bus: kein Auto-Posten, keine Vignette.
+  Mietwagen aus Österreich bzw. der Schweiz haben die Vignette meist schon, daher keine Automatik am Mietwagen.
 - **Einreisegebühren:** In „Wichtiges“ am Einreise-Punkt „+ Gebühr als Posten“, nur für die Personen, die sie brauchen.
 - **Trinkgeld:** Nur als Hinweis bei der Verpflegung, nicht in den Kosten.
 

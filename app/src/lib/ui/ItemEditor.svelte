@@ -99,7 +99,7 @@
   // neuer Posten ohne Preis: Preis (bei Flügen auch die Zeiten) gleich aufgeklappt; nur beim Öffnen, nicht beim Tippen
   const fresh = untrack(() => !calc.T.items[item.id]?.net);
   // Nebenkosten und Kaution (#169)
-  const XKINDS: Extra["kind"][] = ["citytax", "tax", "cleaning", "resort", "bag", "seat", "toll", "visa", "tips", "insurance", "driver", "other"];
+  const XKINDS: Extra["kind"][] = ["citytax", "tax", "cleaning", "resort", "bag", "seat", "toll", "vignette", "visa", "tips", "insurance", "driver", "other"];
   const XBASES: Extra["basis"][] = ["booking", "person", "personNight", "night", "day", "personDay", "percent"];
   const XPAYS: Extra["pay"][] = ["onsite", "extra", "included"];
   const DHOWS = ["credit", "card", "cash", "transfer"] as const;

@@ -264,12 +264,19 @@ try {
   const road = fp.locator("#transport .road");
   await road.waitFor({ timeout: 15000 });
   const rt = await road.innerText();
-  if (!rt.includes("Österreich") || !rt.includes("Slowenien") || !rt.includes("Maut in Kroatien")) fail("Vignetten und Maut: " + rt);
+  if (!rt.includes("eigenen Auto") || !rt.includes("Österreich") || !rt.includes("Slowenien") || !rt.includes("Maut in Kroatien")) fail("Auto-Anreise: " + rt);
+  // als Posten: Sprit je Auto, Vignetten und Maut als Nebenkosten; „Wer ist dabei“ entscheidet, wer zahlt
   await road.locator(".road-add").click();
-  await fp.locator("#transport .card[data-item]", { hasText: "Vignetten (Österreich, Slowenien)" }).waitFor();
+  const car = fp.locator("#transport .card[data-item]", { hasText: "Anreise mit dem Auto" });
+  await car.waitFor();
+  await car.locator(".xc summary").click();
+  await until(async () => (await car.innerText()).includes("Maut 🇭🇷 Kroatien"), "Nebenkosten am Auto-Posten");
+  const ct = await car.innerText();
+  if (!ct.includes("Vignette 🇦🇹 Österreich") || !ct.includes("Vignette 🇸🇮 Slowenien") || !ct.includes("Düsseldorf → Split")) fail("Auto-Posten: " + ct);
+  if (!(await road.locator(".road-add").innerText()).includes("weiteres Auto")) fail("zweites Auto nicht anlegbar");
   const tip = await fp.locator("#misc .food-tip").innerText();
   if (!tip.includes("10 %") || !tip.includes("Strand")) fail("Trinkgeld-Hinweis Kroatien: " + tip);
-  log("Gepflegte Nebenkosten: Kurtaxe Rom 4 Sterne automatisch (Kind frei, Quelle), wegklicken bleibt nach Neuladen; Auto nach Kroatien: Vignetten AT/SI als Posten, Maut HR, Trinkgeld-Hinweis");
+  log("Gepflegte Nebenkosten: Kurtaxe Rom 4 Sterne automatisch (Kind frei, Quelle), wegklicken bleibt nach Neuladen; Auto nach Kroatien als Posten mit Sprit, Vignetten AT/SI und Maut HR als Nebenkosten, weiteres Auto möglich; Trinkgeld-Hinweis");
   await fctx.close();
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
