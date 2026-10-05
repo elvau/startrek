@@ -126,7 +126,6 @@
 
 <div class="wrap">
   <main>
-    <Important />
     <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>
     </Chapter>
@@ -149,6 +148,8 @@
           {/if}
         {:else if ch.k === "attractions"}
           {@const aq = { place: evWin.city, from: evWin.from, to: evWin.to }}
+          <!-- Gut zu wissen: Früh buchen (Kontingente) und besondere Orte; Bestimmungen stehen in der Bubble oben -->
+          <Important tips />
           {#if app.trip.event}
             {@const ev = app.trip.event}
             <p class="search-row att-event">🎟 <b>{ev.name}</b> <span class="muted small">{[`${dayShort(ev.start.slice(0, 10))} ${ev.start.slice(11, 16)}`, ev.venue].filter(Boolean).join(" · ")}</span></p>

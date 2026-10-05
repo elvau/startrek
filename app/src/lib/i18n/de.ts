@@ -626,6 +626,7 @@ export const de = {
   "imp.read": "Gelesen",
   "imp.readPersons": "Gelesen: {a} von {b}",
   "imp.reopen": "wieder öffnen",
+  "imp.tips": "Gut zu wissen",
   "imp.title": "Wichtiges",
   "imp.valid.dEntry": "Reisepass muss ab der Einreise noch mindestens {n} Tage gültig sein (gilt für die meisten Pässe, offiziell prüfen)",
   "imp.valid.dExit": "Reisepass muss über die Ausreise hinaus noch mindestens {n} Tage gültig sein (gilt für die meisten Pässe, offiziell prüfen)",
