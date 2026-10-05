@@ -19,7 +19,7 @@
   import { isActive, uid } from "../model";
   import { adviceUrl } from "../advice";
   import { entryFor, type EntryKind } from "../visa";
-  import { doneIds, isUrgent, markDone, reopen, type Point } from "../important";
+  import { doneIds, isOpen, isUrgent, markDone, reopen, type Point } from "../important";
   import { imp, loadImportant } from "../importantState.svelte";
   import { showItem } from "./showItem";
   import { EES_LINKS, MIN_VALID, type MinValid } from "../borders";
@@ -29,10 +29,12 @@
   $effect(() => { void app.trip.id; loadImportant(); });
   const visa = $derived(imp.visa);
   const countries = $derived(imp.countries);
-  const points = $derived(imp.points);
+  /** tips: „Gut zu wissen“ im Kapitel Erlebnisse (Früh buchen, besondere Orte), sonst die Bestimmungen im Popup */
+  let { tips = false }: { tips?: boolean } = $props();
+  const points = $derived(tips ? imp.tips : imp.rules);
   const done = $derived(app.trip.done || {});
-  const open = $derived(imp.open);
-  const closed = $derived(imp.closed);
+  const open = $derived(points.filter(p => isOpen(p, done)));
+  const closed = $derived(points.filter(p => !isOpen(p, done)));
   const meId = $derived(imp.meId);
   const canCheck = $derived(imp.canCheck);
   let more = $state(false);
@@ -111,7 +113,7 @@
   // Fristen in den Kalender: Verkaufsstarts, Einreise vorab (zwei Wochen vor Abreise), kostenlos stornieren bis
   const deadlines = $derived.by(() => {
     const ev: CalEvent[] = [];
-    for (const p of points) {
+    for (const p of imp.points) {
       if (p.book) for (const x of p.book.entries) if (x.sale.at && !x.sale.monthOnly && x.sale.at.getTime() > Date.now())
         ev.push({ uid: `sale-${x.e.id}`, summary: t("book.icsTitle", { name: x.e.name }), at: x.sale.at, url: x.e.links[0]?.url, alarm: 15 });
       if (p.kind === "entry" && app.trip.from) {
@@ -193,11 +195,12 @@
   {#if p.persons}{@render persons(p)}{:else if !access.readonly}<div class="imp-persons"><button class="btn sm" onclick={() => edit(d => markDone(d, p))}>✓ {verb(p)}</button></div>{/if}
 {/snippet}
 
-{#if points.length || countries.length}
-  <section class="imp">
+{#if tips ? points.length : points.length || countries.length}
+  <section class="imp" class:imp-tips={tips}>
     <div class="imp-top">
-      {#if open.length}<span class="muted small">{tn("imp.openN", open.length)}</span>{:else}<span class="imp-ok">✓ {t("imp.allDone")}</span>{/if}
-      <button class="linkbtn imp-more" aria-expanded={more} onclick={() => (more = !more)}>{closed.length ? t("imp.doneN", { n: closed.length }) : t("imp.details")} {more ? "▴" : "▾"}</button>
+      {#if tips}<h3>💡 {t("imp.tips")}</h3>
+      {:else if open.length}<span class="muted small">{tn("imp.openN", open.length)}</span>{:else}<span class="imp-ok">✓ {t("imp.allDone")}</span>{/if}
+      {#if !tips || closed.length}<button class="linkbtn imp-more" aria-expanded={more} onclick={() => (more = !more)}>{closed.length ? t("imp.doneN", { n: closed.length }) : t("imp.details")} {more ? "▴" : "▾"}</button>{/if}
     </div>
 
     {#each open as p (p.key)}
@@ -223,6 +226,7 @@
             {/each}
           </ul>
         {/if}
+        {#if !tips}
         {#if entries.length}
           <ul class="imp-entries">
             {#each entries as x (x.cc)}
@@ -237,6 +241,7 @@
         {#if canCheck}<p class="small"><button class="linkbtn imp-check" onclick={() => void loadDocs()}>🪪 {t("imp.checkPass")}</button> <span class="muted">{t("imp.checkPassNote")}</span></p>{/if}
         <p class="muted small">{mixed ? t("hint.leadMixed") : t("hint.lead")}{#if visa?.asOf} {t("hint.visaSource", { d: visa.asOf.split("-").reverse().join(".") })}{/if}</p>
         <p class="small">{t("hint.general")}{#each GENERAL_LINKS as l (l.url)} <a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}</p>
+        {/if}
       </div>
     {/if}
   </section>
@@ -247,6 +252,8 @@
   .imp-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .imp-ok { color: var(--ok, #2e8b57); font-weight: 600; font-size: 14px; }
   .imp-more { margin-inline-start: auto; font-size: 13.5px; }
+  .imp-tips { margin: 4px 0 12px; }
+  .imp-tips h3 { margin: 0; font-size: 16px; }
   .imp-card { background: var(--paper, #fff); border-radius: 14px; padding: 10px 14px; box-shadow: var(--shadow); border-inline-start: 4px solid var(--warn, #d08a12); display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
   .imp-card p { margin: 0; }
   .imp-hard { border-inline-start-color: #d0342c; background: color-mix(in srgb, #d0342c 6%, var(--paper, #fff)); }

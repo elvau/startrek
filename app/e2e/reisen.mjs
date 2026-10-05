@@ -112,18 +112,18 @@ try {
   log("Japan: Flugsuche für den Onkel ab seiner ersten Nacht (15.04.), bei Familie Klein wieder der Reisezeitraum");
   // Früh buchen: ein Punkt für Tokio unter „Wichtiges“ mit Shibuya Sky, Fenster in Worten, als Posten übernehmen
   await p.keyboard.press("Escape");
-  await p.locator(".top .imp-btn").click();
-  const tokyo = p.locator(".modal .imp [data-key='book:tokyo']");
-  await tokyo.waitFor();
+  // Bubble oben nur für Bestimmungen: Japan ist für deutsche Pässe visumfrei, Früh buchen steht bei den Erlebnissen
+  const tokyo = p.locator("#attractions .imp-tips [data-key='book:tokyo']");
+  await tokyo.scrollIntoViewIfNeeded();
   if (await tokyo.evaluate(el => el.tagName === "BUTTON")) await tokyo.click();
-  const sky = p.locator(".imp-card[data-key='book:tokyo'] li[data-book='shibuya-sky']");
+  const sky = p.locator("#attractions .imp-card[data-key='book:tokyo'] li[data-book='shibuya-sky']");
   await sky.waitFor();
   if (!(await sky.innerText()).includes("Verkauf 14 Tage vorher, 00:00 Uhr Ortszeit")) fail("Shibuya Sky ohne Fenster: " + (await sky.innerText()));
   if ((await p.locator(".imp [data-key='book:tokyo']").count()) !== 1 || (await p.locator(".imp li[data-book='shibuya-sky']").count()) !== 1) fail("Früh buchen nicht je Reiseziel gebündelt");
   await sky.locator(".imp-add").click();
   await p.locator("#attractions .card[data-item]", { hasText: "Shibuya Sky" }).first().waitFor();
-  await p.keyboard.press("Escape");
-  log("Japan: Früh buchen für Tokio gebündelt (Bubble in der Menüleiste), Shibuya Sky (14 Tage vorher, 00:00 Ortszeit) als Posten übernommen");
+  if (await p.locator(".modal .imp [data-key^='book:']").count()) fail("Früh buchen im Popup der Bestimmungen");
+  log("Japan: Früh buchen für Tokio gebündelt unter „Gut zu wissen“ bei den Erlebnissen, Shibuya Sky (14 Tage vorher, 00:00 Ortszeit) als Posten übernommen");
   // Kalender-Export des Tagesplans: Flüge in Ortszeit, Reisezeitraum ganztägig
   const cal = decodeURIComponent((await p.locator(".dp-cal a").getAttribute("href")).split(",").slice(1).join(","));
   for (const x of ["BEGIN:VCALENDAR", "DTSTART;VALUE=DATE:20270401", "SUMMARY:✈ FRA → HND", "DTSTART:20270401T130000"]) if (!cal.includes(x)) fail(`Kalender ohne „${x}“: ${cal.slice(0, 400)}`);

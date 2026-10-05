@@ -43,6 +43,7 @@
   import GroundOptions from "./lib/ui/GroundOptions.svelte";
   import TransferOptions from "./lib/ui/TransferOptions.svelte";
   import PartnerLinks from "./lib/ui/PartnerLinks.svelte";
+  import Important from "./lib/ui/Important.svelte";
   import { partnersOf, sponsoredAny } from "./lib/partners";
   import { partner } from "./lib/partnerState.svelte";
   import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
@@ -147,6 +148,8 @@
           {/if}
         {:else if ch.k === "attractions"}
           {@const aq = { place: evWin.city, from: evWin.from, to: evWin.to }}
+          <!-- Gut zu wissen: Früh buchen (Kontingente) und besondere Orte; Bestimmungen stehen in der Bubble oben -->
+          <Important tips />
           {#if app.trip.event}
             {@const ev = app.trip.event}
             <p class="search-row att-event">🎟 <b>{ev.name}</b> <span class="muted small">{[`${dayShort(ev.start.slice(0, 10))} ${ev.start.slice(11, 16)}`, ev.venue].filter(Boolean).join(" · ")}</span></p>

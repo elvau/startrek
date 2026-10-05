@@ -650,6 +650,7 @@ export const pl: Dict = {
   "imp.read": "Przeczytane",
   "imp.readPersons": "Przeczytane: {a} z {b}",
   "imp.reopen": "otwórz ponownie",
+  "imp.tips": "Warto wiedzieć",
   "imp.title": "Ważne",
   "imp.valid.dEntry": "Paszport musi być ważny co najmniej {n} dni od wjazdu (dotyczy większości paszportów, sprawdź oficjalnie)",
   "imp.valid.dExit": "Paszport musi być ważny co najmniej {n} dni po wyjeździe (dotyczy większości paszportów, sprawdź oficjalnie)",
