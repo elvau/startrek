@@ -18,8 +18,8 @@ import { importantPoints, isOpen, type PointKind } from "./important";
 import { docs } from "./traveldocs.svelte";
 import { cloud } from "./cloud/cloud.svelte";
 
-/** Bestimmungen: Warnstufen, Warnungen, Einreise, Grenze, Reisepass; Rest (Früh buchen, Orte) ist „Gut zu wissen“ */
-const RULES = new Set<PointKind>(["aa", "warn", "entry", "border", "pass"]);
+/** Bestimmungen: Warnstufen, Warnungen, Einreise, Grenze, Reisepass, dazu hohe Kautionen; Rest (Früh buchen, Orte) ist „Gut zu wissen“ */
+const RULES = new Set<PointKind>(["aa", "warn", "entry", "border", "pass", "deposit"]);
 
 class ImportantState {
   visa = $state<VisaData | null>(null);

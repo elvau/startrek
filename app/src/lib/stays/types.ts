@@ -66,6 +66,8 @@ export interface StayOffer {
   facts?: string[];
   /** Verpflegung, falls der Anbieter sie nennt */
   board?: "self" | "breakfast" | "half" | "full" | "all";
+  /** Steuern und Gebühren laut Anbieter (im Preis enthalten oder vor Ort zu zahlen), in der Währung des Angebots */
+  fees?: { label: string; amount: number; included: boolean }[];
   /** direkt in der App buchbar (später) */
   bookable?: boolean;
 }

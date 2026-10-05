@@ -16,6 +16,7 @@
   import { countryName } from "../geo/locations";
   import { flagOf } from "../format";
   import { groupLabel } from "../groups";
+  import { money } from "../calc";
   import { isActive, uid } from "../model";
   import { adviceUrl } from "../advice";
   import { entryFor, type EntryKind } from "../visa";
@@ -42,7 +43,7 @@
 
   const LEVEL: Record<string, Key> = { warning: "aa.warning", partial: "aa.partial", situation: "aa.situation" };
   const ENT: Record<EntryKind, Key> = { home: "ent.home", free: "ent.free", eta: "ent.eta", evisa: "ent.evisa", arrival: "ent.arrival", visa: "ent.visa", none: "ent.none", unknown: "ent.unknown" };
-  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", book: "🎟️", place: "📍" };
+  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", book: "🎟️", place: "📍", deposit: "🔒" };
   const icon = (p: Point) => (p.kind === "aa" ? (p.level === "situation" ? "⚠️" : "⛔") : ICON[p.kind]);
   const date = (iso: string) => iso.split("-").reverse().join(".");
   const validText = (v: MinValid) => t(`imp.valid.${v.months ? "m" : "d"}${v.from === "entry" ? "Entry" : "Exit"}` as Key, { n: v.months || v.days || 0 });
@@ -52,12 +53,14 @@
     if (p.kind === "border") return t("imp.border.t");
     if (p.kind === "pass") return t("imp.pass.t", { name: p.persons![0].name });
     if (p.kind === "book") return t("book.title", { place: p.book!.label });
+    if (p.kind === "deposit") return t("imp.dep.title", { v: money(p.deposit!.amount, p.deposit!.currency), name: p.deposit!.name });
     return t(`hint.${p.hint!.id}.t` as Key);
   }
   function text(p: Point) {
     if (p.kind === "aa") return t("imp.aaText") + (p.advice?.modified ? ` ${t("imp.aaChanged", { d: date(p.advice.modified) })}` : "");
     if (p.kind === "border") return t("imp.border.x");
     if (p.kind === "book") return t("book.lead");
+    if (p.kind === "deposit") return p.deposit!.how === "credit" ? t("imp.dep.credit") : t("imp.dep.other", { how: p.deposit!.how ? t(`dep.how.${p.deposit!.how}` as Key) : "–" });
     if (p.kind === "pass") return t("imp.pass.x", { d: date(p.pass!.expires), c: countryName(p.cc!), r: date(p.pass!.needed) });
     if (p.hint) return t(`hint.${p.hint.id}.x` as Key);
     const k = p.persons?.find(x => x.kind && x.kind !== "unknown");
@@ -126,10 +129,13 @@
 
   // Gebühren vor Ort (z. B. Galápagos) als Posten
   const hasFee = (h: Hint) => app.trip.items.some(i => i.hint === h.id);
-  function addFee(h: Hint) {
+  // Einreisegebühr (ESTA, ETA …) nur für die, die sie brauchen
+  function addFee(h: Hint, ids?: string[]) {
     if (!h.fee || hasFee(h)) return;
     setDetailed(h.fee.cat, true);
+    const all = app.trip.travelers.filter(isActive).map(x => x.id);
     const it = { id: uid(), cat: h.fee.cat, name: t(`hint.${h.id}.t` as Key), status: "idea" as const, hint: h.id,
+      ...(ids?.length && ids.length < all.length ? { participants: ids } : {}),
       options: [{ id: uid(), label: t("hint.estimate"), estimate: true, price: { mode: "person" as const, currency: h.fee.currency, adult: h.fee.adult, ...(h.fee.child != null ? { child: h.fee.child, infant: h.fee.child } : {}) } }] };
     app.trip.items.push(it);
     showItem(it.id);
@@ -189,7 +195,7 @@
   {#if links(p).length || p.hint?.fee}
     <p class="imp-links">
       {#each links(p) as l (l.url)}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}
-      {#if p.hint?.fee && !access.readonly}{#if hasFee(p.hint)}<small class="muted">✓ {t("hint.feeAdded")}</small>{:else}<button class="linkbtn imp-fee" onclick={() => addFee(p.hint!)}>+ {t("hint.fee")}</button>{/if}{/if}
+      {#if p.hint?.fee && !access.readonly}{#if hasFee(p.hint)}<small class="muted">✓ {t("hint.feeAdded")}</small>{:else}<button class="linkbtn imp-fee" onclick={() => addFee(p.hint!, p.kind === "entry" ? p.persons?.map(x => x.id) : undefined)}>+ {t("hint.fee")}</button>{/if}{/if}
     </p>
   {/if}
   {#if p.persons}{@render persons(p)}{:else if !access.readonly}<div class="imp-persons"><button class="btn sm" onclick={() => edit(d => markDone(d, p))}>✓ {verb(p)}</button></div>{/if}

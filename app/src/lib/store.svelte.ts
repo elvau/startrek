@@ -499,7 +499,8 @@ export async function deleteIf(id: string, test: (t: Trip) => boolean): Promise<
 /** eigene Reisen ohne Kosten (zum Aufräumen nach Rückfrage) */
 export function emptyTrips(): TripEntry[] {
   // nur wirklich leere: ohne Kosten, ohne Ziel und ohne Daten (eine Reise mit Ort oder Zeitraum ist schon geplant)
-  return allTrips().filter(m => { if (!mine(m.id)) return false; const tr = tripFor(m.id); return !!tr && costless(tr) && !tr.place?.trim() && !tr.from; });
+  // unberührte Entwürfe (z. B. die leere Hintergrundreise nach dem Löschen der offenen) stehen nicht auf der Startseite und zählen nicht mit
+  return allTrips().filter(m => { if (!shownOnHome(m) || !mine(m.id)) return false; const tr = tripFor(m.id); return !!tr && costless(tr) && !tr.place?.trim() && !tr.from; });
 }
 
 /** Reise zum Anzeigen: die offene oder die Kopie auf dem Gerät (Konto-Reisen, die hier nie offen waren: null) */
@@ -516,12 +517,13 @@ export function tripFor(id: string): Trip | null {
 }
 const isPristine = (id: string) => { const t = tripFor(id); return !t || pristine(t); };
 
+/** Konto-Reisen zeigen (die Kopie auf dem Gerät kann veraltet sein); nur die offene, eigene, unberührte nicht */
+const shownOnHome = (m: TripEntry) => (m.cloud ? !(m.id === app.trip.id && mine(m.id) && pristine(app.trip)) : !isPristine(m.id));
+
 /** Reisen für die Startseite: zuletzt geöffnete zuerst, leere Entwürfe nicht */
 export function homeTrips(): TripEntry[] {
   const cur = get(K_CUR);
-  // Konto-Reisen zeigen (die Kopie auf dem Gerät kann veraltet sein); nur die offene, eigene, unberührte nicht
-  const show = (m: TripEntry) => (m.cloud ? !(m.id === app.trip.id && mine(m.id) && pristine(app.trip)) : !isPristine(m.id));
-  return allTrips().filter(show).sort((a, b) => Number(b.id === cur) - Number(a.id === cur));
+  return allTrips().filter(shownOnHome).sort((a, b) => Number(b.id === cur) - Number(a.id === cur));
 }
 
 /** Reise öffnen und Startseite verlassen */

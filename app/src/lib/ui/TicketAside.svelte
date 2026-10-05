@@ -38,6 +38,7 @@
     const its = app.trip.items.filter(x => x.cat === k && x.status !== "dropped");
     return its.length ? its.map(x => `${x.name || activeOption(x, app.trip)?.label || t("item.new")} ${eur(T.items[x.id]?.net || 0)}${activeOption(x, app.trip)?.source?.test ? ` (${t("test.badge")})` : ""}`).join(" · ") : t("aside.noItems");
   }
+  const xAdd = $derived(T.extras.onsite + T.extras.extra);
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
@@ -46,6 +47,7 @@
     <div class="tk-top">
       <small>{t("total")}</small>
       <b class="num">{eur(T.total)}</b>
+      {#if xAdd > 0}<span class="tk-xc">{t("aside.xcIncl", { v: `${T.extras.est ? `${t("xc.ca")} ` : ""}${eur(xAdd)}` })}</span>{/if}
       <span>{n ? `${t("perPerson", { v: eurPP(T.due / n) })} · ${tn("n.persons", n)}` : t("nobody")}</span>
       {#if T.funds}<span class="tk-fund">{t("fund.minus", { v: eur(T.funds) })} · {t("fund.own")} {eur(T.due)}</span>{/if}
       {#if tests.length}<span class="tk-test" title={tests.map(x => x.name).join(", ")}>⚠ {tn("test.inTotal", tests.length)}</span>{/if}
@@ -58,6 +60,19 @@
         </div>
         <div class="lg"><span>{t("fixed")} <b class="num">{eur(T.fixed)}</b></span><span>{t("open")} <b class="num">{eur(T.open)}</b></span></div>
       </div>{/if}
+      {#if xAdd > 0 || T.extras.included > 0 || T.extras.deposit > 0}
+        <details class="xc-sum" open={xAdd > 0 || T.extras.deposit > 0}>
+          <summary class="sect">{t("aside.xc")}</summary>
+          {#if T.extras.onsite}<div class="xc-l"><span>{t("aside.xcOnsite")}</span><b class="num">{eur(T.extras.onsite)}</b></div>{/if}
+          {#if T.extras.extra}<div class="xc-l"><span>{t("aside.xcExtra")}</span><b class="num">{eur(T.extras.extra)}</b></div>{/if}
+          {#if T.extras.est}<div class="xc-l muted"><span>{t("aside.xcEst")}</span><b class="num">{t("xc.ca")} {eur(T.extras.est)}</b></div>{/if}
+          {#if T.extras.included}<div class="xc-l muted"><span>{t("aside.xcIncluded")}</span><b class="num">{eur(T.extras.included)}</b></div>{/if}
+          {#if T.extras.deposit}
+            <div class="xc-l xc-k"><span>🔒 {t("aside.deposits")}</span><b class="num">{eur(T.extras.deposit)}</b></div>
+            {#each T.extras.deposits as id (id)}{@const it = app.trip.items.find(i => i.id === id)}{#if it}<a class="xc-l xc-ki" href="#{it.cat}"><span>{it.name}{T.items[id]?.option?.deposit?.how === "credit" ? ` · ${t("dep.creditShort")}` : ""}</span><b class="num">{eur(T.items[id]?.extras?.deposit || 0)}</b></a>{/if}{/each}
+          {/if}
+        </details>
+      {/if}
       <div class="cats">
         {#each CAT_CHAPTERS as c (c.k)}
           <!-- Posten der Kategorie nur auf Wunsch (▾), sonst wird die Leiste bei vielen Posten zu lang -->
@@ -99,3 +114,11 @@
     </div>
   </div>
 </aside>
+
+<style>
+  .tk-xc { display: block; font-weight: 700; }
+  .xc-sum { padding: 2px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 8px; font-size: 13px; }
+  .xc-l { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; color: inherit; text-decoration: none; }
+  .xc-k { margin-top: 4px; color: var(--a); font-weight: 700; }
+  .xc-ki { padding-inline-start: 18px; font-size: 12.5px; color: var(--ink-2); }
+</style>

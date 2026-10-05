@@ -37,8 +37,22 @@ const num = (v: any) => (typeof v === "number" && isFinite(v) ? v : typeof v ===
 const amount = (x: any): number | undefined => num(Array.isArray(x) ? x[0]?.amount : x?.amount);
 
 /** günstigstes Angebot eines Hotels: je Zimmerart der Gesamtpreis (alle Zimmer), sonst die Summe der billigsten Rate je Zimmer */
-function cheapest(h: any, wantBreakfast: boolean, wantFree: boolean): { total: number; currency: string; board?: Board; free: boolean } | null {
-  let best: { total: number; currency: string; board?: Board; free: boolean } | null = null;
+type Fee = { label: string; amount: number; included: boolean };
+/** Steuern und Gebühren der gewählten Raten (taxesAndFees), gleiche Art zusammengefasst; nur in der Währung des Angebots */
+function feesOf(rates: any[], currency: string): Fee[] {
+  const m = new Map<string, Fee>();
+  for (const r of rates) for (const f of (Array.isArray(r.retailRate?.taxesAndFees) ? r.retailRate.taxesAndFees : [])) {
+    const a = num(f?.amount);
+    if (!(a! > 0) || (f.currency && f.currency !== currency)) continue;
+    const label = String(f.description || "").slice(0, 60) || "Taxes and fees", key = `${label}|${!!f.included}`;
+    const cur = m.get(key);
+    m.set(key, { label, amount: (cur?.amount || 0) + a!, included: !!f.included });
+  }
+  return [...m.values()].map(f => ({ ...f, amount: Math.round(f.amount * 100) / 100 }));
+}
+
+function cheapest(h: any, wantBreakfast: boolean, wantFree: boolean): { total: number; currency: string; board?: Board; free: boolean; fees: Fee[] } | null {
+  let best: { total: number; currency: string; board?: Board; free: boolean; fees: Fee[] } | null = null;
   for (const rt of h.roomTypes || []) {
     const rates: any[] = (rt.rates || []).filter((r: any) => {
       const b = boardOfLite(r.boardType, r.boardName);
@@ -55,7 +69,7 @@ function cheapest(h: any, wantBreakfast: boolean, wantFree: boolean): { total: n
     if (!(total > 0)) continue;
     const r0 = [...byRoom.values()][0];
     const currency = (Array.isArray(r0.retailRate?.total) ? r0.retailRate.total[0]?.currency : rt.offerRetailRate?.currency) || "EUR";
-    const c = { total, currency, board: boardOfLite(r0.boardType, r0.boardName), free: [...byRoom.values()].every(r => r.cancellationPolicies?.refundableTag === "RFN") };
+    const c = { total, currency, board: boardOfLite(r0.boardType, r0.boardName), free: [...byRoom.values()].every(r => r.cancellationPolicies?.refundableTag === "RFN"), fees: feesOf([...byRoom.values()], currency) };
     if (!best || c.total < best.total) best = c;
   }
   return best;
@@ -79,7 +93,7 @@ export function fromLite(hotels: any[], rates: any[], q: StayQuery, link?: strin
       ...(h.address || h.city ? { place: [h.address, h.city].filter(Boolean).join(", ") } : {}),
       ...(num(h.latitude) != null && num(h.longitude) != null ? { lat: num(h.latitude), lon: num(h.longitude) } : {}),
       ...(typeof h.main_photo === "string" && /^https:\/\//.test(h.main_photo) ? { image: h.main_photo } : {}),
-      ...(facts.length ? { facts } : {}), ...(c.board ? { board: c.board } : {})
+      ...(facts.length ? { facts } : {}), ...(c.board ? { board: c.board } : {}), ...(c.fees.length ? { fees: c.fees } : {})
     };
   }).filter((o): o is StayOffer => !!o);
 }
