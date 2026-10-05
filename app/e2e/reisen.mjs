@@ -112,8 +112,9 @@ try {
   log("Japan: Flugsuche für den Onkel ab seiner ersten Nacht (15.04.), bei Familie Klein wieder der Reisezeitraum");
   // Früh buchen: ein Punkt für Tokio unter „Wichtiges“ mit Shibuya Sky, Fenster in Worten, als Posten übernehmen
   await p.keyboard.press("Escape");
-  const tokyo = p.locator(".imp [data-key='book:tokyo']");
-  await tokyo.scrollIntoViewIfNeeded();
+  await p.locator(".top .imp-btn").click();
+  const tokyo = p.locator(".modal .imp [data-key='book:tokyo']");
+  await tokyo.waitFor();
   if (await tokyo.evaluate(el => el.tagName === "BUTTON")) await tokyo.click();
   const sky = p.locator(".imp-card[data-key='book:tokyo'] li[data-book='shibuya-sky']");
   await sky.waitFor();
@@ -121,7 +122,8 @@ try {
   if ((await p.locator(".imp [data-key='book:tokyo']").count()) !== 1 || (await p.locator(".imp li[data-book='shibuya-sky']").count()) !== 1) fail("Früh buchen nicht je Reiseziel gebündelt");
   await sky.locator(".imp-add").click();
   await p.locator("#attractions .card[data-item]", { hasText: "Shibuya Sky" }).first().waitFor();
-  log("Japan: Früh buchen für Tokio gebündelt, Shibuya Sky (14 Tage vorher, 00:00 Ortszeit) als Posten übernommen");
+  await p.keyboard.press("Escape");
+  log("Japan: Früh buchen für Tokio gebündelt (Bubble in der Menüleiste), Shibuya Sky (14 Tage vorher, 00:00 Ortszeit) als Posten übernommen");
   // Kalender-Export des Tagesplans: Flüge in Ortszeit, Reisezeitraum ganztägig
   const cal = decodeURIComponent((await p.locator(".dp-cal a").getAttribute("href")).split(",").slice(1).join(","));
   for (const x of ["BEGIN:VCALENDAR", "DTSTART;VALUE=DATE:20270401", "SUMMARY:✈ FRA → HND", "DTSTART:20270401T130000"]) if (!cal.includes(x)) fail(`Kalender ohne „${x}“: ${cal.slice(0, 400)}`);
@@ -229,8 +231,8 @@ try {
   log("Kalifornien: Mietwagen SFO → SAN als Einwegmiete, 7 Personen = 2 Autos; Fehlerpreis LAX → SAN (8.117 € p. P.) aussortiert");
 
   // ---- Wichtiges: Einreise USA (ESTA) oben an der Reise, je Person abhaken, Zähler, minimiert, wieder öffnen
-  const imp = p.locator(".imp");
-  await imp.scrollIntoViewIfNeeded();
+  await p.locator(".top .imp-btn").click();
+  const imp = p.locator(".modal .imp");
   const aa = imp.locator(".imp-card[data-key='aa:US']");
   await aa.waitFor();
   if (!(await aa.innerText()).includes("01.09.2026")) fail("Teilreisewarnung ohne Änderungsdatum: " + (await aa.innerText()));
@@ -238,7 +240,7 @@ try {
   const esta = imp.locator(".imp-card[data-key='entry:US']");
   await esta.waitFor();
   // weitere offene Punkte (z. B. Früh buchen in San Francisco) zählen mit: relativ prüfen
-  const badge = async () => ((await imp.locator(".imp-badge").count()) ? Number(await imp.locator(".imp-badge").innerText()) : 0);
+  const badge = async () => ((await p.locator(".top .imp-btn .imp-badge").count()) ? Number(await p.locator(".top .imp-btn .imp-badge").innerText()) : 0);
   const n0 = await badge();
   if (n0 < 1) fail("Zähler Wichtiges: " + (await imp.innerText()).slice(0, 200));
   const who = await esta.locator(".chip").allInnerTexts();
@@ -253,12 +255,14 @@ try {
   if ((await badge()) !== n0) fail("wieder geöffnet, Zähler nicht zurück");
   if (!(await imp.locator(".imp-entries").innerText()).includes("Vereinigte Staaten")) fail("Einreise im Überblick fehlt");
   if (await p.locator(".hints").count()) fail("alte Karte „Einreise & Tipps“ noch da");
-  log("Wichtiges: ESTA für 7 Personen oben an der Reise, je Person abhaken, Zähler sinkt, wieder öffnen; alte Karte entfällt");
+  log("Wichtiges: ESTA für 7 Personen im Popup der Bubble, je Person abhaken, Zähler sinkt, wieder öffnen; alte Karte entfällt");
   // neue Fassung beim Auswärtigen Amt: Punkt ist wieder offen
   aaMod = "2026-10-02";
   await open("Kalifornien");
-  await p.locator(".imp-card[data-key='aa:US']", { hasText: "02.10.2026" }).waitFor();
-  if ((await p.locator(".imp .imp-badge").innerText()) !== String(n0 + 1)) fail("geänderte Warnung nicht wieder offen");
+  await p.locator(".top .imp-btn").click();
+  await p.locator(".modal .imp-card[data-key='aa:US']", { hasText: "02.10.2026" }).waitFor();
+  if ((await p.locator(".top .imp-btn .imp-badge").innerText()) !== String(n0 + 1)) fail("geänderte Warnung nicht wieder offen");
+  await p.keyboard.press("Escape");
   log("Wichtiges: Teilreisewarnung gelesen, nach Änderung beim Auswärtigen Amt wieder offen");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));

@@ -1,6 +1,6 @@
 <script lang="ts">
   /*
-   * Wichtiges zur Reise, oben unter der Überschrift (ersetzt die frühere Karte „Einreise & Tipps“ im Tagesplan).
+   * Wichtiges zur Reise im Popup der Bubble in der Menüleiste (ImportantButton; ersetzt „Einreise & Tipps“ im Tagesplan).
    * Dringendes (Reisewarnung, Einreise) steht aufgeklappt, Sicherheitshinweise und besondere Orte einzeilig bis zum
    * Antippen. Gelesen bzw. erledigt je Person; wer man selbst ist, kommt aus „Ich bin“ im Personenverzeichnis.
    * Abgehakte sind minimiert und lassen sich wieder öffnen. Zähler in Rot (important.ts).
@@ -9,45 +9,32 @@
    */
   import { locale, t, tn, type Key } from "../i18n/index.svelte";
   import { access, app, setDetailed } from "../store.svelte";
-  import { dir } from "../directory.svelte";
-  import { GENERAL_LINKS, hintsFor, tripAps, tripCountries, tripText, type Hint } from "../hints";
-  import { bookAheadFor, icsFor, type BookAhead, type BookWindow, type Sale } from "../bookahead";
+  import { GENERAL_LINKS, type Hint } from "../hints";
+  import { icsFor, type BookAhead, type BookWindow, type Sale } from "../bookahead";
   import PartnerLinks from "./PartnerLinks.svelte";
   import { cancelEvents, icsHref as calHref, icsName, toIcs, type CalEvent } from "../calendar";
-  import { itinerary } from "../itinerary";
-  import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
-  import { ccOf } from "../geo/places";
-  import { countryName, locOf } from "../geo/locations";
+  import { countryName } from "../geo/locations";
   import { flagOf } from "../format";
   import { groupLabel } from "../groups";
   import { isActive, uid } from "../model";
-  import { adviceUrl, type AdviceMap } from "../advice";
-  import { loadAdvice } from "../adviceApp";
-  import { entryFor, loadVisa, type EntryKind, type VisaData } from "../visa";
-  import { doneIds, importantPoints, isOpen, isUrgent, markDone, reopen, type Point } from "../important";
+  import { adviceUrl } from "../advice";
+  import { entryFor, type EntryKind } from "../visa";
+  import { doneIds, isUrgent, markDone, reopen, type Point } from "../important";
+  import { imp, loadImportant } from "../importantState.svelte";
   import { showItem } from "./showItem";
   import { EES_LINKS, MIN_VALID, type MinValid } from "../borders";
-  import { docs, loadDocs } from "../traveldocs.svelte";
-  import { cloud } from "../cloud/cloud.svelte";
+  import { loadDocs } from "../traveldocs.svelte";
 
-  let visa = $state<VisaData | null>(null);
-  let advice = $state<AdviceMap>({});
-  $effect(() => { void loadVisa().then(d => (visa = d)); void loadAdvice().then(m => (advice = m)); });
-  // Länder aus Reiseland und Flughäfen: Orts- und Flughafendaten laden
-  $effect(() => { void ensureGeo(app.trip).catch(() => {}); void ensureAirports().catch(() => {}); });
-
-  const countries = $derived(tripCountries(app.trip, n => (n ? ccOf(geo, n) : null), c => locOf(airportData, c, "airport")?.cc));
-  const places = $derived([...new Set(itinerary(app.trip).map(d => d.place).filter(Boolean))]);
-  // Ablauf der Reisepässe (nur aus dem Konto, nur im Browser)
-  const passports = $derived(docs.status === "ready" ? Object.fromEntries(app.trip.travelers.filter(x => x.personId && docs.map[x.personId]?.passExpiry).map(x => [x.id, docs.map[x.personId!].passExpiry!])) : {});
-  const canCheck = $derived(!!cloud.user && docs.status !== "ready" && docs.status !== "loading" && app.trip.travelers.some(x => x.personId));
-  const book = $derived(bookAheadFor(tripText(app.trip, places), tripAps(app.trip), app.trip.from));
-  const points = $derived(importantPoints({ trip: app.trip, countries, hints: hintsFor(app.trip, countries, places), visa, advice, passports, book }));
+  // gemeinsamer Stand mit der Bubble in der Menüleiste (importantState.svelte.ts)
+  $effect(() => { void app.trip.id; loadImportant(); });
+  const visa = $derived(imp.visa);
+  const countries = $derived(imp.countries);
+  const points = $derived(imp.points);
   const done = $derived(app.trip.done || {});
-  const open = $derived(points.filter(p => isOpen(p, done)));
-  const closed = $derived(points.filter(p => !isOpen(p, done)));
-  /** man selbst in dieser Reise („Ich bin“ im Personenverzeichnis) */
-  const meId = $derived(dir.me ? app.trip.travelers.find(x => x.personId === dir.me)?.id : undefined);
+  const open = $derived(imp.open);
+  const closed = $derived(imp.closed);
+  const meId = $derived(imp.meId);
+  const canCheck = $derived(imp.canCheck);
   let more = $state(false);
   let unfolded = $state<Record<string, boolean>>({});
 
@@ -207,10 +194,9 @@
 {/snippet}
 
 {#if points.length || countries.length}
-  <section class="imp" aria-labelledby="imp-h">
+  <section class="imp">
     <div class="imp-top">
-      <h2 id="imp-h"><span aria-hidden="true">❗</span> {t("imp.title")}</h2>
-      {#if open.length}<span class="imp-badge" aria-label={tn("imp.openN", open.length)}>{open.length}</span>{:else}<span class="imp-ok">✓ {t("imp.allDone")}</span>{/if}
+      {#if open.length}<span class="muted small">{tn("imp.openN", open.length)}</span>{:else}<span class="imp-ok">✓ {t("imp.allDone")}</span>{/if}
       <button class="linkbtn imp-more" aria-expanded={more} onclick={() => (more = !more)}>{closed.length ? t("imp.doneN", { n: closed.length }) : t("imp.details")} {more ? "▴" : "▾"}</button>
     </div>
 
@@ -259,8 +245,6 @@
 <style>
   .imp { margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
   .imp-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .imp-top h2 { margin: 0; font-size: 18px; }
-  .imp-badge { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: #d0342c; color: #fff; font-weight: 800; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
   .imp-ok { color: var(--ok, #2e8b57); font-weight: 600; font-size: 14px; }
   .imp-more { margin-inline-start: auto; font-size: 13.5px; }
   .imp-card { background: var(--paper, #fff); border-radius: 14px; padding: 10px 14px; box-shadow: var(--shadow); border-inline-start: 4px solid var(--warn, #d08a12); display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
