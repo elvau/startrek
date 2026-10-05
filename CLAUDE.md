@@ -41,6 +41,8 @@ Issues, **SAF 2 – Review** prüft deren Pull Requests und nimmt sie an oder le
   ist daher nicht möglich; die Review antwortet per Kommentar: „ÄNDERUNGEN ANGEFORDERT“ (Umsetzung antwortet nach dem
   Nachbessern mit „NACHGEBESSERT“) oder **„FREIGEGEBEN“**. Freigegeben ist ein PR, wenn der letzte Review-Kommentar mit
   „FREIGEGEBEN“ beginnt und danach kein neuer Commit kam.
+- Findings der Review (Unklares, Hilfe nötig, rote Checks ohne Bezug zum PR) kommen als Issue mit `zuständig: Entwicklung`;
+  Entwicklungssitzungen schauen dort zuerst nach. Rote Prüfläufe startet die Entwicklung bzw. Dani neu, nie automatisch.
 - PRs der Routinen zielen auf `pre-release`, nie auf `main`. Einen freigegebenen PR mit grünen Checks merged die
   Review-Routine in `pre-release` (merge commit) und ist damit auf der Testumgebung; nach `main` kommt er mit dem nächsten Release.
 - Bot-Konten nicht als Spam erscheinen lassen: neue Issues, PRs, Kommentare und Labels in Blöcken von höchstens 10, danach
