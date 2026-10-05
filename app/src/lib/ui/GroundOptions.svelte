@@ -3,6 +3,8 @@
    * Bahn, Fernbus, Auto, Reisebus: bei nahen Zielen Richtwerte pro Person (hin und zurück) und Links zur Suche.
    * Start ist der Wohnort der Gruppe (PLZ im Haushalt), Ziel der Anlass der Reise oder der Reiseort.
    */
+  import { isRoadTrip } from "../road/trip";
+  import { itinerary, stations } from "../itinerary";
   import { t, tn } from "../i18n/index.svelte";
   import { access, app } from "../store.svelte";
   import { eur } from "../calc";
@@ -31,7 +33,8 @@
   const home = $derived(homeOf(app.trip));
   const persons = $derived(app.trip.travelers.filter(isActive).length);
   const plan = $derived(home && dest ? groundPlan(home, dest, persons, tripDays(app.trip), {
-    kmCost: app.trip.settings.kmCost ?? 0.3, flight: flightIn(app.trip, home, dest, airportData) || undefined
+    kmCost: app.trip.settings.kmCost ?? 0.3, flight: flightIn(app.trip, home, dest, airportData) || undefined,
+    road: isRoadTrip(app.trip, stations(itinerary(app.trip)).length)
   }) : null);
   const best = $derived(plan ? fastest(plan) : null);
   const ICON = { flight: "✈️", train: "🚆", bus: "🚌", car: "🚗", coach: "🚍" } as const;

@@ -48,10 +48,11 @@ const PROVIDERS: Record<string, { name: string; limit?: number; per?: Per }> = {
   "mcp.kiwi.com": { name: "Kiwi.com" },
   "api.travelpayouts.com": { name: "Travelpayouts" },
   "mcp.trivago.com": { name: "trivago" },
-  "api.viator.com": { name: "Viator" }
+  "api.viator.com": { name: "Viator" },
+  "api.openrouteservice.org": { name: "OpenRouteService", limit: 2000, per: "day" }
 };
 
-export const ROUTES = ["flights", "stays", "events", "activities", "agent", "mcp", "mcpkey", "bug", "blocked"] as const;
+export const ROUTES = ["flights", "stays", "events", "activities", "agent", "mcp", "mcpkey", "bug", "road", "blocked"] as const;
 
 export function level(share: number | null): Level {
   if (share == null) return "ok";

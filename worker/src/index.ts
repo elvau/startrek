@@ -28,6 +28,7 @@ import { tripStore, type StoreEnv } from "./firestore";
 import { mcpMessage, type Saved } from "./mcp";
 import pkg from "../../app/package.json";
 import { partnerOn } from "../../app/src/lib/partner";
+import { parseRouteQuery, routeOrs, type RoadResult } from "../../app/src/lib/road/ors";
 
 interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv {
   /** KI-Konnektor: Suchen pro Schlüssel und Tag (Standard 50) */
@@ -46,11 +47,13 @@ interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEn
   FIREBASE_PROJECT_ID?: string;
   /** Firebase-Projekt der Testumgebung (elvau.github.io/startrek/); Konten daraus heißen „test:…“ */
   FIREBASE_TEST_PROJECT_ID?: string;
+  /** Strecken mit dem Auto (OpenRouteService, Secret); fehlt er, schätzt die App selbst */
+  ORS_KEY?: string;
   /** optional: KV-Speicher für das Tageslimit; ohne ihn zählt der Zwischenspeicher je Rechenzentrum */
   AGENT_KV?: KVNamespace;
 }
 
-const SEARCHES = new Set(["/flights/search", "/flights/calendar", "/stays/search", "/events/search", "/activities/search"]);
+const SEARCHES = new Set(["/flights/search", "/flights/calendar", "/stays/search", "/events/search", "/activities/search", "/road/route"]);
 
 const DEFAULT_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https://www.splitandfly.com,https://startrek-1b6a7.web.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173";
 
@@ -151,6 +154,24 @@ export default {
         return json(result, 200, h);
       } catch (e) {
         return json({ days: [], configured: true, error: (e as Error).message } satisfies CalendarResult, 200, h);
+      }
+    }
+
+    // Strecke mit dem Auto (Roadtrip, #201): Etappen mit km, Fahrzeit und Verlauf; 30 Tage zwischengespeichert
+    if (url.pathname === "/road/route" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      let body: unknown;
+      try { body = await req.json(); } catch { return json({ error: "Anfrage ist kein JSON" }, 400, h); }
+      const pts = parseRouteQuery(body);
+      if (typeof pts === "string") return json({ error: pts }, 400, h);
+      noteRoute(env, "road");
+      if (!env.ORS_KEY) return json({ legs: [], configured: false } satisfies RoadResult, 200, h);
+      try {
+        const result = await cachedJson<RoadResult>(`road/${encodeURIComponent(JSON.stringify(pts))}`, 30 * 86400,
+          async () => ({ legs: await routeOrs(pts, env.ORS_KEY!, meter(env)), configured: true, source: "ors" }), r => r.legs.length > 0, ctx);
+        return json(result, 200, { ...h, "cache-control": "max-age=86400" });
+      } catch (e) {
+        return json({ legs: [], configured: true, error: (e as Error).message } satisfies RoadResult, 200, h);
       }
     }
 

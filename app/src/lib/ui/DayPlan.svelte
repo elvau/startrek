@@ -15,8 +15,22 @@
   import RouteMap from "./RouteMap.svelte";
   import { reveal } from "./reveal";
   import { icsHref, icsName, planEvents, toIcs } from "../calendar";
+  import { roadPlan } from "../road/road.svelte";
+  import { LONG_H, withPauses } from "../road/trip";
 
-  const days = $derived(itinerary(app.trip));
+  // Roadtrip (#201): Fahrtage mit Strecke, Fahrzeit (mit Pausen) und Hinweis bei langen Etappen
+  const rplan = $derived(roadPlan(app.trip));
+  const days = $derived.by(() => {
+    const ds = itinerary(app.trip);
+    for (const [i, e] of (rplan?.etappen || []).entries()) {
+      const d = ds.find(x => x.date === e.date);
+      if (!d) continue;
+      const h = withPauses(e.min), long = h > LONG_H * 60;
+      d.entries.unshift({ key: `drive:${i}`, kind: "drive", text: `${e.from.name} → ${e.to.name}`, order: "08:00",
+        sub: [t("day.drive", { km: Math.round(e.km), h: `${Math.floor(h / 60)}:${String(h % 60).padStart(2, "0")}` }), long ? `⚠ ${t("road.long", { h: LONG_H })}` : ""].filter(Boolean).join(" · ") });
+    }
+    return ds;
+  });
   // Reiseroute: Vorschau ohne Karte, auf Klick Karte mit Bild und Animation
   $effect(() => { void ensureGeo(app.trip).catch(() => {}); void ensureAirports().catch(() => {}); });
   const route = $derived(tripRoute(app.trip));

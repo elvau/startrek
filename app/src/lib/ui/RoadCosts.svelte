@@ -16,6 +16,11 @@
   import { flagOf } from "../format";
   import { imp } from "../importantState.svelte";
   import { showItem } from "./showItem";
+  import { roadPlan, cityNear } from "../road/road.svelte";
+  import { LONG_H, roadTripCost, withPauses, type Etappe } from "../road/trip";
+  import { splitLeg } from "../road/split";
+  import { openStaySearch } from "../stays/open.svelte";
+  import { dayShort } from "../format";
 
   let { city }: { city: string } = $props();
   const KEY = "road:car";
@@ -37,7 +42,42 @@
   const fuel = $derived(Math.round(2 * road * kmCost));
   const perCar = $derived(fuel + extras.reduce((s, x) => s + x.amount, 0));
   const cars = $derived(app.trip.items.filter(i => i.hint === KEY && i.status !== "dropped"));
-  const show = $derived(!flies && road > 0);
+  // Roadtrip (#201): Etappen über die Stationen; sonst wie bisher nur Wohnort → Ziel
+  const plan = $derived(flies ? null : roadPlan(app.trip));
+  const cost = $derived(plan ? roadTripCost(plan.etappen, kmCost, rate, app.trip.from || "") : null);
+  const perRound = $derived(cost ? cost.fuel + cost.extras.reduce((s, x) => s + x.amount, 0) : 0);
+  const totalMin = $derived(plan ? plan.etappen.reduce((s, e) => s + withPauses(e.min), 0) : 0);
+  const show = $derived(!flies && (road > 0 || !!plan));
+  const hm = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")} h`;
+  const long = (e: Etappe) => withPauses(e.min) > LONG_H * 60;
+  const roundName = $derived(plan ? plan.stops.slice(1, -1).map(s => s.name).join(" → ") : "");
+
+  function optionFor(): Item["options"][number] {
+    if (cost && plan) return { id: uid(), label: t("road.fuel"), estimate: true, price: { mode: "unit", currency: "EUR", unit: cost.fuel }, extras: cost.extras.map(x => ({ ...x, id: `${x.id}:${uid()}` })) };
+    return { id: uid(), label: t("road.fuel"), estimate: true, price: { mode: "unit", currency: "EUR", unit: fuel }, extras: extras.map(x => ({ ...x, id: `${x.id}:${uid()}` })) };
+  }
+  const noteFor = () => (plan && cost
+    ? t("road.tripNote", { a: plan.stops[0].name, r: roundName, km: cost.km, c: moneyExact(kmCost, "EUR"), d: FEES_AS_OF })
+    : t("road.carNote", { a: home!.name, b: dest!.name, km: road, c: moneyExact(kmCost, "EUR"), d: FEES_AS_OF }));
+  /** bestehende Auto-Posten auf die aktuelle Runde rechnen (nach Teilen bzw. neuen Stationen) */
+  function refresh() {
+    for (const c of cars) {
+      const o = c.options[0];
+      if (!o) continue;
+      const n = optionFor();
+      o.price = n.price; o.extras = n.extras; c.note = noteFor();
+    }
+  }
+  const stale = $derived(!!cost && cars.some(c => Math.abs((c.options[0]?.price.unit || 0) - cost!.fuel) >= 1));
+  function split(e: Etappe, n: number) {
+    const made = splitLeg(app.trip, e, n, cityNear);
+    setDetailed("stay", true);
+    return made;
+  }
+  function searchStop(e: Etappe) {
+    const [s] = split(e, 2);
+    if (s) openStaySearch({ from: s.from, to: s.to, place: s.options[0]?.query?.place, itemId: s.id });
+  }
 
   function add() {
     setDetailed("transport", true);
@@ -46,16 +86,50 @@
     const seated = new Set(cars.flatMap(c => c.participants || act));
     const rest = act.filter(id => !seated.has(id));
     const it: Item = { id: uid(), cat: "transport", icon: "car", status: "idea", hint: KEY, arrival: true,
-      name: cars.length ? t("road.carN", { n: cars.length + 1 }) : t("road.car"),
-      note: t("road.carNote", { a: home!.name, b: dest!.name, km: road, c: moneyExact(kmCost, "EUR"), d: FEES_AS_OF }),
+      name: plan ? (cars.length ? t("road.tripN", { n: cars.length + 1 }) : t("road.trip")) : cars.length ? t("road.carN", { n: cars.length + 1 }) : t("road.car"),
+      note: noteFor(),
       ...(cars.length && rest.length ? { participants: rest } : {}),
-      options: [{ id: uid(), label: t("road.fuel"), estimate: true, price: { mode: "unit", currency: "EUR", unit: fuel }, extras: extras.map(x => ({ ...x, id: `${x.id}:${uid()}` })) }] };
+      options: [optionFor()] };
     app.trip.items.push(it);
     showItem(it.id);
   }
 </script>
 
-{#if show}
+{#if show && plan && cost}
+  <div class="search-row road road-trip">
+    <p class="road-t">🚗 <b>{t("road.tripTitle")}</b> <span class="muted small">{t("road.tripSum", { km: cost.km, h: hm(totalMin) })}</span></p>
+    <ol class="rt-legs">
+      {#each plan.etappen as e, i (i)}
+        <li class:long={long(e)}>
+          <span class="rt-d muted small">{e.date ? dayShort(e.date) : ""}</span>
+          <span class="rt-n"><b>{e.from.name} → {e.to.name}</b> <span class="muted small">{Object.keys(e.cc).filter(c => e.cc[c] >= 5).map(flagOf).join(" ")}</span></span>
+          <span class="rt-k num small">{t("road.legKm", { km: Math.round(e.km), h: hm(withPauses(e.min)) })}</span>
+          {#if long(e)}
+            <span class="rt-long small">⚠ {t("road.long", { h: LONG_H })}
+              {#if !access.readonly && e.date}
+                <button type="button" class="linkbtn rt-search" onclick={() => searchStop(e)}>🛏 {t("road.searchStop")}</button>
+                <button type="button" class="linkbtn rt-split" onclick={() => split(e, 2)}>{t("road.split", { n: 2 })}</button>
+                <button type="button" class="linkbtn rt-split3" onclick={() => split(e, 3)}>{t("road.split", { n: 3 })}</button>
+              {/if}
+            </span>
+          {/if}
+        </li>
+      {/each}
+    </ol>
+    <ul>
+      <li>⛽ {t("road.fuelRound", { v: eur(cost.fuel), c: moneyExact(kmCost, "EUR") })}</li>
+      {#each cost.extras as x (x.id)}<li>{x.kind === "vignette" ? "🎫" : "🛣"} {flagOf(x.cc || "")} {x.kind === "vignette" ? t("road.vignette", { c: countryName(x.cc || "") }) : t("road.tollKm", { c: countryName(x.cc || "") })} <b>{t("xc.ca")} {eur(x.amount)}</b> <span class="muted small">· {x.source}</span></li>{/each}
+    </ul>
+    <p class="small road-who">{t("road.who")}</p>
+    {#if !access.readonly}
+      <div class="rt-acts">
+        <button class="btn sm road-add" onclick={add}>+ {cars.length ? t("road.addMore") : t("road.add2", { v: eur(perRound) })}</button>
+        {#if stale}<button class="btn sm rt-refresh" onclick={refresh}>↻ {t("road.refresh")}</button>{/if}
+      </div>
+    {/if}
+    <small class="muted road-src">{plan.est ? t("road.srcEst", { d: FEES_AS_OF }) : t("road.srcOrs", { d: FEES_AS_OF })}</small>
+  </div>
+{:else if show}
   <div class="search-row road">
     <p class="road-t">🚗 <b>{t("road.title2", { b: dest?.name || "" })}</b> <span class="muted small">{["DE", ...route].map(flagOf).join(" → ")} · {t("road.km", { km: road })}</span></p>
     <ul>
@@ -76,4 +150,9 @@
   .road-t, .road-who { margin: 0; }
   .road ul { margin: 0; padding-inline-start: 4px; list-style: none; display: grid; gap: 4px; font-size: 13.5px; }
   .road-add { align-self: flex-start; }
+  .rt-legs { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .rt-legs li { display: grid; grid-template-columns: 5.5em 1fr auto; gap: 2px 10px; align-items: baseline; }
+  .rt-long { grid-column: 2 / -1; color: var(--warn); display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+  .rt-long .linkbtn { font-size: 12.5px; padding: 0; }
+  .rt-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 </style>
