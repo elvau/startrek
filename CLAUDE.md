@@ -17,7 +17,8 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
 - **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: Version auf `pre-release` anheben,
   `test:cloud`, PR `pre-release` → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit); danach `pre-release`
   auf `main` vorspulen (`git push origin origin/main:refs/heads/pre-release`, legt ihn auch neu an, falls GitHub ihn nach dem Merge gelöscht hat; offene PRs danach wieder auf `pre-release` stellen) und den Arbeits-Branch auf `origin/main` zurücksetzen.
-  Issues mit Label `auf-test`, die mitgegangen sind, schließen.
+  Vorher die mitgehenden Änderungen mit Label `bedienung` auf der Testumgebung im Zusammenhang durchsehen (passt es
+  zusammen, ist es auffindbar) und Auffälliges mit Dani klären. Issues mit Label `auf-test`, die mitgegangen sind, schließen.
 - Version in `app/package.json` (`npm version X --no-git-tag-version`) im Release-PR: größere Funktionen mittlere Stelle,
   sonst Patch. Lieber langsam hochzählen.
 
@@ -41,9 +42,6 @@ Issues, **SAF 2 – Review** prüft deren Pull Requests und nimmt sie an oder le
   ist daher nicht möglich; die Review antwortet per Kommentar: „ÄNDERUNGEN ANGEFORDERT“ (Umsetzung antwortet nach dem
   Nachbessern mit „NACHGEBESSERT“) oder **„FREIGEGEBEN“**. Freigegeben ist ein PR, wenn der letzte Review-Kommentar mit
   „FREIGEGEBEN“ beginnt und danach kein neuer Commit kam.
-- Bedienung (Auffindbarkeit, Aufbau, Begriffe) legt die Triage als `change_request` mit `bedienung` und
-  `zuständig: Entwicklung` an. Entwicklungssitzungen prüfen sie gesammelt: zusammenfassen, Richtung festlegen (größere
-  Umbauten als Epic mit Entwurf für Dani), kleine danach auf `zuständig: QA-Routinen` stellen.
 - Findings der Review (Unklares, Hilfe nötig, rote Checks ohne Bezug zum PR) kommen als Issue mit `zuständig: Entwicklung`;
   Entwicklungssitzungen schauen dort zuerst nach. Rote Prüfläufe startet die Entwicklung bzw. Dani neu, nie automatisch.
 - PRs der Routinen zielen auf `pre-release`, nie auf `main`. Einen freigegebenen PR mit grünen Checks merged die
