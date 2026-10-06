@@ -9,6 +9,7 @@
   import WatchBadge from "./WatchBadge.svelte";
   import ExtrasBlock from "./ExtrasBlock.svelte";
   import RentalCheck from "./RentalCheck.svelte";
+  import ItemSplit from "./ItemSplit.svelte";
   import AiMark from "./AiMark.svelte";
   import { t, type Key } from "../i18n/index.svelte";
   import { reveal } from "./reveal";
@@ -43,6 +44,7 @@
     <ItemRow {item} {icon} />
   {/if}
   <ExtrasBlock {item} />
+  <ItemSplit {item} />
   <RentalCheck {item} />
   {#if src?.url || gmap || src?.test}
     <p class="src-link">

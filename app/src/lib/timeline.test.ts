@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Item, type Trip } from "./model";
 import { resetPresence, setPresence, span, timeline } from "./timeline";
-import { totals } from "./calc";
+import { householdShares, itemShares, totals } from "./calc";
 
 const trip = (over: Partial<Trip> = {}): Trip => ({
   id: "t", name: "Test", place: "Testort", country: "Testland", from: "2027-07-10", to: "2027-07-31", tiers: {}, settings: DEFAULT_SETTINGS,
@@ -55,5 +55,18 @@ describe("Zeitleiste (#228)", () => {
     const T2 = totals(t2);
     expect(T2.byHousehold.Bednorz).toBeCloseTo(700 + 560 / 2);
     expect(T2.byHousehold.Oma).toBeCloseTo(560 / 4);
+  });
+  it("Aufteilung je Familie am Posten und in der Abrechnung (#229): Personen, Nächte von …, Betrag", () => {
+    const t = trip({ items: [stay("2027-07-10", "2027-07-24", 80)] });
+    setPresence(t, "Oma", "2027-07-17", "2027-07-24");
+    const T = totals(t);
+    const sh = itemShares(t, T.items["2027-07-10"]);
+    expect(sh.map(x => [x.hh, x.persons, x.nights, x.of])).toEqual([["Bednorz", 2, 14, 14], ["Klein", 1, 14, 14], ["Oma", 1, 7, 14]]);
+    // erste Woche 3 Personen, zweite 4: Oma zahlt 7 × 80 / 4
+    expect(sh.find(x => x.hh === "Oma")!.v).toBeCloseTo(140);
+    expect(sh.reduce((a, x) => a + x.v, 0)).toBeCloseTo(14 * 80);
+    const line = householdShares(t, T).find(h => h.name === "Oma")!.cats.find(c => c.cat === "stay")!.lines[0];
+    expect(line.nights).toBe("7 von 14 Nächten");
+    expect(householdShares(t, T).find(h => h.name === "Klein")!.cats.find(c => c.cat === "stay")!.lines[0].nights).toBeUndefined();
   });
 });

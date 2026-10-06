@@ -417,7 +417,9 @@ try {
   // Zeitleiste (#228): drei Familien, gleich lang → eine Zeile; Zeiten einer Familie setzen, Reise wächst mit, zurücksetzen
   const TL = { id: "tl", name: "Zeitleiste", place: "Testort", country: "Testland", from: "2027-07-10", to: "2027-07-31",
     travelers: [{ id: "a", name: "Anna", household: "Bednorz" }, { id: "c", name: "Tom", household: "Klein" }, { id: "o", name: "Inge", household: "Oma" }],
-    items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {}, detail: {} };
+    items: [{ id: "h", cat: "stay", name: "Ferienhaus", status: "idea", from: "2027-07-10", to: "2027-07-31",
+      options: [{ id: "ho", label: "Ferienhaus", price: { mode: "unit", currency: "EUR", unit: 100, basis: "night" } }] }],
+    tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {}, detail: { stay: true } };
   const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
   await tctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
     localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, TL);
@@ -437,9 +439,12 @@ try {
   const oma = tlc.locator(".tl-row", { hasText: "Oma" });
   await until(async () => (await oma.innerText()).includes("08.07. – 18.07. · 10 Nächte") && (await oma.innerText()).includes("eigene Zeiten"), "Zeiten der Oma gesetzt");
   await until(async () => (await tlc.locator(".tl-h").innerText()).includes("08.07. – 31.07. · 23 Nächte"), "Reise wächst mit");
+  // Aufteilung am Posten (#229): Oma nur 8 der 21 Nächte im Ferienhaus
+  const house = tp.locator("#stay .card[data-item]", { hasText: "Ferienhaus" });
+  await until(async () => (await house.locator(".isplit").innerText().catch(() => "")).includes("8 von 21 Nächten"), "Aufteilung am Posten");
   await tlc.locator(".tl-reset").click();
   await until(async () => (await oma.innerText()).includes("ganze Reise"), "Oma zurückgesetzt");
-  log("Zeitleiste: drei Familien gleich lang kompakt, Zeiten der Oma gesetzt (Reise wächst auf 23 Nächte), zurückgesetzt");
+  log("Zeitleiste: drei Familien gleich lang kompakt, Zeiten der Oma gesetzt (Reise wächst auf 23 Nächte, Aufteilung am Ferienhaus: Oma 8 von 21 Nächten), zurückgesetzt");
   await tctx.close();
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
