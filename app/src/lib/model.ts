@@ -221,6 +221,8 @@ export interface Extra {
   freeUpTo?: number;
   /** höchstens so viele Nächte bzw. Tage */
   max?: number;
+  /** Beträge pro Nacht/Tag/Buchung gelten höchstens für so viele Einheiten (z. B. Autos), nicht für alle gebuchten */
+  maxUnits?: number;
   /** Quelle, z. B. „Stadt Split, Stand 2026“ oder „liteAPI“ */
   source?: string;
   /** Land (Maut, Vignette): Name in der Sprache der App */

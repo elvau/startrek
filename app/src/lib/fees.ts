@@ -216,12 +216,14 @@ export function autoExtras(it: Item, o: Option, trip: Trip, rate0: (cur: string)
   // Mietwagen: junge Fahrer (eingerechnet, wegklickbar), Vollschutz und Zusatzfahrer (nur auf Wunsch)
   if (isRental(it)) {
     const r = rate(o.price.currency || "EUR"), src = `${RENTAL.source}, ${FEES_AS_OF}`;
-    const add = (id: string, kind: Extra["kind"], amount: number, optional: boolean) => {
+    const add = (id: string, kind: Extra["kind"], amount: number, optional: boolean, maxUnits?: number) => {
       if (own.some(x => x.kind === kind)) return;
       const off = optional ? !o.autoOn?.includes(id) : !!o.autoOff?.includes(id);
-      out.push({ id, kind, amount: Math.round(amount * r * 100) / 100, basis: "day", pay: "onsite", est: true, source: src, ...(off ? { off: true } : {}) });
+      out.push({ id, kind, amount: Math.round(amount * r * 100) / 100, basis: "day", pay: "onsite", est: true, source: src, ...(maxUnits ? { maxUnits } : {}), ...(off ? { off: true } : {}) });
     };
-    if (youngDrivers(it, trip).length) add("auto:young", "young", RENTAL.young, false);
+    // Aufpreis je junger Person, nicht je Auto: höchstens so viele Einheiten wie junge Fahrer (die Autos begrenzt calcExtras)
+    const young = youngDrivers(it, trip).length;
+    if (young) add("auto:young", "young", RENTAL.young, false, young);
     add("auto:cover", "cover", RENTAL.cover, true);
     add("auto:driver2", "driver", RENTAL.driver2, true);
   }
