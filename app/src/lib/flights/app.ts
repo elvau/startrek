@@ -233,15 +233,15 @@ export function rateRound(trip: Trip, rt: RoundTrip, home: boolean, withAccess: 
   return rate(trip, { ...first, id: rt.id, price: rt.price, back: home ? last.out : undefined }, first.out.from, withAccess, ids);
 }
 
-/**
- * Keine Flüge, aber eine Quelle ist erst nach einer Weile gescheitert (z. B. Kiwi überlastet oder zu langsam):
- * lohnt einen zweiten Versuch. Sofortige Absagen (fehlende Flughafencodes u. Ä., ms 0) ändern sich dadurch nicht.
- */
 /** Anbieter melden Treffer, die Liste ist aber leer: sie wurden beim Zusammenführen ausgeblendet (andere Flughäfen, Zeitraum, unplausible Preise) */
 export const hitsHidden = (sources: { ok: boolean; count: number }[], shown: number) => shown === 0 && sources.some(s => s.ok && s.count > 0);
 /** Ein eingerichteter Anbieter ist ausgefallen (z. B. 503): „keine Flüge“ heißt dann nicht „gibt es nicht“ */
 export const providerDown = (sources: { configured: boolean; ok: boolean }[]) => sources.some(s => s.configured && !s.ok);
 
+/**
+ * Keine Flüge, aber eine Quelle ist erst nach einer Weile gescheitert (z. B. Kiwi überlastet oder zu langsam):
+ * lohnt einen zweiten Versuch. Sofortige Absagen (fehlende Flughafencodes u. Ä., ms 0) ändern sich dadurch nicht.
+ */
 export const worthRetry = (r: SearchResult) => !r.offers?.length && !!r.sources?.some(s => s.configured && !s.ok && (s.ms || 0) > 0);
 
 /**
