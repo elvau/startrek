@@ -27,7 +27,18 @@ export interface AgentRequest {
   prefs?: Prefs;
   /** offene Reise: die KI berät dazu und schlägt Änderungen vor, statt neue Reisen zu planen */
   current?: TripBrief;
+  /** eingetragene Familien, ohne Namen („F1“, „F2“ …), mit eigenen Zeiten, falls bekannt (#230) */
+  groups?: AgentGroupIn[];
 }
+
+/** Familie in der Anfrage: Kürzel statt Name, Personen, eigene An- und Abreise */
+export interface AgentGroupIn { key: string; adults: number; childAges: number[]; infants: number; from?: string; to?: string }
+
+/**
+ * Familie bzw. Person mit eigenem Zeitraum in einem Vorschlag (#230): key = Kürzel aus der Anfrage (bekannte Familie)
+ * oder neu von der KI (label aus dem Wunsch, z. B. „Oma“); from = erste Nacht, to = Abreise.
+ */
+export interface AgentGroup { key: string; label?: string; adults: number; childAges: number[]; infants: number; from: string; to: string }
 
 /** offene Reise, knapp für die KI: ohne Namen der Reisenden, ohne Buchungsdaten */
 export interface TripBrief {
@@ -73,7 +84,7 @@ export const editCount = (e: AgentEdit) =>
  * Flug für einen Teil der Gruppe oder in kleinen Buchungen: das Angebot gilt für `seats` Plätze (so gesucht),
  * genommen für `travelers` Reisende, aufgeteilt in Buchungen zu höchstens `seats` (z. B. 10 Personen = 5 × 2 Plätze).
  */
-export interface FlightBooking { offer: FlightOffer; seats: number; travelers: number }
+export interface FlightBooking { offer: FlightOffer; seats: number; travelers: number; /** Familie (Kürzel aus groups), die diesen Flug nimmt */ group?: string }
 
 /** Flugpreis einer Buchung für ihre Reisenden (Preis pro Platz mal Reisende) */
 export const bookingPrice = (b: FlightBooking) => (b.offer.price / Math.max(1, b.seats)) * b.travelers;
@@ -103,6 +114,8 @@ export interface AgentTrip {
   total: number;
   /** mit diesen Reisenden gesucht (nur, wenn die App keine kannte) */
   party?: AgentParty;
+  /** Familien mit eigenem Zeitraum (from/to der Reise umfassen alle); ihre Personen ergeben zusammen die Gruppe */
+  groups?: AgentGroup[];
   /** Verpflegung laut Unterkunft (Selbstversorgung, Frühstück, Halbpension, Vollpension, All-inclusive) */
   board?: "self" | "breakfast" | "half" | "full" | "all";
   /** Schätzung der KI: eigene Anreise (Auto, Bahn) für alle, statt Flug */
@@ -145,13 +158,29 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   const trip = { place: s(t.place, 80), from: s(t.from, 10), to: s(t.to, 10) };
   const prefs = parsePrefs(o.prefs);
   const current = parseBrief(o.current);
+  const groups = parseGroupsIn(o.groups);
   return {
     ...(prefs ? { prefs } : {}),
+    ...(groups.length ? { groups } : {}),
     ...(current ? { current } : {}),
     prompt, lang, today, origins, adults: adults as number, childAges: childAges as number[], infants: infants as number,
     ...(trip.place || trip.from || trip.to ? { trip } : {}),
     originsKnown: o.originsKnown !== false, travelersKnown: o.travelersKnown !== false, asked: o.asked === true
   };
+}
+
+/** Familien der Anfrage prüfen: höchstens 10, Kürzel F1…F10, Personen in Grenzen, Daten im Format */
+export function parseGroupsIn(v: unknown): AgentGroupIn[] {
+  if (!Array.isArray(v)) return [];
+  return v.slice(0, 10).flatMap((x: unknown): AgentGroupIn[] => {
+    const g = (x || {}) as Record<string, unknown>;
+    if (typeof g.key !== "string" || !/^F\d{1,2}$/.test(g.key) || !int(g.adults, 0, 20) || !int(g.infants ?? 0, 0, 4)) return [];
+    const ages = Array.isArray(g.childAges) ? g.childAges.filter(a => int(a, 0, 17)).slice(0, 10) as number[] : [];
+    if (!(g.adults as number) && !ages.length) return [];
+    const d = (y: unknown) => (typeof y === "string" && DATE.test(y) ? y : undefined);
+    const from = d(g.from), to = d(g.to);
+    return [{ key: g.key, adults: g.adults as number, childAges: ages, infants: (g.infants ?? 0) as number, ...(from && to && to > from ? { from, to } : {}) }];
+  });
 }
 
 const STATUS: Status[] = ["idea", "chosen", "booked", "paid", "dropped"];
