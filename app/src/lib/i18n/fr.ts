@@ -951,6 +951,7 @@ export const fr: Dict = {
   "fs.noConnection": "aucune liaison trouvée",
   "fs.noSelf": "sans self-transfer",
   "fs.none": "Aucun vol trouvé. Change les dates, les escales ou les aéroports.",
+  "fs.providerDown": "Un fournisseur était temporairement injoignable, les résultats peuvent être incomplets. Relance la recherche plus tard.",
   "fs.oneway": "Aller simple",
   "fs.onewayHint": "On cherche le jour le moins cher de la fenêtre, aller simple. Cherche ensuite le vol suivant ou le retour séparément.",
   "fs.open": "Chercher des vols",
