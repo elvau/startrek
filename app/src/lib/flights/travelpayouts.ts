@@ -3,6 +3,7 @@
  * Preise stammen aus dem Zwischenspeicher von Aviasales (Suchen der letzten Tage) und gelten pro Person.
  * Ankunftszeiten liefert die Schnittstelle nicht, sie werden aus Abflug + Flugdauer berechnet.
  */
+import { airlineName } from "./airlines";
 import type { FlightOffer, FlightQuery, OfferLeg } from "./types";
 
 export const TP_URL = "https://api.travelpayouts.com/aviasales/v3/prices_for_dates";
@@ -60,7 +61,7 @@ function plus(iso: string, minutes: number): string {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function leg(from: string, to: string, dep: string, minutes: number, stops: number, airline: string, no?: string): OfferLeg {
   const d = dep.slice(0, 19);
-  return { from, to, dep: d, arr: plus(d, minutes), minutes: minutes || 0, stops: stops || 0, route: [from, to], carriers: airline ? [airline] : [], flights: no ? [`${airline}${no}`] : [] };
+  return { from, to, dep: d, arr: plus(d, minutes), minutes: minutes || 0, stops: stops || 0, route: [from, to], carriers: airline ? [airlineName(airline)] : [], flights: no ? [`${airline}${no}`] : [] };
 }
 
 /** Antwort in unser Format; Preis pro Person mal Reisende (Babys zählen nicht, Preis ist eine Schätzung) */
