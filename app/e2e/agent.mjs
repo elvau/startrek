@@ -46,6 +46,18 @@ try {
       const edit = { reply: "Ich ersetze den Flug durch die Anreise mit dem Auto.", estimates: [{ cat: "transport", name: "Anreise mit dem Auto", eur: 300, replaces: fl?.id }] };
       return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], edit, remaining: 1 }) });
     }
+    // Familien mit eigenen Zeiten (#230): Familie die ganze Woche, Oma ab dem 10.; je Familie ein Flug
+    if (body.prompt.includes("Jetzt: Familienreise mit Oma") || body.prompt.startsWith("Familienreise mit Oma")) {
+      const t = RESULT.trips[0];
+      const fam = { ...t.flight, id: "kiwi:fam", price: 1440, back: leg("PMI", "DUS", "2027-05-14T18:00:00", "2027-05-14T20:30:00") };
+      const oma = { ...t.flight, id: "kiwi:oma", price: 210, out: leg("DUS", "PMI", "2027-05-10T08:00:00", "2027-05-10T10:30:00"), back: fam.back };
+      const groups = [{ key: "G1", label: "Familie", adults: 2, childAges: [8], infants: 0, from: "2027-05-07", to: "2027-05-14" },
+        { key: "G2", label: "Oma", adults: 1, childAges: [], infants: 0, from: "2027-05-10", to: "2027-05-14" }];
+      const mk = (title, place) => ({ ...t, title, place, from: "2027-05-07", to: "2027-05-14", groups, transport: undefined, extras: undefined,
+        flight: fam, bookings: [{ offer: fam, seats: 3, travelers: 3, group: "G1" }, { offer: oma, seats: 1, travelers: 1, group: "G2" }],
+        stay: { ...t.stay, total: 1400 }, stayQuery: { ...t.stayQuery, checkout: "2027-05-14", adults: 3, childAges: [8] }, total: 3050 });
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [mk("Palma mit Oma", "Palma"), mk("Alcúdia mit Oma", "Alcúdia")], remaining: 1 }) });
+    }
     // Mannschaftsfahrt: 10 Personen, Flüge in Buchungen zu 2 Plätzen
     if (body.prompt.includes("Mannschaftsfahrt")) {
       const t = RESULT.trips[0];
@@ -287,6 +299,7 @@ try {
   await until(async () => !(await names()).includes("Reise"), "alle KI-Reisen im Konto gespeichert, nicht leer");
   log("Mannschaftsfahrt: 10 Personen, Flug in 5 Buchungen à 2 Plätze als eigene Posten");
 
+
   // Startseite: sortieren (Preis, zuletzt bearbeitet, Land), Liste statt Kacheln, Wahl bleibt nach dem Neuladen
   await p.locator(".top .brand-btn").click();
   await p.locator(".home-sort .chip", { hasText: "Preis" }).click();
@@ -331,6 +344,28 @@ try {
   if (!(await p.locator(".home-row", { hasText: "Idee Lissabon" }).count())) fail("Idee Lissabon weg");
   if (!(await p.locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
   log("Aufräumen: unberührter Entwurf still gelöscht; Reisen mit Ort oder Daten (auch ohne Kosten) bleiben");
+
+  // Familien mit eigenen Zeiten (#230, #226): „Alle übernehmen“ legt Familien mit Zeiten an, Preis wie in der Vorschau
+  if (await p.locator(".top .brand-btn").isVisible()) await p.locator(".top .brand-btn").click();
+  await p.locator(".start").waitFor();
+  const c6 = p.locator(".ai-chat");
+  await until(async () => { if (!(await c6.locator(".ai-bar textarea").isVisible())) await p.locator(".ai-fab").click(); return c6.locator(".ai-bar textarea").isVisible(); }, "KI-Fenster offen");
+  await c6.locator(".ai-bar textarea").fill("Familienreise mit Oma nach Mallorca, Oma kommt erst später");
+  await c6.locator(".ai-bar textarea").press("Enter");
+  const fcard = c6.locator(".ai-card", { hasText: "Palma mit Oma" });
+  await fcard.waitFor();
+  const ftxt = await fcard.innerText();
+  if (!ftxt.includes("Familie 07.05.–14.05.") || !ftxt.includes("Oma 10.05.–14.05.")) fail("Familien nicht auf der Karte: " + ftxt);
+  const shown = await fcard.locator("footer .num").innerText();
+  await c6.locator(".ai-all").last().click();
+  await p.locator(".home-trip, .home-row", { hasText: "Palma mit Oma" }).first().click();
+  await p.locator(".hero h1", { hasText: "Palma mit Oma" }).waitFor();
+  if (!(await p.locator(".hero .meta").innerText()).includes("4 Personen")) fail("nicht 4 Personen: " + await p.locator(".hero .meta").innerText());
+  const ftl = p.locator(".tl-card");
+  await until(async () => (await ftl.locator(".tl-row", { hasText: "Oma" }).innerText().catch(() => "")).includes("10.05. – 14.05. · 4 Nächte"), "Oma in der Zeitleiste");
+  await until(() => p.locator("#flights .card").count().then(n => n === 2), "zwei Flugposten");
+  await until(async () => (await p.locator(".hero").innerText()).includes(shown), `Gesamtpreis wie in der Vorschau (${shown})`);
+  log(`Familien mit eigenen Zeiten: „Alle übernehmen“ mit Familie (07.–14.05.) und Oma (10.–14.05.), 4 Personen, Flug je Familie, Gesamt wie in der Vorschau (${shown})`);
 
   // „Zu einem Event“ direkt nach dem Laden, das Konto ist noch nicht da: Kommt es danach, bleibt die neue Reise offen
   // (früher wurde sie gegen die erste Konto-Reise getauscht und der Event-Plan landete dort)

@@ -4,7 +4,7 @@ import booking from "./booking.fixture.json";
 import { boardOf, bookingArgs, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs } from "./providers";
 import { mergeStays, parseStayQuery, searchStays } from "./search";
 import { centerKm, keepStays, sortStays } from "./sort";
-import { defaultStayQuery, guests, stayToOption, takeStay } from "./app";
+import { defaultStayQuery, guests, staysHidden, stayToOption, takeStay } from "./app";
 import type { StayOffer, StayQuery } from "./types";
 import type { Item, Trip } from "../model";
 
@@ -232,5 +232,13 @@ describe("Unterkunftssuche: Filter und Sortierung", () => {
     expect(sortStays(l, "rating").map(x => x.id)).toEqual(["teuer", "familie", "billig"]);
     expect(sortStays(l, "center").map(x => x.id)).toEqual(["billig", "teuer", "familie"]);
     expect(sortStays(l, "family")[0].id).toBe("familie");
+  });
+});
+
+describe("Unterkunftssuche: Treffer ohne Liste", () => {
+  it("erkennt Treffer der Anbieter bei leerer Liste", () => {
+    expect(staysHidden([{ ok: true, count: 12 }], 0)).toBe(true);
+    expect(staysHidden([{ ok: true, count: 12 }], 3)).toBe(false);
+    expect(staysHidden([{ ok: true, count: 0 }, { ok: false, count: 0 }], 0)).toBe(false);
   });
 });

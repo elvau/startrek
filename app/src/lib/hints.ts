@@ -112,3 +112,7 @@ export function hintsFor(trip: Trip, countries: string[], places: string[]): Hin
   const aps = tripAps(trip), text = tripText(trip, places);
   return HINTS.filter(h => (h.cc || []).some(c => countries.includes(c)) || (h.kind !== "entry" && ((h.aps || []).some(a => aps.has(a)) || !!h.words?.test(text))));
 }
+
+/** Warnungen für das Ziel einer Flugsuche (Länder der Zielflughäfen, Zieltext): z. B. Nordkorea nur mit organisierter Tour */
+export const warnHintsFor = (countries: (string | undefined)[], text: string): Hint[] =>
+  HINTS.filter(h => h.kind === "warn" && ((h.cc || []).some(c => countries.includes(c)) || !!h.words?.test(text)));

@@ -20,6 +20,19 @@ je Flug). Beim Übernehmen wird jede Buchung ein eigener Flugposten mit ihren Re
 Preis pro Platz mal Personen. Zimmer wählt die KI nach Wunsch (`rooms`). Gruppen bis 20 Erwachsene.
 Der KI-Konnektor kann das ebenso (`add_flight` mit `travelers`).
 
+## Familien mit eigenen Zeiten (#230)
+
+Kommen und gehen Familien zu unterschiedlichen Zeiten („wir drei Wochen, die anderen ab Woche 2, Oma zehn Tage“), plant
+die KI vom ersten Ankommen bis zur letzten Abreise und liefert je Vorschlag `groups`: je Familie Personen und eigene
+erste Nacht und Abreise. Sie sucht eine Unterkunft für den ganzen Zeitraum (die Rechnung teilt sie pro Nacht nach
+Anwesenden) und Flüge je Familie für deren Daten (`flights` mit `group`).
+- Eingetragene Familien gehen als Kürzel (`F1`, `F2` …) mit Personen und eigenen Zeiten in die Anfrage, ohne Namen.
+  Personen bekannter Familien nimmt der Dienst aus der Anfrage, nicht von der KI.
+- Neue Familien aus dem Wunsch (`G1` …, mit kurzem Namen wie „Oma“) nur, wenn die App noch keine Reisenden kennt.
+- Übernehmen und „Alle übernehmen“ legen die Familien mit ihren Zeiten (`households[…].arrive/depart`) und die Flüge
+  mit den Personen der jeweiligen Familie an. Die neue Reise bekommt dieselben Reisenden wie die Vorschau, damit
+  Vorschau und Übernahme gleich rechnen (#226).
+
 ## Beratung in der offenen Reise
 
 Ist eine Reise offen (Ziel oder eigene Posten vorhanden), berät die KI dazu statt neue Reisen zu planen:
