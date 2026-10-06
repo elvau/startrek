@@ -59,7 +59,7 @@
             {#each c.lines as l (l.key)}
               <li>
                 <button class="sh-l" onclick={() => (l.item ? jump(l.item.id) : document.getElementById(c.cat)?.scrollIntoView({ behavior: "smooth" }))}>
-                  <span class="sh-n">{l.label}{#if l.item && activeOption(l.item, app.trip)?.source?.test} <span class="pill-test">{t("test.badge")}</span>{/if}<small>{[l.detail || (l.who > 1 ? t("perPerson", { v: eurPP(l.v / l.who) }) : ""), l.who < h.members.length ? t("split.who", { a: l.who, b: h.members.length }) : "", l.item ? ST(l.item.status) : ""].filter(Boolean).join(" · ")}</small></span>
+                  <span class="sh-n">{l.label}{#if l.item && activeOption(l.item, app.trip)?.source?.test} <span class="pill-test">{t("test.badge")}</span>{/if}<small>{[l.nights, l.detail || (l.who > 1 ? t("perPerson", { v: eurPP(l.v / l.who) }) : ""), l.who < h.members.length ? t("split.who", { a: l.who, b: h.members.length }) : "", l.item ? ST(l.item.status) : ""].filter(Boolean).join(" · ")}</small></span>
                   <span class="num" class:fixed={l.fixed}>{eur(l.v)}</span>
                 </button>
               </li>

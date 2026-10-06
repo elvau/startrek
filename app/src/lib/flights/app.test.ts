@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi } from "./kiwi";
-import { hitsHidden, worthRetry, compareRow, covered, withoutTravel, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
+import { hitsHidden, providerDown, worthRetry, compareRow, covered, withoutTravel, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
 import { activeOption, totals } from "../calc";
 import { presences } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
@@ -198,5 +198,13 @@ describe("hitsHidden", () => {
     expect(hitsHidden([{ ok: true, count: 33 }], 0)).toBe(true);
     expect(hitsHidden([{ ok: true, count: 33 }], 5)).toBe(false);
     expect(hitsHidden([{ ok: true, count: 0 }, { ok: false, count: 0 }], 0)).toBe(false);
+  });
+});
+
+describe("providerDown", () => {
+  it("meldet ausgefallene eingerichtete Anbieter (z. B. 503), nicht fehlende", () => {
+    expect(providerDown([{ configured: true, ok: false }, { configured: true, ok: true }])).toBe(true);
+    expect(providerDown([{ configured: true, ok: true }, { configured: false, ok: false }])).toBe(false);
+    expect(providerDown([])).toBe(false);
   });
 });

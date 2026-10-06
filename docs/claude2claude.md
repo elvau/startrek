@@ -23,7 +23,7 @@ Daneben, je 1× täglich oder seltener:
 Branches: Arbeits-Branch (`claude/…`) → `pre-release` (Sammelstand, Testumgebung https://elvau.github.io/startrek/)
 → `main` (Produktion https://splitandfly.com). Nach `main` merged keine Routine.
 
-Labels: `bug`, `change_request`, `question`, `from-triage`, `in-arbeit`, `entscheidung` (Frage an Dani, zusammen mit `zuständig: Dani`),
+Labels: `bug`, `change_request`, `question`, `bedienung` (Bedienung; vor dem Release von der Entwicklung durchgesehen), `from-triage`, `in-arbeit`, `entscheidung` (Frage an Dani, zusammen mit `zuständig: Dani`),
 `auf-test` (in pre-release, kommt mit dem nächsten Release), `release-review` (Release-Kandidat), `from-testlauf`
 (gefunden von SAF 5), `maintenance` (Pflege-PR von SAF 7).
 
@@ -102,6 +102,9 @@ Suche im privaten Repo elvau/splitandfly-bugs offene Fehlerberichte ohne Label �
    „Begründung der Kategorie“. Labels: die Kategorie, „from-triage“ und „zuständig: QA-Routinen“.
    Ist der Wunsch größer als eine kleine Änderung (neue Funktion, neuer Partner, neue Ansicht, Entscheidung zur
    Oberfläche, mehrere Bereiche): stattdessen Labels „feature“, „from-triage“ und „zuständig: Entwicklung“.
+   Bedienung (etwas nicht finden, unklare Begriffe, Aufbau, Reihenfolge, zu voll, Ansicht auf dem Handy): wie oben
+   (meist change_request), zusätzlich Label „bedienung“. In der Beschreibung festhalten: wo (Ansicht, Bereich), was
+   gesucht oder erwartet wurde, was stattdessen zu sehen war.
    Ist unklar, was gemeint ist oder ob es gewollt ist: Labels Kategorie, „from-triage“, „zuständig: Dani“ und
    „entscheidung“, mit einer konkreten Frage im Text.
 4. Im privaten Ticket Label „triagiert“ setzen, das Issue in elvau/startrek verlinken (neu oder bestehend) und das

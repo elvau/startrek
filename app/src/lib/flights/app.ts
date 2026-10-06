@@ -239,6 +239,8 @@ export function rateRound(trip: Trip, rt: RoundTrip, home: boolean, withAccess: 
  */
 /** Anbieter melden Treffer, die Liste ist aber leer: sie wurden beim Zusammenführen ausgeblendet (andere Flughäfen, Zeitraum, unplausible Preise) */
 export const hitsHidden = (sources: { ok: boolean; count: number }[], shown: number) => shown === 0 && sources.some(s => s.ok && s.count > 0);
+/** Ein eingerichteter Anbieter ist ausgefallen (z. B. 503): „keine Flüge“ heißt dann nicht „gibt es nicht“ */
+export const providerDown = (sources: { configured: boolean; ok: boolean }[]) => sources.some(s => s.configured && !s.ok);
 
 export const worthRetry = (r: SearchResult) => !r.offers?.length && !!r.sources?.some(s => s.configured && !s.ok && (s.ms || 0) > 0);
 
