@@ -949,6 +949,7 @@ export const de = {
   "fs.noConnection": "keine Verbindung gefunden",
   "fs.noSelf": "ohne Self-Transfer",
   "fs.none": "Keine passenden Flüge gefunden. Datum, Umstiege oder Flughäfen ändern.",
+  "fs.noFreeFlights": "Flüge dorthin sind nicht frei buchbar, die Anreise läuft über den Tour-Anbieter. Die Suche bis zum Ausgangspunkt der Tour (z. B. Peking) ist weiter möglich.",
   "fs.providerDown": "Ein Anbieter war vorübergehend nicht erreichbar, das Ergebnis kann unvollständig sein. Bitte später erneut suchen.",
   "fs.oneway": "Nur Hinflug",
   "fs.onewayHint": "Gesucht wird der günstigste Tag im Zeitfenster, nur Hinflug. Den Weiterflug oder Rückflug später einzeln suchen.",

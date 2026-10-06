@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HINTS, hintsFor, tripCountries } from "./hints";
+import { HINTS, hintsFor, tripCountries, warnHintsFor } from "./hints";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
 const L = (dir: "out" | "via" | "back", from: string, to: string, dep: string) => ({ dir, from, to, dep: `${dep}T10:00`, arr: `${dep}T18:00` });
@@ -46,5 +46,13 @@ describe("Einreise & Tipps", () => {
     expect(fee("rapanui")).toMatchObject({ adult: 100, currency: "USD" });
     // jede ID nur einmal
     expect(new Set(HINTS.map(h => h.id)).size).toBe(HINTS.length);
+  });
+});
+
+describe("Warnhinweise zum Flugziel", () => {
+  it("findet Nordkorea über Land oder Ortsnamen, sonst nichts", () => {
+    expect(warnHintsFor(["KP"], "").map(h => h.id)).toEqual(["kp"]);
+    expect(warnHintsFor([], "Pjöngjang").map(h => h.id)).toEqual(["kp"]);
+    expect(warnHintsFor(["CN", undefined], "Peking")).toEqual([]);
   });
 });
