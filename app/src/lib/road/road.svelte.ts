@@ -25,6 +25,8 @@ function ask(stops: Stop[], key: string) {
     .then((r: RoadResult | null) => {
       if (r) roads.configured = r.configured;
       roads.legs[key] = r && r.legs.length === stops.length - 1 ? r.legs : null;
+      // Grenze pro Minute im Such-Dienst: solange schätzen, danach noch einmal fragen
+      if (r?.retryAfter) setTimeout(() => { asked.delete(key); delete roads.legs[key]; }, Math.min(120, r.retryAfter + 1) * 1000);
     })
     .catch(() => { roads.legs[key] = null; });
 }

@@ -49,6 +49,8 @@ interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEn
   FIREBASE_TEST_PROJECT_ID?: string;
   /** Strecken mit dem Auto (OpenRouteService, Secret); fehlt er, schätzt die App selbst */
   ORS_KEY?: string;
+  /** echte Anfragen an OpenRouteService pro Minute, für alle zusammen (Standard 4; ORS erlaubt 40) */
+  ORS_PER_MIN?: string;
   /** optional: KV-Speicher für das Tageslimit; ohne ihn zählt der Zwischenspeicher je Rechenzentrum */
   AGENT_KV?: KVNamespace;
 }
@@ -166,12 +168,17 @@ export default {
       if (typeof pts === "string") return json({ error: pts }, 400, h);
       noteRoute(env, "road");
       if (!env.ORS_KEY) return json({ legs: [], configured: false } satisfies RoadResult, 200, h);
+      let wait = 0;
       try {
-        const result = await cachedJson<RoadResult>(`road/${encodeURIComponent(JSON.stringify(pts))}`, 30 * 86400,
-          async () => ({ legs: await routeOrs(pts, env.ORS_KEY!, meter(env)), configured: true, source: "ors" }), r => r.legs.length > 0, ctx);
+        const result = await cachedJson<RoadResult>(`road/${encodeURIComponent(JSON.stringify(pts))}`, 30 * 86400, async () => {
+          // nur echte Anfragen zählen (Zwischenspeicher nicht): höchstens ORS_PER_MIN pro Minute, je Rechenzentrum
+          const lim = await checkLimit(caches.default, "ors:all", [{ limit: Number(env.ORS_PER_MIN) || 4, sec: 60 }]);
+          if (!lim.ok) { wait = lim.retryAfter; throw new Error("ORS: Grenze pro Minute erreicht"); }
+          return { legs: await routeOrs(pts, env.ORS_KEY!, meter(env)), configured: true, source: "ors" };
+        }, r => r.legs.length > 0, ctx);
         return json(result, 200, { ...h, "cache-control": "max-age=86400" });
       } catch (e) {
-        return json({ legs: [], configured: true, error: (e as Error).message } satisfies RoadResult, 200, h);
+        return json({ legs: [], configured: true, error: (e as Error).message, ...(wait ? { retryAfter: wait } : {}) } satisfies RoadResult, 200, h);
       }
     }
 

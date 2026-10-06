@@ -260,7 +260,9 @@ Stationen (aus den Unterkünften im Tagesplan) → Wohnort.
 
 - **Routen-Dienst:** `POST /road/route` mit `{ points: [[lat, lon], …] }` (2 bis 25 Punkte, auf etwa 100 m gerundet).
   Der Worker fragt OpenRouteService (`driving-car`) und gibt je Etappe km, Minuten und einen ausgedünnten Verlauf zurück.
-  Gleiche Strecken kommen 30 Tage aus dem Zwischenspeicher. Code: `app/src/lib/road/ors.ts`.
+  Gleiche Strecken kommen 30 Tage aus dem Zwischenspeicher. Höchstens 4 echte Anfragen pro Minute für alle zusammen
+  (`ORS_PER_MIN`, je Rechenzentrum; ORS erlaubt 40); darüber schätzt die App und fragt nach der Wartezeit erneut. In der
+  Admin-Ansicht steht OpenRouteService mit der Tagesgrenze 2.000. Code: `app/src/lib/road/ors.ts`.
 - **Schlüssel:** `ORS_KEY` als **Secret** im Worker (kostenlos bis 2.000 Strecken pro Tag, Konto auf openrouteservice.org).
   Ohne Schlüssel antwortet der Worker `configured: false`, und die App schätzt (Luftlinie × 1,3 bei 85 km/h).
 - **Länder auf der Strecke:** Stichproben etwa alle 10 km entlang des Verlaufs, jede zählt zum Land der nächstgelegenen
