@@ -101,3 +101,56 @@ Dazu die Checkliste am Posten (Kaution, Selbstbeteiligung, Tank voll/voll, junge
 Schäden fotografieren) mit dem Hinweis, dass die Bedingungen des Vermieters maßgeblich sind. Allgemeine Hinweise, keine
 Versicherungsberatung. Führerscheindauer und „Kreditkarte vorhanden“ kommen mit dem Konto-Assistenten (#160) dazu,
 Angaben echter Mietwagen-Angebote mit [114] (#144).
+
+## Fähren (43 Verbindungen, #202)
+Richtwerte je einfache Fahrt, Hauptsaison, grob und ohne Gewähr (Prüfung 10/2026; meist Durchschnitte je Buchung bei Direct
+Ferries, wenige offizielle Tarife). Liste: `FERRIES` in `app/src/lib/road/ferries.ts`. Liegt bei einem Roadtrip eine Station
+auf einer Insel bzw. in Großbritannien oder Irland, kommt die Fähre automatisch dazwischen (wählbar). Am Auto-Posten:
+Fahrzeug je Überfahrt, Personen je Mitfahrer (Kinder bis 3 frei), Kabine nur auf Wunsch; „Paket“ heißt Pflichtkabine, Preis
+mit Personen und Kabine.
+
+| Verbindung | Dauer | Pkw | Person | Kabine | Reedereien | Quelle |
+|---|---|---|---|---|---|---|
+| Livorno → Olbia | 9 h (Nacht) | 219 € | 70 € | 140 € | Moby, Grimaldi | Direct Ferries |
+| Genua → Olbia | 11 h (Nacht) | 258 € | – | 150 € | Moby, GNV | Direct Ferries |
+| Genua → Porto Torres | 11 h (Nacht) | – | – | 70 € | GNV, Tirrenia | Direct Ferries |
+| Civitavecchia → Olbia | 7 h (Nacht) | 271 € | 134 € | – | GNV, Grimaldi, Tirrenia | Direct Ferries |
+| Livorno → Golfo Aranci | 10 h (Nacht) | 327 € | – | – | Corsica Ferries | Direct Ferries |
+| Civitavecchia → Cagliari | 14.5 h (Nacht) | 355 € | – | – | Grimaldi | Direct Ferries |
+| Piombino → Olbia | 5.5 h | – | 37 € | – | Moby | Direct Ferries |
+| Livorno → Bastia | 5 h | 267 € | 72 € | – | Corsica Ferries, Moby | Direct Ferries |
+| Savona (Vado) → Bastia | 7 h | 365 € | 98 € | – | Corsica Ferries | Direct Ferries |
+| Nizza → Bastia | 7 h | 214 € | 59 € | – | Corsica Ferries | Direct Ferries |
+| Toulon → Ajaccio | 10 h (Nacht) | 429 € | 122 € | 90 € | Corsica Ferries | Direct Ferries |
+| Marseille → Ajaccio | 12.5 h (Nacht) | 555 € | 180 € | – | Corsica Linea, La Méridionale | Direct Ferries |
+| Bonifacio → Santa Teresa Gallura | 1 h | 97 € | – | – | Moby, Ichnusa Lines | Direct Ferries |
+| Barcelona → Palma | 7 h (Nacht) | 205 € | 74 € | 170 € | Baleària, Trasmed, GNV | Direct Ferries |
+| Valencia → Palma | 7.5 h (Nacht) | 218 € | 132 € | – | Baleària, GNV | Direct Ferries |
+| Dénia → Ibiza | 2.5 h | 227 € | – | – | Baleària | Direct Ferries |
+| Dénia → Palma | 5.5 h | 350 € | – | – | Baleària | Direct Ferries |
+| Barcelona → Ibiza | 8.5 h (Nacht) | 131 € | 65 € | 166 € | Baleària, Trasmed, GNV | Direct Ferries |
+| Barcelona → Maó | 8 h (Nacht) | 335 € | – | – | Trasmed, Baleària | Direct Ferries |
+| Genua → Palermo | 20 h (Nacht) | 380 € | 170 € | 145 € | GNV | Direct Ferries |
+| Neapel → Palermo | 10.5 h (Nacht) | 217 € | 103 € | – | GNV, Tirrenia | Direct Ferries |
+| Civitavecchia → Palermo | 14 h (Nacht) | 352 € | 132 € | – | GNV | Direct Ferries |
+| Salerno → Palermo | 10 h (Nacht) | 254 € | – | – | Grimaldi | Direct Ferries |
+| Villa San Giovanni → Messina | 0.33 h | 75 € | 2.5 € | – | Caronte & Tourist | Ferryhopper |
+| Piräus → Heraklion | 9.5 h (Nacht) | 327 € | 33 € | 250 € | Minoan, SeaJets | Direct Ferries |
+| Piräus → Chania (Souda) | 9 h (Nacht) | – | 45 € | 112 € | Blue Star | ferriesingreece.com |
+| Piräus → Santorini (Athinios) | 7.75 h | 107 € | 58 € | – | Blue Star, SeaJets | Ferryhopper |
+| Piräus → Mykonos | 5 h | 85 € | 43 € | – | Blue Star, SeaJets | Ferryhopper |
+| Piräus → Paros | 4 h | 130 € | 40 € | – | Blue Star, SeaJets | Ferryhopper |
+| Piräus → Naxos | 5 h | 83 € | 42 € | – | Blue Star, SeaJets | Ferryhopper |
+| Split → Stari Grad (Hvar) | 2 h | 47.6 € | 8.5 € | – | Jadrolinija | Jadrolinija |
+| Split → Supetar (Brač) | 0.83 h | 32 € | 5.2 € | – | Jadrolinija | Jadrolinija |
+| Split → Vela Luka (Korčula) | 3 h | 73.7 € | 10.8 € | – | Jadrolinija | Jadrolinija |
+| Valbiska (Krk) → Merag (Cres) | 0.42 h | 19.89 € | 4.25 € | – | Jadrolinija | Jadrolinija |
+| Piombino → Portoferraio | 1 h | 85 € | 18 € | – | Moby, Toremar, Blu Navy | Ferryhopper |
+| Calais → Dover | 1.5 h | 205 € | – | – | P&O, DFDS, Irish Ferries | Direct Ferries |
+| Dünkirchen → Dover | 2 h | 145 € | – | – | DFDS | Direct Ferries |
+| Hoek van Holland → Harwich | 7 h (Nacht) | 550 € | – | 105 € | Stena Line | Direct Ferries |
+| IJmuiden → Newcastle | 16 h (Nacht) | 1100 € (Paket mit Kabine) | – | – | DFDS | Direct Ferries |
+| Rotterdam (Europoort) → Hull | 12 h (Nacht) | 640 € (Paket mit Kabine) | – | – | P&O | Direct Ferries |
+| Cherbourg → Rosslare | 18 h (Nacht) | 529 € (Paket mit Kabine) | – | – | Stena Line, Brittany Ferries | Ferryhopper |
+| Roscoff → Cork (Ringaskiddy) | 14 h (Nacht) | 625 € | – | – | Brittany Ferries | Direct Ferries |
+| Holyhead → Dublin | 3.25 h | 404 € | – | – | Irish Ferries, Stena Line | Direct Ferries |

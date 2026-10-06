@@ -52,6 +52,7 @@ Anbieter-Links“ (letzte 7 Tage). Der Link öffnet sofort, das Zählen läuft n
 | DiscoverCars | Mietwagen | Travelpayouts | – |
 | Kiwitaxi, GetTransfer, Intui.travel, Welcome Pickups | Transfer | Travelpayouts | – |
 | Booking.com Taxi | Transfer | – | – |
+| Direct Ferries, Ferryhopper | Fähren | direkt (noch nicht beantragt) | – |
 | CHECK24, Allianz Travel | Versicherung (nur Tipp) | – | – |
 | ERGO, HanseMerkur | Versicherung (nur Tipp) | Awin | – |
 

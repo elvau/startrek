@@ -7,8 +7,9 @@ import type { Extra, Trip } from "../model";
 import { FEES_AS_OF, TOLLS, VIGNETTES, safeRate } from "../fees";
 import type { Route } from "../route";
 import { km, thin, type LL, type RoadLeg } from "./ors";
+import { ferriesBetween, type FerryPick } from "./ferries";
 
-export interface Stop { name: string; lat: number; lon: number; kind: "home" | "station"; date?: string }
+export interface Stop { name: string; lat: number; lon: number; kind: "home" | "station" | "port"; date?: string }
 export interface Etappe {
   from: Stop;
   to: Stop;
@@ -22,6 +23,38 @@ export interface Etappe {
   cc: Record<string, number>;
   /** geschätzt (kein Routen-Dienst) */
   est: boolean;
+  /** Überfahrt mit der Fähre statt Fahrt (km 0, Dauer der Überfahrt); alts: andere Verbindungen, key: Wahl in trip.ferry */
+  ferry?: FerryPick;
+  alts?: FerryPick[];
+  key?: string;
+}
+
+/** Schlüssel der Fährwahl je Überfahrt (von Halt zu Halt) */
+export const ferryKey = (a: Stop, b: Stop) => `${a.name}>${b.name}`;
+
+/**
+ * Fähren zwischen die Halte setzen: liegen zwei Halte in verschiedenen Gebieten (Insel, GB, IE), kommen Abfahrts- und
+ * Ankunftshafen dazwischen. choice: gewählte Verbindung je Überfahrt („none“: keine Fähre). Rückgabe: Halte mit Häfen und
+ * die Fähre je Abschnitt (Index des Abschnitts, der am Abfahrtshafen beginnt).
+ */
+export function withFerries(stops: Stop[], ccOf: (p: LL) => string | undefined, choice: Record<string, string> = {}, lastDate?: string):
+  { stops: Stop[]; ferries: Map<number, { pick: FerryPick; alts: FerryPick[]; key: string }> } {
+  const out: Stop[] = [stops[0]], ferries = new Map<number, { pick: FerryPick; alts: FerryPick[]; key: string }>();
+  for (let i = 1; i < stops.length; i++) {
+    const a = stops[i - 1], b = stops[i], key = ferryKey(a, b);
+    const alts = choice[key] === "none" ? [] : ferriesBetween(a, b, ccOf);
+    if (alts.length) {
+      const pick = alts.find(p => p.ferry.id === choice[key]) || alts[0];
+      const date = b.date || (b.kind === "home" ? lastDate : undefined);
+      // Hafen nur als eigener Halt, wenn er nicht (fast) am Halt selbst liegt (Station Olbia = Hafen Olbia)
+      const near = (s: Stop, p: { lat: number; lon: number }) => km([s.lat, s.lon], [p.lat, p.lon]) < 5;
+      if (!near(a, pick.from)) out.push({ name: pick.from.name, lat: pick.from.lat, lon: pick.from.lon, kind: "port", ...(date ? { date } : {}) });
+      ferries.set(out.length - 1, { pick, alts, key });
+      if (!near(b, pick.to)) out.push({ name: pick.to.name, lat: pick.to.lat, lon: pick.to.lon, kind: "port", ...(date ? { date } : {}) });
+    }
+    out.push(b);
+  }
+  return { stops: out, ferries };
 }
 
 /** Faktor Luftlinie → Straße und Reisetempo für die Schätzung */
@@ -87,9 +120,12 @@ export function nearestCountry(cities: [string, number, number][]): (p: LL) => s
 }
 
 /** Etappen aus Halten und Strecken (Routen-Dienst oder Schätzung je Etappe) */
-export function etappen(stops: Stop[], legs: (RoadLeg | null)[], countryOf: (p: LL) => string | undefined, lastDate?: string): Etappe[] {
+export function etappen(stops: Stop[], legs: (RoadLeg | null)[], countryOf: (p: LL) => string | undefined, lastDate?: string,
+  ferries?: Map<number, { pick: FerryPick; alts: FerryPick[]; key: string }>): Etappe[] {
   return stops.slice(1).map((to, i) => {
     const from = stops[i];
+    const f = ferries?.get(i);
+    if (f) return { from, to, ...(to.date ? { date: to.date } : {}), km: 0, min: Math.round(f.pick.ferry.hours * 60), path: [], cc: {}, est: false, ferry: f.pick, alts: f.alts, key: f.key };
     const real = legs[i];
     const l = real || estimateLeg([from.lat, from.lon], [to.lat, to.lon]);
     // Fahrtag: Ankunft an der Station; zurück nach Hause am letzten Tag
@@ -140,5 +176,16 @@ export function roadTripCost(et: Etappe[], kmCost: number, rate0: (cur: string) 
     extras.push({ id: `road:toll:${cc}`, kind: "toll", cc, amount: Math.round(((byCc[cc].km * tl.per100) / 100 / rate(tl.currency)) * 100) / 100,
       basis: "booking", pay: "onsite", est: true, source: src(tl.source) });
   }
+  // Fähren: Fahrzeug (bzw. Paket mit Pflichtkabine), Personen, Kabine nur auf Wunsch (ausgeschaltet)
+  et.forEach((e, i) => {
+    const f = e.ferry?.ferry;
+    if (!f) return;
+    const src = `${e.ferry!.from.name} → ${e.ferry!.to.name} · ${f.ops.join(", ")} · ${f.source}, ${FEES_AS_OF}`;
+    const eur = (v: number) => Math.round((v / rate(f.currency)) * 100) / 100;
+    const base = { basis: "booking" as const, pay: "extra" as const, est: true, source: src };
+    if (f.car != null) extras.push({ id: `road:ferry:${f.id}:${i}`, kind: "ferry", amount: eur(f.car), ...base });
+    if (f.person != null && !f.pkg) extras.push({ id: `road:ferryp:${f.id}:${i}`, kind: "ferryPerson", amount: eur(f.person), ...base, basis: "person", freeUpTo: 3 });
+    if (f.cabin != null && f.night && !f.pkg) extras.push({ id: `road:cabin:${f.id}:${i}`, kind: "cabin", amount: eur(f.cabin), ...base, off: true });
+  });
   return { fuel: Math.round(total * kmCost), km: total, extras, countries: Object.keys(byCc) };
 }

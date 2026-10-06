@@ -25,6 +25,12 @@
     for (const [i, e] of (rplan?.etappen || []).entries()) {
       const d = ds.find(x => x.date === e.date);
       if (!d) continue;
+      if (e.ferry) {
+        const f = e.ferry, h = e.min;
+        d.entries.unshift({ key: `ferry:${i}`, kind: "ferry", text: `${f.from.name} → ${f.to.name}`, order: "08:30",
+          sub: [t("road.ferryH", { h: `${Math.floor(h / 60)}:${String(h % 60).padStart(2, "0")} h` }), f.ferry.night ? t("road.night") : "", f.ferry.ops.join(", ")].filter(Boolean).join(" · ") });
+        continue;
+      }
       const h = withPauses(e.min), long = h > LONG_H * 60;
       d.entries.unshift({ key: `drive:${i}`, kind: "drive", text: `${e.from.name} → ${e.to.name}`, order: "08:00",
         sub: [t("day.drive", { km: Math.round(e.km), h: `${Math.floor(h / 60)}:${String(h % 60).padStart(2, "0")}` }), long ? `⚠ ${t("road.long", { h: LONG_H })}` : ""].filter(Boolean).join(" · ") });
