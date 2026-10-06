@@ -70,7 +70,7 @@ export function calcExtras(opt: Option, people: Traveler[], c: ExtrasCtx): Extra
   for (const x of opt.extras) {
     const per: Record<string, number> = {};
     let payers: number | undefined;
-    const v = (x.amount || 0) * c.fx, u = Math.max(1, c.units || 1);
+    const v = (x.amount || 0) * c.fx, u = Math.max(1, x.maxUnits ? Math.min(x.maxUnits, c.units || 1) : c.units || 1);
     const split = (total: number) => people.forEach(t => (per[t.id] = (total * wt(t)) / sumW));
     switch (x.basis) {
       case "person": case "personNight": case "personDay": {
