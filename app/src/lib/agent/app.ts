@@ -1,14 +1,14 @@
 /* KI-Planer in der App: Anfrage aus der Reise bauen, an den Such-Dienst schicken, Vorschlag übernehmen */
 import { i18n, t, type Key } from "../i18n/index.svelte";
-import { ageClass, totals } from "../calc";
+import { ageClass, presences, totals } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, offerToOption, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
-import { hhKey, uid, type AiMark, type Item, type Prefs, type Trip } from "../model";
+import { hhKey, isActive, uid, type AiMark, type Item, type Prefs, type Traveler, type Trip } from "../model";
 import { syncFood } from "../food";
 import type { GeoData } from "../geo/places";
 import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
-import type { AgentEdit, AgentRequest, AgentResult, AgentTrip, FlightBooking, TripBrief } from "./types";
+import type { AgentEdit, AgentGroupIn, AgentRequest, AgentResult, AgentTrip, FlightBooking, TripBrief } from "./types";
 import { noteError } from "../bugs/log";
 
 /** Wunsch plus Reisende, Abflughäfen und was über die Reise schon feststeht */
@@ -26,8 +26,30 @@ export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: 
     ...(known.place || known.from || known.to ? { trip: known } : {}),
     originsKnown: flyers(trip).some(p => !!trip.households?.[hhKey(p)]?.geo),
     travelersKnown: travelersKnown(trip), asked, ...(prefs ? { prefs } : {}),
-    ...(withTrip ? { current: tripBrief(trip) } : {})
+    ...(withTrip ? { current: tripBrief(trip) } : {}),
+    ...(groupsIn(trip).length > 1 ? { groups: groupsIn(trip) } : {})
   };
+}
+
+/** Familien der Reise mit Kürzel (F1, F2 … in der Reihenfolge der Reisenden); die KI bekommt keine Namen (#230) */
+export function groupKeys(trip: Trip): Map<string, string> {
+  return new Map([...new Set(trip.travelers.filter(isActive).map(hhKey))].slice(0, 10).map((hh, i) => [`F${i + 1}`, hh]));
+}
+
+/** Familien für die KI: Personen und, falls eingetragen, eigene Zeiten */
+export function groupsIn(trip: Trip): AgentGroupIn[] {
+  const pres = presences(trip);
+  return [...groupKeys(trip)].map(([key, hh]) => {
+    const ms = trip.travelers.filter(p => isActive(p) && hhKey(p) === hh);
+    const cls = (p: Traveler) => (p.kind === "infant" || (p.age != null && (p.age as unknown) !== "" && p.age < 2) ? "infant" : ageClass(p.age, trip.settings, p.kind));
+    const childAges = ms.filter(p => cls(p) === "child").map(p => (p.age != null && (p.age as unknown) !== "" ? Math.min(17, Math.max(2, Math.round(Number(p.age)))) : 8));
+    const h = trip.households?.[hh];
+    const own = h?.arrive && h?.depart ? { from: h.arrive, to: h.depart } : (() => {
+      const ps = ms.map(p => pres[p.id]).filter(x => !!x && x.src === "flight");
+      return ps.length ? { from: ps.map(x => x!.a).sort()[0], to: ps.map(x => x!.d).sort().at(-1)! } : {};
+    })();
+    return { key, adults: ms.filter(p => cls(p) === "adult").length, childAges, infants: ms.filter(p => cls(p) === "infant").length, ...own };
+  }).filter(g => g.adults + g.childAges.length > 0);
 }
 
 /** berät die KI zur offenen Reise? (sonst plant sie neue Reisen) – sobald Ziel oder eigene Posten da sind */
@@ -61,6 +83,24 @@ export const travelersKnown = (trip: Trip) => trip.travelers.length > 1 || trip.
 
 /** Reisende aus dem Vorschlag übernehmen, wenn die Reise noch keine hat: „Fuchs Erw. 1“, „Fuchs Kind 1 (8)“ … */
 export function takeParty(trip: Trip, a: AgentTrip) {
+  // neue Familien aus dem Wunsch (#230): je Familie Platzhalter, Name aus dem Wunsch oder ein Tier
+  const fresh = (a.groups || []).filter(g => !g.key.startsWith("F"));
+  if (fresh.length && !travelersKnown(trip)) {
+    const used: string[] = [];
+    trip.travelers = fresh.flatMap((g, i) => {
+      const animal = nextAnimal(used);
+      used.push(animal);
+      const list = placeholderTravelers([{ animal, adults: g.adults, kids: g.childAges.length, infants: g.infants }], i);
+      let k = 0;
+      for (const p of list) {
+        if (p.kind === "child") p.age = g.childAges[k++];
+        if (g.label) { p.name = p.name.replace(p.household, g.label); p.household = g.label; }
+        (p as Traveler & { group?: string }).group = g.key;
+      }
+      return list;
+    });
+    return;
+  }
   if (!a.party || travelersKnown(trip)) return;
   const animal = trip.travelers[0]?.household ? ANIMALS.find(([n]) => animalName(n) === trip.travelers[0].household)?.[0] : undefined;
   const list = placeholderTravelers([{ animal: animal || nextAnimal(), adults: a.party.adults, kids: a.party.childAges.length, infants: a.party.infants }]);
@@ -105,10 +145,18 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   trip.detail ||= {};
   const at = new Date().toISOString();
   // Flug und Unterkunft sind echte Angebote: „von der KI vorgeschlagen“
+  const fam = familiesOf(trip, a);
+  for (const [hh, g] of fam) {
+    // eigene Zeiten nur, wo sie vom Reisezeitraum abweichen
+    if (g.from === trip.from && g.to === trip.to) continue;
+    trip.households ||= {};
+    trip.households[hh] = { ...(trip.households[hh] || {}), arrive: g.from, depart: g.to };
+  }
   if (a.bookings?.length) {
     trip.detail.flights = true;
     const seat = seatQueue(trip);
-    for (const b of a.bookings) takeBookings(trip, b, seat(b.travelers), { at, kind: "suggested" });
+    const seatOf = new Map([...fam].map(([hh, g]) => [g.key, seatQueue(trip, hh)]));
+    for (const b of a.bookings) takeBookings(trip, b, (b.group && seatOf.get(b.group)?.(b.travelers)) || seat(b.travelers), { at, kind: "suggested" });
   } else if (a.flight) { trip.detail.flights = true; takeOffer(trip, a.flight).ai = { at, kind: "suggested" }; }
   if (a.stay && a.stayQuery) {
     trip.detail.stay = true;
@@ -128,9 +176,22 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   if (a.extras?.length) { trip.detail.attractions = true; a.extras.forEach(x => trip.items.push(est("attractions", x.name, x.eur))); }
 }
 
-/** Reisende mit eigenem Sitz der Reihe nach verteilen (Babys fliegen bei einem Erwachsenen mit und zählen nicht) */
-function seatQueue(trip: Trip) {
-  const ids = flyers(trip).filter(p => !(p.age != null && (p.age as unknown) !== "" && p.age < 2) && p.kind !== "infant").map(p => p.id);
+/** Familien des Vorschlags → Familie in der Reise (bekannte über das Kürzel, neue über die Platzhalter) */
+function familiesOf(trip: Trip, a: AgentTrip): Map<string, NonNullable<AgentTrip["groups"]>[number]> {
+  const out = new Map<string, NonNullable<AgentTrip["groups"]>[number]>();
+  const keys = groupKeys(trip);
+  for (const g of a.groups || []) {
+    const hh = keys.get(g.key) ?? trip.travelers.find(p => (p as Traveler & { group?: string }).group === g.key)?.household;
+    if (hh) out.set(hh, g);
+  }
+  // Hilfsfeld der Platzhalter wieder entfernen (gehört nicht in die Reise)
+  trip.travelers.forEach(p => delete (p as Traveler & { group?: string }).group);
+  return out;
+}
+
+/** Reisende mit eigenem Sitz der Reihe nach verteilen (Babys fliegen bei einem Erwachsenen mit und zählen nicht); hh: nur diese Familie */
+function seatQueue(trip: Trip, hh?: string) {
+  const ids = flyers(trip).filter(p => (!hh || hhKey(p) === hh) && !(p.age != null && (p.age as unknown) !== "" && p.age < 2) && p.kind !== "infant").map(p => p.id);
   let k = 0;
   return (n: number) => { const part = ids.slice(k, k + n); k += n; return part; };
 }

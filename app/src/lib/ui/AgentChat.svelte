@@ -11,9 +11,9 @@
   import { app, duplicateTrip, goHome, openTrip, startTrip } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { eur } from "../calc";
-  import { dayShort, nights, range, time } from "../format";
+  import { dayShort, nights, range, time, dateDE } from "../format";
   import { flyers } from "../flights/app";
-  import { agentRequest, applyEdit, askAgent, hasPlan, previewTrip, takeAgentTrip } from "../agent/app";
+  import { agentRequest, applyEdit, askAgent, groupKeys, hasPlan, previewTrip, takeAgentTrip } from "../agent/app";
   import { totals } from "../calc";
   import { syncFood } from "../food";
   import { geo } from "../geo/geo.svelte";
@@ -115,9 +115,21 @@
     msgs.push({ me: false, text: t("ai.cancelled") });
   }
 
+  /**
+   * neue Reise für einen Vorschlag mit denselben Reisenden, Familien und Wohnorten wie die Vorschau (#226): sonst
+   * rechnete die übernommene Reise mit einer einzigen Person
+   */
+  function startLike(b: Trip, fromTrip: boolean) {
+    const copy: Trip = JSON.parse(JSON.stringify(b));
+    startTrip(copy.travelers);
+    app.trip.households = { ...(app.trip.households || {}), ...(copy.households || {}) };
+    // aus einer offenen Reise: auch deren Einstellungen (Altersgrenzen, Flughäfen), wie in der Vorschau
+    if (fromTrip && copy.settings) app.trip.settings = copy.settings;
+  }
+
   function take(a: AgentTrip, m: Msg) {
     // von der Startseite aus angefragt: neue Reise anlegen, sonst in die offene Reise
-    if (app.home || m.home) startTrip();
+    if (app.home || m.home) startLike(base(), !app.home);
     takeAgentTrip(app.trip, a);
     if (geo.world.length) syncFood(app.trip, geo);
     msgs.push({ me: false, text: t("ai.taken") });
@@ -159,8 +171,9 @@
 
   /** alle Vorschläge als eigene Reisen anlegen und auf der Startseite vergleichen */
   function takeAll(list: AgentTrip[]) {
+    const b: Trip = JSON.parse(JSON.stringify(base())), fromTrip = !app.home;
     for (const a of list) {
-      startTrip();
+      startLike(b, fromTrip);
       takeAgentTrip(app.trip, a);
       if (geo.world.length) syncFood(app.trip, geo);
     }
@@ -250,6 +263,7 @@
                 <small class="muted">{a.place}{a.country ? `, ${a.country}` : ""} · {range(a.from, a.to)}{nn ? ` · ${tn("n.nights", nn)}` : ""}</small>
                 <span class="ai-sum">{a.summary}</span>
                 <ul class="ai-parts">
+                  {#if a.groups?.length}<li class="ai-groups">🗓 {a.groups.map(g => `${g.label || groupKeys(base()).get(g.key) || g.key} ${dateDE(g.from)}–${dateDE(g.to)}`).join(" · ")}</li>{/if}
                   {#if a.bookings?.length}
                     {#each a.bookings as b, k (k)}
                       <li>✈ {b.offer.out.from} {dayShort(b.offer.out.dep)} {time(b.offer.out.dep)} {arrow()} {b.offer.out.to} · {b.offer.out.carriers.join(" / ")} · {tn("ai.split", Math.ceil(b.travelers / Math.max(1, b.seats)), { p: b.travelers, s: b.seats })}<b>{eur(bookingPrice(b))}</b></li>
