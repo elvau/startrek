@@ -24,7 +24,7 @@
   const hints = $derived(fromSearch ? opt?.hints || [] : []);
   const inclText = $derived(bg ? [bg.cabin ? t("xc.cabin", { n: bg.cabin }) : t("xc.personal"), bg.checked ? t("fs.bagsIncl", { n: tn("n.bags", bg.checked) }) : t("fs.bagsNoneIncl")].join(" · ") : t("fs.bagsUnknown"));
 
-  const ICON: Record<Extra["kind"], string> = { citytax: "🏛", tax: "🧾", cleaning: "🧹", resort: "🏨", bag: "🧳", seat: "💺", toll: "🛣", vignette: "🎫", visa: "🛂", tips: "💶", insurance: "🛡", driver: "👥", young: "👤", cover: "🛡", other: "➕" };
+  const ICON: Record<Extra["kind"], string> = { citytax: "🏛", tax: "🧾", cleaning: "🧹", resort: "🏨", bag: "🧳", seat: "💺", toll: "🛣", vignette: "🎫", visa: "🛂", tips: "💶", insurance: "🛡", driver: "👥", young: "👤", cover: "🛡", ferry: "⛴", ferryPerson: "⛴", cabin: "🛏", other: "➕" };
   const name = (x: Extra) => x.label || `${t(`xc.kind.${x.kind}` as Key)}${x.cc ? ` ${flagOf(x.cc)} ${countryName(x.cc)}` : ""}`;
   // Rechnung in Worten: „2,80 € × 3 Pers. × 7 Nächte“ bzw. „pro Buchung“
   function how(l: ExtraLine): string {
@@ -84,7 +84,7 @@
           <b class="num">{l.x.pay === "included" && !l.amount ? "—" : `${l.x.est ? `${t("xc.ca")} ` : ""}${eur(l.amount)}`}</b>
           <span class="xc-tags">
             <em class="xc-s {l.x.pay}" class:est={l.x.est && l.x.pay !== "included"}>{t(`xc.pay.${l.x.pay}` as Key)}{l.x.est && l.x.pay !== "included" ? ` · ${t("xc.estimated")}` : ""}</em>
-            {#if !access.readonly && l.x.pay !== "included"}<button type="button" class="linkbtn xc-tg" onclick={() => toggle(l.x)}>{l.x.off ? (AUTO_OPTIONAL.has(l.x.id) ? t("xc.add") : t("xc.on")) : t("xc.off")}</button>{/if}
+            {#if !access.readonly && l.x.pay !== "included"}<button type="button" class="linkbtn xc-tg" onclick={() => toggle(l.x)}>{l.x.off ? (AUTO_OPTIONAL.has(l.x.id) || l.x.id.startsWith("road:cabin") ? t("xc.add") : t("xc.on")) : t("xc.off")}</button>{/if}
           </span>
         </li>
       {/each}

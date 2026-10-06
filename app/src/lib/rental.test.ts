@@ -34,6 +34,16 @@ describe("Mietwagen (#172)", () => {
     const on = totals(trip([car({ autoOn: ["auto:cover"], autoOff: ["auto:young"] })])).items.car.extras!;
     expect(on.added).toBeCloseTo(RENTAL.cover * 7);
   });
+  it("Aufpreis junge Fahrer je junger Person, höchstens je Auto (#209)", () => {
+    // 6 Reisende, Kapazität 3 → 2 Autos
+    const two = () => car({ price: { mode: "unit", currency: "EUR", unit: 40, qty: 7, capacity: 3, multiply: true } });
+    const added = (ages: number[]) => totals(trip([two()], ages)).items.car.extras!.added;
+    expect(totals(trip([two()], [40, 40, 40, 40, 40, 22])).items.car.units).toBe(2);
+    expect(added([40, 40, 40, 40, 40, 22])).toBeCloseTo(RENTAL.young * 7);
+    expect(added([40, 40, 40, 22, 22, 22])).toBeCloseTo(RENTAL.young * 7 * 2);
+    // ein Auto: wie bisher
+    expect(totals(trip([car()])).items.car.extras!.added).toBeCloseTo(RENTAL.young * 7);
+  });
   it("Kaution geschätzt, nur Kreditkarte, nie in den Kosten; eigene Angabe geht vor, ausblendbar", () => {
     const T = totals(trip([car()], [40]));
     expect(T.total).toBeCloseTo(280);

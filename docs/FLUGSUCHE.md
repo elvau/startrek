@@ -274,4 +274,7 @@ Stationen (aus den Unterkünften im Tagesplan) → Wohnort.
   zu Hause verschiebt sich entsprechend.
 - **Tagesplan:** an jedem Fahrtag ein Eintrag mit Strecke, km und Fahrzeit.
 - **Vergleich Bahn/Bus/Auto/Flug:** bei Roadtrips auch über 700 km Luftlinie.
+- **Fähren (#202):** Liegen zwei Halte in verschiedenen Gebieten (Insel, Großbritannien, Irland), setzt die App die passende
+  Fähre dazwischen (`road/ferries.ts`, Wahl je Überfahrt in `trip.ferry`). Die Häfen werden Halte, die Überfahrt zählt nicht
+  als Fahrt (keine Sprit- und Mautkilometer). Richtwerte und Liste in `docs/NEBENKOSTEN.md`.
 - Quellenangabe in der App: „© openrouteservice.org by HeiGIT, Kartendaten © OpenStreetMap-Mitwirkende“.

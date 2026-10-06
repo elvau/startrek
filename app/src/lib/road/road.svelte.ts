@@ -6,7 +6,7 @@ import type { Trip } from "../model";
 import { geo } from "../geo/geo.svelte";
 import { tripRoute } from "../routeApp";
 import { stations, itinerary } from "../itinerary";
-import { etappen, isRoadTrip, nearestCountry, roadStops, type Etappe, type Stop } from "./trip";
+import { etappen, isRoadTrip, nearestCountry, roadStops, withFerries, type Etappe, type Stop } from "./trip";
 import type { LL, RoadLeg, RoadResult } from "./ors";
 
 const URL_ = (import.meta.env.VITE_FLIGHTS_URL as string | undefined)?.replace(/\/$/, "") || "";
@@ -59,11 +59,13 @@ export function roadPlan(trip: Trip): RoadPlan | null {
   if (!geo.world.length) return null;
   const days = itinerary(trip);
   if (!isRoadTrip(trip, stations(days).length)) return null;
-  const stops = roadStops(tripRoute(trip));
-  if (stops.length < 3 || stops[0].kind !== "home") return null;
+  const base = roadStops(tripRoute(trip));
+  if (base.length < 3 || base[0].kind !== "home") return null;
+  // Fähren dazwischen (Inseln, GB, IE); Abschnitte auf dem Wasser kommen nicht vom Routen-Dienst
+  const { stops, ferries } = withFerries(base, countries(), trip.ferry, trip.to);
   const key = keyOf(stops);
   ask(stops, key);
   const legs = roads.legs[key];
-  const et = etappen(stops, stops.slice(1).map((_, i) => legs?.[i] ?? null), countries(), trip.to);
-  return { stops, etappen: et, est: et.some(e => e.est) };
+  const et = etappen(stops, stops.slice(1).map((_, i) => (ferries.has(i) ? null : legs?.[i] ?? null)), countries(), trip.to, ferries);
+  return { stops, etappen: et, est: et.some(e => e.est && !e.ferry) };
 }

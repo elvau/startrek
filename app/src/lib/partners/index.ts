@@ -12,7 +12,7 @@ import {
   type ActivityLinkQuery, type FlightLinkQuery, type StayLinkQuery
 } from "../links";
 
-export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance";
+export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance" | "ferry" | "camper" | "camping";
 /** Netzwerk, über das die Provision läuft; direkt: eigenes Partnerprogramm des Anbieters */
 export type PartnerNet = "direct" | "travelpayouts" | "awin" | "amazon";
 
@@ -73,6 +73,17 @@ export const PARTNERS = {
   intui: p<void>({ name: "Intui.travel", cat: "transfer", net: "travelpayouts", link: home("https://intui.travel/de/") }),
   welcomePickups: p<void>({ name: "Welcome Pickups", cat: "transfer", net: "travelpayouts", link: home("https://www.welcomepickups.com/de/") }),
   bookingTaxi: p<void>({ name: "Booking.com Taxi", cat: "transfer", link: home("https://taxi.booking.com/") }),
+  /* Fähren (#202): Vergleich je Strecke; Partnerprogramme direkt (Direct Ferries, Ferryhopper), noch nicht freigeschaltet */
+  directFerries: p<void>({ name: "Direct Ferries", cat: "ferry", net: "direct", link: home("https://www.directferries.de/") }),
+  ferryhopper: p<void>({ name: "Ferryhopper", cat: "ferry", net: "direct", link: home("https://www.ferryhopper.com/de/") }),
+  /* Camper (#203): Miete (Vermieter und private Plattformen), Stellplätze und Campingplätze */
+  indieCampers: p<void>({ name: "Indie Campers", cat: "camper", link: home("https://indiecampers.com/") }),
+  roadsurfer: p<void>({ name: "Roadsurfer", cat: "camper", link: home("https://roadsurfer.com/de/") }),
+  paulCamper: p<void>({ name: "PaulCamper", cat: "camper", link: home("https://www.paulcamper.de/") }),
+  yescapa: p<void>({ name: "Yescapa", cat: "camper", link: home("https://www.yescapa.de/") }),
+  pincamp: p<void>({ name: "PiNCAMP", cat: "camping", link: home("https://www.pincamp.de/") }),
+  acsi: p<void>({ name: "ACSI", cat: "camping", link: home("https://www.eurocampings.de/") }),
+  park4night: p<void>({ name: "park4night", cat: "camping", link: home("https://park4night.com/de") }),
   /* Reiseversicherung: nur als Tipp, keine Beratung (§ 34d GewO) */
   check24Insurance: p<void>({ name: "CHECK24", cat: "insurance", link: home("https://www.check24.de/reiseversicherung/") }),
   ergo: p<void>({ name: "ERGO Reiseversicherung", cat: "insurance", net: "awin", link: home("https://www.reiseversicherung.de/") }),

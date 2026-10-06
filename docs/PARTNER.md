@@ -52,6 +52,11 @@ Anbieter-Links“ (letzte 7 Tage). Der Link öffnet sofort, das Zählen läuft n
 | DiscoverCars | Mietwagen | Travelpayouts | – |
 | Kiwitaxi, GetTransfer, Intui.travel, Welcome Pickups | Transfer | Travelpayouts | – |
 | Booking.com Taxi | Transfer | – | – |
+| Direct Ferries, Ferryhopper | Fähren | direkt (noch nicht beantragt) | – |
+| PaulCamper | Mietcamper | Travelpayouts (20 %, noch nicht beantragt) | – |
+| Roadsurfer | Mietcamper | Awin (noch nicht beantragt) | – |
+| Indie Campers, Yescapa | Mietcamper | eigenes Programm bzw. TradeTracker | – |
+| PiNCAMP, ACSI (Eurocampings), park4night | Camping- und Stellplätze | PiNCAMP über TradeTracker (3 %) | – |
 | CHECK24, Allianz Travel | Versicherung (nur Tipp) | – | – |
 | ERGO, HanseMerkur | Versicherung (nur Tipp) | Awin | – |
 
