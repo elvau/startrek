@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TP_MAX, fromTravelpayouts, searchTravelpayouts, tpPairs, tpParams, tpRoutes } from "./travelpayouts";
+import { LOW_COST, lowCostOf } from "./addons";
+import { airlineName } from "./airlines";
 import { searchAll } from "./search";
 import type { FlightQuery } from "./types";
 
@@ -31,6 +33,17 @@ describe("Travelpayouts", () => {
     expect(a.back).toMatchObject({ from: "SPU", to: "DUS", dep: "2027-07-29T14:25:00", arr: "2027-07-29T16:25:00" });
     expect(b.out.stops).toBe(1);
     expect(fromTravelpayouts(sample, { ...q, maxStops: 0 })).toHaveLength(1);
+  });
+  it("Airline-Code wird zum Namen, unbekannte Codes bleiben; Billigflieger-Erkennung geht weiter", () => {
+    const row = (airline: string) => ({ ...sample.data[0], airline });
+    const [fr, xx] = fromTravelpayouts({ ...sample, data: [row("FR"), row("ZZ")] }, q);
+    expect(fr.out.carriers).toEqual(["Ryanair"]);
+    expect(fr.back?.carriers).toEqual(["Ryanair"]);
+    expect(fr.out.flights).toEqual(["FR9958"]);
+    expect(xx.out.carriers).toEqual(["ZZ"]);
+    expect(lowCostOf(fr.out.carriers[0])?.id).toBe("ryanair");
+    expect(LOW_COST.every(l => l.codes.every(c => airlineName(c) !== c))).toBe(true);
+    expect(LOW_COST.every(l => l.codes.every(c => lowCostOf(airlineName(c))?.id === l.id))).toBe(true);
   });
   it("Suche mit Token im Kopf; Fehler werden gemeldet", async () => {
     let seen: Headers | undefined;
