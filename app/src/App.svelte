@@ -24,6 +24,7 @@
   import Dock from "./lib/ui/Dock.svelte";
   import { reveal } from "./lib/ui/reveal";
   import PresencePlan from "./lib/ui/PresencePlan.svelte";
+  import TripTimeline from "./lib/ui/TripTimeline.svelte";
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
   import AppFooter from "./lib/ui/AppFooter.svelte";
@@ -128,6 +129,7 @@
 
 <div class="wrap">
   <main>
+    <article class="card tl-card" use:reveal><TripTimeline /></article>
     <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>
     </Chapter>
