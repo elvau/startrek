@@ -60,6 +60,8 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [ ] **OpenRouteService-Schlüssel** → #207. Für Roadtrips (Etappen, Fahrzeiten); bis dahin schätzt die App.
 - [ ] **Branch `pre-release` schützen:** GitHub → Settings → Rules → Rulesets → neue Regel für `pre-release` mit
       „Restrict deletions“. Sonst löscht „Automatically delete head branches“ ihn bei jedem Release (passiert bei 0.29.0).
+- [ ] **Fähren-Partner (optional):** → #147. Direct Ferries (eigenes Programm oder Tradedoubler, bis 4 %) bzw. Ferryhopper
+      (partners.ferryhopper.com, bis 1 %); Travelpayouts nur über Omio. Bis dahin verlinkt die App neutral auf die Startseiten.
 - [ ] **Reiseversicherung-Partner (optional):** → #147. über Awin z. B. ERGO Reiseversicherung oder HanseMerkur. Nur als Tippgeber
       verlinken (keine Beratung, kein Tarifvergleich), sonst ist eine Erlaubnis nach § 34d GewO nötig.
 

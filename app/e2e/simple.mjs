@@ -338,6 +338,40 @@ try {
   log("Roadtrip: 4 Etappen vom Routen-Dienst, lange Etappe markiert, Vignetten AT/SI und Maut IT für die Runde, Auto-Posten der Runde, Fahrtag im Tagesplan; geteilt mit Zwischenstopp, Posten neu gerechnet; Zwischenstopp auf der Rückfahrt gesucht, Rückkehr einen Tag später");
   await rctx.close();
 
+  // Fähren (#202): Rundreise nach Sardinien, Fähre automatisch dazwischen, Verbindung wählbar, Kosten am Auto-Posten
+  const SA = { ...RT, id: "sa", name: "Sardinien mit dem Auto", place: "Olbia", from: "2027-07-12", to: "2027-07-22",
+    items: [stay("v1", "Verona", "2027-07-12", "2027-07-15"), stay("o1", "Olbia", "2027-07-15", "2027-07-22")] };
+  const sctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await sctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
+    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, SA);
+  const sp = await sctx.newPage();
+  sp.on("pageerror", e => errors.push(e.message));
+  await data(sp);
+  await sp.goto(URL);
+  await sp.locator(".start .home-trip", { hasText: "Sardinien mit dem Auto" }).click();
+  const st = sp.locator("#transport .road-trip");
+  await st.waitFor({ timeout: 15000 });
+  const fr = st.locator(".rt-ferry");
+  await until(async () => (await fr.count()) === 2, "zwei Überfahrten");
+  const f0 = await fr.first().innerText();
+  if (!f0.includes("Livorno → Olbia") || !f0.includes("Nachtfähre") || !f0.includes("Auto 219 €") || !f0.includes("Direct Ferries")) fail("Fähre hin: " + f0.replace(/\n/g, " | "));
+  if (!(await fr.last().innerText()).includes("Olbia → Genua")) fail("Fähre zurück: " + await fr.last().innerText());
+  // andere Verbindung wählen
+  await fr.first().locator(".rt-pick").selectOption("genova-olbia");
+  await until(async () => (await fr.first().innerText()).includes("Genua → Olbia"), "Verbindung gewählt");
+  // Auto-Posten: Fähre als Nebenkosten (Fahrzeug, Personen), Kabine nur auf Wunsch
+  await st.locator(".road-add").click();
+  const scar = sp.locator("#transport .card[data-item]", { hasText: "Roadtrip mit dem Auto" });
+  await scar.waitFor();
+  await scar.locator(".xc summary").click();
+  const sx = await scar.locator(".xc").innerText();
+  if (!sx.includes("Fähre (Fahrzeug)") || !sx.includes("Genua → Olbia") || !sx.includes("Kabine (Nachtfähre)")) fail("Fähre am Auto-Posten: " + sx.replace(/\n/g, " | "));
+  if (!(await scar.locator(".xc li", { hasText: "Kabine" }).first().innerText()).includes("einrechnen")) fail("Kabine nicht nur auf Wunsch");
+  const ferryDay = sp.locator(".dp-ferry", { hasText: "Genua → Olbia" });
+  await ferryDay.first().waitFor();
+  log("Fähren: Sardinien mit Fähre hin (Livorno → Olbia, Nachtfähre, Auto 219 €) und zurück (Olbia → Genua), Verbindung gewählt, als Nebenkosten am Auto-Posten (Fahrzeug je Überfahrt, Kabine nur auf Wunsch), Überfahrt im Tagesplan");
+  await sctx.close();
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");
 } finally { await browser.close(); server.kill(); }

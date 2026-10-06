@@ -12,7 +12,7 @@ import {
   type ActivityLinkQuery, type FlightLinkQuery, type StayLinkQuery
 } from "../links";
 
-export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance";
+export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance" | "ferry";
 /** Netzwerk, über das die Provision läuft; direkt: eigenes Partnerprogramm des Anbieters */
 export type PartnerNet = "direct" | "travelpayouts" | "awin" | "amazon";
 
@@ -73,6 +73,9 @@ export const PARTNERS = {
   intui: p<void>({ name: "Intui.travel", cat: "transfer", net: "travelpayouts", link: home("https://intui.travel/de/") }),
   welcomePickups: p<void>({ name: "Welcome Pickups", cat: "transfer", net: "travelpayouts", link: home("https://www.welcomepickups.com/de/") }),
   bookingTaxi: p<void>({ name: "Booking.com Taxi", cat: "transfer", link: home("https://taxi.booking.com/") }),
+  /* Fähren (#202): Vergleich je Strecke; Partnerprogramme direkt (Direct Ferries, Ferryhopper), noch nicht freigeschaltet */
+  directFerries: p<void>({ name: "Direct Ferries", cat: "ferry", net: "direct", link: home("https://www.directferries.de/") }),
+  ferryhopper: p<void>({ name: "Ferryhopper", cat: "ferry", net: "direct", link: home("https://www.ferryhopper.com/de/") }),
   /* Reiseversicherung: nur als Tipp, keine Beratung (§ 34d GewO) */
   check24Insurance: p<void>({ name: "CHECK24", cat: "insurance", link: home("https://www.check24.de/reiseversicherung/") }),
   ergo: p<void>({ name: "ERGO Reiseversicherung", cat: "insurance", net: "awin", link: home("https://www.reiseversicherung.de/") }),

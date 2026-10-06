@@ -202,7 +202,7 @@ export interface Option {
   hints?: ("checkin" | "payfee")[];
 }
 
-export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "vignette" | "visa" | "tips" | "insurance" | "driver" | "young" | "cover" | "other";
+export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "vignette" | "visa" | "tips" | "insurance" | "driver" | "young" | "cover" | "ferry" | "ferryPerson" | "cabin" | "other";
 /** pro Person, pro Person und Nacht, pro Nacht, pro Tag, pro Person und Tag, einmal je Buchung, Prozent vom Preis */
 export type ExtraBasis = "person" | "personNight" | "night" | "day" | "personDay" | "booking" | "percent";
 
@@ -469,6 +469,8 @@ export interface Trip {
   ai?: { at: string };
   /** Wichtiges: erledigte Punkte (important.ts), bei Punkten für Personen je Person */
   done?: Record<string, { sig: string; ids?: string[] }>;
+  /** Roadtrip: gewählte Fähre je Überfahrt („Von>Nach“ → Fähren-ID, „none“: keine Fähre) */
+  ferry?: Record<string, string>;
 }
 
 /** Ergebnis der Nachsuche für einen Posten, Beträge für den ganzen Posten */
