@@ -414,6 +414,34 @@ try {
   log("Camper: drei Stationen (Campingplatz 44 €, Stellplatz 22 €, mit Quelle), Roadtrip mit Camper-Satz 0,25 €/km, Mietcamper mit Kaution und Pauschalen (Reinigung auf Wunsch), Hinweis über 3,5 t");
   await cctx.close();
 
+  // Zeitleiste (#228): drei Familien, gleich lang → eine Zeile; Zeiten einer Familie setzen, Reise wächst mit, zurücksetzen
+  const TL = { id: "tl", name: "Zeitleiste", place: "Testort", country: "Testland", from: "2027-07-10", to: "2027-07-31",
+    travelers: [{ id: "a", name: "Anna", household: "Bednorz" }, { id: "c", name: "Tom", household: "Klein" }, { id: "o", name: "Inge", household: "Oma" }],
+    items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {}, detail: {} };
+  const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
+  await tctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
+    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, TL);
+  const tp = await tctx.newPage();
+  tp.on("pageerror", e => errors.push(e.message));
+  await tp.goto(URL);
+  await tp.locator(".start .home-trip", { hasText: "Zeitleiste" }).click();
+  const tlc = tp.locator(".tl-card");
+  await tlc.waitFor({ timeout: 15000 });
+  if (!(await tlc.innerText()).includes("Alle gleich lang") || await tlc.locator(".tl-row").count()) fail("Zeitleiste nicht kompakt: " + await tlc.innerText());
+  await tlc.locator(".tl-toggle").click();
+  await tlc.locator(".tl-row", { hasText: "Oma" }).click();
+  await tlc.locator(".tl-a").fill("2027-07-08");
+  await tlc.locator(".tl-a").dispatchEvent("change");
+  await tlc.locator(".tl-d").fill("2027-07-18");
+  await tlc.locator(".tl-d").dispatchEvent("change");
+  const oma = tlc.locator(".tl-row", { hasText: "Oma" });
+  await until(async () => (await oma.innerText()).includes("08.07. – 18.07. · 10 Nächte") && (await oma.innerText()).includes("eigene Zeiten"), "Zeiten der Oma gesetzt");
+  await until(async () => (await tlc.locator(".tl-h").innerText()).includes("08.07. – 31.07. · 23 Nächte"), "Reise wächst mit");
+  await tlc.locator(".tl-reset").click();
+  await until(async () => (await oma.innerText()).includes("ganze Reise"), "Oma zurückgesetzt");
+  log("Zeitleiste: drei Familien gleich lang kompakt, Zeiten der Oma gesetzt (Reise wächst auf 23 Nächte), zurückgesetzt");
+  await tctx.close();
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");
 } finally { await browser.close(); server.kill(); }

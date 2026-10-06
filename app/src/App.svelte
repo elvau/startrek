@@ -129,7 +129,7 @@
 
 <div class="wrap">
   <main>
-    <article class="card tl-card" use:reveal><TripTimeline /></article>
+    <TripTimeline />
     <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>
     </Chapter>

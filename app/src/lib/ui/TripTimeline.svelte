@@ -3,7 +3,8 @@
    * Zeitleiste oben an der Reise (#228): je Familie ein Balken, wer ist wann da. Antippen öffnet die Daten der Familie;
    * gleiche Zeiten für alle: eine Zeile, aufklappbar.
    */
-  import { tn } from "../i18n/index.svelte";
+  import { t, tn } from "../i18n/index.svelte";
+  import { reveal } from "./reveal";
   import { access, app } from "../store.svelte";
   import { dateDE, dayShort } from "../format";
   import { addDays, dayDiff } from "../calc/travel";
@@ -28,16 +29,17 @@
 </script>
 
 {#if tl}
-  <section class="tl" aria-label="Wer ist wann da">
+  <article class="card tl-card" use:reveal>
+  <section class="tl" aria-label={t("tl.title")}>
     <div class="tl-h">
-      <h3>Wer ist wann da</h3>
+      <h3>{t("tl.title")}</h3>
       <span class="muted small">{dateDE(tl.start)} – {dateDE(tl.end)} · {tn("n.nights", tl.nights.length)}</span>
-      {#if tl.same}
-        <button class="linkbtn tl-toggle" onclick={() => (open = !open)}>{open ? "zuklappen" : "Zeiten je Familie anpassen"}</button>
+      {#if tl.same && tl.rows.length > 1 && !access.readonly}
+        <button class="linkbtn tl-toggle" onclick={() => (open = !open)}>{open ? t("tl.close") : t("tl.adjust")}</button>
       {/if}
     </div>
-    {#if tl.same && !open}
-      <p class="small tl-all">Alle {tl.rows.length > 1 ? `${tl.rows.length} Familien` : ""} gleich lang: {dayShort(tl.start)} bis {dayShort(tl.end)}</p>
+    {#if tl.same && !open && tl.rows.length > 1}
+      <p class="small tl-all">{t("tl.allSame", { a: dayShort(tl.start), b: dayShort(tl.end) })}</p>
     {/if}
     {#if showRows}
       <div class="tl-axis" aria-hidden="true">
@@ -47,24 +49,24 @@
         {#each tl.rows as r, i (r.hh)}
           {@const s = span(tl, r.a, r.d)}
           <li class:on={edit === r.hh}>
-            <button class="tl-row" disabled={access.readonly} aria-expanded={edit === r.hh} onclick={() => (edit = edit === r.hh ? null : r.hh)}>
-              <span class="tl-name"><i style="background:{COLORS[i % COLORS.length]}"></i><b>{r.hh}</b> <span class="muted">· {r.persons} P.</span></span>
-              <span class="tl-dates small">{r.a && r.d ? `${dateDE(r.a)} – ${dateDE(r.d)} · ${tn("n.nights", nightsOf(r.a, r.d))}` : "offen"}
-                <em class="tl-src">{r.src === "manual" ? "eigene Zeiten" : r.src === "flight" ? "aus dem Flug" : "ganze Reise"}</em></span>
+            <button class="tl-row" disabled={access.readonly} aria-expanded={edit === r.hh} title={t("tl.edit", { name: r.hh })} onclick={() => (edit = edit === r.hh ? null : r.hh)}>
+              <span class="tl-name"><i style="background:{COLORS[i % COLORS.length]}"></i><b>{r.hh}</b> <span class="muted">· {tn("n.persons", r.persons)}</span></span>
+              <span class="tl-dates small">{r.a && r.d ? `${dateDE(r.a)} – ${dateDE(r.d)} · ${tn("n.nights", nightsOf(r.a, r.d))}` : t("tl.open")}
+                <em class="tl-src">{t(`tl.src.${r.src}`)}</em></span>
               <span class="tl-track">{#if s}<span class="tl-bar" class:dash={r.src === "trip"} style="inset-inline-start:{s.left}%;width:{s.width}%;--c:{COLORS[i % COLORS.length]}"></span>{/if}</span>
             </button>
             {#if edit === r.hh && !access.readonly}
               <div class="tl-edit">
-                <label class="f">Erste Nacht<input type="date" value={r.a} onchange={e => setPresence(app.trip, r.hh, e.currentTarget.value, r.d && r.d > e.currentTarget.value ? r.d : addDays(e.currentTarget.value, 1))} /></label>
-                <label class="f">Abreise<input type="date" value={r.d} min={r.a} onchange={e => r.a && setPresence(app.trip, r.hh, r.a, e.currentTarget.value)} /></label>
-                {#if r.src === "manual"}<button class="linkbtn" onclick={() => resetPresence(app.trip, r.hh)}>zurück: wie Flug bzw. ganze Reise</button>{/if}
+                <label class="f">{t("hh.firstNight")}<input class="tl-a" type="date" value={r.a} onchange={e => setPresence(app.trip, r.hh, e.currentTarget.value, r.d && r.d > e.currentTarget.value ? r.d : addDays(e.currentTarget.value, 1))} /></label>
+                <label class="f">{t("hh.departure")}<input class="tl-d" type="date" value={r.d} min={r.a} onchange={e => r.a && setPresence(app.trip, r.hh, r.a, e.currentTarget.value)} /></label>
+                {#if r.src === "manual"}<button class="linkbtn tl-reset" onclick={() => resetPresence(app.trip, r.hh)}>{t("tl.reset")}</button>{/if}
               </div>
             {/if}
           </li>
         {/each}
         {#if tl.stays.length}
           <li class="tl-stays">
-            <span class="tl-name muted small">Unterkünfte</span>
+            <span class="tl-name muted small">{t("tl.stays")}</span>
             <span class="tl-track thin">
               {#each tl.stays as st (st.id)}
                 {@const s = span(tl, st.from, st.to)}
@@ -76,6 +78,7 @@
       </ul>
     {/if}
   </section>
+  </article>
 {/if}
 
 <style>
