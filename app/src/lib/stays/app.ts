@@ -94,6 +94,9 @@ export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, 
   return item;
 }
 
+/** Anbieter melden Treffer, die Liste ist aber leer: Sterne- oder Bewertungsfilter haben sie aussortiert */
+export const staysHidden = (sources: { ok: boolean; count: number }[], shown: number) => shown === 0 && sources.some(s => s.ok && s.count > 0);
+
 export async function searchStaysRemote(q: StayQuery, signal?: AbortSignal): Promise<StaySearchResult> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   const res = await fetch(`${FLIGHTS_URL}/stays/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });
