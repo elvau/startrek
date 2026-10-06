@@ -951,6 +951,7 @@ export const en: Dict = {
   "fs.noConnection": "no connection found",
   "fs.noSelf": "no self-transfer",
   "fs.none": "No matching flights found. Change dates, stops or airports.",
+  "fs.noFreeFlights": "Flights there can't be booked freely; travel is arranged by the tour operator. You can still search flights to the tour's starting point (e.g. Beijing).",
   "fs.providerDown": "A provider was temporarily unreachable, so results may be incomplete. Please search again later.",
   "fs.oneway": "One way",
   "fs.onewayHint": "We look for the cheapest day in the window, one way only. Search the onward or return flight separately later.",
