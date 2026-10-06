@@ -35,6 +35,7 @@
   import { admin } from "./lib/admin/app.svelte";
   import { FLIGHTS_URL } from "./lib/flights/app";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
+  import CamperPanel from "./lib/ui/CamperPanel.svelte";
   import RoadCosts from "./lib/ui/RoadCosts.svelte";
   import StaySearch from "./lib/ui/StaySearch.svelte";
   import EventPlanner from "./lib/ui/EventPlanner.svelte";
@@ -174,6 +175,7 @@
           <!-- Mietwagen: Richtwert-Posten aus den Flugzeiten, dazu Vergleich mit Ort und Zeiten -->
           {@const cw = carWindow(app.trip)}
           <!-- Anreise mit dem Auto ins Ausland: Vignetten und Maut auf der Strecke -->
+          <CamperPanel />
           <RoadCosts city={evWin.city} />
           <GroundOptions city={evWin.city} />
           <TransferOptions city={evWin.city} />

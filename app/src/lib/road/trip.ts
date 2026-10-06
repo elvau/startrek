@@ -8,6 +8,7 @@ import { FEES_AS_OF, TOLLS, VIGNETTES, safeRate } from "../fees";
 import type { Route } from "../route";
 import { km, thin, type LL, type RoadLeg } from "./ors";
 import { ferriesBetween, type FerryPick } from "./ferries";
+import { CAMPER_FERRY, HEAVY, HEIGHT_FACTOR, type Vehicle } from "./camper";
 
 export interface Stop { name: string; lat: number; lon: number; kind: "home" | "station" | "port"; date?: string }
 export interface Etappe {
@@ -152,7 +153,8 @@ export interface RoadCost { fuel: number; km: number; extras: Extra[]; countries
  * Kosten der ganzen Runde je Auto: Sprit (km × Kosten je km), jede Vignette nur so oft wie nötig, Maut nach den Kilometern
  * im Land. rate: Einheiten der Währung je Euro.
  */
-export function roadTripCost(et: Etappe[], kmCost: number, rate0: (cur: string) => number, fallbackDate = ""): RoadCost {
+/** vehicle: Camper (Maut für Fahrzeuge über 2 m, Fähre mit Camper-Tarif), über 3,5 t (GO-Box statt Vignette AT, PSVA statt Vignette CH) */
+export function roadTripCost(et: Etappe[], kmCost: number, rate0: (cur: string) => number, fallbackDate = "", vehicle: Vehicle = {}): RoadCost {
   const rate = safeRate(rate0);
   const total = et.reduce((s, e) => s + e.km, 0);
   const byCc: Record<string, { km: number; dates: string[] }> = {};
@@ -163,9 +165,16 @@ export function roadTripCost(et: Etappe[], kmCost: number, rate0: (cur: string) 
   }
   const extras: Extra[] = [];
   const src = (s: string) => `${s}, ${FEES_AS_OF}`;
+  // über 3,5 t: Österreich nach km (GO-Box), Schweiz je Tag (PSVA) statt Vignette
+  const heavy = !!vehicle.camper && !!vehicle.heavy;
+  if (heavy && byCc.AT) extras.push({ id: "road:gobox:AT", kind: "toll", cc: "AT", amount: Math.round(byCc.AT.km * HEAVY.AT.perKm * 100) / 100, basis: "booking", pay: "onsite", est: true, source: src(HEAVY.AT.source) });
+  if (heavy && byCc.CH) {
+    const days = new Set(byCc.CH.dates.filter(Boolean)).size || 1;
+    extras.push({ id: "road:psva:CH", kind: "toll", cc: "CH", amount: Math.round((Math.max(HEAVY.CH.min, days * HEAVY.CH.perDay) / rate(HEAVY.CH.currency)) * 100) / 100, basis: "booking", pay: "onsite", est: true, source: src(HEAVY.CH.source) });
+  }
   for (const v of VIGNETTES) {
     const c = byCc[v.cc];
-    if (!c) continue;
+    if (!c || (heavy && (v.cc === "AT" || v.cc === "CH"))) continue;
     const n = Math.max(1, vignetteCount(c.dates.filter(Boolean), v.days));
     extras.push({ id: `road:vignette:${v.cc}`, kind: "vignette", cc: v.cc, amount: Math.round((n * v.amount / rate(v.currency)) * 100) / 100,
       basis: "booking", pay: "onsite", est: true, source: n > 1 ? `${n} × · ${src(v.source)}` : src(v.source) });
@@ -173,7 +182,8 @@ export function roadTripCost(et: Etappe[], kmCost: number, rate0: (cur: string) 
   for (const cc in byCc) {
     const tl = TOLLS[cc];
     if (!tl) continue;
-    extras.push({ id: `road:toll:${cc}`, kind: "toll", cc, amount: Math.round(((byCc[cc].km * tl.per100) / 100 / rate(tl.currency)) * 100) / 100,
+    const f = vehicle.camper ? HEIGHT_FACTOR[cc] ?? 1 : 1;
+    extras.push({ id: `road:toll:${cc}`, kind: "toll", cc, amount: Math.round(((byCc[cc].km * tl.per100 * f) / 100 / rate(tl.currency)) * 100) / 100,
       basis: "booking", pay: "onsite", est: true, source: src(tl.source) });
   }
   // Fähren: Fahrzeug (bzw. Paket mit Pflichtkabine), Personen, Kabine nur auf Wunsch (ausgeschaltet)
@@ -183,7 +193,8 @@ export function roadTripCost(et: Etappe[], kmCost: number, rate0: (cur: string) 
     const src = `${e.ferry!.from.name} → ${e.ferry!.to.name} · ${f.ops.join(", ")} · ${f.source}, ${FEES_AS_OF}`;
     const eur = (v: number) => Math.round((v / rate(f.currency)) * 100) / 100;
     const base = { basis: "booking" as const, pay: "extra" as const, est: true, source: src };
-    if (f.car != null) extras.push({ id: `road:ferry:${f.id}:${i}`, kind: "ferry", amount: eur(f.car), ...base });
+    const veh = vehicle.camper ? f.camper ?? (f.car != null ? f.car * CAMPER_FERRY : undefined) : f.car;
+    if (veh != null) extras.push({ id: `road:ferry:${f.id}:${i}`, kind: "ferry", amount: eur(veh), ...base });
     if (f.person != null && !f.pkg) extras.push({ id: `road:ferryp:${f.id}:${i}`, kind: "ferryPerson", amount: eur(f.person), ...base, basis: "person", freeUpTo: 3 });
     if (f.cabin != null && f.night && !f.pkg) extras.push({ id: `road:cabin:${f.id}:${i}`, kind: "cabin", amount: eur(f.cabin), ...base, off: true });
   });

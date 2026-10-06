@@ -372,6 +372,48 @@ try {
   log("Fähren: Sardinien mit Fähre hin (Livorno → Olbia, Nachtfähre, Auto 219 €) und zurück (Olbia → Genua), Verbindung gewählt, als Nebenkosten am Auto-Posten (Fahrzeug je Überfahrt, Kabine nur auf Wunsch), Überfahrt im Tagesplan");
   await sctx.close();
 
+  // Camper (#203): Umschalter, Stationen als Campingplatz/Stellplatz, Roadtrip mit Camper-Satz, Mietcamper mit Kaution, über 3,5 t
+  const CP = { ...RT, id: "cp", name: "Mit dem Camper", place: "Verona", items: [] };
+  const cctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await cctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
+    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, CP);
+  const cp = await cctx.newPage();
+  cp.on("pageerror", e => errors.push(e.message));
+  await data(cp);
+  await cp.goto(URL);
+  await cp.locator(".start .home-trip", { hasText: "Mit dem Camper" }).click();
+  const panel = cp.locator("#transport .camper");
+  await panel.waitFor({ timeout: 15000 });
+  await panel.locator(".cp-mode .chip", { hasText: "Camper" }).click();
+  for (const [place, n, kind] of [["Verona", 3, "site"], ["Florenz", 2, "pitch"], ["Ljubljana", 2, "site"]]) {
+    await panel.locator(".cp-place").fill(place);
+    await panel.locator(".cp-nn").fill(String(n));
+    await panel.locator(".cp-kind").selectOption(kind);
+    await panel.locator(".cp-go").click();
+    await panel.locator(".cp-list li", { hasText: place }).waitFor();
+  }
+  const rows = await panel.locator(".cp-list li").allInnerTexts();
+  if (rows.length !== 3 || !rows[0].includes("44 €") || !rows[1].includes("22 €")) fail("Camper-Stationen: " + rows.join(" | "));
+  const camp = cp.locator("#stay .card[data-item]", { hasText: "Stellplatz Florenz" });
+  await camp.waitFor();
+  if (!(await camp.innerText()).includes("ACSI")) fail("Stellplatz ohne Quelle: " + await camp.innerText());
+  const crt = cp.locator("#transport .road-trip");
+  await crt.waitFor({ timeout: 15000 });
+  await until(async () => (await crt.innerText()).includes("0,25"), "Camper-km-Satz");
+  // Mietcamper als Posten: Kaution nur Kreditkarte, Endreinigung nur auf Wunsch
+  await panel.locator(".cp-rentadd").click();
+  const rent = cp.locator("#transport .card[data-item]", { hasText: "Mietcamper" });
+  await rent.waitFor();
+  await rent.locator(".xc summary").click();
+  const rxc = await rent.locator(".xc").innerText();
+  if (!rxc.includes("Kaution") || !rxc.includes("1.500") || !rxc.includes("Übergabepauschale")) fail("Mietcamper: " + rxc.replace(/\n/g, " | "));
+  if (!(await rent.locator(".xc li", { hasText: "Reinigung" }).first().innerText()).includes("einrechnen")) fail("Endreinigung nicht nur auf Wunsch");
+  // über 3,5 t: Hinweis Führerschein
+  await panel.locator(".chip", { hasText: "über 3,5 t" }).click();
+  if (!(await panel.locator(".cp-heavy").innerText()).includes("C1")) fail("Hinweis über 3,5 t fehlt");
+  log("Camper: drei Stationen (Campingplatz 44 €, Stellplatz 22 €, mit Quelle), Roadtrip mit Camper-Satz 0,25 €/km, Mietcamper mit Kaution und Pauschalen (Reinigung auf Wunsch), Hinweis über 3,5 t");
+  await cctx.close();
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");
 } finally { await browser.close(); server.kill(); }

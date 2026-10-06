@@ -469,6 +469,8 @@ export interface Trip {
   done?: Record<string, { sig: string; ids?: string[] }>;
   /** Roadtrip: gewählte Fähre je Überfahrt („Von>Nach“ → Fähren-ID, „none“: keine Fähre) */
   ferry?: Record<string, string>;
+  /** Roadtrip mit dem Camper (fehlt: Auto): eigener oder gemieteter, über 3,5 t */
+  camper?: { own?: boolean; heavy?: boolean };
 }
 
 /** Ergebnis der Nachsuche für einen Posten, Beträge für den ganzen Posten */

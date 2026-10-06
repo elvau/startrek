@@ -21,6 +21,7 @@
   import { splitLeg } from "../road/split";
   import { openStaySearch } from "../stays/open.svelte";
   import { dayShort } from "../format";
+  import { CAMPER_KM } from "../road/camper";
   import PartnerLinks from "./PartnerLinks.svelte";
   import { partnersOf } from "../partners";
 
@@ -38,7 +39,9 @@
   const route = $derived(home && destCc ? routeCountries("DE", destCc) : []);
   const rc = $derived(roadCosts(route));
   const road = $derived(home && dest ? Math.round(kmBetween(home, dest) * 1.3) : 0);
-  const kmCost = $derived(app.trip.settings.kmCost ?? 0.3);
+  // Camper (#203): eigener km-Satz, Maut nach Höhe bzw. über 3,5 t, Fähre mit Camper-Tarif
+  const camper = $derived(app.trip.camper);
+  const kmCost = $derived(camper ? CAMPER_KM[camper.own ? "own" : "rented"] : app.trip.settings.kmCost ?? 0.3);
   const rate = (c: string) => rateOf(c, app.trip.settings);
   const extras = $derived(roadExtras(route, road, rate));
   const fuel = $derived(Math.round(2 * road * kmCost));
@@ -46,7 +49,7 @@
   const cars = $derived(app.trip.items.filter(i => i.hint === KEY && i.status !== "dropped"));
   // Roadtrip (#201): Etappen über die Stationen; sonst wie bisher nur Wohnort → Ziel
   const plan = $derived(flies ? null : roadPlan(app.trip));
-  const cost = $derived(plan ? roadTripCost(plan.etappen, kmCost, rate, app.trip.from || "") : null);
+  const cost = $derived(plan ? roadTripCost(plan.etappen, kmCost, rate, app.trip.from || "", camper ? { camper: true, heavy: !!camper.heavy } : {}) : null);
   const perRound = $derived(cost ? cost.fuel + cost.extras.reduce((s, x) => s + x.amount, 0) : 0);
   const totalMin = $derived(plan ? plan.etappen.filter(e => !e.ferry).reduce((s, e) => s + withPauses(e.min), 0) : 0);
   const show = $derived(!flies && (road > 0 || !!plan));
@@ -107,7 +110,7 @@
     const seated = new Set(cars.flatMap(c => c.participants || act));
     const rest = act.filter(id => !seated.has(id));
     const it: Item = { id: uid(), cat: "transport", icon: "car", status: "idea", hint: KEY, arrival: true,
-      name: plan ? (cars.length ? t("road.tripN", { n: cars.length + 1 }) : t("road.trip")) : cars.length ? t("road.carN", { n: cars.length + 1 }) : t("road.car"),
+      name: plan ? (camper ? (cars.length ? t("camp.tripN", { n: cars.length + 1 }) : t("camp.trip")) : cars.length ? t("road.tripN", { n: cars.length + 1 }) : t("road.trip")) : cars.length ? t("road.carN", { n: cars.length + 1 }) : t("road.car"),
       note: noteFor(),
       ...(cars.length && rest.length ? { participants: rest } : {}),
       options: [optionFor()] };
@@ -118,7 +121,7 @@
 
 {#if show && plan && cost}
   <div class="search-row road road-trip">
-    <p class="road-t">🚗 <b>{t("road.tripTitle")}</b> <span class="muted small">{t("road.tripSum", { km: cost.km, h: hm(totalMin) })}</span></p>
+    <p class="road-t">{camper ? "🚐" : "🚗"} <b>{t("road.tripTitle")}</b> <span class="muted small">{t("road.tripSum", { km: cost.km, h: hm(totalMin) })}</span></p>
     <ol class="rt-legs">
       {#each plan.etappen as e, i (i)}
         {#if e.ferry}
