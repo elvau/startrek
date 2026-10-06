@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi } from "./kiwi";
-import { worthRetry, compareRow, covered, withoutTravel, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
+import { providerDown, worthRetry, compareRow, covered, withoutTravel, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
 import { activeOption, totals } from "../calc";
 import { presences } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
@@ -190,5 +190,13 @@ describe("Flugdauer über Zeitzonen", () => {
     // Düsseldorf 10:00 → New York 12:30 Ortszeit sind 8 h 30 min
     expect(legDuration({ dep: "2027-07-18T10:00", arr: "2027-07-18T12:30", minutes: 510 })).toBe("8 h 30 min");
     expect(legDuration({ dep: "2027-07-18T10:00", arr: "2027-07-18T12:30" })).toBe("2 h 30 min");
+  });
+});
+
+describe("providerDown", () => {
+  it("meldet ausgefallene eingerichtete Anbieter (z. B. 503), nicht fehlende", () => {
+    expect(providerDown([{ configured: true, ok: false }, { configured: true, ok: true }])).toBe(true);
+    expect(providerDown([{ configured: true, ok: true }, { configured: false, ok: false }])).toBe(false);
+    expect(providerDown([])).toBe(false);
   });
 });

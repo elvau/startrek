@@ -237,6 +237,9 @@ export function rateRound(trip: Trip, rt: RoundTrip, home: boolean, withAccess: 
  * Keine Flüge, aber eine Quelle ist erst nach einer Weile gescheitert (z. B. Kiwi überlastet oder zu langsam):
  * lohnt einen zweiten Versuch. Sofortige Absagen (fehlende Flughafencodes u. Ä., ms 0) ändern sich dadurch nicht.
  */
+/** Ein eingerichteter Anbieter ist ausgefallen (z. B. 503): „keine Flüge“ heißt dann nicht „gibt es nicht“ */
+export const providerDown = (sources: { configured: boolean; ok: boolean }[]) => sources.some(s => s.configured && !s.ok);
+
 export const worthRetry = (r: SearchResult) => !r.offers?.length && !!r.sources?.some(s => s.configured && !s.ok && (s.ms || 0) > 0);
 
 /**
