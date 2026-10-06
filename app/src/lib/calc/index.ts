@@ -420,6 +420,8 @@ export interface ShareLine {
   who: number;
   /** z. B. "2 × Erwachsen 389 € · 2 × Kind 290 €", wenn sich die Anteile unterscheiden */
   detail: string;
+  /** Unterkunft, nicht alle Nächte dabei: „7 von 14 Nächten“ */
+  nights?: string;
   fixed: boolean;
 }
 export interface HouseholdShare {
@@ -454,6 +456,25 @@ export function fundShares(trip: Trip, T: Totals): Record<string, Record<string,
 
 const AGE_L = (c: AgeClass) => t(`age.class.${c}` as Key);
 
+/** Anteil einer Familie an einem Posten (#229): Personen, bei Unterkünften Nächte (von wie vielen), Betrag */
+export interface ItemShare { hh: string; persons: number; nights?: number; of?: number; v: number }
+
+/** Aufteilung eines Postens auf die Familien, in der Reihenfolge der Reisenden; leer, wenn er nichts kostet */
+export function itemShares(trip: Trip, r: ItemCalc | undefined): ItemShare[] {
+  if (!r || !r.counts) return [];
+  const out = new Map<string, ItemShare>();
+  for (const t of activeTravelers(trip)) {
+    const v = r.per[t.id];
+    if (!(v > 0.005)) continue;
+    const hh = hhKey(t), x = out.get(hh) || { hh, persons: 0, v: 0 };
+    x.persons++;
+    x.v += v;
+    if (r.stay) { x.nights = Math.max(x.nights || 0, r.stay.w[t.id] || 0); x.of = r.stay.nights.length; }
+    out.set(hh, x);
+  }
+  return [...out.values()];
+}
+
 export function householdShares(trip: Trip, T: Totals = totals(trip)): HouseholdShare[] {
   const names = [...new Set(activeTravelers(trip).map(hhKey))];
   const per = fundShares(trip, T);
@@ -486,7 +507,10 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
         const detail = differ && keys.length > 1 && new Set(keys.map(c => grp[c]!.v)).size > 1
           ? keys.map(c => `${grp[c]!.n} × ${AGE_L(c)} ${eur(grp[c]!.v)}`).join(" · ")
           : "";
-        lines.push({ key: it.id, item: it, label: it.name || t("trav.noName"), v, who: inn.length, detail, fixed: FIXED.includes(it.status) });
+        // Unterkunft: nicht alle Nächte da → „7 von 14 Nächten“, damit der Anteil nachvollziehbar ist
+        const nn = r.stay ? Math.max(0, ...inn.map(x => r.stay!.w[x.id] || 0)) : 0;
+        const nights = r.stay && nn && nn < r.stay.nights.length ? t("split.nightsOf", { a: nn, b: r.stay.nights.length }) : "";
+        lines.push({ key: it.id, item: it, label: it.name || t("trav.noName"), v, who: inn.length, detail, ...(nights ? { nights } : {}), fixed: FIXED.includes(it.status) });
       }
       return { cat, sum: lines.reduce((a, l) => a + l.v, 0), lines };
     }).filter(c => c.lines.length);
