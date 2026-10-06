@@ -93,8 +93,10 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
 - **Was enthalten ist:** Kiwi.com rechnet die gewünschten Koffer schon in den Preis ein und meldet sie; Duffel meldet das
   Gepäck des Tarifs. Travelpayouts sagt nichts dazu: bei Billigfliegern schätzen wir die Koffer, bei Linienflügen
   steht „Gepäck nicht angegeben“ (keine Schätzung). Meldet ein Linientarif ausdrücklich keinen Koffer, gilt 35 € je Koffer und Strecke.
-- **Sitzplätze:** Vorliebe „Kinder im Flugzeug“ (fehlt: neben den Eltern). Bei manchen Billigfliegern sitzen Kinder nur
-  mit bezahlter Platzwahl neben einem Erwachsenen; gerechnet wird ein Platz je bis zu 4 Kinder und Strecke. Dazu der
+- **Sitzplätze:** Vorliebe „Kinder im Flugzeug“ (fehlt: neben den Eltern). Verlangt eine Airline eine bezahlte Platzwahl,
+  damit Kinder neben einem Erwachsenen sitzen (`famSeat`), wird ein Platz je bis zu 4 Kinder und Strecke gerechnet. Stand
+  10/2026 trifft das auf keine der Airlines zu (Ryanair und Wizz setzen Kinder kostenlos dazu); ab etwa Mitte 2027 schreibt
+  die überarbeitete EU-Fluggastrechte-Verordnung das für Kinder unter 14 ohnehin vor. Dazu der
   Tipp, früh einzuchecken (viele Airlines setzen Familien dann nebeneinander, ohne Garantie).
 - **Sortierung:** „Günstigste“ sortiert nach dem Preis mit Koffern und Sitzplätzen. Übernommen landen beide als
   geschätzte Nebenkosten „bei der Buchung“ im Posten (wegklickbar), dazu „Enthalten: …“.
@@ -102,8 +104,8 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
 
 | Airline | Codes | Koffer je Strecke | Platzwahl Familie je Strecke | Quelle |
 |---|---|---|---|---|
-| Ryanair | FR, RK, AL | 40 € | 9 € | ryanair.com, Gebühren |
-| Wizz Air | W6, W4, W9 | 45 € | 10 € | wizzair.com, Gebühren |
+| Ryanair | FR, RK, AL, RR | 40 € | – (seit 6/2026 Kinder gratis neben Erwachsenen) | ryanair.com, Gebühren |
+| Wizz Air | W6, W4, W9 | 45 € | – (ein Kind gratis neben einem Erwachsenen) | wizzair.com, Gebühren |
 | easyJet | U2, EC, DS | 35 € | – | easyjet.com, Gebühren |
 | Vueling | VY | 30 € | – | vueling.com, Gebühren |
 | Eurowings | EW | 30 € | – | eurowings.com, Tarif Basic |
@@ -111,7 +113,7 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
 | Volotea | V7 | 30 € | – | volotea.com, Gebühren |
 | Pegasus | PC | 25 € | – | flypgs.com, Tarif Basic |
 | SunExpress | XQ | 25 € | – | sunexpress.com, Tarif SunEco |
-| Jet2 | LS | 35 € | – | jet2.com, Gebühren |
+| Jet2 | LS | 25 € | – | jet2.com, Gebühren |
 | Norwegian | DY, D8 | 35 € | – | norwegian.com, Tarif LowFare |
 
 Eine neue Airline ist eine Zeile in `LOW_COST`.
@@ -250,3 +252,26 @@ nächsten zum Wohnort der Mitfliegenden. Fehlt der Wohnort, fragen Flugsuche und
 Kurze Reisen (bis 3 Nächte) sucht die flexible Suche mit der ganzen Dauer, damit alle Gruppen dieselben Tage fliegen.
 Für Abflüge in mehr als etwa 11 Monaten erklärt die Suche, dass die Airlines meist noch nicht verkaufen.
 Testangebote (Sandbox) stehen in allen Sortierungen hinter den echten.
+
+## Strecken mit dem Auto (Roadtrip, #201)
+
+Ohne Flug und mit mehreren Stationen (bzw. einem Auto-Posten) gilt eine Reise als Roadtrip. Die Etappen laufen Wohnort →
+Stationen (aus den Unterkünften im Tagesplan) → Wohnort.
+
+- **Routen-Dienst:** `POST /road/route` mit `{ points: [[lat, lon], …] }` (2 bis 25 Punkte, auf etwa 100 m gerundet).
+  Der Worker fragt OpenRouteService (`driving-car`) und gibt je Etappe km, Minuten und einen ausgedünnten Verlauf zurück.
+  Gleiche Strecken kommen 30 Tage aus dem Zwischenspeicher. Höchstens 4 echte Anfragen pro Minute für alle zusammen
+  (`ORS_PER_MIN`, je Rechenzentrum; ORS erlaubt 40); darüber schätzt die App und fragt nach der Wartezeit erneut. In der
+  Admin-Ansicht steht OpenRouteService mit der Tagesgrenze 2.000. Code: `app/src/lib/road/ors.ts`.
+- **Schlüssel:** `ORS_KEY` als **Secret** im Worker (kostenlos bis 2.000 Strecken pro Tag, Konto auf openrouteservice.org).
+  Ohne Schlüssel antwortet der Worker `configured: false`, und die App schätzt (Luftlinie × 1,3 bei 85 km/h).
+- **Länder auf der Strecke:** Stichproben etwa alle 10 km entlang des Verlaufs, jede zählt zum Land der nächstgelegenen
+  Stadt aus `world.json`. Daraus kommen die Kilometer je Land: Maut nach den km im Land, jede Vignette nur so oft wie nötig
+  (Fahrtage im Land innerhalb ihrer Gültigkeit). Code: `app/src/lib/road/trip.ts`.
+- **Fahrzeit:** mit 15 Minuten Pause je angefangene 2 Stunden (die erste nicht). Über 8 Stunden: Hinweis „lange Etappe“,
+  dazu „Zwischenstopp suchen“ bzw. „in 2/3 Etappen teilen“ (`road/split.ts`): Zwischenstopps als Unterkunfts-Posten
+  (Richtwert 45 € pro Person und Nacht) bei einer Stadt nahe der Bruchstelle; die Ankunft an der nächsten Station bzw.
+  zu Hause verschiebt sich entsprechend.
+- **Tagesplan:** an jedem Fahrtag ein Eintrag mit Strecke, km und Fahrzeit.
+- **Vergleich Bahn/Bus/Auto/Flug:** bei Roadtrips auch über 700 km Luftlinie.
+- Quellenangabe in der App: „© openrouteservice.org by HeiGIT, Kartendaten © OpenStreetMap-Mitwirkende“.

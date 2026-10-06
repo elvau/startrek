@@ -110,9 +110,10 @@ export function flightTime(home: Spot, dest: Spot, f: FlightIn): TimePart[] {
 const carBreaks = (h: number) => Math.floor(h / 2) * 0.25;
 const coachBreaks = (h: number) => Math.floor(h / 4.5) * 0.75;
 
-export function groundPlan(from: Spot, to: Spot, persons: number, days: number, opts: { kmCost?: number; flight?: FlightIn } = {}): GroundPlan | null {
+/** opts.road: Auto-Reise (Roadtrip, #201): Vergleich auch über GROUND_MAX_KM */
+export function groundPlan(from: Spot, to: Spot, persons: number, days: number, opts: { kmCost?: number; flight?: FlightIn; road?: boolean } = {}): GroundPlan | null {
   const km = kmBetween(from, to);
-  if (km < GROUND_MIN_KM || km > GROUND_MAX_KM) return null;
+  if (km < GROUND_MIN_KM || (km > GROUND_MAX_KM && !opts.road)) return null;
   const kmCost = opts.kmCost ?? 0.3;
   const road = km * 1.3, rail = km * 1.2, n = Math.max(1, persons);
   const pair = (lo: number, hi: number) => ({ lo: round(2 * lo), hi: round(2 * Math.max(lo, hi)) });

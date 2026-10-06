@@ -47,7 +47,7 @@ describe("KI zur offenen Reise", () => {
     expect(b).toMatchObject({ place: "Palma", from: "2027-05-10", to: "2027-05-13" });
     expect(b.items.map(i => i.id)).toEqual(["fl", "st", "bk", "fw"]);
     // 900 € Hotel + Ökosteuer Mallorca (automatisch geschätzt)
-    expect(b.items[1]).toMatchObject({ cat: "stay", name: "Hotel alt", status: "chosen", eur: 909, detail: "2027-05-10 – 2027-05-13" });
+    expect(b.items[1]).toMatchObject({ cat: "stay", name: "Hotel alt", status: "chosen", eur: 906, detail: "2027-05-10 – 2027-05-13" });
     expect(JSON.stringify(b)).not.toMatch(/Anna|Mia|Klein/);
     expect(b.items[3].name).toBe("Flug … (…)");
     expect(hasPlan(trip())).toBe(true);

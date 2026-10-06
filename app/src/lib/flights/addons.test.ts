@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addOnExtras, addOns, lowCostOf, surchargeBanned } from "./addons";
+import { LOW_COST, addOnExtras, addOns, lowCostOf, surchargeBanned } from "./addons";
 import { sortFlights } from "./filter";
 import type { FlightOffer, OfferLeg } from "./types";
 
@@ -28,14 +28,17 @@ describe("Flug-Nebenkosten (#171)", () => {
     expect(addOns(offer("Lufthansa", 300), fam)).toMatchObject({ bagFee: 0, seatFee: 0, incl: null, missing: 0 });
     expect(addOns(offer("Lufthansa", 300, { personal: 4, cabin: 4, checked: 0 }), fam).bagFee).toBe(2 * 2 * 35);
   });
-  it("Familie: Platzwahl bei Ryanair für einen Erwachsenen je 4 Kinder, nur wenn zusammen gewünscht", () => {
-    expect(addOns(offer("Ryanair", 160), fam).seatFee).toBe(2 * 9);
-    expect(addOns(offer("Ryanair", 160), { ...fam, kids: 5 }).seatFee).toBe(2 * 2 * 9);
-    expect(addOns(offer("Ryanair", 160), { ...fam, together: false }).seatFee).toBe(0);
-    expect(addOns(offer("easyJet", 160), fam).seatFee).toBe(0);
+  it("Familie: Platzwahl nur bei Airlines mit Pflicht (Ryanair, Wizz seit 2026 gratis); ein Erwachsener je 4 Kinder, nur wenn zusammen gewünscht", () => {
+    expect(addOns(offer("Ryanair", 160), fam).seatFee).toBe(0);
+    const paid = LOW_COST.map(l => (l.id === "ryanair" ? { ...l, famSeat: 9 } : l));
+    expect(addOns(offer("Ryanair", 160), fam, paid).seatFee).toBe(2 * 9);
+    expect(addOns(offer("Ryanair", 160), { ...fam, kids: 5 }, paid).seatFee).toBe(2 * 2 * 9);
+    expect(addOns(offer("Ryanair", 160), { ...fam, together: false }, paid).seatFee).toBe(0);
+    expect(addOns(offer("easyJet", 160), fam, paid).seatFee).toBe(0);
   });
   it("als Nebenkosten bei Buchung, geschätzt, mit Quelle", () => {
-    const x = addOnExtras(addOns(offer("Ryanair", 160), fam), { bags: "2 Koffer dazubuchen", seats: "Sitzplätze" });
+    const paid = LOW_COST.map(l => (l.id === "ryanair" ? { ...l, famSeat: 9 } : l));
+    const x = addOnExtras(addOns(offer("Ryanair", 160), fam, paid), { bags: "2 Koffer dazubuchen", seats: "Sitzplätze" });
     expect(x).toEqual([
       expect.objectContaining({ id: "fl:bag", kind: "bag", amount: 160, basis: "booking", pay: "extra", est: true, label: "2 Koffer dazubuchen" }),
       expect.objectContaining({ id: "fl:seat", kind: "seat", amount: 18 })

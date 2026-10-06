@@ -16,7 +16,7 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
 - Firestore-Regeln (`app/firestore.rules`) spielt Dani von Hand in der Firebase-Konsole ein (echtes und Testprojekt): nach Änderungen Bescheid sagen.
 - **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: Version auf `pre-release` anheben,
   `test:cloud`, PR `pre-release` → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit); danach `pre-release`
-  auf `main` vorspulen (`git push origin origin/main:pre-release`) und den Arbeits-Branch auf `origin/main` zurücksetzen.
+  auf `main` vorspulen (`git push origin origin/main:refs/heads/pre-release`, legt ihn auch neu an, falls GitHub ihn nach dem Merge gelöscht hat; offene PRs danach wieder auf `pre-release` stellen) und den Arbeits-Branch auf `origin/main` zurücksetzen.
   Issues mit Label `auf-test`, die mitgegangen sind, schließen.
 - Version in `app/package.json` (`npm version X --no-git-tag-version`) im Release-PR: größere Funktionen mittlere Stelle,
   sonst Patch. Lieber langsam hochzählen.
