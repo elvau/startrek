@@ -57,8 +57,8 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [ ] **Mietwagen-Partnerlinks:** → #147. in Travelpayouts das Programm DiscoverCars (oder EconomyBookings/Localrent) hinzufügen,
       unter Tools → Links einen Link erzeugen und Claude schicken (daraus kommen Programm- und Kampagnen-ID). Bis dahin
       verlinkt die App neutral (KAYAK vorbefüllt, CHECK24, DiscoverCars).
-- [ ] **OpenRouteService-Schlüssel** → #207. Für Roadtrips (Etappen, Fahrzeiten); bis dahin schätzt die App.
-- [ ] **Branch `pre-release` schützen:** GitHub → Settings → Rules → Rulesets → neue Regel für `pre-release` mit
+- [x] **OpenRouteService-Schlüssel** (eingetragen 10/2026) → #207. Für Roadtrips (Etappen, Fahrzeiten); bis dahin schätzt die App.
+- [x] **Branch `pre-release` schützen** (erledigt 10/2026): GitHub → Settings → Rules → Rulesets → neue Regel für `pre-release` mit
       „Restrict deletions“. Sonst löscht „Automatically delete head branches“ ihn bei jedem Release (passiert bei 0.29.0).
 - [ ] **Camper-Partner (optional):** PaulCamper über Travelpayouts, Roadsurfer über Awin passen zu bestehenden Netzen;
       Yescapa und PiNCAMP bräuchten TradeTracker. Bis dahin neutrale Links.
