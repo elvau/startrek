@@ -11,7 +11,8 @@ export const SAMPLE_KM = 15;
 
 export type LL = [number, number];
 export interface RoadLeg { km: number; min: number; path: LL[] }
-export interface RoadResult { legs: RoadLeg[]; configured: boolean; source?: "ors"; error?: string }
+/** retryAfter: Grenze pro Minute erreicht, nach so vielen Sekunden erneut fragen */
+export interface RoadResult { legs: RoadLeg[]; configured: boolean; source?: "ors"; error?: string; retryAfter?: number }
 
 /** Anfrage prüfen: 2 bis MAX_POINTS Punkte [lat, lon], auf drei Stellen gerundet (etwa 100 m) */
 export function parseRouteQuery(body: unknown): LL[] | string {
