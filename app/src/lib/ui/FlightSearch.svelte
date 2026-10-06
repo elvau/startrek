@@ -21,7 +21,7 @@
   import { addDays } from "../flights/kiwi";
   import { alternatives, anyReal, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
   import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
-  import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, homeGuess, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, hitsHidden, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, homeGuess, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import { loadPlz, withHome } from "../plz";
   import { cloud } from "../cloud/cloud.svelte";
@@ -739,6 +739,7 @@
       {#if into}<p class="muted small">{t("fs.takenHint")}</p>{/if}
     {:else}
       <p class="muted small">{t("fs.none")}</p>
+      {#if hitsHidden(sources, list.length)}<p class="warnline">{t("fs.hitsHidden")}</p>{/if}
       <!-- Airlines verkaufen meist erst rund 11 Monate im Voraus: dann nicht „gibt es nicht“, sondern „noch nicht“ -->
       {#if farOut}<p class="warnline fs-farout">{t("fs.farOut")}</p>{/if}
     {/if}

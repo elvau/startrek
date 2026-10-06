@@ -979,6 +979,7 @@ export const pl: Dict = {
   "fs.noConnection": "nie znaleziono połączenia",
   "fs.noSelf": "bez self-transfer",
   "fs.none": "Nie znaleziono lotów. Zmień daty, przesiadki lub lotniska.",
+  "fs.hitsHidden": "Dostawcy zgłosili wyniki, ale nie pasują do wyszukiwania (inne lotniska, inny okres lub nierealne ceny), więc są ukryte. Poszerz lotniska lub daty.",
   "fs.oneway": "W jedną stronę",
   "fs.onewayHint": "Szukamy najtańszego dnia w oknie, tylko w jedną stronę. Dalszy lot lub powrót wyszukaj później osobno.",
   "fs.open": "Szukaj lotów",

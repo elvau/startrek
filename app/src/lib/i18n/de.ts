@@ -949,6 +949,7 @@ export const de = {
   "fs.noConnection": "keine Verbindung gefunden",
   "fs.noSelf": "ohne Self-Transfer",
   "fs.none": "Keine passenden Flüge gefunden. Datum, Umstiege oder Flughäfen ändern.",
+  "fs.hitsHidden": "Die Anbieter meldeten Treffer, sie passen aber nicht zu deiner Suche (andere Flughäfen, anderer Zeitraum oder unplausible Preise) und sind ausgeblendet. Flughäfen oder Zeitraum lockern.",
   "fs.oneway": "Nur Hinflug",
   "fs.onewayHint": "Gesucht wird der günstigste Tag im Zeitfenster, nur Hinflug. Den Weiterflug oder Rückflug später einzeln suchen.",
   "fs.open": "Flüge suchen",

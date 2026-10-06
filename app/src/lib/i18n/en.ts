@@ -951,6 +951,7 @@ export const en: Dict = {
   "fs.noConnection": "no connection found",
   "fs.noSelf": "no self-transfer",
   "fs.none": "No matching flights found. Change dates, stops or airports.",
+  "fs.hitsHidden": "The providers reported hits, but they don't match your search (other airports, another period or implausible prices) and are hidden. Try loosening airports or dates.",
   "fs.oneway": "One way",
   "fs.onewayHint": "We look for the cheapest day in the window, one way only. Search the onward or return flight separately later.",
   "fs.open": "Search flights",
