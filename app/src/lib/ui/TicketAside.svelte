@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { arrow, t, tn } from "../i18n/index.svelte";
+  import { arrow, autoName, t, tn } from "../i18n/index.svelte";
   import { access, app, calc } from "../store.svelte";
   import { cloud, isCloud } from "../cloud/cloud.svelte";
   import { activeOption, eur, eurPP, testItems } from "../calc";
@@ -36,7 +36,7 @@
       return v ? t("aside.simple", { label }) : t("aside.noAmount");
     }
     const its = app.trip.items.filter(x => x.cat === k && x.status !== "dropped");
-    return its.length ? its.map(x => `${x.name || activeOption(x, app.trip)?.label || t("item.new")} ${eur(T.items[x.id]?.net || 0)}${activeOption(x, app.trip)?.source?.test ? ` (${t("test.badge")})` : ""}`).join(" · ") : t("aside.noItems");
+    return its.length ? its.map(x => `${autoName(x.name) || activeOption(x, app.trip)?.label || t("item.new")} ${eur(T.items[x.id]?.net || 0)}${activeOption(x, app.trip)?.source?.test ? ` (${t("test.badge")})` : ""}`).join(" · ") : t("aside.noItems");
   }
   const xAdd = $derived(T.extras.onsite + T.extras.extra);
 </script>
@@ -69,7 +69,7 @@
           {#if T.extras.included}<div class="xc-l muted"><span>{t("aside.xcIncluded")}</span><b class="num">{eur(T.extras.included)}</b></div>{/if}
           {#if T.extras.deposit}
             <div class="xc-l xc-k"><span>🔒 {t("aside.deposits")}</span><b class="num">{eur(T.extras.deposit)}</b></div>
-            {#each T.extras.deposits as id (id)}{@const it = app.trip.items.find(i => i.id === id)}{#if it}<a class="xc-l xc-ki" href="#{it.cat}"><span>{it.name}{T.items[id]?.extras?.dep?.how === "credit" ? ` · ${t("dep.creditShort")}` : ""}</span><b class="num">{eur(T.items[id]?.extras?.deposit || 0)}</b></a>{/if}{/each}
+            {#each T.extras.deposits as id (id)}{@const it = app.trip.items.find(i => i.id === id)}{#if it}<a class="xc-l xc-ki" href="#{it.cat}"><span>{autoName(it.name)}{T.items[id]?.extras?.dep?.how === "credit" ? ` · ${t("dep.creditShort")}` : ""}</span><b class="num">{eur(T.items[id]?.extras?.deposit || 0)}</b></a>{/if}{/each}
           {/if}
         </details>
       {/if}

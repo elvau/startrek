@@ -3,7 +3,7 @@
    * Tagesplan: Tag für Tag, was passiert. Flüge, Unterkünfte, Event und Posten mit Tag kommen automatisch dazu,
    * eigene Einträge („Abendessen“, „Ruhetag“, „Zug nach Dubrovnik“) und eine Überschrift je Tag trägt man hier ein.
    */
-  import { locale, t } from "../i18n/index.svelte";
+  import { autoName, locale, t } from "../i18n/index.svelte";
   import { access, app } from "../store.svelte";
   import { uid, type NoteKind } from "../model";
   import { itinerary, KIND_ICON, NOTE_KINDS, unplanned, type Day } from "../itinerary";
@@ -104,8 +104,8 @@
       <span class="dlabel">{t("day.unplanned")}</span>
       <p class="muted small">{t("day.unplannedHint")}</p>
       {#each open as it (it.id)}
-        <label class="dp-o"><span>{it.name}</span>
-          <select value="" onchange={e => plan(it.id, e.currentTarget.value)} aria-label={t("day.pickDay", { name: it.name })}>
+        <label class="dp-o"><span>{autoName(it.name)}</span>
+          <select value="" onchange={e => plan(it.id, e.currentTarget.value)} aria-label={t("day.pickDay", { name: autoName(it.name) })}>
             <option value="">{t("day.pick")}</option>
             {#each days as d (d.date)}<option value={d.date}>{t("day.n", { n: d.n })} · {wd(d.date)}</option>{/each}
           </select>

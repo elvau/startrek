@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from "../i18n/index.svelte";
+  import { autoName, t } from "../i18n/index.svelte";
   import type { Item } from "../model";
   import { app, calc } from "../store.svelte";
   import { ageClass, eur, participantsOf } from "../calc";
@@ -33,7 +33,7 @@
     <img class="row-img" src={opt.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={() => (imgFailed = true)} />
   {:else}<div class="ic"><Icon name={item.icon || icon} /></div>{/if}
   <div>
-    <h3>{item.name || opt?.label || t("item.new")}</h3>
+    <h3>{autoName(item.name) || opt?.label || t("item.new")}</h3>
     <p>{item.note || auto}{#if item.day}<span class="row-day">&nbsp;· 📅 {dayShort(item.day.slice(0, 10))}{item.day.length >= 16 ? ` ${item.day.slice(11, 16)}` : ""}</span>{/if}{#if opt?.price.multiply && (r?.units || 0) > 1}<span class="row-units">&nbsp;· {item.icon === "car" ? t("item.cars", { n: r!.units, c: opt.price.capacity || 0 }) : t("item.units", { n: r!.units })}</span>{/if}</p>
   </div>
   <div class="r">

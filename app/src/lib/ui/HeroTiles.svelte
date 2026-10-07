@@ -4,7 +4,7 @@
    * Leer: „Zu den Flügen“, „Zu den Hotels“, „Event hinzufügen“, „Sonstige Kosten“;
    * sonst Strecke, Unterkunft, Event und Betrag. Ein Klick führt ins Kapitel (leer: Suche gleich offen).
    */
-  import { t, tn } from "../i18n/index.svelte";
+  import { autoName, t, tn } from "../i18n/index.svelte";
   import { access, app, calc } from "../store.svelte";
   import { activeOption, eur } from "../calc";
   import { dayShort, nights } from "../format";
@@ -28,9 +28,9 @@
     if (i.cat === "flights" && out) return `${out.from} → ${out.to}${out.dep ? ` ${dayShort(out.dep.slice(0, 10))}` : ""}`;
     if (i.cat === "stay") {
       const nn = i.from && i.to ? nights(i.from, i.to) : 0;
-      return `${o?.label || i.name || t("stay.new")}${nn ? ` · ${tn("n.nights", nn)}` : ""}`;
+      return `${o?.label || autoName(i.name) || t("stay.new")}${nn ? ` · ${tn("n.nights", nn)}` : ""}`;
     }
-    return i.name || o?.label || t("item.new");
+    return autoName(i.name) || o?.label || t("item.new");
   }
   /** Posten einer Kachel, teuerste zuerst bei „Sonstige Kosten“ */
   function lines(cats: string[], byPrice = false) {
