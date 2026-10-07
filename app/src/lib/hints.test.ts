@@ -18,6 +18,17 @@ describe("Einreise & Tipps", () => {
     expect(cc(t).sort()).toEqual(["BR", "EC", "PE"]);
     expect(hintsFor(t, cc(t), []).map(h => h.id)).toEqual(["galapagos", "machu", "corcovado"]);
   });
+  it("nur das gewählte Angebot zählt: Alternative über die USA löst keinen ESTA-Hinweis aus", () => {
+    const t = eduard();
+    const alt = { id: "alt", label: "über New York", price: { mode: "unit" as const, currency: "EUR" as const, unit: 1 }, legs: [L("out", "DUS", "JFK", "2027-04-01"), L("via", "JFK", "UIO", "2027-04-02")] };
+    t.items[0].options.push(alt);
+    t.items[0].chosen = "o";
+    expect(cc(t)).not.toContain("US");
+    expect(hintsFor(t, cc(t), []).map(h => h.id)).not.toContain("us");
+    t.items[0].chosen = "alt";
+    expect(cc(t)).toContain("US");
+    expect(hintsFor(t, cc(t), []).map(h => h.id)).toContain("us");
+  });
   it("USA: ESTA; Orte auch aus Posten und Tagesplan", () => {
     const t: Trip = { ...eduard(), place: "New York", country: "USA", items: [{ id: "a", cat: "attractions", name: "Tagesausflug nach Venedig", status: "idea", options: [] }] };
     expect(hintsFor(t, cc(t), []).map(h => h.id)).toEqual(["us", "venice"]);

@@ -5,6 +5,7 @@
  * Länder kommen aus Reiseland, Flughäfen der Flüge und Orten der Unterkünfte; Orte aus Stationen, Flughäfen und Posten.
  */
 import type { Item, Trip } from "./model";
+import { activeOption } from "./calc";
 
 export interface HintLink { label: string; url: string }
 export interface Hint {
@@ -84,17 +85,17 @@ export const HINTS: Hint[] = [
     links: [{ label: "Venezia Access Fee", url: "https://cda.veneziaunica.it/en" }] }
 ];
 
-/** Länder der Reise: Reiseland, Flughäfen der Flüge (Landungen), Länder der Unterkünfte */
+/** Länder der Reise: Reiseland, Flughäfen der Flüge (Landungen), Länder der Unterkünfte; nur vom gewählten Angebot eines Postens, nicht von Alternativen */
 export function tripCountries(trip: Trip, ccOfCountry: (name?: string) => string | null, ccOfAirport: (code: string) => string | undefined): string[] {
   const out = new Set<string>();
   const add = (c?: string | null) => { if (c) out.add(c.toUpperCase()); };
   add(ccOfCountry(trip.country));
   for (const it of trip.items) {
     if (it.status === "dropped") continue;
-    for (const o of it.options) {
-      for (const l of o.legs || []) if (l.dir !== "back") add(ccOfAirport(l.to));
-      if (o.query?.country) add(ccOfCountry(o.query.country));
-    }
+    const o = activeOption(it, trip);
+    if (!o) continue;
+    for (const l of o.legs || []) if (l.dir !== "back") add(ccOfAirport(l.to));
+    if (o.query?.country) add(ccOfCountry(o.query.country));
   }
   return [...out];
 }
