@@ -951,6 +951,7 @@ export const es: Dict = {
   "fs.noConnection": "no se encontró conexión",
   "fs.noSelf": "sin self-transfer",
   "fs.none": "No se encontraron vuelos. Cambia fechas, escalas o aeropuertos.",
+  "fs.hitsHidden": "Los proveedores informaron de resultados, pero no encajan con tu búsqueda (otros aeropuertos, otro periodo o precios poco plausibles) y están ocultos. Prueba con más aeropuertos o fechas más amplias.",
   "fs.noFreeFlights": "No se pueden reservar vuelos libremente hasta allí; el viaje lo organiza el operador de la gira. Puedes seguir buscando vuelos hasta el punto de partida de la gira (p. ej. Pekín).",
   "fs.providerDown": "Un proveedor no estuvo disponible temporalmente, por lo que los resultados pueden estar incompletos. Vuelve a buscar más tarde.",
   "fs.oneway": "Solo ida",

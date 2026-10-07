@@ -951,6 +951,7 @@ export const en: Dict = {
   "fs.noConnection": "no connection found",
   "fs.noSelf": "no self-transfer",
   "fs.none": "No matching flights found. Change dates, stops or airports.",
+  "fs.hitsHidden": "The providers reported hits, but they don't match your search (other airports, another period or implausible prices) and are hidden. Try loosening airports or dates.",
   "fs.noFreeFlights": "Flights there can't be booked freely; travel is arranged by the tour operator. You can still search flights to the tour's starting point (e.g. Beijing).",
   "fs.providerDown": "A provider was temporarily unreachable, so results may be incomplete. Please search again later.",
   "fs.oneway": "One way",

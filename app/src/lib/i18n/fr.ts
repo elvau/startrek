@@ -951,6 +951,7 @@ export const fr: Dict = {
   "fs.noConnection": "aucune liaison trouvée",
   "fs.noSelf": "sans self-transfer",
   "fs.none": "Aucun vol trouvé. Change les dates, les escales ou les aéroports.",
+  "fs.hitsHidden": "Les fournisseurs ont signalé des résultats, mais ils ne correspondent pas à ta recherche (autres aéroports, autre période ou prix peu plausibles) et sont masqués. Élargis les aéroports ou les dates.",
   "fs.noFreeFlights": "Les vols vers cette destination ne sont pas réservables librement ; le voyage passe par l'organisateur du circuit. Tu peux toujours chercher des vols jusqu'au point de départ du circuit (p. ex. Pékin).",
   "fs.providerDown": "Un fournisseur était temporairement injoignable, les résultats peuvent être incomplets. Relance la recherche plus tard.",
   "fs.oneway": "Aller simple",

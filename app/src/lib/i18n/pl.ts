@@ -979,6 +979,7 @@ export const pl: Dict = {
   "fs.noConnection": "nie znaleziono połączenia",
   "fs.noSelf": "bez self-transfer",
   "fs.none": "Nie znaleziono lotów. Zmień daty, przesiadki lub lotniska.",
+  "fs.hitsHidden": "Dostawcy zgłosili wyniki, ale nie pasują do wyszukiwania (inne lotniska, inny okres lub nierealne ceny), więc są ukryte. Poszerz lotniska lub daty.",
   "fs.noFreeFlights": "Lotów tam nie można zarezerwować samodzielnie, dojazd organizuje organizator wycieczki. Nadal możesz szukać lotów do punktu startowego wycieczki (np. Pekin).",
   "fs.providerDown": "Jeden z dostawców był chwilowo niedostępny, więc wyniki mogą być niepełne. Spróbuj ponownie później.",
   "fs.oneway": "W jedną stronę",
