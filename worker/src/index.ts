@@ -4,7 +4,8 @@
  * Schlüssel der Anbieter liegen als Cloudflare-Secrets, nie im Code oder in der App.
  */
 import { parseQuery, searchAll, type FlightEnv } from "../../app/src/lib/flights/search";
-import { configuredStays, parseStayQuery, searchStays, type StayEnv } from "../../app/src/lib/stays/search";
+import { healthBody } from "./health";
+import { parseStayQuery, searchStays, type StayEnv } from "../../app/src/lib/stays/search";
 import type { FlightQuery } from "../../app/src/lib/flights/types";
 import type { StayQuery } from "../../app/src/lib/stays/types";
 import { runAgent } from "../../app/src/lib/agent/agent";
@@ -77,7 +78,7 @@ export default {
 
     if (url.pathname === "/" || url.pathname === "/health") {
       // partner: ob Partner-Links an sind (die App kennzeichnet sie dann und hängt die Kennung an eigene Links)
-      return json({ ok: true, dienst: "Reisekasse Flugsuche", partner: partnerOn(env), stays: configuredStays(env) }, 200, h);
+      return json(healthBody(env), 200, h);
     }
 
     // Suchen: höchstens so viele pro IP und Minute bzw. Stunde (schützt die Kontingente der Anbieter)

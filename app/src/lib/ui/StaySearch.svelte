@@ -16,7 +16,7 @@
   import { stationName } from "../stays/stationName";
   import { FLIGHTS_URL, providerDown } from "../flights/app";
   import { loadPartner, partner } from "../partnerState.svelte";
-  import { activeMins, autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
+  import { activeMins, effectiveSources, sourceNotWired, autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
   import { arrivals, gaps, guestsIn, hints, segments, stations, stayWindow } from "../stays/presence";
   import { groupLabel } from "../groups";
   import { hhKey, isActive } from "../model";
@@ -110,7 +110,7 @@
   // nicht angebundene Quellen suchen nie: wählbar nur, was der Such-Dienst meldet; bleibt von der Auswahl nichts, gelten alle angebundenen
   loadPartner();
   const wired = (id: string) => !partner.stays || partner.stays.includes(id);
-  const eff = $derived(use.filter(wired).length ? use.filter(wired) : SOURCES.filter(s => wired(s.id)).map(s => s.id));
+  const eff = $derived(effectiveSources(use, SOURCES.map(s => s.id), partner.stays));
   const nn = $derived(checkin && checkout ? nights(checkin, checkout) : 0);
 
   // Wer braucht in diesem Zeitraum ein Bett (laut Flügen), wer nur einen Teil der Nächte
@@ -506,7 +506,7 @@
       {#if asked && minsText(asked)}
         <p class="warnline">{t("st.noneMins", { mins: minsText(asked) })} <button type="button" class="btn sm" onclick={relax}>{t("st.noMins")}</button></p>
       {/if}
-      {#if sources.some(s => !s.configured)}
+      {#if sourceNotWired(sources)}
         <p class="warnline">{t("st.notWiredHint")} <button type="button" class="btn sm" onclick={allSources}>{t("st.allSources")}</button></p>
       {/if}
     {/if}

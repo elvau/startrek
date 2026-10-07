@@ -4,7 +4,7 @@ import booking from "./booking.fixture.json";
 import { boardOf, bookingArgs, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs } from "./providers";
 import { configuredStays, mergeStays, parseStayQuery, searchStays, STAY_PROVIDERS } from "./search";
 import { centerKm, keepStays, sortStays } from "./sort";
-import { activeMins, defaultStayQuery, guests, staysHidden, stayToOption, takeStay } from "./app";
+import { activeMins, defaultStayQuery, effectiveSources, sourceNotWired, guests, staysHidden, stayToOption, takeStay } from "./app";
 import type { StayOffer, StayQuery } from "./types";
 import type { Item, Trip } from "../model";
 
@@ -243,6 +243,17 @@ describe("Unterkunftssuche: Filter und Sortierung", () => {
   it("aktive Mindestwerte: Sterne zählen bei ganzen Unterkünften nicht", () => {
     expect(activeMins({ type: "whole", minStars: 4, minScore: 8, must: ["pool"] })).toEqual({ stars: 0, score: 8, must: ["pool"] });
     expect(activeMins({ type: "all", minStars: 4 })).toEqual({ stars: 4, score: 0, must: [] });
+  });
+  it("Auswahl der Quellen: nicht angebundene fallen weg, ohne Rest alle angebundenen", () => {
+    const all = ["booking", "trivago", "liteapi"];
+    expect(effectiveSources(["trivago", "liteapi"], all, ["trivago", "liteapi"])).toEqual(["trivago", "liteapi"]);
+    expect(effectiveSources(["booking", "trivago"], all, ["trivago", "liteapi"])).toEqual(["trivago"]);
+    expect(effectiveSources(["booking"], all, ["trivago", "liteapi"])).toEqual(["trivago", "liteapi"]);
+    expect(effectiveSources(["booking"], all, null)).toEqual(["booking"]);
+  });
+  it("Hinweis nur, wenn eine Quelle nicht angebunden war", () => {
+    expect(sourceNotWired([{ configured: true }, { configured: false }])).toBe(true);
+    expect(sourceNotWired([{ configured: true }])).toBe(false);
   });
   it("sortiert nach Preis, Bewertung, Nähe Zentrum und für Familien", () => {
     expect(centerKm({ place: "Split, 0.7 km bis Zentrum" })).toBe(0.7);
