@@ -97,6 +97,10 @@ export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, 
 /** Anbieter melden Treffer, die Liste ist aber leer: Sterne- oder Bewertungsfilter haben sie aussortiert */
 export const staysHidden = (sources: { ok: boolean; count: number }[], shown: number) => shown === 0 && sources.some(s => s.ok && s.count > 0);
 
+/** aktive Mindestwerte einer Suche (Sterne zählen bei ganzen Unterkünften nicht), z. B. für den Hinweis bei leerem Ergebnis */
+export const activeMins = (q: Pick<StayQuery, "type" | "minStars" | "minScore" | "must">) =>
+  ({ stars: q.type !== "whole" && q.minStars ? q.minStars : 0, score: q.minScore || 0, must: q.must ?? [] });
+
 export async function searchStaysRemote(q: StayQuery, signal?: AbortSignal): Promise<StaySearchResult> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   const res = await fetch(`${FLIGHTS_URL}/stays/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });

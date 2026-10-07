@@ -15,7 +15,7 @@
   import { tick, untrack } from "svelte";
   import { stationName } from "../stays/stationName";
   import { FLIGHTS_URL, providerDown } from "../flights/app";
-  import { autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
+  import { activeMins, autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
   import { arrivals, gaps, guestsIn, hints, segments, stations, stayWindow } from "../stays/presence";
   import { groupLabel } from "../groups";
   import { hhKey, isActive } from "../model";
@@ -100,7 +100,7 @@
   $effect(() => { const v = more ? "1" : "0"; try { localStorage.setItem(MORE, v); } catch {} });
   const moreSummary = $derived([
     ...must.map(m => t(`st.m.${m}`)),
-    minStars ? t("st.starsFrom", { n: minStars }) : "",
+    minStars && type !== "whole" ? t("st.starsFrom", { n: minStars }) : "",
     minScore ? t("st.scoreFrom", { n: minScore }) : "",
     SOURCES.filter(s => use.includes(s.id)).map(s => s.name).join(", ")
   ].filter(Boolean).join(" · "));
@@ -223,8 +223,8 @@
   const score = (s: number) => s.toFixed(1).replace(".", ",");
   const people = (a: number, kids: number[]) => `${a} ${t("age.adultShort")}${kids.length ? `, ${tn("n.kids", kids.length)} (${kids.join(", ")} ${t("st.yearsShort")})` : ""}`;
 
-  async function search(e: Event) {
-    e.preventDefault();
+  async function search(e?: Event) {
+    e?.preventDefault();
     error = ""; list = null; sources = [];
     if (!place.trim()) { error = t("st.errPlace"); return; }
     if (!nn || nn < 1) { error = t("st.errDates"); return; }
@@ -238,7 +238,7 @@
     let q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin, checkout, ...per, rooms: Math.max(1, Math.min(rooms, per.adults)), type,
       // Quellen nur bei Auswahl mitschicken (ein älterer Such-Dienst kennt neue Quellen noch nicht)
       ...(use.length < SOURCES.length ? { sources: use } : {}), currency: "EUR",
-      ...(must.length ? { must } : {}), ...(minStars ? { minStars } : {}), ...(minScore ? { minScore } : {}) };
+      ...(must.length ? { must } : {}), ...(minStars && type !== "whole" ? { minStars } : {}), ...(minScore ? { minScore } : {}) };
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
     fellBack = "";
@@ -272,6 +272,14 @@
       if ((err as Error).name !== "AbortError") error = (err as Error).message;
     } finally { busy = false; }
   }
+
+  // aktive Mindestwerte als Text, leer ohne
+  const minsText = (q: StayQuery) => {
+    const m = activeMins(q);
+    return [...m.must.map(x => t(`st.m.${x}`)), m.stars ? t("st.starsFrom", { n: m.stars }) : "", m.score ? t("st.scoreFrom", { n: m.score }) : ""].filter(Boolean).join(", ");
+  };
+  // Suche ohne Mindestwerte wiederholen (Ausstattung, Sterne, Bewertung zurückgesetzt)
+  function relax() { must = []; minStars = 0; minScore = 0; void search(); }
 
   function take(o: StayOffer) {
     if (!asked) return;
@@ -404,7 +412,7 @@
         {/each}
       </div>
       <label class="f">{t("st.minStars")}
-        <select bind:value={minStars}>
+        <select bind:value={minStars} disabled={type === "whole"} title={type === "whole" ? t("st.starsWhole") : undefined}>
           <option value={0}>{t("st.any")}</option>
           {#each [2, 3, 4, 5] as n (n)}<option value={n}>{t("st.starsFrom", { n })}</option>{/each}
         </select>
@@ -488,6 +496,9 @@
       <p class="muted small">{t("st.none")}</p>
       {#if providerDown(sources)}<p class="warnline">{t("st.providerDown")}</p>{/if}
       {#if staysHidden(sources, list.length)}<p class="warnline">{t("st.hitsHidden")}</p>{/if}
+      {#if asked && minsText(asked)}
+        <p class="warnline">{t("st.noneMins", { mins: minsText(asked) })} <button type="button" class="btn sm" onclick={relax}>{t("st.noMins")}</button></p>
+      {/if}
     {/if}
   {/if}
 </Modal>
