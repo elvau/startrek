@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { arrow, t, tn } from "../i18n/index.svelte";
+  import { arrow, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
    * feste Daten (± Tage) oder flexibler Zeitraum mit „spätestens zuhause“ und Nächten per Schieberegler.
@@ -21,6 +21,7 @@
   import { addDays } from "../flights/kiwi";
   import { alternatives, anyReal, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
   import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
+  import { warnHintsFor } from "../hints";
   import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, hitsHidden, providerDown, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, homeGuess, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import { loadPlz, withHome } from "../plz";
@@ -327,6 +328,8 @@
     const toCodes = dest ? (dest.kind === "city" ? [dest.code] : dest.airports.slice(0, 2)) : /^[A-Za-z]{3}$/.test(to.trim()) ? [to.trim().toUpperCase()] : [];
     return toCodes.length ? { from: aps.slice(0, 4), to: toCodes, oneWay: kind === "oneway", ...(maxStops === 0 ? { direct: true } : {}) } : null;
   });
+  /** Warnhinweise zum Ziel (z. B. Nordkorea): erklären, warum es keine frei buchbaren Flüge gibt */
+  const destWarn = $derived(warnHintsFor((roughQuery?.to ?? []).map(c => ccOfAp(c)?.toUpperCase()), `${to} ${toLoc ? locLabel(toLoc) : ""}`));
   const roughStart = $derived(((mode === "flex" ? rFrom : out) || addDays(new Date().toISOString().slice(0, 10), 30)).slice(0, 7));
   /** Tag(e) im Preiskalender gewählt: feste Daten eintragen und gleich suchen */
   function roughPick(o: string, b?: string) {
@@ -741,6 +744,14 @@
       <p class="muted small">{t("fs.none")}</p>
       {#if hitsHidden(sources, list.length)}<p class="warnline">{t("fs.hitsHidden")}</p>{/if}
       {#if providerDown(sources)}<p class="warnline">{t("fs.providerDown")}</p>{/if}
+      {#each destWarn as h (h.id)}
+        <div class="warnline fs-destwarn">
+          <strong>{t(`hint.${h.id}.t` as Key)}</strong>
+          <p class="small">{t(`hint.${h.id}.x` as Key)}</p>
+          <p class="small">{t("fs.noFreeFlights")}</p>
+          <p class="small">{#each h.links as l (l.url)}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{" "}{/each}</p>
+        </div>
+      {/each}
       <!-- Airlines verkaufen meist erst rund 11 Monate im Voraus: dann nicht „gibt es nicht“, sondern „noch nicht“ -->
       {#if farOut}<p class="warnline fs-farout">{t("fs.farOut")}</p>{/if}
     {/if}

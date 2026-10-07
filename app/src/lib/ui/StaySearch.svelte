@@ -14,8 +14,8 @@
   import { prefsFor } from "../prefs";
   import { tick, untrack } from "svelte";
   import { stationName } from "../stays/stationName";
-  import { FLIGHTS_URL } from "../flights/app";
-  import { autoParts, autoRooms, guests, searchStaysRemote, splitGuests, takeStay } from "../stays/app";
+  import { FLIGHTS_URL, providerDown } from "../flights/app";
+  import { autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
   import { arrivals, gaps, guestsIn, hints, segments, stations, stayWindow } from "../stays/presence";
   import { groupLabel } from "../groups";
   import { hhKey, isActive } from "../model";
@@ -468,6 +468,9 @@
           </div>
         {/if}
       </div>
+      {#if !filtered.length}
+        <p class="warnline">{t("st.allFiltered", { n: list.length })} <button type="button" class="linkbtn" onclick={() => (sfilter = noStayFilter())}>{t("fs.f.reset")}</button></p>
+      {/if}
       {#if view === "map" && located.length}
         <div bind:this={mapWrap}></div>
         <MapView {points} selected={picked} onselect={id => { if (located.some(o => o.id === id)) picked = id; }} onbounds={b => (bounds = b)} />
@@ -483,6 +486,8 @@
       {#if into}<p class="muted small">{t("st.takenHint", { name: trip.items.find(i => i.id === into)?.name || "" })}</p>{/if}
     {:else}
       <p class="muted small">{t("st.none")}</p>
+      {#if providerDown(sources)}<p class="warnline">{t("st.providerDown")}</p>{/if}
+      {#if staysHidden(sources, list.length)}<p class="warnline">{t("st.hitsHidden")}</p>{/if}
     {/if}
   {/if}
 </Modal>
