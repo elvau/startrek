@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { i18n, loadLang, t, tn, LANGS } from "./index.svelte";
+import { autoName, i18n, loadLang, t, tn, LANGS } from "./index.svelte";
 import { de } from "./de";
 import { en } from "./en";
 import { es } from "./es";
@@ -64,5 +64,19 @@ describe("Übersetzungen", () => {
       expect(monthYear("2027-07-18")).toBe("July 2027");
       expect(range("2027-07-18", "2027-07-29")).toMatch(/^18\s*–\s*29 July$/);
     });
+  });
+
+  it("automatisch erzeugte Postennamen folgen der Sprache, eigene Namen bleiben", () => {
+    for (const l of LANGS) {
+      inLang(l.code, () => {
+        expect(autoName("Unterkunft in Split")).toBe(t("st.itemName", { place: "Split" }));
+        expect(autoName("Accommodation in Rom, Italien")).toBe(t("st.itemName", { place: "Rom, Italien" }));
+        expect(autoName("Mietwagen")).toBe(autoName("Rental car"));
+        expect(autoName("Strandhaus von Oma")).toBe("Strandhaus von Oma");
+        expect(autoName("")).toBe("");
+      });
+    }
+    inLang("en", () => expect(autoName("Unterkunft in Split")).toBe("Accommodation in Split"));
+    inLang("de", () => expect(autoName("Accommodation in Split")).toBe("Unterkunft in Split"));
   });
 });

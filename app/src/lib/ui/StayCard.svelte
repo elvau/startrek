@@ -1,6 +1,6 @@
 <script lang="ts">
   import ExtLink from "./ExtLink.svelte";
-  import { t, tn, type Key } from "../i18n/index.svelte";
+  import { autoName, t, tn, type Key } from "../i18n/index.svelte";
   import { BOARDS, type Board, type Item } from "../model";
   import { access, app, calc } from "../store.svelte";
   import { calcOption, eur } from "../calc";
@@ -53,8 +53,8 @@
       <StatusBadge status={item.status} />
       {#if item.booking?.provider}<span class="muted">{item.booking.provider}{item.booking.cancelUntil ? ` · ${t("stay.freeCancel", { d: dateDE(item.booking.cancelUntil) })}` : ""}</span>{/if}
     </div>
-    <h3>{item.name || t("stay.new")}</h3>
-    {#if r?.option?.label && r.option.label !== item.name}<div class="stay-opt">{r.option.label}{r.option.source?.name ? ` · ${r.option.source.name}` : ""}{item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""}</div>{/if}
+    <h3>{autoName(item.name) || t("stay.new")}</h3>
+    {#if r?.option?.label && r.option.label !== autoName(item.name)}<div class="stay-opt">{r.option.label}{r.option.source?.name ? ` · ${r.option.source.name}` : ""}{item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""}</div>{/if}
     {#if item.from && item.to}<div class="muted">{t("range.fromTo", { a: dateDE(item.from), b: dateDE(item.to) })} · {tn("n.nights", nn)}{r?.stay ? ` · ${t("stay.upTo", { g: tn("n.guests", r.stay.maxOcc) })}` : ""}</div>{/if}
     <div class="facts">
       {#if s?.stars}<span class="fact">{"★".repeat(s.stars)}</span>{/if}

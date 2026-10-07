@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { arrow, t, tn } from "../i18n/index.svelte";
+  import { arrow, autoName, t, tn } from "../i18n/index.svelte";
   import { hhKey, isActive, type Item } from "../model";
   import { access, app, calc } from "../store.svelte";
   import { calcOption, eur } from "../calc";
@@ -57,7 +57,7 @@
         {#if back}<div class="bp-leg"><b>{t("fl.back")}{vias.length ? ` ${back.from} → ${back.to}` : ""} · {dayShort(back.dep)}</b><span>{time(back.dep)} {arrow()} {time(back.arr)}</span></div>{/if}
       </div>
     {:else}
-      <h3 class="bp-name">{item.name || t("fl.new")}</h3>
+      <h3 class="bp-name">{autoName(item.name) || t("fl.new")}</h3>
     {/if}
   </div>
   <div class="bp-stub">

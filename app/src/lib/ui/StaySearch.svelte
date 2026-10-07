@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { locale, t, tn } from "../i18n/index.svelte";
+  import { autoName, locale, t, tn } from "../i18n/index.svelte";
   /*
    * Unterkünfte suchen (wie im Artefakt): Zeitraum und Gäste aus der Anwesenheit (Flüge oder eigene Daten),
    * Booking.com und Trivago gleichzeitig, zusammengeführt nach Preis.
@@ -338,7 +338,7 @@
   </article>
 {/snippet}
 
-<Modal title={item ? `${t("st.open")}: ${item.name || t("stay.new")}` : t("st.open")} {onclose} wide {inline}>
+<Modal title={item ? `${t("st.open")}: ${autoName(item.name) || t("stay.new")}` : t("st.open")} {onclose} wide {inline}>
   {#if arr.length}
     <div class="st-pres">
       <span class="dlabel">{arr.some(a => a.arr || a.dep) ? t("st.presFlights") : t("st.pres")}</span>
