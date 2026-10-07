@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import trivago from "./trivago.fixture.json";
 import booking from "./booking.fixture.json";
 import { boardOf, bookingArgs, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs } from "./providers";
-import { mergeStays, parseStayQuery, searchStays } from "./search";
+import { configuredStays, mergeStays, parseStayQuery, searchStays } from "./search";
 import { centerKm, keepStays, sortStays } from "./sort";
 import { defaultStayQuery, guests, staysHidden, stayToOption, takeStay } from "./app";
 import type { StayOffer, StayQuery } from "./types";
@@ -219,6 +219,10 @@ describe("Unterkunftssuche: Filter und Sortierung", () => {
     const l = [o("a", 100, { stars: 3, score: 9 }), o("b", 200, { stars: 4, score: 7 }), o("c", 300, { stars: 5 }), o("d", 50, { score: 9 })];
     expect(keepStays(l, { minStars: 4, minScore: 8 }).map(x => x.id)).toEqual(["c"]);
     expect(keepStays(l, { minScore: 8 }).map(x => x.id)).toEqual(["a", "c", "d"]);
+  });
+  it("meldet die angebundenen Quellen ohne Schlüssel", () => {
+    expect(configuredStays({})).toEqual(["trivago"]);
+    expect(configuredStays({ LITEAPI_KEY: "k", BOOKING_MCP_URL: "https://x" })).toEqual(["booking", "trivago", "liteapi"]);
   });
   it("sortiert nach Preis, Bewertung, Nähe Zentrum und für Familien", () => {
     expect(centerKm({ place: "Split, 0.7 km bis Zentrum" })).toBe(0.7);

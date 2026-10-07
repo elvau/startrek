@@ -15,6 +15,7 @@
   import { tick, untrack } from "svelte";
   import { stationName } from "../stays/stationName";
   import { FLIGHTS_URL, providerDown } from "../flights/app";
+  import { loadPartner, partner } from "../partnerState.svelte";
   import { autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
   import { arrivals, gaps, guestsIn, hints, segments, stations, stayWindow } from "../stays/presence";
   import { groupLabel } from "../groups";
@@ -102,10 +103,14 @@
     ...must.map(m => t(`st.m.${m}`)),
     minStars ? t("st.starsFrom", { n: minStars }) : "",
     minScore ? t("st.scoreFrom", { n: minScore }) : "",
-    SOURCES.filter(s => use.includes(s.id)).map(s => s.name).join(", ")
+    SOURCES.filter(s => eff.includes(s.id)).map(s => s.name).join(", ")
   ].filter(Boolean).join(" · "));
   const toggleMust = (m: StayMust) => (must = must.includes(m) ? must.filter(x => x !== m) : [...must, m]);
   let use = $state<string[]>(Array.isArray(saved.sources) && (saved.sources as string[]).length ? (saved.sources as string[]) : SOURCES.map(s => s.id));
+  // nicht angebundene Quellen suchen nie: wählbar nur, was der Such-Dienst meldet; bleibt von der Auswahl nichts, gelten alle angebundenen
+  loadPartner();
+  const wired = (id: string) => !partner.stays || partner.stays.includes(id);
+  const eff = $derived(use.filter(wired).length ? use.filter(wired) : SOURCES.filter(s => wired(s.id)).map(s => s.id));
   const nn = $derived(checkin && checkout ? nights(checkin, checkout) : 0);
 
   // Wer braucht in diesem Zeitraum ein Bett (laut Flügen), wer nur einen Teil der Nächte
@@ -219,25 +224,25 @@
   }
   const mapLink = (o: StayOffer) => mapsUrl({ q: locText(o.name, asked?.place), lat: o.lat, lon: o.lon });
   const hasKm = $derived((list || []).some(o => kmToCenter(o, ctx) != null));
-  const toggleSrc = (id: string) => (use = use.includes(id) ? use.filter(x => x !== id) : [...use, id]);
+  const toggleSrc = (id: string) => { const cur = eff; use = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]; };
   const score = (s: number) => s.toFixed(1).replace(".", ",");
   const people = (a: number, kids: number[]) => `${a} ${t("age.adultShort")}${kids.length ? `, ${tn("n.kids", kids.length)} (${kids.join(", ")} ${t("st.yearsShort")})` : ""}`;
 
-  async function search(e: Event) {
-    e.preventDefault();
+  async function search(e?: Event) {
+    e?.preventDefault();
     error = ""; list = null; sources = [];
     if (!place.trim()) { error = t("st.errPlace"); return; }
     if (!nn || nn < 1) { error = t("st.errDates"); return; }
     if (!who.length) { error = t("st.errNobody"); return; }
-    if (!use.length) { error = t("st.errSource"); return; }
-    try { localStorage.setItem(K, JSON.stringify({ type, sources: use.length < SOURCES.length ? use : [], must, minStars, minScore })); } catch {}
+    if (!eff.length) { error = t("st.errSource"); return; }
+    try { localStorage.setItem(K, JSON.stringify({ type, sources: eff.length < SOURCES.length ? eff : [], must, minStars, minScore })); } catch {}
     const sp = searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc);
     const cc = ccOf(geo, sp.country || trip.country || "") || near[0]?.ap.cc;
     // Mittelpunkt des Orts: für Anbieter, die im Umkreis suchen
     const city = findCity(geo, sp.place, cc || undefined);
     let q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin, checkout, ...per, rooms: Math.max(1, Math.min(rooms, per.adults)), type,
       // Quellen nur bei Auswahl mitschicken (ein älterer Such-Dienst kennt neue Quellen noch nicht)
-      ...(use.length < SOURCES.length ? { sources: use } : {}), currency: "EUR",
+      ...(eff.length < SOURCES.length ? { sources: eff } : {}), currency: "EUR",
       ...(must.length ? { must } : {}), ...(minStars ? { minStars } : {}), ...(minScore ? { minScore } : {}) };
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
@@ -272,6 +277,8 @@
       if ((err as Error).name !== "AbortError") error = (err as Error).message;
     } finally { busy = false; }
   }
+
+  function allSources() { use = SOURCES.map(s => s.id); void search(); }
 
   function take(o: StayOffer) {
     if (!asked) return;
@@ -418,7 +425,7 @@
     </div>
       <div class="chips" aria-label={t("st.sources")}>
         {#each SOURCES as s (s.id)}
-          <button type="button" class="chip" class:on={use.includes(s.id)} aria-pressed={use.includes(s.id)} onclick={() => toggleSrc(s.id)}>{s.name}</button>
+          <button type="button" class="chip" class:on={eff.includes(s.id)} aria-pressed={eff.includes(s.id)} disabled={!wired(s.id)} onclick={() => toggleSrc(s.id)}>{s.name}{#if !wired(s.id)} <small>{t("st.notWired")}</small>{/if}</button>
         {/each}
       </div>
     </details>
@@ -429,7 +436,7 @@
       {#if partial.length}<br />{t("stay.partial", { list: partial.map(x => t("st.partialOf", { name: x.t.name, a: x.nights, b: nn })).join(", ") })}{/if}
     </p>
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
-    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? t("st.busy", { src: SOURCES.filter(s => use.includes(s.id)).map(s => s.name).join(` ${t("and")} `) }) : t("st.searchBtn")}</button>
+    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? t("st.busy", { src: SOURCES.filter(s => eff.includes(s.id)).map(s => s.name).join(` ${t("and")} `) }) : t("st.searchBtn")}</button>
     {#if place.trim() && nn > 0}
       {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)) }}
       <p class="muted small fs-direct">{t("search.direct")} <PartnerLinks ids={partnersOf("stay")} q={lq} /></p>
@@ -488,6 +495,9 @@
       <p class="muted small">{t("st.none")}</p>
       {#if providerDown(sources)}<p class="warnline">{t("st.providerDown")}</p>{/if}
       {#if staysHidden(sources, list.length)}<p class="warnline">{t("st.hitsHidden")}</p>{/if}
+      {#if sources.some(s => !s.configured)}
+        <p class="warnline">{t("st.notWiredHint")} <button type="button" class="btn sm" onclick={allSources}>{t("st.allSources")}</button></p>
+      {/if}
     {/if}
   {/if}
 </Modal>
