@@ -363,3 +363,12 @@ body:has(.chapter.on .card.edit) .aside{opacity:.5}
 .lang-sel.long{background:var(--glass);border:1px solid var(--glass-line);padding:7px 8px;font-weight:600;color:var(--ink)}
 
 .ph-note{margin:12px 2px 0;line-height:1.45}
+
+/* Handy: Posten-Karten enger (halber Abstand und Innenabstand), Desktop unverändert */
+@media (max-width:560px){
+  .cards{gap:7px}
+  .bp-main{padding:9px 10px;gap:8px}
+  .bp-stub{padding:9px 10px}
+  .stay-b{padding:9px 10px;gap:6px}
+  .row{padding:8px 9px;gap:9px}
+}
