@@ -36,12 +36,13 @@ try {
   const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
   p.on("pageerror", e => errors.push(e.message));
   const asked = [];
+  let emptyNext = false;
   // Such-Dienst meldet: Partner-Links an
   await p.route("https://flights.test/health", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ ok: true, partner: true, stays: ["booking", "trivago"] }) }));
   await p.route("https://flights.test/stays/search", async r => {
     asked.push(JSON.parse(r.request().postData()));
     await new Promise(res => setTimeout(res, 200));
-    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(RESULT) });
+    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(emptyNext ? { offers: [], sources: RESULT.sources.map(x => ({ ...x, count: 0 })) } : RESULT) });
   });
   // Orts- und Flughafendaten des Artefakts (liegen auf der Seite eine Ebene über der App)
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
@@ -167,6 +168,18 @@ try {
   await more(m);
   await m.locator(".st-filters .chip", { hasText: "Pool" }).click();
   log("Filter gemerkt");
+  // leeres Ergebnis bei aktiven Mindestwerten: Hinweis mit den Werten, „Ohne Mindestwerte suchen“ wiederholt die Suche ohne sie
+  emptyNext = true;
+  await m.locator(".fs-form .btn.primary").click();
+  const warn = m.locator(".warnline", { hasText: "Aktive Mindestwerte" });
+  await warn.waitFor();
+  if (!(await warn.textContent()).includes("ab 7,0")) fail("Hinweis Mindestwerte: " + await warn.textContent());
+  emptyNext = false;
+  await warn.locator(".btn", { hasText: "Ohne Mindestwerte suchen" }).click();
+  await m.locator(".fs-res").first().waitFor();
+  const relaxed = asked[asked.length - 1];
+  if (relaxed.minScore || relaxed.minStars || relaxed.must) fail("Suche ohne Mindestwerte schickt sie doch: " + JSON.stringify(relaxed));
+  log("Leeres Ergebnis mit Mindestwerten: Hinweis, „Ohne Mindestwerte suchen“ liefert Treffer");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res", { hasText: "Rooms Šećer" }).locator(".btn", { hasText: "Übernehmen" }).click();
   await m.waitFor({ state: "detached" });

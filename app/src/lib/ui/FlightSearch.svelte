@@ -22,7 +22,7 @@
   import { alternatives, anyReal, isShort, searchRound, swapLeg, type RoundPlace, type RoundStop, type RoundTrip } from "../flights/roundtrip";
   import { BOOKING_SIZE, MAX_PAX, SPLIT_FROM, scaleResult, splitPax } from "../flights/app";
   import { warnHintsFor } from "../hints";
-  import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, providerDown, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, homeGuess, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
+  import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, hitsHidden, providerDown, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, homeGuess, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
   import { loadPlz, withHome } from "../plz";
   import { cloud } from "../cloud/cloud.svelte";
@@ -742,6 +742,7 @@
       {#if into}<p class="muted small">{t("fs.takenHint")}</p>{/if}
     {:else}
       <p class="muted small">{t("fs.none")}</p>
+      {#if hitsHidden(sources, list.length)}<p class="warnline">{t("fs.hitsHidden")}</p>{/if}
       {#if providerDown(sources)}<p class="warnline">{t("fs.providerDown")}</p>{/if}
       {#each destWarn as h (h.id)}
         <div class="warnline fs-destwarn">
