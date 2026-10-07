@@ -1,5 +1,5 @@
 /* Treffer der Unterkunftssuche nachfiltern und sortieren (App und Such-Dienst) */
-import type { StayOffer, StayQuery } from "./types";
+import type { StayOffer, StayQuery, StayType } from "./types";
 
 export type StaySort = "price" | "rating" | "center" | "family";
 
@@ -17,8 +17,10 @@ export function familyScore(o: Pick<StayOffer, "facts" | "score">): number {
 }
 
 /** was die Anbieter trotz Filter liefern: zu wenig Sterne oder zu schwache Bewertung fliegt raus */
-export function keepStays(list: StayOffer[], q: Pick<StayQuery, "minStars" | "minScore">): StayOffer[] {
-  return list.filter(o => (!q.minStars || (o.stars || 0) >= q.minStars) && (!q.minScore || o.score == null || o.score >= q.minScore));
+export function keepStays(list: StayOffer[], q: Pick<StayQuery, "minStars" | "minScore"> & { type?: StayType }): StayOffer[] {
+  // Ferienwohnungen und Häuser haben keine Sterne: bei „ganze Unterkunft“ gilt der Filter nicht, bei „alles“ nur für Hotels
+  const starsOk = (o: StayOffer) => !q.minStars || q.type === "whole" || (q.type === "all" && !o.stars) || (o.stars || 0) >= q.minStars;
+  return list.filter(o => starsOk(o) && (!q.minScore || o.score == null || o.score >= q.minScore));
 }
 
 /** Testangebote (Sandbox, keine echten Preise) immer hinter die echten, sonst stehen sie bei „Günstigste“ oben */
