@@ -49,6 +49,9 @@ export function mergeStays(lists: StayOffer[][]): StayOffer[] {
   return out.sort((a, b) => a.total - b.total);
 }
 
+/** angebundene Quellen der Unterkunftssuche (für /health, ohne Schlüssel) */
+export const configuredStays = (env: StayEnv): string[] => STAY_PROVIDERS.filter(p => p.configured(env)).map(p => p.id);
+
 export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fetch = fetch, timeoutMs = 25000): Promise<StaySearchResult> {
   const wanted = (p: Provider) => !q.sources?.length || q.sources.includes(p.id);
   const active = STAY_PROVIDERS.filter(p => wanted(p) && p.configured(env));
