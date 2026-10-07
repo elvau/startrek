@@ -49,6 +49,23 @@ export function transferPlan(ap: { code: string } & Pt, dest: { name: string } &
   return { ap: ap.code, to: dest.name, km, ...ridePrice(persons, km, pli) };
 }
 
+export interface TransferLeg { plan: TransferPlan; ap: { code: string } & Pt; dest: { name: string } & Pt }
+
+/**
+ * Ein Transfer je Unterkunft/Ziel: der nächste Flughafen der Reise (Anreise, Abreise), sonst der nächste große
+ * (fallback); weiter als maxKm entfernt gibt keinen Transfer. Gleiche Strecken nur einmal.
+ */
+export function transferLegs(dests: ({ name: string } & Pt)[], aps: ({ code: string } & Pt)[], fallback: (d: Pt) => ({ code: string } & Pt) | null, persons: number, pli = 1, maxKm = 150): TransferLeg[] {
+  const out: TransferLeg[] = [];
+  for (const dest of dests) {
+    let ap = aps.reduce<({ code: string } & Pt) | null>((b, a) => (!b || kmBetween(a, dest) < kmBetween(b, dest) ? a : b), null);
+    if (!ap || kmBetween(ap, dest) > maxKm) ap = fallback(dest);
+    if (!ap || kmBetween(ap, dest) > maxKm || out.some(l => l.ap.code === ap!.code && l.dest.name === dest.name)) continue;
+    out.push({ plan: transferPlan(ap, dest, persons, pli), ap, dest });
+  }
+  return out;
+}
+
 /** Posten „Flughafentransfer“: zwei Fahrten (hin und zurück), Preis für die ganze Gruppe */
 export function transferItem(p: TransferPlan): Item {
   return {

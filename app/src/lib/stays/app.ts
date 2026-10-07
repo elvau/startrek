@@ -101,6 +101,16 @@ export const staysHidden = (sources: { ok: boolean; count: number }[], shown: nu
 export const activeMins = (q: Pick<StayQuery, "type" | "minStars" | "minScore" | "must">) =>
   ({ stars: q.type !== "whole" && q.minStars ? q.minStars : 0, score: q.minScore || 0, must: q.must ?? [] });
 
+/** gewählte Quellen, begrenzt auf die angebundenen (null = unbekannt, alle gelten); bleibt keine übrig, alle angebundenen */
+export function effectiveSources(use: string[], all: string[], wired: string[] | null): string[] {
+  const ok = (id: string) => !wired || wired.includes(id);
+  const picked = use.filter(ok);
+  return picked.length ? picked : all.filter(ok);
+}
+
+/** Eine Quelle der Antwort war nicht angebunden und hat nicht gesucht (Hinweis bei leerem Ergebnis) */
+export const sourceNotWired = (sources: { configured: boolean }[]) => sources.some(s => !s.configured);
+
 export async function searchStaysRemote(q: StayQuery, signal?: AbortSignal): Promise<StaySearchResult> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   const res = await fetch(`${FLIGHTS_URL}/stays/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });

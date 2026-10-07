@@ -37,12 +37,13 @@ try {
   p.on("pageerror", e => errors.push(e.message));
   const asked = [];
   let emptyNext = false;
+  let notWired = false;
   // Such-Dienst meldet: Partner-Links an
-  await p.route("https://flights.test/health", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ ok: true, partner: true }) }));
+  await p.route("https://flights.test/health", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ ok: true, partner: true, stays: ["booking", "trivago"] }) }));
   await p.route("https://flights.test/stays/search", async r => {
     asked.push(JSON.parse(r.request().postData()));
     await new Promise(res => setTimeout(res, 200));
-    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(emptyNext ? { offers: [], sources: RESULT.sources.map(x => ({ ...x, count: 0 })) } : RESULT) });
+    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(emptyNext ? { offers: [], sources: RESULT.sources.map(x => ({ ...x, count: 0, ...(x.id === "liteapi" && notWired ? { configured: false, ok: false } : {}) })) } : RESULT) });
   });
   // Orts- und Flughafendaten des Artefakts (liegen auf der Seite eine Ebene über der App)
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
@@ -90,8 +91,12 @@ try {
   log("Filter (Pool, Bewertung ab 7) in der Anfrage");
   if (q.place !== "Split" || q.checkin !== "2027-07-18" || q.checkout !== "2027-07-25" || q.type !== "whole" || q.adults !== 1 || q.rooms !== 1) fail("Anfrage falsch: " + JSON.stringify(q));
   // alle Quellen an: keine Liste (ein älterer Such-Dienst kennt neue Quellen nicht); Land als Code für liteAPI
-  if (q.sources || q.cc !== "HR" || !(Math.abs(q.lat - 43.51) < 0.1 && Math.abs(q.lon - 16.44) < 0.1)) fail("Quellen/Land/Lage falsch: " + JSON.stringify(q));
+  // liteAPI ist nicht angebunden (/health): ausgegraut, nur die angebundenen Quellen gehen mit
+  if (q.sources?.join() !== "booking,trivago" || q.cc !== "HR" || !(Math.abs(q.lat - 43.51) < 0.1 && Math.abs(q.lon - 16.44) < 0.1)) fail("Quellen/Land/Lage falsch: " + JSON.stringify(q));
   log("Anfrage an den Such-Dienst stimmt");
+  const bkChip = m.locator(".fs-more .chip", { hasText: "liteAPI" });
+  if (!(await bkChip.isDisabled()) || !(await bkChip.textContent()).includes("noch nicht angebunden")) fail("liteAPI nicht ausgegraut");
+  log("Nicht angebundene Quelle ausgegraut, nicht in der Anfrage");
 
   const src = await m.locator(".fs-src").textContent();
   if (!src.includes("Booking.com: 1 Treffer") || !src.includes("Trivago: 2 Treffer")) fail("Quellen-Zeile: " + src);
@@ -170,6 +175,20 @@ try {
   const warn = m.locator(".warnline", { hasText: "Aktive Mindestwerte" });
   await warn.waitFor();
   if (!(await warn.textContent()).includes("ab 7,0")) fail("Hinweis Mindestwerte: " + await warn.textContent());
+  // leere Antwort mit nicht angebundener Quelle: Hinweis, „Mit allen Quellen suchen“ wiederholt die Suche
+  notWired = true;
+  await m.locator(".fs-form .btn.primary").click();
+  const nw = m.locator(".warnline", { hasText: "noch nicht angebunden" });
+  await nw.waitFor();
+  const askedBefore = asked.length;
+  emptyNext = false; notWired = false;
+  await nw.locator(".btn", { hasText: "Mit allen Quellen suchen" }).click();
+  await m.locator(".fs-res").first().waitFor();
+  if (asked.length !== askedBefore + 1) fail("„Mit allen Quellen suchen“ hat nicht erneut gesucht");
+  log("Leeres Ergebnis mit nicht angebundener Quelle: Hinweis, „Mit allen Quellen suchen“ wiederholt die Suche");
+  emptyNext = true;
+  await m.locator(".fs-form .btn.primary").click();
+  await warn.waitFor();
   emptyNext = false;
   await warn.locator(".btn", { hasText: "Ohne Mindestwerte suchen" }).click();
   await m.locator(".fs-res").first().waitFor();
