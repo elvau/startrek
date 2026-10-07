@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import trivago from "./trivago.fixture.json";
 import booking from "./booking.fixture.json";
 import { boardOf, bookingArgs, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs } from "./providers";
-import { mergeStays, parseStayQuery, searchStays } from "./search";
+import { mergeStays, parseStayQuery, searchStays, STAY_PROVIDERS } from "./search";
 import { centerKm, keepStays, sortStays } from "./sort";
-import { defaultStayQuery, guests, staysHidden, stayToOption, takeStay } from "./app";
+import { activeMins, defaultStayQuery, guests, staysHidden, stayToOption, takeStay } from "./app";
 import type { StayOffer, StayQuery } from "./types";
 import type { Item, Trip } from "../model";
 
@@ -219,6 +219,26 @@ describe("Unterkunftssuche: Filter und Sortierung", () => {
     const l = [o("a", 100, { stars: 3, score: 9 }), o("b", 200, { stars: 4, score: 7 }), o("c", 300, { stars: 5 }), o("d", 50, { score: 9 })];
     expect(keepStays(l, { minStars: 4, minScore: 8 }).map(x => x.id)).toEqual(["c"]);
     expect(keepStays(l, { minScore: 8 }).map(x => x.id)).toEqual(["a", "c", "d"]);
+  });
+  it("Sterne gelten nicht bei ganzen Unterkünften, bei „alles“ nur für Hotels", () => {
+    const l = [o("h3", 100, { stars: 3 }), o("h5", 200, { stars: 5 }), o("w", 50)];
+    expect(keepStays(l, { minStars: 4, type: "whole" }).map(x => x.id)).toEqual(["h3", "h5", "w"]);
+    expect(keepStays(l, { minStars: 4, type: "all" }).map(x => x.id)).toEqual(["h5", "w"]);
+    expect(keepStays(l, { minStars: 4, type: "hotel" }).map(x => x.id)).toEqual(["h5"]);
+  });
+  it("schickt Sterne nur bei Hotels an die Anbieter", async () => {
+    const seen: (number | undefined)[] = [];
+    const p = STAY_PROVIDERS.find(x => x.id === "trivago")!;
+    const orig = p.search;
+    p.search = async qq => { seen.push(qq.minStars); return []; };
+    try {
+      for (const type of ["whole", "all", "hotel"] as const) await searchStays({ ...q, type, minStars: 4, sources: ["trivago"] });
+    } finally { p.search = orig; }
+    expect(seen).toEqual([undefined, undefined, 4]);
+  });
+  it("aktive Mindestwerte: Sterne zählen bei ganzen Unterkünften nicht", () => {
+    expect(activeMins({ type: "whole", minStars: 4, minScore: 8, must: ["pool"] })).toEqual({ stars: 0, score: 8, must: ["pool"] });
+    expect(activeMins({ type: "all", minStars: 4 })).toEqual({ stars: 4, score: 0, must: [] });
   });
   it("sortiert nach Preis, Bewertung, Nähe Zentrum und für Familien", () => {
     expect(centerKm({ place: "Split, 0.7 km bis Zentrum" })).toBe(0.7);
