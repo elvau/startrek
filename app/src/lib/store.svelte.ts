@@ -10,6 +10,7 @@ import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
+import { readView, saveView } from "./resume";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
 export interface TripEntry extends TripMeta { cloud: boolean; role?: Role; shared?: boolean; /** zuletzt bearbeitet (ISO), für die Sortierung */ edited?: string; /** geteilte Reise: Vornamen der anderen Mitglieder */ members?: string[] }
@@ -116,7 +117,12 @@ function boot(): { index: TripMeta[]; trip: Trip } {
 }
 
 const b = boot();
-noteNav(`geladen: ${b.trip.id}`);
+// Seite im selben Tab neu geladen, während eine Reise offen war (Fehlerbericht #34): dort weitermachen
+const resume = readView();
+const resumed = !!resume && resume.id === b.trip.id;
+noteNav(`geladen: ${b.trip.id}${resumed ? " (fortgesetzt)" : ""}`);
+/** Scrollstand, den die Oberfläche nach dem Neuladen wiederherstellt (einmal) */
+export const resumeScroll = { y: resumed ? resume!.y : 0 };
 
 export const app = $state({
   trip: b.trip,
@@ -125,7 +131,11 @@ export const app = $state({
   editing: null as string | null,
   saved: true,
   /** Startseite: bei jedem Besuch, außer man kommt über einen Einladungslink */
-  home: typeof location === "undefined" || !location.search.includes("join=")
+  home: !resumed && (typeof location === "undefined" || !location.search.includes("join="))
+});
+// offene Reise für ein Neuladen merken (Scrollstand ergänzt die Oberfläche)
+$effect.root(() => {
+  $effect(() => { if (app.home) saveView(null); else saveView({ id: app.trip.id, y: resumeScroll.y || scrollY }); });
 });
 
 const t = $derived.by(() => totals(app.trip));

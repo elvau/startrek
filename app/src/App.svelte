@@ -2,7 +2,8 @@
   import { applyDocument, t, tn } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
   import { loadRates } from "./lib/currency.svelte";
-  import { access, app, calc, addItem, discardDetails, setDetailed } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, resumeScroll, setDetailed } from "./lib/store.svelte";
+  import { saveView } from "./lib/resume";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
   import { cloud } from "./lib/cloud/cloud.svelte";
@@ -72,12 +73,17 @@
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
     applyDocument();
     const off = initScroll();
+    // nach einem Neuladen an die gemerkte Stelle der Reise zurück; Scrollstand dabei laufend merken
+    if (resumeScroll.y) { const y = resumeScroll.y; resumeScroll.y = 0; requestAnimationFrame(() => scrollTo({ top: y })); }
+    let st: ReturnType<typeof setTimeout> | undefined;
+    const keep = () => { st ??= setTimeout(() => { st = undefined; if (!app.home) saveView({ id: app.trip.id, y: scrollY }); }, 300); };
+    addEventListener("scroll", keep, { passive: true });
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { app.editing = null; sheet = false; } };
     // Klick außerhalb des offenen Postens schließt ihn (auch auf den Plan, der sonst ausgegraut bliebe)
     const outside = (e: MouseEvent) => { if (app.editing && !(e.target as HTMLElement).closest(".card:not(.plan-card), .add, .mode, .modal-bg")) app.editing = null; };
     addEventListener("keydown", esc);
     addEventListener("click", outside);
-    return () => { off(); removeEventListener("keydown", esc); removeEventListener("click", outside); };
+    return () => { off(); clearTimeout(st); removeEventListener("scroll", keep); removeEventListener("keydown", esc); removeEventListener("click", outside); };
   });
 
   $effect(() => { document.body.classList.toggle("editing", !!app.editing); });
