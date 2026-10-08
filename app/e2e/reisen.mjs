@@ -95,7 +95,7 @@ try {
   });
   await p.route("https://flights.test/events/search", r => r.request().method() === "OPTIONS" ? r.fulfill({ status: 204, headers: cors }) : json(r, { events: [], sources: [] }));
 
-  const open = async name => { await p.goto(URL); await p.locator(".start .home-trip", { hasText: name }).first().click(); await p.locator(".hero h1").waitFor(); };
+  const open = async name => { await p.evaluate(() => sessionStorage.clear()).catch(() => {}); await p.goto(URL); await p.locator(".start .home-trip", { hasText: name }).first().click(); await p.locator(".hero h1").waitFor(); };
 
   // ---- Japan: Onkel Jens kommt später – Flugsuche mit seinen Daten
   await open("Japan Großfamilie");

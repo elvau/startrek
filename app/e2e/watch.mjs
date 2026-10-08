@@ -142,14 +142,14 @@ try {
   log("Günstigeres je Posten: Hostal Sol 120 € günstiger, übernommen und gewählt");
 
   // Ergebnis bleibt nach dem Neuladen
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
   await p.locator('[data-item="fl"] .wb-up').waitFor();
   log("Ergebnis bleibt nach dem Neuladen");
 
   // Reise ohne Ziel mit Flug EIN → PMI: „Events & Aktivitäten“ im Kopf führt zu den Erlebnissen und sucht in Palma
   await p.evaluate(() => scrollTo(0, 0));
-  await p.goto(URL);
+  await p.evaluate(() => sessionStorage.clear()); await p.goto(URL);
   await p.locator(".start .home-trip", { hasText: "Mallorca-Kurztrip" }).click();
   await p.locator(".hero .ht-ev").click();
   // Touren & Tickets zuerst, Events im zweiten Reiter

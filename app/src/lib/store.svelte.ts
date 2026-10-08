@@ -130,7 +130,7 @@ export const app = $state({
   /** Karte im Fokusmodus */
   editing: null as string | null,
   saved: true,
-  /** Startseite: bei jedem Besuch, außer man kommt über einen Einladungslink */
+  /** Startseite: bei jedem neuen Besuch (neuer Tab), außer Einladungslink oder Neuladen in einer offenen Reise */
   home: !resumed && (typeof location === "undefined" || !location.search.includes("join="))
 });
 // offene Reise für ein Neuladen merken (Scrollstand ergänzt die Oberfläche)

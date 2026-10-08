@@ -246,7 +246,7 @@ try {
   };
   await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
   await p.evaluate(t => { localStorage.setItem("rk2-t:k1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k1", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k1"); }, TRIP);
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip").first().click();
   const gl = await p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" }).getAttribute("href");
   if (!gl.includes("q=Split") || !gl.includes("date_from=2027-07-18")) fail("GetYourGuide-Link: " + gl);
@@ -301,7 +301,7 @@ try {
   early.items.push({ id: "s2", cat: "stay", name: "Villa 2", status: "idea", from: "2027-07-25", to: "2027-07-29", participants: ["a", "b"], options: [{ id: "v2", label: "Villa 2", price: { mode: "unit", currency: "EUR", unit: 800, basis: "stay" } }] });
   await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
   await p.evaluate(t => localStorage.setItem("rk2-t:k1", JSON.stringify(t)), early);
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip").first().click();
   const apn = p.locator("#stay .pl-notes li", { hasText: "Letzte Nacht näher am Flughafen?" });
   await apn.waitFor();
@@ -351,13 +351,13 @@ try {
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
   if ((await p.evaluate(() => document.documentElement.lang)) !== "en") fail("html lang nicht en");
   if (!(await p.locator(".top .nav").textContent()).includes("Flights")) fail("Kapitel nicht übersetzt");
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip").first().click();
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
   // Polnisch wird erst bei Bedarf geladen, auch nach dem Neuladen gleich auf Polnisch (kein Englisch dazwischen)
   await p.locator(".top .lang-sel").selectOption("pl");
   await p.locator("#stay .st-open", { hasText: "Szukaj noclegu" }).waitFor();
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip").first().waitFor();
   if (await p.locator("text=Search accommodation").count()) fail("nach dem Neuladen kurz Englisch");
   await p.locator(".start .home-trip").first().click();
@@ -411,7 +411,7 @@ try {
   };
   await p.waitForTimeout(600);
   await p.evaluate(t => { localStorage.setItem("rk2-t:r1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "r1", name: t.name, place: "" }])); localStorage.setItem("rk2-current", "r1"); }, RT);
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip").first().click();
   const rgaps = p.locator("#stay .pl-notes li.crit", { hasText: "ohne Unterkunft" });
   await rgaps.first().waitFor();

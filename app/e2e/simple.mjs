@@ -89,7 +89,7 @@ try {
   log("Anteil pro Person mit Cent: 10 € auf 4 → 2,50 €");
 
   // Neu laden: alles gespeichert
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip", { hasText: "Zu viert" }).click();
   await p.locator("#attractions .sl").nth(2).waitFor();
   if ((await p.locator("#attractions .sl").nth(0).locator(".sl-who .chip.on").count()) !== 2) fail("Auswahl nicht gespeichert");
@@ -167,6 +167,18 @@ try {
   await m.locator(".modal-bg .modal .fs-aps").waitFor();
   await m.locator(".modal-bg .modal .modal-h .x").click();
   log("Handy: Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
+  // Neuladen im selben Tab bleibt in der Reise (Issue #255); über die Marke und neu laden bleibt es auf der Startseite
+  await m.evaluate(() => scrollTo({ top: 600, behavior: "instant" }));
+  await m.waitForTimeout(700); // Scrollstand wird verzögert gemerkt
+  await m.reload();
+  await m.locator(".top .brand-btn").waitFor();
+  if (await m.locator(".start").count()) fail("Neuladen in der Reise landet auf der Startseite");
+  await until(async () => (await m.evaluate(() => scrollY)) > 300, "Scrollstand nach dem Neuladen");
+  await m.locator(".top .brand-btn").click();
+  await m.locator(".start").waitFor();
+  await m.reload();
+  await m.locator(".start").waitFor();
+  log("Handy: Neuladen bleibt in der Reise mit Scrollstand; nach der Marke bleibt es auf der Startseite");
   await mctx.close();
 
   // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
@@ -254,7 +266,7 @@ try {
   await rx.locator(".xc-tg").first().click();
   await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "Kurtaxe weggeklickt");
   await fp.waitForTimeout(800);
-  await fp.reload();
+  await fp.evaluate(() => sessionStorage.clear()); await fp.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await fp.locator(".start .home-trip", { hasText: "Rom" }).first().click();
   await fp.locator(".aside .tk-top b").waitFor();
   await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "weggeklickt bleibt nach dem Neuladen");
