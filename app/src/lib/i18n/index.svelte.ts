@@ -103,3 +103,33 @@ export function tn(key: string, n: number, p?: Record<string, string | number>):
 
 /** Pfeil in Leserichtung (Zeiten „10:00 → 12:00“, „weiter →“); zwischen lateinischen Codes bleibt → */
 export const arrow = () => ("rtl" in langInfo() ? "←" : "→");
+
+/** Texte, aus denen die App Postennamen selbst erzeugt (beim Anlegen als fester Text gespeichert) */
+const AUTO_NAMES: Key[] = ["st.itemName", "camp.site", "camp.pitch", "camp.rent", "road.stopName", "fl.nameFor", "food.itemName", "car.name", "ins.name", "tr.name", "gr.coach"];
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const autoRx = new Map<string, { key: Key; names: string[]; rx: RegExp }>();
+
+/**
+ * Automatisch erzeugter Postenname in der aktuellen Sprache: Der Name ist beim Anlegen in der damals gewählten Sprache
+ * gespeichert; passt er genau zu einer Vorlage (in irgendeiner geladenen Sprache), wird er neu in der aktuellen Sprache
+ * gebildet. Selbst vergebene Namen bleiben unverändert.
+ */
+export function autoName(name: string): string {
+  if (!name) return name;
+  void loaded.n;
+  for (const key of AUTO_NAMES) {
+    for (const d of Object.values(DICTS)) {
+      const tpl = d?.[key];
+      if (!tpl) continue;
+      let c = autoRx.get(`${key}\n${tpl}`);
+      if (!c) {
+        const names: string[] = [];
+        const rx = new RegExp("^" + esc(tpl).replace(/\\?\{(\w+)\\?\}/g, (_m, n) => { names.push(n); return "(.+?)"; }) + "$");
+        autoRx.set(`${key}\n${tpl}`, c = { key, names, rx });
+      }
+      const m = name.match(c.rx);
+      if (m) return t(key, Object.fromEntries(c.names.map((n, i) => [n, m[i + 1]])));
+    }
+  }
+  return name;
+}

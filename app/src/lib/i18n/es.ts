@@ -1748,7 +1748,7 @@ export const es: Dict = {
   "tip.usual": "Propina en restaurantes habitual: {v}",
   "tl.adjust": "Ajustar fechas por familia",
   "tl.allSame": "Todos igual: del {a} al {b}",
-  "tl.close": "cerrar",
+  "tl.close": "contraer",
   "tl.edit": "Editar fechas de {name}",
   "tl.open": "abierto",
   "tl.reset": "restablecer: según vuelo o todo el viaje",

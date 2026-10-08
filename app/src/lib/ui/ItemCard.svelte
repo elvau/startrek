@@ -11,7 +11,7 @@
   import RentalCheck from "./RentalCheck.svelte";
   import ItemSplit from "./ItemSplit.svelte";
   import AiMark from "./AiMark.svelte";
-  import { t, type Key } from "../i18n/index.svelte";
+  import { autoName, t, type Key } from "../i18n/index.svelte";
   import { reveal } from "./reveal";
   import { itemLoc, mapsUrl } from "../geo/maps";
 
@@ -35,7 +35,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
-<article class="card" data-item={item.id} class:edit={editing} class:dropped={item.status === "dropped"} tabindex="0" onclick={toggle} onkeydown={key} use:reveal aria-label={item.name}>
+<article class="card" data-item={item.id} class:edit={editing} class:dropped={item.status === "dropped"} tabindex="0" onclick={toggle} onkeydown={key} use:reveal aria-label={autoName(item.name)}>
   {#if item.cat === "flights" && hasLegs}
     <FlightCard {item} />
   {:else if isStay}

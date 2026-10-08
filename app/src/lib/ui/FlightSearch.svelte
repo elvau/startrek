@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { arrow, t, tn, type Key } from "../i18n/index.svelte";
+  import { arrow, autoName, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
    * feste Daten (± Tage) oder flexibler Zeitraum mit „spätestens zuhause“ und Nächten per Schieberegler.
@@ -433,7 +433,7 @@
   </div>
 {/snippet}
 
-<Modal title={item ? `${t("fs.open")}: ${item.name || t("ie.flight")}` : t("fs.open")} {onclose} wide {inline}>
+<Modal title={item ? `${t("fs.open")}: ${autoName(item.name) || t("ie.flight")}` : t("fs.open")} {onclose} wide {inline}>
   <form class="fs-form" onsubmit={search}>
     <div class="fs-who">
       <span class="dlabel">{t("fs.who")}</span>

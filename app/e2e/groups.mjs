@@ -317,7 +317,7 @@ try {
   await bi.scrollIntoViewIfNeeded();
   await bi.fill("840");
   await b.waitForTimeout(2500);
-  await a.goto(URL);
+  await a.evaluate(() => sessionStorage.clear()); await a.goto(URL);
   const card = a.locator(".start .home-trip", { hasText: "Zweitgerät-Test" });
   await card.waitFor();
   await until(async () => (await card.innerText()).includes("840"), "Betrag der Reise vom anderen Gerät auf der Startseite", 10000)

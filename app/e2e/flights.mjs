@@ -228,7 +228,7 @@ try {
   };
   await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
   await p.evaluate(t => { localStorage.removeItem("rk-flight-search"); localStorage.setItem("rk2-t:k2", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k2", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k2"); }, TWO);
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
@@ -317,7 +317,7 @@ try {
   // wie im Artefakt: Hase fliegt mit Klein mit („Wie Flug Klein“), danach Vergleich mit einem eigenen Flug
   await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
   await p.evaluate(t => { localStorage.setItem("rk-flight-search", JSON.stringify({ mode: "fixed" })); localStorage.setItem("rk2-t:k2", JSON.stringify(t)); }, TWO);
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
@@ -481,7 +481,7 @@ try {
     localStorage.setItem("rk2-t:k2", JSON.stringify(t));
     localStorage.setItem("rk2-dir", JSON.stringify({ people: [], groups: [], prefs: { maxStops: 0, avoid: ["HR"] } }));
   }, TWO);
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
@@ -508,7 +508,7 @@ try {
     localStorage.setItem("rk2-dir", JSON.stringify({ people: [], groups: [], prefs: {} }));
     localStorage.setItem("rk2-t:kb", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "kb", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "kb");
   }, FAM);
-  await p.reload();
+  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
