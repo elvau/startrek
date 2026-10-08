@@ -1743,7 +1743,7 @@ export const pl: Dict = {
   "st.nobody": "nikogo na miejscu",
   "st.none": "Nie znaleziono ofert. Spróbuj innego miejsca, typu lub więcej pokoi.",
   "st.providerDown": "Jeden z dostawców był chwilowo niedostępny, więc wyniki mogą być niepełne. Spróbuj ponownie później.",
-  "st.hitsHidden": "Dostawcy znaleźli oferty, ale Twoje minimum gwiazdek lub oceny je ukryło. Obniż minimum.",
+  "st.hitsHidden": "Dostawcy znaleźli oferty, ale twoje minimum gwiazdek lub oceny je ukryło. Obniż minimum.",
   "st.notWired": "jeszcze niepodłączone",
   "st.notWiredHint": "Wybrane źródło nie jest jeszcze podłączone i nie szukało.",
   "st.allSources": "Szukaj we wszystkich źródłach",
