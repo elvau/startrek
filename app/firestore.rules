@@ -45,7 +45,7 @@ service cloud.firestore {
         && request.resource.data.data is string && request.resource.data.data.size() < 200000;
     }
 
-    // Aktionsseite zum Mitfinanzieren: jeder mit dem Link darf lesen (nur Titel, Beträge, Kontoinhaber, IBAN, PayPal-Name;
+    // Aktionsseite zum Mitfinanzieren: jeder mit dem Link darf sie lesen (nur Titel, Beträge, Kontoinhaber, IBAN, PayPal-Name;
     // keine Mitreisenden). Anlegen, ändern und löschen nur das Konto, das veröffentlicht hat.
     function validCampaign(d) {
       return d.keys().hasOnly(['owner', 'trip', 'title', 'text', 'place', 'from', 'to', 'goal', 'raised', 'pledged', 'holder', 'iban', 'paypal', 'updatedAt'])
@@ -62,7 +62,10 @@ service cloud.firestore {
         && d.paypal is string && d.paypal.matches('^[A-Za-z0-9._-]{0,40}$');
     }
     match /campaigns/{campaignId} {
-      allow read: if true;
+      // einzeln per Link lesbar; die Sammlung abfragen nur für die eigenen (Konto zurücksetzen), sonst ließen sich alle
+      // Kontoinhaber und IBANs auf einmal auslesen
+      allow get: if true;
+      allow list: if signedIn() && resource.data.owner == uid();
       allow create: if signedIn() && validCampaign(request.resource.data);
       allow update: if signedIn() && resource.data.owner == uid() && validCampaign(request.resource.data);
       allow delete: if signedIn() && resource.data.owner == uid();

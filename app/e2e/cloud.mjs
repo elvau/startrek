@@ -256,6 +256,14 @@ try {
   const hack = await fetch(rest + "?updateMask.fieldPaths=iban", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ fields: { iban: { stringValue: "GB33BUKB20201555555555" } } }) });
   if (hack.status !== 403) fail("Aktionsseite ohne Konto änderbar: " + hack.status);
   log("Fremde können die IBAN nicht ändern (Firestore-Regeln)");
+  // ohne Konto nur die eine Seite per Link, nicht die ganze Sammlung (sonst alle IBANs und Kontoinhaber auf einmal)
+  const base = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
+  if ((await fetch(rest)).status !== 200) fail("Aktionsseite per Link nicht lesbar");
+  const all = await fetch(`${base}/campaigns`);
+  if (all.status !== 403) fail("Aktionsseiten ohne Konto auflistbar: " + all.status);
+  const q = await fetch(`${base}:runQuery`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "campaigns" }] } }) });
+  if (q.status !== 403) fail("Aktionsseiten ohne Konto abfragbar: " + q.status);
+  log("Aktionsseiten: einzeln per Link lesbar, die Sammlung ohne Konto weder auflist- noch abfragbar");
 
   // Zurückziehen: Link zeigt „gibt es nicht mehr“
   anna.on("dialog", d => d.accept());
