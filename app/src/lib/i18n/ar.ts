@@ -1426,6 +1426,7 @@ export const ar: Dict = {
   "nav.language": "اللغة",
   "nav.more": "المزيد",
   "nav.theme": "فاتح أو داكن",
+  "net.failed": "تعذّر الوصول إلى الخادم. تحقّق من اتصالك بالإنترنت وحاول مرة أخرى.",
   "newtrip.create": "إنشاء رحلة",
   "newtrip.hint": "تضيف المكان والتواريخ لاحقًا في أعلى الرحلة.",
   "newtrip.title": "رحلة جديدة",

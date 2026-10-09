@@ -3,6 +3,7 @@
    * Erlebnisse finden: was am Reiseort im Reisezeitraum läuft (Ticketmaster, Fußball-Spielpläne) und
    * buchbare Touren und Tickets (Viator). Antippen legt einen Posten in „Erlebnisse“ an, der Dialog bleibt offen.
    */
+  import { netMessage } from "../neterror";
   import { i18n, t, type Key } from "../i18n/index.svelte";
   import { app, setDetailed } from "../store.svelte";
   import { eur } from "../calc";
@@ -95,7 +96,7 @@
         evErr = res.sources.find(s => s.error)?.error || t("xp.noEvents");
         noteError(`Events vor Ort: ${res.sources.map(s => `${s.id} ${s.error || (s.ok ? "ok" : "aus")}`).join(", ")}`);
       }
-    } catch (err) { evErr = (err as Error).message; noteError(`Events vor Ort: ${evErr}`); }
+    } catch (err) { evErr = netMessage(err); noteError(`Events vor Ort: ${evErr}`); }
     finally { evBusy = false; }
   }
 
@@ -114,7 +115,7 @@
       tours = uniqueById(res.activities || []);
       const bad = res.sources.find(s => s.configured && !s.ok);
       if (!tours.length && bad) { toErr = bad.error || t("xp.noTours"); noteError(`Touren: ${bad.error}`); }
-    } catch (err) { if (c === city) { toErr = (err as Error).message; noteError(`Touren: ${toErr}`); } }
+    } catch (err) { if (c === city) { toErr = netMessage(err); noteError(`Touren: ${toErr}`); } }
     finally { if (c === city) toBusy = false; }
   }
 

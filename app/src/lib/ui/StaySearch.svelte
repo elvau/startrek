@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { netMessage } from "../neterror";
   import { autoName, locale, t, tn } from "../i18n/index.svelte";
   /*
    * Unterkünfte suchen (wie im Artefakt): Zeitraum und Gäste aus der Anwesenheit (Flüge oder eigene Daten),
@@ -274,7 +275,7 @@
       asked = { ...q, place: place.trim().split(",")[0].trim() || q.place };
       askedParts = parts;
     } catch (err) {
-      if ((err as Error).name !== "AbortError") error = (err as Error).message;
+      if ((err as Error).name !== "AbortError") error = netMessage(err);
     } finally { busy = false; }
   }
 

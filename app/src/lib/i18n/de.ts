@@ -1287,6 +1287,7 @@ export const de = {
   "nav.language": "Sprache",
   "nav.more": "Mehr",
   "nav.theme": "Hell oder dunkel",
+  "net.failed": "Keine Verbindung zum Server. Bitte Internetverbindung prüfen und noch einmal versuchen.",
   "newtrip.create": "Reise anlegen",
   "newtrip.hint": "Ort und Zeitraum trägst du danach oben in der Reise ein.",
   "newtrip.title": "Neue Reise",

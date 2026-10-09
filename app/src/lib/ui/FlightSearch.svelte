@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { netMessage } from "../neterror";
   import { arrow, autoName, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
@@ -300,7 +301,7 @@
           cmp.push(compareRow(code, rated, rated.length ? undefined : err));
         } catch (err) {
           if ((err as Error).name === "AbortError") throw err;
-          cmp.push(compareRow(code, [], (err as Error).message));
+          cmp.push(compareRow(code, [], netMessage(err)));
         }
       } };
       await pass(qq);
@@ -317,7 +318,7 @@
       sources = [...src.values()];
       lateOut = late;
     } catch (err) {
-      if ((err as Error).name !== "AbortError") error = (err as Error).message;
+      if ((err as Error).name !== "AbortError") error = netMessage(err);
     } finally { busy = false; progress = ""; }
   }
 
@@ -380,7 +381,7 @@
       roundErrors = rounds.length ? [] : res.flatMap(r => r.errors);
       roundMore = [...new Set(res.flatMap(r => r.moreStops || []))];
     } catch (err) {
-      if ((err as Error).name !== "AbortError") error = (err as Error).message;
+      if ((err as Error).name !== "AbortError") error = netMessage(err);
     } finally { busy = false; progress = ""; }
   }
 

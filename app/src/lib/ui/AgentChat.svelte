@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { netMessage } from "../neterror";
   import { arrow, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * KI-Assistent (Beta) als Chat unten rechts: Wunsch schreiben, nachschärfen („lieber im Juni“, „günstiger“),
@@ -103,7 +104,7 @@
       if ((err as Error).name === "AbortError") return;
       const r = (err as { remaining?: number }).remaining;
       if (r != null) remaining = r;
-      msgs.push({ me: false, text: (err as Error).message });
+      msgs.push({ me: false, text: netMessage(err) });
       done("error");
     } finally { busy = false; void scrollDown(); }
   }

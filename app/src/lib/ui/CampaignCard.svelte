@@ -4,6 +4,7 @@
    * Veröffentlichen nur angemeldet und mit Einwilligung (Name und IBAN sind für alle mit dem Link sichtbar).
    * Der Fortschritt (eingegangene und zugesagte Zuschüsse) wird automatisch nachgezogen, solange die Seite besteht.
    */
+  import { netMessage } from "../neterror";
   import { untrack } from "svelte";
   import { t } from "../i18n/index.svelte";
   import { access, app, calc } from "../store.svelte";
@@ -47,7 +48,7 @@
       app.trip.campaign = next;
       lastSent = JSON.stringify(campaignDoc(next, app.trip, sums(), ""));
       edit = null;
-    } catch (e) { err = (e as Error).message; }
+    } catch (e) { err = netMessage(e); }
     finally { busy = false; }
   }
   const withoutOwner = ({ owner: _o, ...d }: ReturnType<typeof campaignDoc>) => d;
@@ -56,7 +57,7 @@
     if (!c || !confirm(t("cmp.withdrawConfirm"))) return;
     busy = true;
     try { if (c.at) await deleteCampaign(c.id); delete app.trip.campaign; edit = null; }
-    catch (e) { err = (e as Error).message; }
+    catch (e) { err = netMessage(e); }
     finally { busy = false; }
   }
 

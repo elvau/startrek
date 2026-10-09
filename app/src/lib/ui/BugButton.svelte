@@ -1,5 +1,6 @@
 <script lang="ts">
   /* Beta: Fehler melden (🐞 unten links). Beschreibung, optional ein Bild; Umgebung und letzte Fehler gehen automatisch mit. */
+  import { netMessage } from "../neterror";
   import { t } from "../i18n/index.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { BUG_IMAGE_TYPES } from "../bugs/types";
@@ -31,7 +32,7 @@
       const img = file ? await shrink(file) : null;
       const r = await sendBug(text.trim(), img);
       done = r.number ?? 0;
-    } catch (e) { err = (e as Error).message; }
+    } catch (e) { err = netMessage(e); }
     finally { busy = false; }
   }
 </script>
