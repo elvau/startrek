@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetKeys, verifyAnyIdToken, verifyIdToken } from "./auth";
+import { requireVerified, resetKeys, verifyAnyIdToken, verifyIdToken } from "./auth";
 
 const b64u = (b: Uint8Array | string) => {
   const bytes = typeof b === "string" ? new TextEncoder().encode(b) : b;
@@ -30,6 +30,14 @@ describe("Anmeldung im Such-Dienst", () => {
     expect(await verifyIdToken(await s.sign(claims()), "proj", s.fetchFn, NOW)).toBe("u1");
     expect(await verifyIdToken(await s.sign(claims({ sub: "u2" })), "proj", s.fetchFn, NOW)).toBe("u2");
     expect(s.calls()).toBe(1);
+  });
+
+  it("nur bestätigte E-Mail-Adressen (Google, Anmelde-Link), nicht per REST angelegte Konten", async () => {
+    const s = await setup();
+    expect(() => requireVerified("x." + b64u(JSON.stringify(claims({ email_verified: true }))) + ".y")).not.toThrow();
+    expect(() => requireVerified("x." + b64u(JSON.stringify(claims({ email_verified: false }))) + ".y")).toThrow(/bestätigen/);
+    expect(() => requireVerified("x." + b64u(JSON.stringify(claims())) + ".y")).toThrow(/bestätigen/);
+    expect(await verifyIdToken(await s.sign(claims({ email_verified: true })), "proj", s.fetchFn, NOW)).toBe("u1");
   });
 
   it("abgelaufen, falsches Projekt, falsche Signatur, unbekannter Schlüssel", async () => {

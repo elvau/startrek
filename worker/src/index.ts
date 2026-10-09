@@ -9,7 +9,7 @@ import { parseStayQuery, searchStays, type StayEnv } from "../../app/src/lib/sta
 import type { FlightQuery } from "../../app/src/lib/flights/types";
 import type { StayQuery } from "../../app/src/lib/stays/types";
 import { runAgent } from "../../app/src/lib/agent/agent";
-import { verifyAnyIdToken, verifyIdToken } from "../../app/src/lib/agent/auth";
+import { requireVerified, verifyAnyIdToken, verifyIdToken } from "../../app/src/lib/agent/auth";
 import { whereFrom } from "./where";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
@@ -297,7 +297,7 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Bitte anmelden, um den KI-Planer zu nutzen" }, 401, h);
   let uid: string;
-  try { uid = await verifyAnyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7", env.FIREBASE_TEST_PROJECT_ID); }
+  try { uid = await verifyAnyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7", env.FIREBASE_TEST_PROJECT_ID); requireVerified(token); }
   catch (e) { console.log(JSON.stringify({ at: "agent", status: 401, error: (e as Error).message })); return json({ error: (e as Error).message }, 401, h); }
 
   let body: unknown;
@@ -342,7 +342,7 @@ async function mcpKey(req: Request, env: Env, h: Record<string, string>): Promis
   if (!token) return json({ error: "Bitte anmelden" }, 401, h);
   // nur echte Konten: der Konnektor schreibt in die Reisen des Hauptprojekts (Testprojekt hier nicht)
   let uid: string;
-  try { uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); }
+  try { uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); requireVerified(token); }
   catch (e) { return json({ error: (e as Error).message }, 401, h); }
   const body = await req.json().catch(() => ({})) as { name?: unknown };
   const quota = await countToday(env, uid, "mcpkey");
