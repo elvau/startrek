@@ -142,6 +142,12 @@ try {
   m.on("pageerror", e => errors.push(e.message));
   await m.goto(URL);
   await m.locator(".start .home-trip", { hasText: "Split mobil" }).click();
+  // kompakte Karten (#242): Bild, Merkmale und Hin/Zurück erst beim Antippen, Hinweis „Details ›“
+  const sCard = m.locator("#stay .card[data-item='s']"), fCard = m.locator("#flights .card[data-item='f']");
+  await sCard.scrollIntoViewIfNeeded();
+  if (await sCard.locator(".stay-img").isVisible() || await fCard.locator(".bp-legs").isVisible()) fail("Handy: Karten nicht kompakt");
+  if (!(await sCard.evaluate(e => getComputedStyle(e, "::after").content)).includes("Details")) fail("Handy: Hinweis „Details“ fehlt");
+  if (!(await sCard.locator("h3").isVisible()) || !/€/.test(await sCard.innerText())) fail("Handy: Name oder Preis fehlt auf der kompakten Karte");
   for (const [ch, id, btn, sum] of [["flights", "f", ".fs-item", "DUS→SPU"], ["stay", "s", ".st-item", "18.07. – 25.07."]]) {
     const c = m.locator(`#${ch} .card[data-item='${id}']`);
     await c.scrollIntoViewIfNeeded();
@@ -149,6 +155,7 @@ try {
     await c.locator(".editor").waitFor();
     if (!(await c.locator(`.editor ${btn}.ed-search`).isVisible())) fail(`${ch}: Suche oben im Posten fehlt`);
     if (await c.locator(".editor details[open]").count()) fail(`${ch}: Abschnitte nicht eingeklappt`);
+    if (!(await c.locator(ch === "flights" ? ".bp-legs" : ".stay-img").isVisible())) fail(`${ch}: Einzelheiten beim Antippen nicht sichtbar`);
     const sums = (await c.locator(".editor details summary").allTextContents()).join(" | ");
     if (!sums.includes(sum) || !sums.includes("Wer ist dabei")) fail(`${ch}: Zusammenfassung „${sum}“ fehlt: ${sums}`);
     await c.locator(`.editor ${btn}.ed-search`).click();
@@ -166,7 +173,7 @@ try {
   await m.locator("#flights .fs-open").click();
   await m.locator(".modal-bg .modal .fs-aps").waitFor();
   await m.locator(".modal-bg .modal .modal-h .x").click();
-  log("Handy: Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
+  log("Handy: Karten kompakt (Einzelheiten beim Antippen); Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
   // Neuladen im selben Tab bleibt in der Reise (Issue #255); über die Marke und neu laden bleibt es auf der Startseite
   await m.evaluate(() => scrollTo({ top: 600, behavior: "instant" }));
   await m.waitForTimeout(700); // Scrollstand wird verzögert gemerkt
