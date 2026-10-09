@@ -45,10 +45,10 @@ service cloud.firestore {
         && request.resource.data.data is string && request.resource.data.data.size() < 200000;
     }
 
-    // Aktionsseite zum Mitfinanzieren: jeder mit dem Link darf sie lesen (nur Titel, Beträge, Kontoinhaber, IBAN, PayPal-Name;
+    // Aktionsseite zum Mitfinanzieren: jeder mit dem Link darf sie lesen (nur Titel, Beträge, PayPal-Name, Link zur Sammelaktion;
     // keine Mitreisenden). Anlegen, ändern und löschen nur das Konto, das veröffentlicht hat.
     function validCampaign(d) {
-      return d.keys().hasOnly(['owner', 'trip', 'title', 'text', 'place', 'from', 'to', 'goal', 'raised', 'pledged', 'holder', 'iban', 'paypal', 'updatedAt'])
+      return d.keys().hasOnly(['owner', 'trip', 'title', 'text', 'place', 'from', 'to', 'goal', 'raised', 'pledged', 'paypal', 'link', 'updatedAt'])
         && d.owner == uid()
         && d.trip is string && d.trip.size() < 64
         && d.title is string && d.title.size() > 0 && d.title.size() <= 100
@@ -57,13 +57,14 @@ service cloud.firestore {
         && d.from is string && d.from.size() <= 10 && d.to is string && d.to.size() <= 10
         && d.goal is number && d.goal >= 0 && d.goal < 10000000
         && d.raised is number && d.raised >= 0 && d.pledged is number && d.pledged >= 0
-        && d.holder is string && d.holder.size() > 0 && d.holder.size() <= 70
-        && d.iban is string && d.iban.matches('^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$')
-        && d.paypal is string && d.paypal.matches('^[A-Za-z0-9._-]{0,40}$');
+        && d.paypal is string && d.paypal.matches('^[A-Za-z0-9._-]{0,40}$')
+        // Sammelaktion nur bei bekannten Anbietern (wie LINK_HOSTS in campaign.ts); Kontoinhaber und IBAN vorerst nicht
+        && d.link is string && d.link.size() <= 200
+        && (d.link == '' || d.link.matches('^https://(gofundme\\.com|gofund\\.me|leetchi\\.com|betterplace\\.me|ko-fi\\.com|revolut\\.me)/[^ ]+$'));
     }
     match /campaigns/{campaignId} {
       // einzeln per Link lesbar; die Sammlung abfragen nur für die eigenen (Konto zurücksetzen), sonst ließen sich alle
-      // Kontoinhaber und IBANs auf einmal auslesen
+      // PayPal-Namen auf einmal auslesen
       allow get: if true;
       allow list: if signedIn() && resource.data.owner == uid();
       allow create: if signedIn() && validCampaign(request.resource.data);

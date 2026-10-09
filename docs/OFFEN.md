@@ -79,8 +79,8 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [x] Mengenbegrenzung pro IP für die Suchen (60 pro Minute, 600 pro Stunde; v0.9.1).
 - [x] Preiskalender mit Richtpreisen vor der Suche (`flights/calendar.ts`, Such-Dienst `/flights/calendar`; wirkt erst nach dem Release, Worker nur von main).
 - [x] Karte weiter: Entfernung zu Zentrum, Flughafen und Events an jeder Unterkunft; „Karte der Reise“ (`geo/spots.ts`, `TripMap.svelte`).
-- [x] Zuschüsse Stufe 2 (10/2026, `campaign.ts`, `CampaignCard.svelte`, `CampaignPage.svelte`, Firestore `campaigns/{id}`): öffentliche Aktionsseite der Reise (Ziel, Fortschritt, GiroCode/EPC-QR mit IBAN des Organisators,
-      PayPal.me-Link), Geld fließt nie über Split&Fly (ZAG); Einwilligung für IBAN, Datenschutz, Firestore-Regeln.
+- [x] Zuschüsse Stufe 2 (10/2026, `campaign.ts`, `CampaignCard.svelte`, `CampaignPage.svelte`, Firestore `campaigns/{id}`): öffentliche Aktionsseite der Reise (Ziel, Fortschritt, PayPal.me oder Link zur Sammelaktion; IBAN/GiroCode seit 10/2026 vorerst entfernt,
+      Anbieter fest in Liste), Geld fließt nie über Split&Fly (ZAG); Einwilligung, Datenschutz, Firestore-Regeln.
       Stufe 1 (Zuschüsse in der Reise) ist fertig: `Trip.funds`, `applyFunds` in `calc/index.ts`, `FundsCard.svelte`.
 - [ ] → #144. Vergleichen von Reisen und/oder Posten (nächstes großes Feature; KI-Vergleichsreise aus v0.10.0 ist der Einstieg).
 - [x] KI-Konnektor (MCP) Schritt 1 und 2: Suchen und Reisen im Konto mit persönlichem Schlüssel (docs/KONNEKTOR.md).

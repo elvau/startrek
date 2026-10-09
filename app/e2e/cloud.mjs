@@ -221,8 +221,14 @@ try {
   await fund("Oma", 200);
   await anna.locator("#split .cmp-start").click();
   const ce = anna.locator("#split .cmp-edit");
-  await ce.locator("label.f", { hasText: "Kontoinhaber" }).locator("input").fill("Anna Klein");
-  await ce.locator(".cmp-iban-in").fill("DE89 3704 0044 0532 0130 00");
+  if ((await ce.locator("input.cmp-iban-in").count()) || (await ce.innerText()).includes("IBAN")) fail("Aktionsseite fragt noch nach der IBAN");
+  await ce.locator(".cmp-publish").click();
+  if (!(await ce.locator(".err").textContent()).includes("PayPal.me oder")) fail("ohne Zahlweg veröffentlicht");
+  await ce.locator(".cmp-link-in").fill("https://example.com/sammeln");
+  await ce.locator(".cmp-publish").click();
+  if (!(await ce.locator(".err").textContent()).includes("Link geht nicht")) fail("fremder Link angenommen");
+  await ce.locator(".cmp-link-in").fill("gofund.me/kegeltour");
+  await ce.locator(".cmp-paypal-in").fill("paypal.me/AnnaK");
   await ce.locator(".cmp-publish").click();
   if (!(await ce.locator(".err").textContent()).includes("zustimmen")) fail("ohne Einwilligung veröffentlicht");
   await ce.locator(".cmp-consent input").check();
@@ -234,8 +240,9 @@ try {
   await gast.goto(aktion);
   await gast.locator(".cmp h1").waitFor();
   const page = await gast.locator(".cmp").innerText();
-  if (!page.includes("DE89 3704 0044 0532 0130 00") || !page.includes("Anna Klein") || !/200\s?€/.test(page)) fail("Aktionsseite: " + page.slice(0, 400));
-  if (!(await gast.locator(".cmp svg.qr path").count())) fail("kein GiroCode");
+  if (!page.includes("PayPal.me/AnnaK") || !page.includes("GoFundMe") || !/200\s?€/.test(page)) fail("Aktionsseite: " + page.slice(0, 400));
+  if ((await gast.locator(".cmp-ext").getAttribute("href")) !== "https://gofund.me/kegeltour") fail("Link zur Sammelaktion");
+  if (page.includes("IBAN")) fail("Aktionsseite zeigt IBAN");
   if (page.includes("Oma")) fail("Aktionsseite zeigt Namen aus der Reise");
   if (process.env.SHOTS) {
     await anna.locator("#split .funds").screenshot({ path: `${process.env.SHOTS}/cmp-card.png` });
@@ -243,7 +250,7 @@ try {
     await gast.screenshot({ path: `${process.env.SHOTS}/cmp-page.png` });
     await gast.setViewportSize({ width: 1280, height: 900 });
   }
-  log("Aktionsseite veröffentlicht (nur mit Einwilligung), Gast ohne Konto sieht Ziel, 200 €, IBAN und GiroCode, keine Namen der Reise");
+  log("Aktionsseite veröffentlicht (nur mit Einwilligung), Gast ohne Konto sieht Ziel, 200 €, PayPal.me und Sammelaktion, keine IBAN, keine Namen der Reise; nur bekannte Anbieter");
 
   // Fortschritt zieht automatisch nach
   await fund("Sponsor", 100);
@@ -253,10 +260,10 @@ try {
   // Regeln: ohne Konto (und als anderes Konto) lässt sich die Seite nicht ändern
   const cid = new globalThis.URL(aktion).searchParams.get("aktion");
   const rest = `http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/campaigns/${cid}`;
-  const hack = await fetch(rest + "?updateMask.fieldPaths=iban", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ fields: { iban: { stringValue: "GB33BUKB20201555555555" } } }) });
+  const hack = await fetch(rest + "?updateMask.fieldPaths=paypal", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ fields: { paypal: { stringValue: "Betrueger" } } }) });
   if (hack.status !== 403) fail("Aktionsseite ohne Konto änderbar: " + hack.status);
-  log("Fremde können die IBAN nicht ändern (Firestore-Regeln)");
-  // ohne Konto nur die eine Seite per Link, nicht die ganze Sammlung (sonst alle IBANs und Kontoinhaber auf einmal)
+  log("Fremde können den PayPal-Namen nicht ändern (Firestore-Regeln)");
+  // ohne Konto nur die eine Seite per Link, nicht die ganze Sammlung
   const base = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
   if ((await fetch(rest)).status !== 200) fail("Aktionsseite per Link nicht lesbar");
   const all = await fetch(`${base}/campaigns`);
