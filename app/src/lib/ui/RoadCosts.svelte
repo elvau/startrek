@@ -119,6 +119,14 @@
   }
 </script>
 
+<!-- Kilometersatz fürs eigene Auto (Camper: feste Sätze im Camper-Bereich) -->
+{#snippet kmRate()}
+  {#if !camper && !access.readonly}
+    <label class="rt-km small">{t("road.kmRate")} <input class="n" type="number" min="0.05" max="2" step="0.01" value={kmCost}
+      onchange={e => { const v = +e.currentTarget.value; if (v >= 0.05 && v <= 2) app.trip.settings.kmCost = Math.round(v * 100) / 100; else e.currentTarget.value = String(kmCost); }} /> €/km</label>
+  {/if}
+{/snippet}
+
 {#if show && plan && cost}
   <div class="search-row road road-trip">
     <p class="road-t">{camper ? "🚐" : "🚗"} <b>{t("road.tripTitle")}</b> <span class="muted small">{t("road.tripSum", { km: cost.km, h: hm(totalMin) })}</span></p>
@@ -158,7 +166,7 @@
       {/each}
     </ol>
     <ul>
-      <li>⛽ {t("road.fuelRound", { v: eur(cost.fuel), c: moneyExact(kmCost, "EUR") })}</li>
+      <li>⛽ {t("road.fuelRound", { v: eur(cost.fuel), c: moneyExact(kmCost, "EUR") })}{@render kmRate()}</li>
       {#each roadOnly as x (x.id)}<li>{x.kind === "vignette" ? "🎫" : "🛣"} {flagOf(x.cc || "")} {x.kind === "vignette" ? t("road.vignette", { c: countryName(x.cc || "") }) : t("road.tollKm", { c: countryName(x.cc || "") })} <b>{t("xc.ca")} {eur(x.amount)}</b> <span class="muted small">· {x.source}</span></li>{/each}
     </ul>
     <p class="small road-who">{t("road.who")}</p>
@@ -174,7 +182,7 @@
   <div class="search-row road">
     <p class="road-t">🚗 <b>{t("road.title2", { b: dest?.name || "" })}</b> <span class="muted small">{["DE", ...route].map(flagOf).join(" → ")} · {t("road.km", { km: road })}</span></p>
     <ul>
-      <li>⛽ {t("road.fuelLine", { v: eur(fuel), c: moneyExact(kmCost, "EUR") })}</li>
+      <li>⛽ {t("road.fuelLine", { v: eur(fuel), c: moneyExact(kmCost, "EUR") })}{@render kmRate()}</li>
       {#each rc.vignettes as v (v.cc)}<li>🎫 {flagOf(v.cc)} {t("road.vignette", { c: countryName(v.cc) })} <b>{t("xc.ca")} {moneyExact(v.amount, v.currency)}</b> <span class="muted small">· {tn("n.days", v.days)} · {v.source}</span></li>{/each}
       {#each rc.tolls as c (c)}<li>🛣 {flagOf(c)} {t("road.toll", { c: countryName(c), v: moneyExact(TOLLS[c].per100, TOLLS[c].currency) })}</li>{/each}
     </ul>
@@ -198,4 +206,6 @@
   .rt-acts { display: flex; gap: 8px; flex-wrap: wrap; }
   .rt-fx { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
   .rt-pick { font-size: 12.5px; padding: 2px 4px; }
+  .rt-km { margin-inline-start: 10px; color: var(--ink-2); white-space: nowrap; }
+  .rt-km input { width: 4.5em; padding: 2px 4px; font-size: 12.5px; }
 </style>

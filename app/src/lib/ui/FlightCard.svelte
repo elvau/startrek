@@ -5,6 +5,7 @@
   import { calcOption, eur } from "../calc";
   import { dayShort, legDuration, time, dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
+  import { focusHousehold } from "./hhFocus.svelte";
 
   let { item }: { item: Item } = $props();
   const r = $derived(calc.T.items[item.id]);
@@ -23,6 +24,13 @@
     if (!item.participants) return new Set(act.map(hhKey)).size > 1 ? `${t("all")} · ${t("persShort", { n: ppl.length })}` : "";
     return `${hhs.join(", ")} · ${t("persShort", { n: ppl.length })}`;
   });
+
+  // Anfahrt antippen: zu den Einstellungen der Familie (ohne Wohnort: die erste ohne)
+  function toAccess(hh: string, e: Event) {
+    e.stopPropagation();
+    focusHousehold(hh);
+  }
+  const noHome = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))].find(h => !app.trip.households?.[h]?.geo) || "");
 
   function choose(id: string, e: Event) {
     e.stopPropagation();
@@ -46,8 +54,13 @@
       </div>
       {#if r?.access}
         <div class="bp-acc">
-          {#if r.access.missing}🚗 {t("fl.accessMissing", { ap: r.access.missing })}
-          {:else}{#each r.access.lines as l}<span>🚗 {l.hh}: {l.a.info} · <b class="num">{eur(l.a.cost)}</b></span>{/each}{/if}
+          {#if r.access.missing}
+            {#if access.readonly}<span>🚗 {t("fl.accessMissing", { ap: r.access.missing })}</span>
+            {:else}<button class="bp-acc-l" title={t("fl.accessEdit")} onclick={e => toAccess(noHome, e)}>🚗 {t("fl.accessMissing", { ap: r.access.missing })} <i aria-hidden="true">›</i></button>{/if}
+          {:else}{#each r.access.lines as l}
+            {#if access.readonly}<span>🚗 {l.hh}: {l.a.info} · <b class="num">{eur(l.a.cost)}</b></span>
+            {:else}<button class="bp-acc-l" title={t("fl.accessEdit")} onclick={e => toAccess(l.hh, e)}>🚗 {l.hh}: {l.a.info} · <b class="num">{eur(l.a.cost)}</b> <i aria-hidden="true">›</i></button>{/if}
+          {/each}{/if}
         </div>
       {/if}
       <div class="bp-legs">

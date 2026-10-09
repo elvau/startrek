@@ -23,7 +23,7 @@ import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller } from "./gemini";
 import { isAdmin, meter, noteClick, noteRoute, usageReport, type UsageEnv } from "./usage";
-import { checkLimit, searchWindows, type LimitEnv } from "./ratelimit";
+import { checkLimit, IP_LIMITS, ipKey, searchWindows, type LimitEnv } from "./ratelimit";
 import { issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
 import { tripStore, type StoreEnv } from "./firestore";
 import { mcpMessage, type Saved } from "./mcp";
@@ -71,6 +71,26 @@ const json = (body: unknown, status: number, headers: Record<string, string>) =>
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // was unerwartet abbricht, kommt trotzdem mit CORS zurück (sonst sieht die App nur „Failed to fetch“)
+    try { return await handle(req, env, ctx); }
+    catch (e) {
+      console.log(JSON.stringify({ at: "fetch", path: new URL(req.url).pathname, error: (e as Error).message }));
+      return json({ error: "Interner Fehler im Such-Dienst, bitte noch einmal versuchen." }, 500, cors(req.headers.get("origin"), env));
+    }
+  }
+};
+
+/** Anfrage zu viel von dieser IP? Dann 429 mit Wartezeit, sonst null */
+async function overLimit(kind: keyof typeof IP_LIMITS, req: Request, env: Env, h: Record<string, string>): Promise<Response | null> {
+  const ip = ipKey(req.headers.get("cf-connecting-ip"));
+  const lim = await checkLimit(caches.default, ip && `${kind}:${ip}`, IP_LIMITS[kind]);
+  if (lim.ok) return null;
+  noteRoute(env, "blocked");
+  return json({ error: "Zu viele Anfragen in kurzer Zeit, bitte später noch einmal.", retryAfter: lim.retryAfter }, 429, { ...h, "retry-after": String(lim.retryAfter) });
+}
+
+async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  {
     const url = new URL(req.url);
     const origin = req.headers.get("origin");
     const h = cors(origin, env);
@@ -83,7 +103,7 @@ export default {
 
     // Suchen: höchstens so viele pro IP und Minute bzw. Stunde (schützt die Kontingente der Anbieter)
     if (req.method === "POST" && SEARCHES.has(url.pathname) && h["access-control-allow-origin"]) {
-      const lim = await checkLimit(caches.default, req.headers.get("cf-connecting-ip"), searchWindows(env));
+      const lim = await checkLimit(caches.default, ipKey(req.headers.get("cf-connecting-ip")), searchWindows(env));
       if (!lim.ok) {
         noteRoute(env, "blocked");
         return json({ error: "Zu viele Suchen in kurzer Zeit, bitte kurz warten.", retryAfter: lim.retryAfter }, 429, { ...h, "retry-after": String(lim.retryAfter) });
@@ -211,18 +231,23 @@ export default {
     if (url.pathname === "/agent" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
       noteRoute(env, "agent");
-      return agent(req, env, h);
+      return (await overLimit("agent", req, env, h)) || agent(req, env, h);
     }
 
     if (url.pathname === "/bug" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
       noteRoute(env, "bug");
+      // Bild höchstens 3 MB: größere Anfragen gar nicht erst einlesen
+      if (Number(req.headers.get("content-length") || 0) > 4_000_000) return json({ error: "Anfrage zu groß" }, 413, h);
+      const block = await overLimit("bug", req, env, h);
+      if (block) return block;
       return reportBug(req, env, h, json, (uid, kind) => countToday(env, uid, kind), meter(env));
     }
 
     // Klick auf einen Anbieter-Link (sendBeacon aus der App), nur zählen
     if (url.pathname === "/click" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      if (await overLimit("click", req, env, h)) return new Response(null, { status: 429, headers: h });
       const body = await req.text().then(s => JSON.parse(s.slice(0, 200))).catch(() => null);
       return new Response(null, { status: noteClick(env, body) ? 204 : 400, headers: h });
     }
@@ -235,31 +260,36 @@ export default {
 
     if (url.pathname === "/mcp/key" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
-      return mcpKey(req, env, h);
+      return (await overLimit("mcpkey", req, env, h)) || mcpKey(req, env, h);
     }
     if (url.pathname === "/mcp") return mcp(req, env, ctx);
 
     return json({ error: "Nicht gefunden" }, 404, h);
   }
-};
+}
 
 /* ---------- KI-Reiseplaner (Gemini) ---------- */
 
 // ältere Modelle (gemini-2.5-flash) gibt Google neuen Konten nicht mehr; mit GEMINI_MODEL überschreibbar
 const DEFAULT_MODEL = "gemini-3.8-flash";
 
-/** Tageszähler je Nutzer: im KV-Speicher, sonst im Zwischenspeicher des Rechenzentrums */
-async function countToday(env: Env, uid: string, kind = "agent"): Promise<{ used: number; bump: () => Promise<void> }> {
+/** so lange darf der KI-Planer rechnen, dann schlägt er das bisher Gefundene vor */
+const AGENT_DEADLINE_MS = 80_000;
+
+/** Tageszähler je Nutzer: im KV-Speicher, sonst im Zwischenspeicher des Rechenzentrums; refund setzt bump zurück */
+async function countToday(env: Env, uid: string, kind = "agent"): Promise<{ used: number; bump: () => Promise<void>; refund: () => Promise<void> }> {
   const day = new Date().toISOString().slice(0, 10);
   if (env.AGENT_KV) {
     const k = `${kind}:${uid}:${day}`;
     const used = Number(await env.AGENT_KV.get(k)) || 0;
-    return { used, bump: () => env.AGENT_KV!.put(k, String(used + 1), { expirationTtl: 2 * 86400 }) };
+    const put = (n: number) => env.AGENT_KV!.put(k, String(n), { expirationTtl: 2 * 86400 });
+    return { used, bump: () => put(used + 1), refund: () => put(used) };
   }
   const k = new Request(`https://quota.splitandfly/${kind === "agent" ? "" : kind + "/"}${encodeURIComponent(uid)}/${day}`);
   const hit = await caches.default.match(k);
   const used = hit ? Number(await hit.text()) || 0 : 0;
-  return { used, bump: () => caches.default.put(k, new Response(String(used + 1), { headers: { "cache-control": "max-age=172800" } })) };
+  const put = (n: number) => caches.default.put(k, new Response(String(n), { headers: { "cache-control": "max-age=172800" } }));
+  return { used, bump: () => put(used + 1), refund: () => put(used) };
 }
 
 async function agent(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
@@ -286,17 +316,19 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   const budget = agentBudget(48, 8, 9, net);
   // überlastet: kurz warten und wiederholen, dann das Ausweichmodell
   const gemini = geminiCaller({ key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], f: net, onCall: () => { budget.used++; } });
+  // gleich zählen, nicht erst nach dem Lauf: sonst kämen viele gleichzeitige Anfragen alle durch
+  await quota.bump();
   try {
     const fx = await rates(env);
-    const result = await runAgent(r, { gemini, flights: q => searchAll(q, { ...env, FX: fx }, budget.fetch).then(real), stays: q => searchStays(q, { ...env, FX: fx }, budget.fetch).then(real), canSearch: budget.canSearch });
+    const result = await runAgent(r, { deadline: Date.now() + AGENT_DEADLINE_MS, gemini, flights: q => searchAll(q, { ...env, FX: fx }, budget.fetch).then(real), stays: q => searchStays(q, { ...env, FX: fx }, budget.fetch).then(real), canSearch: budget.canSearch });
     // eine Rückfrage zählt nicht gegen das Tageslimit, erst die Suche danach
-    if (result.question) return json({ ...result, remaining: Math.max(0, limit - quota.used) }, 200, h);
-    await quota.bump();
+    if (result.question) { await quota.refund(); return json({ ...result, remaining: Math.max(0, limit - quota.used) }, 200, h); }
     return json({ ...result, remaining: Math.max(0, limit - quota.used - 1) }, 200, h);
   } catch (e) {
     // in den Workers-Logs sichtbar (Observability), die App zeigt nur eine übersetzte Meldung
     console.log(JSON.stringify({ at: "agent", model, error: (e as Error).message }));
     // Fehler auf unserer Seite oder bei Gemini zählen nicht gegen das Tageslimit
+    await quota.refund().catch(() => {});
     return json({ error: (e as Error).message, remaining: Math.max(0, limit - quota.used) }, 502, h);
   }
 }

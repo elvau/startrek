@@ -16,6 +16,8 @@ export interface GeminiOpts {
   delays?: number[];
   /** weitere Modelle suchen, wenn alle genannten überlastet sind (Standard: Liste von Google) */
   discover?: () => Promise<string[]>;
+  /** höchstens so lange auf eine Antwort warten (Standard 40 s), dann das nächste Modell */
+  timeoutMs?: number;
 }
 
 const RETRY = new Set([429, 500, 502, 503]);
@@ -58,9 +60,16 @@ export function geminiCaller(o: GeminiOpts) {
     for (const wait of delays) {
       if (wait) await sleep(wait);
       o.onCall?.();
-      const res = await f(`${API}/models/${encodeURIComponent(model)}:generateContent`, {
-        method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": o.key }, body: JSON.stringify(payload)
-      });
+      let res: Response;
+      try {
+        res = await f(`${API}/models/${encodeURIComponent(model)}:generateContent`, {
+          method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": o.key }, body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(o.timeoutMs ?? 40000)
+        });
+      } catch (e) {
+        // Zeitüberschreitung oder Netzfehler: nächstes Modell
+        return { ok: false, error: `KI-Fehler: keine Antwort (${model}, ${(e as Error).name})`, retry: true };
+      }
       const data = await res.json().catch(() => ({})) as { error?: { message?: string } };
       if (res.ok) return { ok: true, data };
       error = `KI-Fehler ${res.status} (${model})${data.error?.message ? `: ${data.error.message}` : ""}`;

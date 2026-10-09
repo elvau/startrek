@@ -14,6 +14,7 @@
   import { autoName, t, type Key } from "../i18n/index.svelte";
   import { reveal } from "./reveal";
   import { itemLoc, mapsUrl } from "../geo/maps";
+  import { flashEl } from "./showItem";
 
   let { item, icon }: { item: Item; icon: string } = $props();
   const editing = $derived(app.editing === item.id);
@@ -23,6 +24,12 @@
   const src = $derived(calc.T.items[item.id]?.option?.source);
   // Lage in Google Maps (Unterkunft, Veranstaltungsort): öffnet erst beim Antippen
   const gmap = $derived(mapsUrl(itemLoc(item, calc.T.items[item.id]?.option, app.trip)));
+
+  // Auto-Posten der Runde (#243): zu Strecke, Camper und km-Satz im Kapitel Transport
+  function toRoad(e: Event) {
+    e.stopPropagation();
+    flashEl(document.querySelector<HTMLElement>("#transport .search-row.camper, #transport .road"), "start");
+  }
 
   function toggle(e: MouseEvent) {
     if (access.readonly) return;
@@ -46,6 +53,7 @@
   <ExtrasBlock {item} />
   <ItemSplit {item} />
   <RentalCheck {item} />
+  {#if item.hint === "road:car" && !access.readonly}<p class="road-jump"><button class="linkbtn" onclick={toRoad}>🗺 {t("road.editRoute")} ›</button></p>{/if}
   {#if src?.url || gmap || src?.test}
     <p class="src-link">
       {#if src?.test}<span class="pill-test" title={t("test.title")}>{t("test.price")}</span> {/if}

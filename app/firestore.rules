@@ -112,7 +112,8 @@ service cloud.firestore {
           && changed().hasOnly(['memberIds', 'members', 'memberNames'])
           && request.resource.data.memberIds.toSet() == resource.data.memberIds.toSet().difference([uid()].toSet())
           && request.resource.data.members.keys().toSet() == resource.data.members.keys().toSet().difference([uid()].toSet())
-          && request.resource.data.members.diff(resource.data.members).changedKeys().size() == 0);
+          && request.resource.data.members.diff(resource.data.members).changedKeys().size() == 0
+          && request.resource.data.get('memberNames', {}).diff(resource.data.get('memberNames', {})).affectedKeys().hasOnly([uid()]));
 
       allow delete: if isOwner(resource.data);
     }

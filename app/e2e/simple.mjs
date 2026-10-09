@@ -286,9 +286,19 @@ try {
   const ct = await car.innerText();
   if (!ct.includes("Vignette 🇦🇹 Österreich") || !ct.includes("Vignette 🇸🇮 Slowenien") || !ct.includes("Düsseldorf → Split")) fail("Auto-Posten: " + ct);
   if (!(await road.locator(".road-add").innerText()).includes("weiteres Auto")) fail("zweites Auto nicht anlegbar");
+  // vom Auto-Posten zur Strecke (#243), dort der km-Satz
+  await car.locator(".road-jump button").click();
+  await until(async () => (await fp.locator("#transport .search-row.flash").count()) > 0, "Strecke leuchtet nach dem Sprung vom Auto-Posten");
+  const fuel0 = await road.locator("li", { hasText: "⛽" }).first().innerText();
+  await road.locator(".rt-km input").fill("0.6");
+  await road.locator(".rt-km input").press("Enter");
+  await road.locator(".rt-km input").blur();
+  await until(async () => (await road.locator("li", { hasText: "⛽" }).first().innerText()) !== fuel0, "Sprit mit neuem km-Satz");
+  if (!(await road.locator("li", { hasText: "⛽" }).first().innerText()).includes("0,60")) fail("km-Satz: " + await road.locator("li", { hasText: "⛽" }).first().innerText());
+  await road.locator(".rt-km input").fill("0.3"); await road.locator(".rt-km input").blur();
   const tip = await fp.locator("#misc .food-tip").innerText();
   if (!tip.includes("10 %") || !tip.includes("Strand")) fail("Trinkgeld-Hinweis Kroatien: " + tip);
-  log("Gepflegte Nebenkosten: Kurtaxe Rom 4 Sterne automatisch (Kind frei, Quelle), wegklicken bleibt nach Neuladen; Auto nach Kroatien als Posten mit Sprit, Vignetten AT/SI und Maut HR als Nebenkosten, weiteres Auto möglich; Trinkgeld-Hinweis");
+  log("Gepflegte Nebenkosten: Kurtaxe Rom 4 Sterne automatisch (Kind frei, Quelle), wegklicken bleibt nach Neuladen; Auto nach Kroatien als Posten mit Sprit, Vignetten AT/SI und Maut HR als Nebenkosten, weiteres Auto möglich, Sprung zur Strecke, km-Satz einstellbar; Trinkgeld-Hinweis");
   await fctx.close();
 
   // Roadtrip (#201): Düsseldorf → Verona → Venedig → Ljubljana → zurück, Strecken vom Routen-Dienst (gemockt)
