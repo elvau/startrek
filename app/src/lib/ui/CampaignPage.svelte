@@ -1,17 +1,15 @@
 <script lang="ts">
   /*
    * Öffentliche Aktionsseite (…/?aktion=ID): wer den Link bekommt, sieht Ziel und Fortschritt und kann direkt an den
-   * Organisator überweisen (GiroCode, IBAN) oder per PayPal.me zahlen. Ohne Konto, ohne Firebase; nichts wird gespeichert.
+   * Organisator per PayPal.me oder über den Link zur Sammelaktion zahlen. Ohne Konto, ohne Firebase; nichts wird gespeichert.
    */
   import { onMount } from "svelte";
   import { applyDocument, locale, t } from "../i18n/index.svelte";
-  import { epcPayload, fetchCampaign, formatIban, paypalUrl, type CampaignDoc } from "../campaign";
-  import Qr from "./Qr.svelte";
+  import { fetchCampaign, linkSite, paypalUrl, type CampaignDoc } from "../campaign";
 
   let { id }: { id: string } = $props();
   let c = $state<(CampaignDoc & { updated?: string }) | null>(null);
   let status = $state<"load" | "ok" | "none" | "error">("load");
-  let copied = $state(false);
 
   onMount(async () => {
     applyDocument();
@@ -23,13 +21,7 @@
   const day = (d: string) => (d ? new Intl.DateTimeFormat(locale(), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(d + "T00:00:00Z")) : "");
   const pct = $derived(c && c.goal ? Math.min(100, (c.raised / c.goal) * 100) : 0);
   const pctP = $derived(c && c.goal ? Math.min(100, (c.pledged / c.goal) * 100) : 0);
-  const purpose = $derived(c ? `${c.title}${c.place ? `, ${c.place}` : ""}`.slice(0, 140) : "");
   const base = (import.meta.env.BASE_URL as string) || "/";
-
-  async function copy() {
-    if (!c) return;
-    try { await navigator.clipboard.writeText(c.iban); copied = true; setTimeout(() => (copied = false), 2000); } catch { /* egal */ }
-  }
 </script>
 
 <main class="cmp">
@@ -57,19 +49,15 @@
 
     <section class="cmp-card cmp-pay">
       <h2>{t("cmp.howTo")}</h2>
-      <div class="cmp-giro">
-        <Qr text={epcPayload({ holder: c.holder, iban: c.iban, purpose })} label={t("cmp.qrLabel")} />
-        <div>
-          <p class="small muted">{t("cmp.scan")}</p>
-          <dl>
-            <dt>{t("cmp.holder")}</dt><dd>{c.holder}</dd>
-            <dt>IBAN</dt><dd class="num cmp-iban">{formatIban(c.iban)} <button class="btn sm cmp-copy" onclick={copy}>{copied ? `✓ ${t("cmp.copied")}` : t("cmp.copy")}</button></dd>
-            <dt>{t("cmp.purpose")}</dt><dd>{purpose}</dd>
-          </dl>
-        </div>
-      </div>
-      {#if c.paypal}<p><a class="btn cmp-paypal" href={paypalUrl(c.paypal)} target="_blank" rel="noopener noreferrer">PayPal.me/{c.paypal} ↗</a></p>{/if}
-      <p class="small muted cmp-note">{t("cmp.direct", { name: c.holder })}</p>
+      {#if c.paypal || c.link}
+        <p class="cmp-ways">
+          {#if c.paypal}<a class="btn primary cmp-paypal" href={paypalUrl(c.paypal)} target="_blank" rel="noopener noreferrer">PayPal.me/{c.paypal} ↗</a>{/if}
+          {#if c.link}<a class="btn cmp-ext" href={c.link} target="_blank" rel="noopener noreferrer nofollow">{t("cmp.payVia", { site: linkSite(c.link) })} ↗</a>{/if}
+        </p>
+      {:else}
+        <p class="cmp-none">{t("cmp.noMethod")}</p>
+      {/if}
+      <p class="small muted cmp-note">{t("cmp.direct")}</p>
     </section>
 
     <p class="cmp-foot small"><a href={base}>{t("cmp.planOwn")}</a> · <a href="{base}impressum.html">{t("legal.imprint")}</a> · <a href="{base}datenschutz.html">{t("legal.privacy")}</a></p>
@@ -90,13 +78,8 @@
   .cmp-prog i.pl { opacity: .35; }
   .cmp-sum { margin: 8px 0 0; }
   .cmp-sum b { font-size: 22px; }
-  .cmp-giro { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
-  .cmp-giro :global(.qr) { border-radius: 12px; flex: none; background: #fff; }
-  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 10px 0 0; font-size: 14px; }
-  dt { color: var(--ink-2); }
-  dd { margin: 0; overflow-wrap: anywhere; }
-  .cmp-iban { font-weight: 700; }
-  .cmp-copy { margin-inline-start: 6px; }
+  .cmp-ways { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
+  .cmp-ways .btn { overflow-wrap: anywhere; }
   .cmp-note { margin-top: 14px; }
   .cmp-foot { text-align: center; color: var(--ink-2); }
   .cmp-foot a { color: inherit; }
