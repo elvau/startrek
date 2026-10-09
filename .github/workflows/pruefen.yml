@@ -58,6 +58,14 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      # Browser für Playwright und Firebase-Emulatoren zwischenspeichern (sonst bei jedem Lauf neu heruntergeladen)
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/firebase/emulators
+          key: e2e-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
+          restore-keys: e2e-${{ runner.os }}-
       - name: Abhängigkeiten
         working-directory: app
         run: npm ci && npx playwright install --with-deps chromium
