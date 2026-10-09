@@ -25,6 +25,9 @@ const RETRY = new Set([429, 500, 502, 503]);
 const TIMEOUT = new Set([504, 524]);
 const API = "https://generativelanguage.googleapis.com/v1beta";
 
+/** Fehlermeldung von tryModel: Modell überlastet oder Anfragelimit (429, 503) */
+export const isOverloaded = (msg: string) => /^KI-Fehler (429|503) /.test(msg);
+
 /** Flash-Modelle, die der Schlüssel für Text nutzen darf, neueste zuerst (ohne Bild, Audio, Live, Embedding) */
 export function pickModels(list: { name?: string; supportedGenerationMethods?: string[] }[], skip: string[]): string[] {
   const num = (s: string) => (s.match(/\d+(\.\d+)?/)?.[0] ? parseFloat(s.match(/\d+(\.\d+)?/)![0]) : 0);

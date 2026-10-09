@@ -139,6 +139,7 @@ export const pl: Dict = {
   "ai.ctxNow": "Teraz",
   "ai.ctxQuestion": "Pytanie",
   "ai.err.busy": "AI jest teraz zajęta lub nie znalazła propozycji. Spróbuj ponownie za kilka minut.",
+  "ai.err.overloaded": "AI jest teraz przeciążona. Spróbuj ponownie później.",
   "ai.err.input": "To zapytanie nie działa. Opisz podróż krócej lub inaczej.",
   "ai.err.limit": "Osiągnięto dzienny limit. Jutro możesz kontynuować.",
   "ai.err.login": "Sesja wygasła. Zaloguj się ponownie.",

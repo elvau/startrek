@@ -135,6 +135,7 @@ export const es: Dict = {
   "ai.ctxNow": "Ahora",
   "ai.ctxQuestion": "Pregunta",
   "ai.err.busy": "La IA está ocupada o no pudo hacer una propuesta. Inténtalo de nuevo en unos minutos.",
+  "ai.err.overloaded": "La IA está sobrecargada ahora mismo. Inténtalo de nuevo más tarde.",
   "ai.err.input": "La solicitud no es válida. Describe el viaje de forma más breve o distinta.",
   "ai.err.limit": "Has alcanzado el límite diario. Mañana podrás seguir.",
   "ai.err.login": "Tu sesión ha caducado. Inicia sesión de nuevo.",

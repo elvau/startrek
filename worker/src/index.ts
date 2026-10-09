@@ -21,7 +21,7 @@ import { fetchEcb, type Rates } from "../../app/src/lib/fx";
 import { AA_LIST, parseAdvice, type AdviceMap } from "../../app/src/lib/advice";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
-import { geminiCaller } from "./gemini";
+import { geminiCaller, isOverloaded } from "./gemini";
 import { isAdmin, meter, noteClick, noteRoute, usageReport, type UsageEnv } from "./usage";
 import { checkLimit, IP_LIMITS, ipKey, searchWindows, type LimitEnv } from "./ratelimit";
 import { issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
@@ -329,7 +329,10 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
     console.log(JSON.stringify({ at: "agent", model, error: (e as Error).message }));
     // Fehler auf unserer Seite oder bei Gemini zählen nicht gegen das Tageslimit
     await quota.refund().catch(() => {});
-    return json({ error: (e as Error).message, remaining: Math.max(0, limit - quota.used) }, 502, h);
+    const msg = (e as Error).message;
+    // Anbieter überlastet (nach Wiederholung und Ausweichmodell): 503 statt 502, die App zeigt eine eigene Meldung
+    if (isOverloaded(msg)) return json({ error: msg, overloaded: true, remaining: Math.max(0, limit - quota.used) }, 503, h);
+    return json({ error: msg, remaining: Math.max(0, limit - quota.used) }, 502, h);
   }
 }
 
