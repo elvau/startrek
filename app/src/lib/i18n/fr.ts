@@ -347,6 +347,7 @@ export const fr: Dict = {
   "car.noteOneWay": "Prise {ap} {a} · retour {ap2} {b} · location aller simple, supplément env. {fee} € par voiture inclus",
   "car.when": "D’après les vols : prise en charge {a}, restitution {b} ({d}).",
   "car.whenTrip": "D’après les dates du voyage : prise en charge {a}, restitution {b} ({d}).",
+  "card.more": "Détails",
   "ch.plan.label": "Programme",
   "ch.plan.sub": "ce qui se passe quand",
   "ch.plan.title": "Jour par jour",

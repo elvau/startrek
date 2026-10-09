@@ -345,6 +345,7 @@ export const de = {
   "car.noteOneWay": "Abholung {ap} {a} · Rückgabe {ap2} {b} · Einwegmiete, Aufpreis ca. {fee} € je Auto eingerechnet",
   "car.when": "Aus den Flügen: Abholung {a}, Rückgabe {b} ({d}).",
   "car.whenTrip": "Aus den Reisedaten: Abholung {a}, Rückgabe {b} ({d}).",
+  "card.more": "Details",
   "ch.plan.label": "Tagesplan",
   "ch.plan.sub": "was wann passiert",
   "ch.plan.title": "Tag für Tag",
