@@ -1,4 +1,5 @@
 import { t } from "../i18n/index.svelte";
+import { isNetworkError } from "../neterror";
 
 /** Firebase-Fehler → Text für die Oberfläche; leer: nichts anzeigen (Person hat selbst abgebrochen bzw. ein zweiter Versuch läuft) */
 export function errorMessage(e: unknown): string {
@@ -8,5 +9,6 @@ export function errorMessage(e: unknown): string {
   if (code.includes("unavailable")) return t("cloud.offline");
   if (code.includes("unauthorized-domain")) return t("cloud.domain");
   if (code.includes("operation-not-allowed")) return t("cloud.method");
+  if (isNetworkError(e)) return t("net.failed");
   return (e as Error)?.message || String(e);
 }

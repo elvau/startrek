@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { netMessage, showError } from "../neterror";
   import { arrow, locale, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Reise zu einem Event: Was, wo, wann. Daraus bis zu drei Vorschläge (ohne Nacht, eine Nacht, ab Vortag),
@@ -65,10 +66,10 @@
       if (!res.sources.some(s => s.configured)) { evErr = t("evs.notReady"); return; }
       hits = uniqueById(res.events || []);
       if (!hits.length && res.sources.every(s => !s.ok)) {
-        evErr = res.sources.find(s => s.error)?.error || t("evs.none");
+        evErr = showError(res.sources.find(s => s.error)?.error) || t("evs.none");
         noteError(`Event-Suche: ${res.sources.map(s => `${s.id} ${s.error || (s.ok ? "ok" : "aus")}`).join(", ")}`);
       }
-    } catch (err) { evErr = (err as Error).message; noteError(`Event-Suche: ${evErr}`); }
+    } catch (err) { evErr = netMessage(err); noteError(`Event-Suche: ${evErr}`); }
     finally { evBusy = false; }
   }
   async function pick(h: EventHit) {
@@ -208,11 +209,11 @@
         const flight = flights.length ? flights.reduce((a, b) => (b.total < a.total ? b : a)) : null;
         const stay = st.status === "fulfilled" && st.value ? pickStayNear(st.value.offers.filter(o => !o.test), ev) : null;
         // Quelle auch nach dem zweiten Versuch ohne Antwort: nicht als „kein Flug“ ausgeben
-        const error = fl.status === "rejected" ? (fl.reason as Error).message : worthRetry(fl.value) ? t("ev.flightsDown") : undefined;
+        const error = fl.status === "rejected" ? netMessage(fl.reason) : worthRetry(fl.value) ? t("ev.flightsDown") : undefined;
         return { v, flight, stay, stayQ: v.nights ? q : null, total: (flight?.total || 0) + (stay ? Math.round(stay.total) : 0), error };
       }));
     } catch (err) {
-      if ((err as Error).name !== "AbortError") error = (err as Error).message;
+      if ((err as Error).name !== "AbortError") error = netMessage(err);
     } finally { busy = false; }
   }
 

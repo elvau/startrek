@@ -4,6 +4,7 @@ import { searchFootballData, type Cached } from "./footballdata";
 import { searchTicketmaster } from "./ticketmaster";
 import { searchSports, SPORT_FILTERS } from "./sports";
 import type { EventEnv, EventHit, EventQuery, EventSearchResult } from "./types";
+import { errorText } from "../netcheck";
 
 interface Provider {
   id: string;
@@ -52,7 +53,7 @@ export async function searchEvents(q: EventQuery, env: EventEnv = {}, f: typeof 
       sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: list.length, ms: Date.now() - t0 });
       return list;
     } catch (e) {
-      sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: (e as Error).message });
+      sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: errorText(e) });
       return [];
     }
   }));

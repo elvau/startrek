@@ -4,6 +4,7 @@
    * Hin und zurück: erst Hinflug-Tag, dann Rückflug-Tag antippen; nur hin: ein Tag. Danach läuft die echte Suche.
    * Lädt erst, wenn man ihn aufklappt.
    */
+  import { netMessage } from "../neterror";
   import { locale, t } from "../i18n/index.svelte";
   import { FLIGHTS_URL } from "../flights/app";
   import { calendarCells, nextMonth, type CalendarQuery, type CalendarResult } from "../flights/calendar";
@@ -37,7 +38,7 @@
     busy = true; err = ""; res = null; outDay = null;
     fetch(`${FLIGHTS_URL}/flights/calendar`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal: ctrl.signal })
       .then(async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || t("search.status", { s: r.status })); res = d as CalendarResult; })
-      .catch(e => { if ((e as Error).name !== "AbortError") err = (e as Error).message; })
+      .catch(e => { if ((e as Error).name !== "AbortError") err = netMessage(e); })
       .finally(() => (busy = false));
   });
 

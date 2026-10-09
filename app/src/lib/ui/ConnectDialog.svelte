@@ -1,5 +1,6 @@
 <script lang="ts">
   /* KI-Assistent verbinden (MCP): Schlüssel erzeugen und einmal anzeigen, dazu Adresse und Beispiel für Claude Code */
+  import { netMessage } from "../neterror";
   import { t } from "../i18n/index.svelte";
   import { claudeCommand, connect, createKey, MCP_URL, type NewKey } from "../connector/app.svelte";
   import Modal from "./Modal.svelte";
@@ -8,7 +9,7 @@
 
   async function make() {
     busy = true; err = "";
-    try { made = await createKey(); } catch (e) { err = (e as Error).message; } finally { busy = false; }
+    try { made = await createKey(); } catch (e) { err = netMessage(e); } finally { busy = false; }
   }
   async function copy(what: string, text: string) {
     try { await navigator.clipboard.writeText(text); copied = what; setTimeout(() => (copied = ""), 2000); } catch {}

@@ -1359,6 +1359,8 @@ export const pl: Dict = {
   "nav.language": "Język",
   "nav.more": "Więcej",
   "nav.theme": "Jasny czy ciemny",
+  "net.failed": "Nie można połączyć się z serwerem. Sprawdź połączenie z internetem i spróbuj ponownie.",
+  "net.retry": "Spróbuj ponownie",
   "newtrip.create": "Utwórz podróż",
   "newtrip.hint": "Miejsce i daty dodasz potem u góry w podróży.",
   "newtrip.title": "Nowa podróż",

@@ -1289,6 +1289,8 @@ export const en: Dict = {
   "nav.language": "Language",
   "nav.more": "More",
   "nav.theme": "Light or dark",
+  "net.failed": "Could not reach the server. Please check your internet connection and try again.",
+  "net.retry": "Try again",
   "newtrip.create": "Create trip",
   "newtrip.hint": "You'll add place and dates at the top of the trip afterwards.",
   "newtrip.title": "New trip",

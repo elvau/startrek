@@ -8,6 +8,7 @@ import { mergeFeed, type SportFeed } from "./feed";
 import { searchLocs, type AirportData } from "../geo/locations";
 import { findCity, type GeoData } from "../geo/places";
 import type { EventHit, EventQuery, EventSearchResult } from "./types";
+import { errorText } from "../netcheck";
 
 async function remote(q: EventQuery, signal?: AbortSignal): Promise<EventSearchResult> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
@@ -31,7 +32,7 @@ export async function searchEventsRemote(q0: EventQuery, signal?: AbortSignal): 
     return { events: mergeEvents([r.events || [], local]), sources: [...(r.sources || []).filter(s => s.id !== "sports"), mine] };
   } catch (err) {
     if (!local.length || (err as Error).name === "AbortError") throw err;
-    return { events: local, sources: [mine, { id: "remote", name: "Such-Dienst", configured: true, ok: false, count: 0, error: (err as Error).message }] };
+    return { events: local, sources: [mine, { id: "remote", name: "Such-Dienst", configured: true, ok: false, count: 0, error: errorText(err) }] };
   }
 }
 
