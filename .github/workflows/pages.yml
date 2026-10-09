@@ -46,7 +46,8 @@ jobs:
         run: node scripts/visa.mjs || echo "::warning::Einreisedaten nicht aktualisiert, alte Datei bleibt"
       - name: Sportkalender aktualisieren
         # Formel 1 (Jolpica) und große Sportevents (Wikidata); klappt das nicht, bleibt public/sports.json, wie sie ist
-        run: node scripts/sports.mjs || echo "::warning::Sportkalender nicht aktualisiert"
+        # höchstens 30 s (Wikidata ist manchmal langsam): die Testumgebung soll schnell stehen
+        run: timeout 30 node scripts/sports.mjs || echo "::warning::Sportkalender nicht aktualisiert"
       - name: Seite zusammenstellen
         run: scripts/site.sh _site
       - uses: actions/configure-pages@v5
