@@ -23,6 +23,17 @@ describe("Gemini-Aufruf mit Wiederholung", () => {
     expect(n.waits).toEqual([1000, 3000]);
     expect(calls).toBe(3);
   });
+  it("keine Antwort in der Zeit: gleich das Ausweichmodell", async () => {
+    const seen: string[] = [];
+    const f = (async (url: string, init?: RequestInit) => {
+      const m = url.split("/models/")[1].split(":")[0];
+      seen.push(m);
+      if (m === "b") return new Response(JSON.stringify({ ok: true }));
+      return new Promise<Response>((_, no) => init?.signal?.addEventListener("abort", () => no(new DOMException("timeout", "TimeoutError"))));
+    }) as typeof fetch;
+    expect(await callGemini({}, { key: "k", models: ["a", "b"], f, timeoutMs: 20, sleep: async () => {} })).toEqual({ ok: true });
+    expect(seen).toEqual(["a", "b"]);
+  });
   it("weiter überlastet: Ausweichmodell springt ein", async () => {
     const n = net([503, 503, 503, 200]);
     await callGemini({}, { key: "k", models: ["a", "b"], f: n.f, sleep: n.sleep });

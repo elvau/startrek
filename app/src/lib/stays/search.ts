@@ -5,6 +5,7 @@ import { searchLite } from "./liteapi";
 import { inCurrency, type Rates } from "../fx";
 import { keepStays } from "./sort";
 import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StaySearchResult } from "./types";
+import { errorText } from "../netcheck";
 
 /** Adressen der MCP-Server (Cloudflare-Variablen); Booking.com erst mit eingetragener Adresse */
 export interface StayEnv {
@@ -64,7 +65,7 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
       sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0, ...(test ? { test } : {}) });
       return offers;
     } catch (e) {
-      sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: (e as Error).message });
+      sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: errorText(e) });
       return [];
     }
   }));

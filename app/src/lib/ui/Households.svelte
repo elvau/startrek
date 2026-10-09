@@ -9,6 +9,9 @@
   import { presences } from "../calc";
   import { dateDE } from "../format";
   import { loadPlz, suggest, type Place } from "../plz";
+  import { hhFocus } from "./hhFocus.svelte";
+  import { flashEl } from "./showItem";
+  import { untrack } from "svelte";
 
   const names = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))]);
   const pres = $derived(presences(app.trip));
@@ -27,6 +30,16 @@
     q = app.trip.households?.[name]?.plz || "";
     if (open && !plz) loadPlz().then(m => (plz = m)).catch(() => {});
   }
+  // Sprung von der Anfahrt am Flug (#243): Familie aufklappen, hinscrollen, aufleuchten
+  $effect(() => {
+    if (!hhFocus.n) return;
+    const name = hhFocus.name;
+    untrack(() => {
+      if (!name || !names.includes(name)) return;
+      if (open !== name) toggle(name);
+      setTimeout(() => flashEl([...document.querySelectorAll<HTMLElement>(".hh")].find(x => x.dataset.hh === name)), 60);
+    });
+  });
   function pick(name: string, code: string, p: Place) {
     const h = hh(name);
     h.plz = code; h.geo = { lat: p.lat, lon: p.lon, ort: p.ort };
@@ -87,7 +100,7 @@
     {/if}
   </div>
   {#each names as name (name)}
-    <div class="hh" class:open={open === name}>
+    <div class="hh" class:open={open === name} data-hh={name}>
       <button class="hh-sum" onclick={() => toggle(name)} aria-expanded={open === name}>
         <b>{name}</b>
         <span>{accessText(name)}</span>

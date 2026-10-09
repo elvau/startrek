@@ -64,6 +64,14 @@ describe("KI-Reiseplaner", () => {
     expect(res.trips[0]).toMatchObject({ place: "Palma", total: 600 });
   });
 
+  it("Zeit um: nach der laufenden Runde mit dem Gefundenen abschließen (lange Rundreisen)", async () => {
+    const f = fake([call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13" })]);
+    let t = 0;
+    const res = await runAgent(req, { ...f.deps, deadline: 100, now: () => (t += 60) });
+    expect(f.asked.bodies).toHaveLength(2);
+    expect(res.trips[0]).toMatchObject({ place: "Palma", total: 600 });
+  });
+
   it("nichts gefunden und kein Vorschlag: Fehler", async () => {
     const f = fake([call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2026-01-10", return: "2026-01-13" })]);
     await expect(runAgent(req, f.deps)).rejects.toThrow(/kein.*Ergebnis/);

@@ -4,6 +4,7 @@
  * Je Posten auf Wunsch: ein günstigeres Angebot für dieselbe Reise suchen.
  * Gebuchte, bezahlte und verworfene Posten bleiben außen vor, ebenso eigene Einträge ohne Suche.
  */
+import { netMessage } from "./neterror";
 import { t } from "./i18n/index.svelte";
 import { FIXED, type Item, type Option, type Trip, type WatchHit } from "./model";
 import { activeOption } from "./calc";
@@ -114,7 +115,7 @@ export async function refreshItem(trip: Trip, it: Item, s: Searchers): Promise<R
     }
     return { hit: prices[o.id] != null ? { was, now: prices[o.id] } : { was }, prices };
   } catch (e) {
-    return { hit: { was, err: (e as Error).message || t("watch.failed") }, prices: {} };
+    return { hit: { was, err: netMessage(e) || t("watch.failed") }, prices: {} };
   }
 }
 
@@ -166,7 +167,7 @@ export async function findCheaper(trip: Trip, it: Item, s: Searchers): Promise<W
     const cheap = found.filter(f => !it.options.some(x => f.same(x))).sort((a, b) => a.price - b.price)[0];
     return cheap && Math.round(cheap.price) < now ? { ...base, best: Math.round(cheap.price), bestOpt: cheap.opt() } : { ...base, noBetter: true };
   } catch (e) {
-    return { ...base, err: (e as Error).message || t("watch.failed") };
+    return { ...base, err: netMessage(e) || t("watch.failed") };
   }
 }
 

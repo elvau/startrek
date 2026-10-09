@@ -65,7 +65,9 @@ Fragen beantworten („Was fehlt noch?“) oder Änderungen vorschlagen („gün
 
 - Der kostenlose Tarif der Gemini-API hat Mengengrenzen, und Google darf die Eingaben dort zur Verbesserung nutzen.
   Für den echten Betrieb den kostenpflichtigen Tarif nehmen und `public/datenschutz.html` (Abschnitt 7) anpassen.
-- Nur angemeldete Nutzer, Tageslimit pro Nutzer. Bezahlung (Premium) folgt später.
+- Nur angemeldete Nutzer mit bestätigter E-Mail (Google, Anmelde-Link; `requireVerified`), Tageslimit pro Nutzer (gezählt vor dem Lauf, zurück bei Fehler oder Rückfrage), dazu je IP
+  höchstens 15 pro Stunde und 40 pro Tag (`worker/src/ratelimit.ts`, `IP_LIMITS`). Nach 80 s schlägt der Planer das
+  bisher Gefundene vor; Gemini-Aufrufe brechen nach 40 s ab und gehen ans nächste Modell. Bezahlung (Premium) folgt später.
 
 ## Tests
 

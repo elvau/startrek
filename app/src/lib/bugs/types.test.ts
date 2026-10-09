@@ -17,10 +17,10 @@ describe("Fehlermeldung", () => {
     const b = bugBody(r, "https://w.test/bug-image/x.jpg", "Anna");
     expect(b).toContain("> Summe &lt;b&gt;falsch&lt;/b&gt; | kaputt\n> zweite Zeile");
     expect(b).toContain("![Bildschirmfoto](https://w.test/bug-image/x.jpg)");
-    expect(b).toContain("| Ansicht | Reise · einfach · 3 Personen |");
+    expect(b).toContain("| Ansicht | `Reise · einfach · 3 Personen` |");
     expect(b).toContain("**Letzte Reisewechsel**");
     expect(b).toContain("14:11:52 weg (im Konto weg) → Startseite: ef56gh78");
-    expect(b).toContain("| Gemeldet von | Anna |");
+    expect(b).toContain("| Gemeldet von | `Anna` |");
     expect(b).toContain("TypeError: a is undefined");
   });
 });

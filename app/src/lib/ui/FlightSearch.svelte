@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { netMessage, showError, isNetText } from "../neterror";
   import { arrow, autoName, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
@@ -248,8 +249,8 @@
   const dur = (m: number) => `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`;
   const hm = (h: number) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, "0")} h`;
 
-  async function search(e: Event) {
-    e.preventDefault();
+  async function search(e?: Event) {
+    e?.preventDefault();
     error = ""; list = null; rows = []; sources = []; lateOut = 0; avoidedOut = 0; rounds = null; roundErrors = []; filter = noFilter();
     if (!aps.length) { error = t("fs.errAirport"); return; }
     if (kind === "round") return roundSearch();
@@ -296,11 +297,11 @@
           if (!isNaN(dl)) { const before = rated.length; rated = rated.filter(o => !isNaN(o.home) && o.home <= dl); late += before - rated.length; }
           all.push(...rated);
           // Fehler nur zeigen, wenn keine Quelle geantwortet hat; sonst gab es schlicht keine passende Verbindung
-          const err = r.sources.some(s => s.ok) ? undefined : r.sources.find(s => s.configured && !s.ok)?.error;
+          const err = r.sources.some(s => s.ok) ? undefined : showError(r.sources.find(s => s.configured && !s.ok)?.error) || undefined;
           cmp.push(compareRow(code, rated, rated.length ? undefined : err));
         } catch (err) {
           if ((err as Error).name === "AbortError") throw err;
-          cmp.push(compareRow(code, [], (err as Error).message));
+          cmp.push(compareRow(code, [], netMessage(err)));
         }
       } };
       await pass(qq);
@@ -317,7 +318,7 @@
       sources = [...src.values()];
       lateOut = late;
     } catch (err) {
-      if ((err as Error).name !== "AbortError") error = (err as Error).message;
+      if ((err as Error).name !== "AbortError") error = netMessage(err);
     } finally { busy = false; progress = ""; }
   }
 
@@ -380,7 +381,7 @@
       roundErrors = rounds.length ? [] : res.flatMap(r => r.errors);
       roundMore = [...new Set(res.flatMap(r => r.moreStops || []))];
     } catch (err) {
-      if ((err as Error).name !== "AbortError") error = (err as Error).message;
+      if ((err as Error).name !== "AbortError") error = netMessage(err);
     } finally { busy = false; progress = ""; }
   }
 
@@ -574,13 +575,13 @@
     {/if}
   </form>
 
-  {#if error}<p class="err small">{error}</p>{/if}
+  {#if error}<p class="err small">{error}{#if isNetText(error)} <button type="button" class="linkbtn" onclick={() => search()}>{t("net.retry")}</button>{/if}</p>{/if}
 
   {#if rounds}
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
-          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}{s.test ? ` (${t("test.badge")})` : ""}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
+          <span class:ok={s.ok} class:off={!s.configured} title={showError(s.error)}>{s.name}{s.test ? ` (${t("test.badge")})` : ""}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
         {/each}
       </div>
       {#if sources.some(s => s.test && s.count)}<p class="warnline test-banner">⚠ {t("test.banner", { list: sources.filter(s => s.test && s.count).map(s => s.name).join(", ") })}</p>{/if}
@@ -639,7 +640,7 @@
     {:else}
       <p class="muted small">{t("fs.roundNone")}</p>
     {/if}
-    {#each roundErrors as e (e)}<p class="muted small">{e}</p>{/each}
+    {#each roundErrors as e (e)}<p class="muted small">{showError(e)}</p>{/each}
     {#if !rounds.length && farOut}<p class="warnline fs-farout">{t("fs.farOut")}</p>{/if}
     {#if roundMore.length}<p class="muted small fs-morestops">{t("fs.moreStops", { list: roundMore.join(", ") })}</p>{/if}
     {#if avoidedOut}<p class="muted small">{tn("fs.avoidedOut", avoidedOut)}</p>{/if}
@@ -650,7 +651,7 @@
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
-          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}{s.test ? ` (${t("test.badge")})` : ""}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
+          <span class:ok={s.ok} class:off={!s.configured} title={showError(s.error)}>{s.name}{s.test ? ` (${t("test.badge")})` : ""}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
         {/each}
       </div>
       {#if sources.some(s => s.test && s.count)}<p class="warnline test-banner">⚠ {t("test.banner", { list: sources.filter(s => s.test && s.count).map(s => s.name).join(", ") })}</p>{/if}

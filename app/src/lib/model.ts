@@ -419,10 +419,13 @@ export interface Campaign {
   text?: string;
   /** Ziel in Euro; fehlt: Reisekosten */
   goal?: number;
-  holder: string;
-  iban: string;
   /** PayPal.me-Name (ohne Adresse) */
   paypal?: string;
+  /** Link zu einer Sammelaktion (campaign.ts LINK_HOSTS) */
+  link?: string;
+  /** früher veröffentlicht, wird beim nächsten Speichern entfernt */
+  holder?: string;
+  iban?: string;
   /** zuletzt veröffentlicht (ISO) */
   at?: string;
 }

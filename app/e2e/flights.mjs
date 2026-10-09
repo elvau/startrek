@@ -336,8 +336,16 @@ try {
   // Anwesenheit von Hase folgt dem Flug von Klein
   if (await p.locator("#stay .pl-notes li", { hasText: "Hase: Anwesenheit offen" }).count()) fail("Anwesenheit Hase folgt dem Flug nicht");
   log("Mitfliegen: „Flug Hase“ wie Flug Klein (ab DUS, eigene Anfahrt), Anwesenheit folgt");
+  // Anfahrt antippen (#243): Familie Hase klappt in den Familien-Einstellungen auf und leuchtet
+  await along.locator(".bp-acc-l", { hasText: "Hase:" }).click();
+  const hhHase = p.locator(".hh.open", { has: p.locator(".hh-sum b", { hasText: /^Hase$/ }) });
+  await hhHase.waitFor();
+  if (!(await hhHase.locator("select").first().count())) fail("Anfahrt Hase nicht bearbeitbar");
+  if (await p.locator(".card.edit[data-item]").count()) fail("Antippen der Anfahrt öffnet auch den Flug-Posten");
+  await hhHase.locator(".hh-sum").click();
+  log("Anfahrt am Flug antippen: Familie Hase in den Einstellungen aufgeklappt");
 
-  await along.click();
+  await along.locator(".bp-ap").first().click(); // nicht mittig: dort liegt die Anfahrt-Zeile (eigener Sprung)
   if (!(await p.locator(".editor .chip.on", { hasText: "Wie Flug Klein" }).count())) fail("Editor zeigt Mitfliegen nicht");
   await p.locator(".editor .fs-item", { hasText: "Eigenen Flug suchen" }).click();
   if (!(await m.locator("p", { hasText: "Bisher: mitfliegen wie „Flug Klein“" }).count())) fail("Vergleich zum Mitfliegen fehlt");

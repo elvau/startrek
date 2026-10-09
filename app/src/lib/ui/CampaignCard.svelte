@@ -1,15 +1,16 @@
 <script lang="ts">
   /*
-   * Aktionsseite einrichten (im Bereich „Zuschüsse & Kasse“): Titel, Text, Ziel, Kontoinhaber, IBAN, PayPal.me.
-   * Veröffentlichen nur angemeldet und mit Einwilligung (Name und IBAN sind für alle mit dem Link sichtbar).
+   * Aktionsseite einrichten (im Bereich „Zuschüsse & Kasse“): Titel, Text, Ziel, PayPal.me und/oder Link zu einer
+   * Sammelaktion. Veröffentlichen nur angemeldet und mit Einwilligung (beides ist für alle mit dem Link sichtbar).
    * Der Fortschritt (eingegangene und zugesagte Zuschüsse) wird automatisch nachgezogen, solange die Seite besteht.
    */
+  import { netMessage } from "../neterror";
   import { untrack } from "svelte";
   import { t } from "../i18n/index.svelte";
   import { access, app, calc } from "../store.svelte";
   import { eur, parseNum } from "../calc";
   import { cloud, deleteCampaign, newCampaignId, saveCampaign } from "../cloud/cloud.svelte";
-  import { campaignDoc, campaignLink, campaignProblem, formatIban, LIMITS, type Campaign } from "../campaign";
+  import { campaignDoc, campaignLink, campaignProblem, cleanLink, cleanPaypal, LINK_HOSTS, linkSite, LIMITS, type Campaign } from "../campaign";
   import { fromShown, symbol, toShown } from "../currency.svelte";
   import { locale } from "../i18n/index.svelte";
 
@@ -26,7 +27,7 @@
 
   function start() {
     const cur = app.trip.campaign;
-    edit = cur ? { ...cur } : { id: "", title: app.trip.name || "", text: t("cmp.textDefault"), holder: cloud.user?.name || "", iban: "", paypal: "" };
+    edit = cur ? { ...cur } : { id: "", title: app.trip.name || "", text: t("cmp.textDefault"), paypal: "", link: "" };
     goalText = edit.goal != null ? String(toShown(edit.goal)).replace(".", ",") : "";
     consent = !!cur?.at;
     err = "";
@@ -36,7 +37,8 @@
   async function publish() {
     if (!edit) return;
     const x = parseNum(goalText);
-    const next: Campaign = { ...edit, goal: goalText.trim() && !isNaN(x) ? Math.max(0, fromShown(x)) : undefined };
+    const { holder: _h, iban: _i, ...rest } = edit;
+    const next: Campaign = { ...rest, goal: goalText.trim() && !isNaN(x) ? Math.max(0, fromShown(x)) : undefined };
     const p = campaignProblem(next, consent);
     if (p) { err = t(p); return; }
     busy = true; err = "";
@@ -47,7 +49,7 @@
       app.trip.campaign = next;
       lastSent = JSON.stringify(campaignDoc(next, app.trip, sums(), ""));
       edit = null;
-    } catch (e) { err = (e as Error).message; }
+    } catch (e) { err = netMessage(e); }
     finally { busy = false; }
   }
   const withoutOwner = ({ owner: _o, ...d }: ReturnType<typeof campaignDoc>) => d;
@@ -56,7 +58,7 @@
     if (!c || !confirm(t("cmp.withdrawConfirm"))) return;
     busy = true;
     try { if (c.at) await deleteCampaign(c.id); delete app.trip.campaign; edit = null; }
-    catch (e) { err = (e as Error).message; }
+    catch (e) { err = netMessage(e); }
     finally { busy = false; }
   }
 
@@ -67,6 +69,8 @@
     if (!c?.at || !mine) return;
     const doc = JSON.stringify(campaignDoc(c, app.trip, sums(), ""));
     untrack(() => {
+      // früher mit Kontoinhaber und IBAN veröffentlicht: beides aus Reise und Seite nehmen
+      if ("iban" in c || "holder" in c) { delete c.iban; delete c.holder; lastSent = "alt"; }
       if (!lastSent) { lastSent = doc; return; }
       if (doc === lastSent) return;
       clearTimeout(timer);
@@ -87,11 +91,9 @@
         <label class="f">{t("cmp.fText")}<textarea rows="3" bind:value={edit.text} maxlength={LIMITS.text}></textarea></label>
         <label class="f">{t("cmp.fGoal")}<span class="fu-amt"><input inputmode="decimal" bind:value={goalText} placeholder={String(Math.round(toShown(T.total)))} /> <span>{symbol(locale())}</span></span>
           <small class="muted">{t("cmp.goalHint", { v: eur(T.total) })}</small></label>
-        <div class="ed-row">
-          <label class="f grow">{t("cmp.holder")}<input bind:value={edit.holder} maxlength={LIMITS.holder} autocomplete="name" /></label>
-          <label class="f grow">IBAN<input class="cmp-iban-in" bind:value={edit.iban} placeholder="DE89 3704 0044 0532 0130 00" autocomplete="off" spellcheck="false" /></label>
-        </div>
-        <label class="f">{t("cmp.fPaypal")}<input bind:value={edit.paypal} placeholder="paypal.me/…" autocomplete="off" /></label>
+        <label class="f">{t("cmp.fPaypal")}<input class="cmp-paypal-in" bind:value={edit.paypal} placeholder="paypal.me/…" autocomplete="off" /></label>
+        <label class="f">{t("cmp.fLink")}<input class="cmp-link-in" type="url" bind:value={edit.link} placeholder="https://gofund.me/…" autocomplete="off" />
+          <small class="muted">{t("cmp.linkHint", { sites: LINK_HOSTS.filter(h => h !== "gofund.me").join(", ") })}</small></label>
         <label class="in-row cmp-consent"><input type="checkbox" bind:checked={consent} /> {t("cmp.consent")}</label>
         <p class="small muted">{t("cmp.legal")}</p>
         {#if err}<p class="err small">{err}</p>{/if}
@@ -110,7 +112,7 @@
         <a class="btn sm cmp-open" href={link} target="_blank" rel="noopener noreferrer">{t("cmp.open")} ↗</a>
         {#if mine && !access.readonly}<button class="btn sm" onclick={start}>{t("cmp.edit")}</button><button class="btn sm fu-del" disabled={busy} onclick={withdraw}>{t("cmp.withdraw")}</button>{/if}
       </p>
-      <p class="small muted">{mine ? t("cmp.autoUpdate") : t("cmp.byOther")} · {t("cmp.to", { name: c.holder, iban: formatIban(c.iban) })}</p>
+      <p class="small muted">{mine ? t("cmp.autoUpdate") : t("cmp.byOther")} · {t("cmp.via", { how: [cleanPaypal(c.paypal) && `PayPal.me/${cleanPaypal(c.paypal)}`, cleanLink(c.link) && linkSite(cleanLink(c.link))].filter(Boolean).join(" · ") || "–" })}</p>
       {#if err}<p class="err small">{err}</p>{/if}
     {:else if !access.readonly}
       <p class="small muted">{t("cmp.hint")}</p>

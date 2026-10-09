@@ -5,6 +5,7 @@ import { searchDuffel } from "./duffel";
 import type { FlightOffer, FlightQuery, SearchResult, SourceStatus } from "./types";
 import { partnerOn } from "../partner";
 import { inCurrency, type Rates } from "../fx";
+import { errorText } from "../netcheck";
 
 /** Schlüssel des Such-Dienstes (Cloudflare-Secrets); fehlt einer, bleibt die Quelle aus */
 export interface FlightEnv {
@@ -70,7 +71,7 @@ export async function searchAll(q: FlightQuery, env: FlightEnv = {}, f: typeof f
       sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0, ...(test ? { test } : {}) });
       return offers;
     } catch (e) {
-      sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: (e as Error).message });
+      sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: errorText(e) });
       return [];
     }
   }));

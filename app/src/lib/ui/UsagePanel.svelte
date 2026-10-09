@@ -1,5 +1,6 @@
 <script lang="ts">
   /* Admin: Nutzung der kostenlosen Kontingente (Cloudflare, Anbieter, Funktionen) und Links zu den Konsolen */
+  import { netMessage } from "../neterror";
   import { locale, t, type Key } from "../i18n/index.svelte";
   import { admin, fetchUsage } from "../admin/app.svelte";
   import { clickRows, cloudflareRows, consoleLinks, fmtBytes, providerRows, routeRows, type Row, type UsageReport } from "../admin/usage";
@@ -19,7 +20,7 @@
     try {
       const r = await fetchUsage();
       if (r.report) report = r.report; else err = r.error || t("search.status", { s: r.status });
-    } catch (e) { err = (e as Error).message; }
+    } catch (e) { err = netMessage(e); }
     finally { busy = false; }
   }
   $effect(() => { void load(); });
@@ -31,7 +32,7 @@
   let rerr = $state("");
   async function reset() {
     resetting = true; rerr = "";
-    try { wiped = await resetAccount(); } catch (e) { rerr = (e as Error).message; }
+    try { wiped = await resetAccount(); } catch (e) { rerr = netMessage(e); }
     finally { resetting = false; confirming = false; }
   }
 

@@ -1,4 +1,5 @@
 /* Preise prüfen in der App: Nachsuche starten, Fortschritt, Ergebnis an der Reise speichern */
+import { netMessage } from "./neterror";
 import { app } from "./store.svelte";
 import { applyRefresh, findCheaper, refreshTrip, type Searchers } from "./watch";
 import { searchFlights } from "./flights/app";
@@ -22,7 +23,7 @@ export async function runWatch() {
     const res = await refreshTrip(JSON.parse(JSON.stringify(trip)), searchers, (d, n) => { watchRun.done = d; watchRun.of = n; });
     // inzwischen eine andere Reise geöffnet: Ergebnis gehört zur alten
     if (app.trip.id === trip.id) applyRefresh(app.trip, res);
-  } catch (e) { watchRun.err = (e as Error).message; }
+  } catch (e) { watchRun.err = netMessage(e); }
   finally { watchRun.busy = false; }
 }
 
