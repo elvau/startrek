@@ -24,6 +24,24 @@ export const searchWindows = (env: LimitEnv): Window[] => [
   { limit: Number(env.SEARCH_PER_HOUR) || 600, sec: 3600 }
 ];
 
+/** Schlüssel einer IP: IPv6 nach dem /64-Netz (sonst bekäme jede Adresse im eigenen Netz ein neues Limit) */
+export function ipKey(ip: string | null): string | null {
+  if (!ip) return null;
+  if (!ip.includes(":")) return ip;
+  const [head, tail = ""] = ip.toLowerCase().split("::");
+  const a = head ? head.split(":") : [], b = tail ? tail.split(":") : [];
+  const full = ip.includes("::") ? [...a, ...Array(Math.max(0, 8 - a.length - b.length)).fill("0"), ...b] : a;
+  return full.slice(0, 4).map(x => x.replace(/^0+(?=.)/, "")).join(":") + "::/64";
+}
+
+/** weitere Grenzen pro IP (KI-Planer, Fehlermeldungen, Schlüssel, Klicks): eigener Zähler je Art */
+export const IP_LIMITS: Record<string, Window[]> = {
+  agent: [{ limit: 15, sec: 3600 }, { limit: 40, sec: 86400 }],
+  bug: [{ limit: 10, sec: 3600 }],
+  mcpkey: [{ limit: 10, sec: 3600 }],
+  click: [{ limit: 120, sec: 60 }]
+};
+
 /** zählt die Anfrage mit; ok: false und Wartezeit in Sekunden, wenn ein Fenster voll ist (dann wird nicht gezählt) */
 export async function checkLimit(store: Store, ip: string | null, windows: Window[], now = Date.now()): Promise<{ ok: boolean; retryAfter: number }> {
   if (!ip) return { ok: true, retryAfter: 0 };

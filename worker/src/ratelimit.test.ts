@@ -1,6 +1,6 @@
 /* Läuft mit den Tests der App (cd app && npx vitest run) */
 import { describe, expect, it } from "vitest";
-import { checkLimit, searchWindows, type Store } from "./ratelimit";
+import { checkLimit, ipKey, searchWindows, type Store } from "./ratelimit";
 
 /** Zwischenspeicher wie im Rechenzentrum, ohne Ablauf (die Fenster stecken im Schlüssel) */
 function memory(): Store & { keys: () => string[] } {
@@ -46,5 +46,12 @@ describe("Mengenbegrenzung der Suchen", () => {
     const s = memory();
     expect(await checkLimit(s, null, [{ limit: 0, sec: 60 }], T)).toEqual({ ok: true, retryAfter: 0 });
     expect(s.keys()).toEqual([]);
+  });
+  it("IPv6 zählt je /64-Netz, IPv4 je Adresse", () => {
+    expect(ipKey("2001:db8:85a3:0042:1000:8a2e:370:7334")).toBe("2001:db8:85a3:42::/64");
+    expect(ipKey("2001:db8:85a3:42::1")).toBe("2001:db8:85a3:42::/64");
+    expect(ipKey("2001:db8::1")).toBe("2001:db8:0:0::/64");
+    expect(ipKey("203.0.113.7")).toBe("203.0.113.7");
+    expect(ipKey(null)).toBeNull();
   });
 });

@@ -21,6 +21,9 @@ export interface AgentDeps {
   stays: (q: StayQuery) => Promise<StaySearchResult>;
   /** ist noch Platz für eine Suche? (Cloudflare erlaubt nur wenige ausgehende Anfragen pro Aufruf) */
   canSearch?: () => boolean;
+  /** spätestens dann aufhören (ms seit 1970): bestes bisher Gefundenes vorschlagen statt weiterzurechnen */
+  deadline?: number;
+  now?: () => number;
 }
 
 /** Obergrenzen je Anfrage (Kosten, Wartezeit, Cloudflare-Limit für ausgehende Anfragen) */
@@ -554,7 +557,10 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
 
   const contents: any[] = [{ role: "user", parts: [{ text: userText(r) }] }];
   let retried = false, nudges = 0;
+  const now = deps.now || Date.now;
   for (let round = 0; round < LIMITS.rounds; round++) {
+    // Zeit um (lange Rundreisen): mit dem Gefundenen abschließen, sonst bricht die Verbindung ab („Failed to fetch“)
+    if (deps.deadline && round > 0 && now() > deps.deadline) return autoProposal();
     const last = round === LIMITS.rounds - 1;
     const res = await deps.gemini({
       systemInstruction: { parts: [{ text: systemPrompt(r) }] },

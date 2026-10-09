@@ -58,7 +58,8 @@ export function bugTitle(r: BugReport): string {
 export function bugBody(r: BugReport, image?: string, who?: string): string {
   const quote = r.text.split("\n").map(l => "> " + l.replace(/[<>]/g, c => (c === "<" ? "&lt;" : "&gt;"))).join("\n");
   const rows: [string, string][] = [["Seite", r.page], ["Ansicht", r.view], ["Sprache", r.lang], ["Browser", r.ua], ["Bildschirm", r.screen], ["App-Stand", r.version]];
-  const cell = (s: string) => (s || "–").replace(/\|/g, "\\|").replace(/\n/g, " ");
+  // als Code: Links, Bilder und @Erwähnungen aus fremden Feldern wirken nicht
+  const cell = (s: string) => (s ? "`" + s.replace(/`/g, "ʼ").replace(/\|/g, "\\|").replace(/\n/g, " ") + "`" : "–");
   return [
     quote,
     image ? `\n![Bildschirmfoto](${image})\n\n_Bild wird nach 30 Tagen gelöscht._` : "",
