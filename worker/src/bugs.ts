@@ -2,7 +2,7 @@
  * Fehlermeldungen aus der Beta: Bild in den R2-Speicher (löscht nach 30 Tagen per Regel im Dashboard),
  * Meldung als Issue in ein privates GitHub-Repo. Nur mit Anmeldung, wenige Meldungen pro Tag.
  */
-import { verifyAnyIdToken } from "../../app/src/lib/agent/auth";
+import { requireVerified, verifyAnyIdToken } from "../../app/src/lib/agent/auth";
 import { BUG_IMAGE_TYPES, BUG_MAX_IMAGE, bugBody, bugTitle, parseBugReport } from "../../app/src/lib/bugs/types";
 
 export interface BugEnv {
@@ -36,7 +36,7 @@ export async function reportBug(req: Request, env: BugEnv, h: Record<string, str
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Bitte anmelden" }, 401, h);
   let uid: string;
-  try { uid = await verifyAnyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7", env.FIREBASE_TEST_PROJECT_ID); }
+  try { uid = await verifyAnyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7", env.FIREBASE_TEST_PROJECT_ID); requireVerified(token); }
   catch (e) { return json({ error: (e as Error).message }, 401, h); }
 
   let form: FormData;

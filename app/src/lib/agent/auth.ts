@@ -54,5 +54,14 @@ export async function verifyAnyIdToken(token: string, main: string, test?: strin
   }
 }
 
+/**
+ * Nur bestätigte E-Mail-Adressen (KI-Planer, Fehlermeldungen, Konnektor): Google und der Anmelde-Link bestätigen sie
+ * immer; ohne Bestätigung ließen sich über die REST-Schnittstelle beliebig viele Konten anlegen. Erst nach verify… aufrufen.
+ */
+export function requireVerified(token: string) {
+  const p = token.split(".")[1];
+  if (!p || part(p).email_verified !== true) throw new Error("Bitte zuerst die E-Mail-Adresse bestätigen (Anmeldung mit Google oder per Link)");
+}
+
 /** nur für Tests: Schlüssel-Zwischenspeicher leeren */
 export const resetKeys = () => { cached = null; };
