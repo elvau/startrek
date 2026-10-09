@@ -105,6 +105,11 @@ select option,select optgroup{background:var(--paper);color:var(--ink)}
 /* Flug: Anreise */
 .bp-acc{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--ink-2);padding:8px 10px;border-radius:10px;background:var(--paper-2)}
 .bp-acc b{color:var(--ink)}
+.bp-acc-l{all:unset;cursor:pointer;border-radius:6px}
+.bp-acc-l:hover{color:var(--ink);text-decoration:underline}
+.bp-acc-l:focus-visible{outline:2px solid var(--a)}
+.bp-acc-l i{font-style:normal;color:var(--a);font-weight:700}
+.hh.flash,.search-row.flash{animation:flash 2s ease-out}
 
 /* Unterkunft */
 .warnline{font-size:12.5px;color:var(--warn);font-weight:600}
@@ -790,6 +795,8 @@ body[data-ch="split"] .amb-split{opacity:1}
 .aim-ai{color:var(--idea)}
 .ai-fab .aim{font-size:20px}
 .src-link{margin:0;padding:6px 22px 10px;font-size:12.5px}
+.road-jump{margin:0;padding:0 22px 10px;font-size:12.5px}
+.road-jump .linkbtn{padding:0}
 .src-link a{font-weight:700}
 .src-link small{color:var(--ink-3)}
 .aif{display:flex;align-items:center;gap:8px;padding:8px 22px 10px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted)}
