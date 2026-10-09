@@ -1290,6 +1290,7 @@ export const fr: Dict = {
   "nav.more": "Plus",
   "nav.theme": "Clair ou sombre",
   "net.failed": "Impossible de joindre le serveur. Vérifie ta connexion internet et réessaie.",
+  "net.retry": "Réessayer",
   "newtrip.create": "Créer le voyage",
   "newtrip.hint": "Tu ajouteras le lieu et les dates ensuite en haut du voyage.",
   "newtrip.title": "Nouveau voyage",

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { netMessage } from "../neterror";
+  import { netMessage, isNetworkError } from "../neterror";
   import { arrow, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * KI-Assistent (Beta) als Chat unten rechts: Wunsch schreiben, nachschärfen („lieber im Juni“, „günstiger“),
@@ -29,7 +29,7 @@
 
   /** Nachricht; bei einer Rückfrage der KI mit Antworten zum Antippen */
   interface Msg {
-    me: boolean; text: string; trips?: AgentTrip[]; question?: boolean; options?: string[];
+    me: boolean; text: string; retry?: string; trips?: AgentTrip[]; question?: boolean; options?: string[];
     /** Änderungen an der offenen Reise: offen, übernommen, als Variante angelegt, rückgängig gemacht */
     edit?: AgentEdit; tripId?: string; state?: "open" | "applied" | "variant" | "undone"; snap?: string;
     /** Vorschläge von der Startseite aus angefragt: Übernehmen legt eine neue Reise an, auch wenn inzwischen eine offen ist */
@@ -104,7 +104,7 @@
       if ((err as Error).name === "AbortError") return;
       const r = (err as { remaining?: number }).remaining;
       if (r != null) remaining = r;
-      msgs.push({ me: false, text: netMessage(err) });
+      msgs.push({ me: false, text: netMessage(err), ...(isNetworkError(err) ? { retry: w } : {}) });
       done("error");
     } finally { busy = false; void scrollDown(); }
   }
@@ -226,6 +226,9 @@
       {#each msgs as m, i (i)}
         <div class="ai-msg" class:me={m.me} class:ai-q={m.question}>
           {m.text}
+          {#if m.retry && i === msgs.length - 1 && !busy}
+            <div class="chips ai-opts"><button class="chip" onclick={() => send(m.retry)}>{t("net.retry")}</button></div>
+          {/if}
           {#if m.question && m.options?.length && i === msgs.length - 1 && !busy}
             <div class="chips ai-opts">
               {#each m.options as o (o)}<button class="chip" onclick={() => send(o)}>{o}</button>{/each}

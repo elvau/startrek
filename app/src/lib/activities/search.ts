@@ -3,6 +3,7 @@ import { partnerOn } from "../partner";
 import type { SourceStatus } from "../flights/types";
 import { searchViator } from "./viator";
 import type { ActivityEnv, ActivityHit, ActivityQuery, ActivitySearchResult } from "./types";
+import { errorText } from "../netcheck";
 
 /**
  * Viator-Bedingungen (docs/EVENT.md): Inhalte nur auf der eigenen Domain und nur, um Partner-Traffic zu viator.com zu
@@ -26,7 +27,7 @@ export async function searchActivities(q: ActivityQuery, env: ActivityEnv = {}, 
     const sources: SourceStatus[] = [{ id: "viator", name: "Viator", configured: true, ok: true, count: list.length, ms: Date.now() - t0 }];
     return { activities: rank(list), sources };
   } catch (e) {
-    return { activities: [], sources: [{ id: "viator", name: "Viator", configured: true, ok: false, count: 0, ms: Date.now() - t0, error: (e as Error).message }] };
+    return { activities: [], sources: [{ id: "viator", name: "Viator", configured: true, ok: false, count: 0, ms: Date.now() - t0, error: errorText(e) }] };
   }
 }
 

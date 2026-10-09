@@ -8,6 +8,7 @@
 import { t } from "../i18n/index.svelte";
 import { addDays } from "./kiwi";
 import type { FlightOffer, FlightQuery, SearchResult, SourceStatus } from "./types";
+import { errorText } from "../netcheck";
 
 /** ein Ort als Liste von Codes (ein Flughafen, alle einer Stadt oder im Umkreis) */
 export interface RoundPlace { name: string; code: string; airports: string[]; cityCode?: string }
@@ -130,7 +131,7 @@ export async function searchRound(p: RoundPlan, search: (q: FlightQuery) => Prom
     const run = (extra: Partial<FlightQuery>) => Promise.all(days.map(async d => {
       const q = { ...(stop ? legQuery(p, from, to, addDays(d, stop.min), addDays(d, stop.max), via) : legQuery(p, from, to, p.depart, p.departTo, via)), ...extra };
       try { const r = await search(q); note(r); return r.offers; }
-      catch (e) { if ((e as Error).name === "AbortError") throw e; errors.push(`${from.name} → ${to.name}: ${(e as Error).message}`); return []; }
+      catch (e) { if ((e as Error).name === "AbortError") throw e; errors.push(`${from.name} → ${to.name}: ${errorText(e)}`); return []; }
     }));
     let found = await run({});
     // abgelegene Strecken (Fidschi → München) gehen oft nur mit zwei Umstiegen: dann damit nachsuchen

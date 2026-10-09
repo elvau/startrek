@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { netMessage } from "../neterror";
+  import { netMessage, showError, isNetText } from "../neterror";
   import { autoName, locale, t, tn } from "../i18n/index.svelte";
   /*
    * Unterkünfte suchen (wie im Artefakt): Zeitraum und Gäste aus der Anwesenheit (Flüge oder eigene Daten),
@@ -452,13 +452,13 @@
     {/if}
   </form>
 
-  {#if error}<p class="err small">{error}</p>{/if}
+  {#if error}<p class="err small">{error}{#if isNetText(error)} <button type="button" class="linkbtn" onclick={() => search()}>{t("net.retry")}</button>{/if}</p>{/if}
 
   {#if list && asked}
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
-          <span class:ok={s.ok} class:off={!s.configured} title={s.error || ""}>{s.name}{s.test ? ` (${t("test.badge")})` : ""}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
+          <span class:ok={s.ok} class:off={!s.configured} title={showError(s.error)}>{s.name}{s.test ? ` (${t("test.badge")})` : ""}: {s.ok ? tn("n.hits", s.count) : s.configured ? t("search.error") : t("search.notConfigured")}</span>
         {/each}
       </div>
       {#if sources.some(s => s.test && s.count)}<p class="warnline test-banner">⚠ {t("test.banner", { list: sources.filter(s => s.test && s.count).map(s => s.name).join(", ") })}</p>{/if}

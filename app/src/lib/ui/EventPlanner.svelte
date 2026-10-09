@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { netMessage } from "../neterror";
+  import { netMessage, showError } from "../neterror";
   import { arrow, locale, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Reise zu einem Event: Was, wo, wann. Daraus bis zu drei Vorschläge (ohne Nacht, eine Nacht, ab Vortag),
@@ -66,7 +66,7 @@
       if (!res.sources.some(s => s.configured)) { evErr = t("evs.notReady"); return; }
       hits = uniqueById(res.events || []);
       if (!hits.length && res.sources.every(s => !s.ok)) {
-        evErr = res.sources.find(s => s.error)?.error || t("evs.none");
+        evErr = showError(res.sources.find(s => s.error)?.error) || t("evs.none");
         noteError(`Event-Suche: ${res.sources.map(s => `${s.id} ${s.error || (s.ok ? "ok" : "aus")}`).join(", ")}`);
       }
     } catch (err) { evErr = netMessage(err); noteError(`Event-Suche: ${evErr}`); }
