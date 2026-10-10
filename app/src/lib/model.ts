@@ -385,6 +385,8 @@ export interface TripEvent {
   start: string;
   /** Dauer in Stunden (Standard 3) */
   hours?: number;
+  /** letzter Tag bei mehrtägigen Events (Rennwochenende, Turnier), JJJJ-MM-TT; fehlt: eintägig */
+  end?: string;
   /** Veranstaltungsort, falls bekannt (für Unterkünfte in der Nähe) */
   lat?: number;
   lon?: number;

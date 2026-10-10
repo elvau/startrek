@@ -4,6 +4,7 @@
  * je Tag (Trip.days) und eine Überschrift („Ruhetag“). Je Tag der Ort, an dem man übernachtet (Station der Reise).
  */
 import { t } from "./i18n/index.svelte";
+import { eventDays } from "./event/plan";
 import { activeOption } from "./calc";
 import { addDays, okDate, stopsOf } from "./calc/travel";
 import { hhKey, isActive, type Item, type NoteKind, type Trip } from "./model";
@@ -109,7 +110,9 @@ export function itinerary(trip: Trip): Day[] {
     if (inn.length < act.length) { const hs = [...new Set(inn.map(hhKey))]; e.who = hs.length > 3 ? t("grp.more", { names: hs.slice(0, 2).join(", "), n: hs.length - 2 }) : hs.join(", "); }
     delete e.ids;
   }
-  if (trip.event?.start) add(trip.event.start, { key: "event", kind: "event", text: trip.event.name, time: hm(trip.event.start), sub: trip.event.venue, order: hm(trip.event.start) || "20:00" });
+  // Event, bei mehrtägigen an jedem Tag (#265)
+  if (trip.event?.start) for (const [i, d] of eventDays(trip.event).entries())
+    add(`${d}${trip.event.start.slice(10)}`, { key: i ? `event:${d}` : "event", kind: "event", text: trip.event.name, time: hm(trip.event.start), sub: trip.event.venue, order: hm(trip.event.start) || "20:00" });
   for (const [d, p] of Object.entries(trip.days || {})) {
     for (const n of p.notes || []) add(d, { key: n.id, kind: n.kind || "note", noteId: n.id, text: n.text, time: n.time, sub: n.kind === "move" && n.to ? `→ ${n.to}` : undefined, order: n.time || "22:30" });
   }

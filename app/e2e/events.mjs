@@ -12,7 +12,10 @@ const SOURCES = [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, cou
 const leg = (from, to, dep, arr) => ({ from, to, dep, arr, minutes: 75, stops: 0, route: [from, to], carriers: ["Test Air"], flights: ["TA1"] });
 
 /** je Anfrage: ein früher Flug (passt) und ein günstigerer, der erst mittags landet (passt nur ab Vortag) */
-function flights(q) {
+const plusDays = (d, n) => new Date(Date.parse(d + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+function flights(q0) {
+  // flexibel (eigener Zeitraum): hin am Tag nach dem frühesten, zurück am Tag vor dem spätesten
+  const q = q0.latest ? { ...q0, depart: plusDays(q0.depart, 1), ret: plusDays(q0.latest, -1) } : q0;
   const from = q.fromAirports[0], to = q.toAirports[0];
   const back = q.depart === q.ret ? ["21:30", "22:45"] : ["18:00", "19:15"];
   return {
@@ -242,8 +245,23 @@ try {
   const city3 = m3.locator(".ev-form .lp").first().locator("input");
   for (let i = 0; i < 40 && !(await city3.inputValue()).includes("Brisbane"); i++) await p.waitForTimeout(150);
   if (!(await city3.inputValue()).includes("Brisbane")) fail("Ziel Brisbane fehlt: " + await city3.inputValue());
-  await p.keyboard.press("Escape");
   log("Sportkalender: Olympia antippen → Brisbane 2032 mit Zeitraum, Name, Datum und Ziel übernommen");
+  // mehrtägig (#265): letzter Tag aus dem Kalender; eigener Zeitraum ergibt „Günstigste im Zeitraum“
+  if ((await m3.locator(".ev-end").inputValue()) !== "2032-08-08") fail("letzter Tag nicht übernommen: " + await m3.locator(".ev-end").inputValue());
+  await m3.locator(".ev-more summary").click();
+  await m3.locator(".ev-wfrom").fill("2032-07-15");
+  await m3.locator(".ev-wto").fill("2032-08-15");
+  const nAsk3 = asked.length;
+  await m3.locator(".ev-form .btn.primary").click();
+  await m3.locator(".ev-card").first().waitFor();
+  const kinds = (await m3.locator(".ev-card header b").allInnerTexts()).join(" | ");
+  if (!kinds.includes("Nur das Event") || !kinds.includes("Günstigste im Zeitraum") || kinds.includes("Tagesausflug")) fail("Vorschläge mehrtägig: " + kinds);
+  const flex = asked.slice(nAsk3).find(q => q.latest);
+  if (!flex || flex.depart !== "2032-07-15" || flex.latest !== "2032-08-15" || flex.nightsMin !== 17) fail("Suche im Zeitraum: " + JSON.stringify(flex));
+  const win = m3.locator(".ev-card", { hasText: "Günstigste im Zeitraum" });
+  if (!(await win.innerText()).includes("16. Juli") || !(await win.locator(".ev-tag", { hasText: "Günstigste" }).count())) fail("Zeitraum-Vorschlag: " + JSON.stringify(await win.innerText()) + " / " + (await m3.locator(".ev-list").innerText()).slice(0, 900));
+  await p.keyboard.press("Escape");
+  log("Mehrtägiges Event (16 Tage): „Nur das Event“ und „Günstigste im Zeitraum“ aus einer flexiblen Suche, als günstigste markiert");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Event-Reise ok");

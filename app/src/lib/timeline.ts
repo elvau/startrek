@@ -4,7 +4,8 @@
  */
 import { hhKey, isActive, type Trip } from "./model";
 import { presences } from "./calc";
-import { okDate, nightsList } from "./calc/travel";
+import { addDays, okDate, nightsList } from "./calc/travel";
+import { eventDay, eventLast } from "./event/plan";
 
 export interface TimelineRow {
   hh: string;
@@ -21,6 +22,8 @@ export interface Timeline {
   nights: string[];
   rows: TimelineRow[];
   stays: { id: string; name: string; from: string; to: string }[];
+  /** Event-Tage (#265): erster Tag bis Tag nach dem letzten */
+  event?: { name: string; from: string; to: string };
   /** kommen und gehen alle gleich? Dann bleibt die Leiste kompakt */
   same: boolean;
 }
@@ -38,13 +41,14 @@ export function timeline(trip: Trip): Timeline | null {
   });
   const stays = trip.items.filter(it => it.cat === "stay" && it.status !== "dropped" && okDate(it.from) && okDate(it.to) && it.to! > it.from!)
     .map(it => ({ id: it.id, name: it.name, from: it.from!, to: it.to! }));
-  const dates = [trip.from, trip.to, ...rows.flatMap(r => [r.a, r.d]), ...stays.flatMap(s => [s.from, s.to])].filter(okDate).sort() as string[];
+  const ev = trip.event?.start && okDate(eventDay(trip.event)) ? { name: trip.event.name, from: eventDay(trip.event), to: addDays(eventLast(trip.event), 1) } : undefined;
+  const dates = [trip.from, trip.to, ...rows.flatMap(r => [r.a, r.d]), ...stays.flatMap(s => [s.from, s.to]), ...(ev ? [ev.from, ev.to] : [])].filter(okDate).sort() as string[];
   if (dates.length < 2) return null;
   const start = dates[0], end = dates.at(-1)!;
   const nights = nightsList(start, end);
   if (!nights.length || nights.length > 120) return null;
   const same = rows.every(r => r.a === rows[0].a && r.d === rows[0].d);
-  return { start, end, nights, rows, stays, same };
+  return { start, end, nights, rows, stays, same, ...(ev ? { event: ev } : {}) };
 }
 
 /** eigene Anwesenheit einer Familie; der Reisezeitraum wächst mit */
