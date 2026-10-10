@@ -347,6 +347,7 @@ export const en: Dict = {
   "car.noteOneWay": "Pick-up {ap} {a} · drop-off {ap2} {b} · one-way rental, approx. €{fee} surcharge per car included",
   "car.when": "From the flights: pick-up {a}, return {b} ({d}).",
   "car.whenTrip": "From the trip dates: pick-up {a}, return {b} ({d}).",
+  "card.more": "Details",
   "ch.plan.label": "Day plan",
   "ch.plan.sub": "what happens when",
   "ch.plan.title": "Day by day",

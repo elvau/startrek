@@ -266,6 +266,32 @@ body:has(.chapter.on .card.edit) .aside{opacity:.5}
 .pay .bar i{display:block;height:100%;width:0;background:var(--good);border-radius:99px;transition:width 1.2s cubic-bezier(.2,.8,.2,1) .3s}
 .stay-foot{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap}
 @media (max-width:640px){.stay{grid-template-columns:1fr}.stay-img{min-height:150px}}
+/* Handy (#242): kompakte Kapitel und Karten; jede Karte zeigt nur das Wesentliche (Status, Name, Daten, Preis),
+   Bild, Merkmale, Bezahlstand, Angebote, Nebenkosten und Aufteilung erst beim Antippen (Bearbeiten) */
+@media (max-width:560px){
+  .chapter{padding:5vh 0 2vh}
+  .ch-head{margin-bottom:10px}
+  .ch-t h2{font-size:26px}
+  .ch-ico{width:40px;height:40px;border-radius:12px}
+  .ch-ico svg{width:22px;height:22px}
+  .card{border-radius:16px}
+  .stay-b h3{font-size:17px}
+  .nights{display:none}
+  .facts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px}
+  .fact{white-space:nowrap;font-size:12px;padding:3px 8px}
+  .bp-ap b{font-size:22px}
+  .opts{padding:2px 10px 10px;gap:6px}
+  .opt{padding:7px 9px}
+  .row .ic{width:36px;height:36px;border-radius:11px}
+  .row h3{font-size:15.5px}
+  .row .r b{font-size:18px}
+  /* nur wer bearbeiten darf (data-more): Zuschauer können nicht aufklappen und sehen alles */
+  .card[data-more]:not(.edit) :is(.stay-img,.facts,.pay,.opts,.bp-legs,.xc,.src-link,.rc,.isplit,.stay-opt){display:none}
+  .card[data-more]:not(.edit) .stay{grid-template-columns:1fr}
+  .card[data-more]:not(.edit) .stay-foot{justify-content:flex-start}
+  .card[data-more]:not(.edit) .stay-foot .price{text-align:start}
+  .card[data-more]:not(.edit)::after{content:attr(data-more);display:block;padding:0 12px 8px;font-size:12px;font-weight:600;color:var(--ink-3);text-align:end}
+}
 
 /* Einfache Posten */
 .row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:14px;align-items:center;padding:16px 18px}
