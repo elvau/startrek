@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entwurf Konto einrichten</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400..800&display=swap">
+<link rel="stylesheet" href="app.css"><link rel="stylesheet" href="editor.css">
+<style>
+  :root{--c-trav:#D2693C;--a:var(--c-trav);--a-soft:var(--c-trav-s)}
+  body{font-family:Figtree,system-ui,sans-serif;min-height:100dvh;background:linear-gradient(180deg,#FAF3EA,#F4ECE1)}
+  h1,h2,h3{font-family:"Bricolage Grotesque",Figtree,sans-serif}
+  .fake{padding:22px;opacity:.55;filter:blur(1.5px)}
+  .fake .bar{height:54px;border-radius:16px;background:var(--glass);margin-bottom:22px}
+  .fake .card{height:180px;border-radius:22px;background:var(--paper);margin-bottom:16px;box-shadow:var(--shadow)}
+  .wz-bg{position:fixed;inset:0;background:rgba(10,18,30,.45);backdrop-filter:blur(4px);display:grid;place-items:center;padding:16px}
+  .wz{width:min(640px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;background:var(--paper);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+  .wz-h{padding:16px 20px 12px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line)}
+  .wz-t{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .wz-t h3{font-size:21px}
+  .wz-t .x{border:0;background:none;font-size:24px;color:var(--ink-3)}
+  .steps{display:flex;gap:4px}
+  .steps i{flex:1;height:5px;border-radius:9px;background:var(--line)}
+  .steps i.done{background:var(--a)}
+  .steps i.cur{background:linear-gradient(90deg,var(--a) 50%,var(--line) 50%)}
+  .steplbl{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);font-weight:600}
+  .steplbl b{color:var(--a)}
+  .wz-b{padding:18px 20px;overflow:auto;display:flex;flex-direction:column;gap:16px}
+  .wz-f{padding:12px 20px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;background:var(--paper)}
+  .wz-f .sp{flex:1}
+  .lnk{border:0;background:none;color:var(--ink-2);font-weight:600;font-size:14px;padding:9px 6px}
+  .lead{font-size:15px;color:var(--ink-2);margin:0}
+  .ai{border:1px solid var(--idea);background:var(--idea-soft);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  .ai h4{margin:0;font-size:15px;color:var(--idea);display:flex;align-items:center;gap:6px}
+  .ai textarea{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--paper);color:var(--ink);resize:vertical;min-height:96px}
+  .ai .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ai .btn.primary{background:var(--idea);border-color:var(--idea)}
+  .or{display:flex;align-items:center;gap:10px;color:var(--ink-3);font-size:12.5px;font-weight:600}
+  .or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:560px){.grid2{grid-template-columns:1fr}}
+  .sec{display:flex;flex-direction:column;gap:8px}
+  .lock{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink-2);background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:9px 11px}
+  .lock b{color:var(--ink)}
+  .tg{display:flex;align-items:flex-start;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+  .tg .tx{flex:1;display:flex;flex-direction:column;gap:2px}
+  .tg .tx b{font-size:14px}
+  .tg .tx span{font-size:12.5px;color:var(--ink-2)}
+  .sw{width:42px;height:24px;border-radius:99px;background:var(--line);position:relative;flex-shrink:0;margin-top:2px}
+  .sw:after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .sw.on{background:var(--a)}
+  .sw.on:after{left:21px}
+  .chip{padding:7px 14px;font-size:13.5px}
+  .sum{display:flex;flex-direction:column;gap:8px}
+  .sum .it{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:14px}
+  .sum .it .ic{width:30px;height:30px;border-radius:10px;background:var(--a-soft);color:var(--a);display:grid;place-items:center;font-size:16px;flex-shrink:0}
+  .sum .it .tx{flex:1;font-size:13.5px}
+  .sum .it .tx b{display:block;font-size:12px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+  .sum .it .ed{border:0;background:none;color:var(--a);font-weight:700;font-size:13px}
+  .sum .it.skip .tx{color:var(--ink-3)}
+  .tagai{font-size:11px;font-weight:700;color:var(--idea);background:var(--idea-soft);border-radius:99px;padding:1px 7px;margin-inline-start:6px;vertical-align:1px}
+  .variant{position:fixed;bottom:74px;left:50%;transform:translateX(-50%);z-index:200;background:#15202E;color:#fff;font-weight:700;font-size:12px;padding:4px 10px;border-radius:99px;white-space:nowrap}
+  .idea{border:1px dashed var(--a);border-radius:16px;padding:12px 14px;background:var(--a-soft);font-size:14px}
+  .idea b{color:var(--a)}
+  @media (max-width:560px){
+    .wz-bg{padding:0;place-items:stretch}
+    .wz{max-height:none;height:100dvh;border-radius:0;width:100%}
+    .wz-f .btn{padding:11px 16px}
+  }
+</style>
+</head>
+<body>
+<div class="fake"><div class="bar"></div><div class="card"></div><div class="card"></div><div class="card"></div></div>
+<div id="root"></div>
+<script>
+const LBL = ["Ich", "Unterwegs", "Mitreisende", "Wie du reist", "Wann", "Besonderes", "Fertig"];
+function head(i){
+  return `<div class="wz-h"><div class="wz-t"><h3>Konto einrichten</h3><button class="x" aria-label="Schließen">×</button></div>
+  <div class="steps">${LBL.map((_,k)=>`<i class="${k<i?'done':k===i?'cur':''}"></i>`).join("")}</div>
+  <div class="steplbl"><span>Schritt ${i+1} von 7 · <b>${LBL[i]}</b></span><span>alles überspringbar</span></div></div>`;
+}
+function foot(first, last){
+  return `<div class="wz-f">${first?'':'<button class="lnk">‹ Zurück</button>'}<span class="sp"></span>${last?'':'<button class="lnk">Überspringen</button>'}<button class="btn primary">${last?'Fertig':'Weiter'}</button></div>`;
+}
+const sw = (on,b,s)=>`<div class="tg"><div class="tx"><b>${b}</b><span>${s}</span></div><div class="sw ${on?'on':''}"></div></div>`;
+const ich = (variant) => `
+  <div class="grid2">
+    <label class="f">Name oder Spitzname<input value="Alex"></label>
+    <label class="f"><span>Geburtsdatum <span class="muted">(oder nur Alter)</span></span><input value="01.06.1990"></label>
+  </div>
+  <div class="grid2">
+    <label class="f">Staatsangehörigkeit(en)<div class="chips"><span class="chip on">Deutschland ×</span><span class="chip">+ weitere</span></div></label>
+    <label class="f">Wohnort<div class="grid2" style="gap:6px;grid-template-columns:1fr 1fr"><select><option>Deutschland</option></select><input value="40210"></div></label>
+  </div>
+  ${variant==="A" ? `
+  <div class="sec"><span class="dlabel">Geschlecht (optional)</span>
+    <div class="chips"><span class="chip">weiblich</span><span class="chip on">männlich</span><span class="chip">divers</span><span class="chip">keine Angabe</span></div>
+    <div class="lock">🔒<span><b>Nur in deinem Konto, wie die Buchungsdaten.</b> Geht nie an KI, Such-Dienst oder in Reisen. Daraus zeigt die App passende Einreise- und Reisehinweise und schlägt eine Zimmeraufteilung vor.</span></div>
+  </div>
+  <div class="sec"><span class="dlabel">Zusätzliche Hinweise</span>
+    ${sw(false,"LGBTQ+-Rechte im Reiseland","Unabhängig vom Geschlecht. Wir fragen nicht nach der Orientierung.")}
+  </div>` : `
+  <div class="sec"><span class="dlabel">Welche Hinweise möchtest du sehen?</span>
+    ${sw(true,"Hinweise für Frauen","z. B. Kleidung, Alleinreisen, Einschränkungen im Reiseland")}
+    ${sw(false,"Passeintrag „X“","Länder, in denen ein Pass mit Geschlecht „X“ Probleme machen kann")}
+    ${sw(false,"LGBTQ+-Rechte im Reiseland","Wir fragen nicht nach Geschlecht oder Orientierung.")}
+    <div class="lock">🔒<span><b>Kein Geschlecht nötig.</b> Die Schalter liegen in deinen Vorlieben. Das Geschlecht für Buchungen bleibt wie heute optional in den Buchungsdaten der Person.</span></div>
+  </div>`}`;
+const SCREENS = {
+  start: {i:0, body:`
+    <p class="lead">In ein paar Minuten startklar: Danach sind Einreise-Hinweise, Mietwagen, Anfahrt und Suchen passend für dich vorbelegt.</p>
+    <div class="ai"><h4>✨ Mit KI vorbefüllen</h4><span class="muted" style="margin-top:-6px">Optional, zählt als 1 von 5 KI-Anfragen pro Tag</span>
+      <textarea>Wir sind zu viert, zwei Kinder (6 und 9), fliegen meist ab Düsseldorf, lieber Ferienwohnung am Strand, Halbpension wäre schön. In den Sommerferien NRW, so 10–14 Nächte. Wir haben einen Hund und einen Diesel mit 5 Sitzen.</textarea>
+      <div class="row"><button class="btn primary">Felder vorbefüllen</button><span class="muted">Ohne Namen, Geschlecht, Staatsangehörigkeit, Geburtsdatum. Du prüfst jede Seite, gespeichert wird erst mit „Weiter“.</span></div>
+    </div>
+    <div class="or">oder</div>
+    <button class="btn">Ohne KI Schritt für Schritt</button>`, first:true},
+  ichA: {i:0, v:"Variante A: Geschlecht abfragen", body: ich("A"), first:true},
+  ichB: {i:0, v:"Variante B: nur Schalter", body: ich("B"), first:true},
+  unterwegs: {i:1, body:`
+    <div class="sec"><span class="dlabel">Führerschein</span>
+      <div class="chips"><span class="chip">keiner</span><span class="chip">unter 1 Jahr</span><span class="chip">über 1 Jahr</span><span class="chip">über 2 Jahre</span><span class="chip on">über 5 Jahre</span></div>
+      <span class="muted">Für Mietwagen: meist mindestens 1 Jahr, bei größeren Klassen 2–3 Jahre. Das Mindestalter nehmen wir aus deinem Alter.</span></div>
+    ${sw(true,"Kreditkarte vorhanden","Für die Kaution beim Mietwagen")}
+    <div class="sec"><span class="dlabel">Eigenes Auto <span class="tagai">aus deinem Text</span></span>
+      <div class="grid2"><label class="f">Sitzplätze<select><option>5</option></select></label><label class="f">Antrieb<div class="chips"><span class="chip">Benzin</span><span class="chip on">Diesel</span><span class="chip">Hybrid</span><span class="chip">Elektro</span></div></label></div></div>
+    <label class="f">Bahn-Ermäßigungen<div class="chips"><span class="chip">BahnCard 25</span><span class="chip on">BahnCard 50</span><span class="chip">BahnCard 100</span><span class="chip">Deutschlandticket</span></div></label>`},
+  fertig: {i:6, body:`
+    <p class="lead">Das ist gespeichert. Alles lässt sich später in den Vorlieben oder bei den Personen ändern.</p>
+    <div class="sum">
+      <div class="it"><span class="ic">👤</span><div class="tx"><b>Ich</b>Alex · 36 · Deutschland · 40210 Düsseldorf</div><button class="ed">Ändern</button></div>
+      <div class="it"><span class="ic">🚗</span><div class="tx"><b>Unterwegs</b>Führerschein über 5 Jahre · Kreditkarte · Diesel, 5 Sitze · BahnCard 50</div><button class="ed">Ändern</button></div>
+      <div class="it"><span class="ic">👨‍👩‍👧‍👦</span><div class="tx"><b>Mitreisende</b>Gruppe „Familie“: 2 Erwachsene, 2 Kinder (6, 9)</div><button class="ed">Ändern</button></div>
+      <div class="it"><span class="ic">🏖️</span><div class="tx"><b>Wie du reist</b>Strand · Ferienwohnung · Halbpension · ab DUS</div><button class="ed">Ändern</button></div>
+      <div class="it"><span class="ic">📅</span><div class="tx"><b>Wann</b>Sommerferien NRW · 10–14 Nächte</div><button class="ed">Ändern</button></div>
+      <div class="it skip"><span class="ic">🐾</span><div class="tx"><b>Besonderes</b>Hund · übersprungen: Barrierefreiheit, Essen</div><button class="ed">Ändern</button></div>
+    </div>
+    <div class="idea">💡 <b>Erste Reise?</b> Sommerferien NRW, Ferienwohnung am Strand mit Hund: Wir schlagen dir drei Ziele vor. <button class="btn" style="margin-top:8px;display:block">Vorschläge ansehen</button></div>`, last:true},
+};
+const s = SCREENS[location.hash.slice(1)] || SCREENS.start;
+document.getElementById("root").innerHTML = (s.v?`<div class="variant">${s.v}</div>`:"") +
+  `<div class="wz-bg"><div class="wz">${head(s.i)}<div class="wz-b">${s.body}</div>${foot(s.first,s.last)}</div></div>`;
+</script>
+</body></html>
