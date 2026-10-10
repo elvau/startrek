@@ -15,7 +15,7 @@
   const tl = $derived(timeline(app.trip));
   let open = $state(false);
   let edit = $state<string | null>(null);
-  const showRows = $derived(!!tl && (!tl.same || open));
+  const showRows = $derived(!!tl && (!tl.same || open || !!tl.event));
 
   // Achse: Wochenanfang (Montag) bzw. erster Tag, bei langen Reisen jede zweite Woche
   const ticks = $derived.by(() => {
@@ -65,6 +65,13 @@
             {/if}
           </li>
         {/each}
+        {#if tl.event}
+          {@const s = span(tl, tl.event.from, tl.event.to)}
+          <li class="tl-stays tl-ev">
+            <span class="tl-name muted small">🎟 {t("tl.event")}</span>
+            <span class="tl-track thin">{#if s}<span class="tl-stay tl-evbar" title={tl.event.name} style="inset-inline-start:{s.left}%;width:{s.width}%">{s.width > 18 ? tl.event.name : ""}</span>{/if}</span>
+          </li>
+        {/if}
         {#if tl.stays.length}
           <li class="tl-stays">
             <span class="tl-name muted small">{t("tl.stays")}</span>
@@ -104,6 +111,7 @@
   .tl-edit { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: end; padding: 6px 8px 10px; }
   .tl-stays { display: grid; gap: 2px; padding: 0 8px; }
   .tl-track.thin { height: 18px; background: none; box-shadow: none; }
+  .tl-evbar { background: var(--c-attractions-s, var(--paper-2)) !important; border-color: var(--c-attractions) !important; font-weight: 600; }
   .tl-stay { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--c-stay-s); border: 1px solid var(--c-stay); font-size: 11px; line-height: 16px; padding-inline: 4px; overflow: hidden; white-space: nowrap; color: var(--ink-2); box-sizing: border-box; }
   @media (max-width: 560px) { .tl-row { grid-template-columns: 1fr; } .tl-dates { text-align: start; } }
 </style>
