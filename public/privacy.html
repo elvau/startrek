@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Privacy · Split&amp;Fly</title>
+<link rel="stylesheet" href="recht.css">
+</head>
+<body>
+<main>
+<p class="back"><a href="./">← back to Split&amp;Fly</a> · <a href="datenschutz.html" hreflang="de" lang="de">Deutsch</a></p>
+<h1>Privacy policy</h1>
+<p class="note">Translation for convenience. The German version (<a href="datenschutz.html">Datenschutzerklärung</a>) is legally binding.</p>
+
+<h2>1. Controller</h2>
+<p>
+  <strong>Daniel Jacek Klein</strong>, Cecilienstraße 31,
+  41236 Mönchengladbach, Germany · Email: <a href="mailto:danielklein@splitandfly.com">danielklein@splitandfly.com</a>
+</p>
+
+<h2>2. In short</h2>
+<ul>
+  <li>The site is delivered via Google Firebase Hosting.</li>
+  <li>Without an account, your trips stay <strong>only in your browser</strong>. I cannot see them.</li>
+  <li>With an account, trips are stored in Google Firebase so you can use them on several devices and share them with others.</li>
+  <li>For flight and accommodation searches, only <strong>places, dates and the number of people</strong> are sent to the
+    providers, no names and no email addresses.</li>
+  <li>Booking details (ID card, passport) are optional, are stored only in your account and go nowhere else.</li>
+  <li>The AI planner (beta) is only available with an account; your travel request is sent to Google Gemini for it.</li>
+  <li>The maps (accommodation search, “Trip map”) load map images from OpenFreeMap only when you open them; the small route images (start page, day plan) load a map section as soon as a trip has a route.</li>
+  <li>Bug reports (beta) are stored in a non-public project on GitHub; images are deleted after 30 days.</li>
+  <li>There are no advertising trackers, no analytics tools and no cookies from me. Fonts are served from this site.</li>
+</ul>
+
+<h2>3. Hosting (Google Firebase Hosting)</h2>
+<p>
+  Split&amp;Fly at <strong>www.splitandfly.com</strong> is provided via Firebase Hosting
+  (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland; parent company Google LLC, USA). When you
+  open the site, Google processes technically necessary data such as IP address, time, requested file and browser
+  identifier in order to deliver the site through its worldwide server network and protect it against attacks. No
+  analysis for statistical or advertising purposes takes place. Legal basis: Art. 6(1)(f) GDPR (legitimate interest in
+  secure operation). Transfers to the USA are based on the EU-US Data Privacy Framework or standard contractual clauses.
+  More: <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase and privacy</a>.
+</p>
+<p>
+  A test version, where I try out new features before publishing them, is hosted on GitHub Pages
+  (elvau.github.io/startrek; GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA). GitHub processes
+  the same technically necessary data there. This policy applies accordingly to the test version. More:
+  <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener noreferrer">GitHub privacy statement</a>.
+</p>
+
+<h2>4. Storage in your browser</h2>
+<p>
+  The app stores trips, saved people and groups, settings (e.g. language, currency, light or dark mode, sorting of the
+  start page), the ECB daily exchange rates for conversion, when you last changed a trip (for “Last edited”) and
+  recently used search options in your browser’s storage (localStorage) so they are still there on your next visit.
+  With an account, Firebase additionally stores your sign-in and a copy of your trips in the browser (IndexedDB) so the
+  app also works offline; when signing in with an email link, the app remembers the email address until you open the
+  link. Booking details are not stored in the browser (see section 5). All of this is strictly necessary for the
+  function you request (§ 25(2) no. 2 TDDDG). You can delete this data at any time in your browser settings.
+</p>
+
+<h2>5. Account and sharing (Google Firebase)</h2>
+<p>
+  If you create an account or share a trip, you use Firebase Authentication and Cloud Firestore by Google
+  (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland; parent company Google LLC, USA).
+  The following is processed:
+</p>
+<ul>
+  <li>for signing in: email address or Google account (name, email, profile picture), time of sign-in, IP address;</li>
+  <li>for saved trips: the trip data you enter (e.g. names and ages of fellow travellers, on request their nationality
+    for entry information, postcode and town of residence, amounts, in the kitty expenses during the trip and which family
+    paid what, for shared trips also who submitted, confirmed or disputed an expense, with account name and reason), as
+    well as who may view or edit a trip;</li>
+  <li>for saved people and groups: the details below (readable only by you).</li>
+</ul>
+<p>
+  Legal basis: Art. 6(1)(b) GDPR (providing the function you request). If you enter fellow travellers, you should let
+  them know. The data is kept until you delete the trip or your account; write to me if you would like help with this.
+  Google is certified under the EU-US Data Privacy Framework. More:
+  <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase and privacy</a>.
+</p>
+
+<h3>Saved people and booking details</h3>
+<p>
+  Under “Groups and people” you can enter a name, date of birth or age and an approximate place of residence (postcode)
+  for each saved person. The app uses this to calculate the age at the start of the trip and the journey to the airport.
+  Trips only receive the age and the family’s place of residence, not the date of birth. Without an account this stays
+  in your browser; with an account it is also stored in Firestore, readable only by you.
+</p>
+<p>
+  You can also save <strong>preferences</strong>, for yourself and per group: preferred airports, the postcode of your
+  home (only in your own preferences and only with an account, never stored in the browser as part of the preferences;
+  if you apply it in the flight search at the push of a button, it becomes part of the trip as place of residence, is
+  stored like the trip and is visible to fellow travellers; it is not sent to the AI planner), stops, luggage,
+  accommodation type, travel style, budget, travel periods, a short note and countries you do not want to travel to or
+  fly over. Like the people, they are stored in the browser or in your account and pre-fill searches and the AI
+  planner. Blocked countries say nothing about the reason; please do not put personal or sensitive information in the
+  note.
+</p>
+<p>
+  Optionally you can save <strong>booking details</strong> (names as on the ID, gender, nationality, ID card and
+  passport number with validity, issuing country) to make later bookings quicker. These details:
+</p>
+<ul>
+  <li>are only available with an account; they are stored separately from everything else in Firestore and only you
+    can read them, not even fellow travellers or invited people;</li>
+  <li>are not stored in the browser (neither in localStorage nor in the cache) but only loaded when you open them;</li>
+  <li>can, on request, be used under “Important” to check whether a passport is valid long enough for the trip; this
+    check runs only in your browser, the expiry date does not end up in the trip and is not visible to fellow
+    travellers;</li>
+  <li>are not sent into trips, to the search service, to the providers, to the AI planner or into bug reports;</li>
+  <li>can be deleted at any time per person or completely (“Delete all booking details”); deleting a person deletes
+    them too.</li>
+</ul>
+<p>
+  Technically the data is stored at Google (see above) and is in principle accessible to me as the operator of the
+  Firebase project. I do not look at it and use it only to show it to you. Nothing is currently booked through
+  Split&amp;Fly; the data will only be used once there is a booking function and you trigger a booking yourself. Legal
+  basis: Art. 6(1)(a) and (b) GDPR (voluntary information for the function you request). Only enter other people’s data
+  with their consent.
+</p>
+
+<h2>6. Search service for flights and accommodation (Cloudflare)</h2>
+<p>
+  When you search for flights or accommodation, the app sends the request to my search service at Cloudflare
+  (Cloudflare Inc., 101 Townsend St., San Francisco, CA 94107, USA). Cloudflare technically sees your IP address. The
+  search service does not store requests and then queries the providers. It only counts anonymously how often which
+  function and which provider is used (without account, IP address or search content) so I can keep an eye on the free
+  quotas. To prevent abuse it also counts how many requests (searches, AI planner, bug reports, clicks) come from one
+  IP address; this counter is kept only in Cloudflare’s cache and expires after one day at the latest (Art. 6(1)(f)
+  GDPR, legitimate interest in protecting the service). Only the following is sent to the providers: departure and
+  destination places, travel dates, number of adults/children/infants (for accommodation the children’s ages) and
+  search options (e.g. stops, luggage). Providers do not receive names, email addresses or your IP address.
+</p>
+<p>
+  If you have not yet entered a place of residence (postcode), the flight search asks the search service for your
+  approximate location in order to suggest nearby departure airports. Cloudflare estimates it from your IP address
+  (country, town, coordinates rounded to about 10 km). The search service only returns it to your app and stores
+  nothing; the app keeps it in memory only until the page is closed (Art. 6(1)(f) GDPR, legitimate interest in suitable
+  suggestions). For the journey to the airport the app still uses only the postcode you enter yourself.
+</p>
+<ul>
+  <li>Kiwi.com s.r.o., Palachovo náměstí 797/4, 625 00 Brno, Czech Republic (flights)</li>
+  <li>Travelpayouts / Aviasales (flight prices from the Aviasales cache)</li>
+  <li>Duffel Technology Ltd., London, United Kingdom (flights, once connected; for children an age set by the app, not the real one)</li>
+  <li>trivago N.V., Kesselstraße 5–7, 40221 Düsseldorf, Germany (accommodation)</li>
+  <li>liteAPI (Nuitée, accommodation, once connected)</li>
+  <li>Ticketmaster (Live Nation Entertainment) and football-data.org (event search: only search term, destination and period)</li>
+  <li>Viator (Tripadvisor LLC, USA; tours and tickets: only destination, period and language)</li>
+  <li>OpenRouteService (HeiGIT gGmbH, Schloss-Wolfsbrunnenweg 33, 69118 Heidelberg, Germany; routes for road trips:
+    only the coordinates of home and stops, rounded to about 100 m, without names; the search service keeps a route for
+    at most 30 days so the same route is not requested again)</li>
+</ul>
+<p>
+  Legal basis: Art. 6(1)(b) GDPR (you trigger the search). Cloudflare is certified under the EU-US Data Privacy
+  Framework.
+</p>
+<p>
+  Images of accommodation (in search results and on accommodation you have added) are loaded by your browser directly
+  from the provider’s image server (e.g. trivago, imgcy.trivago.com, or liteAPI). The provider technically sees your IP
+  address and the address of the image, but not which page the request comes from (the app sends no referrer). Photos
+  of tours (in search results and on activities you have added) likewise come directly from the Tripadvisor/Viator
+  image server (media-cdn.tripadvisor.com).
+</p>
+
+<h2>7. AI planner (Google Gemini, beta)</h2>
+<p>
+  If you use the AI planner, the app sends your travel request (the text you enter), the number and ages of the
+  travellers, the airports near your home, your preferences (without names, see section 5) and – if already entered –
+  destination and travel dates to my search service. It checks your sign-in, counts requests per day (user ID and date,
+  deleted after two days) and passes the request and search results on to Google Gemini
+  (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland). Google does not receive names, email
+  addresses or your IP address. Please do not write personal data into the travel request.
+</p>
+<p>
+  If you ask the AI assistant within an open trip, a summary of that trip is also sent: destination, travel dates and
+  the items (area, name, status, amount, for flights route and times). Names of travellers (also in names such as
+  “Flight family …”), notes, booking numbers, payments, kitty expenses and booking details (ID card, passport) are not
+  sent. The app only applies changes made by the AI once you confirm them.
+</p>
+<p>
+  <strong>Important:</strong> During the beta I use the free tier of the Gemini API. Under the
+  <a href="https://ai.google.dev/gemini-api/terms" rel="noopener noreferrer">Gemini API terms of service</a>, Google may
+  use the transmitted content (travel request and search results) to provide and improve its services; people at Google
+  may also read it. Therefore do not enter names, contact details or other personal or confidential information in the
+  travel request. If I switch to a paid tier, this use no longer applies and I will update this section.
+</p>
+<p>Legal basis: Art. 6(1)(b) GDPR (you trigger the request). Use is voluntary.</p>
+
+<h2>8. Connecting AI assistants (MCP, beta)</h2>
+<p>
+  In the account menu you can create a personal key with which your own AI assistant (e.g. Claude, ChatGPT or a program
+  like Cursor) can search via Split&amp;Fly and create and extend trips in your account. The key contains your account
+  ID, a key ID, your display name and the date of issue and is signed with a secret key of the search service; it is
+  not stored anywhere. Blocked key IDs are listed in the search service’s settings.
+</p>
+<p>
+  When you use the key, your AI assistant sends requests to my search service. It searches as described in section 6,
+  keeps offers found for a few hours in Cloudflare’s cache (so the assistant can add them to a trip) and counts the
+  searches per key and day (key ID and date, deleted after two days). For trips in your account the search service
+  reads and writes your trips in Firebase (section 5), only those you are a member of, and changes them only with edit
+  rights. The assistant receives destination, travel dates, number of travellers by age group and the items with
+  prices, no names of travellers and no booking details (ID card, passport).
+</p>
+<p>
+  What you enter into your assistant and what it retrieves from here is processed by its provider (e.g. Anthropic,
+  OpenAI) as your own provider under its terms; I have no influence on this. Legal basis: Art. 6(1)(b) GDPR (you create
+  the key and trigger the requests). Use is voluntary.
+</p>
+
+<h2>9. Reporting bugs (beta)</h2>
+<p>
+  With the red “🐞 Report a bug” button you can report bugs when signed in. The following is sent to my search service
+  at Cloudflare: your description, an image if you attach one, as well as the page opened (without invitation code),
+  language, browser and device, screen size, app version, the latest error messages in the browser, the kind of view
+  (e.g. “trip, 3 people”, without names or trip data) and the latest trip switches in the app (time, reason such as
+  “newly created” or “start page” and the random ID of the trip, without names or contents). The search service checks
+  your sign-in and counts reports per day (user ID and date, deleted after two days).
+</p>
+<p>
+  The report is stored as an entry in a non-public project on GitHub, together with a shortened user ID so I can match
+  the account if I have questions (GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA; transfer
+  under the EU-US Data Privacy Framework). Images are stored in Cloudflare’s storage (R2) and deleted automatically
+  after 30 days; I delete reports once the bug is fixed. Please make sure screenshots do not show other people’s data
+  you do not want to share. Legal basis: Art. 6(1)(a) and (f) GDPR (you send the report voluntarily; my legitimate
+  interest is a bug-free app).
+</p>
+
+<h2>10. Links to providers and partner links</h2>
+<p>
+  Links such as “At the provider ↗”, Booking.com, Airbnb, Google Flights, Skyscanner, GetYourGuide, Viator, Tiqets,
+  Google Maps or Tripadvisor open the provider’s page. Only then does that provider receive data from you (e.g. IP
+  address), and its privacy policy applies. Links marked “Partner*” in the app contain my partner ID so the provider can
+  attribute a booking to me; for this the provider or the partner network (Travelpayouts, Viator) may set cookies on its
+  own site. I do not learn who booked, only that and for what a commission is due.
+</p>
+<p>
+  When you tap a link to a provider, the app only tells my search service which provider and which kind of link it was
+  (e.g. “Viator, activities”). The search service counts this per day to see which providers are used. Neither IP
+  address nor account, trip or search details are stored.
+</p>
+
+<h2>11. Map (OpenFreeMap)</h2>
+<p>
+  When you tap “Map” in the accommodation search, “Trip map” or “Map, image &amp; animation” in the day plan, your
+  browser loads map images and fonts for the map from OpenFreeMap
+  (<a href="https://openfreemap.org" rel="noopener noreferrer">openfreemap.org</a>), a free map service with data from
+  OpenStreetMap. OpenFreeMap receives technically necessary data such as your IP address, the time and the map section
+  shown (i.e. roughly the place you are looking at). Names, trips or prices are not sent there; the app places
+  accommodation, events and airports on the map itself. OpenFreeMap sets no cookies. In addition, the small route
+  images on the start page and in the day plan show a map section: for this the browser loads the map images of that
+  section once from OpenFreeMap and keeps the finished image locally. Otherwise nothing is loaded without opening a map.
+  Image and video of the trip route are created only in your browser; they are not uploaded anywhere, you share or save
+  them yourself. Legal basis: Art. 6(1)(f) GDPR (legitimate interest in showing you where accommodation is located).
+  The “Google Maps ↗” link only opens Google Maps when tapped (see section 10).
+</p>
+
+<h2>12. Campaign page for contributions</h2>
+<p>
+  Signed-in users can publish a <strong>campaign page</strong> for a trip through which e.g. family, sponsors or a club
+  fund can chip in. The page can be read by anyone who knows the link, even without an account. Only the following is
+  public there: title and text of the campaign, place and dates of the trip, goal and progress (totals of the
+  contributions entered) as well as a PayPal.me name and/or the link to a fundraiser at a well-known provider
+  (GoFundMe, Leetchi, betterplace.me, Ko-fi, Revolut). Account holder and IBAN are not collected. Names of fellow
+  travellers and individual contributions do not appear. It is only published with the explicit consent of the person
+  creating the page (Art. 6(1)(a) GDPR); it is stored in Cloud Firestore (see section 5) and can be deleted at any time
+  via “Withdraw”, after which the link no longer works. Please only enter your own PayPal name or fundraiser, or one with
+  the owner’s consent.
+</p>
+<p>
+  Money never flows through Split&amp;Fly: payments via PayPal or the fundraiser go directly to whoever set them up.
+  Visitors of the page are not tracked; the page loads its content without an account and without cookies. Tapping the
+  PayPal.me link or the fundraiser link takes you to that provider, whose privacy notices apply.
+</p>
+
+<h2>13. Your rights</h2>
+<p>
+  You have the right of access (Art. 15 GDPR), rectification (Art. 16), erasure (Art. 17), restriction of processing
+  (Art. 18), data portability (Art. 20) and to object to processing based on legitimate interests (Art. 21). Simply
+  write to the email address above. You can also lodge a complaint with a data protection supervisory authority, for
+  example the one responsible for my place of residence: Landesbeauftragte für Datenschutz und Informationsfreiheit
+  Nordrhein-Westfalen, Kavalleriestraße 2–4, 40213 Düsseldorf, Germany
+  (<a href="https://www.ldi.nrw.de" rel="noopener noreferrer">www.ldi.nrw.de</a>).
+</p>
+
+<p class="stand">As of: October 2026</p>
+</main>
+</body>
+</html>

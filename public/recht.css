@@ -13,3 +13,4 @@ a{color:var(--a)}
 .back{font-size:14px}
 .fill{background:var(--mark);color:var(--ink);padding:0 4px;border-radius:4px}
 .stand{font-size:13px;margin-top:40px}
+.note{font-size:14px;padding:8px 12px;border-radius:8px;background:var(--mark);color:var(--ink)}
