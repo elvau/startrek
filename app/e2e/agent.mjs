@@ -302,6 +302,8 @@ try {
 
   // Startseite: sortieren (Preis, zuletzt bearbeitet, Land), Liste statt Kacheln, Wahl bleibt nach dem Neuladen
   await p.locator(".top .brand-btn").click();
+  // erst warten, bis die hochgeladene Mannschaftsfahrt in der Liste der Startseite steht (Kontoliste kennt sie kurz später)
+  await until(() => p.locator(".home-trip", { hasText: "Mannschaftsfahrt" }).count().then(n => n > 0), "Mannschaftsfahrt in der Liste der Startseite");
   await p.locator(".home-sort .chip", { hasText: "Preis" }).click();
   const prices = await p.locator(".home-trips").first().locator(".ht-total").allInnerTexts();
   const num = s => Number(s.replace(/·[\s\S]*$/, "").replace(/[^\d,]/g, "").replace(",", "."));
