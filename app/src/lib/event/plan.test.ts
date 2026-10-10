@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fits, km, pickStay, pickStayNear, takePlan, variants } from "./plan";
+import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, takePlan, variants } from "./plan";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import type { StayOffer } from "../stays/types";
@@ -32,6 +32,40 @@ describe("Reise zu einem Anlass", () => {
     expect(fits(offer(["2027-05-15T08:00", "2027-05-15T12:30"], ["2027-05-16T07:00", "2027-05-16T09:15"]), short)).toBe(true);
     expect(fits(offer(["2027-05-14T18:00", "2027-05-14T19:15"], ["2027-05-16T18:00", "2027-05-16T20:15"]), relaxed)).toBe(true);
     expect(fits(offer(["2027-05-15T08:00", "2027-05-15T12:30"], ["2027-05-16T18:00", "2027-05-16T20:15"]), relaxed)).toBe(false);
+  });
+
+  it("mehrtägig (Rennwochenende Fr–So, #265): kein Tagesausflug, Nächte über alle Event-Tage", () => {
+    const ev = { name: "Grand Prix", start: "2027-07-02T13:00", end: "2027-07-04", hours: 4 };
+    expect(eventDays(ev)).toEqual(["2027-07-02", "2027-07-03", "2027-07-04"]);
+    expect(variants(ev).map(x => [x.kind, x.out, x.back, x.nights])).toEqual([
+      ["short", "2027-07-02", "2027-07-05", 3], ["relaxed", "2027-07-01", "2027-07-05", 4]
+    ]);
+    // Rückflug am Sonntag erst nach dem Ende (17:00 + 2,5 h)
+    const short = variants(ev)[0];
+    expect(fits(offer(["2027-07-02T06:00", "2027-07-02T08:00"], ["2027-07-05T10:00", "2027-07-05T12:00"]), short)).toBe(true);
+  });
+
+  it("eigener Zeitraum: günstigste Verbindung darin, die das ganze Event abdeckt", () => {
+    const ev = { name: "Grand Prix", start: "2027-07-02T13:00", end: "2027-07-04", hours: 4 };
+    const w = variants(ev, { from: "2027-06-28", to: "2027-07-10" }).find(x => x.kind === "window")!;
+    expect(w.window).toEqual({ from: "2027-06-28", to: "2027-07-10" });
+    // Mittwoch bis Mittwoch passt, Rückflug am Sonntagmittag (vor dem Ende) nicht, Abflug vor dem Zeitraum nicht
+    const ok = offer(["2027-06-30T09:00", "2027-06-30T11:00"], ["2027-07-07T12:00", "2027-07-07T14:00"]);
+    expect(fits(ok, w)).toBe(true);
+    expect(fits(offer(["2027-06-30T09:00", "2027-06-30T11:00"], ["2027-07-04T12:00", "2027-07-04T14:00"]), w)).toBe(false);
+    expect(fits(offer(["2027-06-27T09:00", "2027-06-27T11:00"], ["2027-07-07T12:00", "2027-07-07T14:00"]), w)).toBe(false);
+    expect(fixWindow(w, ok)).toMatchObject({ out: "2027-06-30", back: "2027-07-07", nights: 7 });
+    // Zeitraum nicht größer als „ab Vortag“: kein eigener Vorschlag
+    expect(variants(ev, { from: "2027-07-01", to: "2027-07-05" }).some(x => x.kind === "window")).toBe(false);
+  });
+
+  it("Unterkunft am nächsten am Event mit Entfernung", () => {
+    const at = { lat: 51.555, lon: -0.108 };
+    const near = { ...stay("Nah", 220, 8.1), lat: 51.56, lon: -0.1 }, far = { ...stay("Weit", 120, 8.9), lat: 51.45, lon: -0.45 };
+    const r = nearestStay([far, near, stay("ohne Lage", 90)], at)!;
+    expect(r.offer.name).toBe("Nah");
+    expect(r.km).toBeLessThan(1);
+    expect(nearestStay([near])).toBeNull();
   });
 
   it("Unterkunft: günstigste gut bewertete, sonst günstigste", () => {

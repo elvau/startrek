@@ -6,6 +6,7 @@
   import { onMount } from "svelte";
   import { applyDocument, locale, t } from "../i18n/index.svelte";
   import { fetchCampaign, linkSite, paypalUrl, type CampaignDoc } from "../campaign";
+  import { legalUrl } from "../legal";
 
   let { id }: { id: string } = $props();
   let c = $state<(CampaignDoc & { updated?: string }) | null>(null);
@@ -60,7 +61,7 @@
       <p class="small muted cmp-note">{t("cmp.direct")}</p>
     </section>
 
-    <p class="cmp-foot small"><a href={base}>{t("cmp.planOwn")}</a> · <a href="{base}impressum.html">{t("legal.imprint")}</a> · <a href="{base}datenschutz.html">{t("legal.privacy")}</a></p>
+    <p class="cmp-foot small"><a href={base}>{t("cmp.planOwn")}</a> · <a href={legalUrl("imprint", base)}>{t("legal.imprint")}</a> · <a href={legalUrl("privacy", base)}>{t("legal.privacy")}</a></p>
   {/if}
 </main>
 

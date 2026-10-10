@@ -148,6 +148,12 @@ try {
   if (await sCard.locator(".stay-img").isVisible() || await fCard.locator(".bp-legs").isVisible()) fail("Handy: Karten nicht kompakt");
   if (!(await sCard.evaluate(e => getComputedStyle(e, "::after").content)).includes("Details")) fail("Handy: Hinweis „Details“ fehlt");
   if (!(await sCard.locator("h3").isVisible()) || !/€/.test(await sCard.innerText())) fail("Handy: Name oder Preis fehlt auf der kompakten Karte");
+  // „?“-Hinweise (#198): Antippen zeigt die Erklärung, Escape schließt; im Posten klappt der Abschnitt dabei nicht auf
+  await m.locator("#stay .ch-t .help-q").click();
+  const pop = m.locator(".help-pop");
+  if (!(await pop.innerText()).includes("Detailliert:")) fail("Hinweis Einfach/Detailliert: " + await pop.innerText());
+  await m.keyboard.press("Escape");
+  await pop.waitFor({ state: "detached" });
   for (const [ch, id, btn, sum] of [["flights", "f", ".fs-item", "DUS→SPU"], ["stay", "s", ".st-item", "18.07. – 25.07."]]) {
     const c = m.locator(`#${ch} .card[data-item='${id}']`);
     await c.scrollIntoViewIfNeeded();
@@ -158,6 +164,13 @@ try {
     if (!(await c.locator(ch === "flights" ? ".bp-legs" : ".stay-img").isVisible())) fail(`${ch}: Einzelheiten beim Antippen nicht sichtbar`);
     const sums = (await c.locator(".editor details summary").allTextContents()).join(" | ");
     if (!sums.includes(sum) || !sums.includes("Wer ist dabei")) fail(`${ch}: Zusammenfassung „${sum}“ fehlt: ${sums}`);
+    if (ch === "flights") {
+      await c.locator(".editor details:has(.help-q) .help-q").first().click();
+      if (!(await m.locator(".help-pop").innerText()).includes("teilt sich die Kosten")) fail("Hinweis „Wer ist dabei“");
+      if (await c.locator(".editor details[open]").count()) fail("Hinweis klappt den Abschnitt auf");
+      await c.locator(".editor details:has(.help-q) .help-q").first().click(); // noch einmal antippen schließt
+      await m.locator(".help-pop").waitFor({ state: "detached" });
+    }
     await c.locator(`.editor ${btn}.ed-search`).click();
     const dlg = m.locator(".modal-bg .modal");
     await dlg.waitFor();
@@ -173,7 +186,7 @@ try {
   await m.locator("#flights .fs-open").click();
   await m.locator(".modal-bg .modal .fs-aps").waitFor();
   await m.locator(".modal-bg .modal .modal-h .x").click();
-  log("Handy: Karten kompakt (Einzelheiten beim Antippen); Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
+  log("Handy: „?“-Hinweise öffnen und schließen; Karten kompakt (Einzelheiten beim Antippen); Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
   // Neuladen im selben Tab bleibt in der Reise (Issue #255); über die Marke und neu laden bleibt es auf der Startseite
   await m.evaluate(() => scrollTo({ top: 600, behavior: "instant" }));
   await m.waitForTimeout(700); // Scrollstand wird verzögert gemerkt
@@ -187,6 +200,77 @@ try {
   await m.locator(".start").waitFor();
   log("Handy: Neuladen bleibt in der Reise mit Scrollstand; nach der Marke bleibt es auf der Startseite");
   await mctx.close();
+
+  // leere Kapitel (#198): je Kapitel eine Überschrift und ein Satz, was hierher gehört und welcher Knopf hilft
+  const EM = { id: "leer", name: "Leere Reise", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }], detail: { flights: true, stay: true, transport: true, attractions: true, misc: true },
+    items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
+  const ectx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await ectx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, EM);
+  const ep = await ectx.newPage();
+  ep.on("pageerror", e => errors.push(e.message));
+  await ep.goto(URL);
+  await ep.locator(".start .home-trip", { hasText: "Leere Reise" }).click();
+  const ef = await ep.locator("[data-empty=flights]").innerText();
+  if (!ef.includes("Noch keine Anreise") || !ef.includes("„Flüge suchen“") || !ef.includes("„Flug oder Anreise“")) fail("Leeres Kapitel Flüge: " + ef);
+  const es = await ep.locator("[data-empty=stay]").innerText();
+  if (!es.includes("Noch keine Unterkunft") || !es.includes("„Unterkunft suchen“")) fail("Leeres Kapitel Unterkunft: " + es);
+  for (const k of ["transport", "attractions", "misc"]) if (!(await ep.locator(`[data-empty=${k}] b`).innerText()).trim()) fail("Leeres Kapitel ohne Überschrift: " + k);
+  await ectx.close();
+  log("Leere Kapitel erklären, was hierher gehört, mit den Namen der passenden Knöpfe");
+
+  // gemeinsam planen (#174, #175): wer wann kann, bester Zeitraum als Reisedatum, Abstimmung mit zwei Personen
+  const GP = { id: "gp", name: "Gruppe plant", place: "Split", country: "Kroatien",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 42 }, { id: "c", name: "Cleo", household: "Hase", age: 35 }],
+    items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {},
+    avail: { from: "2027-07-01", to: "2027-07-14", nights: 3, by: {} } };
+  const gctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await gctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, GP);
+  const gp = await gctx.newPage();
+  gp.on("pageerror", e => errors.push(e.message));
+  gp.on("dialog", d => d.accept());
+  await gp.goto(URL);
+  await gp.locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
+  const tg = gp.locator("#together .tg");
+  await tg.scrollIntoViewIfNeeded();
+  const cell = (row, day) => tg.locator(".tg-row").filter({ hasText: row }).locator(".tg-c").nth(day - 1);
+  // Anna kann 1.–4. nicht (dreimal antippen = kann nicht), Ben 8. vielleicht (zweimal), Cleo trägt 10. „kann“ ein
+  for (const d of [1, 2, 3, 4]) for (let i = 0; i < 3; i++) await cell("Anna", d).click();
+  for (let i = 0; i < 2; i++) await cell("Ben", 8).click();
+  await cell("Cleo", 10).click();
+  if (!(await tg.locator(".tg-count").innerText()).includes("3 von 3")) fail("Eingetragen-Zähler: " + await tg.locator(".tg-count").innerText());
+  const firstBest = await tg.locator(".tg-best li").first().innerText();
+  if (!firstBest.includes("09.07.") || !firstBest.includes("alle 3")) fail("Bester Zeitraum: " + firstBest);
+  await tg.locator(".tg-best li").first().locator(".tg-take").click();
+  await until(async () => (await gp.locator(".hero .meta").innerText()).includes("3 Nächte"), "Zeitraum als Reisedatum");
+  log("Termin finden: drei Personen tragen ein, bester Zeitraum 09.–12.07. für alle 3 (am 8. kann Ben nur vielleicht), als Reisedatum übernommen");
+  // Abstimmung über die besten Zeiträume, zwei Personen stimmen, Ergebnis übernehmen
+  await tg.locator(".tg-poll").click();
+  const poll = tg.locator(".poll").first();
+  await poll.waitFor({ timeout: 4000 }).catch(async () => fail("Abstimmung fehlt: " + (await tg.innerText()).slice(-900).replace(/\n/g, " / ") + " | " + errors.join(" | ")));
+  await tg.locator(".tg-me select").selectOption({ label: "Anna" });
+  await poll.locator("li").nth(1).locator(".chip", { hasText: "👍" }).click();
+  await tg.locator(".tg-me select").selectOption({ label: "Cleo" });
+  await poll.locator("li").nth(1).locator(".chip", { hasText: "👍" }).click();
+  await poll.locator("li").nth(0).locator(".chip", { hasText: "👎" }).click();
+  if (!(await poll.innerText()).includes("Noch nicht abgestimmt: Ben")) fail("Wer fehlt: " + await poll.innerText());
+  const second = (await poll.locator("li").nth(1).locator(".poll-l").innerText()).split(" – ")[0];
+  await poll.locator(".poll-apply").click();
+  await poll.locator(".poll-done").waitFor();
+  const day = String(+second.slice(0, 2)) + ". bis";
+  if (!(await gp.locator(".hero .meta").innerText()).includes(day)) fail("Abstimmungsergebnis nicht als Reisedatum: " + second + " / " + await gp.locator(".hero .meta").innerText());
+  // frei: neue Abstimmung, ohne zwei Möglichkeiten nicht startbar
+  await tg.locator(".poll-new").click();
+  await tg.locator(".poll-q").fill("Welches Ziel?");
+  await tg.locator(".poll-opts").fill("Mallorca");
+  if (await tg.locator(".poll-add").isEnabled()) fail("Abstimmung mit einer Möglichkeit startbar");
+  await tg.locator(".poll-opts").fill("Mallorca\nKroatien");
+  await tg.locator(".poll-add").click();
+  await tg.locator(".poll", { hasText: "Welches Ziel?" }).waitFor();
+  // offene Abstimmung steht unter „Wichtiges“
+  if (!(await gp.locator(".imp-btn").getAttribute("aria-label") || "").match(/Wichtig/)) fail("Wichtiges-Knopf fehlt");
+  await gctx.close();
+  log("Abstimmen: über die Zeiträume (Anna und Cleo, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten");
 
   // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
   const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",

@@ -5,6 +5,7 @@
    * Der Fortschritt (eingegangene und zugesagte Zuschüsse) wird automatisch nachgezogen, solange die Seite besteht.
    */
   import { netMessage } from "../neterror";
+  import Help from "./Help.svelte";
   import { untrack } from "svelte";
   import { t } from "../i18n/index.svelte";
   import { access, app, calc } from "../store.svelte";
@@ -84,7 +85,7 @@
 
 {#if cloud.configured}
   <div class="cmp-box">
-    <h4>📣 {t("cmp.title")}</h4>
+    <h4>📣 {t("cmp.title")} <Help k="cmp" /></h4>
     {#if edit}
       <div class="cmp-edit">
         <label class="f">{t("cmp.fTitle")}<input bind:value={edit.title} maxlength={LIMITS.title} /></label>

@@ -20,7 +20,7 @@
   import { hhKey } from "../model";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
-  import { DEFAULT_H, fits, km, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
+  import { DEFAULT_H, fits, fixWindow, km, nearestStay, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
   import { cityFromAddress, evWhen, searchEventsRemote, sportTag, SPORT_ICON } from "../events/app";
   import { uniqueById } from "../events/search";
   import { noteError } from "../bugs/log";
@@ -38,6 +38,11 @@
   let date = $state(ev0?.start.slice(0, 10) || "");
   let clock = $state(ev0?.start.slice(11, 16) || "18:00");
   let hours = $state(ev0?.hours || DEFAULT_H);
+  /** mehrtägig: letzter Tag (#265); eigener Reisezeitraum für die günstigste Reise drumherum */
+  let endDate = $state(ev0?.end || "");
+  let wFrom = $state("");
+  let wTo = $state("");
+  let more = $state(false);
   void Promise.all([ensureGeo(trip), ensureAirports()]);
 
   // Event suchen: Treffer füllt Name, Ort, Stadion, Datum und Uhrzeit aus
@@ -76,6 +81,7 @@
     picked = h; hits = null;
     name = h.name;
     date = h.start.slice(0, 10);
+    endDate = h.end && h.end > date ? h.end : "";
     if (h.start.length > 10) clock = h.start.slice(11, 16);
     venue = h.venue || "";
     loc = null;
@@ -159,7 +165,9 @@
     return ap?.lat != null ? areaAround(airportData, { name: s.city, lat: ap.lat, lon: ap.lon!, cc: s.cc }) : null;
   }
 
-  interface Row { v: Variant; flight: Rated | null; stay: StayOffer | null; stayQ: StayQuery | null; total: number; error?: string }
+  interface Row { v: Variant; flight: Rated | null; stay: StayOffer | null; near: { offer: StayOffer; km: number } | null; useNear: boolean; stayQ: StayQuery | null; error?: string }
+  const stayOf = (r: Row) => (r.useNear && r.near ? r.near.offer : r.stay);
+  const totalOf = (r: Row) => (r.flight?.total || 0) + (stayOf(r) ? Math.round(stayOf(r)!.total) : 0);
   let rows = $state<Row[] | null>(null);
   let busy = $state(false);
   let error = $state("");
@@ -170,6 +178,7 @@
     e.preventDefault();
     error = ""; rows = null; done = false;
     if (!name.trim() || !place.trim() || !date || !/^\d{2}:\d{2}$/.test(clock)) { error = t("ev.errFields"); return; }
+    if ((wFrom || wTo) && !(wFrom && wTo && wFrom <= date && wTo > (endDate > date ? endDate : date))) { error = t("ev.errWindow"); return; }
     if (!aps.length) { error = t("fs.errAirport"); return; }
     if (!FLIGHTS_URL) { error = t("search.notReady"); return; }
     await Promise.all([ensureGeo(trip), ensureAirports()]);
@@ -181,13 +190,14 @@
     const same = picked && picked.name === name.trim() && picked.start.slice(0, 10) === date;
     const ev = {
       name: name.trim(), start: `${date}T${clock}`, hours: Number(hours) || DEFAULT_H, ...(venue.trim() ? { venue: venue.trim() } : {}),
+      ...(endDate > date ? { end: endDate } : {}),
       ...(same && picked!.lat != null ? { lat: picked!.lat, lon: picked!.lon } : {}), ...(same && picked!.url ? { url: picked!.url } : {})
     };
     trip.event = ev;
     if (trip.place !== city) { trip.place = city; if (dest.cc) trip.country = countryName(dest.cc); }
     if (trip.autoName !== false) { trip.name = ev.name; trip.autoName = false; }
 
-    const list = variants(ev);
+    const list = variants(ev, wFrom && wTo ? { from: wFrom, to: wTo } : undefined);
     const pax = passengers(trip);
     const g = guests(people);
     const sp = searchParts(geo, city, ccOf(geo, trip.country) || dest.cc);
@@ -196,21 +206,26 @@
     ctrl?.abort(); ctrl = new AbortController();
     const signal = ctrl.signal;
     try {
-      rows = await Promise.all(list.map(async (v): Promise<Row> => {
-        const q = stayQ(v);
-        const [fl, st] = await Promise.allSettled([
-          searchFlights({
-            from: aps[0], fromAirports: aps, to: dest.code, toAirports: dest.airports, ...(dest.kind === "city" ? { toCityCode: dest.code } : {}),
-            depart: v.out, ret: v.back, maxStops: 1, bags: false, selfTransfer: false, ...pax, currency: "EUR"
-          }, signal),
-          v.nights ? searchStaysRemote(q, signal) : Promise.resolve(null)
-        ]);
+      rows = await Promise.all(list.map(async (v0): Promise<Row> => {
+        let v = v0;
+        const base = { from: aps[0], fromAirports: aps, to: dest.code, toAirports: dest.airports, ...(dest.kind === "city" ? { toCityCode: dest.code } : {}), maxStops: 1, bags: false, selfTransfer: false, ...pax, currency: "EUR" };
+        // eigener Zeitraum: erst die günstigste passende Verbindung, dann die Unterkunft für genau diese Tage
+        const fq = v.window
+          ? { ...base, depart: v.window.from, latest: v.window.to, nightsMin: v.nights, nightsMax: Math.max(v.nights, Math.round((Date.parse(v.window.to) - Date.parse(v.window.from)) / 86400000)) }
+          : { ...base, depart: v.out, ret: v.back };
+        const fl = await Promise.allSettled([searchFlights(fq, signal)]).then(r => r[0]);
         const flights = fl.status === "fulfilled" ? fl.value.offers.filter(o => !o.test && fits(o, v)).map(o => rate(trip, o, o.out.from, true)) : [];
         const flight = flights.length ? flights.reduce((a, b) => (b.total < a.total ? b : a)) : null;
-        const stay = st.status === "fulfilled" && st.value ? pickStayNear(st.value.offers.filter(o => !o.test), ev) : null;
+        if (v.window && flight) v = fixWindow(v, flight);
+        const q = stayQ(v);
+        const st = v.nights && (!v.window || flight) ? await searchStaysRemote(q, signal).catch(() => null) : null;
+        const offers = st ? st.offers.filter(o => !o.test) : [];
+        const stay = offers.length ? pickStayNear(offers, ev) : null;
+        const nr = nearestStay(offers, ev);
         // Quelle auch nach dem zweiten Versuch ohne Antwort: nicht als „kein Flug“ ausgeben
         const error = fl.status === "rejected" ? netMessage(fl.reason) : worthRetry(fl.value) ? t("ev.flightsDown") : undefined;
-        return { v, flight, stay, stayQ: v.nights ? q : null, total: (flight?.total || 0) + (stay ? Math.round(stay.total) : 0), error };
+        // „am nächsten“ nur, wenn es wirklich nah ist (im Umkreis des Events) und nicht ohnehin die gewählte
+        return { v, flight, stay, near: nr && nr.offer.id !== stay?.id && nr.km <= 30 ? nr : null, useNear: false, stayQ: v.nights ? q : null, error };
       }));
     } catch (err) {
       if ((err as Error).name !== "AbortError") error = netMessage(err);
@@ -220,15 +235,17 @@
   function take(r: Row) {
     // in die Reise, für die der Planer geöffnet wurde; wurde inzwischen eine andere geöffnet, zurück (oder neu, falls weg)
     if (app.trip.id !== trip.id) { switchTrip(trip.id, "Event-Planer"); if (app.trip.id !== trip.id) startTrip(); }
-    takePlan(app.trip, r.v, r.flight, r.stay, r.stayQ);
+    takePlan(app.trip, r.v, r.flight, stayOf(r), r.stayQ);
     done = true;
     rows = null;
   }
 
   const n = people.length || 1;
   const found = $derived(rows?.filter(r => r.flight) ?? []);
-  const cheapest = $derived(found.length ? Math.min(...found.map(r => r.total)) : null);
+  const cheapest = $derived(found.length ? Math.min(...found.map(totalOf)) : null);
+  const multi = $derived(endDate > date);
   const at = $derived(trip.event?.lat != null ? { lat: trip.event.lat, lon: trip.event.lon! } : null);
+  const kmText = (d: number) => t("evs.km", { n: new Intl.NumberFormat(locale(), { maximumFractionDigits: d < 10 ? 1 : 0 }).format(d) });
   const dist = (o: StayOffer) => (at && o.lat != null && o.lon != null ? km(at, { lat: o.lat, lon: o.lon }) : null);
   const mapLink = $derived(venue.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue.trim()}, ${place.split(",")[0].trim()}`)}` : "");
 </script>
@@ -270,7 +287,16 @@
       <label class="f">{t("ev.date")}<input type="date" bind:value={date} required /></label>
       <label class="f">{t("ev.start")}<input type="time" bind:value={clock} required /></label>
       <label class="f">{t("ev.hours")}<input class="n sm" type="number" min="1" max="24" step="0.5" bind:value={hours} /></label>
+      <label class="f">{t("ev.end")}<input class="ev-end" type="date" min={date} bind:value={endDate} /></label>
     </div>
+    <details class="ev-more" bind:open={more}>
+      <summary class="small">{t("ev.more")}</summary>
+      <p class="muted small">{t("ev.moreHint")}</p>
+      <div class="ed-row">
+        <label class="f">{t("ev.wFrom")}<input class="ev-wfrom" type="date" max={date} bind:value={wFrom} /></label>
+        <label class="f">{t("ev.wTo")}<input class="ev-wto" type="date" min={endDate || date} bind:value={wTo} /></label>
+      </div>
+    </details>
     <div>
       <span class="dlabel">{t("ev.origins")}</span>
       <div class="chips fs-aps">
@@ -293,9 +319,10 @@
     <div class="ev-list">
       {#each rows as r (r.v.kind)}
         {@const f = r.flight}
-        <article class="ev-card" class:best={f && r.total === cheapest}>
+        <article class="ev-card" class:best={f && totalOf(r) === cheapest}>
           <header>
-            <b>{t(`ev.v.${r.v.kind}` as Key)}</b>
+            <b>{t(r.v.kind === "short" && multi ? "ev.v.eventOnly" : (`ev.v.${r.v.kind}` as Key))}</b>
+            {#if f && totalOf(r) === cheapest && found.length > 1}<span class="ev-tag">💶 {t("ev.cheapest")}</span>{/if}
             <span class="muted small">{r.v.nights ? `${range(r.v.out, r.v.back)} · ${tn("n.nights", r.v.nights)}` : dayShort(r.v.out)}</span>
           </header>
           {#if f}
@@ -307,7 +334,15 @@
           {#if r.v.nights}
             {#if r.stay}
               {@const d = dist(r.stay)}
-              <p class="ev-line">🛏 {r.stay.name}{r.stay.score ? ` · ${r.stay.score.toFixed(1)}` : ""} <small class="muted">{eur(Math.round(r.stay.total))}{d != null ? ` · ${t("evs.km", { n: new Intl.NumberFormat(locale(), { maximumFractionDigits: d < 10 ? 1 : 0 }).format(d) })}` : r.stay.place ? ` · ${r.stay.place}` : ""}</small></p>
+              {#if r.near}
+                <!-- zwei Unterkünfte zur Wahl: gut und günstig oder am nächsten am Event -->
+                <label class="ev-line ev-pick"><input type="radio" name="st-{r.v.kind}" checked={!r.useNear} onchange={() => (r.useNear = false)} />
+                  🛏 {r.stay.name}{r.stay.score ? ` · ${r.stay.score.toFixed(1)}` : ""} <small class="muted">{eur(Math.round(r.stay.total))}{d != null ? ` · ${kmText(d)}` : ""}</small></label>
+                <label class="ev-line ev-pick ev-near"><input type="radio" name="st-{r.v.kind}" checked={r.useNear} onchange={() => (r.useNear = true)} />
+                  📍 <span class="ev-tag">{t("ev.nearest")}</span> {r.near.offer.name} <small class="muted">{eur(Math.round(r.near.offer.total))} · {kmText(r.near.km)}</small></label>
+              {:else}
+              <p class="ev-line">🛏 {r.stay.name}{r.stay.score ? ` · ${r.stay.score.toFixed(1)}` : ""} <small class="muted">{eur(Math.round(r.stay.total))}{d != null ? ` · ${kmText(d)}` : r.stay.place ? ` · ${r.stay.place}` : ""}</small></p>
+              {/if}
             {:else}
               <p class="ev-line muted">🛏 {t("ev.noStay")}</p>
             {/if}
@@ -316,7 +351,7 @@
           {/if}
           <footer>
             {#if f}
-              <span><b class="num">{eur(r.total)}</b>{#if n > 1} <small class="muted">{t("perPerson", { v: eur(r.total / n) })}</small>{/if}</span>
+              <span><b class="num">{eur(totalOf(r))}</b>{#if n > 1} <small class="muted">{t("perPerson", { v: eur(totalOf(r) / n) })}</small>{/if}</span>
               <button class="btn sm primary" onclick={() => take(r)}>{t("ev.take")}</button>
             {/if}
           </footer>

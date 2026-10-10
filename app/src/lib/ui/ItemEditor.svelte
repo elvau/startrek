@@ -1,12 +1,14 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import { addPoll, newPoll, voters } from "../together";
+  import Help from "./Help.svelte";
   import { entryCurrency, fromShown, toShown } from "../currency.svelte";
-  import { t, tn } from "../i18n/index.svelte";
+  import { autoName, t, tn } from "../i18n/index.svelte";
   /* Bearbeiten eines Postens: oben Name, Status und Suche, der Rest eingeklappt mit Zusammenfassung */
   import { hhKey, isActive, uid, type Extra, type FlightLeg, type Item, type Option, type Status } from "../model";
   import { app, calc, removeItem } from "../store.svelte";
   import type { Key } from "../i18n/index.svelte";
-  import { activeOption, ageClass, eur, followed, parseNum } from "../calc";
+  import { activeOption, ageClass, calcOption, eur, followed, parseNum } from "../calc";
   import { dateDE, dayShort, time } from "../format";
   import { dayRange } from "../itinerary";
   import { kassen, kasseName } from "../ledger";
@@ -129,6 +131,13 @@
   const whoSum = $derived(all ? t("all") : people.filter(p => item.participants!.includes(p.id)).map(p => p.name).join(", "));
   const paySum = $derived(paidSum ? t("ie.paidOf", { paid: eur(paidSum), total: eur(net) }) : t("ie.paidNone"));
   const num = (v: string) => (v === "" ? undefined : Number(String(v).replace(",", ".")));
+  function pollOffers() {
+    const p = newPoll(t("poll.whichQ", { name: autoName(item.name) || item.name }), "offers",
+      item.options.map((o, i) => { const net = calcOption(o, item, app.trip).net; return { label: [o.label || o.source?.name || `${i + 1}`, net > 0 ? eur(net) : ""].filter(Boolean).join(" · "), itemId: item.id, optionId: o.id }; }));
+    addPoll(app.trip, p);
+    app.editing = null;
+    setTimeout(() => document.querySelector(`[data-poll="${p.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+  }
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
@@ -141,6 +150,7 @@
     {#each STATUS as k}
       <button role="radio" aria-checked={item.status === k} class:on={item.status === k} data-s={k} onclick={() => (item.status = k)}>{t(`status.${k}` as Key)}</button>
     {/each}
+    <Help k="status" />
   </div>
   {#if isStay || isFlight}
     <!-- mitfliegen „wie Flug …“: Knopf sucht einen eigenen Flug -->
@@ -258,7 +268,7 @@
   {/if}
 
   <details class="ed-acc" data-sec="who">
-    <summary><span class="dlabel">{t("ie.who")}</span><span class="ed-sum">{whoSum}</span></summary>
+    <summary><span class="dlabel">{t("ie.who")} <Help k="who" /></span><span class="ed-sum">{whoSum}</span></summary>
     <div class="chips">
       <button class="chip" class:on={all} onclick={() => (item.participants = undefined)}>{t("all")}</button>
       {#each people as p (p.id)}
@@ -270,7 +280,7 @@
 
   {#if item.status !== "idea" && item.status !== "dropped"}
     <details class="ed-acc ie-pay" data-sec="pay">
-      <summary><span class="dlabel">{t("ie.paidBy")}</span><span class="ed-sum">{paySum}</span></summary>
+      <summary><span class="dlabel">{t("ie.paidBy")} <Help k="paid" /></span><span class="ed-sum">{paySum}</span></summary>
       {#each item.payments || [] as p, i (i)}
         <div class="ie-p"><span>{p.by ? kasseName(app.trip, p.by) : "?"}</span><b class="num">{eur(p.amount)}</b>{#if p.at}<small class="muted">{dateDE(p.at)}</small>{/if}
           <button class="dp-del" aria-label={t("ks.remove", { text: `${p.by ? kasseName(app.trip, p.by) : ""} ${eur(p.amount)}` })} onclick={() => dropPay(i)}>×</button></div>
@@ -316,6 +326,10 @@
 
   <div class="ed-foot">
     <button class="linkbtn danger" onclick={() => removeItem(item.id)}>{t("ie.delete")}</button>
+    {#if item.options.length > 1 && voters(app.trip).length > 1}
+      <!-- Angebote zur Abstimmung (#175): landet bei „Termin finden & Abstimmen“ im Kapitel der Reisenden -->
+      <button class="linkbtn ie-poll" onclick={pollOffers}>🗳 {t("poll.fromItem")}</button>
+    {/if}
     <button class="btn primary" onclick={() => (app.editing = null)}>{t("done")}</button>
   </div>
 </div>

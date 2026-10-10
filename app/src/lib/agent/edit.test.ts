@@ -153,6 +153,8 @@ describe("Fehlermeldung der KI", () => {
   it("überlastet oder kein Vorschlag: mit dem eigentlichen Grund", () => {
     expect(agentError(502, "Die KI ist zu keinem Ergebnis gekommen.")).toContain("(Grund: Die KI ist zu keinem Ergebnis gekommen.)");
     expect(agentError(502)).not.toContain("Grund");
+    expect(agentError(503, "KI-Fehler 503", true)).not.toBe(agentError(503));
+    expect(agentError(503, "KI-Fehler 503", true)).not.toContain("Grund");
     expect(agentError(429, "x")).not.toContain("Grund");
   });
 });

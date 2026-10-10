@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t, tn } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   /* Wer ist wann da, und hat jede Nacht ein Bett? Pro Haushalt ein Balken über alle Nächte. */
   import { access, app } from "../store.svelte";
   import { hhKey, isActive } from "../model";
@@ -82,7 +83,7 @@
 
 {#if plan}
   <div class="plan">
-    <div class="plan-h"><h3>{t("plan.title")}</h3><span class="muted">{tn("n.nights", plan.nights.length)} · {t("range.fromTo", { a: dateDE(plan.nights[0]), b: dateDE(addDays(plan.nights[plan.nights.length - 1], 1)) })}</span></div>
+    <div class="plan-h"><h3>{t("plan.title")} <Help k="plan" /></h3><span class="muted">{tn("n.nights", plan.nights.length)} · {t("range.fromTo", { a: dateDE(plan.nights[0]), b: dateDE(addDays(plan.nights[plan.nights.length - 1], 1)) })}</span></div>
     <div class="pl-wrap">
       <div class="pl-grid" style="grid-template-columns:minmax(70px,max-content) repeat({plan.nights.length}, minmax(18px,1fr))">
         <span class="pl-corner"></span>
@@ -128,6 +129,6 @@
     {/if}
   </div>
 {:else}
-  <div class="plan"><div class="plan-h"><h3>{t("plan.title")}</h3></div>
+  <div class="plan"><div class="plan-h"><h3>{t("plan.title")} <Help k="plan" /></h3></div>
     <p class="muted">{t("plan.emptyHint")}</p></div>
 {/if}

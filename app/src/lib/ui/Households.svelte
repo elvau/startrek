@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t, type Key } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   /* Haushalte: Wohnort (PLZ), Anreise zum Flughafen, Anwesenheit */
   import { access, app } from "../store.svelte";
   import { ACCESS_MODES, hhKey, isActive, type AccessMode, type Household } from "../model";
@@ -90,7 +91,7 @@
 </script>
 
 <div class="hhs">
-  <div class="hhs-h"><span class="dlabel">{t("hh.title")}</span>
+  <div class="hhs-h"><span class="dlabel">{t("hh.title")} <Help k="hh" /></span>
     {#if names.length > 1 && !access.readonly}
       <!-- alle auf einmal: Gruppenbus, alle mit der Bahn … -->
       <select class="hh-all" value="" aria-label={t("hh.all")} onchange={e => { setAll(e.currentTarget.value as AccessMode | ""); e.currentTarget.value = ""; }}>

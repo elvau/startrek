@@ -305,7 +305,8 @@ export function prefsLines(r: AgentRequest): string[] {
 function userText(r: AgentRequest): string {
   if (r.current) return `Open trip:\n${JSON.stringify(r.current)}\n\nUser:\n"""${r.prompt}"""`;
   const known = r.trip ? `\n\nAlready known about this trip: ${JSON.stringify(r.trip)}` : "";
-  return `Travel wish:\n"""${r.prompt}"""${known}`;
+  const blocked = r.blocked?.length ? `\n\nSomeone in the group cannot travel on these days, so no trip may include them (departure to return): ${r.blocked.join(", ")}` : "";
+  return `Travel wish:\n"""${r.prompt}"""${known}${blocked}`;
 }
 
 const up = (v: unknown) => (Array.isArray(v) ? v : [v]).filter(x => typeof x === "string").map(x => (x as string).trim().toUpperCase()).filter(x => /^[A-Z]{3}$/.test(x));

@@ -1,5 +1,6 @@
 /* KI-Planer in der App: Anfrage aus der Reise bauen, an den Such-Dienst schicken, Vorschlag übernehmen */
 import { i18n, t, type Key } from "../i18n/index.svelte";
+import { blockedDays } from "../together";
 import { ageClass, presences, totals } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, offerToOption, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
@@ -27,7 +28,8 @@ export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: 
     originsKnown: flyers(trip).some(p => !!trip.households?.[hhKey(p)]?.geo),
     travelersKnown: travelersKnown(trip), asked, ...(prefs ? { prefs } : {}),
     ...(withTrip ? { current: tripBrief(trip) } : {}),
-    ...(groupsIn(trip).length > 1 ? { groups: groupsIn(trip) } : {})
+    ...(groupsIn(trip).length > 1 ? { groups: groupsIn(trip) } : {}),
+    ...(blockedDays(trip).size ? { blocked: [...blockedDays(trip)].sort() } : {})
   };
 }
 
@@ -110,7 +112,9 @@ export function takeParty(trip: Trip, a: AgentTrip) {
 }
 
 /** Meldung des Such-Dienstes in der gewählten Sprache (der Dienst antwortet auf Deutsch) */
-export function agentError(status: number, msg?: string): string {
+export function agentError(status: number, msg?: string, overloaded?: boolean): string {
+  // KI-Anbieter überlastet (der Dienst antwortet dann 503 mit overloaded)
+  if (status === 503 && overloaded) return t("ai.err.overloaded");
   const k = ({ 400: "ai.err.input", 401: "ai.err.login", 429: "ai.err.limit", 502: "ai.err.busy", 503: "ai.err.setup" } as Record<number, Key>)[status];
   // bei 502 den eigentlichen Grund dazu (sonst sieht man nicht, ob Gemini, die Suche oder das Budget hakt)
   if (k === "ai.err.busy" && msg) return `${t(k)} ${t("ai.err.reason", { msg })}`;
@@ -128,7 +132,7 @@ export async function askAgent(r: AgentRequest, signal?: AbortSignal): Promise<A
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     noteError(`KI ${res.status}: ${data.error || "ohne Meldung"}`);
-    throw Object.assign(new Error(agentError(res.status, data.error)), { remaining: data.remaining as number | undefined });
+    throw Object.assign(new Error(agentError(res.status, data.error, data.overloaded === true)), { remaining: data.remaining as number | undefined });
   }
   return data as AgentResult;
 }

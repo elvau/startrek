@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t, tn } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   /* Gespeicherte Gruppen und Personen verwalten. Eine Person kann in mehreren Gruppen sein. */
   import { addGroup, addPerson, dir, fullName, removeGroup, removePerson, toggleMember } from "../directory.svelte";
   import { cloud } from "../cloud/cloud.svelte";
@@ -52,7 +53,7 @@
     <p class="muted small">{cloud.user ? t("grp.inAccount") : t("grp.inBrowser")}</p>
 
     <div class="ed-sec">
-      <span class="dlabel">{t("grp.groups")}</span>
+      <span class="dlabel">{t("grp.groups")} <Help k="groups" /></span>
       {#each dir.groups as g (g.id)}
         <div class="grp" class:open={open === g.id}>
           <button class="grp-h" onclick={() => (open = open === g.id ? null : g.id)} aria-expanded={open === g.id}>

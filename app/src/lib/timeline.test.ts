@@ -69,4 +69,9 @@ describe("Zeitleiste (#228)", () => {
     expect(line.nights).toBe("7 von 14 Nächten");
     expect(householdShares(t, T).find(h => h.name === "Klein")!.cats.find(c => c.cat === "stay")!.lines[0].nights).toBeUndefined();
   });
+  it("mehrtägiges Event als eigene Zeile (#265), Leiste wächst mit", () => {
+    const tl = timeline(trip({ from: "2027-07-01", to: "2027-07-06", event: { name: "Grand Prix", start: "2027-07-02T13:00", end: "2027-07-04" } }))!;
+    expect(tl.event).toEqual({ name: "Grand Prix", from: "2027-07-02", to: "2027-07-05" });
+    expect(span(tl, tl.event!.from, tl.event!.to)).toEqual({ left: 20, width: 60 });
+  });
 });

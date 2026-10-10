@@ -116,7 +116,7 @@ try {
   log("Einfach: 600 € + 900 € = 1.500 €, Unterkunft 450 € pro Person");
 
   // Dani dazu, Uwe nicht dabei
-  await a.locator("#trav .card").scrollIntoViewIfNeeded();
+  await a.locator("#trav .card").first().scrollIntoViewIfNeeded();
   await a.locator(".trav-acts .linkbtn", { hasText: "Aus Gruppe hinzufügen" }).click();
   await a.locator(".pick .chip", { hasText: "Familie Klein" }).click();
   await a.locator(".person", { hasText: "Uwe" }).locator(".dabei").click();
@@ -172,7 +172,7 @@ try {
   await until(async () => (await a.locator("#stay .simple-out b").textContent()) === "100 €", "100 € pro Person");
   const hh2 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
   if (hh2.length !== 2 || !hh2.every(x => x.includes("500 €"))) fail("pro Familie: " + hh2);
-  await a.locator("#trav .card").scrollIntoViewIfNeeded();
+  await a.locator("#trav .card").first().scrollIntoViewIfNeeded();
   await a.locator(".trav-acts .linkbtn", { hasText: "Als Gruppe speichern" }).click();
   await a.locator(".trav-note", { hasText: "Platzhalter werden nicht gespeichert" }).waitFor();
   // Platzhalter durch gespeicherte Person ersetzen

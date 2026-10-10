@@ -1,5 +1,7 @@
 <script lang="ts">
   import { netMessage, showError, isNetText } from "../neterror";
+  import { blockedDays, hitsBlocked } from "../together";
+  import Help from "./Help.svelte";
   import { arrow, autoName, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
@@ -174,6 +176,8 @@
   const avoid = prefs.avoid || [];
   const ccOfAp = (c: string) => locOf(airportData, c, "airport")?.cc;
   let avoidedOut = $state(0);
+  /** flexibel: Verbindungen über Tage, an denen jemand aus der Suche nicht kann (Termin finden, #174) */
+  let blockedOut = $state(0);
   let noSelf = $state(saved.noSelf !== false);
   let withAccess = $state(saved.withAccess !== false);
 
@@ -251,7 +255,7 @@
 
   async function search(e?: Event) {
     e?.preventDefault();
-    error = ""; list = null; rows = []; sources = []; lateOut = 0; avoidedOut = 0; rounds = null; roundErrors = []; filter = noFilter();
+    error = ""; list = null; rows = []; sources = []; lateOut = 0; avoidedOut = 0; blockedOut = 0; rounds = null; roundErrors = []; filter = noFilter();
     if (!aps.length) { error = t("fs.errAirport"); return; }
     if (kind === "round") return roundSearch();
     if (kind === "oneway") {
@@ -282,6 +286,7 @@
       : mode === "flex" ? { ...common, depart: rFrom, latest: rTo, nightsMin: lo, nightsMax: hi } : { ...common, depart: out, ret: ret || undefined, flexDays };
     const qq = q;
     const dl = kind === "return" && mode === "flex" ? deadline(rTo, rToTime) : NaN;
+    const blocked = mode === "flex" ? blockedDays(trip, whoIds) : new Set<string>();
     const all: Rated[] = [], cmp: CompareRow[] = [], src = new Map<string, SourceStatus>();
     let late = 0;
     listMore = false;
@@ -291,8 +296,10 @@
         try {
           const r = await searchAll({ ...q, ...fromQ(code) }, ctrl!.signal);
           r.sources.forEach(s => { const p = src.get(s.id); src.set(s.id, p ? { ...p, ok: p.ok || s.ok, count: p.count + s.count, error: p.ok ? p.error : s.error } : { ...s }); });
-          const ok = r.offers.filter(o => !touchesAvoided(o, avoid, ccOfAp));
-          avoidedOut += r.offers.length - ok.length;
+          const ok0 = r.offers.filter(o => !touchesAvoided(o, avoid, ccOfAp));
+          avoidedOut += r.offers.length - ok0.length;
+          const ok = ok0.filter(o => !hitsBlocked(blocked, o.out.dep.slice(0, 10), (o.back?.arr || o.out.arr).slice(0, 10)));
+          blockedOut += ok0.length - ok.length;
           let rated = ok.map(o => rate(trip, o, code, withAccess, who, need));
           if (!isNaN(dl)) { const before = rated.length; rated = rated.filter(o => !isNaN(o.home) && o.home <= dl); late += before - rated.length; }
           all.push(...rated);
@@ -459,7 +466,7 @@
       {#if alongCost != null}<p class="muted small">{t("fs.alongCost", { name: trip.items.find(i => i.id === item?.follow)?.name || "", v: eur(alongCost) })}</p>{/if}
     </div>
     <div>
-      <span class="dlabel">{t("fs.origins")}</span>
+      <span class="dlabel">{t("fs.origins")} <Help k="origins" /></span>
       <div class="chips fs-aps">
         {#each allCodes as c (c)}
           {@const a = known.find(x => x.code === c)}
@@ -644,6 +651,7 @@
     {#if !rounds.length && farOut}<p class="warnline fs-farout">{t("fs.farOut")}</p>{/if}
     {#if roundMore.length}<p class="muted small fs-morestops">{t("fs.moreStops", { list: roundMore.join(", ") })}</p>{/if}
     {#if avoidedOut}<p class="muted small">{tn("fs.avoidedOut", avoidedOut)}</p>{/if}
+    {#if blockedOut}<p class="muted small fs-blocked">{tn("fs.blockedOut", blockedOut)}</p>{/if}
   {/if}
 
   {#if list && listMore}<p class="muted small fs-morestops">{t("fs.moreStops", { list: `${aps.join("/")} → ${to}` })}</p>{/if}
@@ -683,6 +691,7 @@
     {/if}
     {#if lateOut}<p class="muted small">{tn("fs.lateOut", lateOut)}</p>{/if}
     {#if avoidedOut}<p class="muted small">{tn("fs.avoidedOut", avoidedOut)}</p>{/if}
+    {#if blockedOut}<p class="muted small fs-blocked">{tn("fs.blockedOut", blockedOut)}</p>{/if}
 
     {#if list.length}
       {#if outCells.length > 1}

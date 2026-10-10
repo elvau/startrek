@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { applyDocument, t, tn } from "./lib/i18n/index.svelte";
+  import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
   import { loadRates } from "./lib/currency.svelte";
   import { access, app, calc, addItem, discardDetails, resumeScroll, setDetailed } from "./lib/store.svelte";
@@ -20,6 +20,7 @@
   import Hero from "./lib/ui/Hero.svelte";
   import Chapter from "./lib/ui/Chapter.svelte";
   import TravelersCard from "./lib/ui/TravelersCard.svelte";
+  import TogetherCard from "./lib/ui/TogetherCard.svelte";
   import ItemCard from "./lib/ui/ItemCard.svelte";
   import TicketAside from "./lib/ui/TicketAside.svelte";
   import Dock from "./lib/ui/Dock.svelte";
@@ -138,6 +139,8 @@
     <TripTimeline />
     <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>
+      <!-- gemeinsam planen (#173): Termin finden, abstimmen -->
+      {#if app.trip.travelers.length > 1}<article class="card tg-card" id="together" use:reveal><TogetherCard /></article>{/if}
     </Chapter>
 
     {#each CAT_CHAPTERS as ch, i (ch.k)}
@@ -212,7 +215,10 @@
           {#each items as item (item.id)}
             <ItemCard {item} icon={ch.icon} />
           {:else}
-            <div class="empty-ch">{t("app.empty")}</div>
+            <!-- leeres Kapitel (#198): was hierher gehört und welcher Knopf weiterhilft -->
+            {@const add = ch.k === "flights" ? t("chapter.addFlight") : ch.k === "stay" ? t("chapter.addStay") : t("chapter.addItem")}
+            <div class="empty-ch" data-empty={ch.k}><b>{t(`empty.${ch.k}.t` as Key)}</b>
+              <span>{access.readonly ? t("app.empty") : t(`empty.${ch.k}` as Key, { search: ch.k === "flights" ? t("fs.open") : t("st.open"), add })}</span></div>
           {/each}
         {/if}
       </Chapter>

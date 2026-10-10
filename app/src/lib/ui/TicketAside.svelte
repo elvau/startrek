@@ -1,5 +1,6 @@
 <script lang="ts">
   import { arrow, autoName, t, tn } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   import { access, app, calc } from "../store.svelte";
   import { cloud, isCloud } from "../cloud/cloud.svelte";
   import { activeOption, eur, eurPP, testItems } from "../calc";
@@ -62,7 +63,7 @@
       </div>{/if}
       {#if xAdd > 0 || T.extras.included > 0 || T.extras.deposit > 0}
         <details class="xc-sum" open={xAdd > 0 || T.extras.deposit > 0}>
-          <summary class="sect">{t("aside.xc")}</summary>
+          <summary class="sect">{t("aside.xc")} <Help k="xc" /></summary>
           {#if T.extras.onsite}<div class="xc-l"><span>{t("aside.xcOnsite")}</span><b class="num">{eur(T.extras.onsite)}</b></div>{/if}
           {#if T.extras.extra}<div class="xc-l"><span>{t("aside.xcExtra")}</span><b class="num">{eur(T.extras.extra)}</b></div>{/if}
           {#if T.extras.est}<div class="xc-l muted"><span>{t("aside.xcEst")}</span><b class="num">{t("xc.ca")} {eur(T.extras.est)}</b></div>{/if}
@@ -104,6 +105,7 @@
           <button class="btn sm watch-run" disabled={watchRun.busy} title={t("watch.lead")} onclick={runWatch}>
             <span aria-hidden="true" class:spin={watchRun.busy}>🔄</span> {watchRun.busy ? t("watch.checking", { n: watchRun.done, of: watchRun.of }) : t("watch.check")}
           </button>
+          <Help k="watch" />
           {#if w && !watchRun.busy}
             <small class="watch-res">{t("watch.at", { d: wAt })} · {moved ? `${tn("watch.moved", moved)}${delta ? ` (${delta > 0 ? "▲ +" : "▼ −"}${eur(Math.abs(delta))})` : ""}` : t("watch.same")}</small>
           {/if}
