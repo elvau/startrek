@@ -16,7 +16,7 @@
 <section class="chapter" class:on={view.active === ch.k} id={ch.k} data-ch={ch.k} style="--cc:var(--c-{ch.k})">
   <div class="ch-head">
     <div class="ch-ico"><Icon name={ch.icon} /></div>
-    <div class="ch-t"><small>{t("chapter.n", { n })}</small><h2>{chTitle(ch)}</h2>{#if mode && onmode}<ModeSwitch value={mode} onchange={onmode} label={t("chapter.mode", { label: chLabel(ch) })} /><Help k="mode" />{/if}</div>
+    <div class="ch-t"><small>{t("chapter.n", { n })}</small><h2>{chTitle(ch)}</h2>{#if mode && onmode}<div class="ch-mode"><ModeSwitch value={mode} onchange={onmode} label={t("chapter.mode", { label: chLabel(ch) })} /><Help k="mode" /></div>{/if}</div>
     <div class="ch-sum"><b class="num">{sum}</b><span>{sub}</span></div>
   </div>
   <div class="cards">
