@@ -90,18 +90,29 @@
   in your browser; with an account it is also stored in Firestore, readable only by you.
 </p>
 <p>
+  When <strong>setting up your account</strong> (assistant on first start or in the account menu) you can optionally add
+  for yourself: roughly since when you have held a driving licence (stored as an approximate year), whether you have a
+  credit card and your rail discounts. Like the people, they are stored in the browser or in your account and are used
+  for hints on rental cars (e.g. “licence held for under 1 year”) and later for rail travel; they are not sent to the
+  search service or the AI planner. Fellow travellers are created there as people and a group (as above).
+</p>
+<p>
   You can also save <strong>preferences</strong>, for yourself and per group: preferred airports, the postcode of your
   home (only in your own preferences and only with an account, never stored in the browser as part of the preferences;
   if you apply it in the flight search at the push of a button, it becomes part of the trip as place of residence, is
   stored like the trip and is visible to fellow travellers; it is not sent to the AI planner), stops, luggage,
-  accommodation type, travel style, budget, travel periods, a short note and countries you do not want to travel to or
+  accommodation type, travel style, budget, travel periods, your own car (seats, fuel type), whether a pet travels with
+  you, whether you need step-free accommodation (pushchair, wheelchair; without stating the reason), vegetarian or vegan,
+  a short note and countries you do not want to travel to or
   fly over. Like the people, they are stored in the browser or in your account and pre-fill searches and the AI
   planner. Blocked countries say nothing about the reason; please do not put personal or sensitive information in the
   note.
 </p>
 <p>
-  Optionally you can save <strong>booking details</strong> (names as on the ID, gender, nationality, ID card and
-  passport number with validity, issuing country) to make later bookings quicker. These details:
+  Optionally you can save <strong>booking details</strong> (names as on the ID, gender, nationality or nationalities,
+  ID card and passport number with validity, issuing country) to make later bookings quicker. This also includes whether
+  you want to see information on LGBTQ+ rights at the destination (when setting up your account); we do not ask about
+  sexual orientation. Gender and nationality are used only in your browser for matching entry and travel information. These details:
 </p>
 <ul>
   <li>are only available with an account; they are stored separately from everything else in Firestore and only you
@@ -186,6 +197,13 @@
   use the transmitted content (travel request and search results) to provide and improve its services; people at Google
   may also read it. Therefore do not enter names, contact details or other personal or confidential information in the
   travel request. If I switch to a paid tier, this use no longer applies and I will update this section.
+</p>
+<p>
+  <strong>Setting up your account with AI:</strong> When setting up your account you can describe in a short text how
+  you travel. Only this text is sent via my search service to Google Gemini (counts as one request in the daily
+  quota); only fixed fields come back (e.g. travel style, airports, number and ages of fellow travellers), which you
+  check page by page before anything is saved. Names, gender, nationality and date of birth are asked for directly in
+  the app, never via the AI; please do not write them into the text either.
 </p>
 <p>Legal basis: Art. 6(1)(b) GDPR (you trigger the request). Use is voluntary.</p>
 

@@ -33,6 +33,9 @@ const sync = $state({ loaded: "" });
 let timer: ReturnType<typeof setTimeout> | undefined;
 let stop: (() => void) | null = null;
 
+/** Stand des Kontos ist da (bzw. ohne Anmeldung sofort): erst dann entscheiden, ob der Assistent von selbst startet */
+export const dirReady = () => !cloud.user ? cloud.ready : sync.loaded === cloud.user.uid;
+
 /** Stand ohne Rücksicht auf die Reihenfolge der Felder (zwei Fenster dürfen sich nicht gegenseitig „Änderungen“ schicken) */
 export function canonDir(json: string): string {
   const sort = (v: unknown): unknown => Array.isArray(v) ? v.map(sort)
@@ -44,8 +47,8 @@ export function canonDir(json: string): string {
 export function mergeDir(a: Directory, b: Directory): Directory {
   const people = [...a.people, ...b.people.filter(p => !a.people.some(x => x.id === p.id))];
   const groups = [...a.groups, ...b.groups.filter(g => !a.groups.some(x => x.id === g.id))];
-  const me = a.me ?? b.me, prefs = a.prefs ?? b.prefs;
-  return { people, groups, ...(me ? { me } : {}), ...(prefs ? { prefs } : {}) };
+  const me = a.me ?? b.me, prefs = a.prefs ?? b.prefs, setup = a.setup ?? b.setup;
+  return { people, groups, ...(me ? { me } : {}), ...(prefs ? { prefs } : {}), ...(setup ? { setup } : {}) };
 }
 
 /** Stand aus dem Konto übernehmen (Personen, Gruppen, „Ich“, eigene Vorlieben) */
@@ -53,6 +56,7 @@ function apply(next: Directory) {
   dir.people = next.people; dir.groups = next.groups;
   if (next.me) dir.me = next.me; else delete dir.me;
   if (next.prefs) dir.prefs = next.prefs; else delete dir.prefs;
+  if (next.setup) dir.setup = next.setup; else delete dir.setup;
 }
 
 $effect.root(() => {

@@ -5,18 +5,26 @@
   import { app } from "../store.svelte";
   import { RENTAL, isRental, youngDrivers } from "../fees";
   import { money } from "../calc";
+  import { dir } from "../directory.svelte";
+  import { rentalPeople } from "../setup/setup";
 
   let { item }: { item: Item } = $props();
   const young = $derived(isRental(item) ? youngDrivers(item, app.trip) : []);
   const tooYoung = $derived(young.filter(p => Number(p.age) < RENTAL.youngMin));
   const who = (ps: typeof young) => ps.map(p => `${p.name} (${p.age})`).join(", ");
+  // aus dem Konto (#160): Führerschein und Kreditkarte der gespeicherten Personen
+  const known = $derived(isRental(item) ? rentalPeople(item, app.trip, dir.people) : null);
+  const names = (ps: typeof young) => ps.map(p => p.name).join(", ");
 </script>
 
 {#if isRental(item)}
   <details class="rc" data-rc={item.id}>
     <summary>📋 {t("rent.title")}</summary>
     <ul>
-      <li>🔒 {t("rent.deposit", { a: money(RENTAL.depositMin, "EUR"), b: money(RENTAL.depositMax, "EUR") })}</li>
+      <li>🔒 {t("rent.deposit", { a: money(RENTAL.depositMin, "EUR"), b: money(RENTAL.depositMax, "EUR") })}{#if known?.noCard} <b class="rc-warn rc-card">{t("rent.noCard")}</b>{/if}</li>
+      {#if known?.none.length || known?.fresh.length}
+        <li class="rc-lic">🪪 {#if known.none.length}<b class="rc-warn">{t("rent.noLicense", { who: names(known.none) })}</b> {/if}{#if known.fresh.length}<b class="rc-warn">{t("rent.newLicense", { who: names(known.fresh) })}</b>{/if}</li>
+      {/if}
       <li>🛡 {t("rent.cover")}</li>
       <li>⛽ {t("rent.fuel")}</li>
       <li>👤 {t("rent.young", { a: RENTAL.youngUnder, b: RENTAL.youngMin })}{#if young.length} <b>{t("rent.youngWho", { who: who(young) })}</b>{/if}{#if tooYoung.length} <b class="rc-warn">{t("rent.tooYoung", { who: who(tooYoung), b: RENTAL.youngMin })}</b>{/if}</li>

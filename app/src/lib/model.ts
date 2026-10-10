@@ -43,6 +43,12 @@ export interface Person {
   birth?: string;
   /** ungefährer Wohnort für Anfahrt und Flughafensuche (deutsche PLZ) */
   home?: { plz: string; ort: string; lat: number; lon: number };
+  /** Führerschein seit ungefähr diesem Jahr (0: keiner); angezeigt als Stufe (unter 1, über 1, 2, 5 Jahre), wächst mit der Zeit mit */
+  license?: number;
+  /** Kreditkarte für die Mietwagen-Kaution */
+  creditCard?: boolean;
+  /** Bahn-Ermäßigungen (bc25, bc50, bc100, dticket) */
+  rail?: string[];
 }
 
 /**
@@ -62,6 +68,10 @@ export interface TravelDoc {
   passExpiry?: string;
   /** Ausstellungsland des Reisepasses */
   passCountry?: string;
+  /** Staatsangehörigkeiten als ISO-2, kommagetrennt („DE,PL“), für Einreise-Hinweise im Browser */
+  nats?: string;
+  /** „1“: Hinweise zu LGBTQ+-Rechten im Reiseland zeigen (unabhängig vom Geschlecht) */
+  lgbtq?: string;
 }
 
 /** Gespeicherte Gruppe, z. B. Familie oder Kegelclub. Eine Person kann in mehreren Gruppen sein. */
@@ -109,6 +119,12 @@ export interface Prefs {
   months?: number[];
   nightsMin?: number;
   nightsMax?: number;
+  /** eigenes Auto (nur eigene Vorlieben): Plätze und Antrieb für Anreise und Fahrgemeinschaften */
+  car?: { seats?: number; fuel?: "petrol" | "diesel" | "hybrid" | "electric" };
+  /** Besonderes: Haustier dabei, stufenlos (Kinderwagen, Rollstuhl), vegetarisch bzw. vegan */
+  pet?: boolean;
+  stepFree?: boolean;
+  diet?: "veg" | "vegan";
 }
 
 export interface Directory {
@@ -118,6 +134,8 @@ export interface Directory {
   me?: string;
   /** eigene Vorlieben */
   prefs?: Prefs;
+  /** Konto eingerichtet bzw. Assistent übersprungen (JJJJ-MM-TT): startet dann nicht mehr von selbst */
+  setup?: string;
 }
 
 export interface Tier {
