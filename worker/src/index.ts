@@ -12,6 +12,7 @@ import { runAgent } from "../../app/src/lib/agent/agent";
 import { requireVerified, verifyAnyIdToken, verifyIdToken } from "../../app/src/lib/agent/auth";
 import { whereFrom } from "./where";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
+import { parseSetupRequest, setupFromGemini, setupPayload } from "../../app/src/lib/setup/ai";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
 import { blockedResult, parseActivityQuery, searchActivities, viatorBlock } from "../../app/src/lib/activities/search";
@@ -234,6 +235,12 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
       return (await overLimit("agent", req, env, h)) || agent(req, env, h);
     }
 
+    if (url.pathname === "/setup" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      noteRoute(env, "setup");
+      return (await overLimit("agent", req, env, h)) || setup(req, env, h);
+    }
+
     if (url.pathname === "/bug" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
       noteRoute(env, "bug");
@@ -331,6 +338,33 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
     await quota.refund().catch(() => {});
     const msg = (e as Error).message;
     // Anbieter überlastet (nach Wiederholung und Ausweichmodell): 503 statt 502, die App zeigt eine eigene Meldung
+    if (isOverloaded(msg)) return json({ error: msg, overloaded: true, remaining: Math.max(0, limit - quota.used) }, 503, h);
+    return json({ error: msg, remaining: Math.max(0, limit - quota.used) }, 502, h);
+  }
+}
+
+/** Konto einrichten (#160): freier Text → Felder; zählt als eine Anfrage im Tageskontingent des KI-Planers */
+async function setup(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
+  if (!env.GEMINI_API_KEY) return json({ error: "Der KI-Planer ist noch nicht eingerichtet" }, 503, h);
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return json({ error: "Bitte anmelden, um den KI-Planer zu nutzen" }, 401, h);
+  let uid: string;
+  try { uid = await verifyAnyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7", env.FIREBASE_TEST_PROJECT_ID); requireVerified(token); }
+  catch (e) { return json({ error: (e as Error).message }, 401, h); }
+  const r = parseSetupRequest(await req.json().catch(() => null));
+  if (typeof r === "string") return json({ error: r }, 400, h);
+  const limit = Number(env.AGENT_DAILY) || 5;
+  const quota = await countToday(env, uid);
+  if (quota.used >= limit) return json({ error: `Tageslimit erreicht (${limit} Anfragen). Morgen geht es weiter.`, remaining: 0 }, 429, h);
+  await quota.bump();
+  const model = env.GEMINI_MODEL || DEFAULT_MODEL;
+  try {
+    const res = await geminiCaller({ key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], f: meter(env) })(setupPayload(r.text));
+    return json({ fields: setupFromGemini(res), remaining: Math.max(0, limit - quota.used - 1) }, 200, h);
+  } catch (e) {
+    console.log(JSON.stringify({ at: "setup", model, error: (e as Error).message }));
+    await quota.refund().catch(() => {});
+    const msg = (e as Error).message;
     if (isOverloaded(msg)) return json({ error: msg, overloaded: true, remaining: Math.max(0, limit - quota.used) }, 503, h);
     return json({ error: msg, remaining: Math.max(0, limit - quota.used) }, 502, h);
   }

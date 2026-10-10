@@ -12,6 +12,15 @@ Gemini sucht über unsere Flug- und Unterkunftssuche und schlägt 2–3 Reisen v
    Gemini nennt nur Kennungen von Angeboten; die echten Angebote hängt der Such-Dienst an. Erfundene Kennungen fallen weg.
 4. Grenzen je Anfrage: 8 Runden, 4 Flugsuchen, 3 Unterkunftssuchen, 3 Vorschläge. Personen kommen aus der App, nicht von der KI.
 
+## Konto einrichten (#160)
+
+Der Assistent „Konto einrichten“ (`app/src/lib/ui/SetupWizard.svelte`, beim ersten Start bzw. im Kontomenü) kann aus
+freiem Text vorbefüllen: `POST /setup` mit `{ text }` (höchstens 1500 Zeichen), Anmeldung wie beim Planer, zählt als
+eine Anfrage im Tageskontingent (`AGENT_DAILY`). Gemini muss genau `fill_profile` aufrufen
+(`app/src/lib/setup/ai.ts`); App und Such-Dienst übernehmen nur bekannte Felder mit gültigen Werten (`parseSetupAi`).
+Namen, Geschlecht, Staatsangehörigkeit und Geburtsdatum gehören nicht zum Schema, die fragt die App selbst ab.
+Ohne die Route (Such-Dienst noch alt, 404) meldet die App das und es geht ohne KI weiter.
+
 ## Große Gruppen
 
 Eine Flugbuchung fasst höchstens 9 Plätze. Die KI sucht für Gruppen ab 5 Erwachsenen mit `seats: 2` (kleine Buchungen
