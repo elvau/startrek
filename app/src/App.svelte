@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { applyDocument, t, tn } from "./lib/i18n/index.svelte";
+  import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
   import { loadRates } from "./lib/currency.svelte";
   import { access, app, calc, addItem, discardDetails, resumeScroll, setDetailed } from "./lib/store.svelte";
@@ -212,7 +212,10 @@
           {#each items as item (item.id)}
             <ItemCard {item} icon={ch.icon} />
           {:else}
-            <div class="empty-ch">{t("app.empty")}</div>
+            <!-- leeres Kapitel (#198): was hierher gehört und welcher Knopf weiterhilft -->
+            {@const add = ch.k === "flights" ? t("chapter.addFlight") : ch.k === "stay" ? t("chapter.addStay") : t("chapter.addItem")}
+            <div class="empty-ch" data-empty={ch.k}><b>{t(`empty.${ch.k}.t` as Key)}</b>
+              <span>{access.readonly ? t("app.empty") : t(`empty.${ch.k}` as Key, { search: ch.k === "flights" ? t("fs.open") : t("st.open"), add })}</span></div>
           {/each}
         {/if}
       </Chapter>

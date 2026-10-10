@@ -201,6 +201,24 @@ try {
   log("Handy: Neuladen bleibt in der Reise mit Scrollstand; nach der Marke bleibt es auf der Startseite");
   await mctx.close();
 
+  // leere Kapitel (#198): je Kapitel eine Überschrift und ein Satz, was hierher gehört und welcher Knopf hilft
+  const EM = { id: "leer", name: "Leere Reise", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }], detail: { flights: true, stay: true, transport: true, attractions: true, misc: true },
+    items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
+  const ectx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await ectx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, EM);
+  const ep = await ectx.newPage();
+  ep.on("pageerror", e => errors.push(e.message));
+  await ep.goto(URL);
+  await ep.locator(".start .home-trip", { hasText: "Leere Reise" }).click();
+  const ef = await ep.locator("[data-empty=flights]").innerText();
+  if (!ef.includes("Noch keine Anreise") || !ef.includes("„Flüge suchen“") || !ef.includes("„Flug oder Anreise“")) fail("Leeres Kapitel Flüge: " + ef);
+  const es = await ep.locator("[data-empty=stay]").innerText();
+  if (!es.includes("Noch keine Unterkunft") || !es.includes("„Unterkunft suchen“")) fail("Leeres Kapitel Unterkunft: " + es);
+  for (const k of ["transport", "attractions", "misc"]) if (!(await ep.locator(`[data-empty=${k}] b`).innerText()).trim()) fail("Leeres Kapitel ohne Überschrift: " + k);
+  await ectx.close();
+  log("Leere Kapitel erklären, was hierher gehört, mit den Namen der passenden Knöpfe");
+
   // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
   const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }, { id: "c", name: "Tom", household: "Smith", age: 38 }, { id: "d", name: "Mia", household: "Smith", age: 36 }],
