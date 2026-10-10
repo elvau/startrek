@@ -5,6 +5,7 @@
    * Ohne Auto-Posten (Bahn, Bus) gibt es keine Vignette.
    */
   import { t, tn } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   import { access, app, setDetailed } from "../store.svelte";
   import { eur, moneyExact, rateOf } from "../calc";
   import { isActive, uid, type Item } from "../model";
@@ -129,7 +130,7 @@
 
 {#if show && plan && cost}
   <div class="search-row road road-trip">
-    <p class="road-t">{camper ? "🚐" : "🚗"} <b>{t("road.tripTitle")}</b> <span class="muted small">{t("road.tripSum", { km: cost.km, h: hm(totalMin) })}</span></p>
+    <p class="road-t">{camper ? "🚐" : "🚗"} <b>{t("road.tripTitle")}</b> <Help k="road" /> <span class="muted small">{t("road.tripSum", { km: cost.km, h: hm(totalMin) })}</span></p>
     <ol class="rt-legs">
       {#each plan.etappen as e, i (i)}
         {#if e.ferry}

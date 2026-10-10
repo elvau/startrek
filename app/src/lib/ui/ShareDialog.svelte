@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   import { changeRole, cloud, cloudTrip, inviteLink, kick, makeInvite, revokeInvite, type Role } from "../cloud/cloud.svelte";
   import Modal from "./Modal.svelte";
   import type { Key } from "../i18n/index.svelte";
@@ -55,7 +56,7 @@
       </div>
     {/if}
     <div class="ed-sec">
-      <span class="dlabel">{t("tm.members")}</span>
+      <span class="dlabel">{t("tm.members")} <Help k="roles" /></span>
       <ul class="members">
         {#each Object.entries(ct?.members || {}) as [uid, r] (uid)}
           <li>

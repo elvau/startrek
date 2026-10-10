@@ -4,6 +4,7 @@
    * gleiche Zeiten für alle: eine Zeile, aufklappbar.
    */
   import { t, tn } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   import { reveal } from "./reveal";
   import { access, app } from "../store.svelte";
   import { dateDE, dayShort } from "../format";
@@ -32,7 +33,7 @@
   <article class="card tl-card" use:reveal>
   <section class="tl" aria-label={t("tl.title")}>
     <div class="tl-h">
-      <h3>{t("tl.title")}</h3>
+      <h3>{t("tl.title")} <Help k="tl" /></h3>
       <span class="muted small">{dateDE(tl.start)} – {dateDE(tl.end)} · {tn("n.nights", tl.nights.length)}</span>
       {#if tl.same && tl.rows.length > 1 && !access.readonly}
         <button class="linkbtn tl-toggle" onclick={() => (open = !open)}>{open ? t("tl.close") : t("tl.adjust")}</button>

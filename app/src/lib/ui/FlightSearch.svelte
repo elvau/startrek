@@ -1,5 +1,6 @@
 <script lang="ts">
   import { netMessage, showError, isNetText } from "../neterror";
+  import Help from "./Help.svelte";
   import { arrow, autoName, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
@@ -459,7 +460,7 @@
       {#if alongCost != null}<p class="muted small">{t("fs.alongCost", { name: trip.items.find(i => i.id === item?.follow)?.name || "", v: eur(alongCost) })}</p>{/if}
     </div>
     <div>
-      <span class="dlabel">{t("fs.origins")}</span>
+      <span class="dlabel">{t("fs.origins")} <Help k="origins" /></span>
       <div class="chips fs-aps">
         {#each allCodes as c (c)}
           {@const a = known.find(x => x.code === c)}
