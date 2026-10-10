@@ -29,6 +29,8 @@ export interface AgentRequest {
   current?: TripBrief;
   /** eingetragene Familien, ohne Namen („F1“, „F2“ …), mit eigenen Zeiten, falls bekannt (#230) */
   groups?: AgentGroupIn[];
+  /** Tage, an denen jemand nicht kann (Termin finden, #174), JJJJ-MM-TT */
+  blocked?: string[];
 }
 
 /** Familie in der Anfrage: Kürzel statt Name, Personen, eigene An- und Abreise */
@@ -159,7 +161,9 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   const prefs = parsePrefs(o.prefs);
   const current = parseBrief(o.current);
   const groups = parseGroupsIn(o.groups);
+  const blocked = Array.isArray(o.blocked) ? o.blocked.filter((d): d is string => typeof d === "string" && DATE.test(d)).slice(0, 120) : [];
   return {
+    ...(blocked.length ? { blocked } : {}),
     ...(prefs ? { prefs } : {}),
     ...(groups.length ? { groups } : {}),
     ...(current ? { current } : {}),

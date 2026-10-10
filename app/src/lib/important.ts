@@ -16,8 +16,9 @@ import { FREE_MOVEMENT, MIN_VALID, SCHENGEN, validUntil, type MinValid } from ".
 import { CITIES, saleFor, type BookAhead, type Sale } from "./bookahead";
 import { activeOption, participantsOf, rateOf } from "./calc";
 import { autoDeposit } from "./fees";
+import { missing, openPolls } from "./together";
 
-export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place" | "deposit";
+export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place" | "deposit" | "poll";
 
 export interface PointPerson { id: string; name: string; nat: string; kind?: EntryKind; days?: number }
 
@@ -45,12 +46,14 @@ export interface Point {
   book?: { city: string; label: string; entries: { e: BookAhead; sale: Sale }[]; soon: boolean };
   /** Kaution eines Postens (nur geblockt): Betrag in der Währung des Angebots, wie zu hinterlegen */
   deposit?: { amount: number; currency: string; how?: string; name: string; item: string };
+  /** offene Abstimmung (#175): Frage und wer noch nicht abgestimmt hat */
+  poll?: { id: string; q: string; missing: string[] };
 }
 
 /** erledigt je Punkt: Signatur beim Abhaken, bei Punkten für Personen die erledigten Personen */
 export type DoneMap = Record<string, { sig: string; ids?: string[] }>;
 
-const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, deposit: 2, book: 3, situation: 3, place: 4 } as const;
+const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, deposit: 2, poll: 2, book: 3, situation: 3, place: 4 } as const;
 /** Kautionen ab diesem Betrag (oder nur mit Kreditkarte) sind ein wichtiger Punkt */
 export const DEPOSIT_MIN = 300;
 
@@ -136,6 +139,11 @@ export function importantPoints({ trip, countries, hints, visa, advice, passport
     const ps = participantsOf(it, trip).filter(isActive).map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" }));
     out.push({ key: `deposit:${it.id}`, kind: "deposit", prio: d.how === "credit" ? 1 : PRIO.deposit, sig: `${d.amount}|${d.how || ""}`,
       deposit: { amount: d.amount, currency: o.price.currency || "EUR", ...(d.how ? { how: d.how } : {}), name: it.name, item: it.id }, ...(ps.length ? { persons: ps } : {}) });
+  }
+  // offene Abstimmungen: bleiben offen, bis das Ergebnis übernommen ist (Haken setzt die Abstimmung, nicht „gelesen“)
+  for (const p of openPolls(trip)) {
+    const miss = missing(trip, p).map(x => x.name);
+    out.push({ key: `poll:${p.id}`, kind: "poll", prio: PRIO.poll, sig: `${p.id}|${miss.length}`, poll: { id: p.id, q: p.q, missing: miss } });
   }
   for (const h of hints) {
     if (h.kind === "entry" || covered.has(h.id)) continue;
