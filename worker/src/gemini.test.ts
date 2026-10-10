@@ -1,6 +1,6 @@
 /* Läuft mit den Tests der App (cd app && npx vitest run) */
 import { describe, expect, it } from "vitest";
-import { callGemini, geminiCaller, pickModels } from "./gemini";
+import { callGemini, geminiCaller, isOverloaded, pickModels } from "./gemini";
 
 /** Antworten der Reihe nach; merkt sich Modell und Wartezeiten */
 function net(statuses: number[]) {
@@ -78,5 +78,14 @@ describe("Gemini-Aufruf mit Wiederholung", () => {
     const n = net([400, 200]);
     await expect(callGemini({}, { key: "k", models: ["a", "b"], f: n.f, sleep: n.sleep })).rejects.toThrow("KI-Fehler 400");
     expect(n.seen).toEqual(["a"]);
+  });
+});
+
+describe("Überlastung erkennen", () => {
+  it("503 und 429 sind überlastet, andere Fehler nicht", () => {
+    expect(isOverloaded("KI-Fehler 503 (m): Modell derzeit stark ausgelastet")).toBe(true);
+    expect(isOverloaded("KI-Fehler 429 (m)")).toBe(true);
+    expect(isOverloaded("KI-Fehler 400 (m): kaputt")).toBe(false);
+    expect(isOverloaded("KI-Fehler: keine Antwort (m, TimeoutError)")).toBe(false);
   });
 });

@@ -135,6 +135,7 @@ export const fr: Dict = {
   "ai.ctxNow": "Maintenant",
   "ai.ctxQuestion": "Question",
   "ai.err.busy": "L’IA est occupée ou n’a pas trouvé de proposition. Réessaie dans quelques minutes.",
+  "ai.err.overloaded": "L’IA est surchargée pour le moment. Réessaie plus tard.",
   "ai.err.input": "La demande ne passe pas. Décris le voyage plus brièvement ou autrement.",
   "ai.err.limit": "Limite quotidienne atteinte. Tu pourras continuer demain.",
   "ai.err.login": "Ta connexion a expiré. Reconnecte-toi.",

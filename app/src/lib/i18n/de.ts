@@ -133,6 +133,7 @@ export const de = {
   "ai.ctxNow": "Jetzt",
   "ai.ctxQuestion": "Rückfrage",
   "ai.err.busy": "Die KI ist gerade ausgelastet oder hat keinen Vorschlag geschafft. Bitte in ein paar Minuten noch einmal versuchen.",
+  "ai.err.overloaded": "Die KI ist gerade überlastet. Bitte später noch einmal versuchen.",
   "ai.err.input": "Die Anfrage passt so nicht. Beschreib die Reise bitte etwas kürzer oder anders.",
   "ai.err.limit": "Tageslimit erreicht. Morgen geht es weiter.",
   "ai.err.login": "Deine Anmeldung ist abgelaufen. Bitte melde dich neu an.",
