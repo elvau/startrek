@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t, tn } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   /* Vorlieben: eigene und je Gruppe (belegen Suchen und KI-Planer vor). Getrennt von Gruppen und Personen. */
   import { dir } from "../directory.svelte";
   import Modal from "./Modal.svelte";
@@ -19,7 +20,7 @@
 <Modal title={t("prefs.title")} {onclose}>
   <div class="prefs-d">
     <div class="ed-sec">
-      <span class="dlabel">{t("prefs.mine")}</span>
+      <span class="dlabel">{t("prefs.mine")} <Help k="prefs" /></span>
       {#if dir.prefs}<PrefsEditor p={dir.prefs} />{/if}
     </div>
     <div class="ed-sec">

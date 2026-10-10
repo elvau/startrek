@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import Help from "./Help.svelte";
   import { entryCurrency, fromShown, toShown } from "../currency.svelte";
   import { t, tn } from "../i18n/index.svelte";
   /* Bearbeiten eines Postens: oben Name, Status und Suche, der Rest eingeklappt mit Zusammenfassung */
@@ -141,6 +142,7 @@
     {#each STATUS as k}
       <button role="radio" aria-checked={item.status === k} class:on={item.status === k} data-s={k} onclick={() => (item.status = k)}>{t(`status.${k}` as Key)}</button>
     {/each}
+    <Help k="status" />
   </div>
   {#if isStay || isFlight}
     <!-- mitfliegen „wie Flug …“: Knopf sucht einen eigenen Flug -->
@@ -258,7 +260,7 @@
   {/if}
 
   <details class="ed-acc" data-sec="who">
-    <summary><span class="dlabel">{t("ie.who")}</span><span class="ed-sum">{whoSum}</span></summary>
+    <summary><span class="dlabel">{t("ie.who")} <Help k="who" /></span><span class="ed-sum">{whoSum}</span></summary>
     <div class="chips">
       <button class="chip" class:on={all} onclick={() => (item.participants = undefined)}>{t("all")}</button>
       {#each people as p (p.id)}
@@ -270,7 +272,7 @@
 
   {#if item.status !== "idea" && item.status !== "dropped"}
     <details class="ed-acc ie-pay" data-sec="pay">
-      <summary><span class="dlabel">{t("ie.paidBy")}</span><span class="ed-sum">{paySum}</span></summary>
+      <summary><span class="dlabel">{t("ie.paidBy")} <Help k="paid" /></span><span class="ed-sum">{paySum}</span></summary>
       {#each item.payments || [] as p, i (i)}
         <div class="ie-p"><span>{p.by ? kasseName(app.trip, p.by) : "?"}</span><b class="num">{eur(p.amount)}</b>{#if p.at}<small class="muted">{dateDE(p.at)}</small>{/if}
           <button class="dp-del" aria-label={t("ks.remove", { text: `${p.by ? kasseName(app.trip, p.by) : ""} ${eur(p.amount)}` })} onclick={() => dropPay(i)}>×</button></div>

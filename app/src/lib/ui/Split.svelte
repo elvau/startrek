@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t, tn } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   /* Wer zahlt was: pro Familie Summe, fest und offen, Mitglieder und alle Posten */
   import { app, calc } from "../store.svelte";
   import { activeOption, eur, eurPP, householdShares, testItems, type HouseholdShare } from "../calc";
@@ -86,7 +87,7 @@
 {#if many && shares.length}
   <!-- große Gruppe: Übersicht als Tabelle, Einzelheiten je Familie auf Wunsch (sonst 15 gleiche Karten untereinander) -->
   <article class="card share sh-table" use:reveal>
-    <div class="sh-head"><div><h3>{t("split.overview")}</h3><span class="muted">{uniform ? (groups[0].exact ? t("split.uniform", { n: shares.length, v: t("perPerson", { v: eurPP(pp(shares[0])) }) }) : t("split.uniformAbout", { n: shares.length, v: eurPP(perPerson(groups[0], h => h.total)) })) : groups.length < shares.length ? t("split.groupTap") : t("split.tapRow")}</span></div>
+    <div class="sh-head"><div><h3>{t("split.overview")} <Help k="split" /></h3><span class="muted">{uniform ? (groups[0].exact ? t("split.uniform", { n: shares.length, v: t("perPerson", { v: eurPP(pp(shares[0])) }) }) : t("split.uniformAbout", { n: shares.length, v: eurPP(perPerson(groups[0], h => h.total)) })) : groups.length < shares.length ? t("split.groupTap") : t("split.tapRow")}</span></div>
       <button class="btn sm sh-all" onclick={() => (showAll = !showAll)}>{showAll ? t("split.lessDetails") : t("split.allDetails")}</button></div>
     <div class="sh-scroll">
       <table>

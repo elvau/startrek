@@ -5,6 +5,7 @@
    * zugesagt oder eingegangen. Beträge in der eigenen Währung, gespeichert in Euro.
    */
   import { locale, t } from "../i18n/index.svelte";
+  import Help from "./Help.svelte";
   import { access, app, calc } from "../store.svelte";
   import { eur, parseNum } from "../calc";
   import { CAT_CHAPTERS } from "../chapters";
@@ -68,7 +69,7 @@
 <article class="card funds" use:reveal>
   <div class="fu-head">
     <div>
-      <h3>💰 {t("fund.title")}</h3>
+      <h3>💰 {t("fund.title")} <Help k="fund" /></h3>
       <p class="muted small">{t("fund.hint")}</p>
     </div>
     {#if !access.readonly}<button class="btn sm fu-add" onclick={add}>+ {t("fund.add")}</button>{/if}

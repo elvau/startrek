@@ -148,6 +148,12 @@ try {
   if (await sCard.locator(".stay-img").isVisible() || await fCard.locator(".bp-legs").isVisible()) fail("Handy: Karten nicht kompakt");
   if (!(await sCard.evaluate(e => getComputedStyle(e, "::after").content)).includes("Details")) fail("Handy: Hinweis „Details“ fehlt");
   if (!(await sCard.locator("h3").isVisible()) || !/€/.test(await sCard.innerText())) fail("Handy: Name oder Preis fehlt auf der kompakten Karte");
+  // „?“-Hinweise (#198): Antippen zeigt die Erklärung, Escape schließt; im Posten klappt der Abschnitt dabei nicht auf
+  await m.locator("#stay .ch-t .help-q").click();
+  const pop = m.locator(".help-pop");
+  if (!(await pop.innerText()).includes("Detailliert:")) fail("Hinweis Einfach/Detailliert: " + await pop.innerText());
+  await m.keyboard.press("Escape");
+  await pop.waitFor({ state: "detached" });
   for (const [ch, id, btn, sum] of [["flights", "f", ".fs-item", "DUS→SPU"], ["stay", "s", ".st-item", "18.07. – 25.07."]]) {
     const c = m.locator(`#${ch} .card[data-item='${id}']`);
     await c.scrollIntoViewIfNeeded();
@@ -158,6 +164,13 @@ try {
     if (!(await c.locator(ch === "flights" ? ".bp-legs" : ".stay-img").isVisible())) fail(`${ch}: Einzelheiten beim Antippen nicht sichtbar`);
     const sums = (await c.locator(".editor details summary").allTextContents()).join(" | ");
     if (!sums.includes(sum) || !sums.includes("Wer ist dabei")) fail(`${ch}: Zusammenfassung „${sum}“ fehlt: ${sums}`);
+    if (ch === "flights") {
+      await c.locator(".editor details:has(.help-q) .help-q").first().click();
+      if (!(await m.locator(".help-pop").innerText()).includes("teilt sich die Kosten")) fail("Hinweis „Wer ist dabei“");
+      if (await c.locator(".editor details[open]").count()) fail("Hinweis klappt den Abschnitt auf");
+      await c.locator(".editor details:has(.help-q) .help-q").first().click(); // noch einmal antippen schließt
+      await m.locator(".help-pop").waitFor({ state: "detached" });
+    }
     await c.locator(`.editor ${btn}.ed-search`).click();
     const dlg = m.locator(".modal-bg .modal");
     await dlg.waitFor();
@@ -173,7 +186,7 @@ try {
   await m.locator("#flights .fs-open").click();
   await m.locator(".modal-bg .modal .fs-aps").waitFor();
   await m.locator(".modal-bg .modal .modal-h .x").click();
-  log("Handy: Karten kompakt (Einzelheiten beim Antippen); Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
+  log("Handy: „?“-Hinweise öffnen und schließen; Karten kompakt (Einzelheiten beim Antippen); Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
   // Neuladen im selben Tab bleibt in der Reise (Issue #255); über die Marke und neu laden bleibt es auf der Startseite
   await m.evaluate(() => scrollTo({ top: 600, behavior: "instant" }));
   await m.waitForTimeout(700); // Scrollstand wird verzögert gemerkt
