@@ -20,6 +20,7 @@
   import Hero from "./lib/ui/Hero.svelte";
   import Chapter from "./lib/ui/Chapter.svelte";
   import TravelersCard from "./lib/ui/TravelersCard.svelte";
+  import TogetherCard from "./lib/ui/TogetherCard.svelte";
   import ItemCard from "./lib/ui/ItemCard.svelte";
   import TicketAside from "./lib/ui/TicketAside.svelte";
   import Dock from "./lib/ui/Dock.svelte";
@@ -138,6 +139,8 @@
     <TripTimeline />
     <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>
+      <!-- gemeinsam planen (#173): Termin finden, abstimmen -->
+      {#if app.trip.travelers.length > 1}<article class="card tg-card" id="together" use:reveal><TogetherCard /></article>{/if}
     </Chapter>
 
     {#each CAT_CHAPTERS as ch, i (ch.k)}

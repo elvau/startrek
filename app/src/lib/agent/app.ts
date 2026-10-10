@@ -1,5 +1,6 @@
 /* KI-Planer in der App: Anfrage aus der Reise bauen, an den Such-Dienst schicken, Vorschlag übernehmen */
 import { i18n, t, type Key } from "../i18n/index.svelte";
+import { blockedDays } from "../together";
 import { ageClass, presences, totals } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, offerToOption, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
@@ -27,7 +28,8 @@ export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: 
     originsKnown: flyers(trip).some(p => !!trip.households?.[hhKey(p)]?.geo),
     travelersKnown: travelersKnown(trip), asked, ...(prefs ? { prefs } : {}),
     ...(withTrip ? { current: tripBrief(trip) } : {}),
-    ...(groupsIn(trip).length > 1 ? { groups: groupsIn(trip) } : {})
+    ...(groupsIn(trip).length > 1 ? { groups: groupsIn(trip) } : {}),
+    ...(blockedDays(trip).size ? { blocked: [...blockedDays(trip)].sort() } : {})
   };
 }
 

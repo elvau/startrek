@@ -219,6 +219,59 @@ try {
   await ectx.close();
   log("Leere Kapitel erklären, was hierher gehört, mit den Namen der passenden Knöpfe");
 
+  // gemeinsam planen (#174, #175): wer wann kann, bester Zeitraum als Reisedatum, Abstimmung mit zwei Personen
+  const GP = { id: "gp", name: "Gruppe plant", place: "Split", country: "Kroatien",
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 42 }, { id: "c", name: "Cleo", household: "Hase", age: 35 }],
+    items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {},
+    avail: { from: "2027-07-01", to: "2027-07-14", nights: 3, by: {} } };
+  const gctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await gctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, GP);
+  const gp = await gctx.newPage();
+  gp.on("pageerror", e => errors.push(e.message));
+  gp.on("dialog", d => d.accept());
+  await gp.goto(URL);
+  await gp.locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
+  const tg = gp.locator("#together .tg");
+  await tg.scrollIntoViewIfNeeded();
+  const cell = (row, day) => tg.locator(".tg-row").filter({ hasText: row }).locator(".tg-c").nth(day - 1);
+  // Anna kann 1.–4. nicht (dreimal antippen = kann nicht), Ben 8. vielleicht (zweimal), Cleo trägt 10. „kann“ ein
+  for (const d of [1, 2, 3, 4]) for (let i = 0; i < 3; i++) await cell("Anna", d).click();
+  for (let i = 0; i < 2; i++) await cell("Ben", 8).click();
+  await cell("Cleo", 10).click();
+  if (!(await tg.locator(".tg-count").innerText()).includes("3 von 3")) fail("Eingetragen-Zähler: " + await tg.locator(".tg-count").innerText());
+  const firstBest = await tg.locator(".tg-best li").first().innerText();
+  if (!firstBest.includes("09.07.") || !firstBest.includes("alle 3")) fail("Bester Zeitraum: " + firstBest);
+  await tg.locator(".tg-best li").first().locator(".tg-take").click();
+  await until(async () => (await gp.locator(".hero .meta").innerText()).includes("3 Nächte"), "Zeitraum als Reisedatum");
+  log("Termin finden: drei Personen tragen ein, bester Zeitraum 09.–12.07. für alle 3 (am 8. kann Ben nur vielleicht), als Reisedatum übernommen");
+  // Abstimmung über die besten Zeiträume, zwei Personen stimmen, Ergebnis übernehmen
+  await tg.locator(".tg-poll").click();
+  const poll = tg.locator(".poll").first();
+  await poll.waitFor({ timeout: 4000 }).catch(async () => fail("Abstimmung fehlt: " + (await tg.innerText()).slice(-900).replace(/\n/g, " / ") + " | " + errors.join(" | ")));
+  await tg.locator(".tg-me select").selectOption({ label: "Anna" });
+  await poll.locator("li").nth(1).locator(".chip", { hasText: "👍" }).click();
+  await tg.locator(".tg-me select").selectOption({ label: "Cleo" });
+  await poll.locator("li").nth(1).locator(".chip", { hasText: "👍" }).click();
+  await poll.locator("li").nth(0).locator(".chip", { hasText: "👎" }).click();
+  if (!(await poll.innerText()).includes("Noch nicht abgestimmt: Ben")) fail("Wer fehlt: " + await poll.innerText());
+  const second = (await poll.locator("li").nth(1).locator(".poll-l").innerText()).split(" – ")[0];
+  await poll.locator(".poll-apply").click();
+  await poll.locator(".poll-done").waitFor();
+  const day = String(+second.slice(0, 2)) + ". bis";
+  if (!(await gp.locator(".hero .meta").innerText()).includes(day)) fail("Abstimmungsergebnis nicht als Reisedatum: " + second + " / " + await gp.locator(".hero .meta").innerText());
+  // frei: neue Abstimmung, ohne zwei Möglichkeiten nicht startbar
+  await tg.locator(".poll-new").click();
+  await tg.locator(".poll-q").fill("Welches Ziel?");
+  await tg.locator(".poll-opts").fill("Mallorca");
+  if (await tg.locator(".poll-add").isEnabled()) fail("Abstimmung mit einer Möglichkeit startbar");
+  await tg.locator(".poll-opts").fill("Mallorca\nKroatien");
+  await tg.locator(".poll-add").click();
+  await tg.locator(".poll", { hasText: "Welches Ziel?" }).waitFor();
+  // offene Abstimmung steht unter „Wichtiges“
+  if (!(await gp.locator(".imp-btn").getAttribute("aria-label") || "").match(/Wichtig/)) fail("Wichtiges-Knopf fehlt");
+  await gctx.close();
+  log("Abstimmen: über die Zeiträume (Anna und Cleo, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten");
+
   // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
   const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }, { id: "c", name: "Tom", household: "Smith", age: 38 }, { id: "d", name: "Mia", household: "Smith", age: 36 }],
