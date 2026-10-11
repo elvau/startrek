@@ -263,6 +263,22 @@ try {
   await p.keyboard.press("Escape");
   log("Mehrtägiges Event (16 Tage): „Nur das Event“ und „Günstigste im Zeitraum“ aus einer flexiblen Suche, als günstigste markiert");
 
+  // gar kein Flug (auch nicht mit zwei Umstiegen): keine Karten mit Gesamtpreis, sondern die Meldung mit nächsten Schritten
+  await p.unroute("https://flights.test/flights/search");
+  const emptyAsked = [];
+  await p.route("https://flights.test/flights/search", async r => {
+    emptyAsked.push(JSON.parse(r.request().postData()));
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0, ms: 100 }] }) });
+  });
+  await att.locator(".att-ev", { hasText: "Event ändern" }).click();
+  const m4 = p.locator(".modal");
+  await m4.locator(".ev-form .btn.primary").click();
+  await m4.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
+  if (await m4.locator(".ev-card").count()) fail("Karten ohne Flug");
+  if (!emptyAsked.some(q => q.maxStops === 2)) fail("keine Nachsuche mit zwei Umstiegen: " + emptyAsked.map(q => q.maxStops));
+  await p.keyboard.press("Escape");
+  log("Kein Flug: Meldung statt Karten, vorher mit zwei Umstiegen nachgesucht");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Event-Reise ok");
 } finally { await browser.close(); server.kill(); }
