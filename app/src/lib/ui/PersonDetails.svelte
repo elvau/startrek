@@ -1,6 +1,7 @@
 <script lang="ts">
   /* Details einer gespeicherten Person: Geburtsdatum, Wohnort, Buchungsdaten (nur im Konto, erst auf Wunsch geladen) */
   import { untrack } from "svelte";
+  import BirthInput from "./BirthInput.svelte";
   import { t } from "../i18n/index.svelte";
   import type { Person, TravelDoc } from "../model";
   import { personAge } from "../people";
@@ -48,9 +49,7 @@
 
 <div class="pdet">
   <div class="ed-row">
-    <label class="f">{t("per.birth")}
-      <input type="date" max={today} bind:value={p.birth} />
-    </label>
+    <div class="f"><span>{t("per.birth")}</span><BirthInput bind:value={p.birth} /></div>
     {#if p.birth}
       <span class="muted ed-note">{age != null ? t("trav.ageYears", { n: age }) : ""}</span>
     {:else}
