@@ -39,11 +39,18 @@ try {
   await a.locator(".wz-manual").click();
   if (!(await a.locator(".wz-b", { hasText: "nur mit Konto" }).count())) fail("Hinweis auf sensible Felder nur mit Konto fehlt");
   if (await a.locator(".wz-gender").count()) fail("Geschlecht ohne Konto abgefragt");
+  // Abflughäfen: die zwei nächsten zum Wohnort sind vorausgewählt, weitere als Vorschlag
+  await a.locator(".wz-plz").fill("40210");
+  await until(async () => (await a.locator(".wz label.plzf").textContent()).includes("Düsseldorf"), "Wohnort zur PLZ");
+  for (let i = 0; i < 3; i++) await a.locator(".wz-next").click();
+  await until(async () => (await a.locator(".wz-aps .chip.on").count()) === 2, "zwei Abflughäfen vorausgewählt");
+  const onAps = await a.locator(".wz-aps .chip.on").allTextContents();
+  if (!onAps.includes("DUS") || (await a.locator(".wz-aps .chip").count()) < 3) fail("Vorauswahl Abflughäfen: " + onAps);
   await a.locator(".wz .x").click();
   await a.reload();
   await a.waitForTimeout(2500);
   if (await a.locator(".wz").count()) fail("Assistent startet nach „Später“ erneut");
-  log("ohne Konto: startet einmal von selbst, danach nicht mehr");
+  log("ohne Konto: startet einmal von selbst, danach nicht mehr; Abflughäfen am Wohnort vorausgewählt");
 
   // 2. angemeldet: über das Kontomenü, mit KI-Text
   const b = await page("angemeldet", false);
@@ -73,7 +80,9 @@ try {
   if (await b.locator(".wz-gender .chip.on", { hasText: "weiblich" }).count()) fail("Geschlecht aus der KI übernommen");
   await b.locator(".wz label", { hasText: "Vorname" }).locator("input").fill("Alex");
   await b.locator(".wz label", { hasText: "Nachname" }).locator("input").fill("Klein");
-  await b.locator(".wz input[type=date]").fill("1990-06-01");
+  await b.locator(".wz .bd-d").selectOption("1");
+  await b.locator(".wz .bd-m").selectOption("6");
+  await b.locator(".wz .bd-y").fill("1990");
   await b.locator(".wz-plz").fill("40210");
   await until(async () => (await b.locator(".wz label.plzf").textContent()).includes("Düsseldorf"), "Wohnort zur PLZ");
   await b.locator(".wz-nat").selectOption("PL");
@@ -89,6 +98,9 @@ try {
   if ((await b.locator(".wz-group").inputValue()) !== "Familie") fail("Gruppe nicht vorbelegt");
   await b.locator(".wz-next").click();
   if (!(await b.locator(".wz .chip.on", { hasText: "Strand" }).count())) fail("Reisestil nicht aus dem Text");
+  // Abflughafen aus dem Text bleibt allein gewählt, ein Vorschlag in der Nähe kommt per Antippen dazu
+  if ((await b.locator(".wz-aps .chip.on").allTextContents()).join() !== "DUS") fail("Abflughafen nicht aus dem Text");
+  await b.locator(".wz-aps .chip", { hasText: "CGN" }).click();
   await b.locator(".wz-skip").click();
   if ((await b.locator(".wz-hol").inputValue()) !== "NW") fail("Ferien nicht aus dem Text");
   await b.locator(".wz-next").click();
@@ -104,7 +116,8 @@ try {
   const dirJson = await b.evaluate(() => localStorage.getItem("rk2-dir") || "");
   const d = JSON.parse(dirJson);
   if (d.people.map(p => p.first).join() !== "Alex,Sam,Mia" || d.groups[0]?.name !== "Familie" || d.groups[0].memberIds.length !== 3) fail("Verzeichnis falsch: " + dirJson);
-  if (!d.prefs?.styles?.includes("beach") || !d.prefs.pet || !d.setup) fail("Vorlieben nicht gespeichert: " + JSON.stringify(d.prefs));
+  if (d.people[0].birth !== "1990-06-01") fail("Geburtsdatum falsch: " + d.people[0].birth);
+  if (!d.prefs?.styles?.includes("beach") || !d.prefs.pet || !d.setup || d.prefs.airports?.join() !== "DUS,CGN") fail("Vorlieben nicht gespeichert: " + JSON.stringify(d.prefs));
   const store = await b.evaluate(() => JSON.stringify(Object.fromEntries(Object.entries(localStorage))));
   if (/gender|nats|\\"PL\\"|lgbtq|divers/.test(store)) fail("sensible Angaben im Browser-Speicher");
   await b.waitForTimeout(2000);
