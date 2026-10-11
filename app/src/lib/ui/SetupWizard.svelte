@@ -14,7 +14,13 @@
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
   import { loadPlz, type Place } from "../plz";
-  import { FLIGHTS_URL } from "../flights/app";
+  import { FLIGHTS_URL, homeGuess } from "../flights/app";
+  import { guessAirports } from "../flights/origin";
+  import { loadOrigin } from "../flights/origin.svelte";
+  import { airportData, ensureAirports } from "../geo/geo.svelte";
+  import type { Loc } from "../geo/locations";
+  import BirthInput from "./BirthInput.svelte";
+  import LocationPicker from "./LocationPicker.svelte";
   import { openChat } from "../agent/open.svelte";
   import { FUELS, LICENSES, RAIL_DE, SETUP_TEXT_MAX, STATES } from "../setup/ai";
   import { applyAi, applyDraft, draftFrom, type SetupDraft } from "../setup/setup";
@@ -85,11 +91,19 @@
     const next = cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v];
     setP(k, (k === "months" ? (next as number[]).sort((a, b) => a - b) : next) as Prefs[K]);
   }
-  let aps = $state(untrack(() => (d.prefs.airports || []).join(", ")));
-  function setAps(v: string) {
-    aps = v;
-    setP("airports", [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(c => /^[A-Z]{3}$/.test(c)))]);
-  }
+  /* Abflughäfen: Vorschläge am Wohnort (PLZ), sonst aus der Verbindung; die zwei nächsten sind vorausgewählt, bis man selbst wählt */
+  ensureAirports(); loadOrigin();
+  const nearAps = $derived((d.home ? guessAirports({ lat: d.home.lat, lon: d.home.lon }, airportData, 4) : homeGuess(4))?.codes ?? []);
+  const apChips = $derived([...new Set([...nearAps, ...(d.prefs.airports || [])])]);
+  let apsTouched = false, apsAuto = false;
+  $effect(() => {
+    const near = nearAps;
+    if (STEPS[step] !== "how" || !near.length) return;
+    untrack(() => { if (!apsTouched && (apsAuto || !d.prefs.airports?.length)) { setP("airports", near.slice(0, 2)); apsAuto = true; } });
+  });
+  const apName = (c: string) => { const a = airportData.airports.find(x => x[0] === c); return a ? `${a[2]} · ${a[1]}` : c; };
+  function toggleAp(c: string) { apsTouched = true; const cur = d.prefs.airports || []; setP("airports", cur.includes(c) ? cur.filter(x => x !== c) : [...cur, c]); }
+  function addAp(l: Loc) { apsTouched = true; setP("airports", [...new Set([...(d.prefs.airports || []), ...(l.kind === "airport" ? [l.code] : l.airports)])]); }
   const num = (v: string) => (v === "" ? undefined : Number(v));
   const monthName = (m: number) => new Date(2027, m - 1, 1).toLocaleDateString(i18n.lang, { month: "short" });
   const STATE_NAMES: Record<string, string> = { BW: "Baden-Württemberg", BY: "Bayern", BE: "Berlin", BB: "Brandenburg", HB: "Bremen", HH: "Hamburg", HE: "Hessen", MV: "Mecklenburg-Vorpommern", NI: "Niedersachsen", NW: "Nordrhein-Westfalen", RP: "Rheinland-Pfalz", SL: "Saarland", SN: "Sachsen", ST: "Sachsen-Anhalt", SH: "Schleswig-Holstein", TH: "Thüringen" };
@@ -173,7 +187,7 @@
           <label class="f">{t("setup.last")}<input bind:value={d.last} autocomplete="family-name" /></label>
         </div>
         <div class="wz-grid">
-          <label class="f">{t("per.birth")}<input type="date" max={new Date().toISOString().slice(0, 10)} bind:value={d.birth} /></label>
+          <div class="f">{t("per.birth")}<BirthInput bind:value={d.birth} /></div>
           {#if !d.birth}<label class="f">{t("setup.orAge")}<input class="n sm" type="number" min="0" max="120" value={d.age ?? ""} oninput={e => (d.age = num(e.currentTarget.value) ?? null)} /></label>{/if}
         </div>
         <div class="wz-grid">
@@ -260,7 +274,12 @@
           <div class="chips">{#each BOARDS as b (b)}<button type="button" class="chip" class:on={d.prefs.board === b} aria-pressed={d.prefs.board === b} onclick={() => pick("board", b)}>{t(`board.${b}` as Key)}</button>{/each}</div>
           <div class="chips">{#each [2, 3, 4, 5] as n (n)}<button type="button" class="chip" class:on={d.prefs.minStars === n} aria-pressed={d.prefs.minStars === n} onclick={() => pick("minStars", n)}>{"★".repeat(n)}</button>{/each}</div></div>
         <div class="wz-sec"><span class="dlabel">{t("prefs.flights")}{#if ai("airports")} <span class="wz-ai-tag">{t("setup.fromText")}</span>{/if}</span>
-          <label class="f">{t("prefs.airports")}<input class="wz-aps" value={aps} oninput={e => setAps(e.currentTarget.value)} placeholder={t("prefs.airportsPh")} /></label>
+          <span class="muted small">{t("prefs.airports")}</span>
+          <div class="chips wz-aps">
+            {#each apChips as c (c)}<button type="button" class="chip" class:on={d.prefs.airports?.includes(c)} aria-pressed={!!d.prefs.airports?.includes(c)} title={apName(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
+            <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
+          </div>
+          {#if nearAps.length}<span class="muted small">{t("setup.apsNear")}</span>{/if}
           <div class="chips"><span class="muted small">{t("prefs.maxStops")}:</span>{#each [0, 1, 2] as n (n)}<button type="button" class="chip" class:on={d.prefs.maxStops === n} aria-pressed={d.prefs.maxStops === n} onclick={() => pick("maxStops", n)}>{n}</button>{/each}</div>
           <div class="chips"><span class="muted small">{t("prefs.bags")}:</span>{#each [true, false] as v (v)}<button type="button" class="chip" class:on={d.prefs.bags === v} aria-pressed={d.prefs.bags === v} onclick={() => pick("bags", v)}>{v ? t("prefs.bagsYes") : t("prefs.bagsNo")}</button>{/each}</div></div>
 
