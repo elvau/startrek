@@ -213,7 +213,9 @@ try {
   const bd = b.locator(".modal");
   await bd.locator('.pmore[aria-label="Details zu Uwe"]').click();
   const det = bd.locator(".pdet");
-  await det.locator("label", { hasText: "Geburtsdatum" }).locator("input").fill("1975-03-10");
+  await det.locator(".bd-d").selectOption("10");
+  await det.locator(".bd-m").selectOption("3");
+  await det.locator(".bd-y").fill("1975");
   await det.locator("label", { hasText: "Wohnort" }).locator("input").fill("41236");
   await until(async () => (await det.locator("label", { hasText: "Wohnort" }).locator("input").inputValue()) === "41236 Mönchengladbach", "Wohnort erkannt");
   await det.locator(".pdocs .linkbtn", { hasText: "Buchungsdaten anzeigen" }).click();
