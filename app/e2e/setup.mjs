@@ -36,6 +36,7 @@ try {
   await a.goto(URL);
   await a.locator(".wz").waitFor({ timeout: 15000 });
   if (await a.locator(".wz-ai").count()) fail("KI ohne Konto angeboten");
+  if (await a.evaluate(() => getComputedStyle(document.documentElement).overflowY) !== "hidden") fail("Hintergrund scrollt hinter dem Assistenten");
   await a.locator(".wz-manual").click();
   if (!(await a.locator(".wz-b", { hasText: "nur mit Konto" }).count())) fail("Hinweis auf sensible Felder nur mit Konto fehlt");
   if (await a.locator(".wz-gender").count()) fail("Geschlecht ohne Konto abgefragt");
