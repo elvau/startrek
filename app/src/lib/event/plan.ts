@@ -32,6 +32,11 @@ export interface Variant {
   window?: { from: string; to: string };
 }
 
+/** Gesamtpreis eines Vorschlags: nur mit Flug, sonst keine vollständige Reise und damit kein Preis */
+export function planTotal(flight: { total: number } | null, stay: { total: number } | null): number | null {
+  return flight ? flight.total + (stay ? Math.round(stay.total) : 0) : null;
+}
+
 export const eventDay = (ev: TripEvent) => ev.start.slice(0, 10);
 /** letzter Event-Tag: bei mehrtägigen Events (Rennwochenende, Turnier) das Ende, sonst der erste Tag */
 export const eventLast = (ev: TripEvent) => (ev.end && ev.end > eventDay(ev) ? ev.end : eventDay(ev));
