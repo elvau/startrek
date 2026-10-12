@@ -41,6 +41,7 @@ export const ar: Dict = {
   "adm.lv.ok": "ضمن الحد الآمن",
   "adm.lv.warn": "يقترب من الحد",
   "adm.m.cf": "لوحة Cloudflare",
+  "adm.m.visits": "الزوار يوميًا وشهريًا (Cloudflare Web Analytics)",
   "adm.m.firestore": "Firestore: 50,000 قراءة و20,000 كتابة يوميًا",
   "adm.m.gemini": "Gemini: حدود لكل نموذج (طلبات في الدقيقة واليوم)",
   "adm.m.hosting": "الاستضافة: 360 ميغابايت نقل يوميًا، 10 غيغابايت تخزين",

@@ -38,6 +38,7 @@ export const en: Dict = {
   "adm.lv.ok": "all good",
   "adm.lv.warn": "getting tight",
   "adm.m.cf": "Cloudflare dashboard",
+  "adm.m.visits": "Visitors per day and month (Cloudflare Web Analytics)",
   "adm.m.firestore": "Firestore: 50,000 reads and 20,000 writes per day",
   "adm.m.gemini": "Gemini: limits per model (requests per minute and day)",
   "adm.m.hosting": "Hosting: 360 MB transfer per day, 10 GB storage",

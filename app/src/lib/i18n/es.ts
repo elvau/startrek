@@ -38,6 +38,7 @@ export const es: Dict = {
   "adm.lv.ok": "todo bien",
   "adm.lv.warn": "se está agotando",
   "adm.m.cf": "Panel de Cloudflare",
+  "adm.m.visits": "Visitantes por día y mes (Cloudflare Web Analytics)",
   "adm.m.firestore": "Firestore: 50.000 lecturas y 20.000 escrituras al día",
   "adm.m.gemini": "Gemini: límites por modelo (solicitudes por minuto y día)",
   "adm.m.hosting": "Hosting: 360 MB de transferencia al día, 10 GB de almacenamiento",
