@@ -6,6 +6,10 @@ import "./styles/app.css";
 import "./styles/editor.css";
 import App from "./App.svelte";
 import { i18nReady } from "./lib/i18n/index.svelte";
+import { loadBeacon } from "./lib/visits";
+
+// Besucherzahlen (nur splitandfly.com, cookielos)
+loadBeacon();
 
 // gewählte Sprache zuerst laden (Deutsch und Englisch sind schon da), sonst blitzt kurz Englisch auf
 await i18nReady();

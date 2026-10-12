@@ -40,6 +40,7 @@ export const ru: Dict = {
   "adm.lv.ok": "в норме",
   "adm.lv.warn": "заканчивается",
   "adm.m.cf": "Панель Cloudflare",
+  "adm.m.visits": "Посетители по дням и месяцам (Cloudflare Web Analytics)",
   "adm.m.firestore": "Firestore: 50 000 чтений и 20 000 записей в день",
   "adm.m.gemini": "Gemini: лимиты по модели (запросы в минуту и в день)",
   "adm.m.hosting": "Хостинг: 360 МБ трафика в день, 10 ГБ хранилища",

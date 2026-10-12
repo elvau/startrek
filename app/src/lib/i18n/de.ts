@@ -36,6 +36,7 @@ export const de = {
   "adm.lv.ok": "im grünen Bereich",
   "adm.lv.warn": "wird knapp",
   "adm.m.cf": "Cloudflare-Dashboard",
+  "adm.m.visits": "Besucherzahlen je Tag und Monat (Cloudflare Web Analytics)",
   "adm.m.firestore": "Firestore: 50.000 Lesen und 20.000 Schreiben pro Tag",
   "adm.m.gemini": "Gemini: Grenzen je Modell (Anfragen pro Minute und Tag)",
   "adm.m.hosting": "Hosting: 360 MB Übertragung pro Tag, 10 GB Speicher",
