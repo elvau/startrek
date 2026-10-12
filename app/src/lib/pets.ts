@@ -5,7 +5,7 @@
  * ein Text zum Teilen, um im Freundeskreis nach Betreuung zu fragen (ohne Wohnort, ohne Namen, nichts gespeichert).
  */
 import { t, tn, type Key } from "./i18n/index.svelte";
-import { hhKey, isActive, uid, type Item, type PetCare, type PetKind, type Pets, type Trip } from "./model";
+import { hhKey, isActive, uid, type HomeCare, type HomeTask, type Item, type PetCare, type PetKind, type Pets, type Trip } from "./model";
 import type { Hint } from "./hints";
 import { SCHENGEN } from "./borders";
 import { dateDE } from "./format";
@@ -65,14 +65,36 @@ export function kindsText(kinds: PetKind[], acc = false): string {
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} ${t("and")} ${names.at(-1)}` : names[0] || t("pet.k.other");
 }
 
-/** Anfrage zum Teilen: vorbeibringen bzw. vorbeikommen, mit Zeitraum, ohne Wohnort und Namen */
-export function askText(p: Pets, from?: string, to?: string): string {
-  const bring = p.kinds.filter(k => careOf(p, k) === "bring"), visit = p.kinds.filter(k => careOf(p, k) === "visit");
+/** Aufgaben fürs Zuhause als Tätigkeit in der Anfrage („die Pflanzen gießen“) */
+const taskText = (c: HomeCare, k: HomeTask) => (k === "other" ? (c.other || "").trim() : t(`home.do.${k}` as Key));
+
+/** Liste mit „und“ am Ende */
+const andList = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} ${t("and")} ${xs.at(-1)}` : xs[0] || "");
+
+/** Dankeschön als Text: „50 €“, „eine Kiste Bier“ oder beides */
+export function thanksText(c?: HomeCare): string {
+  const th = c?.thanks;
+  if (!th) return "";
+  return [th.eur ? `${Math.round(th.eur)} €` : "", (th.text || "").trim()].filter(Boolean).join(t("home.thanksAnd"));
+}
+
+/**
+ * Anfrage zum Teilen (#322, #323): Tiere vorbeibringen bzw. vorbeikommen und Aufgaben fürs Zuhause in einem Text,
+ * mit Zeitraum, wie oft und optionalem Dankeschön; ohne Wohnort, Schlüssel und Namen.
+ */
+export function askText(p: Pets | undefined, from?: string, to?: string, c?: HomeCare): string {
+  const pets = p?.home && p.kinds.length ? p : undefined;
+  const bring = pets ? pets.kinds.filter(k => careOf(pets, k) === "bring") : [];
+  const feed = pets ? pets.kinds.filter(k => careOf(pets, k) === "visit") : [];
   const when = from && to ? t("pet.ask.when", { a: dateDE(from), b: dateDE(to) }) : t("pet.ask.soon");
-  const emoji = PET_EMOJI[p.kinds[0]] || "🐾";
+  const acts = [...(feed.length ? [t("pet.do.feed", { pets: kindsText(feed, true) })] : []), ...(c?.tasks || []).map(k => taskText(c!, k)).filter(Boolean)];
+  const often = c?.tasks.length ? c.often : pets?.often;
   const parts: string[] = [];
   if (bring.length) parts.push(t("pet.ask.bring", { when, pets: kindsText(bring, true) }));
-  if (visit.length) parts.push(t(bring.length ? "pet.ask.visitToo" : "pet.ask.visit", { when, pets: kindsText(visit, true), often: p.often ? ` (${t(`pet.often.${p.often}` as Key)})` : "" }));
+  if (acts.length) parts.push(t(bring.length ? "pet.ask.visitToo" : "pet.ask.visit", { when, acts: andList(acts), often: often ? ` (${t(`pet.often.${often}` as Key)})` : "" }));
+  const thanks = thanksText(c);
+  if (thanks) parts.push(t("home.thanksAsk", { x: thanks }));
+  const emoji = pets ? PET_EMOJI[pets.kinds[0]] || "🐾" : c?.tasks.includes("plants") || c?.tasks.includes("garden") ? "🪴" : "🏠";
   return `${parts.join(" ")} ${emoji}`;
 }
 
@@ -81,7 +103,7 @@ export function careDays(trip: Trip): number {
   if (!trip.from || !trip.to) return 0;
   return Math.max(1, Math.round((Date.parse(trip.to) - Date.parse(trip.from)) / 86400000) + 1);
 }
-const visits = (days: number, often?: Pets["often"]) => (often === "few" ? Math.ceil(days / 2.5) : days);
+const visits = (days: number, often?: Pets["often"]) => (often === "few" ? Math.ceil(days / 2.5) : often === "weekly" ? Math.ceil(days / 7) : days);
 
 /** Richtwert Tierpension bzw. Tiersitter für die ganze Zeit */
 export function careEstimate(p: Pets, days: number): number {
@@ -90,17 +112,45 @@ export function careEstimate(p: Pets, days: number): number {
   return Math.round(bring + visit);
 }
 
-/** Posten „Tierbetreuung“ für eine Familie: Freundeskreis (0 €, vorgewählt als günstigstes) oder Pension/Sitter */
-export function careItem(trip: Trip, hh: string, p: Pets): Item {
+/** ist „Zuhause während der Reise“ zu zeigen: Haustier bekannt oder für die Reise bzw. in den Vorlieben eingeschaltet */
+export function homeCareOn(trip: Trip, prefs: { pet?: boolean; homeCare?: boolean }): { pets: boolean; home: boolean } {
+  const home = trip.homeCare ?? !!prefs.homeCare;
+  const known = !!prefs.pet || Object.values(trip.households || {}).some(h => h.pets?.kinds.length);
+  return { pets: home || known, home };
+}
+
+/** Schlüssel des Postens je Familie */
+export const careKey = (hh: string) => `home:${hh}`;
+
+/**
+ * Posten für eine Familie (#322, #323): „Zuhause versorgt“ bzw. „Tierbetreuung“, nur für diese Familie.
+ * Freundeskreis mit dem Dankeschön-Betrag (sonst 0 €, vorgewählt als günstigstes); bleiben Tiere zuhause, dazu der
+ * Richtwert Tierpension bzw. Tiersitter.
+ */
+export function careItem(trip: Trip, hh: string, p?: Pets, c?: HomeCare): Item {
   const days = careDays(trip);
   const ids = trip.travelers.filter(x => isActive(x) && hhKey(x) === hh).map(x => x.id);
+  const pets = p?.home && p.kinds.length ? p : undefined;
+  const thanks = thanksText(c);
+  const name = c?.tasks.length ? t("home.item", { hh }) : t("pet.item", { hh, pets: kindsText(pets?.kinds || []) });
   return {
-    id: uid(), cat: "misc", name: t("pet.item", { hh, pets: kindsText(p.kinds) }), status: "idea", hint: `pet:${hh}`,
-    note: days ? t("pet.itemNote", { d: tn("n.days", days) }) : t("pet.itemNoDates"),
+    id: uid(), cat: "misc", name, status: "idea", hint: careKey(hh),
+    note: [pets ? (days ? t("pet.itemNote", { d: tn("n.days", days) }) : t("pet.itemNoDates")) : "", thanks ? t("home.thanksNote", { x: thanks }) : ""].filter(Boolean).join(" "),
     ...(ids.length ? { participants: ids } : {}),
     options: [
-      { id: uid(), label: t("pet.friends"), price: { mode: "unit", currency: "EUR", unit: 0 } },
-      { id: uid(), label: t("pet.pension"), estimate: true, price: { mode: "unit", currency: "EUR", unit: careEstimate(p, days || 1) } }
+      { id: uid(), label: t("pet.friends"), price: { mode: "unit", currency: "EUR", unit: Math.max(0, Math.round(c?.thanks?.eur || 0)) } },
+      ...(pets ? [{ id: uid(), label: t("pet.pension"), estimate: true, price: { mode: "unit" as const, currency: "EUR", unit: careEstimate(pets, days || 1) } }] : [])
     ]
   };
+}
+
+/** Posten aktualisieren (Dankeschön, Name): Freundeskreis-Betrag und Notiz; Pension-Richtwert neu */
+export function updateCareItem(it: Item, fresh: Item): void {
+  it.name = fresh.name;
+  it.note = fresh.note;
+  const friends = it.options[0], f = fresh.options[0];
+  if (friends && f) friends.price = { ...f.price };
+  const pension = fresh.options[1];
+  if (pension) { if (it.options[1]) it.options[1].price = { ...pension.price }; else it.options.push(pension); }
+  else if (it.options.length > 1) it.options.splice(1);
 }

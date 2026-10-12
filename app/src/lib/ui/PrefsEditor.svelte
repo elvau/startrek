@@ -267,6 +267,7 @@
       {@render lbl(t("prefs.c.specialWho"), null)}
       <div class="pv-seg">
         {@render chip("🐾 " + t("setup.pet"), p.pet ? (group ? "chg" : "on") : group && base?.pet ? "inh" : "", () => set("pet", p.pet ? undefined : true))}
+        {@render chip("🏠 " + t("home.pref"), p.homeCare ? (group ? "chg" : "on") : group && base?.homeCare ? "inh" : "", () => set("homeCare", p.homeCare ? undefined : true))}
         {@render chip("♿ " + t("setup.stepFree"), p.stepFree ? (group ? "chg" : "on") : group && base?.stepFree ? "inh" : "", () => set("stepFree", p.stepFree ? undefined : true))}
         {#each ["veg", "vegan"] as const as v}{@render chip((v === "veg" ? "🥗 " : "🌱 ") + t(`setup.diet.${v}` as Key), st("diet", v), () => pick("diet", v))}{/each}
       </div>
