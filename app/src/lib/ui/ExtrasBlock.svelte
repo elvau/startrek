@@ -22,7 +22,10 @@
   const fromSearch = $derived(!!opt?.legs?.length && !!opt.source?.name && item.cat === "flights");
   const bg = $derived(opt?.baggage);
   const hints = $derived(fromSearch ? opt?.hints || [] : []);
-  const inclText = $derived(bg ? [bg.cabin ? t("xc.cabin", { n: bg.cabin }) : t("xc.personal"), bg.checked ? t("fs.bagsIncl", { n: tn("n.bags", bg.checked) }) : t("fs.bagsNoneIncl")].join(" · ") : t("fs.bagsUnknown"));
+  const bagText = (b?: { cabin: number; checked: number }) => (b ? [b.cabin ? t("xc.cabin", { n: b.cabin }) : t("xc.personal"), b.checked ? t("fs.bagsIncl", { n: tn("n.bags", b.checked) }) : t("fs.bagsNoneIncl")].join(" · ") : t("fs.bagsUnknown"));
+  // Rundreise aus getrennten Tickets (#210): Gepäck je Strecke
+  const perLeg = $derived(!bg && !!opt?.legs?.some(l => l.baggage));
+  const inclText = $derived(perLeg ? opt!.legs!.map(l => `${l.from} → ${l.to}: ${bagText(l.baggage)}`).join(" · ") : bagText(bg));
 
   const ICON: Record<Extra["kind"], string> = { citytax: "🏛", tax: "🧾", cleaning: "🧹", resort: "🏨", bag: "🧳", seat: "💺", toll: "🛣", vignette: "🎫", visa: "🛂", tips: "💶", insurance: "🛡", driver: "👥", young: "👤", cover: "🛡", ferry: "⛴", ferryPerson: "⛴", cabin: "🛏", other: "➕" };
   const name = (x: Extra) => x.label || `${t(`xc.kind.${x.kind}` as Key)}${x.cc ? ` ${flagOf(x.cc)} ${countryName(x.cc)}` : ""}`;

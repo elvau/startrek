@@ -212,7 +212,7 @@ export function roundToOption(rt: RoundTrip, home: boolean, split?: SplitInfo, a
     ...(split ? { split: split.size } : {}),
     price: { mode: "unit", currency: rt.legs[0].currency, unit: rt.price },
     source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: new Date().toISOString().slice(0, 10), url: rt.legs[0].url, ...(rt.legs[0].sponsored ? { sponsored: true } : {}), ...(rt.legs.some(l => l.test) ? { test: true } : {}) },
-    legs: rt.legs.map((l, i) => legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out)),
+    legs: rt.legs.map((l, i) => ({ ...legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out), ...(l.baggage ? { baggage: { ...l.baggage } } : {}) })),
     ...(extras.length ? { extras } : {})
   };
 }

@@ -185,6 +185,8 @@ export interface FlightLeg {
   minutes?: number;
   /** Stadt am Ziel des Flugs (für Unterkünfte je Station einer Rundreise) */
   toCity?: string;
+  /** Gepäck dieses Tickets (Rundreise aus getrennten Tickets, #210); fehlt: nicht angegeben */
+  baggage?: { personal: number; cabin: number; checked: number };
 }
 
 export interface Option {

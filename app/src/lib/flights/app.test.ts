@@ -256,5 +256,7 @@ describe("Gepäck bei Rundreisen mit getrennten Tickets (#210)", () => {
     const item = takeRound(t, rt, true, undefined, undefined, undefined, r.adds);
     expect(activeOption(item, t)!.extras!.reduce((s, x) => s + x.amount, 0)).toBe(340);
     expect(roundToOption(rt, true).extras).toBeUndefined();
+    // Gepäck je Strecke (fehlt: nicht angegeben)
+    expect(o.legs!.map(l => l.baggage?.checked)).toEqual([undefined, 0, 4]);
   });
 });
