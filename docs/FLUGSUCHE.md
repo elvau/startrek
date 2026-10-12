@@ -90,6 +90,9 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
 
 - **Koffer:** aus dem Feld „Koffer gesamt“. Ohne eigene Wahl gilt die Vorliebe „Gepäck“, ohne Vorliebe ab 5 Reisetagen
   ein Koffer je Platz, kürzer nur Handgepäck.
+  Einstellbar mit − / + von 0 bis 2 je Platz, im Formular und über den Treffern (#326). Dort ändert − / + nur die Zahl;
+  weicht sie von der gesuchten ab, steht „Treffer gelten für 4 Koffer“ mit Knopf „Mit 6 Koffer neu suchen“. Kein
+  Neusuchen je Klick und kein bloßes Neubewerten, denn Kiwi rechnet die Koffer in den Flugpreis ein.
 - **Was enthalten ist:** Kiwi.com rechnet die gewünschten Koffer schon in den Preis ein und meldet sie; Duffel meldet das
   Gepäck des Tarifs. Travelpayouts sagt nichts dazu: bei Billigfliegern schätzen wir die Koffer, bei Linienflügen
   steht „Gepäck nicht angegeben“ (keine Schätzung). Meldet ein Linientarif ausdrücklich keinen Koffer, gilt 35 € je Koffer und Strecke.
