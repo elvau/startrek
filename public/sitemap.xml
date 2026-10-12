@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url><loc>https://splitandfly.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://splitandfly.com/impressum.html</loc><xhtml:link rel="alternate" hreflang="de" href="https://splitandfly.com/impressum.html"/><xhtml:link rel="alternate" hreflang="en" href="https://splitandfly.com/imprint.html"/><priority>0.2</priority></url>
+  <url><loc>https://splitandfly.com/imprint.html</loc><xhtml:link rel="alternate" hreflang="de" href="https://splitandfly.com/impressum.html"/><xhtml:link rel="alternate" hreflang="en" href="https://splitandfly.com/imprint.html"/><priority>0.2</priority></url>
+  <url><loc>https://splitandfly.com/datenschutz.html</loc><xhtml:link rel="alternate" hreflang="de" href="https://splitandfly.com/datenschutz.html"/><xhtml:link rel="alternate" hreflang="en" href="https://splitandfly.com/privacy.html"/><priority>0.2</priority></url>
+  <url><loc>https://splitandfly.com/privacy.html</loc><xhtml:link rel="alternate" hreflang="de" href="https://splitandfly.com/datenschutz.html"/><xhtml:link rel="alternate" hreflang="en" href="https://splitandfly.com/privacy.html"/><priority>0.2</priority></url>
+</urlset>

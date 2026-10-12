@@ -134,7 +134,8 @@ export function consoleLinks(projectId?: string) {
     { label: "adm.m.firestore", href: `${fb}/usage/details` },
     { label: "adm.m.hosting", href: `${fb}/hosting` },
     { label: "adm.m.gemini", href: "https://aistudio.google.com/usage" },
-    { label: "adm.m.cf", href: "https://dash.cloudflare.com/?to=/:account/workers-and-pages" }
+    { label: "adm.m.cf", href: "https://dash.cloudflare.com/?to=/:account/workers-and-pages" },
+    { label: "adm.m.visits", href: "https://dash.cloudflare.com/?to=/:account/web-analytics" }
   ];
 }
 

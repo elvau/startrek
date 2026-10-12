@@ -11,16 +11,18 @@
   import Modal from "./Modal.svelte";
   import { untrack } from "svelte";
   import HomeHint from "./HomeHint.svelte";
+  import { anyReal } from "../flights/roundtrip";
   import { loadOrigin } from "../flights/origin.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
+  import { pickOrigins } from "../flights/origin";
   import { capitalOf, ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, destAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { loadPlz } from "../plz";
   import { hhKey } from "../model";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
-  import { DEFAULT_H, fits, fixWindow, km, nearestStay, pickStayNear, takePlan, variants, type Variant } from "../event/plan";
+  import { DEFAULT_H, fits, fixWindow, km, nearestStay, pickStayNear, planTotal, takePlan, variants, type Variant } from "../event/plan";
   import { cityFromAddress, evWhen, searchEventsRemote, sportTag, SPORT_ICON } from "../events/app";
   import { uniqueById } from "../events/search";
   import { noteError } from "../bugs/log";
@@ -129,16 +131,19 @@
     aps = nearestAirports(trip); allCodes = [...new Set([...aps, ...allCodes])];
   }
   // ohne Wohnort: ungefährer Ort aus der Verbindung kommt nach; Vorschlag nachziehen, solange nichts selbst gewählt ist
-  let apsTouched = false;
+  let apsTouched = $state(false);
   loadOrigin();
   $effect(() => { if (homeGuess(4) && noHome) untrack(() => { if (!apsTouched) { aps = nearestAirports(trip); allCodes = [...new Set([...aps, ...allCodes])]; } }); });
   const toggleAp = (c: string) => { apsTouched = true; aps = aps.includes(c) ? aps.filter(x => x !== c) : [...aps, c]; };
+  // aus der Suche: ersetzt die geschätzte Vorauswahl, danach kommen Flughäfen dazu; gewählte Chips kurz hervorheben
+  let flash = $state<string[]>([]);
+  let flashT: ReturnType<typeof setTimeout> | undefined;
   function addAp(l: Loc) {
+    const codes = l.kind === "airport" ? [l.code] : l.airports;
+    aps = pickOrigins(aps, codes, noHome && !apsTouched);
+    allCodes = [...new Set([...allCodes, ...codes])];
     apsTouched = true;
-    for (const c of l.kind === "airport" ? [l.code] : l.airports) {
-      if (!allCodes.includes(c)) allCodes = [...allCodes, c];
-      if (!aps.includes(c)) aps = [...aps, c];
-    }
+    flash = codes; clearTimeout(flashT); flashT = setTimeout(() => (flash = []), 1200);
   }
   // Mittelpunkt der Abflughäfen: gleich gute Treffer beim Ziel nach Entfernung
   const fromPt = $derived.by(() => {
@@ -167,7 +172,7 @@
 
   interface Row { v: Variant; flight: Rated | null; stay: StayOffer | null; near: { offer: StayOffer; km: number } | null; useNear: boolean; stayQ: StayQuery | null; error?: string }
   const stayOf = (r: Row) => (r.useNear && r.near ? r.near.offer : r.stay);
-  const totalOf = (r: Row) => (r.flight?.total || 0) + (stayOf(r) ? Math.round(stayOf(r)!.total) : 0);
+  const totalOf = (r: Row) => planTotal(r.flight, stayOf(r)) ?? 0;
   let rows = $state<Row[] | null>(null);
   let busy = $state(false);
   let error = $state("");
@@ -213,7 +218,12 @@
         const fq = v.window
           ? { ...base, depart: v.window.from, latest: v.window.to, nightsMin: v.nights, nightsMax: Math.max(v.nights, Math.round((Date.parse(v.window.to) - Date.parse(v.window.from)) / 86400000)) }
           : { ...base, depart: v.out, ret: v.back };
-        const fl = await Promise.allSettled([searchFlights(fq, signal)]).then(r => r[0]);
+        let fl = await Promise.allSettled([searchFlights(fq, signal)]).then(r => r[0]);
+        // Langstrecke ab kleinen Flughäfen geht oft nur mit zwei Umstiegen: dann damit nachsuchen (Testangebote zählen nicht)
+        if (fl.status === "fulfilled" && !anyReal(fl.value.offers.filter(o => fits(o, v))) && fq.maxStops === 1) {
+          const more = await Promise.allSettled([searchFlights({ ...fq, maxStops: 2 }, signal)]).then(r => r[0]);
+          if (more.status === "fulfilled" && anyReal(more.value.offers.filter(o => fits(o, v)))) fl = more;
+        }
         const flights = fl.status === "fulfilled" ? fl.value.offers.filter(o => !o.test && fits(o, v)).map(o => rate(trip, o, o.out.from, true)) : [];
         const flight = flights.length ? flights.reduce((a, b) => (b.total < a.total ? b : a)) : null;
         if (v.window && flight) v = fixWindow(v, flight);
@@ -299,11 +309,11 @@
     </details>
     <div>
       <span class="dlabel">{t("ev.origins")}</span>
+      {#if noHome}<HomeHint {setPlz} {plzErr} guessed={!apsTouched} />{/if}
       <div class="chips fs-aps">
-        {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
+        {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} class:flash={flash.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} from={fromPt} />
       </div>
-      {#if noHome}<HomeHint {setPlz} {plzErr} />{/if}
     </div>
     <p class="muted small">{t("ev.from", { aps: aps.join(", "), p: tn("n.persons", people.length) })} {t("ev.rule")}</p>
     <button class="btn primary" disabled={busy}>{busy ? t("ev.progress") : t("ev.go")}</button>
@@ -317,7 +327,7 @@
   {#if rows}
     {#if !found.length}<p class="warnline">{t("ev.none")}</p>{/if}
     <div class="ev-list">
-      {#each rows as r (r.v.kind)}
+      {#each found.length ? rows : [] as r (r.v.kind)}
         {@const f = r.flight}
         <article class="ev-card" class:best={f && totalOf(r) === cheapest}>
           <header>
@@ -329,25 +339,27 @@
             <p class="ev-line">✈ {f.out.from} {time(f.out.dep)} {arrow()} {f.out.to} {time(f.out.arr)}{#if f.back}{" · "}{t("ev.back")} {dayShort(f.back.dep)} {time(f.back.dep)} {arrow()} {time(f.back.arr)}{/if}
               <small class="muted">{f.out.carriers.join(" / ")} · {eur(f.price)}{f.access ? ` · ${t("fl.inclAccess", { v: eur(f.access) })}` : ""}</small></p>
           {:else}
-            <p class="ev-line muted">✈ {r.error || t("ev.noFlight")}</p>
+            <p class="ev-line muted">✈ {r.error || t("ev.noFlight")} · {t("ev.noTrip")}</p>
           {/if}
+          {#if f}
           {#if r.v.nights}
-            {#if r.stay}
-              {@const d = dist(r.stay)}
-              {#if r.near}
-                <!-- zwei Unterkünfte zur Wahl: gut und günstig oder am nächsten am Event -->
-                <label class="ev-line ev-pick"><input type="radio" name="st-{r.v.kind}" checked={!r.useNear} onchange={() => (r.useNear = false)} />
-                  🛏 {r.stay.name}{r.stay.score ? ` · ${r.stay.score.toFixed(1)}` : ""} <small class="muted">{eur(Math.round(r.stay.total))}{d != null ? ` · ${kmText(d)}` : ""}</small></label>
-                <label class="ev-line ev-pick ev-near"><input type="radio" name="st-{r.v.kind}" checked={r.useNear} onchange={() => (r.useNear = true)} />
-                  📍 <span class="ev-tag">{t("ev.nearest")}</span> {r.near.offer.name} <small class="muted">{eur(Math.round(r.near.offer.total))} · {kmText(r.near.km)}</small></label>
+              {#if r.stay}
+                {@const d = dist(r.stay)}
+                {#if r.near}
+                  <!-- zwei Unterkünfte zur Wahl: gut und günstig oder am nächsten am Event -->
+                  <label class="ev-line ev-pick"><input type="radio" name="st-{r.v.kind}" checked={!r.useNear} onchange={() => (r.useNear = false)} />
+                    🛏 {r.stay.name}{r.stay.score ? ` · ${r.stay.score.toFixed(1)}` : ""} <small class="muted">{eur(Math.round(r.stay.total))}{d != null ? ` · ${kmText(d)}` : ""}</small></label>
+                  <label class="ev-line ev-pick ev-near"><input type="radio" name="st-{r.v.kind}" checked={r.useNear} onchange={() => (r.useNear = true)} />
+                    📍 <span class="ev-tag">{t("ev.nearest")}</span> {r.near.offer.name} <small class="muted">{eur(Math.round(r.near.offer.total))} · {kmText(r.near.km)}</small></label>
+                {:else}
+                <p class="ev-line">🛏 {r.stay.name}{r.stay.score ? ` · ${r.stay.score.toFixed(1)}` : ""} <small class="muted">{eur(Math.round(r.stay.total))}{d != null ? ` · ${kmText(d)}` : r.stay.place ? ` · ${r.stay.place}` : ""}</small></p>
+                {/if}
               {:else}
-              <p class="ev-line">🛏 {r.stay.name}{r.stay.score ? ` · ${r.stay.score.toFixed(1)}` : ""} <small class="muted">{eur(Math.round(r.stay.total))}{d != null ? ` · ${kmText(d)}` : r.stay.place ? ` · ${r.stay.place}` : ""}</small></p>
+                <p class="ev-line muted">🛏 {t("ev.noStay")}</p>
               {/if}
             {:else}
-              <p class="ev-line muted">🛏 {t("ev.noStay")}</p>
+              <p class="ev-line muted">🛏 {t("ev.noNight")}</p>
             {/if}
-          {:else}
-            <p class="ev-line muted">🛏 {t("ev.noNight")}</p>
           {/if}
           <footer>
             {#if f}

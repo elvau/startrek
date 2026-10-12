@@ -5,6 +5,16 @@ Die Oberfläche zeigt sie über `app/src/lib/ui/PartnerLinks.svelte`; Links von 
 Übersicht in der App: Admin-Ansicht im Kontomenü, Abschnitt „Partner (Verzeichnis)“ mit Kategorie, Netzwerk, Status
 der Kennung (aktiv, hinterlegt bei ausgeschaltetem Schalter, neutral, ausgeblendet) und Klicks der letzten 7 Tage.
 
+## Grundsatz: bester Preis vor Provision
+
+Split&Fly soll jedem die beste Reise zeigen, nicht die mit der höchsten Provision.
+- Reihenfolge, Bewertung und Vorschläge (Flüge, Unterkünfte, KI-Planer) richten sich nur nach Preis, Zeit und Passung,
+  nie danach, ob ein Angebot einen Partner-Link hat. Partner-Links bekommen keinen Bonus in Sortierung oder Auswahl.
+- Ist ein Angebot ohne Partnerprogramm besser (günstiger oder passender), wird es genauso gezeigt und verlinkt
+  (neutral, ohne Kennung). Anbieter ohne Programm fliegen nicht raus.
+- Partner-Links sind immer gekennzeichnet (siehe unten); der Preis für Nutzer ist derselbe wie ohne Link.
+- Neue Funktionen und Reviews prüfen das mit: keine Filter oder Gewichte nach `sponsored` bzw. `tag`.
+
 ## Schalter
 
 - **`PARTNER_LINKS=on`** (Variable im Such-Dienst, Cloudflare): Nur dann gehen Partnerkennungen in Links. Die App fragt den
@@ -27,6 +37,12 @@ Jeder Klick auf einen Anbieter-Link (`ExtLink` mit `track`) meldet nebenher Part
 `worker/src/usage.ts`), ohne IP, Konto oder Reise. Auswertung: Admin-Ansicht im Kontomenü, Abschnitt „Klicks auf
 Anbieter-Links“ (letzte 7 Tage). Der Link öffnet sofort, das Zählen läuft nebenher.
 
+## Travelpayouts-Links
+
+Partner über Travelpayouts bekommen als Kennung `tag: tp(p, campaign)`: Der Ziel-Link (mit Ort, Datum usw.) wird über
+`https://tp.media/r?campaign_id=…&marker=…&p=…&trs=…&u=<Ziel>` geleitet. `marker` (Konto) und `trs` (Projekt splitandfly.com)
+stehen in `TP_PARTNER`; `p` (Programm) und `campaign_id` liest man aus einem langen Link aus „Generate links“ (Kurzlink aus).
+
 ## Einen Partner hinzufügen
 
 1. Eintrag in `PARTNERS` (`app/src/lib/partners/index.ts`) in der passenden Kategorie:
@@ -45,12 +61,16 @@ Anbieter-Links“ (letzte 7 Tage). Der Link öffnet sofort, das Zählen läuft n
 | Google Flights, Skyscanner | Flüge | – | – |
 | Booking.com | Unterkunft | direkt | – |
 | Airbnb | Unterkunft | – | – |
-| GetYourGuide, Tiqets | Erlebnisse | Travelpayouts | – |
+| GetYourGuide | Erlebnisse | Travelpayouts | – |
+| Tiqets | Erlebnisse | Travelpayouts | ja (`p=2074`, `campaign_id=89`) |
+| Klook | Erlebnisse | Travelpayouts | ja (`p=4110`, `campaign_id=137`) |
 | Viator | Erlebnisse | direkt | ja (`pid`, `mcid`, `medium`) |
 | Tripadvisor | Essen | – | – |
 | KAYAK, CHECK24 | Mietwagen | – | – |
 | DiscoverCars | Mietwagen | Travelpayouts | – |
-| Kiwitaxi, GetTransfer, Intui.travel, Welcome Pickups | Transfer | Travelpayouts | – |
+| Kiwitaxi | Transfer | Travelpayouts | ja (`p=647`, `campaign_id=1`) |
+| Welcome Pickups | Transfer | Travelpayouts | ja (`p=8919`, `campaign_id=627`) |
+| GetTransfer, Intui.travel | Transfer | Travelpayouts | – |
 | Booking.com Taxi | Transfer | – | – |
 | Direct Ferries, Ferryhopper | Fähren | direkt (noch nicht beantragt) | – |
 | PaulCamper | Mietcamper | Travelpayouts (20 %, noch nicht beantragt) | – |
@@ -58,6 +78,7 @@ Anbieter-Links“ (letzte 7 Tage). Der Link öffnet sofort, das Zählen läuft n
 | Indie Campers, Yescapa | Mietcamper | eigenes Programm bzw. TradeTracker | – |
 | PiNCAMP, ACSI (Eurocampings), park4night | Camping- und Stellplätze | PiNCAMP über TradeTracker (3 %) | – |
 | CHECK24, Allianz Travel | Versicherung (nur Tipp) | – | – |
+| Yesim, Airalo | eSIM (noch kein Platz in der App, #297) | Travelpayouts | freigeschaltet: Yesim `p=5998`/`campaign_id=224`, Airalo `p=8310`/`campaign_id=541` |
 | ERGO, HanseMerkur | Versicherung (nur Tipp) | Awin | – |
 
 Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Dienst (Secret `TRAVELPAYOUTS_MARKER`), nicht hier.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, takePlan, variants } from "./plan";
+import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, planTotal, takePlan, variants } from "./plan";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import type { StayOffer } from "../stays/types";
@@ -92,5 +92,16 @@ describe("Reise zu einem Anlass", () => {
     expect(tr.items.map(i => i.cat)).toEqual(["flights", "stay"]);
     expect(tr.items[1]).toMatchObject({ from: "2027-05-15", to: "2027-05-16" });
     expect(tr.detail).toEqual({ flights: true, stay: true });
+  });
+});
+
+describe("planTotal", () => {
+  it("ohne Flug kein Gesamtpreis, auch nicht nur aus der Unterkunft", () => {
+    expect(planTotal(null, stay("Hotel", 300))).toBeNull();
+    expect(planTotal(null, null)).toBeNull();
+  });
+  it("mit Flug: Flug plus gerundete Unterkunft", () => {
+    expect(planTotal({ total: 200 }, stay("Hotel", 300.4))).toBe(500);
+    expect(planTotal({ total: 200 }, null)).toBe(200);
   });
 });

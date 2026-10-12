@@ -10,6 +10,12 @@ Im Kontomenü erscheint für Admins **„Nutzung & Kontingente“**. Die Ansicht
   Treffer im Zwischenspeicher, die keine Anbieter-Anfrage kosten.
 - **Nur in der Konsole:** Firestore (50.000 Lesen, 20.000 Schreiben pro Tag), Hosting (360 MB Übertragung pro Tag)
   und die Grenzen je Gemini-Modell. Dafür hat der Such-Dienst keinen Zugang, die Ansicht verlinkt die Konsolen.
+- **Besucherzahlen:** Cloudflare Web Analytics (cookielos, ohne IP-Speicherung), Link in der Ansicht unter „Nur in der
+  Konsole“. Das Skript lädt `app/src/lib/visits.ts` nur auf splitandfly.com (nicht Testumgebung, Emulator, lokal).
+  Nachweis für Partnerprogramme, die „drei Monate stabilen Traffic“ verlangen (#311).
+- **Google:** Search Console für die Domain splitandfly.com; Sitemap `public/sitemap.xml`, `public/robots.txt`,
+  Meta-Angaben und Vorschaubild (`app/public/og-image.png`) in `app/index.html` (#313). Die Testumgebung ist gesperrt
+  (`scripts/site.sh … test`: noindex, ohne Sitemap).
 
 Ab 70 % wird ein Balken gelb, ab 90 % rot. Die Grenzen stehen in `app/src/lib/admin/usage.ts`.
 
