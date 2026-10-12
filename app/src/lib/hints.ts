@@ -15,8 +15,8 @@ export interface Hint {
   /** Flughäfen und Stichwörter (Orte, Posten), bei denen der Hinweis gilt */
   aps?: string[];
   words?: RegExp;
-  /** Art: Einreise (Land, deutsche Staatsangehörige), Warnung (Land, für alle) oder Ort */
-  kind: "entry" | "warn" | "place";
+  /** Art: Einreise (Land, deutsche Staatsangehörige), Warnung (Land, für alle), Ort oder Haustier (#322, Bestimmung) */
+  kind: "entry" | "warn" | "place" | "pet";
   links: HintLink[];
   /** Richtwert als Posten (pro Person, in der Währung): Gebühren vor Ort bzw. für die Einreise (Stand in docs/NEBENKOSTEN.md) */
   fee?: { adult: number; child?: number; currency: string; cat: Item["cat"] };

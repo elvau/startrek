@@ -43,7 +43,7 @@
 
   const LEVEL: Record<string, Key> = { warning: "aa.warning", partial: "aa.partial", situation: "aa.situation" };
   const ENT: Record<EntryKind, Key> = { home: "ent.home", free: "ent.free", eta: "ent.eta", evisa: "ent.evisa", arrival: "ent.arrival", visa: "ent.visa", none: "ent.none", unknown: "ent.unknown" };
-  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", book: "🎟️", place: "📍", deposit: "🔒", poll: "🗳" };
+  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", book: "🎟️", place: "📍", deposit: "🔒", poll: "🗳", pet: "🐾" };
   const icon = (p: Point) => (p.kind === "aa" ? (p.level === "situation" ? "⚠️" : "⛔") : ICON[p.kind]);
   const date = (iso: string) => iso.split("-").reverse().join(".");
   const validText = (v: MinValid) => t(`imp.valid.${v.months ? "m" : "d"}${v.from === "entry" ? "Entry" : "Exit"}` as Key, { n: v.months || v.days || 0 });
@@ -266,6 +266,7 @@
   .imp-card p { margin: 0; }
   .imp-hard { border-inline-start-color: #d0342c; background: color-mix(in srgb, #d0342c 6%, var(--paper, #fff)); }
   .imp-place { border-inline-start-color: var(--c-plan, #3b6fd8); }
+  .imp-pet { border-inline-start-color: var(--c-trav); }
   .imp-pass { border-inline-start-color: #d0342c; }
   .imp-valid { font-size: 13.5px; color: var(--ink-2); }
   .imp-books { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -276,6 +277,7 @@
   .imp-fold { margin-inline-start: auto; }
   .imp-line { display: flex; align-items: center; gap: 8px; width: 100%; text-align: start; padding: 8px 14px; border: 0; border-radius: 12px; background: var(--paper, #fff); box-shadow: var(--shadow); font: inherit; font-size: 14.5px; color: inherit; cursor: pointer; border-inline-start: 4px solid var(--warn, #d08a12); }
   .imp-line.imp-place { border-inline-start-color: var(--c-plan, #3b6fd8); }
+  .imp-line.imp-pet { border-inline-start-color: var(--c-trav); }
   .imp-lt { flex: 1; font-weight: 600; }
   .imp-links { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13.5px; }
   .imp-persons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; }

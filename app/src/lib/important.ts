@@ -18,7 +18,7 @@ import { activeOption, participantsOf, rateOf } from "./calc";
 import { autoDeposit } from "./fees";
 import { missing, openPolls } from "./together";
 
-export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place" | "deposit" | "poll";
+export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place" | "deposit" | "poll" | "pet";
 
 export interface PointPerson { id: string; name: string; nat: string; kind?: EntryKind; days?: number }
 
@@ -53,7 +53,7 @@ export interface Point {
 /** erledigt je Punkt: Signatur beim Abhaken, bei Punkten für Personen die erledigten Personen */
 export type DoneMap = Record<string, { sig: string; ids?: string[] }>;
 
-const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, deposit: 2, poll: 2, book: 3, situation: 3, place: 4 } as const;
+const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, deposit: 2, poll: 2, pet: 2, book: 3, situation: 3, place: 4 } as const;
 /** Kautionen ab diesem Betrag (oder nur mit Kreditkarte) sind ein wichtiger Punkt */
 export const DEPOSIT_MIN = 300;
 
@@ -147,7 +147,8 @@ export function importantPoints({ trip, countries, hints, visa, advice, passport
   }
   for (const h of hints) {
     if (h.kind === "entry" || covered.has(h.id)) continue;
-    out.push({ key: `hint:${h.id}`, kind: h.kind === "warn" ? "warn" : "place", prio: PRIO[h.kind === "warn" ? "warn" : "place"], sig: h.id, ...(h.cc?.[0] ? { cc: h.cc[0] } : {}), hint: h, ...(all ? { persons: all } : {}) });
+    const kind = h.kind === "warn" || h.kind === "pet" ? h.kind : "place";
+    out.push({ key: `hint:${h.id}`, kind, prio: PRIO[kind], sig: h.id, ...(h.cc?.[0] ? { cc: h.cc[0] } : {}), hint: h, ...(all ? { persons: all } : {}) });
   }
   return out.sort((a, b) => a.prio - b.prio);
 }

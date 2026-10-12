@@ -32,6 +32,7 @@
   import type { SourceStatus } from "../flights/types";
   import PartnerLinks from "./PartnerLinks.svelte";
   import { partnersOf } from "../partners";
+  import { petsAlong } from "../pets";
   import { hasCoords, locText, mapsUrl } from "../geo/maps";
   import MapView, { type MapPoint } from "./MapView.svelte";
 
@@ -447,8 +448,10 @@
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? t("st.busy", { src: SOURCES.filter(s => eff.includes(s.id)).map(s => s.name).join(` ${t("and")} `) }) : t("st.searchBtn")}</button>
     {#if place.trim() && nn > 0}
-      {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)) }}
+      {@const pets = petsAlong(trip, who.map(x => x.t.id))}
+      {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), ...(pets ? { pets } : {}) }}
       <p class="muted small fs-direct">{t("search.direct")} <PartnerLinks ids={partnersOf("stay")} q={lq} /></p>
+      {#if pets}<p class="muted small st-pets">🐾 {t("pet.stayHint")}</p>{/if}
     {/if}
   </form>
 

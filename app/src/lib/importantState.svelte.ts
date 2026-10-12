@@ -6,6 +6,7 @@
 import { app } from "./store.svelte";
 import { dir } from "./directory.svelte";
 import { hintsFor, tripAps, tripCountries, tripText } from "./hints";
+import { petHints } from "./pets";
 import { itinerary } from "./itinerary";
 import { airportData, ensureAirports, ensureGeo, geo } from "./geo/geo.svelte";
 import { ccOf } from "./geo/places";
@@ -19,7 +20,7 @@ import { docs } from "./traveldocs.svelte";
 import { cloud } from "./cloud/cloud.svelte";
 
 /** Bestimmungen: Warnstufen, Warnungen, Einreise, Grenze, Reisepass, dazu hohe Kautionen; Rest (Früh buchen, Orte) ist „Gut zu wissen“ */
-const RULES = new Set<PointKind>(["aa", "warn", "entry", "border", "pass", "deposit"]);
+const RULES = new Set<PointKind>(["aa", "warn", "entry", "border", "pass", "deposit", "pet"]);
 
 class ImportantState {
   visa = $state<VisaData | null>(null);
@@ -32,7 +33,7 @@ class ImportantState {
   passports = $derived(docs.status === "ready" ? Object.fromEntries(app.trip.travelers.filter(x => x.personId && docs.map[x.personId]?.passExpiry).map(x => [x.id, docs.map[x.personId!].passExpiry!])) : {});
   canCheck = $derived(!!cloud.user && docs.status !== "ready" && docs.status !== "loading" && app.trip.travelers.some(x => x.personId));
   book = $derived(bookAheadFor(tripText(app.trip, this.places), tripAps(app.trip), app.trip.from));
-  points = $derived(importantPoints({ trip: app.trip, countries: this.countries, hints: hintsFor(app.trip, this.countries, this.places), visa: this.visa, advice: this.advice, passports: this.passports, book: this.book }));
+  points = $derived(importantPoints({ trip: app.trip, countries: this.countries, hints: [...hintsFor(app.trip, this.countries, this.places), ...petHints(app.trip, this.countries)], visa: this.visa, advice: this.advice, passports: this.passports, book: this.book }));
   /** Bestimmungen zum Reiseland (Bubble in der Menüleiste) und „Gut zu wissen“ (Kapitel Erlebnisse) */
   rules = $derived(this.points.filter(p => RULES.has(p.kind)));
   tips = $derived(this.points.filter(p => !RULES.has(p.kind)));

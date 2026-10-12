@@ -576,6 +576,43 @@ try {
   log("Link von Inhaltsseite: Reise „Gardasee mit Familien“ in Riva del Garda (Italien) mit 3 Familien, 6 Erw. und 5 Kindern; Adresse bereinigt");
   await lctx.close();
 
+  // Haustiere (#322): Familie Klein mit Hund (reist mit) → Hinweise unter „Wichtiges“ für London;
+  // Familie Hase: Fische bleiben zuhause → Anfrage-Text und Posten Tierbetreuung nur für Hase
+  const pctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await pctx.addInitScript(t => {
+    if (localStorage.getItem("rk2-index")) return;
+    localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
+    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: 4 }]));
+    localStorage.setItem("rk2-current", t.id);
+  }, TRIP);
+  const pp = await pctx.newPage();
+  await data(pp);
+  pp.on("pageerror", e => errors.push(e.message));
+  await pp.goto(URL);
+  await pp.locator(".start .home-trip", { hasText: "Zu viert" }).click();
+  await pp.locator(".pets-h").click();
+  await pp.locator(".pet-fam", { hasText: "Klein" }).locator(".chip", { hasText: "Hund" }).click();
+  await pp.locator(".top .imp-btn").click();
+  const pimp = pp.locator(".modal .imp");
+  await pimp.locator("[data-key='hint:petEntry']").first().waitFor();
+  await pimp.locator("[data-key='hint:petTapeworm']").first().waitFor();
+  await pp.keyboard.press("Escape");
+  const hase = pp.locator(".pet-fam", { hasText: "Hase" });
+  await hase.locator(".chip", { hasText: "Fische" }).click();
+  await hase.locator(".chip", { hasText: "bleibt zuhause" }).click();
+  const askT = await hase.locator(".pet-ask").innerText();
+  if (!askT.includes("bei uns vorbeischauen und unsere Fische füttern") || !askT.includes("14.05.")) fail("Anfrage Tierbetreuung: " + askT);
+  await hase.locator(".btn", { hasText: "Posten Tierbetreuung" }).click();
+  await hase.locator("text=Posten Tierbetreuung angelegt").waitFor();
+  const cur = () => pp.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "null"));
+  await until(async () => !!(await cur())?.items?.some(i => i.hint === "pet:Hase"), "Posten Tierbetreuung gespeichert");
+  const pt = await cur();
+  const care = pt.items.find(i => i.hint === "pet:Hase");
+  if (!care || care.participants?.sort().join() !== "m,s" || care.options.map(o => o.price.unit).join() !== "0,45") fail("Posten Tierbetreuung: " + JSON.stringify(care));
+  if (pt.households?.Klein?.pets?.kinds?.join() !== "dog" || !pt.households?.Hase?.pets?.home) fail("Haustiere nicht gespeichert: " + JSON.stringify(pt.households));
+  log("Haustiere: Klein mit Hund nach London (Einreise mit Haustier, Bandwurmbehandlung unter „Wichtiges“), Hase: Fische bleiben zuhause (Anfrage „vorbeischauen und füttern“, Posten Tierbetreuung 0 € bzw. 45 € nur für Hase)");
+  await pctx.close();
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");
 } finally { await browser.close(); server.kill(); }

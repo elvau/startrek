@@ -366,6 +366,22 @@ export interface Household {
   /** eigene Anwesenheit statt aus dem Flug: erste Nacht, Abreisetag */
   arrive?: string;
   depart?: string;
+  /** Haustiere der Familie (#322): kein Reisender, nur Hinweise, Filter und Betreuung */
+  pets?: Pets;
+}
+
+export const PET_KINDS = ["dog", "cat", "rabbit", "rodent", "bird", "fish", "reptile", "spider", "other"] as const;
+export type PetKind = (typeof PET_KINDS)[number];
+/** Betreuung, wenn das Tier zuhause bleibt: vorbeibringen oder jemand kommt vorbei (füttern) */
+export type PetCare = "bring" | "visit";
+export interface Pets {
+  kinds: PetKind[];
+  /** bleibt zuhause (sonst reist es mit) */
+  home?: boolean;
+  /** Betreuung je Art, wenn abweichend von der üblichen */
+  care?: Partial<Record<PetKind, PetCare>>;
+  /** wie oft jemand vorbeikommt */
+  often?: "daily" | "few";
 }
 
 export interface Airport {
