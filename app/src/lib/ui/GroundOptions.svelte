@@ -28,7 +28,7 @@
     // geo.places nur lesen, damit nach dem Laden neu gerechnet wird
     void Object.keys(geo.places).length;
     const c = findCity(geo, city, ccOf(geo, app.trip.country)) || findCity(geo, city);
-    return c ? { name: city, lat: c.lat, lon: c.lon } : null;
+    return c ? { name: city, lat: c.lat, lon: c.lon, cc: c.cc } : null;
   });
   const home = $derived(homeOf(app.trip));
   const persons = $derived(app.trip.travelers.filter(isActive).length);
