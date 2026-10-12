@@ -5,6 +5,16 @@ Die Oberfläche zeigt sie über `app/src/lib/ui/PartnerLinks.svelte`; Links von 
 Übersicht in der App: Admin-Ansicht im Kontomenü, Abschnitt „Partner (Verzeichnis)“ mit Kategorie, Netzwerk, Status
 der Kennung (aktiv, hinterlegt bei ausgeschaltetem Schalter, neutral, ausgeblendet) und Klicks der letzten 7 Tage.
 
+## Grundsatz: bester Preis vor Provision
+
+Split&Fly soll jedem die beste Reise zeigen, nicht die mit der höchsten Provision.
+- Reihenfolge, Bewertung und Vorschläge (Flüge, Unterkünfte, KI-Planer) richten sich nur nach Preis, Zeit und Passung,
+  nie danach, ob ein Angebot einen Partner-Link hat. Partner-Links bekommen keinen Bonus in Sortierung oder Auswahl.
+- Ist ein Angebot ohne Partnerprogramm besser (günstiger oder passender), wird es genauso gezeigt und verlinkt
+  (neutral, ohne Kennung). Anbieter ohne Programm fliegen nicht raus.
+- Partner-Links sind immer gekennzeichnet (siehe unten); der Preis für Nutzer ist derselbe wie ohne Link.
+- Neue Funktionen und Reviews prüfen das mit: keine Filter oder Gewichte nach `sponsored` bzw. `tag`.
+
 ## Schalter
 
 - **`PARTNER_LINKS=on`** (Variable im Such-Dienst, Cloudflare): Nur dann gehen Partnerkennungen in Links. Die App fragt den
