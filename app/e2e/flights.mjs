@@ -3,6 +3,7 @@
  * Start: npm run test:cloud (nach cloud.mjs und groups.mjs)
  */
 import { chromium } from "playwright";
+import { reloadHome } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4175/";
@@ -226,9 +227,8 @@ try {
     households: { Klein: { plz: "40210", geo: { lat: 51.23, lon: 6.78, ort: "Düsseldorf" }, mode: "car" }, Hase: { plz: "80331", geo: { lat: 48.14, lon: 11.58, ort: "München" }, mode: "car" } },
     items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 }, kmCost: 0.3 }
   };
-  await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
-  await p.evaluate(t => { localStorage.removeItem("rk-flight-search"); localStorage.setItem("rk2-t:k2", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k2", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k2"); }, TWO);
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  // Stand einspielen; ausstehende Speicherungen der App überschreiben ihn nicht mehr (reloadHome)
+  await reloadHome(p, { remove: ["rk-flight-search"], set: { "rk2-t:k2": TWO, "rk2-index": [{ id: "k2", name: TWO.name, place: TWO.place }], "rk2-current": "k2" } });
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
@@ -315,9 +315,7 @@ try {
   log("Suche aus „Flug Klein“: gleiche Personen, Treffer als zweites Angebot im Posten");
 
   // wie im Artefakt: Hase fliegt mit Klein mit („Wie Flug Klein“), danach Vergleich mit einem eigenen Flug
-  await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
-  await p.evaluate(t => { localStorage.setItem("rk-flight-search", JSON.stringify({ mode: "fixed" })); localStorage.setItem("rk2-t:k2", JSON.stringify(t)); }, TWO);
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p, { set: { "rk-flight-search": { mode: "fixed" }, "rk2-t:k2": TWO } });
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
@@ -483,13 +481,7 @@ try {
   log("Kurzer Aufenthalt in GIG (0–1 Nacht): auch als Gabelflug DUS → EZE mit 20 h Umstieg gesucht, günstigster Treffer mit 2 statt 3 Tickets");
 
   // Vorlieben: 0 Umstiege vorbelegt, Kroatien gesperrt → an den Such-Dienst und Treffer dorthin ausgeblendet
-  await p.waitForTimeout(600);
-  await p.evaluate(t => {
-    localStorage.setItem("rk-flight-search", JSON.stringify({ mode: "fixed" }));
-    localStorage.setItem("rk2-t:k2", JSON.stringify(t));
-    localStorage.setItem("rk2-dir", JSON.stringify({ people: [], groups: [], prefs: { maxStops: 0, avoid: ["HR"] } }));
-  }, TWO);
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p, { set: { "rk-flight-search": { mode: "fixed" }, "rk2-t:k2": TWO, "rk2-dir": { people: [], groups: [], prefs: { maxStops: 0, avoid: ["HR"] } } } });
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
@@ -510,13 +502,7 @@ try {
     travelers: [{ id: "a", name: "Anna", age: 41, household: "Klein" }, { id: "b", name: "Ben", age: 43, household: "Klein" }, { id: "c", name: "Mia", age: 8, household: "Klein" }, { id: "d", name: "Tom", age: 5, household: "Klein" }],
     households: { Klein: { plz: "40210", geo: { lat: 51.23, lon: 6.78, ort: "Düsseldorf" }, mode: "car" } },
     items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 }, kmCost: 0.3 } };
-  await p.waitForTimeout(600);
-  await p.evaluate(t => {
-    localStorage.setItem("rk-flight-search", JSON.stringify({ mode: "fixed" }));
-    localStorage.setItem("rk2-dir", JSON.stringify({ people: [], groups: [], prefs: {} }));
-    localStorage.setItem("rk2-t:kb", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "kb", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "kb");
-  }, FAM);
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p, { set: { "rk-flight-search": { mode: "fixed" }, "rk2-dir": { people: [], groups: [], prefs: {} }, "rk2-t:kb": FAM, "rk2-index": [{ id: "kb", name: FAM.name, place: FAM.place }], "rk2-current": "kb" } });
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();

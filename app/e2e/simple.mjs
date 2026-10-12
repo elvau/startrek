@@ -5,6 +5,7 @@
  * Start: npm run test:cloud
  */
 import { chromium } from "playwright";
+import { reloadHome } from "./nav.mjs";
 import { spawn } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 
@@ -89,7 +90,7 @@ try {
   log("Anteil pro Person mit Cent: 10 € auf 4 → 2,50 €");
 
   // Neu laden: alles gespeichert
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await p.locator(".start .home-trip", { hasText: "Zu viert" }).click();
   await p.locator("#attractions .sl").nth(2).waitFor();
   if ((await p.locator("#attractions .sl").nth(0).locator(".sl-who .chip.on").count()) !== 2) fail("Auswahl nicht gespeichert");
@@ -357,7 +358,7 @@ try {
   await rx.locator(".xc-tg").first().click();
   await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "Kurtaxe weggeklickt");
   await fp.waitForTimeout(800);
-  await fp.evaluate(() => sessionStorage.clear()); await fp.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(fp);
   await fp.locator(".start .home-trip", { hasText: "Rom" }).first().click();
   await fp.locator(".aside .tk-top b").waitFor();
   await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "weggeklickt bleibt nach dem Neuladen");
@@ -574,6 +575,53 @@ try {
   if (saved.travelers.length !== 11 || new Set(saved.travelers.map(x => x.household)).size !== 3) fail("Familien falsch: " + saved.travelers.map(x => x.name).join(", "));
   log("Link von Inhaltsseite: Reise „Gardasee mit Familien“ in Riva del Garda (Italien) mit 3 Familien, 6 Erw. und 5 Kindern; Adresse bereinigt");
   await lctx.close();
+
+  // Haustiere (#322): Familie Klein mit Hund (reist mit) → Hinweise unter „Wichtiges“ für London;
+  // Familie Hase: Fische bleiben zuhause → Anfrage-Text und Posten Tierbetreuung nur für Hase
+  const pctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await pctx.addInitScript(t => {
+    if (localStorage.getItem("rk2-index")) return;
+    localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
+    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: 4 }]));
+    localStorage.setItem("rk2-current", t.id);
+  }, TRIP);
+  const pp = await pctx.newPage();
+  await data(pp);
+  pp.on("pageerror", e => errors.push(e.message));
+  await pp.goto(URL);
+  await pp.locator(".start .home-trip", { hasText: "Zu viert" }).click();
+  // versteckt (#323): ohne bekanntes Haustier und ohne Schalter kein Bereich; einschalten an der Reise (✎)
+  if (await pp.locator(".pets-h").count()) fail("Zuhause während der Reise sichtbar, obwohl nichts eingeschaltet");
+  await pp.locator(".top .top-edit").click();
+  await pp.locator(".te-home input").check();
+  await pp.locator(".trip-ed .btn.primary").click();
+  await pp.locator(".pets-h", { hasText: "Zuhause während der Reise" }).click();
+  await pp.locator(".pet-fam", { hasText: "Klein" }).locator(".chip", { hasText: "Hund" }).click();
+  await pp.locator(".top .imp-btn").click();
+  const pimp = pp.locator(".modal .imp");
+  await pimp.locator("[data-key='hint:petEntry']").first().waitFor();
+  await pimp.locator("[data-key='hint:petTapeworm']").first().waitFor();
+  await pp.keyboard.press("Escape");
+  const hase = pp.locator(".pet-fam", { hasText: "Hase" });
+  await hase.locator(".chip", { hasText: "Fische" }).click();
+  await hase.locator(".chip", { hasText: "bleibt zuhause" }).click();
+  await hase.locator(".home-tasks .chip", { hasText: "Pflanzen gießen" }).click();
+  await hase.locator(".home-tasks .chip", { hasText: "Briefkasten" }).click();
+  await hase.locator(".chip", { hasText: "etwa alle 2–3 Tage" }).click();
+  await hase.locator(".home-thanks .chip", { hasText: "50 €" }).click();
+  await hase.locator('.home-thanks input[placeholder^="oder z. B."]').fill("eine Kiste Bier");
+  const askT = await hase.locator(".pet-ask").innerText();
+  if (!askT.includes("bei uns unsere Fische füttern, die Pflanzen gießen und den Briefkasten leeren (etwa alle 2–3 Tage)") || !askT.includes("Als Dankeschön: 50 € und eine Kiste Bier") || !askT.includes("14.05.")) fail("Anfrage Zuhause: " + askT);
+  await hase.locator(".btn", { hasText: "Posten übernehmen" }).click();
+  await hase.locator("text=Posten angelegt").waitFor();
+  const cur = () => pp.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "null"));
+  await until(async () => !!(await cur())?.items?.some(i => i.hint === "home:Hase"), "Posten Zuhause gespeichert");
+  const pt = await cur();
+  const care = pt.items.find(i => i.hint === "home:Hase");
+  if (!care || care.name !== "Zuhause versorgt Hase" || care.participants?.sort().join() !== "m,s" || care.options.map(o => o.price.unit).join() !== "50,30") fail("Posten Zuhause: " + JSON.stringify(care));
+  if (pt.households?.Klein?.pets?.kinds?.join() !== "dog" || !pt.households?.Hase?.pets?.home || pt.households?.Hase?.care?.tasks?.join() !== "plants,mail" || !pt.homeCare) fail("Zuhause nicht gespeichert: " + JSON.stringify({ h: pt.households, on: pt.homeCare }));
+  log("Zuhause während der Reise: erst eingeschaltet sichtbar; Klein mit Hund nach London (Einreise mit Haustier, Bandwurmbehandlung unter „Wichtiges“); Hase: Fische zuhause, Pflanzen und Briefkasten alle 2–3 Tage, Dankeschön 50 € und eine Kiste Bier (Anfrage, Posten nur für Hase: 50 € bzw. Sitter 30 €)");
+  await pctx.close();
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");

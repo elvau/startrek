@@ -208,3 +208,24 @@ mautfrei. Noch nicht eingerechnet: Ungarn (Vignette D2 statt D1, 10 Tage 10.040 
 
 **Fähre:** Camper-Tarif = Pkw × 1,2, solange die Verbindung keinen eigenen Wert hat (bis 6 m meist Pkw-Tarif, darüber
 +20–25 %, z. B. TT-Line 10 € je Meter über 6 m).
+
+## Tierbetreuung und Zuhause (#322, #323)
+
+„Zuhause während der Reise“ ist versteckt, bis ein Haustier bekannt ist (Vorlieben oder Reise) oder der Schalter
+„Jemand kümmert sich ums Zuhause“ an ist (Reise ✎ bzw. Vorlieben, Karte „Besonderes“). Der Posten gilt nur für die
+Familie: „Freundeskreis“ mit dem frei wählbaren Dankeschön (Vorschläge 20/50/100 €, Freitext z. B. „eine Kiste Bier“
+steht als Notiz; ohne Betrag 0 €, vorgewählt als günstigstes) und, wenn Tiere zuhause bleiben, „Tierpension bzw.
+Tiersitter“ als Richtwert
+(`app/src/lib/pets.ts`, Stand Oktober 2026, grobe Mittelwerte in Deutschland):
+
+| Tierart | vorbeibringen (Pension, je Tag) | vorbeikommen (Sitter) |
+|---|---|---|
+| Hund | 25 € | – |
+| Katze | 15 € | – |
+| Reptilien | 15 € | – |
+| Kaninchen, Meerschweinchen, Vogel, Fische, Spinne, Sonstiges | 10 € | – |
+| Hamster, Maus | 8 € | – |
+| alle mit „jemand kommt vorbei“ | – | 15 € je Besuch (täglich bzw. etwa alle 2–3 Tage) |
+
+Tage: erste Nacht bis Abreisetag der Reise. Reist das Tier mit, gibt es keine Kosten-Richtwerte, nur den Haustier-Filter
+in den Unterkunfts-Links und Hinweise unter „Wichtiges“ (Einreise mit Haustier, Bandwurmbehandlung für Hunde, Flug).

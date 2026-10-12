@@ -4,6 +4,8 @@
   import { autoName, nights } from "../format";
   import { geo } from "../geo/geo.svelte";
   import { ccOf, cityNames, countryNames, loadGeo } from "../geo/places";
+  import { dir } from "../directory.svelte";
+  import { prefsFor } from "../prefs";
 
   let { onclose }: { onclose: () => void } = $props();
   const trip = $derived(app.trip);
@@ -12,6 +14,9 @@
   loadGeo(geo, []);
   const countries = $derived(countryNames(geo));
   const cities = $derived(cityNames(geo, ccOf(geo, trip.country)));
+  // Zuhause während der Reise (#323): je Reise ein- oder ausschalten, sonst wie in den Vorlieben
+  const homeOn = $derived(trip.homeCare ?? !!prefsFor(trip, dir).homeCare);
+  function setHome(v: boolean) { if (v === !!prefsFor(trip, dir).homeCare) delete trip.homeCare; else trip.homeCare = v; }
 </script>
 
 <div class="trip-ed">
@@ -35,5 +40,12 @@
   <div class="ed-row">
     <label class="f grow">{t("te.kicker")}<input bind:value={trip.kicker} placeholder={t("te.kickerPh")} /></label>
   </div>
+  <label class="te-home"><input type="checkbox" checked={homeOn} onchange={e => setHome(e.currentTarget.checked)} /> <span>🏠 {t("home.switch")}<small class="muted">{t("home.switchHint")}</small></span></label>
   <div class="ed-foot"><span class="muted">{t("autosave")}</span><button class="btn primary" onclick={onclose}>{t("done")}</button></div>
 </div>
+
+<style>
+  .te-home{display:flex;gap:10px;align-items:flex-start;font-size:14px;margin:4px 0 8px}
+  .te-home input{margin-top:3px}
+  .te-home small{display:block}
+</style>

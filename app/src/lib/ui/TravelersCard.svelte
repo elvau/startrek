@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PetsCard from "./PetsCard.svelte";
   import { access, app } from "../store.svelte";
   import { t, t as tt, tn, type Key } from "../i18n/index.svelte";
   import { ageClass } from "../calc";
@@ -182,6 +183,8 @@
     </div>
   {/if}
 {/if}
+<!-- Haustiere je Familie (#322) -->
+<PetsCard />
 <!-- Wohnort, Anreise und Anwesenheit braucht es erst für detaillierte Flüge oder Unterkünfte -->
 {#if isDetailed(app.trip, "flights") || isDetailed(app.trip, "stay")}<Households />{/if}
 {#if groups}<GroupsDialog onclose={() => (groups = false)} />{/if}

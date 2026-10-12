@@ -3,6 +3,7 @@
  * Vorschlag übernehmen. Start: npm run test:cloud (braucht den Auth-Emulator)
  */
 import { chromium } from "playwright";
+import { reloadHome } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4178/";
@@ -204,8 +205,10 @@ try {
   await pe.locator("label", { hasText: "Ich bin" }).locator("select").selectOption({ label: "Dani Klein" });
   await pe.locator('input[placeholder^="Land hinzufügen"]').fill("Türk");
   await pe.locator(".sugg button", { hasText: "Türkei" }).click();
-  await pe.locator("label", { hasText: "Umstiege max." }).locator("select").selectOption("0");
-  await pe.locator(".chip", { hasText: "Strand" }).click();
+  await pe.locator('[data-card="flights"] .pv-c', { hasText: "Direkt" }).click();
+  await pe.locator('[data-card="style"] .pv-c', { hasText: "Strand" }).click();
+  // Kurzfassung oben zeigt die Auswahl (#161)
+  await until(async () => { const t = await pe.locator(".pv-sum").innerText(); return t.includes("nur Direktflüge") && t.includes("Strand"); }, "Kurzfassung der Vorlieben");
   await pd.locator(".modal-h .x").click();
   const stored = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}"));
   if (!stored.me || stored.prefs?.avoid?.join() !== "TR" || stored.prefs?.maxStops !== 0) fail("Vorlieben nicht gespeichert: " + JSON.stringify(stored.prefs));
@@ -320,7 +323,7 @@ try {
   await p.locator(".home-view .chip", { hasText: "Liste" }).click();
   await p.locator(".home-trips.as-list .home-row").first().waitFor();
   await shot("home-list"); await shot("home-list-m", 390, 844);
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await p.locator(".home-trips.as-list .home-row").first().waitFor();
   if (!(await p.locator(".home-sort .chip.on", { hasText: "Land" }).count())) fail("Sortierung nicht gemerkt");
   log("Startseite: nach Preis, zuletzt bearbeitet und Land sortiert, Liste statt Kacheln, gemerkt");
@@ -335,7 +338,7 @@ try {
     idx.push({ id: "leer1", name: "", place: "" }, { id: "idee1", name: "Idee Lissabon", place: "Lissabon", from: "2027-09-01", to: "2027-09-05" }, { id: "leer2", name: "Irgendwas", place: "" });
     localStorage.setItem("rk2-index", JSON.stringify(idx));
   });
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await until(() => p.evaluate(() => localStorage.getItem("rk2-t:leer1") === null), "unberührter Entwurf gelöscht");
   // nur leere Reisen (ohne Ort, Daten und Kosten) aufräumen; „Idee Lissabon“ hat Ort und Daten und bleibt
   let asked2 = "";
@@ -374,7 +377,7 @@ try {
   let release = () => {};
   const gate = new Promise(r => (release = r));
   await p.route("**/assets/firebase-*.js", async r => { await gate; await r.continue(); });
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await p.locator(".start .home-event").click();
   await p.locator(".modal[aria-label='Reise zu einem Event']").waitFor();
   release();
@@ -402,26 +405,33 @@ try {
   await gd2.locator(".modal-h .x").click();
   await p.locator(".top .prefs-btn").click();
   const pd2 = p.locator(".modal", { hasText: "Meine Vorlieben" });
-  await pd2.locator(".grp-h", { hasText: "Familie Klein" }).click();
-  const ge = pd2.locator(".grp-b .prefs");
-  const apIn = ge.locator("label", { hasText: "Bevorzugte Abflughäfen" }).locator("input");
+  await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).click();
+  const ge = pd2.locator(".pv.group");
+  const apIn = ge.locator('input[aria-label="Bevorzugte Abflughäfen"]');
   // Datenbank langsam wie im echten Netz: das Echo des Speicherns kommt, während schon weitergetippt wird
   const slow = async r => { await new Promise(res => setTimeout(res, 700)); await r.continue().catch(() => {}); };
   await p.route("**/google.firestore.v1.Firestore/**", slow);
   await w2.route("**/google.firestore.v1.Firestore/**", slow);
   for (const ch of "DUS, CGN") { await apIn.press(ch === " " ? "Space" : ch); await p.waitForTimeout(350); }
-  await ge.locator("label", { hasText: "Verpflegung" }).locator("select").selectOption({ label: "Halbpension" });
+  await ge.locator('[data-card="stay"] .pv-c', { hasText: "Halbpension" }).click();
   await p.waitForTimeout(4000);
   await p.unroute("**/google.firestore.v1.Firestore/**", slow);
   if ((await apIn.inputValue()) !== "DUS, CGN") fail("Eingabe in den Gruppen-Vorlieben zurückgesprungen: " + await apIn.inputValue());
-  if ((await ge.locator("label", { hasText: "Verpflegung" }).locator("select").inputValue()) !== "half") fail("Verpflegung zurückgesprungen");
+  if (!(await ge.locator('[data-card="stay"] .pv-c.chg', { hasText: "Halbpension" }).count())) fail("Verpflegung zurückgesprungen");
   const gp = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs);
   if (gp?.airports?.join() !== "DUS,CGN" || gp?.board !== "half") fail("Gruppen-Vorlieben nicht gespeichert: " + JSON.stringify(gp));
   const gp2 = await w2.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs);
   if (gp2?.board !== "half") fail("zweites Fenster hat die Gruppen-Vorlieben nicht: " + JSON.stringify(gp2));
   await w2.close();
+  // abweichend von meinen (#161): Zähler am Reiter und an der Karte, Halbpension zurück auf „wie meine“
+  if (!(await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).innerText()).includes("2 abweichend")) fail("Zähler am Reiter: " + await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).innerText());
+  if (!(await ge.locator('[data-card="stay"] .pv-badge').innerText()).includes("1 abweichend")) fail("Zähler an der Karte Unterkunft fehlt");
+  await ge.locator('[data-card="stay"] .pv-reset').click();
+  await until(() => p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs?.board === undefined), "Verpflegung wie meine");
+  if (await ge.locator('[data-card="stay"] .pv-badge').count()) fail("Zähler an der Karte nach dem Zurücksetzen");
+  if (!(await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).innerText()).includes("1 abweichend")) fail("Zähler am Reiter nach dem Zurücksetzen");
   await pd2.locator(".modal-h .x").click();
-  log("Gruppen-Vorlieben angemeldet, zweites Fenster offen: langsam getippt und Halbpension gewählt, nichts springt zurück, gespeichert");
+  log("Gruppen-Vorlieben angemeldet, zweites Fenster offen: langsam getippt und Halbpension gewählt, nichts springt zurück, gespeichert; Zähler „abweichend“, Halbpension zurück auf „wie meine“");
 
   // dauert es länger: Wartezeit läuft sichtbar mit (statt „bis zu einer Minute“)
   if (await p.locator(".ai-fab").count()) await p.locator(".ai-fab").click();
@@ -466,7 +476,7 @@ try {
   await p.waitForTimeout(2500);
   // Kopie auf dem Gerät weg, damit nach dem Neuladen nur zählt, was im Konto steht
   await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("rk2-t:")) localStorage.removeItem(k); });
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await until(() => p.locator(".start .home-trip, .start .home-row", { hasText: "Langsam-Test" }).count().then(n => n > 0), "Name im Konto angekommen", 15000);
   log("Langsames Netz: Reise während des Hochladens umbenannt, Name steht danach im Konto");
 

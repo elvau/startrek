@@ -3,7 +3,8 @@
  * Unproblematisch, weil nur eine normale Suchseite geöffnet wird (Fallback, wenn eine Quelle ausfällt).
  * In der Oberfläche laufen die Links über das Partner-Verzeichnis (partners/), das bei Bedarf die Partnerkennung anhängt.
  */
-export interface StayLinkQuery { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number }
+/** pets: ein Haustier reist mit (#322), setzt den Haustier-Filter des Anbieters */
+export interface StayLinkQuery { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number; pets?: boolean }
 export interface FlightLinkQuery { from: string; to: string; depart: string; ret?: string; adults: number; children: number; infants: number }
 
 const where = (q: StayLinkQuery) => (q.country ? `${q.place}, ${q.country}` : q.place);
@@ -11,6 +12,8 @@ const where = (q: StayLinkQuery) => (q.country ? `${q.place}, ${q.country}` : q.
 export function bookingLink(q: StayLinkQuery): string {
   const p = new URLSearchParams({ ss: where(q), checkin: q.checkin, checkout: q.checkout, group_adults: String(q.adults), group_children: String(q.childAges.length), no_rooms: String(q.rooms), selected_currency: "EUR" });
   q.childAges.forEach(a => p.append("age", String(a)));
+  // Filter „Haustiere erlaubt“
+  if (q.pets) p.append("nflt", "hotelfacility=4");
   return `https://www.booking.com/searchresults.de.html?${p}`;
 }
 
@@ -20,6 +23,7 @@ export function airbnbLink(q: StayLinkQuery): string {
   const kids = q.childAges.filter(a => a >= 2).length, infants = q.childAges.length - kids;
   if (kids) p.set("children", String(kids));
   if (infants) p.set("infants", String(infants));
+  if (q.pets) p.set("pets", "1");
   return `https://www.airbnb.de/s/${encodeURIComponent(slug)}/homes?${p}`;
 }
 

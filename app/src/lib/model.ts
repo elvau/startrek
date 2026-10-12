@@ -123,6 +123,8 @@ export interface Prefs {
   car?: { seats?: number; fuel?: "petrol" | "diesel" | "hybrid" | "electric" };
   /** Besonderes: Haustier dabei, stufenlos (Kinderwagen, Rollstuhl), vegetarisch bzw. vegan */
   pet?: boolean;
+  /** jemand soll sich während der Reise ums Zuhause kümmern (#323): blendet „Zuhause während der Reise“ ein */
+  homeCare?: boolean;
   stepFree?: boolean;
   diet?: "veg" | "vegan";
 }
@@ -366,6 +368,35 @@ export interface Household {
   /** eigene Anwesenheit statt aus dem Flug: erste Nacht, Abreisetag */
   arrive?: string;
   depart?: string;
+  /** Haustiere der Familie (#322): kein Reisender, nur Hinweise, Filter und Betreuung */
+  pets?: Pets;
+  /** Zuhause versorgt während der Reise (#323): Aufgaben, wie oft, Dankeschön */
+  care?: HomeCare;
+}
+
+export const HOME_TASKS = ["plants", "garden", "mail", "check", "bins", "other"] as const;
+export type HomeTask = (typeof HOME_TASKS)[number];
+export interface HomeCare {
+  tasks: HomeTask[];
+  /** Freitext zu „Sonstiges“ */
+  other?: string;
+  often?: "daily" | "few" | "weekly";
+  /** Dankeschön: Betrag (frei wählbar) und/oder Freitext („eine Kiste Bier“) */
+  thanks?: { eur?: number; text?: string };
+}
+
+export const PET_KINDS = ["dog", "cat", "rabbit", "rodent", "bird", "fish", "reptile", "spider", "other"] as const;
+export type PetKind = (typeof PET_KINDS)[number];
+/** Betreuung, wenn das Tier zuhause bleibt: vorbeibringen oder jemand kommt vorbei (füttern) */
+export type PetCare = "bring" | "visit";
+export interface Pets {
+  kinds: PetKind[];
+  /** bleibt zuhause (sonst reist es mit) */
+  home?: boolean;
+  /** Betreuung je Art, wenn abweichend von der üblichen */
+  care?: Partial<Record<PetKind, PetCare>>;
+  /** wie oft jemand vorbeikommt */
+  often?: "daily" | "few" | "weekly";
 }
 
 export interface Airport {
@@ -461,6 +492,8 @@ export interface Trip {
   from?: string;
   to?: string;
   home?: string;
+  /** „Zuhause während der Reise“ (#323) für diese Reise ein- bzw. ausgeschaltet; fehlt: aus den Vorlieben */
+  homeCare?: boolean;
   event?: TripEvent;
   travelers: Traveler[];
   households?: Record<string, Household>;
