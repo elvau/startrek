@@ -203,7 +203,7 @@ export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: strin
 /** adds: Koffer und Sitzplätze je Ticket (#210), als Nebenkosten je Strecke mit Airline in der Quelle */
 export function roundToOption(rt: RoundTrip, home: boolean, split?: SplitInfo, adds?: AddOns[]): Option {
   const n = rt.legs.length;
-  const extras = (adds || []).flatMap((a, i) => extrasOf(a).map(x => ({ ...x, id: `${x.id}:${i + 1}`, label: `${x.label} · ${rt.legs[i].out.from} → ${rt.legs[i].out.to}` })));
+  const extras = (adds || []).flatMap((a, i) => extrasOf(a).map(x => ({ ...x, id: `${x.id}:${i + 1}`, leg: `${rt.legs[i].out.from} → ${rt.legs[i].out.to}` })));
   const route = [rt.legs[0].out.from, ...rt.legs.map(l => l.out.to)];
   return {
     id: uid(),

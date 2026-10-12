@@ -245,6 +245,8 @@ export interface Extra {
   max?: number;
   /** Beträge pro Nacht/Tag/Buchung gelten höchstens für so viele Einheiten (z. B. Autos), nicht für alle gebuchten */
   maxUnits?: number;
+  /** Strecke einer Rundreise aus getrennten Tickets, z. B. „DUS → BCN“ (#210); steht in der Liste hinter der Bezeichnung */
+  leg?: string;
   /** Quelle, z. B. „Stadt Split, Stand 2026“ oder „liteAPI“ */
   source?: string;
   /** Land (Maut, Vignette): Name in der Sprache der App */

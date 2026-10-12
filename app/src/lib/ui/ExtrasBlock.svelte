@@ -83,7 +83,7 @@
     <ul>
       {#each ex.lines as l (l.x.id)}
         <li class:off={l.x.off}>
-          <span>{ICON[l.x.kind]} {name(l.x)} <small class="muted">{how(l)}{l.x.source ? ` · ${l.x.source}` : ""}</small></span>
+          <span>{ICON[l.x.kind]} {name(l.x)}{l.x.leg ? ` · ${l.x.leg}` : ""} <small class="muted">{how(l)}{l.x.source ? ` · ${l.x.source}` : ""}</small></span>
           <b class="num">{l.x.pay === "included" && !l.amount ? "—" : `${l.x.est ? `${t("xc.ca")} ` : ""}${eur(l.amount)}`}</b>
           <span class="xc-tags">
             <em class="xc-s {l.x.pay}" class:est={l.x.est && l.x.pay !== "included"}>{t(`xc.pay.${l.x.pay}` as Key)}{l.x.est && l.x.pay !== "included" ? ` · ${t("xc.estimated")}` : ""}</em>

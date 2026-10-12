@@ -249,8 +249,8 @@ describe("Gepäck bei Rundreisen mit getrennten Tickets (#210)", () => {
     const r = rateRound(trip(), rt, true, false, undefined, need);
     const o = roundToOption(rt, true, undefined, r.adds);
     expect(o.extras).toEqual([
-      expect.objectContaining({ id: "fl:bag:1", kind: "bag", amount: 160, basis: "booking", pay: "extra", est: true, label: "4 Koffer dazubuchen · DUS → BCN", source: expect.stringContaining("Ryanair · ") }),
-      expect.objectContaining({ id: "fl:bag:2", kind: "bag", amount: 180, label: "4 Koffer dazubuchen · BCN → BUD", source: expect.stringContaining("Wizz Air · ") })
+      expect.objectContaining({ id: "fl:bag:1", kind: "bag", amount: 160, basis: "booking", pay: "extra", est: true, label: "4 Koffer dazubuchen", leg: "DUS → BCN", source: expect.stringContaining("Ryanair · ") }),
+      expect.objectContaining({ id: "fl:bag:2", kind: "bag", amount: 180, label: "4 Koffer dazubuchen", leg: "BCN → BUD", source: expect.stringContaining("Wizz Air · ") })
     ]);
     const t = trip();
     const item = takeRound(t, rt, true, undefined, undefined, undefined, r.adds);
