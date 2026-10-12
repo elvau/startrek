@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entwurf Vorlieben</title>
+<style>
+@font-face{font-family:Fig;src:local("Figtree") format("woff2");font-weight:100 900}
+:root{--bg:#F4F2EE;--paper:#fff;--paper-2:#F7F6F3;--ink:#15202E;--ink-2:#4B5566;--ink-3:#7D8696;--line:#E3E0DA;
+--a:#2F6FDB;--a-soft:#E4EDFB;--good:#2E7D4F;--idea:#6B5BD2;--idea-soft:#ECE9FB;--warn:#A0660B;--warn-soft:#FBEFD9;
+--c-flights:#2F6FDB;--c-flights-s:#E4EDFB;--c-stay:#C0487A;--c-stay-s:#FAE3ED;--c-tr:#1F8A70;--c-tr-s:#DDF3EC;--c-att:#D08A12;--c-att-s:#FCF0D6;--c-misc:#7A5AC8;--c-misc-s:#EEE8FA;--c-trav:#D2693C;--c-trav-s:#FBE8DF}
+*{box-sizing:border-box}
+body{margin:0;font-family:Fig,system-ui,sans-serif;color:var(--ink);background:linear-gradient(#7FA9D6,#B9D2EC 40%,#2C6FA8 60%,#1E5C8F);min-height:100vh}
+.veil{position:fixed;inset:0;background:rgba(21,32,46,.35)}
+.modal{position:relative;margin:24px auto;max-width:880px;background:var(--paper);border-radius:22px;box-shadow:0 24px 60px -20px rgba(0,0,0,.4);overflow:hidden}
+.mh{display:flex;align-items:center;gap:12px;padding:18px 22px 10px}
+.mh h2{margin:0;font-size:24px;flex:1}
+.x{width:36px;height:36px;border-radius:12px;border:1px solid var(--line);background:var(--paper-2);display:grid;place-items:center}
+.tabs{display:flex;gap:8px;padding:6px 22px 14px;border-bottom:1px solid var(--line);overflow:hidden;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--paper-2);border-radius:999px;padding:9px 14px;font-weight:600;font-size:15px;color:var(--ink-2);display:flex;gap:6px;align-items:center}
+.tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tab .n{font-size:12px;background:var(--warn-soft);color:var(--warn);border-radius:999px;padding:1px 7px}
+.tab.on .n{background:rgba(255,255,255,.2);color:#fff}
+.body{padding:16px 22px 26px;background:var(--paper-2)}
+.sum{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;gap:14px;align-items:flex-start}
+.sum .t{font-size:13px;color:var(--ink-3);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+.sum .chips{display:flex;flex-wrap:wrap;gap:6px}
+.sc{font-size:14px;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--ink)}
+.sc.grp{background:var(--warn-soft);border-color:#F0D8A8}
+.sc.inh{color:var(--ink-3)}
+.ai{margin-left:auto;white-space:nowrap;border:0;background:var(--idea-soft);color:var(--idea);font-weight:700;border-radius:999px;padding:9px 14px;font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px 16px 16px}
+.card.wide{grid-column:1/-1}
+.ch{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ico{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:18px}
+.ch h3{margin:0;font-size:17px;flex:1}
+.badge{font-size:12px;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--warn-soft);color:var(--warn)}
+.row{margin:10px 0 0}
+.lbl{font-size:13px;color:var(--ink-2);font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.lbl .inh{font-weight:500;color:var(--ink-3)}
+.reset{margin-left:auto;font-size:12px;color:var(--warn);font-weight:700;border:0;background:none;padding:0}
+.seg{display:inline-flex;flex-wrap:wrap;gap:6px}
+.c{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:8px 13px;font-size:15px;min-height:38px;color:var(--ink)}
+.c.on{background:var(--a);border-color:var(--a);color:#fff;font-weight:600}
+.c.ghost{background:var(--paper-2);color:var(--ink-3);border-style:dashed}
+.c.ghost.on{background:var(--a-soft);color:var(--a);border:1px dashed var(--a);font-weight:600}
+.c.chg{background:var(--warn);border-color:var(--warn);color:#fff;font-weight:600}
+.m{min-width:52px;text-align:center;padding:8px 6px}
+.inp{border:1px solid var(--line);background:var(--paper-2);border-radius:12px;padding:10px 12px;font-size:15px;width:100%;color:var(--ink)}
+.inp.ph{color:var(--ink-3)}
+.two{display:flex;gap:10px}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stepper b{padding:8px 14px;min-width:46px;text-align:center}
+.stepper span{padding:8px 12px;background:var(--paper-2);color:var(--ink-2)}
+.tag{display:inline-flex;gap:6px;align-items:center;background:#FDE7E7;color:#A33;border-radius:999px;padding:6px 11px;font-size:14px;font-weight:600}
+.hint{font-size:13px;color:var(--ink-3);margin:6px 0 0}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin:10px 2px 0}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:6px;vertical-align:-1px}
+.foot{display:flex;justify-content:space-between;align-items:center;padding:12px 22px;border-top:1px solid var(--line);background:var(--paper);font-size:14px;color:var(--ink-3)}
+.saved{color:var(--good);font-weight:600}
+@media (max-width:640px){
+  .modal{margin:0;border-radius:0;max-width:none;min-height:100vh}
+  .grid{grid-template-columns:1fr}
+  .sum{flex-direction:column}
+  .ai{margin:0}
+
+
+  .mh,.tabs,.body,.foot{padding-left:16px;padding-right:16px}
+}
+</style>
+</head>
+<body>
+<div class="veil"></div>
+<div class="modal">
+  <div class="mh"><h2>Vorlieben</h2><span class="x">✕</span></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="body" id="body"></div>
+  <div class="foot"><span>Belegen Suchen und KI-Planer vor. In jeder Suche kannst du alles ändern.</span><span class="saved">✓ Gespeichert</span></div>
+</div>
+<script>
+const VIEW = new URLSearchParams(location.search).get("v") || "me";
+const G = VIEW === "group";
+document.getElementById("tabs").innerHTML =
+  `<span class="tab ${G ? "" : "on"}">👤 Meine</span><span class="tab ${G ? "on" : ""}">👨‍👩‍👧 Familie Klein &amp; Hase <span class="n">3 abweichend</span></span><span class="tab">⚽ Mannschaft</span>`;
+
+// Chips: on = gesetzt; bei Gruppen: inh = wie meine (gestrichelt), chg = abweichend (orange)
+const chip = (t, s = "", cls = "") => `<span class="c ${cls} ${s}">${t}</span>`;
+const seg = (opts, sel, mode) => `<div class="seg">${opts.map(o => chip(o, o === sel ? (mode === "chg" ? "chg" : mode === "inh" ? "ghost on" : "on") : (mode === "inh" ? "ghost" : ""), o.length <= 3 ? "m" : "")).join("")}</div>`;
+const lbl = (t, st, inhVal) => `<div class="lbl">${t}${st === "inh" ? ` <span class="inh">· wie meine${inhVal ? ": " + inhVal : ""}</span>` : ""}${st === "chg" ? ` <button class="reset">↺ wie meine</button>` : ""}</div>`;
+const card = (ico, col, title, body, badge, wide) => `<section class="card${wide ? " wide" : ""}"><div class="ch"><span class="ico" style="background:var(${col}-s)">${ico}</span><h3>${title}</h3>${badge ? `<span class="badge">${badge}</span>` : ""}</div>${body}</section>`;
+
+const st = (chgInGroup) => G ? (chgInGroup ? "chg" : "inh") : "";
+const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
+const summary = G
+  ? ["ab DUS, CGN", "max. 1 Umstieg", "Ferienwohnung", "★★★★", "Frühstück", "Strand", "Budget €€", "Sommerferien NRW", "Jun–Aug", "5–10 Nächte"]
+      .map((s, i) => `<span class="sc ${[1, 2, 5].includes(i) ? "grp" : "inh"}">${s}</span>`).join("")
+  : ["ab DUS, CGN", "nur Direktflüge", "mit Koffer", "Hotel ★★★★", "Frühstück", "Städte", "Kultur", "Budget €€", "Sommerferien NRW", "Jun–Aug", "5–10 Nächte"].map(s => `<span class="sc">${s}</span>`).join("");
+
+const flights = `
+  ${G ? "" : `<div class="row two"><div style="flex:0 0 120px">${lbl("Postleitzahl")}<div class="inp">41352</div></div><div style="flex:1">${lbl("Abflughäfen")}<div class="inp">DUS, CGN</div></div></div><p class="hint">Aus der Postleitzahl schlägt die Flugsuche Flughäfen in der Nähe vor (nur im Konto).</p>`}
+  ${G ? `<div class="row">${lbl("Abflughäfen", "inh", "DUS, CGN")}<div class="inp ph">DUS, CGN</div></div>` : ""}
+  <div class="row">${lbl("Umstiege", st(true))}${seg(["Egal", "Direkt", "1", "2"], G ? "1" : "Direkt", G ? "chg" : "")}</div>
+  <div class="row">${lbl("Gepäck", st(false), "mit Koffer")}${seg(["Egal", "Handgepäck", "Mit Koffer"], "Mit Koffer", G ? "inh" : "")}</div>
+  <div class="row">${lbl("Kinder neben den Eltern", st(false))}${seg(["Egal", "Ja", "Nein"], "Egal", G ? "inh" : "")}</div>
+  <div class="row two"><div>${lbl("Flugzeit", st(false))}<span class="stepper"><span>−</span><b>egal</b><span>+</span></span></div>
+  <div>${lbl("Zum Flughafen", st(false))}${seg(["Egal", "🚗 Auto", "🚆 Bahn"], "🚆 Bahn", G ? "inh" : "")}</div></div>`;
+
+const stay = `
+  <div class="row">${lbl("Art", st(true))}${seg(["Egal", "Hotel", "Ferienwohnung"], G ? "Ferienwohnung" : "Hotel", G ? "chg" : "")}</div>
+  <div class="row">${lbl("Mindestens", st(false), "★★★★")}${seg(["Egal", "★★", "★★★", "★★★★", "★★★★★"], "★★★★", G ? "inh" : "")}</div>
+  <div class="row">${lbl("Verpflegung", st(false), "Frühstück")}${seg(["Egal", "Selbstversorgung", "Frühstück", "Halbpension", "Vollpension", "All inclusive"], "Frühstück", G ? "inh" : "")}</div>`;
+
+const style = `
+  <div class="row">${lbl("Was euch gefällt", st(true))}<div class="seg">${["🏖 Strand", "🏙 Städte", "🌿 Natur", "🏛 Kultur", "🎉 Party", "🧖 Wellness", "⛷ Ski", "🚐 Rundreisen"].map(s => {
+    const on = G ? s.includes("Strand") : (s.includes("Städte") || s.includes("Kultur"));
+    return chip(s, on ? (G ? "chg" : "on") : "");
+  }).join("")}</div>${G ? `<p class="hint">Meine: Städte, Kultur</p>` : ""}</div>
+  <div class="row">${lbl("Budget", st(false), "€€")}${seg(["Egal", "€ günstig", "€€ mittel", "€€€ gehoben"], "€€ mittel", G ? "inh" : "")}</div>`;
+
+const times = `
+  <div class="row">${lbl("Schulferien", st(false), "Nordrhein-Westfalen")}<div class="inp ${G ? "ph" : ""}">Nordrhein-Westfalen ▾</div></div>
+  <div class="row">${lbl("Lieblingsmonate", st(false), "Jun–Aug")}<div class="seg">${MONTHS.map((m, i) => chip(m, [5, 6, 7].includes(i) ? (G ? "ghost on" : "on") : (G ? "ghost" : ""), "m")).join("")}</div></div>
+  <div class="row">${lbl("Übliche Länge", st(false), "5–10 Nächte")}<span class="stepper"><span>−</span><b>5</b><span>+</span></span> bis <span class="stepper"><span>−</span><b>10</b><span>+</span></span> Nächte</div>`;
+
+const avoid = `
+  <div class="row"><div class="seg">${G ? `<span class="tag" style="opacity:.6">🔒 Ägypten (meine)</span> <span class="tag">Türkei ✕</span>` : `<span class="tag">Ägypten ✕</span>`}</div>
+  <div class="inp ph" style="margin-top:8px">+ Land hinzufügen, z. B. Tunesien</div>
+  <p class="hint">${G ? "Kommt zu meinen gesperrten Ländern dazu." : "Nie als Ziel und nie zum Umsteigen."}</p></div>`;
+
+const special = `
+  <div class="row"><div class="seg">${chip("🐕 Haustier dabei", "")}${chip("♿ stufenlos (Kinderwagen, Rollstuhl)", G ? "" : "")}${chip("🥗 vegetarisch", "")}${chip("🌱 vegan", "")}</div></div>
+  ${G ? "" : `<div class="row">${lbl("Eigenes Auto")}${seg(["5 Plätze", "7 Plätze", "9 Plätze"], "5 Plätze", "")} ${seg(["Benzin", "Diesel", "Hybrid", "Elektro"], "Diesel", "")}</div>`}`;
+
+const note = `<div class="row">${lbl("Notiz für die KI", st(false))}<div class="inp ${G ? "ph" : ""}" style="min-height:52px">Gern mit Zug zum Flughafen</div><p class="hint">Ohne Namen, höchstens 300 Zeichen.</p></div>`;
+
+document.getElementById("body").innerHTML = `
+${G ? "" : `<div class="sum" style="margin-bottom:12px;align-items:center"><span style="font-size:22px">👤</span><div style="flex:1"><div class="lbl" style="margin:0">Ich bin</div><div style="font-size:13px;color:var(--ink-3)">Dein Wohnort gilt für den KI-Planer auf der Startseite.</div></div><div class="inp" style="width:auto;min-width:200px">Daniel Klein ▾</div></div>`}
+<div class="sum"><div><div class="t">${G ? "Familie Klein &amp; Hase auf einen Blick" : "Auf einen Blick"}</div><div class="chips">${summary}</div>
+${G ? `<div class="legend"><span><i style="background:var(--warn-soft);border:1px solid #F0D8A8"></i>für die Gruppe geändert</span><span><i style="background:var(--paper-2);border:1px dashed var(--ink-3)"></i>wie meine</span></div>` : ""}</div>
+<button class="ai">✨ Mit KI ändern</button></div>
+<div class="grid">
+${card("✈️", "--c-flights", "Flüge", flights, G ? "1 abweichend" : "")}
+${card("🏨", "--c-stay", "Unterkunft", stay, G ? "1 abweichend" : "")}
+${card("🎒", "--c-att", "Reisestil und Budget", style, G ? "1 abweichend" : "")}
+${card("📅", "--c-tr", "Reisezeiten", times, "")}
+${card("🚫", "--c-trav", "Länder meiden", avoid, G ? "1 dazu" : "")}
+${card("💡", "--c-misc", "Besonderes", special, "")}
+${card("✨", "--c-misc", "Notiz für die KI", note, "", true)}
+</div>`;
+</script>
+</body>
+</html>
