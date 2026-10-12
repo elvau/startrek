@@ -18,7 +18,7 @@ const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 
 /** Angebot, das beobachtet werden kann: aus einer Suche übernommen, Gesamtpreis, noch nicht gebucht */
 export function watchOption(it: Item, trip: Trip): Option | null {
-  if (it.status === "dropped" || FIXED.includes(it.status) || it.auto || it.follow) return null;
+  if (it.status === "dropped" || FIXED.includes(it.status) || it.auto || it.follow || it.private) return null;
   if (it.cat !== "flights" && it.cat !== "stay") return null;
   const o = activeOption(it, trip);
   if (!o?.source || o.price.mode !== "unit" || !(o.price.unit! > 0)) return null;

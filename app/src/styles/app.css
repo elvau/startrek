@@ -399,3 +399,9 @@ body:has(.chapter.on .card.edit) .aside{opacity:.5}
   .stay-b{padding:9px 10px;gap:6px}
   .row{padding:8px 9px;gap:9px}
 }
+/* Unterkunft privat bzw. schon vorhanden (#233) */
+.stay-img.priv-img{background:var(--c-stay-s);color:var(--c-stay);display:flex;align-items:center;justify-content:center}
+.stay-img.priv-img svg{position:static;width:120px;height:110px}
+.priv-line{margin:0}
+.priv-line .linkbtn{margin-inline-start:6px}
+@media (max-width:640px){.stay-img.priv-img{min-height:120px}.stay-img.priv-img svg{width:90px;height:82px}}

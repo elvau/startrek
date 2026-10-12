@@ -23,7 +23,7 @@
   import { hhKey, isActive } from "../model";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { airportOf, ccOf, cityForAirport, findCity, placesNear, searchParts, stayNear, suggestCities, type CityHit } from "../geo/places";
-  import type { StayScope } from "../stays/open.svelte";
+  import { openPrivStay, type StayScope } from "../stays/open.svelte";
   import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StayType } from "../stays/types";
   import { keepStays, sortStays, type StaySort } from "../stays/sort";
   import { applyStayFilter, kmToCenter, noStayFilter, type StayCtx } from "../stays/filter";
@@ -411,6 +411,8 @@
         <button type="button" role="radio" aria-checked={type === "all"} class="chip" class:on={type === "all"} onclick={() => (type = "all")}>{t("all")}</button>
       </div>
     </div>
+    <!-- privat bzw. schon vorhanden (#233): ohne Suche eintragen -->
+    {#if !item}<p class="small st-priv">🏠 {t("priv.searchHint")} <button type="button" class="linkbtn st-priv-open" onclick={() => openPrivStay()}>{t("priv.save")} ›</button></p>{/if}
     <!-- Ausstattung, Sterne, Bewertung, Quellen: zugeklappt mit Zusammenfassung (gemerkt) -->
     <details class="fs-more" bind:open={more}>
       <summary><b>{t("fs.more")}</b> <span class="muted small">{moreSummary}</span></summary>
