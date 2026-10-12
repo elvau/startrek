@@ -5,6 +5,7 @@
   import { dir } from "../directory.svelte";
   import Modal from "./Modal.svelte";
   import PrefsEditor from "./PrefsEditor.svelte";
+  import { setupWizard } from "../setup/app.svelte";
 
   let { onclose }: { onclose: () => void } = $props();
   dir.prefs ||= {};
@@ -19,6 +20,7 @@
 
 <Modal title={t("prefs.title")} {onclose}>
   <div class="prefs-d">
+    <button type="button" class="btn prefs-setup" onclick={() => { onclose(); setupWizard.open = true; }}>✨ {t("setup.open")}</button>
     <div class="ed-sec">
       <span class="dlabel">{t("prefs.mine")} <Help k="prefs" /></span>
       {#if dir.prefs}<PrefsEditor p={dir.prefs} />{/if}

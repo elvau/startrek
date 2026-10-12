@@ -42,6 +42,7 @@
   import RoughCalendar from "./RoughCalendar.svelte";
   import HomeHint from "./HomeHint.svelte";
   import { loadOrigin } from "../flights/origin.svelte";
+  import { pickOrigins } from "../flights/origin";
 
   let { onclose, scope = {}, inline = false }: { onclose: () => void; scope?: FlightScope; inline?: boolean } = $props();
 
@@ -217,8 +218,12 @@
     aps = aps.includes(code) ? aps.filter(c => c !== code) : [...aps, code];
     custom = true;
   }
+  // aus der Suche: ersetzt die geschätzte Vorauswahl (ohne Wohnort, nichts selbst gewählt), sonst kommt er dazu; Chip kurz hervorheben
+  let flash = $state("");
+  let flashT: ReturnType<typeof setTimeout> | undefined;
   function addAp(l: Loc) {
-    if (!aps.includes(l.code)) { aps = [...aps, l.code]; custom = true; }
+    aps = pickOrigins(aps, [l.code], noHome && !custom); custom = true;
+    flash = l.code; clearTimeout(flashT); flashT = setTimeout(() => (flash = ""), 1200);
     apCities = l.kind === "city" ? [...new Set([...apCities, l.code])] : apCities.filter(c => c !== l.code);
   }
   function resetAps() { aps = nearestAirports(trip, 4, who); custom = false; }
@@ -467,15 +472,15 @@
     </div>
     <div>
       <span class="dlabel">{t("fs.origins")} <Help k="origins" /></span>
+      {#if noHome}<HomeHint {setPlz} {savedPlz} {plzErr} guessed={!custom} />{/if}
       <div class="chips fs-aps">
         {#each allCodes as c (c)}
           {@const a = known.find(x => x.code === c)}
           {@const l = a ? null : originLoc(c)}
-          <button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} title={a?.name || (l ? locLabel(l) : c)} onclick={() => toggleAp(c)}>{c}{#if l?.kind === "city"}<small>{t("fs.cityAll", { name: l.name })}</small>{/if}</button>
+          <button type="button" class="chip" class:on={aps.includes(c)} class:flash={flash === c} aria-pressed={aps.includes(c)} title={a?.name || (l ? locLabel(l) : c)} onclick={() => toggleAp(c)}>{c}{#if l?.kind === "city"}<small>{t("fs.cityAll", { name: l.name })}</small>{/if}</button>
         {/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
       </div>
-      {#if noHome}<HomeHint {setPlz} {savedPlz} {plzErr} />{/if}
       <p class="muted small">
         {#if custom}{t("fs.custom")} <button type="button" class="linkbtn" onclick={resetAps}>{t("fs.reset")}</button>
         {:else}{t("fs.default")}{/if}

@@ -39,6 +39,8 @@ export async function loadDocs() {
     // Stand im Konto; weicht der bereinigte Stand ab (z. B. Person inzwischen gelöscht), wird beim nächsten Mal gespeichert
     saved = data || "{}";
     docs.status = "ready";
+    for (const [id, f] of pending) setFields(id, f);
+    pending.clear();
   } catch (e) {
     console.warn(e);
     docs.status = "error";
@@ -48,6 +50,20 @@ export async function loadDocs() {
 /** Buchungsdaten einer Person zum Bearbeiten (legt einen leeren Eintrag an) */
 export function docOf(personId: string): TravelDoc {
   return (docs.map[personId] ||= {});
+}
+
+/** vor dem Laden gesetzte Felder (z. B. aus „Konto einrichten“), werden nach dem Laden übernommen */
+const pending = new Map<string, Partial<TravelDoc>>();
+function setFields(personId: string, f: Partial<TravelDoc>) {
+  docOf(personId);
+  // über den Zustand weiter: docOf gibt beim Anlegen das rohe Objekt zurück (Svelte 5)
+  const cur = docs.map[personId] as Record<string, unknown>;
+  for (const [k, v] of Object.entries(f)) { if (v) cur[k] = v; else delete cur[k]; }
+}
+/** Felder einer Person setzen (leer: entfernen); sind die Buchungsdaten noch nicht geladen, danach */
+export function setDocFields(personId: string, f: Partial<TravelDoc>) {
+  if (docs.status === "ready") setFields(personId, f);
+  else { pending.set(personId, { ...pending.get(personId), ...f }); void loadDocs(); }
 }
 
 export const hasDoc = (personId: string) => Object.values(docs.map[personId] || {}).some(v => typeof v === "string" && v.trim());
@@ -98,6 +114,7 @@ $effect.root(() => {
     clearTimeout(timer);
     owner = "";
     saved = "";
+    pending.clear();
     docs.map = {};
     docs.status = "off";
   });

@@ -124,13 +124,21 @@ try {
   if (!(await m.locator(".lp-list li", { hasText: "LCY" }).count())) fail("Flughäfen am Stadion nicht zur Auswahl");
   await dest.press("Escape");
   log("Event gesucht und übernommen: Name, Stadt, Stadion, Datum, Uhrzeit; Ziel aus der Lage des Stadions, Flughäfen dort zur Auswahl");
-  // Abflughäfen: vorausgewählte abwählen, weitere hinzufügen
+  // Abflughäfen ohne Wohnort: Vorauswahl erklärt; ein Flughafen aus der Suche ersetzt sie, danach kommen weitere dazu
   const chips = m.locator(".ev-form .fs-aps .chip");
   const first = (await chips.first().textContent()).trim();
-  await chips.first().click();
+  if (!(await m.locator(".ev-form .fs-home-pick").isVisible())) fail("Hinweis zur Vorauswahl fehlt");
   await m.locator(".ev-form .fs-add input").fill("AMS");
   await m.locator(".lp-list li", { hasText: "AMS" }).first().click();
-  if (!(await m.locator(".ev-form .fs-aps .chip.on", { hasText: "AMS" }).count())) fail("AMS nicht hinzugefügt");
+  const onAps = async () => (await m.locator(".ev-form .fs-aps .chip.on").allTextContents()).map(x => x.trim());
+  if ((await onAps()).join() !== "AMS") fail("Suche ersetzt die Vorauswahl nicht: " + (await onAps()));
+  if (!(await m.locator(".ev-form .fs-aps .chip.flash", { hasText: "AMS" }).count())) fail("gewählter Flughafen nicht hervorgehoben");
+  if (await m.locator(".ev-form .fs-home-pick").count()) fail("Hinweis zur Vorauswahl bleibt nach eigener Wahl");
+  await m.locator(".ev-form .fs-add input").fill("BRU");
+  await m.locator(".lp-list li", { hasText: "BRU" }).first().click();
+  const onAps0 = await onAps();
+  // erster Treffer ist die Stadt Brüssel (BRU, CRL): kommt zu AMS dazu
+  if (!["AMS", "BRU"].every(c => onAps0.includes(c))) fail("zweiter Flughafen nicht dazu: " + onAps0);
   await m.locator("label.f", { hasText: "Dauer" }).locator("input").fill("2");
   await m.locator(".ev-form .btn.primary").click();
   await m.locator(".ev-card").first().waitFor();
@@ -262,6 +270,22 @@ try {
   if (!(await win.innerText()).includes("16. Juli") || !(await win.locator(".ev-tag", { hasText: "Günstigste" }).count())) fail("Zeitraum-Vorschlag: " + JSON.stringify(await win.innerText()) + " / " + (await m3.locator(".ev-list").innerText()).slice(0, 900));
   await p.keyboard.press("Escape");
   log("Mehrtägiges Event (16 Tage): „Nur das Event“ und „Günstigste im Zeitraum“ aus einer flexiblen Suche, als günstigste markiert");
+
+  // gar kein Flug (auch nicht mit zwei Umstiegen): keine Karten mit Gesamtpreis, sondern die Meldung mit nächsten Schritten
+  await p.unroute("https://flights.test/flights/search");
+  const emptyAsked = [];
+  await p.route("https://flights.test/flights/search", async r => {
+    emptyAsked.push(JSON.parse(r.request().postData()));
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0, ms: 100 }] }) });
+  });
+  await att.locator(".att-ev", { hasText: "Event ändern" }).click();
+  const m4 = p.locator(".modal");
+  await m4.locator(".ev-form .btn.primary").click();
+  await m4.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
+  if (await m4.locator(".ev-card").count()) fail("Karten ohne Flug");
+  if (!emptyAsked.some(q => q.maxStops === 2)) fail("keine Nachsuche mit zwei Umstiegen: " + emptyAsked.map(q => q.maxStops));
+  await p.keyboard.press("Escape");
+  log("Kein Flug: Meldung statt Karten, vorher mit zwei Umstiegen nachgesucht");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Event-Reise ok");

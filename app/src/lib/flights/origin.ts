@@ -30,3 +30,7 @@ export function guessAirports(where: Where | null, data: AirportData | null, n =
   const hubs = where.cc ? HUBS[where.cc] : undefined;
   return hubs ? { how: "country", codes: hubs.slice(0, n), cc: where.cc } : null;
 }
+
+/** Abflughäfen aus der Suche übernehmen: ersetzen eine nur geschätzte Auswahl (noch nichts selbst gewählt), sonst kommen sie dazu */
+export const pickOrigins = (cur: string[], codes: string[], replace: boolean): string[] =>
+  [...new Set(replace ? codes : [...cur, ...codes])];
