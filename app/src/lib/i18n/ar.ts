@@ -1327,6 +1327,7 @@ export const ar: Dict = {
   "ks.whatPh": "مثلًا عشاء في الميناء",
   "ks.why": "السبب",
   "ks.whyPh": "السبب (اختياري)، مثلًا «كان شخصيًا»",
+  "foot.ideas": "أفكار للرحلات (بالألمانية)",
   "legal.imprint": "بيانات الناشر",
   "legal.privacy": "الخصوصية",
   "loc.areaLabel": "حول {name}: {list}",
