@@ -590,7 +590,12 @@ try {
   pp.on("pageerror", e => errors.push(e.message));
   await pp.goto(URL);
   await pp.locator(".start .home-trip", { hasText: "Zu viert" }).click();
-  await pp.locator(".pets-h").click();
+  // versteckt (#323): ohne bekanntes Haustier und ohne Schalter kein Bereich; einschalten an der Reise (✎)
+  if (await pp.locator(".pets-h").count()) fail("Zuhause während der Reise sichtbar, obwohl nichts eingeschaltet");
+  await pp.locator(".top .top-edit").click();
+  await pp.locator(".te-home input").check();
+  await pp.locator(".trip-ed .btn.primary").click();
+  await pp.locator(".pets-h", { hasText: "Zuhause während der Reise" }).click();
   await pp.locator(".pet-fam", { hasText: "Klein" }).locator(".chip", { hasText: "Hund" }).click();
   await pp.locator(".top .imp-btn").click();
   const pimp = pp.locator(".modal .imp");
@@ -600,17 +605,22 @@ try {
   const hase = pp.locator(".pet-fam", { hasText: "Hase" });
   await hase.locator(".chip", { hasText: "Fische" }).click();
   await hase.locator(".chip", { hasText: "bleibt zuhause" }).click();
+  await hase.locator(".home-tasks .chip", { hasText: "Pflanzen gießen" }).click();
+  await hase.locator(".home-tasks .chip", { hasText: "Briefkasten" }).click();
+  await hase.locator(".chip", { hasText: "etwa alle 2–3 Tage" }).click();
+  await hase.locator(".home-thanks .chip", { hasText: "50 €" }).click();
+  await hase.locator('.home-thanks input[placeholder^="oder z. B."]').fill("eine Kiste Bier");
   const askT = await hase.locator(".pet-ask").innerText();
-  if (!askT.includes("bei uns vorbeischauen und unsere Fische füttern") || !askT.includes("14.05.")) fail("Anfrage Tierbetreuung: " + askT);
-  await hase.locator(".btn", { hasText: "Posten Tierbetreuung" }).click();
-  await hase.locator("text=Posten Tierbetreuung angelegt").waitFor();
+  if (!askT.includes("bei uns unsere Fische füttern, die Pflanzen gießen und den Briefkasten leeren (etwa alle 2–3 Tage)") || !askT.includes("Als Dankeschön: 50 € und eine Kiste Bier") || !askT.includes("14.05.")) fail("Anfrage Zuhause: " + askT);
+  await hase.locator(".btn", { hasText: "Posten übernehmen" }).click();
+  await hase.locator("text=Posten angelegt").waitFor();
   const cur = () => pp.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "null"));
-  await until(async () => !!(await cur())?.items?.some(i => i.hint === "pet:Hase"), "Posten Tierbetreuung gespeichert");
+  await until(async () => !!(await cur())?.items?.some(i => i.hint === "home:Hase"), "Posten Zuhause gespeichert");
   const pt = await cur();
-  const care = pt.items.find(i => i.hint === "pet:Hase");
-  if (!care || care.participants?.sort().join() !== "m,s" || care.options.map(o => o.price.unit).join() !== "0,45") fail("Posten Tierbetreuung: " + JSON.stringify(care));
-  if (pt.households?.Klein?.pets?.kinds?.join() !== "dog" || !pt.households?.Hase?.pets?.home) fail("Haustiere nicht gespeichert: " + JSON.stringify(pt.households));
-  log("Haustiere: Klein mit Hund nach London (Einreise mit Haustier, Bandwurmbehandlung unter „Wichtiges“), Hase: Fische bleiben zuhause (Anfrage „vorbeischauen und füttern“, Posten Tierbetreuung 0 € bzw. 45 € nur für Hase)");
+  const care = pt.items.find(i => i.hint === "home:Hase");
+  if (!care || care.name !== "Zuhause versorgt Hase" || care.participants?.sort().join() !== "m,s" || care.options.map(o => o.price.unit).join() !== "50,30") fail("Posten Zuhause: " + JSON.stringify(care));
+  if (pt.households?.Klein?.pets?.kinds?.join() !== "dog" || !pt.households?.Hase?.pets?.home || pt.households?.Hase?.care?.tasks?.join() !== "plants,mail" || !pt.homeCare) fail("Zuhause nicht gespeichert: " + JSON.stringify({ h: pt.households, on: pt.homeCare }));
+  log("Zuhause während der Reise: erst eingeschaltet sichtbar; Klein mit Hund nach London (Einreise mit Haustier, Bandwurmbehandlung unter „Wichtiges“); Hase: Fische zuhause, Pflanzen und Briefkasten alle 2–3 Tage, Dankeschön 50 € und eine Kiste Bier (Anfrage, Posten nur für Hase: 50 € bzw. Sitter 30 €)");
   await pctx.close();
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
