@@ -1290,6 +1290,7 @@ export const pl: Dict = {
   "ks.whatPh": "np. kolacja w porcie",
   "ks.why": "Powód",
   "ks.whyPh": "Powód (opcjonalnie), np. „to było prywatne”",
+  "foot.ideas": "Pomysły na podróż (po niemiecku)",
   "legal.imprint": "Impressum",
   "legal.privacy": "Prywatność",
   "loc.areaLabel": "Okolice {name}: {list}",

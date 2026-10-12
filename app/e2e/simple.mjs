@@ -560,6 +560,21 @@ try {
   log("Zeitleiste: drei Familien gleich lang kompakt, Zeiten der Oma gesetzt (Reise wächst auf 23 Nächte, Aufteilung am Ferienhaus: Oma 8 von 21 Nächten), zurückgesetzt");
   await tctx.close();
 
+  // Link von einer Inhaltsseite (#314): neue Reise mit Ziel, Land und drei Familien, ohne Startseite
+  const lctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
+  const lp = await lctx.newPage();
+  lp.on("pageerror", e => errors.push(e.message));
+  await lp.goto(URL + "?ziel=Riva%20del%20Garda&land=IT&name=Gardasee%20mit%20Familien&fam=2-2,2-2,2-1");
+  await until(async () => (await lp.locator("body").innerText()).includes("Gardasee mit Familien"), "Reise aus dem Link", 15000);
+  if (lp.url().includes("ziel=")) fail("Link-Angaben noch in der Adresse: " + lp.url());
+  const current = () => lp.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "null"));
+  await until(async () => !!(await current()), "Reise gespeichert");
+  const saved = await current();
+  if (saved.place !== "Riva del Garda" || saved.country !== "Italien") fail("Ziel falsch: " + saved.place + " / " + saved.country);
+  if (saved.travelers.length !== 11 || new Set(saved.travelers.map(x => x.household)).size !== 3) fail("Familien falsch: " + saved.travelers.map(x => x.name).join(", "));
+  log("Link von Inhaltsseite: Reise „Gardasee mit Familien“ in Riva del Garda (Italien) mit 3 Familien, 6 Erw. und 5 Kindern; Adresse bereinigt");
+  await lctx.close();
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");
 } finally { await browser.close(); server.kill(); }

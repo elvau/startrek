@@ -68,6 +68,7 @@
   import { showItem } from "./lib/ui/showItem";
   import { stationName } from "./lib/stays/stationName";
   import { airportData, ensureAirports, ensureGeo, geo } from "./lib/geo/geo.svelte";
+  import { applyPlanLink } from "./lib/planApp";
 
   let sheet = $state(false);
 
@@ -83,6 +84,8 @@
 
   // Tageskurse für die Anzeige in anderer Währung und für Preise in Fremdwährung (einmal am Tag)
   onMount(() => { void loadRates(); });
+  // Link von einer Inhaltsseite (?ziel=…): neue Reise mit Ziel und Gruppe
+  onMount(() => { applyPlanLink(); });
   onMount(() => {
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
     applyDocument();

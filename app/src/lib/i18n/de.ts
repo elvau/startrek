@@ -1248,6 +1248,7 @@ export const de = {
   "ks.whatPh": "z. B. Abendessen am Hafen",
   "ks.why": "Grund",
   "ks.whyPh": "Grund (optional), z. B. „war privat“",
+  "foot.ideas": "Reiseideen",
   "legal.imprint": "Impressum",
   "legal.privacy": "Datenschutz",
   "loc.areaLabel": "Umkreis {name}: {list}",

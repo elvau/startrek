@@ -16,6 +16,11 @@ Im Kontomenü erscheint für Admins **„Nutzung & Kontingente“**. Die Ansicht
 - **Google:** Search Console für die Domain splitandfly.com; Sitemap `public/sitemap.xml`, `public/robots.txt`,
   Meta-Angaben und Vorschaubild (`app/public/og-image.png`) in `app/index.html` (#313). Die Testumgebung ist gesperrt
   (`scripts/site.sh … test`: noindex, ohne Sitemap).
+- **Inhaltsseiten** (`/reise/…`, #314): Texte und Kosten in `app/src/lib/seo/pages.ts`, beim Zusammenstellen erzeugt
+  `scripts/seiten.mjs` die statischen Seiten und trägt sie in die Sitemap ein. Der Knopf „Mit diesen Werten planen“ öffnet
+  die App mit `?ziel=…&land=…&gruppe=…` bzw. `&fam=2-2,2-1` (`app/src/lib/plan.ts`). Neue Seite: Eintrag in `PAGES`,
+  Kosten als Spannen pro Person, Stand (`STAND`) aktuell halten. In der Search Console unter „Leistung“ sehen, welche
+  Seiten Klicks bringen, und danach ausbauen.
 
 Ab 70 % wird ein Balken gelb, ab 90 % rot. Die Grenzen stehen in `app/src/lib/admin/usage.ts`.
 
