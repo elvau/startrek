@@ -49,7 +49,7 @@ jobs:
         # höchstens 30 s (Wikidata ist manchmal langsam): die Testumgebung soll schnell stehen
         run: timeout 30 node scripts/sports.mjs || echo "::warning::Sportkalender nicht aktualisiert"
       - name: Seite zusammenstellen
-        run: scripts/site.sh _site
+        run: scripts/site.sh _site test
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
