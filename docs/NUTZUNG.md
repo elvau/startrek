@@ -18,7 +18,7 @@ Im Kontomenü erscheint für Admins **„Nutzung & Kontingente“**. Die Ansicht
   (`scripts/site.sh … test`: noindex, ohne Sitemap).
 - **Inhaltsseiten** (`/reise/…`, #314): Texte und Kosten in `app/src/lib/seo/pages.ts`, beim Zusammenstellen erzeugt
   `scripts/seiten.mjs` die statischen Seiten und trägt sie in die Sitemap ein. Der Knopf „Mit diesen Werten planen“ öffnet
-  die App mit `?ziel=…&land=…&gruppe=…` bzw. `&fam=2-2,2-1` (`app/src/lib/plan.ts`). Neue Seite: Eintrag in `PAGES`,
+  die App mit `?ziel=…&land=…&gruppe=…` bzw. `&fam=2-2,2-1` (`app/src/lib/plan.ts`). Bild je Seite: Szene in `app/src/lib/seo/art.ts`. Neue Seite: Eintrag in `PAGES` und `ART`,
   Kosten als Spannen pro Person, Stand (`STAND`) aktuell halten. In der Search Console unter „Leistung“ sehen, welche
   Seiten Klicks bringen, und danach ausbauen.
 

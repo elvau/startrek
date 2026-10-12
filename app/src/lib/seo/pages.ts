@@ -540,7 +540,14 @@ td+td{text-align:right;white-space:nowrap;padding-left:12px}tr.sum td{font-weigh
 .cta-top{font-size:15px;padding:8px 14px;margin:0}ul{padding-left:20px}li{margin:4px 0}dt{font-weight:600;margin-top:12px}dd{margin:4px 0 0}
 .rel a{display:block;margin:6px 0}footer{margin-top:40px;font-size:14px;color:var(--mute)}footer a{color:var(--mute)}
 .list a{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;text-decoration:none;color:var(--ink)}
-.list span{display:block;color:var(--mute);font-size:15px}`;
+.list span{display:block;color:var(--mute);font-size:15px}
+.art{display:block;width:100%;height:auto;aspect-ratio:5/2;border-radius:16px;margin:0 0 18px;background:#E4EDFB}
+.list a{display:flex;gap:16px;align-items:center}.list .thumb{flex:0 0 160px;width:160px;height:64px;border-radius:10px}.list a>div{min-width:0;font-weight:600}.list span{font-weight:400}
+@media (max-width:560px){.list a{flex-direction:column;align-items:stretch;gap:10px}.list .thumb{flex:none;width:100%;height:auto;aspect-ratio:5/2}}`;
+
+/** Illustration je Seite (art.ts); von scripts/seiten.mjs hereingereicht, damit diese Datei ohne Importe auskommt */
+export type Art = (slug: string, cls?: string) => string;
+const noArt: Art = () => "";
 
 function shell(o: { title: string; description: string; path: string; body: string; ld: object[]; root: string }): string {
   const url = `${SITE}/${o.path}`;
@@ -576,13 +583,14 @@ ${o.body}
 `;
 }
 
-export function renderPage(p: Page, all: Page[] = PAGES): string {
+export function renderPage(p: Page, all: Page[] = PAGES, art: Art = noArt): string {
   const t = total(p);
   const rows = p.costs.map(c => `<tr><td>${esc(c.label)}${c.note ? `<br><small>${esc(c.note)}</small>` : ""}</td><td>${range(c.from, c.to)}</td></tr>`).join("\n");
   const rel = p.related.map(s => all.find(x => x.slug === s)).filter((x): x is Page => !!x)
     .map(x => `<a href="../${x.slug}/">${esc(x.h1)}</a>`).join("\n");
   const body = `<p class="crumbs"><a href="../">Reiseideen</a> › ${p.kind === "ziel" ? "Reiseziele" : "Anlässe"}</p>
 <h1>${esc(p.h1)}</h1>
+${art(p.slug)}
 ${p.intro.map(x => `<p>${esc(x)}</p>`).join("\n")}
 <section class="card">
 <h2 style="margin-top:0">Beispielrechnung pro Person</h2>
@@ -621,8 +629,8 @@ ${rel}
   return shell({ title: p.title, description: p.description, path: `reise/${p.slug}/`, body, ld, root: "../../" });
 }
 
-export function renderIndex(all: Page[] = PAGES): string {
-  const item = (p: Page) => { const t = total(p); return `<a href="${p.slug}/">${esc(p.h1)}<span>ca. ${range(round10(t.from, -1), round10(t.to, 1))} pro Person · ${esc(p.example)}</span></a>`; };
+export function renderIndex(all: Page[] = PAGES, art: Art = noArt): string {
+  const item = (p: Page) => { const t = total(p); return `<a href="${p.slug}/">${art(p.slug, "thumb")}<div>${esc(p.h1)}<span>ca. ${range(round10(t.from, -1), round10(t.to, 1))} pro Person</span></div></a>`; };
   const body = `<h1>Reiseideen für Gruppen: Was kostet es pro Person?</h1>
 <p>Beispielrechnungen für beliebte Ziele und Anlässe – mit Kosten pro Person, Tipps und einem Klick in die eigene Planung. Alle Werte sind Richtwerte (Stand ${STAND}).</p>
 <h2>Reiseziele</h2>
