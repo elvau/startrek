@@ -39,6 +39,20 @@ describe("Partner-Verzeichnis", () => {
     expect(g.url).toBe("https://www.getyourguide.de/s/?q=Split&date_from=2027-07-18&date_to=2027-07-29");
   });
 
+  it("Travelpayouts: Ziel-Link über tp.media mit Marker, Projekt und Programm (Klook)", () => {
+    const k = partnerLink("klook", act, true)!;
+    expect(k.sponsored).toBe(true);
+    const u = new URL(k.url);
+    expect(u.origin + u.pathname).toBe("https://tp.media/r");
+    expect(Object.fromEntries(u.searchParams)).toEqual({ campaign_id: "137", marker: "783080", p: "4110", trs: "584426", u: "https://www.klook.com/de/search/result/?query=Split" });
+    expect(partnerLink("klook", act, false)!.url).toBe("https://www.klook.com/de/search/result/?query=Split");
+    // freigeschaltet: Tiqets, Kiwitaxi, Welcome Pickups
+    for (const [id, pp, c] of [["tiqets", "2074", "89"], ["kiwitaxi", "647", "1"], ["welcomePickups", "8919", "627"]] as const) {
+      const l = new URL(partnerLink(id, Q[PARTNERS[id].cat] as never, true)!.url);
+      expect([l.searchParams.get("p"), l.searchParams.get("campaign_id")], id).toEqual([pp, c]);
+    }
+  });
+
   it("Hinweis zum Sternchen nur, wenn ein Partner-Link dabei ist", () => {
     expect(sponsoredAny(partnersOf("activity"), act, true)).toBe(true);
     expect(sponsoredAny(partnersOf("activity"), act, false)).toBe(false);
@@ -46,7 +60,7 @@ describe("Partner-Verzeichnis", () => {
   });
 
   it("Kategorien in der Reihenfolge des Verzeichnisses", () => {
-    expect(partnersOf("activity")).toEqual(["getYourGuide", "viator", "tiqets"]);
+    expect(partnersOf("activity")).toEqual(["getYourGuide", "viator", "tiqets", "klook"]);
     expect(partnersOf("stay")).toEqual(["booking", "airbnb"]);
     expect(partnersOf("car")).toEqual(["kayakCars", "check24Cars", "discoverCars"]);
     expect(partnersOf("transfer")).toHaveLength(5);
