@@ -385,7 +385,7 @@
       const okRt = allRt.filter(rt => !rt.legs.some(l => touchesAvoided(l, avoid, ccOfAp)));
       avoidedOut = allRt.length - okRt.length;
       rounds = okRt.filter(rt => (seen.has(rt.id) ? false : (seen.add(rt.id), true)))
-        .map(rt => ({ rt, r: rateRound(trip, rt, home, withAccess, who) })).sort((a, b) => a.r.total - b.r.total).slice(0, 30);
+        .map(rt => ({ rt, r: rateRound(trip, rt, home, withAccess, who, need) })).sort((a, b) => a.r.total - b.r.total).slice(0, 30);
       const srcs = new Map<string, SourceStatus>();
       res.flatMap(r => r.sources).forEach(s => { const o = srcs.get(s.id); srcs.set(s.id, o ? { ...o, ok: o.ok || s.ok, count: o.count + s.count } : { ...s }); });
       sources = [...srcs.values()];
@@ -404,16 +404,16 @@
     if (!rounds) return;
     const rt = swapLeg(rounds[idx].rt, i, o);
     // dieselbe Kombination kann schon als eigene Karte in der Liste stehen: dann nur einmal (an dieser Stelle)
-    rounds = rounds.map((y, k) => (k === idx ? { rt, r: rateRound(trip, rt, home, withAccess, who) } : y)).filter((y, k) => k === idx || y.rt.id !== rt.id);
+    rounds = rounds.map((y, k) => (k === idx ? { rt, r: rateRound(trip, rt, home, withAccess, who, need) } : y)).filter((y, k) => k === idx || y.rt.id !== rt.id);
     swapped[rt.id] = i + 1;
     altOpen = null;
   }
   const signed = (v: number) => (v > 0 ? `+${eur(v)}` : v < 0 ? `−${eur(-v)}` : `±${eur(0)}`);
 
-  function takeR(rt: RoundTrip) {
+  function takeR(rt: RoundTrip, r: Rated) {
     app.trip.detail ||= {};
     app.trip.detail.flights = true;
-    into = takeRound(app.trip, rt, home, into, who, splitInfo).id;
+    into = takeRound(app.trip, rt, home, into, who, splitInfo, r.adds).id;
     fitTripDates(app.trip);
     taken[rt.id] = true;
     // Suche schließen und den Posten zeigen; weitere Angebote: Suche am Posten erneut öffnen
@@ -609,7 +609,7 @@
               {#if x.rt.legs.some(l => l.test)}<span class="pill-test">{t("test.badge")}</span>{/if}
               <span class="fs-badge">{tn("n.tickets", x.rt.legs.length)}</span>
             </div>
-            <p class="muted small fs-sub">{t("fs.flightsPrice", { v: eur(x.rt.price) })}{withAccess && x.r.access ? ` + ${t("fs.accessPrice", { v: eur(x.r.access) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(x.r.total / n) })}` : ""}</p>
+            <p class="muted small fs-sub">{t("fs.flightsPrice", { v: eur(x.rt.price) })}{withAccess && x.r.access ? ` + ${t("fs.accessPrice", { v: eur(x.r.access) })}` : ""}{x.r.add?.bagFee ? ` + ${t("fs.addBags", { v: eur(x.r.add.bagFee) })}` : ""}{x.r.add?.seatFee ? ` + ${t("fs.addSeats", { v: eur(x.r.add.seatFee) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(x.r.total / n) })}` : ""}</p>
             <div class="fs-pills">
               {#each x.rt.stays as st, i (i)}
                 {#if st.hours != null}<span class="pill-h">{st.name}: {t("fs.layover", { h: Math.round(st.hours) })}</span>
@@ -621,7 +621,7 @@
               {@const alts = alternatives(x.rt, i)}
               {@const key = `${x.rt.id}:${i}`}
               {@render legRow(`${i + 1}.`, l.out)}
-              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<ExtLink href={l.url} sponsored={l.sponsored} track={[l.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}</p>
+              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if x.r.adds?.[i]?.total}{` + ${[x.r.adds[i].bagFee && t("fs.addBags", { v: eur(x.r.adds[i].bagFee) }), x.r.adds[i].seatFee && t("fs.addSeats", { v: eur(x.r.adds[i].seatFee) })].filter(Boolean).join(" + ")}${x.r.adds[i].carrier ? ` (${x.r.adds[i].carrier})` : ""}`}{/if}{#if l.url}{" · "}<ExtLink href={l.url} sponsored={l.sponsored} track={[l.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}</p>
               {#if alts.length}
                 <button type="button" class="linkbtn fs-altbtn" aria-expanded={altOpen === key} onclick={() => (altOpen = altOpen === key ? null : key)}>{altOpen === key ? t("fs.altHide") : t("fs.altShow", { n: alts.length })} {altOpen === key ? "▴" : "▾"}</button>
                 {#if altOpen === key}
@@ -642,7 +642,7 @@
             {/each}
             {#if swapped[x.rt.id]}<p class="muted small fs-swapped">✓ {t("fs.altSwapped", { k: swapped[x.rt.id] })}</p>{/if}
             <div class="fs-acts">
-              <button class="btn primary sm" disabled={taken[x.rt.id]} onclick={() => takeR(x.rt)}>{taken[x.rt.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
+              <button class="btn primary sm" disabled={taken[x.rt.id]} onclick={() => takeR(x.rt, x.r)}>{taken[x.rt.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
             </div>
           </article>
         {/each}

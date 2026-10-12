@@ -10,7 +10,7 @@ import type { RoundTrip } from "./roundtrip";
 import { guessAirports, type Guess } from "./origin";
 import { origin } from "./origin.svelte";
 import { airportData } from "../geo/geo.svelte";
-import { addOnExtras, addOns, type AddOns, type BagNeed } from "./addons";
+import { addOnExtras, addOns, sumAddOns, type AddOns, type BagNeed } from "./addons";
 
 /** Adresse des Such-Dienstes (Cloudflare Worker); leer: noch nicht eingerichtet */
 export const FLIGHTS_URL = (import.meta.env.VITE_FLIGHTS_URL as string | undefined)?.replace(/\/$/, "") || "";
@@ -164,8 +164,10 @@ export interface SplitInfo { size: number; note: string }
 /** Zusätze aus der Bewertung (Koffer, Sitzplätze, Hinweise) für das Angebot im Posten */
 export interface OfferExtras { add?: AddOns; hints?: Option["hints"] }
 
+const extrasOf = (a: AddOns) => addOnExtras(a, { bags: t("fl.addBags", { n: tn("n.bags", a.missing) }), seats: t("fl.addSeats") });
+
 export function offerToOption(o: FlightOffer, split?: SplitInfo, more: OfferExtras = {}): Option {
-  const extras = more.add ? addOnExtras(more.add, { bags: t("fl.addBags", { n: tn("n.bags", more.add.missing) }), seats: t("fl.addSeats") }) : [];
+  const extras = more.add ? extrasOf(more.add) : [];
   return {
     id: uid(),
     label: `${o.out.carriers.join(" / ")} ${t("fs.from", { ap: o.out.from })}, ${stopsText(o.out.stops)}`,
@@ -198,8 +200,10 @@ export function takeOffer(trip: Trip, o: FlightOffer, into?: string, ids?: strin
 }
 
 /** Rundreise als ein Angebot: Hinflug, weitere Flüge, Rückflug (falls es nach Hause geht); getrennte Tickets */
-export function roundToOption(rt: RoundTrip, home: boolean, split?: SplitInfo): Option {
+/** adds: Koffer und Sitzplätze je Ticket (#210), als Nebenkosten je Strecke mit Airline in der Quelle */
+export function roundToOption(rt: RoundTrip, home: boolean, split?: SplitInfo, adds?: AddOns[]): Option {
   const n = rt.legs.length;
+  const extras = (adds || []).flatMap((a, i) => extrasOf(a).map(x => ({ ...x, id: `${x.id}:${i + 1}`, label: `${x.label} · ${rt.legs[i].out.from} → ${rt.legs[i].out.to}` })));
   const route = [rt.legs[0].out.from, ...rt.legs.map(l => l.out.to)];
   return {
     id: uid(),
@@ -208,13 +212,14 @@ export function roundToOption(rt: RoundTrip, home: boolean, split?: SplitInfo): 
     ...(split ? { split: split.size } : {}),
     price: { mode: "unit", currency: rt.legs[0].currency, unit: rt.price },
     source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: new Date().toISOString().slice(0, 10), url: rt.legs[0].url, ...(rt.legs[0].sponsored ? { sponsored: true } : {}), ...(rt.legs.some(l => l.test) ? { test: true } : {}) },
-    legs: rt.legs.map((l, i) => legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out))
+    legs: rt.legs.map((l, i) => legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out)),
+    ...(extras.length ? { extras } : {})
   };
 }
 
 /** Rundreise übernehmen: neuer Posten „Rundreise …“ oder weiteres Angebot im gewählten Posten */
-export function takeRound(trip: Trip, rt: RoundTrip, home: boolean, into?: string, ids?: string[], split?: SplitInfo): Item {
-  const opt = roundToOption(rt, home, split);
+export function takeRound(trip: Trip, rt: RoundTrip, home: boolean, into?: string, ids?: string[], split?: SplitInfo, adds?: AddOns[]): Item {
+  const opt = roundToOption(rt, home, split, adds);
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   if (target?.follow) { target.follow = undefined; target.options = [opt]; target.chosen = undefined; return target; }
   if (target) { target.options.push(opt); return target; }
@@ -227,10 +232,16 @@ export function takeRound(trip: Trip, rt: RoundTrip, home: boolean, into?: strin
   return item;
 }
 
-/** Rundreise mit Anfahrt bewerten: wie ein Flug vom ersten Abflug bis zur letzten Landung */
-export function rateRound(trip: Trip, rt: RoundTrip, home: boolean, withAccess: boolean, ids?: string[]): Rated {
+/**
+ * Rundreise mit Anfahrt bewerten: wie ein Flug vom ersten Abflug bis zur letzten Landung. Koffer und Sitzplätze (#210)
+ * je Ticket, denn getrennte Tickets haben eigenes Gepäck und eigene Airline.
+ */
+export function rateRound(trip: Trip, rt: RoundTrip, home: boolean, withAccess: boolean, ids?: string[], need?: BagNeed): Rated {
   const first = rt.legs[0], last = rt.legs.at(-1)!;
-  return rate(trip, { ...first, id: rt.id, price: rt.price, back: home ? last.out : undefined }, first.out.from, withAccess, ids);
+  const r = rate(trip, { ...first, id: rt.id, price: rt.price, back: home ? last.out : undefined }, first.out.from, withAccess, ids);
+  if (!need) return r;
+  const adds = rt.legs.map(l => addOns(l, need)), add = sumAddOns(adds);
+  return { ...r, total: r.total + Math.round(add.total), add, adds };
 }
 
 /** Anbieter melden Treffer, die Liste ist aber leer: sie wurden beim Zusammenführen ausgeblendet (andere Flughäfen, Zeitraum, unplausible Preise) */
@@ -316,6 +327,8 @@ export interface Rated extends FlightOffer {
   total: number;
   /** Koffer und Sitzplätze dazubuchen (mit Bedarf der Gruppe bewertet) */
   add?: AddOns;
+  /** Rundreise: dasselbe je Ticket */
+  adds?: AddOns[];
   /** wieder zu Hause (Minuten seit Epoche), nur mit Rückflug */
   home: number;
   nights: number | null;
