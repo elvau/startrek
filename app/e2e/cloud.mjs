@@ -3,6 +3,7 @@
  * Start: npm run test:cloud (baut mit Emulator-Konfiguration, startet Emulatoren und Vorschau)
  */
 import { chromium } from "playwright";
+import { reloadHome } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4174/";
@@ -166,7 +167,7 @@ try {
     const ix = JSON.parse(localStorage.getItem("rk2-index") || "[]");
     localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "verwaist", name: "Alt", place: "" }]));
   });
-  await mal.evaluate(() => sessionStorage.clear()); await mal.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(mal);
   await mal.locator(".top .acct-btn").click();
   await mal.locator(".acct-pop").waitFor();
   if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("verwaister Eintrag zählt als Reise auf dem Gerät");
@@ -199,7 +200,7 @@ try {
 
   // Neu laden: Anna hat die Reise weiter im Konto
   await dbState("vor Neuladen");
-  await anna.evaluate(() => sessionStorage.clear()); await anna.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(anna);
   await anna.locator(".start .home-trip").first().click();
   await until(async () => (await anna.locator(".top .tm-btn").first().textContent()).includes("☁"), "nach Neuladen im Konto");
   await until(async () => (await total(anna)) === omaTotal, "nach Neuladen gleiche Summe").catch(async e => {
@@ -276,7 +277,7 @@ try {
   anna.on("dialog", d => d.accept());
   await anna.locator("#split .cmp-box .fu-del").click();
   await anna.locator("#split .cmp-start").waitFor();
-  await gast.evaluate(() => sessionStorage.clear()); await gast.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(gast);
   await until(async () => (await gast.locator(".cmp").innerText()).includes("gibt es nicht"), "zurückgezogene Aktionsseite");
   log("Aktionsseite zurückgezogen: Link zeigt „gibt es nicht (mehr)“");
 

@@ -3,6 +3,7 @@
  * Vorschlag übernehmen. Start: npm run test:cloud (braucht den Auth-Emulator)
  */
 import { chromium } from "playwright";
+import { reloadHome } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4178/";
@@ -320,7 +321,7 @@ try {
   await p.locator(".home-view .chip", { hasText: "Liste" }).click();
   await p.locator(".home-trips.as-list .home-row").first().waitFor();
   await shot("home-list"); await shot("home-list-m", 390, 844);
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await p.locator(".home-trips.as-list .home-row").first().waitFor();
   if (!(await p.locator(".home-sort .chip.on", { hasText: "Land" }).count())) fail("Sortierung nicht gemerkt");
   log("Startseite: nach Preis, zuletzt bearbeitet und Land sortiert, Liste statt Kacheln, gemerkt");
@@ -335,7 +336,7 @@ try {
     idx.push({ id: "leer1", name: "", place: "" }, { id: "idee1", name: "Idee Lissabon", place: "Lissabon", from: "2027-09-01", to: "2027-09-05" }, { id: "leer2", name: "Irgendwas", place: "" });
     localStorage.setItem("rk2-index", JSON.stringify(idx));
   });
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await until(() => p.evaluate(() => localStorage.getItem("rk2-t:leer1") === null), "unberührter Entwurf gelöscht");
   // nur leere Reisen (ohne Ort, Daten und Kosten) aufräumen; „Idee Lissabon“ hat Ort und Daten und bleibt
   let asked2 = "";
@@ -374,7 +375,7 @@ try {
   let release = () => {};
   const gate = new Promise(r => (release = r));
   await p.route("**/assets/firebase-*.js", async r => { await gate; await r.continue(); });
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await p.locator(".start .home-event").click();
   await p.locator(".modal[aria-label='Reise zu einem Event']").waitFor();
   release();
@@ -466,7 +467,7 @@ try {
   await p.waitForTimeout(2500);
   // Kopie auf dem Gerät weg, damit nach dem Neuladen nur zählt, was im Konto steht
   await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("rk2-t:")) localStorage.removeItem(k); });
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await until(() => p.locator(".start .home-trip, .start .home-row", { hasText: "Langsam-Test" }).count().then(n => n > 0), "Name im Konto angekommen", 15000);
   log("Langsames Netz: Reise während des Hochladens umbenannt, Name steht danach im Konto");
 
