@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./kiwi.fixture.json";
 import { fromKiwi } from "./kiwi";
-import { hitsHidden, providerDown, worthRetry, compareRow, covered, withoutTravel, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, takeOffer } from "./app";
+import { hitsHidden, providerDown, worthRetry, compareRow, covered, withoutTravel, deadline, defaultFlyers, followFlight, defaultQuery, fmtMin, nearestAirports, offerToOption, passengers, rate, rateRound, roundToOption, takeOffer, takeRound } from "./app";
+import type { RoundTrip } from "./roundtrip";
+import type { FlightOffer } from "./types";
 import { activeOption, totals } from "../calc";
 import { presences } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
@@ -206,5 +208,53 @@ describe("providerDown", () => {
     expect(providerDown([{ configured: true, ok: false }, { configured: true, ok: true }])).toBe(true);
     expect(providerDown([{ configured: true, ok: true }, { configured: false, ok: false }])).toBe(false);
     expect(providerDown([])).toBe(false);
+  });
+});
+
+describe("Gepäck bei Rundreisen mit getrennten Tickets (#210)", () => {
+  const ticket = (carrier: string, from: string, to: string, dep: string, price: number, baggage?: FlightOffer["baggage"]): FlightOffer => ({
+    id: carrier + from, source: "kiwi", sourceName: "Kiwi.com", price, currency: "EUR",
+    out: { from, to, dep: `${dep}T10:00:00`, arr: `${dep}T14:00:00`, minutes: 240, stops: 0, route: [from, to], carriers: [carrier], flights: [] }, ...(baggage ? { baggage } : {})
+  });
+  const round = (legs: FlightOffer[]): RoundTrip => ({ id: legs.map(l => l.id).join("|"), legs, price: legs.reduce((s, l) => s + l.price, 0), nights: [4, 3], stays: [{ name: "BCN", nights: 4 }, { name: "BUD", nights: 3 }] });
+  // Hinflug Ryanair ohne Angabe, Zwischenflug Wizz ausdrücklich ohne Koffer, Rückflug Lufthansa mit 4 Koffern
+  const rt = round([
+    ticket("Ryanair", "DUS", "BCN", "2027-07-18", 300),
+    ticket("W6", "BCN", "BUD", "2027-07-22", 200, { personal: 4, cabin: 0, checked: 0 }),
+    ticket("Lufthansa", "BUD", "DUS", "2027-07-25", 500, { personal: 4, cabin: 4, checked: 4 })
+  ]);
+  const need = { bags: 4, adults: 2, kids: 2, together: true };
+
+  it("jede Strecke mit eigenem Gepäck und eigener Airline, Summe im Gesamtpreis", () => {
+    const r = rateRound(trip(), rt, true, false, undefined, need);
+    expect(r.adds!.map(a => a.bagFee)).toEqual([4 * 40, 4 * 45, 0]);
+    expect(r.add).toMatchObject({ bagFee: 340, seatFee: 0, total: 340, missing: 4, carrier: "Ryanair, Wizz Air" });
+    expect(r.total).toBe(1000 + 340);
+    // ohne Bedarf wie bisher
+    expect(rateRound(trip(), rt, true, false).total).toBe(1000);
+  });
+
+  it("Sortierung: günstigere Tickets ohne Koffer rutschen hinter Linie mit Koffern", () => {
+    const line = round([
+      ticket("Lufthansa", "DUS", "BCN", "2027-07-18", 420, { personal: 4, cabin: 4, checked: 4 }),
+      ticket("Iberia", "BCN", "BUD", "2027-07-22", 300, { personal: 4, cabin: 4, checked: 4 }),
+      ticket("Lufthansa", "BUD", "DUS", "2027-07-25", 500, { personal: 4, cabin: 4, checked: 4 })
+    ]);
+    const sorted = [rt, line].map(x => ({ x, r: rateRound(trip(), x, true, false, undefined, need) })).sort((a, b) => a.r.total - b.r.total);
+    expect(sorted.map(y => y.r.total)).toEqual([1220, 1340]);
+    expect(sorted[0].x).toBe(line);
+  });
+
+  it("übernommen: Koffer als Nebenkosten je Strecke, Quelle mit Airline", () => {
+    const r = rateRound(trip(), rt, true, false, undefined, need);
+    const o = roundToOption(rt, true, undefined, r.adds);
+    expect(o.extras).toEqual([
+      expect.objectContaining({ id: "fl:bag:1", kind: "bag", amount: 160, basis: "booking", pay: "extra", est: true, label: "4 Koffer dazubuchen · DUS → BCN", source: expect.stringContaining("Ryanair · ") }),
+      expect.objectContaining({ id: "fl:bag:2", kind: "bag", amount: 180, label: "4 Koffer dazubuchen · BCN → BUD", source: expect.stringContaining("Wizz Air · ") })
+    ]);
+    const t = trip();
+    const item = takeRound(t, rt, true, undefined, undefined, undefined, r.adds);
+    expect(activeOption(item, t)!.extras!.reduce((s, x) => s + x.amount, 0)).toBe(340);
+    expect(roundToOption(rt, true).extras).toBeUndefined();
   });
 });

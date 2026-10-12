@@ -100,6 +100,9 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
   Tipp, früh einzuchecken (viele Airlines setzen Familien dann nebeneinander, ohne Garantie).
 - **Sortierung:** „Günstigste“ sortiert nach dem Preis mit Koffern und Sitzplätzen. Übernommen landen beide als
   geschätzte Nebenkosten „bei der Buchung“ im Posten (wegklickbar), dazu „Enthalten: …“.
+- **Rundreise aus getrennten Tickets (#210):** jedes Ticket für sich bewertet (eigenes Gepäck, eigene Airline), die Summe
+  zählt im Gesamtpreis und in der Sortierung. Die Karte zeigt den Aufschlag gesamt und je Strecke mit Airline; übernommen
+  steht er je Strecke als Nebenkosten im Posten („4 Koffer dazubuchen · GIG → EZE“, Quelle mit Airline).
 - **Kartenaufschlag:** in EU/EWR und Großbritannien für Verbraucherkarten verboten; bei Abflug anderswo ein Hinweis im Posten.
 
 | Airline | Codes | Koffer je Strecke | Platzwahl Familie je Strecke | Quelle |

@@ -86,6 +86,14 @@ export function addOns(o: FlightOffer, need: BagNeed, table: LowCost[] = LOW_COS
   return { bagFee, seatFee, total: bagFee + seatFee, missing: bagFee ? missing : 0, incl, ...(lc ? { carrier: lc.name, source: lc.source } : {}) };
 }
 
+/** Rundreise aus getrennten Tickets (#210): Aufschläge aller Tickets zusammen (je Ticket mit addOns bewertet) */
+export function sumAddOns(list: AddOns[]): AddOns {
+  const sum = (f: (a: AddOns) => number) => list.reduce((s, a) => s + f(a), 0);
+  const bagFee = sum(a => a.bagFee), seatFee = sum(a => a.seatFee);
+  const names = [...new Set(list.filter(a => a.total > 0 && a.carrier).map(a => a.carrier!))];
+  return { bagFee, seatFee, total: bagFee + seatFee, missing: Math.max(0, ...list.map(a => a.missing)), incl: null, ...(names.length ? { carrier: names.join(", ") } : {}) };
+}
+
 /** als Nebenkosten am Flug-Posten (bei Buchung dazu, geschätzt, wegklickbar); Beträge in der Währung des Angebots */
 export function addOnExtras(a: AddOns, labels: { bags: string; seats: string }, rate = 1): Extra[] {
   const src = `${a.carrier ? `${a.carrier} · ` : ""}${a.source ? `${a.source}, ` : ""}${FEES_AS_OF}`;
