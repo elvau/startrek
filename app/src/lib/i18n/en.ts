@@ -516,6 +516,7 @@ export const en: Dict = {
   "fs.homeDefault": "Without a home location the search suggests airports in North Rhine-Westphalia.",
   "fs.homeIp": "Airports near {city}, roughly estimated from your connection.",
   "fs.homeIpNear": "Airports near you, roughly estimated from your connection.",
+  "fs.homePick": "Preselected until you choose yourself: tap to select or deselect. An airport picked from the search replaces the preselection.",
   "fs.homePlz": "Postcode for getting to the airport",
   "fs.moreStops": "Searched with 2 stops because there were no flights with fewer: {list}.",
   "fs.plzPh": "Postcode",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { guessAirports, HUBS } from "./origin";
+import { guessAirports, HUBS, pickOrigins } from "./origin";
 import type { AirportData } from "../geo/locations";
 
 const data = { cities: [], airports: [
@@ -23,5 +23,14 @@ describe("Abflughäfen ohne Wohnort", () => {
   });
   it("jedes Land hat Codes aus drei Buchstaben", () => {
     expect(Object.values(HUBS).flat().every(c => /^[A-Z]{3}$/.test(c))).toBe(true);
+  });
+});
+
+describe("Abflughafen aus der Suche", () => {
+  it("ersetzt eine geschätzte Auswahl, sonst kommt er dazu (ohne Doppel)", () => {
+    expect(pickOrigins(["KSF", "PAD", "ERF", "HAJ"], ["HAJ"], true)).toEqual(["HAJ"]);
+    expect(pickOrigins(["DUS"], ["HAJ"], false)).toEqual(["DUS", "HAJ"]);
+    expect(pickOrigins(["DUS", "HAJ"], ["HAJ"], false)).toEqual(["DUS", "HAJ"]);
+    expect(pickOrigins(["DUS"], ["LHR", "LGW", "LHR"], true)).toEqual(["LHR", "LGW"]);
   });
 });

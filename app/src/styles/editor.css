@@ -52,6 +52,9 @@ select option,select optgroup{background:var(--paper);color:var(--ink)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--ink-2)}
 .chip.on{background:var(--a-soft);border-color:var(--a);color:var(--a)}
+/* gerade gewählt (z. B. aus der Suche): kurz hervorheben */
+.chip.flash{animation:chipFlash 1.2s ease}
+@keyframes chipFlash{0%,60%{box-shadow:0 0 0 4px var(--a-soft);transform:scale(1.08)}100%{box-shadow:none;transform:none}}
 
 .person .inp{width:100%;text-align:center;padding:5px 8px;font-size:13px}
 .person .inp.num{width:64px}

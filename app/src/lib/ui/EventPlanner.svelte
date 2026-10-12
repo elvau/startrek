@@ -15,6 +15,7 @@
   import { loadOrigin } from "../flights/origin.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
+  import { pickOrigins } from "../flights/origin";
   import { capitalOf, ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, destAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { loadPlz } from "../plz";
@@ -130,16 +131,19 @@
     aps = nearestAirports(trip); allCodes = [...new Set([...aps, ...allCodes])];
   }
   // ohne Wohnort: ungefährer Ort aus der Verbindung kommt nach; Vorschlag nachziehen, solange nichts selbst gewählt ist
-  let apsTouched = false;
+  let apsTouched = $state(false);
   loadOrigin();
   $effect(() => { if (homeGuess(4) && noHome) untrack(() => { if (!apsTouched) { aps = nearestAirports(trip); allCodes = [...new Set([...aps, ...allCodes])]; } }); });
   const toggleAp = (c: string) => { apsTouched = true; aps = aps.includes(c) ? aps.filter(x => x !== c) : [...aps, c]; };
+  // aus der Suche: ersetzt die geschätzte Vorauswahl, danach kommen Flughäfen dazu; gewählte Chips kurz hervorheben
+  let flash = $state<string[]>([]);
+  let flashT: ReturnType<typeof setTimeout> | undefined;
   function addAp(l: Loc) {
+    const codes = l.kind === "airport" ? [l.code] : l.airports;
+    aps = pickOrigins(aps, codes, noHome && !apsTouched);
+    allCodes = [...new Set([...allCodes, ...codes])];
     apsTouched = true;
-    for (const c of l.kind === "airport" ? [l.code] : l.airports) {
-      if (!allCodes.includes(c)) allCodes = [...allCodes, c];
-      if (!aps.includes(c)) aps = [...aps, c];
-    }
+    flash = codes; clearTimeout(flashT); flashT = setTimeout(() => (flash = []), 1200);
   }
   // Mittelpunkt der Abflughäfen: gleich gute Treffer beim Ziel nach Entfernung
   const fromPt = $derived.by(() => {
@@ -305,11 +309,11 @@
     </details>
     <div>
       <span class="dlabel">{t("ev.origins")}</span>
+      {#if noHome}<HomeHint {setPlz} {plzErr} guessed={!apsTouched} />{/if}
       <div class="chips fs-aps">
-        {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
+        {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} class:flash={flash.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} from={fromPt} />
       </div>
-      {#if noHome}<HomeHint {setPlz} {plzErr} />{/if}
     </div>
     <p class="muted small">{t("ev.from", { aps: aps.join(", "), p: tn("n.persons", people.length) })} {t("ev.rule")}</p>
     <button class="btn primary" disabled={busy}>{busy ? t("ev.progress") : t("ev.go")}</button>
