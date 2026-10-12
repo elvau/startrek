@@ -205,8 +205,10 @@ try {
   await pe.locator("label", { hasText: "Ich bin" }).locator("select").selectOption({ label: "Dani Klein" });
   await pe.locator('input[placeholder^="Land hinzufügen"]').fill("Türk");
   await pe.locator(".sugg button", { hasText: "Türkei" }).click();
-  await pe.locator("label", { hasText: "Umstiege max." }).locator("select").selectOption("0");
-  await pe.locator(".chip", { hasText: "Strand" }).click();
+  await pe.locator('[data-card="flights"] .pv-c', { hasText: "Direkt" }).click();
+  await pe.locator('[data-card="style"] .pv-c', { hasText: "Strand" }).click();
+  // Kurzfassung oben zeigt die Auswahl (#161)
+  await until(async () => { const t = await pe.locator(".pv-sum").innerText(); return t.includes("nur Direktflüge") && t.includes("Strand"); }, "Kurzfassung der Vorlieben");
   await pd.locator(".modal-h .x").click();
   const stored = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}"));
   if (!stored.me || stored.prefs?.avoid?.join() !== "TR" || stored.prefs?.maxStops !== 0) fail("Vorlieben nicht gespeichert: " + JSON.stringify(stored.prefs));
@@ -403,26 +405,33 @@ try {
   await gd2.locator(".modal-h .x").click();
   await p.locator(".top .prefs-btn").click();
   const pd2 = p.locator(".modal", { hasText: "Meine Vorlieben" });
-  await pd2.locator(".grp-h", { hasText: "Familie Klein" }).click();
-  const ge = pd2.locator(".grp-b .prefs");
-  const apIn = ge.locator("label", { hasText: "Bevorzugte Abflughäfen" }).locator("input");
+  await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).click();
+  const ge = pd2.locator(".pv.group");
+  const apIn = ge.locator('input[aria-label="Bevorzugte Abflughäfen"]');
   // Datenbank langsam wie im echten Netz: das Echo des Speicherns kommt, während schon weitergetippt wird
   const slow = async r => { await new Promise(res => setTimeout(res, 700)); await r.continue().catch(() => {}); };
   await p.route("**/google.firestore.v1.Firestore/**", slow);
   await w2.route("**/google.firestore.v1.Firestore/**", slow);
   for (const ch of "DUS, CGN") { await apIn.press(ch === " " ? "Space" : ch); await p.waitForTimeout(350); }
-  await ge.locator("label", { hasText: "Verpflegung" }).locator("select").selectOption({ label: "Halbpension" });
+  await ge.locator('[data-card="stay"] .pv-c', { hasText: "Halbpension" }).click();
   await p.waitForTimeout(4000);
   await p.unroute("**/google.firestore.v1.Firestore/**", slow);
   if ((await apIn.inputValue()) !== "DUS, CGN") fail("Eingabe in den Gruppen-Vorlieben zurückgesprungen: " + await apIn.inputValue());
-  if ((await ge.locator("label", { hasText: "Verpflegung" }).locator("select").inputValue()) !== "half") fail("Verpflegung zurückgesprungen");
+  if (!(await ge.locator('[data-card="stay"] .pv-c.chg', { hasText: "Halbpension" }).count())) fail("Verpflegung zurückgesprungen");
   const gp = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs);
   if (gp?.airports?.join() !== "DUS,CGN" || gp?.board !== "half") fail("Gruppen-Vorlieben nicht gespeichert: " + JSON.stringify(gp));
   const gp2 = await w2.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs);
   if (gp2?.board !== "half") fail("zweites Fenster hat die Gruppen-Vorlieben nicht: " + JSON.stringify(gp2));
   await w2.close();
+  // abweichend von meinen (#161): Zähler am Reiter und an der Karte, Halbpension zurück auf „wie meine“
+  if (!(await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).innerText()).includes("2 abweichend")) fail("Zähler am Reiter: " + await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).innerText());
+  if (!(await ge.locator('[data-card="stay"] .pv-badge').innerText()).includes("1 abweichend")) fail("Zähler an der Karte Unterkunft fehlt");
+  await ge.locator('[data-card="stay"] .pv-reset').click();
+  await until(() => p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs?.board === undefined), "Verpflegung wie meine");
+  if (await ge.locator('[data-card="stay"] .pv-badge').count()) fail("Zähler an der Karte nach dem Zurücksetzen");
+  if (!(await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).innerText()).includes("1 abweichend")) fail("Zähler am Reiter nach dem Zurücksetzen");
   await pd2.locator(".modal-h .x").click();
-  log("Gruppen-Vorlieben angemeldet, zweites Fenster offen: langsam getippt und Halbpension gewählt, nichts springt zurück, gespeichert");
+  log("Gruppen-Vorlieben angemeldet, zweites Fenster offen: langsam getippt und Halbpension gewählt, nichts springt zurück, gespeichert; Zähler „abweichend“, Halbpension zurück auf „wie meine“");
 
   // dauert es länger: Wartezeit läuft sichtbar mit (statt „bis zu einer Minute“)
   if (await p.locator(".ai-fab").count()) await p.locator(".ai-fab").click();
