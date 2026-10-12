@@ -1290,6 +1290,7 @@ export const ru: Dict = {
   "ks.whatPh": "напр. ужин в порту",
   "ks.why": "Причина",
   "ks.whyPh": "Причина (необязательно), напр. «это было личное»",
+  "foot.ideas": "Идеи поездок (на немецком)",
   "legal.imprint": "Выходные данные",
   "legal.privacy": "Конфиденциальность",
   "loc.areaLabel": "Рядом с {name}: {list}",

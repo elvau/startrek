@@ -9,10 +9,12 @@ rm -rf "$out"
 mkdir -p "$out"
 cp -r public/. "$out/"
 cp -r app/dist/. "$out/"
+# Inhaltsseiten für Google (/reise/…) und ihre Einträge in der Sitemap
+node --experimental-strip-types --no-warnings scripts/seiten.mjs "$out"
 if [ "$2" = "test" ]; then
   printf 'User-agent: *\nDisallow: /\n' > "$out/robots.txt"
   rm -f "$out/sitemap.xml"
-  for f in "$out"/*.html; do
+  find "$out" -name '*.html' | while read -r f; do
     grep -q 'name="robots"' "$f" || sed -i 's#<head>#<head><meta name="robots" content="noindex">#' "$f"
   done
 fi
