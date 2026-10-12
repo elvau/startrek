@@ -516,6 +516,7 @@ export const es: Dict = {
   "fs.homeDefault": "Sin lugar de residencia, la búsqueda propone aeropuertos de Renania del Norte-Westfalia.",
   "fs.homeIp": "Aeropuertos cerca de {city}, estimado aproximadamente a partir de tu conexión.",
   "fs.homeIpNear": "Aeropuertos cerca de ti, estimado aproximadamente a partir de tu conexión.",
+  "fs.homePick": "Preseleccionados hasta que elijas tú: toca para marcar o desmarcar. Un aeropuerto elegido en la búsqueda sustituye la preselección.",
   "fs.homePlz": "Código postal para el trayecto al aeropuerto",
   "fs.moreStops": "Buscado con 2 escalas porque no había vuelos con menos: {list}.",
   "fs.plzPh": "C. P.",

@@ -516,6 +516,7 @@ export const fr: Dict = {
   "fs.homeDefault": "Sans lieu de résidence, la recherche propose des aéroports de Rhénanie-du-Nord-Westphalie.",
   "fs.homeIp": "Aéroports près de {city}, estimé grossièrement d’après ta connexion.",
   "fs.homeIpNear": "Aéroports près de chez toi, estimé grossièrement d’après ta connexion.",
+  "fs.homePick": "Présélectionnés jusqu’à ce que tu choisisses : touche pour cocher ou décocher. Un aéroport choisi via la recherche remplace la présélection.",
   "fs.homePlz": "Code postal pour le trajet vers l’aéroport",
   "fs.moreStops": "Recherché avec 2 escales faute de vols avec moins : {list}.",
   "fs.plzPh": "Code postal",

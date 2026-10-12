@@ -536,6 +536,7 @@ export const pl: Dict = {
   "fs.homeDefault": "Bez miejsca zamieszkania wyszukiwarka proponuje lotniska w Nadrenii Północnej-Westfalii.",
   "fs.homeIp": "Lotniska w pobliżu {city}, w przybliżeniu na podstawie twojego połączenia.",
   "fs.homeIpNear": "Lotniska w twojej okolicy, w przybliżeniu na podstawie twojego połączenia.",
+  "fs.homePick": "Wstępnie wybrane, dopóki nie wybierzesz sam: dotknij, aby zaznaczyć lub odznaczyć. Lotnisko wybrane w wyszukiwarce zastępuje wstępny wybór.",
   "fs.homePlz": "Kod pocztowy do dojazdu na lotnisko",
   "fs.moreStops": "Szukano z 2 przesiadkami, bo z mniejszą liczbą nie było lotów: {list}.",
   "fs.plzPh": "Kod",

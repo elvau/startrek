@@ -514,6 +514,7 @@ export const de = {
   "fs.homeDefault": "Ohne Wohnort schlägt die Suche Flughäfen in NRW vor.",
   "fs.homeIp": "Flughäfen in der Nähe von {city}, grob aus deiner Verbindung geschätzt.",
   "fs.homeIpNear": "Flughäfen in deiner Nähe, grob aus deiner Verbindung geschätzt.",
+  "fs.homePick": "Vorausgewählt, bis du selbst wählst: antippen zum An- oder Abwählen. Ein Flughafen aus der Suche ersetzt die Vorauswahl.",
   "fs.homePlz": "Postleitzahl für die Anfahrt zum Flughafen",
   "fs.moreStops": "Mit 2 Umstiegen gesucht, weil es mit weniger keine Flüge gab: {list}.",
   "fs.plzPh": "PLZ",
