@@ -1,0 +1,8 @@
+# splitandfly.com: alles indexieren außer Einladungs- und Aktionslinks und der alten Adresse /neu/
+# (Testumgebung bekommt aus scripts/site.sh ein „Disallow: /“)
+User-agent: *
+Disallow: /neu/
+Disallow: /*?join=
+Disallow: /*?aktion=
+
+Sitemap: https://splitandfly.com/sitemap.xml
