@@ -69,7 +69,7 @@ function whoOf(trip: Trip, it: Item): string | undefined {
 /** Ort einer Unterkunft: Suche (Ort), sonst Name des Postens ohne „Unterkunft in“ */
 export function stayPlace(trip: Trip, it: Item): string {
   const o = activeOption(it, trip);
-  return o?.query?.place || trip.place || it.name;
+  return o?.query?.place || it.private?.place || trip.place || it.name;
 }
 
 export function itinerary(trip: Trip): Day[] {

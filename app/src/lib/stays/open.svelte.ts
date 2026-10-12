@@ -20,3 +20,13 @@ export function openStaySearch(scope: StayScope = {}) {
   staySearch.scope = scope;
   staySearch.open = true;
 }
+
+/** Unterkunft privat bzw. schon vorhanden (#233): neu oder diesen Posten ändern */
+export const privStay = $state<{ open: boolean; itemId?: string }>({ open: false });
+
+export function openPrivStay(itemId?: string) {
+  app.editing = null;
+  staySearch.open = false;
+  privStay.itemId = itemId;
+  privStay.open = true;
+}

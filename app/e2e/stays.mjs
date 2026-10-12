@@ -450,6 +450,42 @@ try {
   log("Testangebot übernommen: „Testpreis“ am Posten, Hinweis an der Summe und in der Abrechnung");
   log("Suche je Station: aus der Lücke Lima 14.–20.04., Auswahl der Stationen, ohne Vorgabe Quito 07.–14.04.");
 
+  // privat bzw. schon vorhanden (#233): neue Reise ohne Ziel, Ort und Zeitraum über den Posten, Flug- und Event-Suche nutzen ihn
+  await reloadHome(p);
+  await p.locator(".start .home-new").click();
+  await p.locator(".modal .newtrip .btn.primary").click();
+  await p.locator("#stay .priv-open").scrollIntoViewIfNeeded();
+  await p.locator("#stay .priv-open").click();
+  const pm = p.locator(".modal", { has: p.locator("form.priv") });
+  const pp = pm.locator("label.f", { hasText: "Ort" }).locator("input");
+  await pp.fill("Lissa");
+  await pm.locator(".priv-place .sugg button", { hasText: "Lissabon" }).first().click();
+  if ((await pp.inputValue()) !== "Lissabon") fail("Ort privat: " + await pp.inputValue());
+  await pm.locator("label.f", { hasText: "Anreise" }).locator("input").fill("2027-06-12");
+  await pm.locator("label.f", { hasText: "Abreise" }).locator("input").fill("2027-06-19");
+  if (!(await pm.locator(".priv-dest", { hasText: "Lissabon wird Reiseziel" }).count())) fail("Hinweis Reiseziel fehlt");
+  if (await pm.locator(".priv-amount").inputValue()) fail("Kosten nicht leer");
+  await pm.locator(".priv-save").click();
+  await pm.waitFor({ state: "detached" });
+  const pc = p.locator("#stay .card[data-item]", { hasText: "Privat in Lissabon" });
+  await pc.waitFor();
+  if (!(await pc.locator(".priv-free").count()) || !(await pc.locator(".status", { hasText: "Gewählt" }).count())) fail("Privat: nicht kostenlos oder nicht gewählt");
+  if (!(await p.locator("#attractions").textContent()).includes("Erlebnisse in Lissabon finden")) fail("Events ohne Ort Lissabon");
+  await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
+  await p.locator("#flights .fs-open").click();
+  const fm = p.locator(".modal", { has: p.locator(".fs-form") });
+  const fto = await fm.locator("label.f", { hasText: "Nach" }).locator("input").inputValue();
+  if (!fto.includes("Lissabon")) fail("Flugsuche ohne Ziel Lissabon: " + fto);
+  await fm.locator(".modal-h .x").click();
+  // Kosten nachtragen: 20 € pro Nacht → 140 €
+  await pc.locator(".priv-edit").click();
+  await pm.locator(".priv-amount").fill("20");
+  await pm.locator(".chip", { hasText: "pro Nacht" }).click();
+  await pm.locator(".priv-save").click();
+  await pm.waitFor({ state: "detached" });
+  if (!(await pc.locator(".price .num").textContent()).includes("140")) fail("Privat mit Kosten: " + await pc.locator(".price .num").textContent());
+  log("Privat in Lissabon: kostenlos und gewählt, Reiseziel für Flug- und Event-Suche, Kosten 20 € pro Nacht = 140 €");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nUnterkunftssuche: alles in Ordnung");
 } finally {

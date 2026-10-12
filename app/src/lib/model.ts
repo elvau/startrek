@@ -329,6 +329,8 @@ export interface Item {
   ai?: AiMark;
   /** Tagesplan: an diesem Tag (JJJJ-MM-TT, optional mit Uhrzeit JJJJ-MM-TTTHH:MM) */
   day?: string;
+  /** Unterkunft privat bzw. schon vorhanden (#233): Ort, ohne Suche und Beobachtung; Kosten optional */
+  private?: { place: string; country?: string };
   /** aus einem Hinweis (Einreise & Tipps) übernommen, z. B. „galapagos“; „rental“ = Mietwagen, „road:car“ = eigenes Auto */
   hint?: string;
 }
