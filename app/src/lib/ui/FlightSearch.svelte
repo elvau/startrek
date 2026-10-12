@@ -191,6 +191,11 @@
   // Koffer und Sitzplätze dazubuchen (#171): Kinder neben den Eltern, wenn nicht anders gewünscht
   const together = $derived(prefs.seatsTogether !== false);
   const need = $derived<BagNeed>({ bags, adults: pax.adults, kids: pax.children, together });
+  // Kofferzahl mit − / + (#326): ändert nur die Zahl; Treffer gelten für die gesuchte, neu gesucht wird auf Knopfdruck
+  // (Kiwi rechnet die Koffer in den Flugpreis ein, nur neu bewerten wäre falsch)
+  let searchedBags = $state<number | null>(null);
+  const shownBags = $derived(searchedBags ?? bags);
+  const stepBags = (d: number) => (bagCount = Math.max(0, Math.min(2 * seats, bags + d)));
   const n = $derived(pax.adults + pax.children + pax.infants);
   const people = $derived([`${pax.adults} ${t("age.adultShort")}`, pax.children && tn("n.kids", pax.children), pax.infants && tn("n.babies", pax.infants)].filter(Boolean).join(" · "));
   // große Gruppen in Buchungen aufteilen (Vorschlag ab 10 Sitzen: je 5): gesucht wird für eine, hochgerechnet auf alle
@@ -261,6 +266,7 @@
   async function search(e?: Event) {
     e?.preventDefault();
     error = ""; list = null; rows = []; sources = []; lateOut = 0; avoidedOut = 0; blockedOut = 0; rounds = null; roundErrors = []; filter = noFilter();
+    searchedBags = bags;
     if (!aps.length) { error = t("fs.errAirport"); return; }
     if (kind === "round") return roundSearch();
     if (kind === "oneway") {
@@ -385,7 +391,7 @@
       const okRt = allRt.filter(rt => !rt.legs.some(l => touchesAvoided(l, avoid, ccOfAp)));
       avoidedOut = allRt.length - okRt.length;
       rounds = okRt.filter(rt => (seen.has(rt.id) ? false : (seen.add(rt.id), true)))
-        .map(rt => ({ rt, r: rateRound(trip, rt, home, withAccess, who) })).sort((a, b) => a.r.total - b.r.total).slice(0, 30);
+        .map(rt => ({ rt, r: rateRound(trip, rt, home, withAccess, who, need) })).sort((a, b) => a.r.total - b.r.total).slice(0, 30);
       const srcs = new Map<string, SourceStatus>();
       res.flatMap(r => r.sources).forEach(s => { const o = srcs.get(s.id); srcs.set(s.id, o ? { ...o, ok: o.ok || s.ok, count: o.count + s.count } : { ...s }); });
       sources = [...srcs.values()];
@@ -404,16 +410,16 @@
     if (!rounds) return;
     const rt = swapLeg(rounds[idx].rt, i, o);
     // dieselbe Kombination kann schon als eigene Karte in der Liste stehen: dann nur einmal (an dieser Stelle)
-    rounds = rounds.map((y, k) => (k === idx ? { rt, r: rateRound(trip, rt, home, withAccess, who) } : y)).filter((y, k) => k === idx || y.rt.id !== rt.id);
+    rounds = rounds.map((y, k) => (k === idx ? { rt, r: rateRound(trip, rt, home, withAccess, who, need) } : y)).filter((y, k) => k === idx || y.rt.id !== rt.id);
     swapped[rt.id] = i + 1;
     altOpen = null;
   }
   const signed = (v: number) => (v > 0 ? `+${eur(v)}` : v < 0 ? `−${eur(-v)}` : `±${eur(0)}`);
 
-  function takeR(rt: RoundTrip) {
+  function takeR(rt: RoundTrip, r: Rated) {
     app.trip.detail ||= {};
     app.trip.detail.flights = true;
-    into = takeRound(app.trip, rt, home, into, who, splitInfo).id;
+    into = takeRound(app.trip, rt, home, into, who, splitInfo, r.adds).id;
     fitTripDates(app.trip);
     taken[rt.id] = true;
     // Suche schließen und den Posten zeigen; weitere Angebote: Suche am Posten erneut öffnen
@@ -437,6 +443,26 @@
     if (o) take(o);
   }
 </script>
+
+{#snippet bagStep()}
+  <span class="qf-step fs-bagstep" role="group" aria-label={t("fs.bags")}>
+    <button type="button" disabled={bags <= 0} onclick={() => stepBags(-1)} aria-label={t("fs.bagLess")}>−</button>
+    <b>{bags ? tn("n.bags", bags) : t("fs.bagsNone")}</b>
+    <button type="button" disabled={bags >= 2 * seats} onclick={() => stepBags(1)} aria-label={t("fs.bagMore")}>+</button>
+  </span>
+{/snippet}
+
+{#snippet bagBar()}
+  {#if searchedBags != null}
+    <div class="fs-bagbar small">
+      🧳 {@render bagStep()}
+      {#if bags !== searchedBags}
+        <span class="muted">{t("fs.bagsFor", { n: tn("n.bags", searchedBags) })}</span>
+        <button type="button" class="btn sm primary" disabled={busy} onclick={() => search()}>{t("fs.bagsResearch", { n: tn("n.bags", bags) })}</button>
+      {/if}
+    </div>
+  {/if}
+{/snippet}
 
 {#snippet legRow(dir: string, l: OfferLeg)}
   <div class="fs-leg">
@@ -566,9 +592,7 @@
 
     <div class="ed-row fs-opts">
       <label class="f fs-sel">{t("fs.maxStops")}<select bind:value={maxStops}>{#each [0, 1, 2] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
-      <label class="f fs-sel">{t("fs.bags")}<select value={bags} onchange={e => (bagCount = Number(e.currentTarget.value))}>
-        {#each Array.from({ length: 2 * seats + 1 }, (_, i) => i) as v (v)}<option value={v}>{v === 0 ? t("fs.bagsNone") : v}</option>{/each}
-      </select></label>
+      <div class="f fs-sel">{t("fs.bags")}{@render bagStep()}</div>
       {#if seats >= 4}<label class="f fs-sel fs-split">{t("fs.split.label")}<select value={split.bookings > 1 ? split.size : MAX_PAX} onchange={e => (bookSize = Number(e.currentTarget.value))}>
         {#each [MAX_PAX, 6, 5, 4, 3, 2].filter(v => v < seats || v === MAX_PAX) as v (v)}<option value={v}>{v >= seats ? t("fs.split.none") : v}</option>{/each}
       </select></label>{/if}
@@ -590,6 +614,7 @@
   {#if error}<p class="err small">{error}{#if isNetText(error)} <button type="button" class="linkbtn" onclick={() => search()}>{t("net.retry")}</button>{/if}</p>{/if}
 
   {#if rounds}
+    {@render bagBar()}
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
@@ -609,7 +634,7 @@
               {#if x.rt.legs.some(l => l.test)}<span class="pill-test">{t("test.badge")}</span>{/if}
               <span class="fs-badge">{tn("n.tickets", x.rt.legs.length)}</span>
             </div>
-            <p class="muted small fs-sub">{t("fs.flightsPrice", { v: eur(x.rt.price) })}{withAccess && x.r.access ? ` + ${t("fs.accessPrice", { v: eur(x.r.access) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(x.r.total / n) })}` : ""}</p>
+            <p class="muted small fs-sub">{t("fs.flightsPrice", { v: eur(x.rt.price) })}{withAccess && x.r.access ? ` + ${t("fs.accessPrice", { v: eur(x.r.access) })}` : ""}{x.r.add?.bagFee ? ` + ${t("fs.addBags", { v: eur(x.r.add.bagFee) })}` : ""}{x.r.add?.seatFee ? ` + ${t("fs.addSeats", { v: eur(x.r.add.seatFee) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(x.r.total / n) })}` : ""}</p>
             <div class="fs-pills">
               {#each x.rt.stays as st, i (i)}
                 {#if st.hours != null}<span class="pill-h">{st.name}: {t("fs.layover", { h: Math.round(st.hours) })}</span>
@@ -621,7 +646,7 @@
               {@const alts = alternatives(x.rt, i)}
               {@const key = `${x.rt.id}:${i}`}
               {@render legRow(`${i + 1}.`, l.out)}
-              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if l.url}{" · "}<ExtLink href={l.url} sponsored={l.sponsored} track={[l.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}</p>
+              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if shownBags && !l.baggage && !x.r.adds?.[i]?.bagFee}{` · 🧳 ${t("fs.bagsUnknown")}`}{/if}{#if x.r.adds?.[i]?.total}{` + ${[x.r.adds[i].bagFee && t("fs.addBags", { v: eur(x.r.adds[i].bagFee) }), x.r.adds[i].seatFee && t("fs.addSeats", { v: eur(x.r.adds[i].seatFee) })].filter(Boolean).join(" + ")}${x.r.adds[i].carrier ? ` (${x.r.adds[i].carrier})` : ""}`}{/if}{#if l.url}{" · "}<ExtLink href={l.url} sponsored={l.sponsored} track={[l.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}</p>
               {#if alts.length}
                 <button type="button" class="linkbtn fs-altbtn" aria-expanded={altOpen === key} onclick={() => (altOpen = altOpen === key ? null : key)}>{altOpen === key ? t("fs.altHide") : t("fs.altShow", { n: alts.length })} {altOpen === key ? "▴" : "▾"}</button>
                 {#if altOpen === key}
@@ -642,7 +667,7 @@
             {/each}
             {#if swapped[x.rt.id]}<p class="muted small fs-swapped">✓ {t("fs.altSwapped", { k: swapped[x.rt.id] })}</p>{/if}
             <div class="fs-acts">
-              <button class="btn primary sm" disabled={taken[x.rt.id]} onclick={() => takeR(x.rt)}>{taken[x.rt.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
+              <button class="btn primary sm" disabled={taken[x.rt.id]} onclick={() => takeR(x.rt, x.r)}>{taken[x.rt.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
             </div>
           </article>
         {/each}
@@ -661,6 +686,7 @@
 
   {#if list && listMore}<p class="muted small fs-morestops">{t("fs.moreStops", { list: `${aps.join("/")} → ${to}` })}</p>{/if}
   {#if list}
+    {@render bagBar()}
     {#if sources.length}
       <div class="fs-src small">
         {#each sources as s (s.id)}
@@ -731,8 +757,8 @@
             {#if alongCost != null && Math.abs(o.total - alongCost) >= 1}<p class="st-diff fs-sub" class:good={o.total < alongCost}>{o.total < alongCost ? t("fs.cheaperAlong", { v: eur(alongCost - o.total) }) : t("fs.dearerAlong", { v: eur(o.total - alongCost) })}</p>{/if}
             <p class="muted small fs-sub">{t("fs.flightPrice", { v: eur(o.price) })}{withAccess && o.access ? ` + ${t("fs.accessPrice", { v: eur(o.access) })}` : ""}{o.add?.bagFee ? ` + ${t("fs.addBags", { v: eur(o.add.bagFee) })}` : ""}{o.add?.seatFee ? ` + ${t("fs.addSeats", { v: eur(o.add.seatFee) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(o.total / n) })}` : ""}{o.orig ? ` · ${t("fx.orig", { v: money(o.orig.amount, o.orig.currency) })}` : ""}</p>
             <div class="fs-pills">
-              {#if o.baggage}<span class="pill-n fs-bag" class:miss={bags > o.baggage.checked}>🧳 {o.baggage.checked ? t("fs.bagsIncl", { n: tn("n.bags", o.baggage.checked) }) : t("fs.bagsNoneIncl")}</span>
-              {:else if bags && !o.add?.bagFee}<span class="pill-n fs-bag unk">🧳 {t("fs.bagsUnknown")}</span>{/if}
+              {#if o.baggage}<span class="pill-n fs-bag" class:miss={shownBags > o.baggage.checked}>🧳 {o.baggage.checked ? t("fs.bagsIncl", { n: tn("n.bags", o.baggage.checked) }) : t("fs.bagsNoneIncl")}</span>
+              {:else if shownBags && !o.add?.bagFee}<span class="pill-n fs-bag unk">🧳 {t("fs.bagsUnknown")}</span>{/if}
               {#if o.nights != null}<span class="pill-n">{tn("fs.nightsThere", o.nights)}</span>{/if}
               {#if !isNaN(o.home)}<span class="pill-h">{t("fs.homeAt", { t: fmtMin(o.home) })}</span>{/if}
               {#if o.accessHours}<span class="pill-h">{t("fs.accessAbout", { h: hm(o.accessHours) })}</span>{/if}

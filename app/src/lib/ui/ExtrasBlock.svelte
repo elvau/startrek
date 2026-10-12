@@ -22,7 +22,10 @@
   const fromSearch = $derived(!!opt?.legs?.length && !!opt.source?.name && item.cat === "flights");
   const bg = $derived(opt?.baggage);
   const hints = $derived(fromSearch ? opt?.hints || [] : []);
-  const inclText = $derived(bg ? [bg.cabin ? t("xc.cabin", { n: bg.cabin }) : t("xc.personal"), bg.checked ? t("fs.bagsIncl", { n: tn("n.bags", bg.checked) }) : t("fs.bagsNoneIncl")].join(" · ") : t("fs.bagsUnknown"));
+  const bagText = (b?: { cabin: number; checked: number }) => (b ? [b.cabin ? t("xc.cabin", { n: b.cabin }) : t("xc.personal"), b.checked ? t("fs.bagsIncl", { n: tn("n.bags", b.checked) }) : t("fs.bagsNoneIncl")].join(" · ") : t("fs.bagsUnknown"));
+  // Rundreise aus getrennten Tickets (#210): Gepäck je Strecke
+  const perLeg = $derived(!bg && !!opt?.legs?.some(l => l.baggage));
+  const inclText = $derived(perLeg ? opt!.legs!.map(l => `${l.from} → ${l.to}: ${bagText(l.baggage)}`).join(" · ") : bagText(bg));
 
   const ICON: Record<Extra["kind"], string> = { citytax: "🏛", tax: "🧾", cleaning: "🧹", resort: "🏨", bag: "🧳", seat: "💺", toll: "🛣", vignette: "🎫", visa: "🛂", tips: "💶", insurance: "🛡", driver: "👥", young: "👤", cover: "🛡", ferry: "⛴", ferryPerson: "⛴", cabin: "🛏", other: "➕" };
   const name = (x: Extra) => x.label || `${t(`xc.kind.${x.kind}` as Key)}${x.cc ? ` ${flagOf(x.cc)} ${countryName(x.cc)}` : ""}`;
@@ -80,7 +83,7 @@
     <ul>
       {#each ex.lines as l (l.x.id)}
         <li class:off={l.x.off}>
-          <span>{ICON[l.x.kind]} {name(l.x)} <small class="muted">{how(l)}{l.x.source ? ` · ${l.x.source}` : ""}</small></span>
+          <span>{ICON[l.x.kind]} {name(l.x)}{l.x.leg ? ` · ${l.x.leg}` : ""} <small class="muted">{how(l)}{l.x.source ? ` · ${l.x.source}` : ""}</small></span>
           <b class="num">{l.x.pay === "included" && !l.amount ? "—" : `${l.x.est ? `${t("xc.ca")} ` : ""}${eur(l.amount)}`}</b>
           <span class="xc-tags">
             <em class="xc-s {l.x.pay}" class:est={l.x.est && l.x.pay !== "included"}>{t(`xc.pay.${l.x.pay}` as Key)}{l.x.est && l.x.pay !== "included" ? ` · ${t("xc.estimated")}` : ""}</em>

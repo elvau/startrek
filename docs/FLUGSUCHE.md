@@ -90,6 +90,9 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
 
 - **Koffer:** aus dem Feld „Koffer gesamt“. Ohne eigene Wahl gilt die Vorliebe „Gepäck“, ohne Vorliebe ab 5 Reisetagen
   ein Koffer je Platz, kürzer nur Handgepäck.
+  Einstellbar mit − / + von 0 bis 2 je Platz, im Formular und über den Treffern (#326). Dort ändert − / + nur die Zahl;
+  weicht sie von der gesuchten ab, steht „Treffer gelten für 4 Koffer“ mit Knopf „Mit 6 Koffer neu suchen“. Kein
+  Neusuchen je Klick und kein bloßes Neubewerten, denn Kiwi rechnet die Koffer in den Flugpreis ein.
 - **Was enthalten ist:** Kiwi.com rechnet die gewünschten Koffer schon in den Preis ein und meldet sie; Duffel meldet das
   Gepäck des Tarifs. Travelpayouts sagt nichts dazu: bei Billigfliegern schätzen wir die Koffer, bei Linienflügen
   steht „Gepäck nicht angegeben“ (keine Schätzung). Meldet ein Linientarif ausdrücklich keinen Koffer, gilt 35 € je Koffer und Strecke.
@@ -100,6 +103,10 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
   Tipp, früh einzuchecken (viele Airlines setzen Familien dann nebeneinander, ohne Garantie).
 - **Sortierung:** „Günstigste“ sortiert nach dem Preis mit Koffern und Sitzplätzen. Übernommen landen beide als
   geschätzte Nebenkosten „bei der Buchung“ im Posten (wegklickbar), dazu „Enthalten: …“.
+- **Rundreise aus getrennten Tickets (#210):** jedes Ticket für sich bewertet (eigenes Gepäck, eigene Airline), die Summe
+  zählt im Gesamtpreis und in der Sortierung. Die Karte zeigt den Aufschlag gesamt und je Strecke mit Airline; übernommen
+  steht er je Strecke als Nebenkosten im Posten („4 Koffer dazubuchen · GIG → EZE“, Quelle mit Airline). Linientickets
+  ohne Angabe zeigen je Strecke „Gepäck nicht angegeben“; der Posten nennt das enthaltene Gepäck je Strecke.
 - **Kartenaufschlag:** in EU/EWR und Großbritannien für Verbraucherkarten verboten; bei Abflug anderswo ein Hinweis im Posten.
 
 | Airline | Codes | Koffer je Strecke | Platzwahl Familie je Strecke | Quelle |

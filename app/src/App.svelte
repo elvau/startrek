@@ -56,7 +56,8 @@
   import Important from "./lib/ui/Important.svelte";
   import { partnersOf, sponsoredAny } from "./lib/partners";
   import { partner } from "./lib/partnerState.svelte";
-  import { openStaySearch, staySearch } from "./lib/stays/open.svelte";
+  import { openPrivStay, openStaySearch, privStay, staySearch } from "./lib/stays/open.svelte";
+  import PrivateStay from "./lib/ui/PrivateStay.svelte";
   import { flightSearch, openFlightSearch } from "./lib/flights/open.svelte";
   import { withoutTravel } from "./lib/flights/app";
   import ExploreDialog from "./lib/ui/ExploreDialog.svelte";
@@ -114,7 +115,7 @@
     const id = app.trip.id;
     if (id === searchTrip) return;
     searchTrip = id;
-    flightSearch.open = false; staySearch.open = false; explore.open = false; mapOpen = null;
+    flightSearch.open = false; staySearch.open = false; privStay.open = false; explore.open = false; mapOpen = null;
   });
 
   // Mietwagen und Reiseversicherung als Richtwert-Posten
@@ -220,6 +221,7 @@
           </p>
         {:else if ch.k === "stay" && !access.readonly}
           <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
+            <button class="btn priv-open" onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
           {#if mapOpen === "stay"}<TripMap onclose={() => (mapOpen = null)} />{/if}
         {/if}
@@ -274,4 +276,5 @@
 <!-- Flug- und Unterkunftssuche im eigenen Fenster (aus Kapitel, Posten und Plan); danach ist man wieder dort -->
 {#if flightSearch.open}{#key flightSearch.scope}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/key}{/if}
 {#if staySearch.open}{#key staySearch.scope}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}
+{#if privStay.open}{#key privStay.itemId}<PrivateStay itemId={privStay.itemId} onclose={() => (privStay.open = false)} />{/key}{/if}
 {#if eventPlanner.open}<EventPlanner onclose={() => (eventPlanner.open = false)} />{/if}

@@ -9,6 +9,16 @@ import { spawn } from "node:child_process";
 const URL = "http://127.0.0.1:4175/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+/** Kofferzahl am − / + (#326) lesen und setzen; scope: Formular oder Leiste über den Treffern */
+const bagsOf = async scope => Number((await scope.locator(".fs-bagstep b").first().textContent()).match(/^\d+/)?.[0] ?? -1);
+async function setBags(scope, n) {
+  for (let i = 0; i < 20; i++) {
+    const v = await bagsOf(scope);
+    if (v === n) return;
+    await scope.locator(".fs-bagstep").first().locator("button").nth(v > n ? 0 : 1).click();
+  }
+  fail("Kofferzahl nicht einstellbar: " + n);
+}
 async function until(fn, what, ms = 10000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
@@ -43,13 +53,14 @@ const BAGS = {
   sources: RESULT.sources
 };
 
-/** nur Hinflug im Zeitfenster: jeden Tag ein Direktflug, jeder Tag 10 € teurer */
+/** nur Hinflug im Zeitfenster: jeden Tag ein Direktflug, jeder Tag 10 € teurer; ab GIG Wizz Air ohne Koffer, ab EZE Ryanair ohne Angabe (Gepäck #210) */
 function oneWay(q) {
   const from = q.fromAirports?.[0] || q.from, to = q.toAirports?.[0] || q.to, offers = [];
+  const airline = from === "GIG" ? "Wizz Air" : from === "EZE" ? "Ryanair" : "Test Air";
   for (let d = q.depart, i = 0; d <= q.departTo; d = new Date(Date.parse(d) + 86400000).toISOString().slice(0, 10), i++)
     offers.push({ id: `kiwi:${from}${to}${d}`, source: "kiwi", sourceName: "Kiwi.com", price: 300 + 10 * i, currency: "EUR", url: `https://kiwi.com/u/${from}${to}`,
-      out: { ...leg(from, to, `${d}T10:00:00`, `${d}T20:00:00`, 600, [`XX${i}${from}`], ["Test Air"], q.via ? [from, q.via[0], to] : [from, to]), fromCity: from, toCity: to,
-        ...(q.via ? { stops: 1, layovers: [{ at: q.via[0], hours: 20 }] } : {}) } });
+      out: { ...leg(from, to, `${d}T10:00:00`, `${d}T20:00:00`, 600, [`XX${i}${from}`], [airline], q.via ? [from, q.via[0], to] : [from, to]), fromCity: from, toCity: to,
+        ...(q.via ? { stops: 1, layovers: [{ at: q.via[0], hours: 20 }] } : {}) }, ...(from === "GIG" ? { baggage: { personal: 1, cabin: 0, checked: 0 } } : {}) });
   return { offers, sources: RESULT.sources.map(s => (s.id === "kiwi" ? { ...s, count: offers.length } : s)) };
 }
 
@@ -95,7 +106,7 @@ try {
   // Abflughäfen: Standard 4, zwei abwählen → DUS und NRN
   // Suche im eigenen Fenster (nicht mehr im Kapitel aufgeklappt); Wer, Abflughäfen, Umstiege und Koffer immer sichtbar
   if (await p.locator(".modal.inline").count() || !(await p.locator(".modal-bg .modal").count())) fail("Flugsuche nicht als Fenster");
-  if (!(await m.locator(".fs-aps").isVisible()) || !(await m.locator(".fs-who").isVisible()) || !(await m.locator("label", { hasText: "Koffer gesamt" }).isVisible())) fail("Optionen der Flugsuche nicht sichtbar");
+  if (!(await m.locator(".fs-aps").isVisible()) || !(await m.locator(".fs-who").isVisible()) || !(await m.locator(".fs-form .fs-bagstep").isVisible())) fail("Optionen der Flugsuche nicht sichtbar");
   log("Flugsuche als Fenster, Wer, Abflughäfen, Umstiege und Koffer sichtbar");
   const on = await m.locator(".fs-aps .chip.on").allTextContents();
   if (on.length !== 4) fail("Standard-Flughäfen: " + on);
@@ -115,7 +126,7 @@ try {
   if (dlabel !== "7 bis 12 Nächte") fail("Schieberegler: " + dlabel);
   if (!(await m.locator(".dual-axis").textContent()).includes("max. 14 (ganzer Zeitraum)")) fail("Achse: " + await m.locator(".dual-axis").textContent());
   // Koffer insgesamt statt „je Person einer“
-  await m.locator("label", { hasText: "Koffer gesamt" }).locator("select").selectOption("1");
+  await setBags(m.locator(".fs-form"), 1);
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   if (asked[0]?.bagCount !== 1) fail("Kofferzahl nicht in der Anfrage: " + JSON.stringify(asked[0]));
@@ -430,6 +441,10 @@ try {
   const r0 = await m.locator(".fs-round").first().textContent();
   if (!r0.includes("3 Tickets") || !r0.includes("GIG: 5 Nächte") || !r0.includes("EZE: 3 Nächte")) fail("Rundreise-Treffer: " + r0.slice(0, 300));
   if ((await m.locator(".fs-round").first().locator(".fs-leg").count()) !== 3) fail("drei Flüge erwartet");
+  // Gepäck je Ticket (#210): Wizz Air und Ryanair ohne Angabe mit Richtwert (5 Koffer × 45 € + 40 €), Test Air (Linie) offen
+  const bagsR = r0.match(/\+ ca\. ([\d.]+) € Koffer/);
+  const legSrc = await m.locator(".fs-round").first().locator(".fs-legsrc").allTextContents();
+  if (bagsR?.[1] !== "425" || !legSrc[1].includes("Koffer (Wizz Air)") || !legSrc[2].includes("Koffer (Ryanair)") || legSrc[0].includes("Koffer") || !legSrc[0].includes("Gepäck nicht angegeben") || legSrc[1].includes("nicht angegeben")) fail("Rundreise ohne Koffer je Strecke: " + r0.slice(0, 300) + " | " + legSrc.join(" | "));
   // Andere Flüge für die letzte Strecke: 3–4 Nächte in EZE, günstigste zuerst; Tausch rechnet den Preis neu
   const rcard = m.locator(".fs-round").first();
   const flightsOf = async c => Number((await c.locator(".fs-sub").textContent()).match(/Flüge ([\d.]+) €/)[1].replace(/\./g, ""));
@@ -449,6 +464,14 @@ try {
   await p.keyboard.press("Escape");
   const rc = p.locator("#flights .card[data-item]", { hasText: "GIG → EZE" });
   await rc.waitFor();
+  const rxc = rc.locator(".xc").first();
+  const rsum = await rxc.locator("summary").textContent();
+  if (rsum.split("Koffer dazubuchen").length !== 2 || rsum.includes("→")) fail("Kurzzeile der Nebenkosten: " + rsum);
+  await rxc.locator("summary").click();
+  const rxt = await rxc.textContent();
+  if (!rxt.includes("DUS → GIG: Gepäck nicht angegeben") || !rxt.includes("GIG → EZE: kleines Handgepäck · ohne Koffer") || !rxt.includes("Koffer dazubuchen · GIG → EZE") || !rxt.includes("Koffer dazubuchen · EZE → DUS") || !rxt.includes("Wizz Air") || !rxt.includes("Ryanair") || rxt.includes("dazubuchen · DUS → GIG"))
+    fail("Rundreise-Posten Nebenkosten: " + rxt.slice(0, 600));
+  log(`Rundreise-Gepäck: + ca. ${bagsR[1]} € Koffer (Wizz Air und Ryanair je Strecke), Linie „Gepäck nicht angegeben“; im Posten Nebenkosten und Gepäck je Strecke`);
   log("Rundreise: DUS → GIG (5 Nächte) → EZE → zurück, Strecke für Strecke gesucht, als ein Posten mit 3 Flügen übernommen");
 
   // kurzer Aufenthalt (0–1 Nacht in Rio): zusätzlich als Gabelflug, ein Ticket DUS → EZE mit langem Umstieg in GIG
@@ -506,12 +529,12 @@ try {
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
-  const bagSel = m.locator("label", { hasText: "Koffer gesamt" }).locator("select");
+  const fsForm = m.locator(".fs-form");
   await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-08-12");
   await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-08-14");
-  if ((await bagSel.inputValue()) !== "0") fail("3 Reisetage ohne Vorliebe: Koffer " + await bagSel.inputValue());
+  if ((await bagsOf(fsForm)) !== 0) fail("3 Reisetage ohne Vorliebe: Koffer " + await bagsOf(fsForm));
   await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-08-22");
-  if ((await bagSel.inputValue()) !== "4") fail("11 Reisetage ohne Vorliebe: Koffer " + await bagSel.inputValue());
+  if ((await bagsOf(fsForm)) !== 4) fail("11 Reisetage ohne Vorliebe: Koffer " + await bagsOf(fsForm));
   const pmiIn = m.locator("label.f", { hasText: "Nach" }).locator("input");
   await pmiIn.fill("PMI");
   await m.locator(".lp-list li", { hasText: "PMI" }).first().click();
@@ -524,6 +547,28 @@ try {
   if (!frText.includes("+ ca. 320 € Koffer") || frText.includes("Sitzplätze")) fail("Billigflieger ohne Koffer (Kinder sitzen bei Ryanair gratis bei den Eltern): " + frText.slice(0, 300));
   if (!/früh einchecken/i.test(await m.locator(".fs-tip").textContent())) fail("Tipp Sitzplätze fehlt");
   if (!(await m.locator("p", { hasText: "inkl. 4 Koffer" }).count())) fail("Sortierhinweis mit Koffern fehlt");
+  // Kofferzahl über den Treffern (#326): − / + ändert nur die Zahl, Treffer bleiben; neu gesucht wird auf Knopfdruck
+  const bar = m.locator(".fs-bagbar");
+  const nAsk326 = asked.length, nRes = await m.locator(".fs-res").count();
+  await setBags(bar, 6);
+  if (await bagsOf(fsForm) !== 6) fail("Formular folgt der Leiste nicht");
+  await bar.locator("text=Treffer gelten für 4 Koffer").waitFor();
+  if (asked.length !== nAsk326 || (await m.locator(".fs-res").count()) !== nRes) fail("− / + hat neu gesucht");
+  if (!(await fr.textContent()).includes("+ ca. 320 € Koffer")) fail("Treffer nach − / + verändert");
+  await setBags(bar, 8);
+  if (await bar.locator("button", { hasText: "+" }).isEnabled()) fail("mehr als 2 Koffer je Platz möglich");
+  await setBags(bar, 4);
+  if (await bar.locator("text=Treffer gelten für").count()) fail("Hinweis bleibt bei gesuchter Zahl");
+  await setBags(bar, 2);
+  await bar.locator(".btn", { hasText: "Mit 2 Koffer neu suchen" }).click();
+  await until(async () => asked.length > nAsk326 && (await m.locator(".fs-res").count()) > 0, "neue Suche mit 2 Koffern");
+  if (asked.at(-1).bagCount !== 2) fail("neue Suche ohne neue Kofferzahl: " + JSON.stringify(asked.at(-1)));
+  if (!(await m.locator(".fs-res", { hasText: "Travelpayouts" }).first().textContent()).includes("+ ca. 160 € Koffer")) fail("Aufschlag nach neuer Suche");
+  if (await bar.locator("text=Treffer gelten für").count()) fail("Hinweis nach neuer Suche");
+  await setBags(bar, 4);
+  await bar.locator(".btn", { hasText: "Mit 4 Koffer neu suchen" }).click();
+  await until(async () => asked.at(-1).bagCount === 4 && (await m.locator(".fs-res").count()) > 0, "zurück auf 4 Koffer");
+  log("Kofferzahl − / + über den Treffern: Zahl ändert sich ohne Suche, Hinweis „Treffer gelten für 4 Koffer“, höchstens 8; „Mit 2 Koffer neu suchen“ sucht neu (+ ca. 160 € Koffer)");
   await fr.locator(".btn", { hasText: "Übernehmen" }).click();
   const xc = p.locator("#flights .xc").first();
   await until(async () => (await xc.count()) > 0, "Nebenkosten am Flug");

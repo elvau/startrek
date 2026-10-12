@@ -105,7 +105,7 @@ export function tn(key: string, n: number, p?: Record<string, string | number>):
 export const arrow = () => ("rtl" in langInfo() ? "←" : "→");
 
 /** Texte, aus denen die App Postennamen selbst erzeugt (beim Anlegen als fester Text gespeichert) */
-const AUTO_NAMES: Key[] = ["st.itemName", "camp.site", "camp.pitch", "camp.rent", "road.stopName", "fl.nameFor", "food.itemName", "car.name", "ins.name", "tr.name", "gr.coach"];
+const AUTO_NAMES: Key[] = ["st.itemName", "priv.itemName", "camp.site", "camp.pitch", "camp.rent", "road.stopName", "fl.nameFor", "food.itemName", "car.name", "ins.name", "tr.name", "gr.coach"];
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const autoRx = new Map<string, { key: Key; names: string[]; rx: RegExp }>();
 

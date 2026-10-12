@@ -449,6 +449,12 @@ html:has(.modal-bg){overflow:hidden}
 .pill-ap,.pill-n,.pill-h{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:99px}
 .pill-ap,.pill-n{background:var(--a-soft);color:var(--a)}
 .fs-bag.miss,.fs-bag.unk{background:var(--paper-2);color:var(--muted)}
+/* Kofferzahl − / + im Formular und über den Treffern (#326) */
+.fs-bagstep{display:inline-grid;grid-template-rows:auto;width:max-content}
+.fs-bagstep button,.fs-bagstep b{grid-row:1}
+.fs-bagstep b{padding:0 10px;white-space:nowrap;font-weight:600}
+.fs-bagstep button:disabled{opacity:.4}
+.fs-bagbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
 .fs-tip{margin:2px 0 6px}
 .pill-h{background:var(--paper-2);color:var(--ink-2)}
 .modal.wide{width:min(760px,100%)}

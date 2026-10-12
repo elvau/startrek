@@ -185,6 +185,8 @@ export interface FlightLeg {
   minutes?: number;
   /** Stadt am Ziel des Flugs (für Unterkünfte je Station einer Rundreise) */
   toCity?: string;
+  /** Gepäck dieses Tickets (Rundreise aus getrennten Tickets, #210); fehlt: nicht angegeben */
+  baggage?: { personal: number; cabin: number; checked: number };
 }
 
 export interface Option {
@@ -243,6 +245,8 @@ export interface Extra {
   max?: number;
   /** Beträge pro Nacht/Tag/Buchung gelten höchstens für so viele Einheiten (z. B. Autos), nicht für alle gebuchten */
   maxUnits?: number;
+  /** Strecke einer Rundreise aus getrennten Tickets, z. B. „DUS → BCN“ (#210); steht in der Liste hinter der Bezeichnung */
+  leg?: string;
   /** Quelle, z. B. „Stadt Split, Stand 2026“ oder „liteAPI“ */
   source?: string;
   /** Land (Maut, Vignette): Name in der Sprache der App */
@@ -329,6 +333,8 @@ export interface Item {
   ai?: AiMark;
   /** Tagesplan: an diesem Tag (JJJJ-MM-TT, optional mit Uhrzeit JJJJ-MM-TTTHH:MM) */
   day?: string;
+  /** Unterkunft privat bzw. schon vorhanden (#233): Ort, ohne Suche und Beobachtung; Kosten optional */
+  private?: { place: string; country?: string };
   /** aus einem Hinweis (Einreise & Tipps) übernommen, z. B. „galapagos“; „rental“ = Mietwagen, „road:car“ = eigenes Auto */
   hint?: string;
 }

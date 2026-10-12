@@ -159,7 +159,8 @@ export const TIPS: Record<string, { norm: TipNorm; v?: string; local?: ("resort"
 
 /** passende Kurtaxe zu einer Unterkunft (erster Treffer, Suchort zuerst) */
 export function cityTaxFor(it: Item, o: Option, trip: Trip): CityTax | null {
-  if (it.cat !== "stay") return null;
+  // privat (bei Bekannten, eigene Wohnung): keine Kurtaxe
+  if (it.cat !== "stay" || it.private) return null;
   const parts = [o.query?.place, o.detail, o.label, it.name, o.loc?.q, trip.place].filter(Boolean) as string[];
   for (const p of parts) { const c = CITY_TAXES.find(x => x.words.test(p)); if (c) return c; }
   return null;
