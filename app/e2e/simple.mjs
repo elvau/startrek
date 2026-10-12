@@ -5,6 +5,7 @@
  * Start: npm run test:cloud
  */
 import { chromium } from "playwright";
+import { reloadHome } from "./nav.mjs";
 import { spawn } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 
@@ -89,7 +90,7 @@ try {
   log("Anteil pro Person mit Cent: 10 € auf 4 → 2,50 €");
 
   // Neu laden: alles gespeichert
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await p.locator(".start .home-trip", { hasText: "Zu viert" }).click();
   await p.locator("#attractions .sl").nth(2).waitFor();
   if ((await p.locator("#attractions .sl").nth(0).locator(".sl-who .chip.on").count()) !== 2) fail("Auswahl nicht gespeichert");
@@ -357,7 +358,7 @@ try {
   await rx.locator(".xc-tg").first().click();
   await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "Kurtaxe weggeklickt");
   await fp.waitForTimeout(800);
-  await fp.evaluate(() => sessionStorage.clear()); await fp.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(fp);
   await fp.locator(".start .home-trip", { hasText: "Rom" }).first().click();
   await fp.locator(".aside .tk-top b").waitFor();
   await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "weggeklickt bleibt nach dem Neuladen");

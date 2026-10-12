@@ -3,6 +3,7 @@
  * Start: npm run test:cloud (nach flights.mjs)
  */
 import { chromium } from "playwright";
+import { reloadHome } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4176/";
@@ -244,9 +245,8 @@ try {
     ],
     tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }
   };
-  await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
-  await p.evaluate(t => { localStorage.setItem("rk2-t:k1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "k1", name: t.name, place: t.place }])); localStorage.setItem("rk2-current", "k1"); }, TRIP);
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  // Stand einspielen; ausstehende Speicherungen der App überschreiben ihn nicht mehr (reloadHome)
+  await reloadHome(p, { set: { "rk2-t:k1": TRIP, "rk2-index": [{ id: "k1", name: TRIP.name, place: TRIP.place }], "rk2-current": "k1" } });
   await p.locator(".start .home-trip").first().click();
   const gl = await p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" }).getAttribute("href");
   if (!gl.includes("q=Split") || !gl.includes("date_from=2027-07-18")) fail("GetYourGuide-Link: " + gl);
@@ -299,9 +299,7 @@ try {
   early.place = "Makarska";
   early.items[0].options[0].legs[1].dep = "2027-07-29T06:30";
   early.items.push({ id: "s2", cat: "stay", name: "Villa 2", status: "idea", from: "2027-07-25", to: "2027-07-29", participants: ["a", "b"], options: [{ id: "v2", label: "Villa 2", price: { mode: "unit", currency: "EUR", unit: 800, basis: "stay" } }] });
-  await p.waitForTimeout(600); // App hat fertig gespeichert (sonst überschreibt sie beim Neuladen den eingespielten Stand)
-  await p.evaluate(t => localStorage.setItem("rk2-t:k1", JSON.stringify(t)), early);
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p, { set: { "rk2-t:k1": early } });
   await p.locator(".start .home-trip").first().click();
   const apn = p.locator("#stay .pl-notes li", { hasText: "Letzte Nacht näher am Flughafen?" });
   await apn.waitFor();
@@ -351,13 +349,13 @@ try {
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
   if ((await p.evaluate(() => document.documentElement.lang)) !== "en") fail("html lang nicht en");
   if (!(await p.locator(".top .nav").textContent()).includes("Flights")) fail("Kapitel nicht übersetzt");
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await p.locator(".start .home-trip").first().click();
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
   // Polnisch wird erst bei Bedarf geladen, auch nach dem Neuladen gleich auf Polnisch (kein Englisch dazwischen)
   await p.locator(".top .lang-sel").selectOption("pl");
   await p.locator("#stay .st-open", { hasText: "Szukaj noclegu" }).waitFor();
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await p.locator(".start .home-trip").first().waitFor();
   if (await p.locator("text=Search accommodation").count()) fail("nach dem Neuladen kurz Englisch");
   await p.locator(".start .home-trip").first().click();
@@ -411,7 +409,7 @@ try {
   };
   await p.waitForTimeout(600);
   await p.evaluate(t => { localStorage.setItem("rk2-t:r1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "r1", name: t.name, place: "" }])); localStorage.setItem("rk2-current", "r1"); }, RT);
-  await p.evaluate(() => sessionStorage.clear()); await p.reload(); // Neuladen im Tab bliebe in der Reise: für die Startseite Merkstand leeren
+  await reloadHome(p);
   await p.locator(".start .home-trip").first().click();
   const rgaps = p.locator("#stay .pl-notes li.crit", { hasText: "ohne Unterkunft" });
   await rgaps.first().waitFor();

@@ -3,6 +3,7 @@
  * Start: npm run test:cloud (läuft nach e2e/cloud.mjs)
  */
 import { chromium } from "playwright";
+import { reloadHome } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4174/";
@@ -319,7 +320,7 @@ try {
   await bi.scrollIntoViewIfNeeded();
   await bi.fill("840");
   await b.waitForTimeout(2500);
-  await a.evaluate(() => sessionStorage.clear()); await a.goto(URL);
+  await reloadHome(a, { url: URL });
   const card = a.locator(".start .home-trip", { hasText: "Zweitgerät-Test" });
   await card.waitFor();
   await until(async () => (await card.innerText()).includes("840"), "Betrag der Reise vom anderen Gerät auf der Startseite", 10000)
