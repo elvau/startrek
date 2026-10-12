@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AIRPORT_EARLY, COACH_MIN, bahnLink, fastest, flightIn, nearestAirport, coachCost, coachItem, groundPlan, homeOf, routeLink, tripDays } from "./ground";
+import { isIsland, AIRPORT_EARLY, COACH_MIN, bahnLink, fastest, flightIn, nearestAirport, coachCost, coachItem, groundPlan, homeOf, routeLink, tripDays } from "./ground";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 import type { AirportData } from "./geo/locations";
 
@@ -19,6 +19,19 @@ describe("Bahn, Bus, Auto statt Flug", () => {
     expect(groundPlan(KOELN, BERLIN, 4, 3)).not.toBeNull();
     expect(groundPlan(KOELN, MALLORCA, 4, 3)).toBeNull();
     expect(groundPlan(KOELN, BONN, 4, 3)).toBeNull();
+  });
+  it("keine Bodenoptionen bei Inselzielen oder anderem Land (#102)", () => {
+    const ibiza = { name: "Ibiza", lat: 38.91, lon: 1.43 }, sylt = { name: "Westerland (Sylt)", lat: 54.9, lon: 8.3 };
+    const de = { ...KOELN, cc: "DE" }, fr = { name: "Paris", lat: 48.86, lon: 2.35, cc: "FR" };
+    expect(isIsland("Ibiza")).toBe(true);
+    expect(isIsland("Long Island")).toBe(false);
+    expect(isIsland("Berlin")).toBe(false);
+    expect(groundPlan(de, ibiza, 4, 3, { road: true })).toBeNull();
+    expect(groundPlan({ ...KOELN, lat: 53.5 }, sylt, 4, 3)).toBeNull();
+    expect(groundPlan(de, fr, 4, 3)).toBeNull();
+    expect(groundPlan(de, fr, 4, 3, { road: true })).not.toBeNull();
+    expect(groundPlan(de, { ...BERLIN, cc: "DE" }, 4, 3)).not.toBeNull();
+    expect(groundPlan(KOELN, fr, 4, 3)).not.toBeNull();
   });
   it("Richtwerte pro Person hin und zurück: Bahn als Spanne, Auto geteilt", () => {
     const p = groundPlan(KOELN, BERLIN, 4, 3)!;

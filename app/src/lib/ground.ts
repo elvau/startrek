@@ -11,7 +11,12 @@ import type { AirportData } from "./geo/locations";
 import { airportsOf, dayDiff, okDate } from "./calc/travel";
 import { calcItem } from "./calc";
 
-export interface Spot { name: string; lat: number; lon: number }
+/** cc: Ländercode (ISO), wenn bekannt; ohne Angabe wird das Land nicht verglichen */
+export interface Spot { name: string; lat: number; lon: number; cc?: string }
+
+/** Inseln und Inselgruppen als Ziel: dorthin gibt es keine durchgehende Straße oder Bahn, der Bodenvergleich entfällt (#102) */
+const ISLAND = /\b(mallorca|palma de mallorca|menorca|ibiza|formentera|teneriffa|tenerife|gran canaria|las palmas|lanzarote|fuerteventura|la palma|la gomera|el hierro|kanaren|canar(y|ias)|madeira|funchal|azoren|azores|sizilien|sicilia|sicily|palermo|catania|sardinien|sardegna|sardinia|cagliari|olbia|korsika|corse|corsica|ajaccio|bastia|malta|gozo|zypern|cyprus|kreta|crete|heraklion|rhodos|rhodes|korfu|corfu|santorin|santorini|mykonos|naxos|paros|zakynthos|kefalonia|lesbos|thassos|ísland|reykjav[ií]k|irland|ireland|dublin|galway|gro(ß|ss)britannien|great britain|england|london|schottland|scotland|edinburgh|wales|cardiff|mauritius|malediven|maldives|bali|lombok|sri lanka|kolombo|colombo|phuket|koh samui|kuba|cuba|havanna|jamaika|jamaica|hawaii|honolulu|japan|tokio|tokyo|philippinen|manila|seychellen|seychelles|sansibar|zanzibar|djerba|helgoland|sylt|föhr|amrum|norderney|borkum|juist|langeoog|spiekeroog|baltrum|wangerooge)\b/i;
+export const isIsland = (name: string): boolean => ISLAND.test(name);
 
 export type GroundKind = "flight" | "train" | "bus" | "car" | "coach";
 /** Abschnitte der Reisezeit: zum Flughafen, vorher da, Flug, Gepäck, in die Stadt, zum und vom Bahnhof bzw. Halt, Fahrt, Pausen */
@@ -47,7 +52,8 @@ export function homeOf(trip: Trip): Spot | null {
   }
   const best = [...count.entries()].sort((a, b) => b[1] - a[1])[0];
   const g = best && trip.households![best[0]].geo!;
-  return g ? { name: g.ort, lat: g.lat, lon: g.lon } : null;
+  // Wohnort kommt aus der deutschen PLZ (Haushalt mit plz) → Land DE
+  return g ? { name: g.ort, lat: g.lat, lon: g.lon, ...(trip.households![best![0]].plz ? { cc: "DE" } : {}) } : null;
 }
 
 /** Tage der Reise (für den Reisebus), ohne Daten 2 */
@@ -114,6 +120,9 @@ const coachBreaks = (h: number) => Math.floor(h / 4.5) * 0.75;
 export function groundPlan(from: Spot, to: Spot, persons: number, days: number, opts: { kmCost?: number; flight?: FlightIn; road?: boolean } = {}): GroundPlan | null {
   const km = kmBetween(from, to);
   if (km < GROUND_MIN_KM || (km > GROUND_MAX_KM && !opts.road)) return null;
+  // Insel als Ziel oder (außer bei Auto-Reisen) anderes Land: keine belastbare Bodenverbindung aus der Luftlinie (#102)
+  if (isIsland(to.name)) return null;
+  if (!opts.road && from.cc && to.cc && from.cc !== to.cc) return null;
   const kmCost = opts.kmCost ?? 0.3;
   const road = km * 1.3, rail = km * 1.2, n = Math.max(1, persons);
   const pair = (lo: number, hi: number) => ({ lo: round(2 * lo), hi: round(2 * Math.max(lo, hi)) });
