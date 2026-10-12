@@ -465,6 +465,8 @@ try {
   const rc = p.locator("#flights .card[data-item]", { hasText: "GIG → EZE" });
   await rc.waitFor();
   const rxc = rc.locator(".xc").first();
+  const rsum = await rxc.locator("summary").textContent();
+  if (rsum.split("Koffer dazubuchen").length !== 2 || rsum.includes("→")) fail("Kurzzeile der Nebenkosten: " + rsum);
   await rxc.locator("summary").click();
   const rxt = await rxc.textContent();
   if (!rxt.includes("DUS → GIG: Gepäck nicht angegeben") || !rxt.includes("GIG → EZE: kleines Handgepäck · ohne Koffer") || !rxt.includes("Koffer dazubuchen · GIG → EZE") || !rxt.includes("Koffer dazubuchen · EZE → DUS") || !rxt.includes("Wizz Air") || !rxt.includes("Ryanair") || rxt.includes("dazubuchen · DUS → GIG"))
