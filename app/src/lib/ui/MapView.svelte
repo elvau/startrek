@@ -25,6 +25,7 @@
   let markers: { id: string; m: Marker; el: HTMLElement }[] = [];
   let failed = $state(false);
   let fitted = "";
+  let ro: ResizeObserver | undefined;
 
   async function init() {
     try {
@@ -34,11 +35,17 @@
       map = new m.Map({ container: box, style: STYLE, center: [0, 30], zoom: 1.5, attributionControl: { compact: true }, cooperativeGestures: true });
       map.addControl(new m.NavigationControl({ showCompass: false }), "top-right");
       map.on("moveend", () => { const b = map!.getBounds(); onbounds?.({ w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() }); });
+      // Handy: Größe des Containers kann beim Start 0 sein oder sich danach ändern (Adressleiste, Drehen) → Karte bleibt grau
+      if (typeof ResizeObserver !== "undefined") { ro = new ResizeObserver(() => map?.resize()); ro.observe(box); }
+      map.once("load", () => { map?.resize(); fitted = ""; draw(); });
+      // Stil oder Kacheln nicht ladbar: Hinweis statt grauer Fläche
+      map.on("error", () => { if (map && !map.isStyleLoaded()) failed = true; });
+      map.on("styledata", () => { if (map?.isStyleLoaded()) failed = false; });
       draw();
     } catch { failed = true; }
   }
   onMount(() => { void init(); });
-  onDestroy(() => map?.remove());
+  onDestroy(() => { ro?.disconnect(); map?.remove(); });
 
   function draw() {
     if (!map || !lib) return;
