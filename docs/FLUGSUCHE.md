@@ -102,7 +102,8 @@ die Gruppe braucht (`app/src/lib/flights/addons.ts`, Richtwerte ohne Gewähr, St
   geschätzte Nebenkosten „bei der Buchung“ im Posten (wegklickbar), dazu „Enthalten: …“.
 - **Rundreise aus getrennten Tickets (#210):** jedes Ticket für sich bewertet (eigenes Gepäck, eigene Airline), die Summe
   zählt im Gesamtpreis und in der Sortierung. Die Karte zeigt den Aufschlag gesamt und je Strecke mit Airline; übernommen
-  steht er je Strecke als Nebenkosten im Posten („4 Koffer dazubuchen · GIG → EZE“, Quelle mit Airline).
+  steht er je Strecke als Nebenkosten im Posten („4 Koffer dazubuchen · GIG → EZE“, Quelle mit Airline). Linientickets
+  ohne Angabe zeigen je Strecke „Gepäck nicht angegeben“; der Posten nennt das enthaltene Gepäck je Strecke.
 - **Kartenaufschlag:** in EU/EWR und Großbritannien für Verbraucherkarten verboten; bei Abflug anderswo ein Hinweis im Posten.
 
 | Airline | Codes | Koffer je Strecke | Platzwahl Familie je Strecke | Quelle |

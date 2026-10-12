@@ -621,7 +621,7 @@
               {@const alts = alternatives(x.rt, i)}
               {@const key = `${x.rt.id}:${i}`}
               {@render legRow(`${i + 1}.`, l.out)}
-              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if x.r.adds?.[i]?.total}{` + ${[x.r.adds[i].bagFee && t("fs.addBags", { v: eur(x.r.adds[i].bagFee) }), x.r.adds[i].seatFee && t("fs.addSeats", { v: eur(x.r.adds[i].seatFee) })].filter(Boolean).join(" + ")}${x.r.adds[i].carrier ? ` (${x.r.adds[i].carrier})` : ""}`}{/if}{#if l.url}{" · "}<ExtLink href={l.url} sponsored={l.sponsored} track={[l.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}</p>
+              <p class="muted small fs-legsrc">{l.sourceName} · {eur(l.price)}{#if bags && !l.baggage && !x.r.adds?.[i]?.bagFee}{` · 🧳 ${t("fs.bagsUnknown")}`}{/if}{#if x.r.adds?.[i]?.total}{` + ${[x.r.adds[i].bagFee && t("fs.addBags", { v: eur(x.r.adds[i].bagFee) }), x.r.adds[i].seatFee && t("fs.addSeats", { v: eur(x.r.adds[i].seatFee) })].filter(Boolean).join(" + ")}${x.r.adds[i].carrier ? ` (${x.r.adds[i].carrier})` : ""}`}{/if}{#if l.url}{" · "}<ExtLink href={l.url} sponsored={l.sponsored} track={[l.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}</p>
               {#if alts.length}
                 <button type="button" class="linkbtn fs-altbtn" aria-expanded={altOpen === key} onclick={() => (altOpen = altOpen === key ? null : key)}>{altOpen === key ? t("fs.altHide") : t("fs.altShow", { n: alts.length })} {altOpen === key ? "▴" : "▾"}</button>
                 {#if altOpen === key}
