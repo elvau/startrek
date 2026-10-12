@@ -8,7 +8,7 @@ import { kayakCarLink, type CarWindow } from "../extras";
 import type { Key } from "../i18n/types";
 import { clickId } from "./click";
 import {
-  airbnbLink, bookingLink, getYourGuideLink, googleFlightsLink, skyscannerLink, tiqetsLink, tripadvisorRestaurantsLink, viatorLink,
+  airbnbLink, bookingLink, getYourGuideLink, googleFlightsLink, klookLink, skyscannerLink, tiqetsLink, tripadvisorRestaurantsLink, viatorLink,
   type ActivityLinkQuery, type FlightLinkQuery, type StayLinkQuery
 } from "../links";
 
@@ -49,6 +49,11 @@ const params = (kv: Record<string, string>) => (url: string) => {
 
 /** Viator-Partnerkennung (öffentlich, steht in jedem Partner-Link) */
 export const VIATOR_PARTNER = { pid: "P00322974", mcid: "42383", medium: "link" };
+/** Travelpayouts (öffentlich, steht in jedem Partner-Link): Marker des Kontos, Projekt splitandfly.com */
+export const TP_PARTNER = { marker: "783080", trs: "584426" };
+/** Travelpayouts: Ziel-Link über tp.media weiterleiten; p = Programm, campaign = Kampagne (aus „Generate links“) */
+export const tp = (p: number, campaign: number) => (url: string) =>
+  `https://tp.media/r?${new URLSearchParams({ campaign_id: String(campaign), marker: TP_PARTNER.marker, p: String(p), trs: TP_PARTNER.trs, u: url })}`;
 
 export const PARTNERS = {
   /* Flüge */
@@ -60,7 +65,8 @@ export const PARTNERS = {
   /* Erlebnisse */
   getYourGuide: p<ActivityLinkQuery>({ name: "GetYourGuide", cat: "activity", net: "travelpayouts", link: getYourGuideLink }),
   viator: p<ActivityLinkQuery>({ name: "Viator", cat: "activity", net: "direct", link: viatorLink, tag: params(VIATOR_PARTNER) }),
-  tiqets: p<ActivityLinkQuery>({ name: "Tiqets", cat: "activity", net: "travelpayouts", link: tiqetsLink }),
+  tiqets: p<ActivityLinkQuery>({ name: "Tiqets", cat: "activity", net: "travelpayouts", link: tiqetsLink, tag: tp(2074, 89) }),
+  klook: p<ActivityLinkQuery>({ name: "Klook", cat: "activity", net: "travelpayouts", link: klookLink, tag: tp(4110, 137) }),
   /* Essen */
   tripadvisor: p<string>({ name: "Tripadvisor", cat: "food", link: tripadvisorRestaurantsLink }),
   /* Mietwagen: KAYAK mit Ort und Zeiten, die anderen zum Vergleichen */
@@ -68,10 +74,10 @@ export const PARTNERS = {
   check24Cars: p<CarLinkQuery>({ name: "CHECK24", cat: "car", link: home("https://www.check24.de/mietwagen/") }),
   discoverCars: p<CarLinkQuery>({ name: "DiscoverCars", cat: "car", net: "travelpayouts", link: home("https://www.discovercars.com/de") }),
   /* Flughafentransfer */
-  kiwitaxi: p<void>({ name: "Kiwitaxi", cat: "transfer", net: "travelpayouts", link: home("https://kiwitaxi.com/de") }),
+  kiwitaxi: p<void>({ name: "Kiwitaxi", cat: "transfer", net: "travelpayouts", link: home("https://kiwitaxi.com/de"), tag: tp(647, 1) }),
   getTransfer: p<void>({ name: "GetTransfer", cat: "transfer", net: "travelpayouts", link: home("https://gettransfer.com/de") }),
   intui: p<void>({ name: "Intui.travel", cat: "transfer", net: "travelpayouts", link: home("https://intui.travel/de/") }),
-  welcomePickups: p<void>({ name: "Welcome Pickups", cat: "transfer", net: "travelpayouts", link: home("https://www.welcomepickups.com/de/") }),
+  welcomePickups: p<void>({ name: "Welcome Pickups", cat: "transfer", net: "travelpayouts", link: home("https://www.welcomepickups.com/de/"), tag: tp(8919, 627) }),
   bookingTaxi: p<void>({ name: "Booking.com Taxi", cat: "transfer", link: home("https://taxi.booking.com/") }),
   /* Fähren (#202): Vergleich je Strecke; Partnerprogramme direkt (Direct Ferries, Ferryhopper), noch nicht freigeschaltet */
   directFerries: p<void>({ name: "Direct Ferries", cat: "ferry", net: "direct", link: home("https://www.directferries.de/") }),

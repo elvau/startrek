@@ -53,6 +53,8 @@ export function getYourGuideLink(q: ActivityLinkQuery): string {
 export const viatorLink = (q: ActivityLinkQuery) => `https://www.viator.com/de-DE/searchResults/all?text=${encodeURIComponent(q.place)}`;
 
 export const tiqetsLink = (q: ActivityLinkQuery) => `https://www.tiqets.com/de/search?q=${encodeURIComponent(q.place)}`;
+/** Klook-Suche nach Ort */
+export const klookLink = (q: ActivityLinkQuery) => `https://www.klook.com/de/search/result/?query=${encodeURIComponent(q.place)}`;
 
 /* ---------- Essen ---------- */
 
