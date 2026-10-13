@@ -5,6 +5,13 @@ Einreise-Texte gelten für deutsche Staatsangehörige; andere Staatsangehörigke
 (Passport Index Data). Warnstufen kommen live vom Auswärtigen Amt (`/advice` im Such-Dienst).
 Kurze Hinweise, keine Rechtsberatung: maßgeblich ist immer der verlinkte offizielle Link. Stand der Recherche: Oktober 2026.
 
+**Nur für dich** (#302, Quelle entschieden in #329): Hinweise für Frauen, zum Passeintrag „X“ und zu LGBTQ+ je Land in
+`public/hinweise.json`, nur für einen selbst aus den Angaben im Konto, berechnet im Browser (`app/src/lib/personal.ts`).
+Daten aus Mignot/Our World in Data (CC BY 4.0) und den britischen Reisehinweisen (FCDO, Open Government Licence v3.0);
+AA und ILGA World nur verlinkt (ihre Bedingungen erlauben keine Übernahme). Pflegen: Workflow „Reisehinweise erzeugen“
+von Hand starten (`scripts/hinweise.mjs`, läuft auch bei Änderungen am Skript), Belege im Log prüfen, JSON aus dem Log
+übernehmen; Ausnahmen nach Prüfung in `OVERRIDE` im Skript, von Hand gepflegte Länder für „X“ in `xManual`.
+
 ## Eingebaut
 
 ### Einreise (vorab online)

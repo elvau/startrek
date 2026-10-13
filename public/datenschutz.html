@@ -125,9 +125,14 @@
   <li>gibt es nur mit Konto; sie liegen getrennt von allem anderen in Firestore und nur ihr könnt sie lesen,
     auch Mitreisende und Eingeladene nicht;</li>
   <li>werden nicht im Browser gespeichert (weder im localStorage noch im Zwischenspeicher), sondern erst geladen, wenn
-    ihr sie öffnet;</li>
-  <li>dienen unter „Wichtiges“ auf Wunsch zur Prüfung, ob ein Reisepass für die Reise lange genug gültig ist; diese Prüfung
+    ihr sie öffnet oder angemeldet „Wichtiges“ einer Reise öffnet, in der ihr selbst mitreist;</li>
+  <li>dienen unter „Wichtiges“ zur Prüfung, ob ein Reisepass für die Reise lange genug gültig ist; diese Prüfung
     läuft nur in eurem Browser, das Ablaufdatum landet nicht in der Reise und ist für Mitreisende nicht sichtbar;</li>
+  <li>ergeben unter „Wichtiges“ im Bereich „Nur für dich“ Hinweise zu den Reiseländern für Frauen, zum Geschlechtseintrag
+    „X“ und (nur mit eingeschaltetem Schalter) zu LGBTQ+, und zwar nur für euch selbst („Ich bin“). Die Länderdaten dafür
+    (<code>hinweise.json</code>, aus den britischen Reisehinweisen und Our World in Data) lädt die App von unserer Seite,
+    ohne dass dabei Angaben über euch übertragen werden; der Abgleich läuft nur in eurem Browser. Diese Hinweise werden
+    nicht in der Reise gespeichert (auch nicht als „gelesen“) und sind für Mitreisende nicht sichtbar;</li>
   <li>gehen nicht in Reisen, nicht an den Such-Dienst, nicht an die Anbieter, nicht an den KI-Planer und nicht in
     Fehlermeldungen;</li>
   <li>könnt ihr jederzeit je Person oder komplett löschen („Alle Buchungsdaten löschen“); beim Löschen einer Person

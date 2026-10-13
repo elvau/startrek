@@ -129,10 +129,16 @@
 <ul>
   <li>are only available with an account; they are stored separately from everything else in Firestore and only you
     can read them, not even fellow travellers or invited people;</li>
-  <li>are not stored in the browser (neither in localStorage nor in the cache) but only loaded when you open them;</li>
-  <li>can, on request, be used under “Important” to check whether a passport is valid long enough for the trip; this
+  <li>are not stored in the browser (neither in localStorage nor in the cache) but only loaded when you open them or,
+    while signed in, open “Important” for a trip you are travelling on yourself;</li>
+  <li>are used under “Important” to check whether a passport is valid long enough for the trip; this
     check runs only in your browser, the expiry date does not end up in the trip and is not visible to fellow
     travellers;</li>
+  <li>produce, under “Important” in the “Just for you” area, notes on the destination countries for women, on the sex
+    marker “X” and (only with the switch turned on) on LGBTQ+, only for yourself (“I am”). The country data for this
+    (<code>hinweise.json</code>, from the UK travel advice and Our World in Data) is loaded from our site without
+    sending any details about you; the matching runs only in your browser. These notes are not saved in the trip (not
+    even as “read”) and are not visible to fellow travellers;</li>
   <li>are not sent into trips, to the search service, to the providers, to the AI planner or into bug reports;</li>
   <li>can be deleted at any time per person or completely (“Delete all booking details”); deleting a person deletes
     them too.</li>

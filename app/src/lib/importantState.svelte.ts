@@ -1,7 +1,7 @@
 /*
  * „Wichtiges“ der aktuellen Reise: Bestimmungen zum Reiseland für die Bubble in der Menüleiste (Zähler, Popup), dazu
  * „Gut zu wissen“ (Früh buchen, besondere Orte) für das Kapitel Erlebnisse.
- * Lädt Einreise-Daten (visa.json) und Warnstufen (Such-Dienst) einmal, Orts- und Flughafendaten je Reise.
+ * Lädt Einreise-Daten (visa.json), persönliche Hinweise (hinweise.json) und Warnstufen (Such-Dienst) einmal, Orts- und Flughafendaten je Reise.
  */
 import { app } from "./store.svelte";
 import { dir } from "./directory.svelte";
@@ -18,6 +18,7 @@ import { bookAheadFor } from "./bookahead";
 import { importantPoints, isOpen, type PointKind } from "./important";
 import { docs } from "./traveldocs.svelte";
 import { cloud } from "./cloud/cloud.svelte";
+import { loadSafety, personalHints, type SafetyData } from "./personal";
 
 /** Bestimmungen: Warnstufen, Warnungen, Einreise, Grenze, Reisepass, dazu hohe Kautionen; Rest (Früh buchen, Orte) ist „Gut zu wissen“ */
 const RULES = new Set<PointKind>(["aa", "warn", "entry", "border", "pass", "deposit", "pet"]);
@@ -41,6 +42,9 @@ class ImportantState {
   closed = $derived(this.rules.filter(p => !isOpen(p, app.trip.done || {})));
   /** man selbst in dieser Reise („Ich bin“ im Personenverzeichnis) */
   meId = $derived(dir.me ? app.trip.travelers.find(x => x.personId === dir.me)?.id : undefined);
+  /** Hinweise für Frauen, Passeintrag „X“, LGBTQ+: nur für einen selbst, nur aus dem Konto, nie in der Reise (personal.ts) */
+  safety = $state<SafetyData | null>(null);
+  personal = $derived(this.meId && dir.me && docs.status === "ready" ? personalHints(this.safety, docs.map[dir.me], this.countries) : []);
 }
 
 export const imp = new ImportantState();
@@ -52,6 +56,7 @@ export function loadImportant() {
     loaded = true;
     void loadVisa().then(d => (imp.visa = d));
     void loadAdvice().then(m => (imp.advice = m));
+    void loadSafety().then(d => (imp.safety = d));
   }
   void ensureGeo(app.trip).catch(() => {});
   void ensureAirports().catch(() => {});

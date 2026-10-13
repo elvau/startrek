@@ -1,6 +1,7 @@
 /*
  * Konto einrichten (#160) gegen die Firebase-Emulatoren: Start von selbst beim ersten Öffnen, „Später“ merkt sich das;
- * angemeldet über das Kontomenü, KI-Text (Such-Dienst gemockt) füllt vor, sensible Angaben direkt, gespeichert.
+ * angemeldet über das Kontomenü, KI-Text (Such-Dienst gemockt) füllt vor, sensible Angaben direkt, gespeichert;
+ * danach persönliche Hinweise (#302) unter „Wichtiges“.
  * Start: npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/setup.mjs"
  */
 import { chromium } from "playwright";
@@ -131,6 +132,30 @@ try {
   if (!(await b.locator(".wz-b .chip.on", { hasText: "Polen" }).count())) fail("Staatsangehörigkeit nicht aus dem Konto");
   if ((await b.locator(".wz label", { hasText: "Vorname" }).locator("input").inputValue()) !== "Alex") fail("Name nicht wieder im Entwurf");
   log("Geschlecht und Staatsangehörigkeit im Konto (travelDocs), beim erneuten Öffnen wieder da");
+
+  // 3. „Nur für dich“ (#302): divers → Hinweis zum Passeintrag „X“ für Ägypten, nur im Popup, ohne „gelesen“, nichts in der Reise
+  await b.locator(".wz .x").click();
+  await b.route("**/hinweise.json", r => r.fulfill({ path: "../public/hinweise.json" }));
+  await b.evaluate(id => {
+    const t = { id: "eg", name: "Kairo", place: "Kairo", country: "Ägypten", from: "2027-03-01", to: "2027-03-08", tiers: {}, households: {}, items: [],
+      settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 }, travelers: [{ id: "a", name: "Alex", household: "Alex", personId: id }] };
+    localStorage.setItem("rk2-t:eg", JSON.stringify(t));
+    const ix = JSON.parse(localStorage.getItem("rk2-index") || "[]");
+    localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "eg", name: t.name, place: t.place, from: t.from, to: t.to, people: 1 }]));
+  }, d.people[0].id);
+  await b.reload();
+  await b.locator(".start .home-trip", { hasText: "Kairo" }).first().click();
+  await b.locator(".hero h1").waitFor();
+  await b.locator(".top .imp-btn").click();
+  const own = b.locator(".modal .imp [data-personal]");
+  await own.locator("[data-pers=x]").waitFor({ timeout: 15000 });
+  const ownText = await own.innerText();
+  if (!ownText.includes("Ägypten") || !ownText.includes("FCDO")) fail("Hinweis „X“ ohne Land bzw. Quelle: " + ownText);
+  if (await own.locator("[data-pers=lgbt], [data-pers=women]").count()) fail("Hinweise ohne passende Angaben");
+  if (await own.locator(".imp-persons").count()) fail("persönliche Hinweise mit „gelesen“");
+  const saved = await b.evaluate(() => Object.entries(localStorage).filter(([k]) => k.startsWith("rk2-")).map(([, v]) => v).join());
+  if (/xAny|pers\.|divers/.test(saved)) fail("persönliche Hinweise im Browser-Speicher bzw. in der Reise");
+  log("„Nur für dich“: Hinweis zum Passeintrag „X“ aus dem Konto, nur im Popup, nichts in der Reise");
 
   if (errors.length) fail("Seitenfehler: " + errors.join(" | "));
   console.log("\n✓ Konto einrichten in Ordnung");

@@ -6,6 +6,9 @@
    * Abgehakte sind minimiert und lassen sich wieder öffnen. Zähler in Rot (important.ts).
    * Reisepässe prüft die Seite nur, wenn die Buchungsdaten im Konto ohnehin geladen sind bzw. auf Knopfdruck; das Ablaufdatum
    * bleibt im Browser.
+   * „Nur für dich“ (#302): Hinweise für Frauen, Passeintrag „X“ und LGBTQ+ aus den eigenen Angaben im Konto (personal.ts).
+   * Dafür lädt das Popup die Buchungsdaten, wenn man angemeldet und selbst in der Reise ist; berechnet nur im Browser,
+   * ohne „gelesen“ (das stünde in der Reise), für Mitreisende nicht sichtbar.
    */
   import { locale, t, tn, type Key } from "../i18n/index.svelte";
   import { access, app, setDetailed } from "../store.svelte";
@@ -25,6 +28,8 @@
   import { showItem } from "./showItem";
   import { EES_LINKS, MIN_VALID, type MinValid } from "../borders";
   import { loadDocs } from "../traveldocs.svelte";
+  import { cloud } from "../cloud/cloud.svelte";
+  import { FCDO_LGBT_URL, ILGA_URL, OWID_URL, SOURCES, fcdoUrl, type PersonalHint } from "../personal";
 
   // gemeinsamer Stand mit der Bubble in der Menüleiste (importantState.svelte.ts)
   $effect(() => { void app.trip.id; loadImportant(); });
@@ -38,6 +43,8 @@
   const closed = $derived(points.filter(p => !isOpen(p, done)));
   const meId = $derived(imp.meId);
   const canCheck = $derived(imp.canCheck);
+  const personal = $derived(tips ? [] : imp.personal);
+  $effect(() => { if (!tips && cloud.user && imp.meId) void loadDocs(); });
   let more = $state(false);
   let unfolded = $state<Record<string, boolean>>({});
 
@@ -71,6 +78,22 @@
   const links = (p: Point) => (p.kind === "aa" ? [{ label: t("aa.link"), url: adviceUrl(p.advice!) }] : p.kind === "border" ? EES_LINKS : p.hint?.links || []);
   const isTask = (p: Point) => p.kind === "entry" || p.kind === "pass";
   const verb = (p: Point) => (isTask(p) ? t("imp.done") : t("imp.read"));
+
+  // nur für einen selbst: Titel, Text und Quellen je Hinweis
+  const PICON: Record<PersonalHint["kind"], string> = { women: "♀", x: "🪪", xAny: "🪪", lgbt: "🏳️‍🌈" };
+  const pTitle = (h: PersonalHint) => (h.kind === "xAny" ? t("pers.xAny.t") : `${flagOf(h.cc)} ${t(`pers.${h.kind}.t` as Key, { c: countryName(h.cc) })}`);
+  const pTexts = (h: PersonalHint): string[] =>
+    h.kind === "women" ? h.tags.map(x => t(`pers.women.${x}` as Key)) : h.kind === "lgbt" ? [t(`pers.lgbt.${h.level}` as Key)] : [t(h.kind === "x" ? "pers.x.x" : "pers.xAny.x")];
+  function pLinks(h: PersonalHint) {
+    const out: { label: string; url: string }[] = [];
+    const f = h.kind !== "xAny" ? fcdoUrl(imp.safety, h.cc) : undefined;
+    if (f) out.push({ label: t("pers.fcdo"), url: f });
+    const a = h.kind !== "xAny" ? imp.advice[h.cc] : undefined;
+    if (a) out.push({ label: t("aa.link"), url: adviceUrl(a) });
+    if (h.kind === "lgbt") out.push({ label: "Our World in Data", url: OWID_URL }, { label: "ILGA World", url: ILGA_URL });
+    if (h.kind === "lgbt" || h.kind === "xAny") out.push({ label: "LGBT+ (FCDO)", url: FCDO_LGBT_URL });
+    return out;
+  }
 
   // abhaken schreibt in die Reise (alle Mitreisenden sehen, wer was erledigt bzw. gelesen hat)
   function edit(fn: (d: NonNullable<typeof app.trip.done>) => void) {
@@ -211,6 +234,20 @@
       {#if !tips || closed.length}<button class="linkbtn imp-more" aria-expanded={more} onclick={() => (more = !more)}>{closed.length ? t("imp.doneN", { n: closed.length }) : t("imp.details")} {more ? "▴" : "▾"}</button>{/if}
     </div>
 
+    {#if personal.length}
+      <div class="imp-own" data-personal>
+        <div class="imp-own-h"><b>🔒 {t("pers.title")}</b> <span class="muted small">{t("pers.lead")}</span></div>
+        {#each personal as h (h.kind + ("cc" in h ? h.cc : ""))}
+          <article class="imp-card imp-pers" data-pers={h.kind}>
+            <div class="imp-head"><span class="imp-ic" aria-hidden="true">{PICON[h.kind]}</span><b>{pTitle(h)}</b></div>
+            {#each pTexts(h) as x (x)}<p>{x}</p>{/each}
+            <p class="imp-links">{#each pLinks(h) as l (l.url)}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}</p>
+          </article>
+        {/each}
+        <p class="muted small">{t("pers.source", { src: SOURCES, d: imp.safety?.asOf ? date(imp.safety.asOf) : "–" })}</p>
+      </div>
+    {/if}
+
     {#each open as p (p.key)}
       {#if isUrgent(p) || unfolded[p.key]}
         <article class="imp-card imp-{p.kind}" class:imp-hard={p.kind === "warn" || p.level === "warning"} data-key={p.key}>
@@ -265,6 +302,10 @@
   .imp-card { background: var(--paper, #fff); border-radius: 14px; padding: 10px 14px; box-shadow: var(--shadow); border-inline-start: 4px solid var(--warn, #d08a12); display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
   .imp-card p { margin: 0; }
   .imp-hard { border-inline-start-color: #d0342c; background: color-mix(in srgb, #d0342c 6%, var(--paper, #fff)); }
+  .imp-own { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 14px; border: 1px dashed var(--line); }
+  .imp-own > p { margin: 0; }
+  .imp-own-h { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-size: 14px; }
+  .imp-pers { border-inline-start-color: #8a5cc7; }
   .imp-place { border-inline-start-color: var(--c-plan, #3b6fd8); }
   .imp-pet { border-inline-start-color: var(--c-trav); }
   .imp-pass { border-inline-start-color: #d0342c; }
