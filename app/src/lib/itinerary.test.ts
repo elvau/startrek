@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayRange, itinerary, stations, unplanned } from "./itinerary";
+import { dayRange, dayRows, itinerary, stations, unplanned } from "./itinerary";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
 const L = (dir: "out" | "back" | "via", from: string, to: string, dep: string, arr: string) => ({ dir, from, to, dep, arr, carrier: "Sun Air" });
@@ -64,5 +64,12 @@ describe("Tagesplan", () => {
     expect(d1[0].who).toBeUndefined();
     t.travelers.push({ id: "d", name: "Dora", household: "Fuchs" });
     expect(itinerary(t)[0].entries.find(e => e.kind === "flight")!.who).toBe("Klein, Hase");
+  });
+  it("leere Tage als Lücke, aufgeklappte und Tage mit Überschrift wie Tage mit Inhalt (#331)", () => {
+    const day = (n: number, entries = 0, title?: string) => ({ date: `2027-06-0${n}`, n, place: "", moved: false, ...(title ? { title } : {}), entries: Array.from({ length: entries }, (_, k) => ({ key: `${n}${k}`, kind: "note" as const, text: "x", order: "1" })) });
+    const ds = [day(1, 2), day(2), day(3), day(4, 0, "Ruhetag"), day(5), day(6, 1)];
+    const show = (rs: ReturnType<typeof dayRows>) => rs.map(r => ("gap" in r ? `gap:${r.gap.map(d => d.n).join("-")}` : r.day.n));
+    expect(show(dayRows(ds))).toEqual([1, "gap:2-3", 4, "gap:5", 6]);
+    expect(show(dayRows(ds, new Set(["2027-06-02", "2027-06-03"])))).toEqual([1, 2, 3, 4, "gap:5", 6]);
   });
 });
