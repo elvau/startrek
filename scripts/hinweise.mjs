@@ -41,7 +41,8 @@ const ALIAS = {
   "st lucia": "LC", "saint lucia": "LC", "st vincent and the grenadines": "VC", "saint vincent and the grenadines": "VC",
   "sao tome and principe": "ST", "gambia": "GM", "the gambia": "GM", "bahamas": "BS", "the bahamas": "BS", "turkey": "TR",
   "turkiye": "TR", "north macedonia": "MK", "bosnia and herzegovina": "BA", "kyrgyzstan": "KG", "curacao": "CW",
-  "united arab emirates": "AE", "uae": "AE"
+  "united arab emirates": "AE", "uae": "AE", "china": "CN", "gibraltar": "GI", "reunion": "RE", "martinique": "MQ",
+  "guadeloupe": "GP", "french guiana": "GF", "mayotte": "YT"
 };
 const ccOf = name => ALIAS[norm(name)] || byName.get(norm(name));
 
@@ -91,10 +92,13 @@ const pick = (t, re, n = 2) => sentences(t).filter(s => re.test(s)).slice(0, n).
 const RE = {
   death: /death penalty|death sentence|executed|execution|capital punishment/i,
   illegal: /\b(illegal|criminal offence|criminalised|against the law|prison|imprison|punishable)/i,
-  notIllegal: /\b(not illegal|is legal|are legal|legal in|decriminali[sz]ed)/i,
-  restrict: /propaganda|extremis|cross-?dress|impersonat|gender expression|disguis|non-traditional|“?LGBT movement/i,
-  womenDress: /(wom[ae]n|female|headscarf|hijab|abaya|chador)/i,
-  guardian: /male guardian|guardian’?s? permission|husband’?s? permission|permission (from|of) (her|your) husband|exit permit from your husband|without a male (relative|companion|guardian)|accompanied by a male/i,
+  // Satz über gleichgeschlechtliche Handlungen, nicht über Diskriminierung und nicht verneint
+  acts: /same[- ]sex|homosexual|between men|sexual (acts|activity|relations)/i,
+  notIllegal: /\bnot\b|\bno longer\b|discriminat|decriminali[sz]/i,
+  restrict: /propaganda|extremis|cross-?dress|impersonat|gender expression|disguis|non-traditional|debauchery|public decency|indecency/i,
+  womenDress: /\b(wom[ae]n|female|females|headscarf|hijab|abaya|chador)\b/i,
+  dressRule: /\b(should|must|expected|cover|covered|avoid|required|offen[cs]e|forbidden|not allowed)\b/i,
+  guardian: /male guardian|guardian’?s? permission|husband’?s? permission|permission (from|of) (her|your) husband|exit permit from your husband|without a male (relative|companion|guardian)|accompanied by a male|accompanied by (their|her) husband|mahram/i,
   xMarker: /[“"‘']X[”"’'] (in the |as |on )|gender marker|sex marker|‘X’|non-binary|gender-neutral|sex field|gender field|neither male nor female/i
 };
 
@@ -117,14 +121,14 @@ for (const k of kids) {
   let lv = null;
   if (RE.death.test(lgCore)) lv = "death";
   else if (crime.has(cc)) lv = "crime";
-  else if (RE.illegal.test(lgCore) && !RE.notIllegal.test(lgCore)) { lv = "crime"; ev.push("LGBT: FCDO strafbar, Mignot nicht"); }
+  else if (sentences(lgCore).some(x => RE.acts.test(x) && RE.illegal.test(x) && !RE.notIllegal.test(x))) { lv = "crime"; ev.push("LGBT: FCDO strafbar, Mignot nicht"); }
   else if (RE.restrict.test(lgCore)) lv = "restrict";
   if (crime.has(cc) && lv !== "crime" && lv !== "death") ev.push("LGBT: Mignot strafbar");
   if (lv) { lgbt[cc] = lv; ev.push(...pick(lgCore, lv === "death" ? RE.death : lv === "restrict" ? RE.restrict : RE.illegal, 1).map(s => `LGBT ${lv}: ${s}`)); }
   // Frauen
   const tags = [];
   const dress = secs.filter(s => /dress/i.test(s.h)).map(s => s.t).join(" ");
-  const dressW = pick(dress, RE.womenDress, 1);
+  const dressW = sentences(dress).filter(x => RE.womenDress.test(x) && RE.dressRule.test(x)).slice(0, 1).map(x => x.slice(0, 220));
   if (dressW.length) { tags.push("dress"); ev.push(`dress: ${dressW[0]}`); }
   const all = secs.map(s => s.t).join(" ");
   const g = pick(all, RE.guardian, 1);
