@@ -94,13 +94,16 @@ const RE = {
   illegal: /\b(illegal|criminal offence|criminalised|against the law|prison|imprison|punishable)/i,
   // Satz über gleichgeschlechtliche Handlungen, nicht über Diskriminierung und nicht verneint
   acts: /same[- ]sex|homosexual|between men|sexual (acts|activity|relations)/i,
-  notIllegal: /\bnot\b|\bno longer\b|discriminat|decriminali[sz]/i,
+  notIllegal: /\bnot\b|\bno longer\b|discriminat|decriminali[sz]|marriage|civil union|adoption|partnership/i,
   restrict: /propaganda|extremis|cross-?dress|impersonat|gender expression|disguis|non-traditional|debauchery|public decency|indecency/i,
   womenDress: /\b(wom[ae]n|female|females|headscarf|hijab|abaya|chador)\b/i,
   dressRule: /\b(should|must|expected|cover|covered|avoid|required|offen[cs]e|forbidden|not allowed)\b/i,
   guardian: /male guardian|guardian’?s? permission|husband’?s? permission|permission (from|of) (her|your) husband|exit permit from your husband|without a male (relative|companion|guardian)|accompanied by a male|accompanied by (their|her) husband|mahram/i,
   xMarker: /[“"‘']X[”"’'] (in the |as |on )|gender marker|sex marker|‘X’|non-binary|gender-neutral|sex field|gender field|neither male nor female/i
 };
+
+// Ausnahmen nach Prüfung der Belege (null = kein Eintrag)
+const OVERRIDE = { IL: null }; // Israel: der Abschnitt nennt die Strafbarkeit in Gaza (steht bei PS)
 
 const idx = await (await get(FCDO)).json();
 const kids = idx.links?.children || [];
@@ -121,7 +124,12 @@ for (const k of kids) {
   let lv = null;
   if (RE.death.test(lgCore)) lv = "death";
   else if (crime.has(cc)) lv = "crime";
-  else if (sentences(lgCore).some(x => RE.acts.test(x) && RE.illegal.test(x) && !RE.notIllegal.test(x))) { lv = "crime"; ev.push("LGBT: FCDO strafbar, Mignot nicht"); }
+  else {
+    const hit = sentences(lgCore).find(x => RE.acts.test(x) && RE.illegal.test(x) && !RE.notIllegal.test(x));
+    if (hit) { lv = "crime"; ev.push(`LGBT: FCDO strafbar, Mignot nicht: ${hit.slice(0, 220)}`); }
+  }
+  // von Hand geprüft: FCDO-Text betrifft ein anderes Gebiet
+  if (cc in OVERRIDE) { ev.push(`LGBT: von Hand ${OVERRIDE[cc]} statt ${lv}`); lv = OVERRIDE[cc]; }
   else if (RE.restrict.test(lgCore)) lv = "restrict";
   if (crime.has(cc) && lv !== "crime" && lv !== "death") ev.push("LGBT: Mignot strafbar");
   if (lv) { lgbt[cc] = lv; ev.push(...pick(lgCore, lv === "death" ? RE.death : lv === "restrict" ? RE.restrict : RE.illegal, 1).map(s => `LGBT ${lv}: ${s}`)); }
