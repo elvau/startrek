@@ -125,8 +125,9 @@
   // Zusammenfassungen der eingeklappten Abschnitte
   const outL = $derived(opt?.legs?.find(l => l.dir === "out"));
   const backL = $derived(opt?.legs?.find(l => l.dir === "back"));
-  const legSum = (l: FlightLeg | undefined, w: string) => l?.dep ? `${w} ${dayShort(l.dep)} ${time(l.dep)} ${l.from}${arrow()}${l.to}` : "";
-  const timesSum = $derived(main ? t("ie.like", { name: main.name }) : [legSum(outL, t("fl.out")), legSum(backL, t("fl.back"))].filter(Boolean).join(" · ") || t("ie.open"));
+  const legSum = (l: FlightLeg | undefined, w: string) => l?.dep ? `${w} ${dayShort(l.dep)} ${time(l.dep)} ${l.from}${arrow()}${l.to}`.trim() : "";
+  const viaL = $derived(opt?.legs?.filter(l => l.dir === "via") ?? []);
+  const timesSum = $derived(main ? t("ie.like", { name: main.name }) : [legSum(outL, t("fl.out")), ...viaL.map(l => legSum(l, "")), legSum(backL, t("fl.back"))].filter(Boolean).join(" · ") || t("ie.open"));
   const priceSum = $derived(`${eur(net)}${item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""}`);
   const whoSum = $derived(all ? t("all") : people.filter(p => item.participants!.includes(p.id)).map(p => p.name).join(", "));
   const paySum = $derived(paidSum ? t("ie.paidOf", { paid: eur(paidSum), total: eur(net) }) : t("ie.paidNone"));
