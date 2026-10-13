@@ -163,7 +163,12 @@
   Ort, um Abflughäfen in der Nähe vorzuschlagen. Diesen schätzt Cloudflare aus eurer IP-Adresse (Land, Ort, Koordinaten
   auf etwa 10 km gerundet). Der Such-Dienst gibt ihn nur an eure App zurück und speichert nichts davon; die App hält ihn
   nur im Speicher, bis die Seite geschlossen wird (Art. 6 Abs. 1 lit. f DSGVO, berechtigtes Interesse an passenden
-  Vorschlägen). Für die Anfahrt zum Flughafen nutzt die App weiter nur die Postleitzahl, die ihr selbst eintragt.
+  Vorschlägen). Für die Anfahrt zum Flughafen nutzt die App weiter nur den Wohnort (Postleitzahl oder Ort), den ihr selbst eintragt.
+</p>
+<p>
+  Für Schulferien und Feiertage fragt die App den Such-Dienst je Land (Ländercode wie „AT“, für Wohn- und Reiseland),
+  ohne weitere Angaben über euch. Der Such-Dienst holt die Termine bei der OpenHolidays API (openholidaysapi.org) und
+  speichert sie einige Tage zwischen. Welche Region (z. B. Bundesland) ihr gewählt habt, wertet nur eure App aus.
 </p>
 <ul>
   <li>Kiwi.com s.r.o., Palachovo náměstí 797/4, 625 00 Brno, Tschechien (Flüge)</li>
@@ -192,7 +197,8 @@
 <h2>7. KI-Planer (Google Gemini, Beta)</h2>
 <p>
   Nutzt ihr den KI-Planer, schickt die App euren Reisewunsch (den Text, den ihr eingebt), die Anzahl und das Alter
-  der Reisenden, die Flughäfen in der Nähe eures Wohnorts, eure Vorlieben (ohne Namen, siehe Abschnitt 5) sowie – falls
+  der Reisenden, die Flughäfen in der Nähe eures Wohnorts, eure Vorlieben (ohne Namen, siehe Abschnitt 5; bei Schulferien
+  die Termine der nächsten zwölf Monate) sowie – falls
   schon eingetragen – Ziel, Reisedaten und die Tage, an denen jemand nicht kann (nur die Daten, ohne Namen)
   an meinen Such-Dienst. Dieser prüft eure Anmeldung, zählt die Anfragen pro Tag (Nutzerkennung und Datum, nach
   zwei Tagen gelöscht) und gibt Wunsch und Suchergebnisse an Google Gemini weiter

@@ -9,7 +9,7 @@ import { activeOption } from "./calc";
 import { addDays, okDate, stopsOf } from "./calc/travel";
 import { hhKey, isActive, type Item, type NoteKind, type Trip } from "./model";
 
-export type EntryKind = NoteKind | "flight" | "stay" | "event" | "item" | "drive" | "ferry";
+export type EntryKind = NoteKind | "flight" | "stay" | "event" | "item" | "drive" | "ferry" | "holiday";
 export interface DayEntry {
   key: string;
   kind: EntryKind;
@@ -38,7 +38,7 @@ export interface Day {
   entries: DayEntry[];
 }
 
-export const KIND_ICON: Record<EntryKind, string> = { flight: "✈️", stay: "🛏", event: "🎟", item: "📌", see: "🏛", food: "🍽", fun: "🎢", rest: "😌", move: "🚆", note: "📝", drive: "🚗", ferry: "⛴" };
+export const KIND_ICON: Record<EntryKind, string> = { flight: "✈️", stay: "🛏", event: "🎟", item: "📌", see: "🏛", food: "🍽", fun: "🎢", rest: "😌", move: "🚆", note: "📝", drive: "🚗", ferry: "⛴", holiday: "🎉" };
 export const NOTE_KINDS: NoteKind[] = ["see", "food", "fun", "rest", "move", "note"];
 
 const hm = (iso?: string) => (iso && iso.length >= 16 ? iso.slice(11, 16) : undefined);

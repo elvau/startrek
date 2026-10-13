@@ -1,6 +1,6 @@
 <script lang="ts">
   import { netMessage, isNetworkError } from "../neterror";
-  import { arrow, t, tn, type Key } from "../i18n/index.svelte";
+  import { arrow, i18n, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * KI-Assistent (Beta) als Chat unten rechts: Wunsch schreiben, nachschärfen („lieber im Juni“, „günstiger“),
    * Vorschläge direkt übernehmen. Frühere Wünsche gehen als Zusammenhang mit, damit Nachfragen funktionieren.
@@ -23,6 +23,7 @@
   import { dir } from "../directory.svelte";
   import { agentPrefs, myHome, prefsFor } from "../prefs";
   import { agentChat, openChat } from "../agent/open.svelte";
+  import { upcomingSchool } from "../holidaysApp.svelte";
   import { bookingPrice, editCount, flightTotal, type AgentEdit, type AgentTrip } from "../agent/types";
   import type { Trip } from "../model";
   import AiMark from "./AiMark.svelte";
@@ -94,7 +95,10 @@
     try {
       const b = base();
       const withTrip = onTrip, tripId = app.trip.id, home = app.home;
-      const res = await askAgent(agentRequest(b, prompt, asked, agentPrefs(prefsFor(app.home ? null : b, dir)), withTrip), ctrl.signal);
+      const pf = agentPrefs(prefsFor(app.home ? null : b, dir));
+      // Schulferien laut Vorlieben als echte Termine (#163); ohne Such-Dienst bzw. Daten bleibt es bei der Region
+      const school = pf?.holidays ? await upcomingSchool(pf.holidays, new Date().toISOString().slice(0, 10), i18n.lang) : [];
+      const res = await askAgent({ ...agentRequest(b, prompt, asked, pf, withTrip), ...(school.length ? { schoolHolidays: school } : {}) }, ctrl.signal);
       remaining = res.remaining ?? remaining;
       msgs.push(res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
         : res.edit ? { me: false, text: res.edit.reply, ...(editCount(res.edit) ? { edit: res.edit, tripId, state: "open" as const } : {}) }

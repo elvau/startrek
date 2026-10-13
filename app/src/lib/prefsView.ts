@@ -4,6 +4,7 @@
  */
 import { t, tn, i18n, type Key } from "./i18n/index.svelte";
 import { mergePrefs } from "./prefs";
+import { holidayText, loaded } from "./holidaysApp.svelte";
 import type { Prefs } from "./model";
 
 export type CardId = "flights" | "stay" | "style" | "times" | "avoid" | "special" | "note";
@@ -73,7 +74,7 @@ export function summary(p: Prefs, base?: Prefs, cname: (k: string) => string = k
   add("board", "stay", eff.board && t(`board.${eff.board}` as Key));
   for (const s of eff.styles || []) out.push({ text: t(`prefs.s.${s}` as Key), key: "styles", card: "style", ...(own("styles") ? { group: true } : {}) });
   add("budget", "style", eff.budget && t("prefs.sum.budget", { b: t(`prefs.b.${eff.budget}` as Key) }));
-  add("holidays", "times", eff.holidays && t("prefs.sum.holidays", { s: STATE_NAMES[eff.holidays] || eff.holidays }));
+  add("holidays", "times", eff.holidays && t("prefs.sum.holidays", { s: holidayText(eff.holidays, loaded.regions, i18n.lang) }));
   add("months", "times", eff.months?.length && monthsText(eff.months));
   const nmin = eff.nightsMin, nmax = eff.nightsMax;
   add(own("nightsMin") ? "nightsMin" : "nightsMax", "times", (nmin || nmax) && (nmin && nmax ? t("prefs.sum.nights", { a: nmin, b: nmax }) : tn("n.nights", (nmin || nmax)!)));

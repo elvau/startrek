@@ -113,12 +113,15 @@ try {
   if ((await b.locator(".wz-aps .chip.on").allTextContents()).join() !== "DUS") fail("Abflughafen nicht aus dem Text");
   await b.locator(".wz-aps .chip", { hasText: "CGN" }).click();
   await b.locator(".wz-skip").click();
-  if ((await b.locator(".wz-hol").inputValue()) !== "NW") fail("Ferien nicht aus dem Text");
+  if ((await b.locator(".wz-hol .hol-region").inputValue()) !== "DE-NW") fail("Ferien nicht aus dem Text");
+  // Ferien je Land (#163): Österreich, Wien
+  await b.locator(".wz-hol .hol-cc").selectOption("AT");
+  await b.locator(".wz-hol .hol-region").selectOption("AT-WI");
   await b.locator(".wz-next").click();
   if (!(await b.locator(".wz-pet").isChecked())) fail("Haustier nicht aus dem Text");
   await b.locator(".wz-next").click();
   const sum = await b.locator(".wz-sum").textContent();
-  for (const x of ["Alex Klein", "Polen", "40210 Düsseldorf", "über 5 Jahre", "Familie", "Sam", "Mia", "Strand", "Nordrhein-Westfalen", "Haustier"]) if (!sum.includes(x)) fail(`Zusammenfassung ohne „${x}“: ${sum}`);
+  for (const x of ["Alex Klein", "Polen", "40210 Düsseldorf", "über 5 Jahre", "Familie", "Sam", "Mia", "Strand", "Österreich · Wien", "Haustier"]) if (!sum.includes(x)) fail(`Zusammenfassung ohne „${x}“: ${sum}`);
   await b.locator(".wz-done").click();
   await until(async () => !(await b.locator(".wz").count()), "Assistent zu");
   log("angemeldet: KI-Text vorbefüllt, sensible Angaben direkt, Zusammenfassung stimmt");

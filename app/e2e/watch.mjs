@@ -68,6 +68,13 @@ try {
   const asked = { flights: [], stays: [] };
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
   const leg = (from, to, dep, arr) => ({ from, to, dep, arr, minutes: 150, stops: 0, route: [from, to], carriers: ["Sun Air"], flights: ["SA1"] });
+  // Feiertage (#163, Such-Dienst /holidays): Spanien Sa. 08.05.2027 im Reiseland, Deutschland Fr. 07.05.2027 zuhause
+  await p.route("https://flights.test/holidays?**", r => {
+    const cc = (r.request().url().match(/[?&]cc=([A-Z]{2})/) || [])[1];
+    const day = (d, n) => ({ from: d, to: d, n: { de: n, en: n }, nationwide: true });
+    r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" },
+      body: JSON.stringify({ school: [], public: cc === "ES" ? [day("2027-05-08", "Testfeiertag Spanien")] : cc === "DE" ? [day("2027-05-07", "Testfeiertag Zuhause")] : [] }) });
+  });
   await p.route("https://flights.test/flights/search", async r => {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
     asked.flights.push(JSON.parse(r.request().postData()));
@@ -215,6 +222,10 @@ try {
   const gap = p.locator("#plan .dp-gap");
   if ((await gap.innerText()).trim().replace(/\s*\+$/, "") !== "Tag 3 ohne Einträge") fail("Lücke: " + (await gap.innerText()));
   if (!(await p.locator("#plan .dp-open").innerText()).includes("1 Posten noch ohne Tag")) fail("Hinweis auf Posten ohne Tag fehlt");
+  // Feiertage (#163): im Reiseland als Eintrag am Tag, zuhause als Hinweis auf einen Urlaubstag weniger, mit Quelle
+  await until(async () => (await days.nth(1).innerText()).includes("Feiertag: Testfeiertag Spanien"), "Feiertag im Reiseland an Tag 2");
+  if (!(await p.locator("#plan .dp-homehol").innerText()).includes("Testfeiertag Zuhause")) fail("Hinweis auf Feiertag zuhause fehlt");
+  if (!(await p.locator("#plan .dp-holsrc").innerText()).includes("OpenHolidays")) fail("Quelle der Feiertage fehlt");
   const d1 = await days.nth(0).innerText();
   if (!d1.includes("DUS → PMI") || !d1.includes("08:00") || !d1.includes("Check-in")) fail("Tag 1: " + d1);
   if (!(await days.nth(2).innerText()).includes("PMI → DUS")) fail("Rückflug nicht am letzten Tag");
@@ -240,7 +251,7 @@ try {
   await p.locator("#plan .dp-rbtn").click();
   await p.locator("#plan .rmap .rm-play").waitFor();
   await p.locator("#plan .dp-rbtn").click();
-  log("Tagesplan: leerer Tag 3 als Lücke mit „+“, Flug und Check-in automatisch, „Abendessen am Hafen“ 20:00, Ruhetag, Bootstour an Tag 2; Routenvorschau, Karte mit Abspielen, Bild und Video");
+  log("Tagesplan: Feiertag im Reiseland an Tag 2, Feiertag zuhause als Hinweis; leerer Tag 3 als Lücke mit „+“, Flug und Check-in automatisch, „Abendessen am Hafen“ 20:00, Ruhetag, Bootstour an Tag 2; Routenvorschau, Karte mit Abspielen, Bild und Video");
   if (await p.locator("#transport .ground").count()) fail("Palma ist kein nahes Ziel");
 
   // nahes Ziel: Bahn, Fernbus, Auto, Reisebus mit Richtwerten; bahn.de vorbefüllt; Reisebus als Posten
