@@ -344,7 +344,6 @@
         {#if o.url}<ExtLink cls="btn sm" href={o.url} gate name={o.sourceName}>{t("search.atProvider")} ↗</ExtLink>{/if}
         {#if hasCoords(o)}<button type="button" class="btn sm st-onmap" onclick={() => onMap(o)}>🗺 {t("map.onMap")}</button>{/if}
         {#if mapLink(o)}<a class="btn sm st-gmap" href={mapLink(o)} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
-        <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
       </div>
     </div>
   </article>
