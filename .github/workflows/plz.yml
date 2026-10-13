@@ -1,13 +1,13 @@
 name: Postleitzahlen erzeugen
-# Postleitzahlen europäischer Länder aus GeoNames (scripts/plz.mjs, #163). Ergebnis als Artefakt „plz“: prüfen und nach
-# app/public/plz/ übernehmen. Läuft von Hand und bei Änderungen am Skript.
+# Postleitzahlen europäischer Länder aus GeoNames (scripts/plz.mjs, #163). Ergebnis auf dem Hilfs-Branch „daten/plz“
+# (nur app/public/plz/): prüfen und von dort in den Arbeits-Branch übernehmen. Läuft von Hand und bei Änderungen am Skript.
 on:
   workflow_dispatch:
   push:
     branches-ignore: [main, pre-release]
     paths: [scripts/plz.mjs, .github/workflows/plz.yml]
 permissions:
-  contents: read
+  contents: write
 jobs:
   plz:
     runs-on: ubuntu-latest
@@ -24,7 +24,11 @@ jobs:
           done
           ls
       - run: node scripts/plz.mjs /tmp/zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: plz
-          path: app/public/plz/
+      - name: Auf daten/plz ablegen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B daten/plz
+          git add app/public/plz
+          git commit -qm "Postleitzahlen aus GeoNames (scripts/plz.mjs)"
+          git push -qf origin daten/plz
