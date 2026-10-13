@@ -12,6 +12,21 @@ Die KI sucht über unsere Flug- und Unterkunftssuche und schlägt 2–3 Reisen v
    Gemini nennt nur Kennungen von Angeboten; die echten Angebote hängt der Such-Dienst an. Erfundene Kennungen fallen weg.
 4. Grenzen je Anfrage: 8 Runden, 4 Flugsuchen, 3 Unterkunftssuchen, 3 Vorschläge. Personen kommen aus der App, nicht von der KI.
 
+## Kontexte
+
+Ein Chat für alles; die KI erkennt aus der Nachricht, worum es geht (`contextLines` in `agent.ts`):
+- **Neue Reise** (Startseite): suchen und 2–3 Vorschläge (`propose_trips`), oder nur antworten (`answer`).
+- **Eventsuche**: `search_events` (Ticketmaster, football-data.org, Sportkalender über den Such-Dienst, höchstens 2 je
+  Anfrage); Vorschläge um den Termin herum mit `eventIds`, in einer offenen Reise `events` in `update_trip`. Übernommen
+  werden nur echte Events, als Posten unter „Erlebnisse“ (`eventItem`).
+- **Diese Reise** (offene Reise): wie bisher `update_trip`.
+- **Vorlieben**: `suggest_prefs` mit nur den genannten Feldern (geprüft wie bei der Kontoeinrichtung, `prefsFromAi`);
+  der Chat zeigt eine Karte „Vorlieben ändern“, gespeichert wird erst mit *Übernehmen* (`withSuggestion`: gesperrte
+  Länder kommen dazu, sonst ersetzt).
+
+Die Antwort nennt den Kontext (`context`), der Chip oben im Chat zeigt ihn. Über den Chip lässt er sich festlegen
+(`focus` in der Anfrage, „The user chose the context …“).
+
 ## Konto einrichten (#160)
 
 Der Assistent „Konto einrichten“ (`app/src/lib/ui/SetupWizard.svelte`; nach der Anmeldung einmal je Konto, sonst über „Ersteinrichtung neu starten“ im Kontomenü bzw. in den Vorlieben, #330) kann aus
