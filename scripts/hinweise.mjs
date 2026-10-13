@@ -103,7 +103,10 @@ const RE = {
 };
 
 // Ausnahmen nach Prüfung der Belege (null = kein Eintrag)
-const OVERRIDE = { IL: null }; // Israel: der Abschnitt nennt die Strafbarkeit in Gaza (steht bei PS)
+const OVERRIDE = {
+  IL: null, // Israel: der Abschnitt nennt die Strafbarkeit in Gaza (steht bei PS)
+  EG: "restrict" // Ägypten: nicht ausdrücklich strafbar, Verfolgung über „debauchery“-Gesetze; Treffer für „strafbar“ betraf soziale Medien
+};
 
 const idx = await (await get(FCDO)).json();
 const kids = idx.links?.children || [];

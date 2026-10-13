@@ -1,6 +1,6 @@
 name: Reisehinweise erzeugen
 # Hinweise für Frauen, Passeintrag „X“ und LGBTQ+ aus offenen Quellen (scripts/hinweise.mjs). Ergebnis nur als
-# Vorschlag im Log und als Artefakt: Einstufung prüfen, dann public/hinweise.json von Hand übernehmen.
+# Vorschlag im Log (Belege je Land, am Ende das JSON): Einstufung prüfen, dann public/hinweise.json von Hand übernehmen.
 on:
   workflow_dispatch:
   push:

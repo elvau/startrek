@@ -138,13 +138,14 @@ try {
   await b.route("**/hinweise.json", r => r.fulfill({ path: "../public/hinweise.json" }));
   await b.evaluate(id => {
     const t = { id: "eg", name: "Kairo", place: "Kairo", country: "Ägypten", from: "2027-03-01", to: "2027-03-08", tiers: {}, households: {}, items: [],
-      settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 }, travelers: [{ id: "a", name: "Alex", personId: id }] };
+      settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 }, travelers: [{ id: "a", name: "Alex", household: "Alex", personId: id }] };
     localStorage.setItem("rk2-t:eg", JSON.stringify(t));
     const ix = JSON.parse(localStorage.getItem("rk2-index") || "[]");
     localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "eg", name: t.name, place: t.place, from: t.from, to: t.to, people: 1 }]));
-    localStorage.setItem("rk2-current", "eg");
   }, d.people[0].id);
   await b.reload();
+  await b.locator(".start .home-trip", { hasText: "Kairo" }).first().click();
+  await b.locator(".hero h1").waitFor();
   await b.locator(".top .imp-btn").click();
   const own = b.locator(".modal .imp [data-personal]");
   await own.locator("[data-pers=x]").waitFor({ timeout: 15000 });
