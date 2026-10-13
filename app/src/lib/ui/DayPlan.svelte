@@ -2,11 +2,13 @@
   /*
    * Tagesplan: Tag für Tag, was passiert. Flüge, Unterkünfte, Event und Posten mit Tag kommen automatisch dazu,
    * eigene Einträge („Abendessen“, „Ruhetag“, „Zug nach Dubrovnik“) und eine Überschrift je Tag trägt man hier ein.
+   * Leere Tage stehen nur als schmale Zeile da (#331); über „+“ aufklappen. Am „+“ eines Tages lassen sich Posten ohne Tag
+   * zuordnen oder eigene Einträge mit Uhrzeit anlegen.
    */
-  import { autoName, locale, t } from "../i18n/index.svelte";
+  import { autoName, locale, t, tn } from "../i18n/index.svelte";
   import { access, app } from "../store.svelte";
   import { uid, type NoteKind } from "../model";
-  import { itinerary, KIND_ICON, NOTE_KINDS, unplanned, type Day } from "../itinerary";
+  import { dayRows, itinerary, KIND_ICON, NOTE_KINDS, unplanned, type Day } from "../itinerary";
   import { showItem } from "./showItem";
   import { range } from "../format";
   import { tripRoute } from "../routeApp";
@@ -43,6 +45,10 @@
   let mapOpen = $state(false);
   const sub = $derived([app.trip.place, app.trip.from ? range(app.trip.from, app.trip.to || app.trip.from) : ""].filter(Boolean).join(" · "));
   const open = $derived(unplanned(app.trip));
+  // aufgeklappte leere Tage (nur in dieser Ansicht)
+  let opened = $state<string[]>([]);
+  const rows = $derived(dayRows(days, new Set(opened)));
+  function openGap(gap: Day[]) { opened = [...opened, ...gap.map(d => d.date)]; startAdd(gap[0].date); }
   const wd = (d: string) => new Intl.DateTimeFormat(locale(), { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(d + "T00:00:00Z"));
 
   // Eintrag hinzufügen: ein offenes Formular zur Zeit
@@ -81,6 +87,7 @@
   function plan(id: string, d: string) {
     const it = app.trip.items.find(i => i.id === id);
     if (it) { if (d) it.day = d; else delete it.day; }
+    adding = null;
   }
   const go = (id?: string) => { if (id) showItem(id); };
   const hint = (day: Day) => day.title || day.auto || "";
@@ -99,22 +106,16 @@
 {:else}
   <!-- Kalender-Export: Tagesplan mit Flügen, Check-in/-out und Einträgen (Ortszeiten) -->
   <p class="dp-cal small"><a class="btn sm" href={icsHref(toIcs(planEvents(app.trip, days), app.trip.name || app.trip.place))} download={icsName(app.trip.name || app.trip.place)}>📅 {t("cal.plan")}</a> <span class="muted">{t("cal.planNote")}</span></p>
-  {#if open.length && !access.readonly}
-    <div class="dp-open card" use:reveal>
-      <span class="dlabel">{t("day.unplanned")}</span>
-      <p class="muted small">{t("day.unplannedHint")}</p>
-      {#each open as it (it.id)}
-        <label class="dp-o"><span>{autoName(it.name)}</span>
-          <select value="" onchange={e => plan(it.id, e.currentTarget.value)} aria-label={t("day.pickDay", { name: autoName(it.name) })}>
-            <option value="">{t("day.pick")}</option>
-            {#each days as d (d.date)}<option value={d.date}>{t("day.n", { n: d.n })} · {wd(d.date)}</option>{/each}
-          </select>
-        </label>
-      {/each}
-    </div>
-  {/if}
+  {#if open.length && !access.readonly}<p class="muted small dp-open">📌 {tn("day.unplannedN", open.length)}</p>{/if}
   <ol class="dp" use:reveal>
-    {#each days as day (day.date)}
+    {#each rows as r ("gap" in r ? `gap:${r.gap[0].date}` : r.day.date)}
+      {#if "gap" in r}
+        <li class="dp-gap">
+          <span class="muted small">{r.gap.length === 1 ? t("day.gapOne", { n: r.gap[0].n }) : t("day.gapMany", { a: r.gap[0].n, b: r.gap.at(-1)!.n })}</span>
+          {#if !access.readonly}<button class="linkbtn dp-gap-add" aria-label={t("day.openGap")} title={t("day.openGap")} onclick={() => openGap(r.gap)}>+</button>{/if}
+        </li>
+      {:else}
+      {@const day = r.day}
       <li class="dp-day" class:moved={day.moved}>
         <div class="dp-h">
           <span class="dp-n">{t("day.n", { n: day.n })}</span>
@@ -141,6 +142,11 @@
         {#if !access.readonly}
           {#if adding === day.date}
             <form class="dp-add" onsubmit={add}>
+              {#if open.length}
+                <div class="dp-un"><span class="small muted">{t("day.unplanned")}:</span>
+                  {#each open as it (it.id)}<button type="button" class="chip sm dp-assign" onclick={() => plan(it.id, day.date)}>📌 {autoName(it.name)}</button>{/each}
+                </div>
+              {/if}
               <div class="chips" role="radiogroup" aria-label={t("day.kind")}>
                 {#each NOTE_KINDS as k (k)}<button type="button" role="radio" aria-checked={kind === k} class="chip sm" class:on={kind === k} onclick={() => (kind = k)}>{KIND_ICON[k]} {t(`day.k.${k}`)}</button>{/each}
               </div>
@@ -157,6 +163,7 @@
           {/if}
         {/if}
       </li>
+      {/if}
     {/each}
   </ol>
 {/if}
@@ -190,9 +197,9 @@
   .dp-text { flex: 1 1 180px; min-width: 0; }
   .dp-to { flex: 0 1 140px; min-width: 0; }
   .dp-time { width: 110px; }
-  .dp-open { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; margin-bottom: 12px; border-inline-start: 4px solid var(--c-attractions); }
-  .dp-open p { margin: -4px 0 2px; }
-  .dp-o { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 14px; font-weight: 600; flex-wrap: wrap; }
-  .dp-o select { max-width: 60%; font-size: 13.5px; padding-top: 6px; padding-bottom: 6px; }
+  .dp-open { margin: 0 0 10px; }
+  .dp-gap { display: flex; align-items: center; gap: 8px; padding: 2px 16px; border-inline-start: 4px dashed var(--line); margin-inline-start: 0; }
+  .dp-gap-add { font-size: 18px; font-weight: 700; padding: 0 6px; }
+  .dp-un { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .dp-cal { margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 </style>
