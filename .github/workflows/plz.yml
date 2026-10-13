@@ -1,0 +1,30 @@
+name: Postleitzahlen erzeugen
+# Postleitzahlen europäischer Länder aus GeoNames (scripts/plz.mjs, #163). Ergebnis als Artefakt „plz“: prüfen und nach
+# app/public/plz/ übernehmen. Läuft von Hand und bei Änderungen am Skript.
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main, pre-release]
+    paths: [scripts/plz.mjs, .github/workflows/plz.yml]
+permissions:
+  contents: read
+jobs:
+  plz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: GeoNames laden
+        run: |
+          mkdir -p /tmp/zip && cd /tmp/zip
+          for cc in $(grep "^export const EUROPE" "$GITHUB_WORKSPACE/scripts/plz.mjs" | grep -o '"[A-Z][A-Z]"' | tr -d '"'); do
+            curl -sfL -o "$cc.zip" "https://download.geonames.org/export/zip/$cc.zip" && unzip -oq "$cc.zip" "$cc.txt" || echo "$cc fehlt"
+          done
+          ls
+      - run: node scripts/plz.mjs /tmp/zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plz
+          path: app/public/plz/
