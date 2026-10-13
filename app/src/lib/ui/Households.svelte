@@ -9,7 +9,8 @@
   import { eur } from "../calc";
   import { presences } from "../calc";
   import { dateDE } from "../format";
-  import { loadPlz, suggest, type Place } from "../plz";
+  import { homeText, type Home } from "../home";
+  import HomeInput from "./HomeInput.svelte";
   import { hhFocus } from "./hhFocus.svelte";
   import { flashEl } from "./showItem";
   import { untrack } from "svelte";
@@ -17,8 +18,6 @@
   const names = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))]);
   const pres = $derived(presences(app.trip));
   let open = $state<string | null>(null);
-  let plz = $state<Map<string, Place> | null>(null);
-  let q = $state("");
 
   function hh(name: string): Household {
     app.trip.households ||= {};
@@ -28,8 +27,6 @@
     if (access.readonly) return;
     open = open === name ? null : name;
     if (open) hh(name);
-    q = app.trip.households?.[name]?.plz || "";
-    if (open && !plz) loadPlz().then(m => (plz = m)).catch(() => {});
   }
   // Sprung von der Anfahrt am Flug (#243): Familie aufklappen, hinscrollen, aufleuchten
   $effect(() => {
@@ -41,16 +38,12 @@
       setTimeout(() => flashEl([...document.querySelectorAll<HTMLElement>(".hh")].find(x => x.dataset.hh === name)), 60);
     });
   });
-  function pick(name: string, code: string, p: Place) {
+  function setHome(name: string, x: Home) {
     const h = hh(name);
-    h.plz = code; h.geo = { lat: p.lat, lon: p.lon, ort: p.ort };
-    q = code;
+    h.plz = x.plz; h.geo = { lat: x.lat, lon: x.lon, ort: x.ort };
+    if (x.cc !== "DE") h.cc = x.cc; else delete h.cc;
   }
-  function typed(name: string, v: string) {
-    q = v;
-    if (/^\d{5}$/.test(v.trim()) && plz?.get(v.trim())) pick(name, v.trim(), plz.get(v.trim())!);
-  }
-  const sugg = $derived(plz && open && !/^\d{5}$/.test(q.trim()) ? suggest(plz, q) : []);
+  function clearHome(name: string) { const h = hh(name); delete h.plz; delete h.geo; delete h.cc; }
 
   function members(name: string) { return app.trip.travelers.filter(t => isActive(t) && hhKey(t) === name); }
   function presText(name: string) {
@@ -63,7 +56,7 @@
   function accessText(name: string) {
     const h = app.trip.households?.[name];
     if (h?.mode === "with" && h.link) return t("hh.ridesWith", { name: h.link });
-    const home = h?.geo ? `${h.plz} ${h.geo.ort}` : t("hh.noHome");
+    const home = h?.geo ? homeText({ plz: h.plz, ort: h.geo.ort }) : t("hh.noHome");
     const m = h?.mode || "car";
     const riders = ridersOf(app.trip, name);
     return `${home} · ${t(SHORT_KEY[m])}${(m === "car" || m === "drop") && (h?.cars || 1) > 1 ? ` × ${h?.cars}` : ""}${riders.length ? ` · ${t("hh.poolWith", { list: riders.join(", ") })}` : ""}`;
@@ -112,13 +105,8 @@
         {@const H = app.trip.households![name]}
         <div class="hh-ed">
           <div class="ed-row">
-            <label class="f plzf">{t("hh.home")}
-              <input value={q} oninput={e => typed(name, e.currentTarget.value)} placeholder={t("hh.homePh")} autocomplete="off" />
-              {#if sugg.length}
-                <div class="sugg">{#each sugg as [code, p] (code)}<button onclick={() => pick(name, code, p)}><b>{code}</b> {p.ort}</button>{/each}</div>
-              {/if}
-            </label>
-            {#if H.geo}<span class="muted ed-note">📍 {H.geo.ort}</span>{:else if plz}<span class="muted ed-note">{t("hh.notFound")}</span>{/if}
+            <HomeInput cls="f plzf" label={t("hh.home")} value={{ cc: H.cc, plz: H.plz, ort: H.geo?.ort }} onpick={x => setHome(name, x)} onclear={() => clearHome(name)} />
+            {#if H.geo}<span class="muted ed-note">📍 {H.geo.ort}</span>{/if}
           </div>
           <div class="ed-row">
             <label class="f">{t("hh.access")}

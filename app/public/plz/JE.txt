@@ -1,0 +1,5 @@
+JE1	St Helier	49.200	-2.133
+JE2	St Helier	49.200	-2.133
+JE3	St Brelades	49.200	-2.133
+JE3	St Lawrence	49.200	-2.133
+JE4	Jersey	49.217	-2.117

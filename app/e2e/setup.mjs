@@ -46,8 +46,14 @@ try {
   if (!(await a.locator(".wz-b", { hasText: "nur mit Konto" }).count())) fail("Hinweis auf sensible Felder nur mit Konto fehlt");
   if (await a.locator(".wz-gender").count()) fail("Geschlecht ohne Konto abgefragt");
   // Abflughäfen: die zwei nächsten zum Wohnort sind vorausgewählt, weitere als Vorschlag
-  await a.locator(".wz-plz").fill("40210");
-  await until(async () => (await a.locator(".wz label.plzf").textContent()).includes("Düsseldorf"), "Wohnort zur PLZ");
+  // Wohnort je Land (#163): Österreich mit PLZ aus GeoNames, dann zurück nach Deutschland
+  await a.locator(".wz-home .home-cc").selectOption("AT");
+  await a.locator(".wz-home .home-plz").fill("1010");
+  await until(async () => (await a.locator(".wz-home .home-plz").inputValue()) === "1010 Wien, Innere Stadt", "Wohnort Wien zur österreichischen PLZ");
+  if (!(await a.locator(".wz-home .home-src").textContent()).includes("GeoNames")) fail("Quelle der Postleitzahlen fehlt");
+  await a.locator(".wz-home .home-cc").selectOption("DE");
+  await a.locator(".wz-home .home-plz").fill("40210");
+  await until(async () => (await a.locator(".wz-home .home-plz").inputValue()).includes("Düsseldorf"), "Wohnort zur PLZ");
   for (let i = 0; i < 3; i++) await a.locator(".wz-next").click();
   await until(async () => (await a.locator(".wz-aps .chip.on").count()) === 2, "zwei Abflughäfen vorausgewählt");
   const onAps = await a.locator(".wz-aps .chip.on").allTextContents();
@@ -88,8 +94,8 @@ try {
   await b.locator(".wz .bd-d").selectOption("1");
   await b.locator(".wz .bd-m").selectOption("6");
   await b.locator(".wz .bd-y").fill("1990");
-  await b.locator(".wz-plz").fill("40210");
-  await until(async () => (await b.locator(".wz label.plzf").textContent()).includes("Düsseldorf"), "Wohnort zur PLZ");
+  await b.locator(".wz-home .home-plz").fill("40210");
+  await until(async () => (await b.locator(".wz-home .home-plz").inputValue()).includes("Düsseldorf"), "Wohnort zur PLZ");
   await b.locator(".wz-nat").selectOption("PL");
   await b.locator(".wz-gender .chip", { hasText: "divers" }).click();
   await b.locator(".wz-next").click();

@@ -1,38 +1,14 @@
 <script lang="ts">
   /* Details einer gespeicherten Person: Geburtsdatum, Wohnort, Buchungsdaten (nur im Konto, erst auf Wunsch geladen) */
-  import { untrack } from "svelte";
   import BirthInput from "./BirthInput.svelte";
   import { t } from "../i18n/index.svelte";
   import type { Person, TravelDoc } from "../model";
   import { personAge } from "../people";
-  import { loadPlz, suggest, type Place } from "../plz";
+  import HomeInput from "./HomeInput.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { docOf, docs, hasDoc, loadDocs, removeDoc } from "../traveldocs.svelte";
 
   let { p }: { p: Person } = $props();
-
-  let plz = $state<Map<string, Place> | null>(null);
-  // Eingabefeld startet mit dem gespeicherten Wohnort, danach zählt das Getippte
-  const homeText = () => (p.home ? `${p.home.plz} ${p.home.ort}` : "");
-  let q = $state(untrack(homeText));
-  let focus = $state(false);
-  // PLZ-Liste laden; schon getippte fünfstellige PLZ danach auflösen
-  $effect(() => {
-    if (plz) return;
-    loadPlz().then(m => { plz = m; const c = q.trim(); if (/^\d{5}$/.test(c) && m.get(c)) pick(c, m.get(c)!); }).catch(() => {});
-  });
-  const sugg = $derived(plz && focus && q.trim() && !/^\d{5}\s/.test(q) ? suggest(plz, q) : []);
-  function pick(code: string, pl: Place) {
-    p.home = { plz: code, ort: pl.ort, lat: pl.lat, lon: pl.lon };
-    q = `${code} ${pl.ort}`;
-    focus = false;
-  }
-  function typed(v: string) {
-    q = v;
-    const code = v.trim();
-    if (/^\d{5}$/.test(code) && plz?.get(code)) pick(code, plz.get(code)!);
-    if (!v.trim()) p.home = undefined;
-  }
 
   const age = $derived(p.birth ? personAge(p) : null);
   const today = new Date().toISOString().slice(0, 10);
@@ -59,12 +35,7 @@
   {#if !p.birth}<p class="muted small">{t("per.birthHint")}</p>{/if}
 
   <div class="ed-row">
-    <label class="f plzf">{t("hh.home")}
-      <input value={q} oninput={e => typed(e.currentTarget.value)} onfocus={() => (focus = true)} placeholder={t("hh.homePh")} autocomplete="off" />
-      {#if sugg.length}
-        <div class="sugg">{#each sugg as [code, pl] (code)}<button type="button" onclick={() => pick(code, pl)}><b>{code}</b> {pl.ort}</button>{/each}</div>
-      {/if}
-    </label>
+    <HomeInput cls="f plzf" label={t("hh.home")} value={p.home} onpick={h => (p.home = { plz: h.plz, ort: h.ort, lat: h.lat, lon: h.lon, ...(h.cc !== "DE" ? { cc: h.cc } : {}) })} onclear={() => (p.home = undefined)} />
   </div>
   <p class="muted small">{t("per.homeHint")}</p>
 

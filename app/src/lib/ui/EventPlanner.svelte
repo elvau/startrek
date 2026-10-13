@@ -18,7 +18,8 @@
   import { pickOrigins } from "../flights/origin";
   import { capitalOf, ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, destAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
-  import { loadPlz } from "../plz";
+  import { withHome } from "../plz";
+  import type { Home } from "../home";
   import { hhKey } from "../model";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
@@ -120,16 +121,11 @@
   let allCodes = $state<string[]>([...aps0]);
   // ohne Wohnort: PLZ gleich hier (sonst Flughäfen aus NRW und keine Anfahrt)
   const noHome = $derived(flyers(trip).some(x => !trip.households?.[hhKey(x)]?.geo));
-  let plzErr = $state(false);
-  async function setPlz(v: string) {
-    plzErr = false;
-    if (!/^\d{5}$/.test(v.trim())) return;
-    const pl = (await loadPlz().catch(() => null))?.get(v.trim());
-    if (!pl) { plzErr = true; return; }
-    trip.households ||= {};
-    for (const h of new Set(flyers(trip).map(hhKey))) if (!trip.households[h]?.geo) trip.households[h] = { ...trip.households[h], plz: v.trim(), geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
+  function setHome(h: Home) {
+    trip.households = withHome(trip.households, flyers(trip).map(hhKey), h);
     aps = nearestAirports(trip); allCodes = [...new Set([...aps, ...allCodes])];
   }
+
   // ohne Wohnort: ungefährer Ort aus der Verbindung kommt nach; Vorschlag nachziehen, solange nichts selbst gewählt ist
   let apsTouched = $state(false);
   loadOrigin();
@@ -309,7 +305,7 @@
     </details>
     <div>
       <span class="dlabel">{t("ev.origins")}</span>
-      {#if noHome}<HomeHint {setPlz} {plzErr} guessed={!apsTouched} />{/if}
+      {#if noHome}<HomeHint {setHome} guessed={!apsTouched} />{/if}
       <div class="chips fs-aps">
         {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} class:flash={flash.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} from={fromPt} />

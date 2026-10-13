@@ -10,7 +10,7 @@ export type CardId = "flights" | "stay" | "style" | "times" | "avoid" | "special
 
 /** Felder je Karte (alle heutigen Felder, kein neues Datenmodell) */
 export const CARD_KEYS: Record<CardId, (keyof Prefs)[]> = {
-  flights: ["plz", "airports", "maxStops", "bags", "seatsTogether", "maxHours", "access"],
+  flights: ["plz", "plzCc", "airports", "maxStops", "bags", "seatsTogether", "maxHours", "access"],
   stay: ["stayType", "minStars", "board"],
   style: ["styles", "budget"],
   times: ["holidays", "months", "nightsMin", "nightsMax"],

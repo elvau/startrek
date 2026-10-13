@@ -217,8 +217,8 @@ try {
   await det.locator(".bd-d").selectOption("10");
   await det.locator(".bd-m").selectOption("3");
   await det.locator(".bd-y").fill("1975");
-  await det.locator("label", { hasText: "Wohnort" }).locator("input").fill("41236");
-  await until(async () => (await det.locator("label", { hasText: "Wohnort" }).locator("input").inputValue()) === "41236 Mönchengladbach", "Wohnort erkannt");
+  await det.locator(".home-in", { hasText: "Wohnort" }).locator(".home-plz").fill("41236");
+  await until(async () => (await det.locator(".home-in", { hasText: "Wohnort" }).locator(".home-plz").inputValue()) === "41236 Mönchengladbach", "Wohnort erkannt");
   await det.locator(".pdocs .linkbtn", { hasText: "Buchungsdaten anzeigen" }).click();
   await det.locator("label", { hasText: "Reisepass-Nr." }).locator("input").fill("C01X00T47");
   await det.locator("label", { hasText: "Personalausweis-Nr." }).locator("input").fill("L01X00T47");

@@ -1,0 +1,14 @@
+GY1	St Peter Port	49.450	-2.600
+GY2	Delancey	49.450	-2.600
+GY2	St Sampsons	49.450	-2.600
+GY3	Vale	49.450	-2.600
+GY4	St Martin	49.450	-2.600
+GY5	Castel	49.450	-2.600
+GY6	Saint Andrew	49.452	-2.573
+GY6	Vale	49.486	-2.520
+GY7	Saint Pierre du Bois	49.446	-2.644
+GY7	Saint Saviour	49.457	-2.636
+GY8	Forest	49.426	-2.592
+GY8	Torteval	49.433	-2.650
+GY9	Alderney	49.710	-2.200
+GY10	Sark	49.710	-2.200

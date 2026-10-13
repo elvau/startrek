@@ -145,6 +145,7 @@ export function applyDraft(dir: Directory, d: SetupDraft, now = new Date()): { m
   const prefs: Prefs = { ...d.prefs };
   for (const k of Object.keys(prefs) as (keyof Prefs)[]) set(prefs, k, prefs[k]);
   if (d.plz) prefs.plz = d.plz; else delete prefs.plz;
+  if (d.plz && d.home?.cc && d.home.cc !== "DE") prefs.plzCc = d.home.cc; else delete prefs.plzCc;
   dir.prefs = prefs;
   dir.setup = now.toISOString().slice(0, 10);
   return { meId: me?.id || "", companions: d.companions.map(c => c.id), doc: { gender: d.gender || undefined, nats: d.nats.join(",") || undefined, lgbtq: d.lgbtq ? "1" : undefined } };

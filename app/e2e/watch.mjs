@@ -194,7 +194,7 @@ try {
   // ohne Wohnort: Hinweis mit PLZ-Feld; Hamburger PLZ → Hamburg als Abflughafen (nicht mehr nur NRW)
   const fsm = p.locator(".modal-bg .modal");
   if (!(await fsm.locator(".fs-nohome").isVisible())) fail("Hinweis „Wohnort fehlt“ fehlt");
-  await fsm.locator(".fs-plz").fill("20095");
+  await fsm.locator(".fs-nohome .home-plz").fill("20095");
   await until(async () => (await fsm.locator(".fs-aps .chip.on").allInnerTexts()).join() .startsWith("HAM"), "Hamburg als Abflughafen", 10000);
   if (await fsm.locator(".fs-nohome").count()) fail("Hinweis bleibt nach PLZ");
   log("Ohne Wohnort: PLZ in der Flugsuche, danach Hamburg zuerst (" + (await fsm.locator(".fs-aps .chip.on").allInnerTexts()).join(", ") + ")");
@@ -371,10 +371,10 @@ try {
   await until(async () => ((await accLines()).match(/Gruppenbus ab Düsseldorf/g) || []).length === 3, "drei Familien im Gruppenbus");
   if (!(await accLines()).includes("Anteil 2 von 6 Personen")) fail("Gruppenbus ohne Anteil: " + await accLines());
   await p.locator(".hh-sum b", { hasText: /^West$/ }).click();
-  await p.locator(".hh.open select").first().selectOption("with");
+  await p.locator(".hh.open select:not(.home-cc)").first().selectOption("with");
   await p.locator(".hh.open label", { hasText: "bei" }).locator("select").selectOption("Nord");
   await p.locator(".hh-sum b", { hasText: /^Nord$/ }).click();
-  await p.locator(".hh.open select").first().selectOption("taxi");
+  await p.locator(".hh.open select:not(.home-cc)").first().selectOption("taxi");
   await p.locator(".hh.open .hh-ride").fill("60"); await p.locator(".hh.open .hh-ride").blur();
   await until(async () => (await accLines()).includes("Fahrgemeinschaft mit Nord · Anteil 2 von 4 Personen") && (await accLines()).includes("Fahrdienst 2 × 60 €"), "Fahrgemeinschaft und Fahrdienst");
   log("Anreise zum Flughafen: für alle Gruppenbus (Anteil je Person), Fahrgemeinschaft teilt die Kosten, Fahrdienst mit eigenem Preis");
@@ -386,7 +386,7 @@ try {
   await p.locator("#transport").scrollIntoViewIfNeeded();
   const ask = p.locator("#transport .gr-askhome");
   await ask.waitFor({ timeout: 10000 });
-  await ask.locator(".fs-plz").fill("50667");
+  await ask.locator(".home-plz").fill("50667");
   await until(async () => (await ask.count()) === 0, "PLZ übernommen");
   log("Ohne Flug und Wohnort: „Unterwegs“ fragt nach der PLZ, danach verschwindet die Frage");
 

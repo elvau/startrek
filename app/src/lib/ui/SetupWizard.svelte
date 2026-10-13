@@ -13,7 +13,8 @@
   import { docs, loadDocs, saveDocsNow, setDocFields } from "../traveldocs.svelte";
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
-  import { loadPlz, type Place } from "../plz";
+  import { homeText, type Home } from "../home";
+  import HomeInput from "./HomeInput.svelte";
   import { FLIGHTS_URL, homeGuess } from "../flights/app";
   import { guessAirports } from "../flights/origin";
   import { loadOrigin } from "../flights/origin.svelte";
@@ -72,16 +73,8 @@
   let natPick = $state("");
 
   /* ---------- Wohnort ---------- */
-  let plzErr = $state(false);
-  let plzMap: Map<string, Place> | null = null;
-  async function setPlz(v: string) {
-    d.plz = v.trim(); plzErr = false;
-    if (!d.plz) { d.home = undefined; return; }
-    if (!/^\d{5}$/.test(d.plz)) return;
-    plzMap ??= await loadPlz().catch(() => null);
-    const pl = plzMap?.get(d.plz);
-    if (pl) d.home = { plz: d.plz, ort: pl.ort, lat: pl.lat, lon: pl.lon }; else plzErr = true;
-  }
+  // Wohnort je Land (#163): PLZ bzw. Ort, dazu das Land (fehlt: DE)
+  function setHome(h: Home) { d.plz = h.plz || h.ort; d.home = { plz: h.plz, ort: h.ort, lat: h.lat, lon: h.lon, ...(h.cc !== "DE" ? { cc: h.cc } : {}) }; }
 
   /* ---------- Vorlieben ---------- */
   function setP<K extends keyof Prefs>(k: K, v: Prefs[K] | undefined) { if (v == null || (Array.isArray(v) && !v.length)) delete d.prefs[k]; else d.prefs[k] = v; }
@@ -143,7 +136,7 @@
   const joinNon = (xs: (string | number | false | undefined | null)[]) => xs.filter(Boolean).join(" · ");
   const ageNow = $derived(d.birth ? Math.floor((Date.now() - new Date(d.birth).getTime()) / (365.25 * 864e5)) : d.age);
   const summary = $derived([
-    { s: 0, icon: "👤", k: "setup.step.me", v: joinNon([d.first && `${d.first} ${d.last}`.trim(), ageNow != null && t("trav.ageYears", { n: ageNow }), d.nats.map(cname).join(", "), d.home && `${d.home.plz} ${d.home.ort}`]) },
+    { s: 0, icon: "👤", k: "setup.step.me", v: joinNon([d.first && `${d.first} ${d.last}`.trim(), ageNow != null && t("trav.ageYears", { n: ageNow }), d.nats.map(cname).join(", "), d.home && homeText(d.home)]) },
     { s: 1, icon: "🚗", k: "setup.step.go", v: joinNon([d.license && t(LIC_KEYS[d.license]), d.creditCard != null && `${t("setup.card")}: ${yesNo(d.creditCard)}`, d.prefs.car && joinNon([d.prefs.car.fuel && t(`setup.fuel.${d.prefs.car.fuel}` as Key), d.prefs.car.seats && t("setup.seatsN", { n: d.prefs.car.seats })]), d.rail.map(r => t(`setup.rail.${r}` as Key)).join(", ")]) },
     { s: 2, icon: "👨‍👩‍👧", k: "setup.step.who", v: joinNon([d.group, d.companions.filter(c => c.on && (c.first || c.id)).map(c => c.first).join(", ")]) },
     { s: 3, icon: "🏖️", k: "setup.step.how", v: joinNon([(d.prefs.styles || []).map(s => t(`prefs.s.${s}` as Key)).join(", "), d.prefs.budget && t(`prefs.b.${d.prefs.budget}` as Key), d.prefs.stayType === "whole" ? t("st.whole") : d.prefs.stayType === "hotel" ? t("st.hotel") : "", d.prefs.board && t(`board.${d.prefs.board}` as Key), d.prefs.airports?.join(", ")]) },
@@ -190,8 +183,7 @@
           {#if !d.birth}<label class="f">{t("setup.orAge")}<input class="n sm" type="number" min="0" max="120" value={d.age ?? ""} oninput={e => (d.age = num(e.currentTarget.value) ?? null)} /></label>{/if}
         </div>
         <div class="wz-grid">
-          <label class="f plzf">{t("setup.home")}<input class="wz-plz" inputmode="numeric" maxlength="5" value={d.plz} oninput={e => setPlz(e.currentTarget.value)} placeholder={t("fs.plzPh")} />
-            {#if plzErr}<small class="err">{t("fs.plzUnknown")}</small>{:else if d.home}<small class="muted">{d.home.ort}</small>{/if}</label>
+          <HomeInput cls="f plzf wz-home" label={t("setup.home")} value={d.home} onpick={setHome} onclear={() => { d.plz = ""; d.home = undefined; }} />
           <span class="muted small wz-hint">{t("setup.homeHint")}</span>
         </div>
         <div class="wz-sec">
