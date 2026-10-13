@@ -168,7 +168,13 @@
   approximate location in order to suggest nearby departure airports. Cloudflare estimates it from your IP address
   (country, town, coordinates rounded to about 10 km). The search service only returns it to your app and stores
   nothing; the app keeps it in memory only until the page is closed (Art. 6(1)(f) GDPR, legitimate interest in suitable
-  suggestions). For the journey to the airport the app still uses only the postcode you enter yourself.
+  suggestions). For the journey to the airport the app still uses only the home (postcode or town) you enter yourself.
+</p>
+<p>
+  For school and public holidays the app asks the search service per country (country code such as “AT”, for home and
+  destination country), without any further details about you. The search service fetches the dates from the
+  OpenHolidays API (openholidaysapi.org) and caches them for a few days. Only your app evaluates the region you chose
+  (e.g. federal state).
 </p>
 <ul>
   <li>Kiwi.com s.r.o., Palachovo náměstí 797/4, 625 00 Brno, Czech Republic (flights)</li>
@@ -197,7 +203,7 @@
 <h2>7. AI planner (Google Gemini, beta)</h2>
 <p>
   If you use the AI planner, the app sends your travel request (the text you enter), the number and ages of the
-  travellers, the airports near your home, your preferences (without names, see section 5) and – if already entered –
+  travellers, the airports near your home, your preferences (without names, see section 5; for school holidays the dates of the next twelve months) and – if already entered –
   destination, travel dates and the days on which someone cannot travel (dates only, no names) to my search service. It checks your sign-in, counts requests per day (user ID and date,
   deleted after two days) and passes the request and search results on to Google Gemini
   (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland). Google does not receive names, email

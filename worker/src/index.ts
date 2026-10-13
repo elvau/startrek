@@ -20,6 +20,8 @@ import type { ActivityEnv } from "../../app/src/lib/activities/types";
 import { parseCalendarQuery, searchCalendar, type CalendarResult } from "../../app/src/lib/flights/calendar";
 import { fetchEcb, type Rates } from "../../app/src/lib/fx";
 import { AA_LIST, parseAdvice, type AdviceMap } from "../../app/src/lib/advice";
+import { HOLIDAY_SOURCE, type HolidayData } from "../../app/src/lib/holidays";
+import { HOLIDAY_CC, fetchHolidays } from "./holidays";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller, isOverloaded } from "./gemini";
@@ -161,6 +163,18 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         }, m => Object.keys(m).length > 100, ctx);
         return json({ countries, source: "Auswärtiges Amt (OpenData)" }, 200, { ...h, "cache-control": "max-age=3600" });
       } catch { return json({ error: "Hinweise gerade nicht erreichbar" }, 503, h); }
+    }
+
+    // Schulferien und Feiertage je Land (#163, OpenHolidays), drei Tage zwischengespeichert; nur das Land kommt an
+    if (url.pathname === "/holidays" && req.method === "GET") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      const cc = (url.searchParams.get("cc") || "").toUpperCase();
+      if (!HOLIDAY_CC.test(cc)) return json({ error: "Land fehlt" }, 400, h);
+      const today = new Date().toISOString().slice(0, 10);
+      try {
+        const data = await cachedJson<HolidayData>(`oh/${cc}/${today.slice(0, 4)}`, 3 * 86400, () => fetchHolidays(cc, today), () => true, ctx);
+        return json({ ...data, source: HOLIDAY_SOURCE }, 200, { ...h, "cache-control": "max-age=21600" });
+      } catch { return json({ error: "Ferien gerade nicht erreichbar" }, 503, h); }
     }
 
     if (url.pathname === "/flights/calendar" && req.method === "POST") {

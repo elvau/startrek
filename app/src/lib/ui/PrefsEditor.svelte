@@ -13,7 +13,10 @@
   import { cloud } from "../cloud/cloud.svelte";
   import type { Home } from "../home";
   import HomeInput from "./HomeInput.svelte";
-  import { STATE_NAMES, diffCount, monthsText, resetKey, summary, type CardId } from "../prefsView";
+  import { diffCount, monthsText, resetKey, summary, type CardId } from "../prefsView";
+  import HolidayPicker from "./HolidayPicker.svelte";
+  import { holidayText, loadRegions } from "../holidaysApp.svelte";
+  import type { Regions } from "../holidays";
 
   let { p, base, onai }: { p: Prefs; base?: Prefs; onai?: () => void } = $props();
   const group = $derived(!!base);
@@ -73,7 +76,8 @@
     set("car", Object.keys(car).length ? car : undefined);
   }
   const monthName = (m: number) => new Date(2027, m - 1, 1).toLocaleDateString(i18n.lang, { month: "short" });
-  const STATES = Object.keys(STATE_NAMES);
+  let regions = $state<Regions | null>(null);
+  $effect(() => { void loadRegions().then(r => (regions = r)); });
   const FUELS = ["petrol", "diesel", "hybrid", "electric"] as const;
 
   const sum = $derived(summary(p, base, cname));
@@ -217,11 +221,8 @@
     {@render card("style", style)}
 
     {#snippet times()}
-      {@render lbl(t("prefs.holidays"), "holidays", base?.holidays ? STATE_NAMES[base.holidays] : null)}
-      <select class="pv-in" aria-label={t("prefs.holidays")} value={p.holidays ?? ""} onchange={e => set("holidays", e.currentTarget.value || undefined)}>
-        <option value="">{group ? t("prefs.likeMine") : t("prefs.unset")}</option>
-        {#each STATES as s}<option value={s}>{STATE_NAMES[s]}</option>{/each}
-      </select>
+      {@render lbl(t("prefs.holidays"), "holidays", base?.holidays ? holidayText(base.holidays, regions, i18n.lang) : null)}
+      <HolidayPicker value={p.holidays} empty={group ? t("prefs.likeMine") : t("prefs.unset")} onchange={v => set("holidays", v)} />
       {@render lbl(t("prefs.months"), "months", base?.months?.length ? monthsText(base.months) : null)}
       <div class="pv-seg pv-months">
         {#each Array.from({ length: 12 }, (_, i) => i + 1) as m}{@render chip(monthName(m), listSt("months", m), () => toggleIn("months", m))}{/each}

@@ -324,7 +324,8 @@ export function prefsLines(r: AgentRequest): string[] {
   if (p.stayType) likes.push(p.stayType === "whole" ? "prefers whole apartments/houses" : p.stayType === "hotel" ? "prefers hotels" : "any accommodation type");
   if (p.minStars) likes.push(`accommodation with at least ${p.minStars} stars or equivalent rating`);
   if (p.board) likes.push(`preferred meals at the accommodation: ${p.board}`);
-  if (p.holidays) likes.push(`bound to school holidays of German state ${p.holidays}`);
+  // Schulferien (#163): echte Termine, wenn bekannt, sonst nur die Region
+  if (p.holidays) likes.push(r.schoolHolidays?.length ? `bound to school holidays: ${r.schoolHolidays.map(h => `${h.from} to ${h.to}${h.name ? ` (${h.name})` : ""}`).join("; ")}` : `bound to school holidays of ${p.holidays.includes("-") ? `region ${p.holidays.replace(/-$/, "")}` : `German state ${p.holidays}`}`);
   if (p.months?.length) likes.push(`prefers travelling in ${p.months.map(m => MONTHS[m - 1]).join(", ")}`);
   if (p.nightsMin || p.nightsMax) likes.push(`usual trip length ${p.nightsMin ?? "?"}-${p.nightsMax ?? "?"} nights`);
   if (likes.length) out.push(`Saved preferences of the travelers (use them as defaults, do not ask about them; the wish overrides them): ${likes.join("; ")}.`);

@@ -32,6 +32,8 @@ export interface AgentRequest {
   groups?: AgentGroupIn[];
   /** Tage, an denen jemand nicht kann (Termin finden, #174), JJJJ-MM-TT */
   blocked?: string[];
+  /** Schulferien am Wohnort in den nächsten zwölf Monaten (#163, aus den Vorlieben; nur Termine, keine Region) */
+  schoolHolidays?: { from: string; to: string; name: string }[];
 }
 
 /** Familie in der Anfrage: Kürzel statt Name, Personen, eigene An- und Abreise */
@@ -169,8 +171,11 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   const current = parseBrief(o.current);
   const groups = parseGroupsIn(o.groups);
   const blocked = Array.isArray(o.blocked) ? o.blocked.filter((d): d is string => typeof d === "string" && DATE.test(d)).slice(0, 120) : [];
+  const schoolHolidays = (Array.isArray(o.schoolHolidays) ? o.schoolHolidays : []).flatMap((x: any) =>
+    x && DATE.test(x.from) && DATE.test(x.to) && x.to >= x.from ? [{ from: x.from as string, to: x.to as string, name: String(x.name || "").slice(0, 40) }] : []).slice(0, 12);
   return {
     ...(blocked.length ? { blocked } : {}),
+    ...(schoolHolidays.length ? { schoolHolidays } : {}),
     ...(prefs ? { prefs } : {}),
     ...(groups.length ? { groups } : {}),
     ...(current ? { current } : {}),
@@ -235,7 +240,8 @@ export function parsePrefs(v: unknown): Prefs | undefined {
   const styles = codes(o.styles, /^[a-z]+$/, 8).filter(x => (STYLES as string[]).includes(x)); if (styles.length) p.styles = styles as Prefs["styles"];
   if (o.budget === "low" || o.budget === "mid" || o.budget === "high") p.budget = o.budget;
   if (typeof o.note === "string" && o.note.trim()) p.note = o.note.trim().slice(0, 300);
-  if (typeof o.holidays === "string" && /^[A-Z]{2}$/.test(o.holidays)) p.holidays = o.holidays;
+  // altes Bundesland („NW“) bzw. Region „DE-NW“, „AT-KÄ“, ganzes Land „BE-“ (#163)
+  if (typeof o.holidays === "string" && /^[A-Z]{2}(-[\p{Lu}0-9]{0,4})?$/u.test(o.holidays)) p.holidays = o.holidays;
   const months = Array.isArray(o.months) ? [...new Set(o.months.filter(m => int(m, 1, 12)))] as number[] : []; if (months.length) p.months = months;
   if (int(o.nightsMin, 1, 60)) p.nightsMin = o.nightsMin as number;
   if (int(o.nightsMax, 1, 60) && (p.nightsMin == null || (o.nightsMax as number) >= p.nightsMin)) p.nightsMax = o.nightsMax as number;

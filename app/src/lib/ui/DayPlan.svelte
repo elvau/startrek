@@ -5,9 +5,9 @@
    * Leere Tage stehen nur als schmale Zeile da (#331); über „+“ aufklappen. Am „+“ eines Tages lassen sich Posten ohne Tag
    * zuordnen oder eigene Einträge mit Uhrzeit anlegen.
    */
-  import { autoName, locale, t, tn } from "../i18n/index.svelte";
+  import { autoName, i18n, locale, t, tn } from "../i18n/index.svelte";
   import { access, app } from "../store.svelte";
-  import { uid, type NoteKind } from "../model";
+  import { hhKey, isActive, uid, type NoteKind } from "../model";
   import { dayRows, itinerary, KIND_ICON, NOTE_KINDS, unplanned, type Day } from "../itinerary";
   import { showItem } from "./showItem";
   import { range } from "../format";
@@ -19,11 +19,36 @@
   import { icsHref, icsName, planEvents, toIcs } from "../calendar";
   import { roadPlan } from "../road/road.svelte";
   import { LONG_H, withPauses } from "../road/trip";
+  import { HOLIDAY_SOURCE, holidayName, holidayPlace, workdayHolidays, type HolidayData } from "../holidays";
+  import { loadHolidays } from "../holidaysApp.svelte";
+  import { imp } from "../importantState.svelte";
+  import { dir } from "../directory.svelte";
+  import { countryName } from "../geo/locations";
+
+  // Feiertage (#163): im Reiseland als Eintrag am Tag, im Wohnland als Hinweis (Urlaubstage); Termine über den Such-Dienst
+  let hol = $state<Record<string, HolidayData | null>>({});
+  const homeCc = $derived.by(() => {
+    const ccs = app.trip.travelers.filter(isActive).map(x => app.trip.households?.[hhKey(x)]).filter(h => h?.geo).map(h => h!.cc || "DE");
+    return ccs[0] || dir.prefs?.plzCc || holidayPlace(dir.prefs?.holidays)?.cc || "DE";
+  });
+  $effect(() => {
+    for (const cc of [...new Set([homeCc, ...imp.countries])].slice(0, 4)) if (!(cc in hol)) { hol[cc] = null; void loadHolidays(cc).then(d => (hol[cc] = d)); }
+  });
+  const homeRegion = $derived(holidayPlace(dir.prefs?.holidays)?.cc === homeCc ? holidayPlace(dir.prefs?.holidays)?.region : undefined);
+  const homeHols = $derived(app.trip.from && app.trip.to && hol[homeCc] ? workdayHolidays(hol[homeCc]!.public, app.trip.from, app.trip.to, homeRegion) : []);
 
   // Roadtrip (#201): Fahrtage mit Strecke, Fahrzeit (mit Pausen) und Hinweis bei langen Etappen
   const rplan = $derived(roadPlan(app.trip));
   const days = $derived.by(() => {
     const ds = itinerary(app.trip);
+    // Feiertage im Reiseland: landesweite und regionale (mit Hinweis), je Tag einmal je Name
+    for (const cc of imp.countries) for (const h of hol[cc]?.public || []) for (const d of ds) {
+      if (d.date < h.from || d.date > h.to) continue;
+      const name = holidayName(h, i18n.lang), key = `hol:${cc}:${d.date}:${name}`;
+      if (d.entries.some(e => e.key === key)) continue;
+      d.entries.unshift({ key, kind: "holiday", text: t("day.holiday", { name }), order: "00:01",
+        sub: [imp.countries.length > 1 ? countryName(cc) : "", h.nationwide ? t("day.holidaySub") : t("day.holidayRegional")].filter(Boolean).join(" · ") });
+    }
     for (const [i, e] of (rplan?.etappen || []).entries()) {
       const d = ds.find(x => x.date === e.date);
       if (!d) continue;
@@ -106,6 +131,7 @@
 {:else}
   <!-- Kalender-Export: Tagesplan mit Flügen, Check-in/-out und Einträgen (Ortszeiten) -->
   <p class="dp-cal small"><a class="btn sm" href={icsHref(toIcs(planEvents(app.trip, days), app.trip.name || app.trip.place))} download={icsName(app.trip.name || app.trip.place)}>📅 {t("cal.plan")}</a> <span class="muted">{t("cal.planNote")}</span></p>
+  {#if homeHols.length}<p class="small dp-homehol">🏠 {tn("day.homeHol", homeHols.length, { list: homeHols.map(h => `${wd(h.from)} ${holidayName(h, i18n.lang)}`).join(", ") })}</p>{/if}
   {#if open.length && !access.readonly}<p class="muted small dp-open">📌 {tn("day.unplannedN", open.length)}</p>{/if}
   <ol class="dp" use:reveal>
     {#each rows as r ("gap" in r ? `gap:${r.gap[0].date}` : r.day.date)}
@@ -166,6 +192,7 @@
       {/if}
     {/each}
   </ol>
+  {#if homeHols.length || days.some(d => d.entries.some(e => e.kind === "holiday"))}<p class="muted small dp-holsrc">{t("day.holSource", { src: HOLIDAY_SOURCE })}</p>{/if}
 {/if}
 
 <style>
@@ -197,7 +224,8 @@
   .dp-text { flex: 1 1 180px; min-width: 0; }
   .dp-to { flex: 0 1 140px; min-width: 0; }
   .dp-time { width: 110px; }
-  .dp-open { margin: 0 0 10px; }
+  .dp-open, .dp-homehol { margin: 0 0 10px; }
+  .dp-holsrc { margin: 8px 0 0; }
   .dp-gap { display: flex; align-items: center; gap: 8px; padding: 2px 16px; border-inline-start: 4px dashed var(--line); margin-inline-start: 0; }
   .dp-gap-add { font-size: 18px; font-weight: 700; padding: 0 6px; }
   .dp-un { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

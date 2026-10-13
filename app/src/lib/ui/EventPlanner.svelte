@@ -1,6 +1,6 @@
 <script lang="ts">
   import { netMessage, showError } from "../neterror";
-  import { arrow, locale, t, tn, type Key } from "../i18n/index.svelte";
+  import { arrow, i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Reise zu einem Event: Was, wo, wann. Daraus bis zu drei Vorschläge (ohne Nacht, eine Nacht, ab Vortag),
    * je mit dem günstigsten passenden Flug (inkl. Anfahrt) und einer gut bewerteten Unterkunft.
@@ -19,6 +19,10 @@
   import { capitalOf, ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, destAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
   import { withHome } from "../plz";
+  import { holidayName, holidayPlace, holidaysIn, type HolidayData } from "../holidays";
+  import { holidayText, loadHolidays } from "../holidaysApp.svelte";
+  import { dir } from "../directory.svelte";
+  import { addDays as plusDays } from "../calc/travel";
   import type { Home } from "../home";
   import { hhKey } from "../model";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
@@ -53,6 +57,18 @@
   let evBusy = $state(false);
   let evErr = $state("");
   let hits = $state<EventHit[] | null>(null);
+  // Schulferien und Feiertage zuhause laut Vorlieben (#163): Hinweis am Datum des Events
+  const hp = $derived(holidayPlace(dir.prefs?.holidays));
+  let hd = $state<HolidayData | null>(null);
+  $effect(() => { const p = hp; if (p) void loadHolidays(p.cc).then(d => (hd = d)); });
+  const evHol = $derived.by(() => {
+    if (!hd || !hp || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+    const to = endDate && endDate >= date ? endDate : date;
+    const s = holidaysIn(hd.school, date, to, hp.region)[0];
+    const near = holidaysIn(hd.public, plusDays(date, -1), plusDays(to, 1), hp.region)[0];
+    const school = s ? t("ev.inHolidays", { name: holidayName(s, i18n.lang) }) : t("ev.noHolidays", { region: holidayText(dir.prefs?.holidays, undefined, i18n.lang) });
+    return near ? `${school} · ${t("ev.homeHoliday", { d: dayShort(near.from), name: holidayName(near, i18n.lang) })}` : school;
+  });
   let picked = $state<EventHit | null>(null);
   /** angenommene Stadt (Hauptstadt), solange man sie nicht ändert */
   let guess = $state("");
@@ -295,6 +311,7 @@
       <label class="f">{t("ev.hours")}<input class="n sm" type="number" min="1" max="24" step="0.5" bind:value={hours} /></label>
       <label class="f">{t("ev.end")}<input class="ev-end" type="date" min={date} bind:value={endDate} /></label>
     </div>
+    {#if evHol}<p class="small muted ev-hol">🏖 {evHol}</p>{/if}
     <details class="ev-more" bind:open={more}>
       <summary class="small">{t("ev.more")}</summary>
       <p class="muted small">{t("ev.moreHint")}</p>
