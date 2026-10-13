@@ -1,0 +1,19 @@
+name: Reisehinweise erzeugen
+# Hinweise für Frauen, Passeintrag „X“ und LGBTQ+ aus offenen Quellen (scripts/hinweise.mjs). Ergebnis nur als
+# Vorschlag im Log und als Artefakt: Einstufung prüfen, dann public/hinweise.json von Hand übernehmen.
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main, pre-release]
+    paths: [scripts/hinweise.mjs, .github/workflows/hinweise.yml]
+permissions:
+  contents: read
+jobs:
+  hinweise:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/hinweise.mjs
