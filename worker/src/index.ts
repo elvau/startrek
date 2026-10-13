@@ -22,6 +22,7 @@ import { fetchEcb, type Rates } from "../../app/src/lib/fx";
 import { AA_LIST, parseAdvice, type AdviceMap } from "../../app/src/lib/advice";
 import { HOLIDAY_SOURCE, type HolidayData } from "../../app/src/lib/holidays";
 import { HOLIDAY_CC, fetchHolidays } from "./holidays";
+import { CA_LIST, parseCanada, parseUkCountry, parseUkIndex, parseUsa, UK_LIST, ukCountry, US_LIST, type GovAdvice, type GovMap } from "../../app/src/lib/govadvice";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
 import { geminiCaller, isOverloaded } from "./gemini";
@@ -175,6 +176,15 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         const data = await cachedJson<HolidayData>(`oh/${cc}/${today.slice(0, 4)}`, 3 * 86400, () => fetchHolidays(cc, today), () => true, ctx);
         return json({ ...data, source: HOLIDAY_SOURCE }, 200, { ...h, "cache-control": "max-age=21600" });
       } catch { return json({ error: "Ferien gerade nicht erreichbar" }, 503, h); }
+    }
+
+    // Reisehinweise anderer Regierungen (#164): nur das Reiseland kommt an, die App wählt die Quelle je Staatsangehörigkeit
+    if (url.pathname === "/advice/gov" && req.method === "GET") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      const cc = (url.searchParams.get("cc") || "").toUpperCase();
+      if (!/^[A-Z]{2}$/.test(cc)) return json({ error: "Land fehlt" }, 400, h);
+      const sources = await govAdvice(cc, ctx);
+      return json({ cc, sources }, 200, { ...h, "cache-control": "max-age=3600" });
     }
 
     if (url.pathname === "/flights/calendar" && req.method === "POST") {
@@ -478,6 +488,31 @@ const real = <R extends { offers: { test?: boolean }[] }>(r: R): R => ({ ...r, o
 async function rates(env: Env, ctx?: ExecutionContext): Promise<Rates | null> {
   try { return await cachedJson("fx/ecb", 12 * 3600, () => fetchEcb(meter(env)), r => Object.keys(r.rates).length > 10, ctx); }
   catch { return null; }
+}
+
+const GOV_HEADERS = { accept: "application/json", "user-agent": "SplitAndFly/1.0 (+https://splitandfly.com)" };
+async function getJson(u: string): Promise<unknown> {
+  const r = await fetch(u, { headers: GOV_HEADERS });
+  if (!r.ok) throw new Error(`${new URL(u).host} ${r.status}`);
+  return r.json();
+}
+/** Reisehinweise von FCDO, State Department und Kanada für ein Land; Listen 6 Stunden (UK-Liste 1 Tag) zwischengespeichert, fehlende Quellen fallen weg */
+async function govAdvice(cc: string, ctx: ExecutionContext): Promise<GovMap> {
+  const many = (m: Record<string, unknown>) => Object.keys(m).length > 100;
+  const [ca, us, uk] = await Promise.allSettled([
+    cachedJson("gov/ca", 6 * 3600, async () => parseCanada(await getJson(CA_LIST)), many, ctx).then(m => m[cc]),
+    cachedJson("gov/us", 6 * 3600, async () => parseUsa(await getJson(US_LIST)), many, ctx).then(m => m[cc]),
+    cachedJson("gov/uk", 24 * 3600, async () => parseUkIndex(await getJson(UK_LIST)), many, ctx).then(async m => {
+      const slug = m[cc];
+      return slug ? cachedJson<GovAdvice>(`gov/uk/${slug}`, 6 * 3600, async () => parseUkCountry(await getJson(ukCountry(slug)), slug), () => true, ctx) : undefined;
+    })
+  ]);
+  const ok = (r: PromiseSettledResult<GovAdvice | undefined>) => (r.status === "fulfilled" ? r.value : undefined);
+  const out: GovMap = {};
+  if (ok(uk)) out.GB = ok(uk);
+  if (ok(us)) out.US = ok(us);
+  if (ok(ca)) out.CA = ok(ca);
+  return out;
 }
 
 async function cachedJson<T>(key: string, ttlSec: number, load: () => Promise<T>, keep: (v: T) => boolean = () => true, ctx?: ExecutionContext): Promise<T> {

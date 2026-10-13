@@ -2,11 +2,12 @@
   /* Menüleiste: Bubble „Wichtiges“ mit rotem Zähler der offenen Punkte; Tipp öffnet das Popup mit allen Punkten */
   import { t, tn } from "../i18n/index.svelte";
   import { app } from "../store.svelte";
-  import { imp, loadImportant } from "../importantState.svelte";
+  import { imp, loadGov, loadImportant } from "../importantState.svelte";
   import { urgentOpenCount } from "../important";
   import Modal from "./Modal.svelte";
   import Important from "./Important.svelte";
   $effect(() => { void app.trip.id; loadImportant(); });
+  $effect(() => loadGov());
   const n = $derived(imp.open.length);
   // rot nur bei Wichtigem, das Handlung erfordert; sonst neutral
   const urgent = $derived(urgentOpenCount(imp.open, app.trip.done || {}) > 0);

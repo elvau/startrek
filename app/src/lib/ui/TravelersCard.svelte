@@ -118,10 +118,15 @@
           <option value="">{flagOf("DE")} {countryName("DE")}</option>
           {#each natList as c (c)}<option value={c}>{flagOf(c)} {countryName(c)}</option>{/each}
         </select>
+        <!-- zweiter Pass (optional): für die Einreise zählt der günstigere -->
+        <select class="inp t-nat2" value={t.nat2 || ""} aria-label={tt("trav.nat2")} title={tt("trav.nat2")} onchange={e => { const v = e.currentTarget.value; if (v && v !== (t.nat || "DE")) t.nat2 = v; else delete t.nat2; }}>
+          <option value="">{tt("trav.nat2")}</option>
+          {#each ["DE", ...natList] as c (c)}<option value={c}>{flagOf(c)} {countryName(c)}</option>{/each}
+        </select>
         <button class="linkbtn danger" onclick={() => remove(t.id)}>{tt("remove")}</button>
       {:else}
         <b>{t.placeholder ? t.name : `${t.name || tt("trav.noName")} ${t.household}`}</b>
-        <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}{#if t.nat} <span title={countryName(t.nat)}>· {flagOf(t.nat)}</span>{/if}</span>
+        <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}{#if t.nat || t.nat2} <span title={[t.nat || "DE", t.nat2].filter(Boolean).map(c => countryName(c!)).join(" · ")}>· {flagOf(t.nat || "DE")}{t.nat2 ? flagOf(t.nat2) : ""}</span>{/if}</span>
         <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
           onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? `✓ ${tt("trav.in")}` : tt("trav.out")}</button>
         {#if t.placeholder && !access.readonly}

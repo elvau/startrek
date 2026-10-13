@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { entryFor, needsAction } from "./visa";
+import { bestEntry, entryFor, natsOf, needsAction } from "./visa";
 import data from "../../../public/visa.json";
 
 describe("Einreise je Staatsangehörigkeit", () => {
@@ -14,5 +14,13 @@ describe("Einreise je Staatsangehörigkeit", () => {
   it("russischer Pass: Deutschland Visum vorab", () => {
     expect(entryFor(data, "RU", "DE").kind).toBe("visa");
     expect(entryFor(data, "ZZ", "DE").kind).toBe("unknown");
+  });
+  it("mehrere Pässe: der günstigste (deutsch/russisch in die USA, längere visumfreie Zeit)", () => {
+    expect(natsOf({ nat: "RU", nat2: "DE" })).toEqual(["RU", "DE"]);
+    expect(natsOf({})).toEqual(["DE"]);
+    expect(bestEntry(data, ["RU", "DE"], "US")).toMatchObject({ nat: "DE", kind: "eta", multi: true });
+    expect(bestEntry(data, ["DE"], "DE")).toEqual({ kind: "home", nat: "DE" });
+    const d = { cc: ["XX"], m: { AA: "30", BB: "90" } };
+    expect(bestEntry(d, ["AA", "BB"], "XX")).toEqual({ kind: "free", days: 90, nat: "BB", multi: true });
   });
 });

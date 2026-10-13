@@ -5,8 +5,8 @@ import { doneIds, importantPoints, isOpen, isUrgent, markDone, openCount, reopen
 import type { VisaData } from "./visa";
 import { MIN_VALID, validUntil } from "./borders";
 
-// Ausschnitt aus visa.json: Pässe DE und GB, Ziele US, TH, DE (t = Reisegenehmigung, f90 = 90 Tage visumfrei)
-const visa: VisaData = { cc: ["US", "TH", "DE", "GB"], m: { DE: "t,f60,,f180", GB: "t,f60,f90," } };
+// Ausschnitt aus visa.json: Pässe DE und GB, Ziele US, TH, DE (t = Reisegenehmigung, 90 = 90 Tage visumfrei)
+const visa: VisaData = { cc: ["US", "TH", "DE", "GB"], m: { DE: "t,60,,180", GB: "t,60,90," } };
 const trip = (travelers: Trip["travelers"]): Trip => ({ id: "t", name: "USA", place: "New York", country: "USA", tiers: {}, settings: DEFAULT_SETTINGS, travelers, items: [] });
 const anna = { id: "a", name: "Anna", household: "Klein" }, ben = { id: "b", name: "Ben", household: "Klein", age: 9 };
 const tom = { id: "t", name: "Tom", household: "Smith", nat: "GB" };
@@ -27,11 +27,40 @@ describe("Wichtiges zur Reise", () => {
     expect(importantPoints({ trip: trip([anna]), countries: ["US"], hints: us, visa, advice: adv(false) }).map(p => p.key)).toEqual(["entry:US"]);
   });
 
-  it("Pass entscheidet: Brite braucht für die USA auch eine Genehmigung, Deutsche für Thailand nur die Ankunftskarte", () => {
+  it("Pass entscheidet: Brite braucht für die USA auch eine Genehmigung, die TDAC für Thailand gilt für alle Pässe", () => {
     const ps = importantPoints({ trip: trip([anna, tom]), countries: ["US", "TH"], hints: HINTS.filter(h => h.id === "us" || h.id === "th"), visa, advice: {} });
-    expect(ps.find(p => p.key === "entry:US")!.persons!.map(p => p.name)).toEqual(["Anna", "Tom"]);
-    // TH: visumfrei für beide, der Hinweis (TDAC) gilt laut Liste nur für deutsche Staatsangehörige
-    expect(ps.find(p => p.key === "entry:TH")!.persons!.map(p => p.name)).toEqual(["Anna"]);
+    expect(ps.find(p => p.key === "entry:US")!.persons!.map(p => `${p.name}:${p.nat}:${p.hint}`)).toEqual(["Anna:DE:true", "Tom:GB:true"]);
+    expect(ps.find(p => p.key === "entry:TH")!.persons!.map(p => p.name)).toEqual(["Anna", "Tom"]);
+  });
+
+  it("Hinweise nur für passende Pässe: China visumfrei nur laut Text für Deutsche, Brite braucht ein Visum (Überblick, ohne Text)", () => {
+    const v: VisaData = { cc: ["CN", "DE", "GB"], m: { DE: "30,,180", GB: "r,90," } };
+    const ps = importantPoints({ trip: trip([anna, tom]), countries: ["CN"], hints: HINTS.filter(h => h.id === "cn"), visa: v, advice: {} });
+    const e = ps.find(p => p.key === "entry:CN")!;
+    expect(e.persons!.map(p => `${p.name}:${p.kind}:${!!p.hint}`)).toEqual(["Anna:free:true", "Tom:visa:false"]);
+    // nur Brite: Punkt wegen Visum, Hinweis-Text gilt für niemanden
+    const gb = importantPoints({ trip: trip([tom]), countries: ["CN"], hints: HINTS.filter(h => h.id === "cn"), visa: v, advice: {} })[0];
+    expect(gb.persons!.some(p => p.hint)).toBe(false);
+  });
+
+  it("mehrere Pässe: der günstigste zählt, mit Hinweis", () => {
+    const v: VisaData = { cc: ["US", "DE", "RU"], m: { DE: "t,,r", RU: "r,r," } };
+    const ps = importantPoints({ trip: trip([{ id: "m", name: "Mira", household: "K", nat: "RU", nat2: "DE" }]), countries: ["US"], hints: us, visa: v, advice: {} });
+    expect(ps[0].persons![0]).toMatchObject({ nat: "DE", kind: "eta", multi: true, hint: true });
+  });
+
+  it("Reisehinweise der eigenen Regierung: Brite bekommt FCDO, Deutsche das Auswärtige Amt, Österreicher AA mit Hinweis", () => {
+    const fritz = { id: "f", name: "Fritz", household: "Huber", nat: "AT" };
+    const aa = { US: { id: "x", name: "USA", warning: false, partial: true, situation: false, situationPart: false } };
+    const gov = { US: { GB: { level: "partial" as const, url: "https://www.gov.uk/foreign-travel-advice/usa", modified: "2026-10-01" }, US: { level: null, url: "u" } } };
+    const ps = importantPoints({ trip: trip([anna, tom, fritz]), countries: ["US"], hints: [], visa, advice: aa, gov });
+    const a = ps.find(p => p.key === "aa:US")!, g = ps.find(p => p.key === "gov:GB:US")!;
+    expect(a.persons!.map(p => `${p.name}:${!!p.fallback}`)).toEqual(["Anna:false", "Fritz:true"]);
+    expect(g).toMatchObject({ kind: "aa", src: "GB", level: "partial", sig: "partial|2026-10-01" });
+    expect(g.persons!.map(p => p.name)).toEqual(["Tom"]);
+    // ohne Daten aus Großbritannien: Tom liest beim Auswärtigen Amt mit
+    const off = importantPoints({ trip: trip([anna, tom]), countries: ["US"], hints: [], visa, advice: aa });
+    expect(off.find(p => p.key === "aa:US")!.persons!.map(p => p.name)).toEqual(["Anna", "Tom"]);
   });
 
   it("Heimatland und Inaktive zählen nicht", () => {
