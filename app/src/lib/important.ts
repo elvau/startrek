@@ -1,6 +1,6 @@
 /*
  * Wichtiges zur Reise: was man vor der Reise unbedingt bedenken muss, als Punkte mit Zähler (Epic „Wichtiges zur Reise“).
- * Quellen: Warnstufen des Auswärtigen Amts (advice.ts), Einreise je Pass (visa.ts), Grenzregeln und Mindestgültigkeit
+ * Quellen: Warnstufen des Auswärtigen Amts (advice.ts) bzw. der eigenen Regierung (govadvice.ts), Einreise je Pass (visa.ts), Grenzregeln und Mindestgültigkeit
  * des Reisepasses (borders.ts) und Hinweise (hints.ts). Ablaufdaten der Pässe kommen nur im Browser aus dem Konto dazu
  * (travelDocs) und landen nie in der Reise: Schlüssel und Signatur enthalten kein Datum.
  * „Erledigt“ bzw. „gelesen“ steht in der Reise (trip.done), je Person: Einreise für alle, die etwas tun müssen,
@@ -10,8 +10,9 @@
 import type { Trip } from "./model";
 import { isActive } from "./model";
 import { adviceLevel, type Advice, type AdviceMap } from "./advice";
-import { entryFor, needsAction, type EntryKind, type VisaData } from "./visa";
-import type { Hint } from "./hints";
+import { bestEntry, natsOf, needsAction, type EntryKind, type VisaData } from "./visa";
+import { hintForPass, type Hint } from "./hints";
+import { adviceSource, type GovAdvice, type GovMap, type GovSrc } from "./govadvice";
 import { FREE_MOVEMENT, MIN_VALID, SCHENGEN, validUntil, type MinValid } from "./borders";
 import { CITIES, saleFor, type BookAhead, type Sale } from "./bookahead";
 import { activeOption, participantsOf, rateOf } from "./calc";
@@ -20,7 +21,18 @@ import { missing, openPolls } from "./together";
 
 export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place" | "deposit" | "poll" | "pet";
 
-export interface PointPerson { id: string; name: string; nat: string; kind?: EntryKind; days?: number }
+export interface PointPerson {
+  id: string; name: string;
+  /** Pass, der zählt (bei mehreren der günstigste) */
+  nat: string;
+  kind?: EntryKind; days?: number;
+  /** hat mehrere Pässe: Einreise mit dem günstigsten (nat) */
+  multi?: boolean;
+  /** Einreise: der Hinweis aus hints.ts gilt für diesen Pass */
+  hint?: boolean;
+  /** Warnstufe: eigene Regierung ohne offene Schnittstelle, daher Auswärtiges Amt */
+  fallback?: boolean;
+}
 
 export interface Point {
   /** stabil je Reise: aa:US, entry:US, hint:machu */
@@ -31,9 +43,12 @@ export interface Point {
   /** Inhalt; ändert er sich, ist der Punkt wieder offen */
   sig: string;
   cc?: string;
-  /** Warnstufe des Auswärtigen Amts */
+  /** Warnstufe des Auswärtigen Amts bzw. der eigenen Regierung (src) */
   level?: "warning" | "partial" | "situation";
   advice?: Advice;
+  /** Reisehinweise der eigenen Regierung (Großbritannien, USA, Kanada) statt Auswärtiges Amt */
+  src?: GovSrc;
+  gov?: GovAdvice;
   /** passender Hinweis aus hints.ts (Text, Links, Gebühr) */
   hint?: Hint;
   /** je Person: wer etwas tun muss (Einreise) bzw. wer lesen soll (alle Reisenden) */
@@ -65,6 +80,8 @@ export interface PointInput {
   hints: Hint[];
   visa: VisaData | null;
   advice: AdviceMap;
+  /** Reisehinweise der eigenen Regierung je Reiseland (Such-Dienst /advice/gov) */
+  gov?: Record<string, GovMap>;
   /** Ablauf der Reisepässe je reisender Person (JJJJ-MM-TT), nur wenn im Konto hinterlegt und geladen */
   passports?: Record<string, string>;
   /** Früh buchen: passende Orte (bookAheadFor) */
@@ -74,32 +91,43 @@ export interface PointInput {
 }
 
 /** alle wichtigen Punkte der Reise, wichtigste zuerst */
-export function importantPoints({ trip, countries, hints, visa, advice, passports = {}, book = [], now = Date.now() }: PointInput): Point[] {
+export function importantPoints({ trip, countries, hints, visa, advice, gov = {}, passports = {}, book = [], now = Date.now() }: PointInput): Point[] {
   const act = trip.travelers.filter(isActive);
   const all: PointPerson[] | undefined = act.length ? act.map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" })) : undefined;
   const out: Point[] = [];
   for (const cc of countries) {
-    const a = advice[cc], level = adviceLevel(a);
-    if (a && level) out.push({ key: `aa:${cc}`, kind: "aa", prio: PRIO[level], sig: `${level}|${a.modified || ""}`, cc, level, advice: a, ...(all ? { persons: all } : {}) });
-    // Einreise: wer vorab etwas tun muss (Passport Index) bzw. für wen der Hinweis gilt (deutsche Staatsangehörige)
+    // Warnstufen: je Person die eigene Regierung (Schnittstelle vorhanden), sonst das Auswärtige Amt
+    const bySrc = new Map<GovSrc | "AA", PointPerson[]>();
+    for (const p of act) {
+      const s = adviceSource(natsOf(p), gov[cc]);
+      bySrc.set(s.src, [...(bySrc.get(s.src) || []), { id: p.id, name: p.name, nat: p.nat || "DE", ...(s.fallback ? { fallback: true } : {}) }]);
+    }
+    const a = advice[cc], level = adviceLevel(a), aaPs = act.length ? bySrc.get("AA") : undefined;
+    if (a && level && (!act.length || aaPs)) out.push({ key: `aa:${cc}`, kind: "aa", prio: PRIO[level], sig: `${level}|${a.modified || ""}`, cc, level, advice: a, ...(aaPs ? { persons: aaPs } : {}) });
+    for (const [src, ps] of bySrc) {
+      const g = src !== "AA" ? gov[cc]?.[src] : undefined;
+      if (g?.level) out.push({ key: `gov:${src}:${cc}`, kind: "aa", prio: PRIO[g.level], sig: `${g.level}|${g.modified || ""}`, cc, level: g.level, src: src as GovSrc, gov: g, persons: ps });
+    }
+    // Einreise: wer vorab etwas tun muss (Passport Index, günstigster Pass) bzw. für wessen Pass der Hinweis gilt
     const hint = hints.find(h => h.kind === "entry" && h.cc?.includes(cc));
     const persons: PointPerson[] = [];
     for (const p of act) {
-      const nat = p.nat || "DE", e = visa ? entryFor(visa, nat, cc) : { kind: "unknown" as EntryKind };
+      const e = bestEntry(visa, natsOf(p), cc);
       if (e.kind === "home") continue;
-      if (needsAction(e) || (hint && nat === "DE")) persons.push({ id: p.id, name: p.name, nat, kind: e.kind, ...(e.days != null ? { days: e.days } : {}) });
+      const forMe = !!hint && hintForPass(hint, e.nat, e.kind);
+      if (needsAction(e) || forMe) persons.push({ id: p.id, name: p.name, nat: e.nat, kind: e.kind, ...(e.days != null ? { days: e.days } : {}), ...(e.multi ? { multi: true } : {}), ...(forMe ? { hint: true } : {}) });
     }
     const valid = MIN_VALID[cc];
-    if (persons.length) out.push({ key: `entry:${cc}`, kind: "entry", prio: PRIO.entry, sig: [...new Set(persons.map(p => `${p.nat}:${p.kind}`))].sort().join(","), cc, ...(hint ? { hint } : {}), ...(valid ? { valid } : {}), persons });
+    if (persons.length) out.push({ key: `entry:${cc}`, kind: "entry", prio: PRIO.entry, sig: [...new Set(persons.map(p => `${p.nat}:${p.kind}${p.hint ? ":h" : ""}`))].sort().join(","), cc, ...(hint ? { hint } : {}), ...(valid ? { valid } : {}), persons });
   }
   // Reisepass läuft zu früh ab: je Person das strengste Reiseland (Regeln des Ziellands gelten für die meisten Pässe);
   // innerhalb von EU/EWR/Schweiz reicht für deren Bürger der Ausweis
   if (trip.from && trip.to) for (const p of act) {
-    const exp = passports[p.id], nat = p.nat || "DE";
+    const exp = passports[p.id], nats = natsOf(p), nat = nats[0];
     if (!exp) continue;
     let worst: { cc: string; needed: string } | null = null;
     for (const cc of countries) {
-      if (cc === nat || (FREE_MOVEMENT.has(cc) && FREE_MOVEMENT.has(nat))) continue;
+      if (nats.includes(cc) || (FREE_MOVEMENT.has(cc) && nats.some(n => FREE_MOVEMENT.has(n)))) continue;
       const needed = validUntil(MIN_VALID[cc], trip.from, trip.to);
       if (!worst || needed > worst.needed) worst = { cc, needed };
     }
@@ -107,7 +135,7 @@ export function importantPoints({ trip, countries, hints, visa, advice, passport
   }
   // Schengen-Raum: EES bei der Einreise (Fingerabdrücke, Foto) bzw. ETIAS für Pässe von außerhalb der EU
   const schengen = countries.find(c => SCHENGEN.has(c));
-  const outsiders = schengen ? act.filter(p => !FREE_MOVEMENT.has(p.nat || "DE")) : [];
+  const outsiders = schengen ? act.filter(p => !natsOf(p).some(n => FREE_MOVEMENT.has(n))) : [];
   if (outsiders.length) out.push({ key: "border:schengen", kind: "border", prio: PRIO.border, sig: "ees", cc: schengen, persons: outsiders.map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" })) });
   // Früh buchen: je Reiseziel ein Punkt; gebuchte bzw. bezahlte Orte (als Posten übernommen) fallen weg
   const booked = new Set(trip.items.filter(i => i.hint && (i.status === "booked" || i.status === "paid")).map(i => i.hint!));

@@ -56,3 +56,10 @@ export const HEAVY = {
 export const CAMPER_FERRY = 1.2;
 
 export interface Vehicle { camper?: boolean; heavy?: boolean }
+
+export type CampKind = "site" | "pitch";
+/** Station einer Camper-Reise (#269): Ort, Land (ISO-2, für den Richtwert), Nächte, Campingplatz oder Stellplatz */
+export interface CampStop { place: string; cc?: string; nights: number; kind: CampKind }
+
+/** Richtwert aller Stationen (Vorschau des KI-Planers) */
+export const campTotal = (stops: CampStop[], persons: number) => stops.reduce((a, s) => a + campNight(s.kind, s.cc, persons) * s.nights, 0);

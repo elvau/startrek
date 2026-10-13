@@ -11,8 +11,12 @@
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
   import { cloud } from "../cloud/cloud.svelte";
-  import { loadPlz } from "../plz";
-  import { STATE_NAMES, diffCount, monthsText, resetKey, summary, type CardId } from "../prefsView";
+  import type { Home } from "../home";
+  import HomeInput from "./HomeInput.svelte";
+  import { diffCount, monthsText, resetKey, summary, type CardId } from "../prefsView";
+  import HolidayPicker from "./HolidayPicker.svelte";
+  import { holidayText, loadRegions } from "../holidaysApp.svelte";
+  import type { Regions } from "../holidays";
 
   let { p, base, onai }: { p: Prefs; base?: Prefs; onai?: () => void } = $props();
   const group = $derived(!!base);
@@ -47,17 +51,8 @@
 
   // Eingabefeld startet mit den gespeicherten Codes, danach zählt das Getippte
   let aps = $state(untrack(() => (p.airports || []).join(", ")));
-  // PLZ: Eingabe lokal puffern, erst bei 5 bekannten Ziffern speichern, leer löscht
-  let plz = $state(untrack(() => p.plz ?? ""));
-  let plzErr = $state(false);
-  async function setPlz(v: string) {
-    plz = v.trim(); plzErr = false;
-    if (!plz) { set("plz", undefined); return; }
-    if (!/^\d{5}$/.test(plz)) return;
-    const known = (await loadPlz().catch(() => null))?.get(plz);
-    if (plz !== v.trim()) return;
-    if (known) set("plz", plz); else plzErr = true;
-  }
+  // Wohnort (#163): PLZ bzw. ohne PLZ-Daten der Ort, dazu das Land (fehlt: DE)
+  function setHome(h: Home) { set("plz", h.plz || h.ort); set("plzCc", h.cc !== "DE" ? h.cc : undefined); }
   function setAps(v: string) {
     aps = v;
     const codes = [...new Set(v.toUpperCase().split(/[\s,;]+/).filter(c => /^[A-Z]{3}$/.test(c)))];
@@ -81,7 +76,8 @@
     set("car", Object.keys(car).length ? car : undefined);
   }
   const monthName = (m: number) => new Date(2027, m - 1, 1).toLocaleDateString(i18n.lang, { month: "short" });
-  const STATES = Object.keys(STATE_NAMES);
+  let regions = $state<Regions | null>(null);
+  $effect(() => { void loadRegions().then(r => (regions = r)); });
   const FUELS = ["petrol", "diesel", "hybrid", "electric"] as const;
 
   const sum = $derived(summary(p, base, cname));
@@ -147,7 +143,7 @@
     {#snippet flights()}
       {#if !group}
         <div class="pv-two">
-          {#if cloud.user}<label class="f pv-plz">{t("prefs.plz")}<input class="fs-plz" inputmode="numeric" maxlength="5" value={plz} oninput={e => setPlz(e.currentTarget.value)} placeholder={t("fs.plzPh")} />{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</label>{/if}
+          {#if cloud.user}<HomeInput cls="f pv-plz" label={t("prefs.plz")} value={{ cc: p.plzCc, plz: p.plz }} onpick={setHome} onclear={() => { set("plz", undefined); set("plzCc", undefined); }} />{/if}
           <label class="f grow">{t("prefs.airports")}<input value={aps} oninput={e => setAps(e.currentTarget.value)} placeholder={t("prefs.airportsPh")} /></label>
         </div>
         {#if cloud.user}<p class="muted small">{t("prefs.plzHint")} {t("prefs.plzAccount")}</p>{/if}
@@ -225,11 +221,8 @@
     {@render card("style", style)}
 
     {#snippet times()}
-      {@render lbl(t("prefs.holidays"), "holidays", base?.holidays ? STATE_NAMES[base.holidays] : null)}
-      <select class="pv-in" aria-label={t("prefs.holidays")} value={p.holidays ?? ""} onchange={e => set("holidays", e.currentTarget.value || undefined)}>
-        <option value="">{group ? t("prefs.likeMine") : t("prefs.unset")}</option>
-        {#each STATES as s}<option value={s}>{STATE_NAMES[s]}</option>{/each}
-      </select>
+      {@render lbl(t("prefs.holidays"), "holidays", base?.holidays ? holidayText(base.holidays, regions, i18n.lang) : null)}
+      <HolidayPicker value={p.holidays} empty={group ? t("prefs.likeMine") : t("prefs.unset")} onchange={v => set("holidays", v)} />
       {@render lbl(t("prefs.months"), "months", base?.months?.length ? monthsText(base.months) : null)}
       <div class="pv-seg pv-months">
         {#each Array.from({ length: 12 }, (_, i) => i + 1) as m}{@render chip(monthName(m), listSt("months", m), () => toggleIn("months", m))}{/each}
@@ -328,7 +321,7 @@
   .pv-in{width:100%;border:1px solid var(--line);background:var(--paper-2);border-radius:10px;padding:9px 11px;font:inherit;font-size:14px;color:var(--ink)}
   .pv-two{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:flex-end}
   .pv-two > *{min-width:0}
-  .pv-plz{flex:0 0 130px}
+  .pv-plz{flex:1 1 260px}
   .pv-seats{width:auto}
   .pv-step{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper)}
   .pv-step button{border:0;background:var(--paper-2);width:38px;height:38px;font-size:17px;color:var(--ink-2)}

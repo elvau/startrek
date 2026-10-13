@@ -27,7 +27,8 @@
   import { warnHintsFor } from "../hints";
   import { FLIGHTS_URL, fitTripDates, rateRound, takeRound, compareRow, hitsHidden, providerDown, covered, deadline, defaultFlyers, defaultQuery, flyers, followFlight, fmtMin, homeGuess, nearestAirports, passengers, rate, searchFlights, stopsText, takeOffer, type CompareRow, type Rated } from "../flights/app";
   import { hhKey, isActive } from "../model";
-  import { loadPlz, withHome } from "../plz";
+  import { withHome } from "../plz";
+  import type { Home } from "../home";
   import { cloud } from "../cloud/cloud.svelte";
   import type { FlightScope } from "../flights/open.svelte";
   import PartnerLinks from "./PartnerLinks.svelte";
@@ -234,21 +235,15 @@
   function resetAps() { aps = nearestAirports(trip, 4, who); custom = false; }
   // ohne Wohnort schlägt die Suche Flughäfen aus der Standardliste (NRW) vor: PLZ gleich hier eintragen
   const noHome = $derived(flyers(trip, who).some(x => !trip.households?.[hhKey(x)]?.geo));
-  let plzErr = $state(false);
-  async function setPlz(v: string): Promise<boolean> {
-    plzErr = false;
-    if (!/^\d{5}$/.test(v.trim())) return false;
-    const pl = (await loadPlz().catch(() => null))?.get(v.trim());
-    if (!pl) { plzErr = true; return false; }
-    trip.households = withHome(trip.households, flyers(trip, who).map(hhKey), v.trim(), pl);
+  function setHome(h: Home) {
+    trip.households = withHome(trip.households, flyers(trip, who).map(hhKey), h);
     resetAps();
-    return true;
   }
   // ohne Wohnort: ungefährer Ort aus der Verbindung kommt nach; Vorschlag nachziehen, solange nichts selbst gewählt ist
   loadOrigin();
   $effect(() => { if (homeGuess(4) && noHome) untrack(() => { if (!custom) aps = nearestAirports(trip, 4, who); }); });
   // gespeicherte PLZ (nur mit Konto) erst auf Knopfdruck übernehmen: sie wird dann Teil der Reise
-  const savedPlz = $derived(cloud.user ? dir.prefs?.plz : undefined);
+  const savedHome = $derived(cloud.user && dir.prefs?.plz ? { plz: dir.prefs.plz, cc: dir.prefs.plzCc } : undefined);
 
   const SHOW = 40;
   // Flüge der anderen (schon übernommen): zum gemeinsamen Ankommen
@@ -468,7 +463,7 @@
   <div class="fs-leg">
     <span class="fs-dir">{dir}</span>
     <span><b>{dayShort(l.dep)} {time(l.dep)} {arrow()} {time(l.arr)}</b> · {dur(l.minutes)} · {stopsText(l.stops)}</span>
-    <span class="muted">{l.route.join(" → ")} · {l.carriers.join(" / ")}</span>
+    <span class="muted">{l.route.join(` ${arrow()} `)} · {l.carriers.join(" / ")}</span>
   </div>
 {/snippet}
 
@@ -498,7 +493,7 @@
     </div>
     <div>
       <span class="dlabel">{t("fs.origins")} <Help k="origins" /></span>
-      {#if noHome}<HomeHint {setPlz} {savedPlz} {plzErr} guessed={!custom} />{/if}
+      {#if noHome}<HomeHint {setHome} saved={savedHome} guessed={!custom} />{/if}
       <div class="chips fs-aps">
         {#each allCodes as c (c)}
           {@const a = known.find(x => x.code === c)}
@@ -684,7 +679,7 @@
     {#if blockedOut}<p class="muted small fs-blocked">{tn("fs.blockedOut", blockedOut)}</p>{/if}
   {/if}
 
-  {#if list && listMore}<p class="muted small fs-morestops">{t("fs.moreStops", { list: `${aps.join("/")} → ${to}` })}</p>{/if}
+  {#if list && listMore}<p class="muted small fs-morestops">{t("fs.moreStops", { list: `${aps.join("/")} ${arrow()} ${to}` })}</p>{/if}
   {#if list}
     {@render bagBar()}
     {#if sources.length}

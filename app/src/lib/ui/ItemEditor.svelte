@@ -3,7 +3,7 @@
   import { addPoll, newPoll, voters } from "../together";
   import Help from "./Help.svelte";
   import { entryCurrency, fromShown, toShown } from "../currency.svelte";
-  import { autoName, t, tn } from "../i18n/index.svelte";
+  import { arrow, autoName, t, tn } from "../i18n/index.svelte";
   /* Bearbeiten eines Postens: oben Name, Status und Suche, der Rest eingeklappt mit Zusammenfassung */
   import { hhKey, isActive, uid, type Extra, type FlightLeg, type Item, type Option, type Status } from "../model";
   import { app, calc, removeItem } from "../store.svelte";
@@ -125,8 +125,9 @@
   // Zusammenfassungen der eingeklappten Abschnitte
   const outL = $derived(opt?.legs?.find(l => l.dir === "out"));
   const backL = $derived(opt?.legs?.find(l => l.dir === "back"));
-  const legSum = (l: FlightLeg | undefined, w: string) => l?.dep ? `${w} ${dayShort(l.dep)} ${time(l.dep)} ${l.from}→${l.to}` : "";
-  const timesSum = $derived(main ? t("ie.like", { name: main.name }) : [legSum(outL, t("fl.out")), legSum(backL, t("fl.back"))].filter(Boolean).join(" · ") || t("ie.open"));
+  const legSum = (l: FlightLeg | undefined, w: string) => l?.dep ? `${w} ${dayShort(l.dep)} ${time(l.dep)} ${l.from}${arrow()}${l.to}`.trim() : "";
+  const viaL = $derived(opt?.legs?.filter(l => l.dir === "via") ?? []);
+  const timesSum = $derived(main ? t("ie.like", { name: main.name }) : [legSum(outL, t("fl.out")), ...viaL.map(l => legSum(l, "")), legSum(backL, t("fl.back"))].filter(Boolean).join(" · ") || t("ie.open"));
   const priceSum = $derived(`${eur(net)}${item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""}`);
   const whoSum = $derived(all ? t("all") : people.filter(p => item.participants!.includes(p.id)).map(p => p.name).join(", "));
   const paySum = $derived(paidSum ? t("ie.paidOf", { paid: eur(paidSum), total: eur(net) }) : t("ie.paidNone"));

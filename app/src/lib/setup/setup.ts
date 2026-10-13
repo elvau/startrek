@@ -145,10 +145,11 @@ export function applyDraft(dir: Directory, d: SetupDraft, now = new Date()): { m
   const prefs: Prefs = { ...d.prefs };
   for (const k of Object.keys(prefs) as (keyof Prefs)[]) set(prefs, k, prefs[k]);
   if (d.plz) prefs.plz = d.plz; else delete prefs.plz;
+  if (d.plz && d.home?.cc && d.home.cc !== "DE") prefs.plzCc = d.home.cc; else delete prefs.plzCc;
   dir.prefs = prefs;
   dir.setup = now.toISOString().slice(0, 10);
   return { meId: me?.id || "", companions: d.companions.map(c => c.id), doc: { gender: d.gender || undefined, nats: d.nats.join(",") || undefined, lgbtq: d.lgbtq ? "1" : undefined } };
 }
 
-/** startet der Assistent von selbst? Nur einmal, nur bei leerem Konto (keine Personen, keine Reisen) */
-export const shouldAutoStart = (d: Directory, trips: number, seenLocally: boolean) => !d.setup && !seenLocally && !d.people.length && trips === 0;
+/** von selbst nur mit Konto, einmal je Konto (#330): erst ausprobieren, eingerichtet wird mit dem Konto; „Später“ zählt als eingerichtet */
+export const shouldAutoStart = (d: Directory, loggedIn: boolean) => loggedIn && !d.setup;

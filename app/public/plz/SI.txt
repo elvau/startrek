@@ -1,0 +1,556 @@
+1000	Ljubljana - dostava	46.051	14.505
+1001	Ljubljana - poštni predali	46.051	14.505
+1210	Ljubljana Šentvid	46.096	14.470
+1211	Ljubljana-Šmartno	46.168	14.522
+1215	Medvode	46.133	14.433
+1216	Smlednik	46.164	14.432
+1217	Vodice	46.190	14.495
+1218	Komenda	46.205	14.538
+1219	Laze v Tuhinju	46.219	14.761
+1221	Motnik	46.215	14.891
+1222	Trojane	46.188	14.883
+1223	Blagovica	46.177	14.807
+1225	Lukovica	46.167	14.700
+1230	Domžale	46.138	14.594
+1231	Ljubljana Črnuče	46.153	14.595
+1233	Dob	46.152	14.629
+1234	Mengeš	46.167	14.575
+1235	Radomlje	46.174	14.612
+1236	Trzin	46.133	14.567
+1241	Kamnik	46.226	14.612
+1242	Stahovica	46.262	14.602
+1251	Moravče	46.137	14.745
+1252	Vače	46.120	14.839
+1260	Ljubljana Polje	46.067	14.583
+1261	Ljubljana-Dobrunje	46.033	14.583
+1262	Dol pri Ljubljani	46.089	14.601
+1270	Litija	46.059	14.822
+1272	Polšnik	46.067	14.950
+1273	Dole pri Litiji	46.035	15.019
+1274	Gabrovka	46.017	15.000
+1275	Šmartno pri Litiji	46.044	14.844
+1276	Primskovo	45.972	14.910
+1281	Kresnice	46.102	14.786
+1282	Sava	46.090	14.890
+1290	Grosuplje	45.956	14.659
+1291	Škofljica	45.983	14.577
+1292	Ig	45.960	14.529
+1293	Šmarje-Sap	45.976	14.612
+1294	Višnja Gora	45.954	14.745
+1295	Ivančna Gorica	45.938	14.804
+1296	Šentvid pri Stični	45.950	14.843
+1301	Krka	45.881	14.778
+1303	Zagradec	45.861	14.834
+1310	Ribnica	45.739	14.727
+1311	Turjak	45.879	14.615
+1312	Videm-Dobrepolje	45.850	14.694
+1313	Struge	45.782	14.775
+1314	Rob	45.849	14.572
+1315	Velike Lašče	45.832	14.636
+1316	Ortnek	45.782	14.675
+1317	Sodražica	45.761	14.636
+1318	Loški Potok	45.824	14.653
+1319	Draga	45.940	14.547
+1330	Kočevje	45.643	14.863
+1331	Dolenja vas	45.706	14.754
+1332	Stara Cerkev	45.672	14.840
+1336	Vas	45.475	14.869
+1337	Osilnica	45.528	14.694
+1338	Kočevska Reka	45.576	14.797
+1351	Brezovica pri Ljubljani	46.033	14.400
+1352	Preserje	45.957	14.419
+1353	Borovnica	45.916	14.363
+1354	Horjul	46.024	14.299
+1355	Polhov Gradec	46.067	14.316
+1356	Dobrova	46.055	14.417
+1357	Notranje Gorice	45.987	14.399
+1358	Log pri Brezovici	46.017	14.367
+1360	Vrhnika	45.692	14.503
+1370	Logatec	45.914	14.226
+1371	Logatec	45.914	14.226
+1372	Hotedršica	45.930	14.142
+1373	Rovte	45.985	14.178
+1380	Cerknica	45.793	14.363
+1381	Rakek	45.813	14.311
+1382	Begunje pri Cerknici	45.818	14.382
+1384	Grahovo	45.769	14.422
+1385	Nova vas	45.772	14.506
+1386	Stari trg pri Ložu	45.715	14.471
+1410	Zagorje ob Savi	46.132	14.997
+1411	Izlake	46.150	14.950
+1412	Kisovec	46.139	14.963
+1413	Čemšenik	46.179	14.944
+1414	Podkum	46.071	15.029
+1420	Trbovlje	46.155	15.053
+1423	Dobovec	46.113	15.057
+1430	Hrastnik	46.146	15.081
+1431	Dol pri Hrastniku	46.142	15.113
+1432	Zidani Most	46.088	15.173
+1433	Radeče	46.068	15.184
+1434	Loka pri Zidanem Mostu	46.057	15.207
+1500	Ljubljana	46.051	14.505
+1501	Ljubljana	46.051	14.505
+1502	Ljubljana	46.051	14.505
+1503	Ljubljana	46.051	14.505
+1504	Ljubljana	46.051	14.505
+1505	Ljubljana	46.051	14.505
+1506	Ljubljana	46.051	14.505
+1507	Ljubljana	46.051	14.505
+1508	Ljubljana	46.051	14.505
+1509	Ljubljana	46.051	14.505
+1510	Ljubljana	46.051	14.505
+1511	Ljubljana	46.051	14.505
+1512	Ljubljana	46.051	14.505
+1513	Ljubljana	46.051	14.505
+1514	Ljubljana	46.051	14.505
+1516	Ljubljana	46.051	14.505
+1517	Ljubljana	46.051	14.505
+1518	Ljubljana	46.051	14.505
+1519	Ljubljana	46.051	14.505
+1520	Ljubljana	46.051	14.505
+1521	Ljubljana	46.051	14.505
+1522	Ljubljana	46.051	14.505
+1523	Ljubljana	46.051	14.505
+1524	Ljubljana	46.051	14.505
+1525	Ljubljana	46.051	14.505
+1526	Ljubljana	46.051	14.505
+1527	Ljubljana	46.051	14.505
+1528	Ljubljana	46.051	14.505
+1529	Ljubljana	46.051	14.505
+1532	Ljubljana	46.051	14.505
+1533	Ljubljana	46.051	14.505
+1534	Ljubljana	46.051	14.505
+1535	Ljubljana	46.051	14.505
+1536	Ljubljana	46.051	14.505
+1537	Ljubljana	46.051	14.505
+1538	Ljubljana	46.051	14.505
+1540	Ljubljana	46.051	14.505
+1542	Ljubljana	46.051	14.505
+1543	Ljubljana	46.051	14.505
+1544	Ljubljana	46.051	14.505
+1545	Ljubljana	46.051	14.505
+1546	Ljubljana	46.051	14.505
+1547	Ljubljana	46.051	14.505
+1550	Ljubljana	46.051	14.505
+1600	Ljubljana	46.051	14.505
+2000	Maribor - dostava	46.555	15.647
+2001	Maribor - poštni predali	46.555	15.647
+2201	Zgornja Kungota	46.639	15.616
+2204	Miklavž na Dravskem polju	46.506	15.697
+2205	Starše	46.466	15.767
+2206	Marjeta na Dravskem polju	46.453	15.737
+2208	Pohorje	46.503	15.573
+2211	Pesnica pri Mariboru	46.607	15.677
+2212	Šentilj v Slovenskih goricah	46.679	15.653
+2213	Zgornja Velka	46.675	15.769
+2214	Sladki Vrh	46.708	15.801
+2215	Ceršak	46.699	15.669
+2221	Jarenina	46.580	15.744
+2222	Jakobski Dol	46.580	15.744
+2223	Jurovski Dol	46.606	15.785
+2229	Malečnik	46.554	15.703
+2230	Lenart v Slovenskih goricah	46.576	15.831
+2231	Pernica	46.580	15.728
+2232	Voličina	46.584	15.848
+2233	Sv. Ana v Slovenskih goricah	46.584	15.848
+2234	Benedikt	46.609	15.888
+2235	Sv. Trojica v Slovenskih goricah	46.584	15.848
+2236	Cerkvenjak	46.571	15.944
+2241	Spodnji Duplek	46.503	15.745
+2242	Zgornja Korena	46.524	15.772
+2250	Ptuj	46.420	15.870
+2252	Dornava	46.437	15.954
+2253	Destrnik	46.501	15.875
+2254	Trnovska vas	46.520	15.887
+2255	Vitomarci	46.528	15.939
+2256	Juršinci	46.485	15.971
+2257	Polenšak	46.475	16.003
+2258	Sveti Tomaž	46.484	16.084
+2259	Ivanjkovci	46.462	16.146
+2270	Ormož	46.411	16.154
+2272	Gorišnica	46.415	16.014
+2273	Podgorci	46.429	16.064
+2274	Velika Nedelja	46.418	16.110
+2275	Miklavž pri Ormožu	46.460	16.214
+2276	Kog	46.472	16.251
+2277	Središče ob Dravi	46.394	16.268
+2281	Markovci	46.383	15.950
+2282	Cirkulane	46.344	15.995
+2283	Zavrč	46.392	16.050
+2284	Videm pri Ptuju	46.369	15.906
+2285	Zgornji Leskovec	46.330	15.937
+2286	Podlehnik	46.335	15.880
+2287	Žetale	46.275	15.794
+2288	Hajdina	46.409	15.847
+2289	Stoperce	46.290	15.717
+2310	Slovenska Bistrica	46.393	15.574
+2311	Hoče	46.492	15.623
+2312	Orehova vas	46.470	15.669
+2313	Fram	46.451	15.632
+2314	Zgornja Polskava	46.426	15.612
+2315	Šmartno na Pohorju	46.444	15.539
+2316	Zgornja Ložnica	46.383	15.517
+2317	Oplotnica	46.388	15.447
+2318	Laporje	46.347	15.595
+2319	Poljčane	46.312	15.579
+2321	Makole	46.317	15.667
+2322	Majšperk	46.352	15.734
+2323	Ptujska Gora	46.355	15.760
+2324	Lovrenc na Dravskem polju	46.374	15.779
+2325	Kidričevo	46.404	15.791
+2326	Cirkovce	46.400	15.731
+2327	Rače	46.452	15.681
+2331	Pragersko	46.397	15.660
+2341	Limbuš	46.554	15.584
+2342	Ruše	46.539	15.516
+2343	Fala	46.544	15.447
+2344	Lovrenc na Pohorju	46.541	15.393
+2345	Bistrica ob Dravi	46.557	15.514
+2351	Kamnica	46.574	15.614
+2352	Selnica ob Dravi	46.550	15.495
+2353	Sv. Duh na Ostrem Vrhu	46.565	15.561
+2354	Bresternica	46.570	15.575
+2360	Radlje ob Dravi	46.614	15.226
+2361	Ožbalt	46.587	15.399
+2362	Kapla	46.248	15.009
+2363	Podvelka	46.587	15.331
+2364	Ribnica na Pohorju	46.535	15.273
+2365	Vuhred	46.595	15.238
+2366	Muta	46.611	15.166
+2367	Vuzenica	46.596	15.167
+2370	Dravograd	46.588	15.019
+2371	Trbonje	46.603	15.107
+2372	Libeliče	46.620	14.950
+2373	Šentjanž pri Dravogradu	46.561	15.039
+2380	Slovenj Gradec	46.510	15.081
+2381	Podgorje pri Slovenj Gradcu	46.472	15.084
+2382	Mislinja	46.441	15.196
+2383	Šmartno pri Slovenj Gradcu	46.489	15.107
+2390	Ravne na Koroškem	46.543	14.969
+2391	Prevalje	46.547	14.921
+2392	Mežica	46.521	14.854
+2393	Črna na Koroškem	46.471	14.850
+2394	Kotlje	46.521	14.987
+2500	Maribor	46.555	15.647
+2501	Maribor	46.555	15.647
+2502	Maribor	46.555	15.647
+2503	Maribor	46.555	15.647
+2504	Maribor	46.555	15.647
+2505	Maribor	46.555	15.647
+2506	Maribor	46.555	15.647
+2507	Maribor	46.555	15.647
+2509	Maribor	46.555	15.647
+2600	Maribor	46.555	15.647
+2603	Maribor	46.555	15.647
+2609	Maribor	46.555	15.647
+2610	Maribor	46.555	15.647
+3000	Celje - dostava	45.592	14.155
+3001	Celje - poštni predali	45.592	14.155
+3201	Šmartno v Rožni dolini	46.294	15.243
+3202	Ljubečna	46.242	15.321
+3203	Nova Cerkev	46.313	15.286
+3204	Dobrna	46.337	15.226
+3205	Vitanje	46.382	15.296
+3206	Stranice	46.364	15.365
+3210	Slovenske Konjice	46.337	15.426
+3211	Škofja vas	46.268	15.291
+3212	Vojnik	46.293	15.303
+3213	Frankolovo	46.331	15.314
+3214	Zreče	46.382	15.379
+3215	Loče	46.283	15.258
+3220	Štore	46.221	15.314
+3221	Teharje	46.230	15.302
+3222	Dramlje	46.274	15.395
+3223	Loka pri Žusmu	46.157	15.515
+3224	Dobje pri Planini	46.137	15.409
+3225	Planina pri Sevnici	46.111	15.409
+3230	Šentjur	46.217	15.398
+3231	Grobelno	46.212	15.445
+3232	Ponikva	46.241	15.457
+3233	Kalobje	46.167	15.394
+3240	Šmarje pri Jelšah	46.227	15.519
+3241	Podplat	46.246	15.576
+3250	Rogaška Slatina	46.237	15.640
+3252	Rogatec	46.229	15.700
+3253	Pristava pri Mestinju	46.197	15.596
+3254	Podčetrtek	46.157	15.599
+3255	Buče	46.108	15.570
+3256	Bistrica ob Sotli	46.059	15.664
+3257	Podsreda	46.041	15.591
+3260	Kozje	46.075	15.560
+3261	Lesično	46.102	15.514
+3262	Prevorje	46.126	15.477
+3263	Gorica pri Slivnici	46.187	15.432
+3264	Sveti Štefan	46.186	15.493
+3270	Laško	46.155	15.236
+3271	Šentrupert	46.171	15.349
+3272	Rimske Toplice	46.123	15.192
+3273	Jurklošter	46.092	15.337
+3301	Petrovče	46.242	15.190
+3302	Griže	46.229	15.151
+3303	Gomilsko	46.253	15.042
+3304	Tabor	46.236	15.018
+3305	Vransko	46.244	14.951
+3310	Žalec	46.252	15.165
+3311	Šempeter v Savinjski dolini	46.265	15.091
+3312	Prebold	46.237	15.092
+3313	Polzela	46.283	15.067
+3314	Braslovče	46.290	15.039
+3320	Velenje - dostava	46.371	15.034
+3322	Velenje - poštni predali	46.371	15.034
+3325	Šoštanj	46.380	15.049
+3326	Topolšica	46.400	15.022
+3327	Šmartno ob Paki	46.333	15.033
+3330	Mozirje	46.339	14.963
+3331	Nazarje	46.318	14.947
+3332	Rečica ob Savinji	46.317	14.917
+3333	Ljubno ob Savinji	46.344	14.834
+3334	Luče	46.356	14.747
+3335	Solčava	46.419	14.694
+3341	Šmartno ob Dreti	46.284	14.890
+3342	Gornji Grad	46.295	14.808
+3502	Celje	46.231	15.260
+3503	Velenje	46.359	15.110
+3504	Velenje	46.359	15.110
+3505	Celje	46.231	15.260
+3600	Celje	46.231	15.260
+4000	Kranj - dostava	46.239	14.356
+4001	Kranj - poštni predali	46.239	14.356
+4201	Zgornja Besnica	46.267	14.283
+4202	Naklo	46.273	14.317
+4203	Duplje	46.282	14.383
+4204	Golnik	46.333	14.333
+4205	Preddvor	46.303	14.423
+4206	Zgornje Jezersko	46.383	14.467
+4207	Cerklje na Gorenjskem	46.254	14.489
+4208	Šenčur	46.246	14.420
+4209	Žabnica	46.199	14.333
+4210	Brnik aerodrom	46.226	14.406
+4211	Mavčiče	46.182	14.395
+4212	Visoko	46.271	14.418
+4220	Škofja Loka	46.166	14.306
+4223	Poljane nad Škofjo Loko	46.121	14.186
+4224	Gorenja vas	46.167	14.150
+4225	Sovodenj	46.086	14.044
+4226	Žiri	46.042	14.107
+4227	Selca	46.224	14.206
+4228	Železniki	46.233	14.167
+4229	Sorica	46.217	14.033
+4240	Radovljica	46.344	14.174
+4243	Brezje	46.329	14.232
+4244	Podnart	46.295	14.256
+4245	Kropa	46.300	14.200
+4246	Kamna Gorica	46.317	14.200
+4247	Zgornje Gorje	46.380	14.069
+4248	Lesce	46.361	14.158
+4260	Bled	46.369	14.114
+4263	Bohinjska Bela	46.349	14.064
+4264	Bohinjska Bistrica	46.272	13.954
+4265	Bohinjsko jezero	46.322	14.014
+4267	Srednja vas v Bohinju	46.297	13.926
+4270	Jesenice	46.431	14.067
+4273	Blejska Dobrava	46.400	14.100
+4274	Žirovnica	46.405	14.140
+4275	Begunje na Gorenjskem	46.383	14.217
+4276	Hrušica	46.445	14.018
+4280	Kranjska Gora	46.484	13.789
+4281	Mojstrana	46.461	13.937
+4282	Gozd Martuljek	46.483	13.833
+4283	Rateče-Planica	46.476	13.853
+4290	Tržič	46.364	14.310
+4294	Križe	46.343	14.301
+4501	Naklo	46.273	14.317
+4502	Kranj	46.239	14.356
+4600	Kranj	46.239	14.356
+5000	Nova Gorica - dostava	45.958	13.647
+5001	Nova Gorica - poštni predali	45.943	13.639
+5210	Deskle	46.053	13.614
+5211	Kojsko	46.009	13.580
+5212	Dobrovo v Brdih	45.996	13.526
+5213	Kanal	46.089	13.640
+5214	Kal nad Kanalom	46.083	13.740
+5215	Ročinj	46.113	13.670
+5216	Most na Soči	46.147	13.739
+5220	Tolmin	46.183	13.733
+5222	Kobarid	46.248	13.577
+5223	Breginj	46.265	13.428
+5224	Srpenica	46.292	13.499
+5230	Bovec	46.337	13.553
+5231	Log pod Mangartom	46.402	13.597
+5232	Soča	46.343	13.656
+5242	Grahovo ob Bači	46.154	13.862
+5243	Podbrdo	46.210	13.964
+5250	Solkan	45.971	13.649
+5251	Grgar	45.999	13.674
+5252	Trnovo pri Gorici	45.974	13.743
+5253	Čepovan	46.049	13.797
+5261	Šempas	45.930	13.744
+5262	Črniče	45.911	13.777
+5263	Dobravlje	45.884	13.845
+5270	Ajdovščina	45.886	13.909
+5271	Vipava	45.847	13.963
+5272	Podnanos	45.797	13.971
+5273	Col	45.876	14.005
+5274	Črni Vrh nad Idrijo	45.873	13.989
+5275	Godovič	45.958	14.094
+5280	Idrija	46.003	14.031
+5281	Spodnja Idrija	46.032	14.027
+5282	Cerkno	46.126	13.982
+5283	Slap ob Idrijci	46.123	13.805
+5290	Šempeter pri Gorici	45.928	13.641
+5291	Miren	45.896	13.607
+5292	Renče	45.890	13.669
+5293	Volčja Draga	45.907	13.678
+5294	Dornberk	45.890	13.737
+5295	Branik	45.857	13.784
+5296	Kostanjevica na Krasu	45.845	13.642
+5297	Prvačina	45.890	13.718
+5600	Nova Gorica	45.956	13.648
+6000	Koper/Capodistria - dostava	45.554	13.744
+6001	Koper/Capodistria - poštni predali	45.547	13.726
+6210	Sežana	45.709	13.873
+6215	Divača	45.685	13.970
+6216	Podgorje	45.529	13.953
+6217	Vremski Britof	45.657	14.030
+6219	Lokev	45.661	13.928
+6221	Dutovlje	45.758	13.832
+6222	Štanjel	45.823	13.844
+6223	Komen	45.815	13.748
+6224	Senožeče	45.721	14.041
+6225	Hruševje	45.761	14.106
+6230	Postojna	45.777	14.217
+6232	Planina	45.834	14.256
+6240	Kozina	45.610	13.936
+6242	Materija	45.581	13.997
+6243	Obrov	45.542	14.087
+6244	Podgrad	45.522	14.146
+6250	Ilirska Bistrica	45.570	14.241
+6251	Ilirska Bistrica-Trnovo	45.619	14.220
+6253	Knežak	45.624	14.245
+6254	Jelšane	45.503	14.272
+6255	Prem	45.605	14.183
+6256	Košana	45.619	14.220
+6257	Pivka	45.683	14.196
+6258	Prestranek	45.730	14.186
+6271	Dekani	45.550	13.814
+6272	Gračišče	45.505	13.877
+6273	Marezige	45.510	13.803
+6274	Šmarje	45.501	13.718
+6275	Črni Kal	45.550	13.880
+6276	Pobegi	45.539	13.796
+6280	Ankaran/Ancarano	45.566	13.799
+6281	Škofije	45.566	13.799
+6310	Izola/Isola	45.495	13.608
+6320	Portorož/Portorose	45.514	13.592
+6323	Strunjan/Strugnano (sezonska pošta)	45.514	13.592
+6330	Piran/Pirano	45.477	13.623
+6333	Sečovlje/Sicciole	45.477	13.623
+6501	Koper	45.547	13.729
+6502	Koper	45.547	13.729
+6503	Koper	45.547	13.729
+6504	Koper	45.547	13.729
+6505	Koper	45.547	13.729
+6600	Koper	45.547	13.729
+8000	Novo mesto - dostava	45.836	15.190
+8001	Novo mesto - poštni predali	45.830	15.200
+8210	Trebnje	45.904	15.022
+8211	Dobrnič	45.875	14.980
+8212	Velika Loka	45.929	14.968
+8213	Veliki Gaber	45.934	14.907
+8216	Mirna Peč	45.860	15.083
+8220	Šmarješke Toplice	45.862	15.222
+8222	Otočec	45.867	15.273
+8230	Mokronog	45.934	15.141
+8231	Trebelno	45.917	15.150
+8232	Šentrupert	45.978	15.096
+8233	Mirna	45.955	15.062
+8250	Brežice	45.903	15.591
+8251	Čatež ob Savi	45.889	15.602
+8253	Artiče	45.954	15.588
+8254	Globoko	45.955	15.629
+8255	Pišece	46.002	15.641
+8256	Sromlje	45.983	15.600
+8257	Dobova	45.897	15.664
+8258	Kapele	45.933	15.683
+8259	Bizeljsko	46.013	15.697
+8261	Jesenice na Dolenjskem	45.892	15.540
+8262	Krška vas	45.900	15.567
+8263	Cerklje ob Krki	45.883	15.513
+8270	Krško	45.959	15.492
+8272	Zdole	45.977	15.546
+8273	Leskovec pri Krškem	45.936	15.472
+8274	Raka	45.930	15.384
+8275	Škocjan	45.907	15.291
+8276	Bučka	45.933	15.317
+8280	Brestanica	45.995	15.477
+8281	Senovo	46.024	15.477
+8282	Koprivnica	46.035	15.540
+8283	Blanca	45.983	15.400
+8290	Sevnica	46.008	15.316
+8292	Zabukovje	46.055	15.367
+8293	Studenec	45.967	15.350
+8294	Boštanj	46.014	15.283
+8295	Tržišče	45.959	15.197
+8296	Krmelj	45.985	15.189
+8297	Šentjanž	46.011	15.167
+8310	Šentjernej	45.840	15.336
+8311	Kostanjevica na Krki	45.846	15.422
+8312	Podbočje	45.867	15.467
+8321	Brusnice	45.751	15.171
+8322	Stopiče	45.769	15.210
+8323	Uršna sela	45.733	15.133
+8330	Metlika	45.647	15.314
+8331	Suhor	45.530	14.871
+8332	Gradac	45.617	15.250
+8333	Semič	45.646	15.182
+8340	Črnomelj	45.571	15.189
+8341	Adlešiči	45.522	15.306
+8342	Stari trg ob Kolpi	45.494	15.077
+8343	Dragatuš	45.521	15.176
+8344	Vinica	45.460	15.254
+8350	Dolenjske Toplice	45.757	15.059
+8351	Straža	45.780	15.073
+8360	Žužemberk	45.834	14.929
+8361	Dvor	45.814	14.971
+8362	Hinje	45.766	14.882
+8501	Novo mesto	45.804	15.169
+8600	Novo mesto	45.804	15.169
+9000	Murska Sobota - dostava	46.659	16.162
+9001	Murska Sobota - poštni predali	46.661	16.165
+9201	Puconci	46.707	16.156
+9202	Mačkovci	46.781	16.169
+9203	Petrovci	46.805	16.223
+9204	Šalovci	46.825	16.298
+9205	Hodoš/Hodos	46.769	16.240
+9206	Križevci	46.789	16.247
+9207	Prosenjakovci/Partosfalva	46.741	16.317
+9208	Fokovci	46.733	16.267
+9220	Lendava/Lendva	46.655	16.295
+9221	Martjanci	46.686	16.198
+9222	Bogojina	46.676	16.284
+9223	Dobrovnik/Dobronak	46.655	16.295
+9224	Turnišče	46.628	16.320
+9225	Velika Polana	46.572	16.347
+9226	Moravske Toplice	46.683	16.221
+9227	Kobilje	46.685	16.398
+9231	Beltinci	46.605	16.241
+9232	Črenšovci	46.574	16.291
+9233	Odranci	46.587	16.280
+9240	Ljutomer	46.521	16.198
+9241	Veržej	46.584	16.165
+9242	Križevci pri Ljutomeru	46.568	16.139
+9243	Mala Nedelja	46.529	16.056
+9244	Sv. Jurij ob Ščavnici	46.559	16.108
+9245	Spodnji Ivanjci	46.596	15.981
+9250	Gornja Radgona	46.673	15.992
+9251	Tišina	46.684	16.052
+9252	Radenci	46.642	16.038
+9253	Apače	46.697	15.911
+9261	Cankova	46.721	16.023
+9262	Rogašovci	46.800	16.033
+9263	Kuzma	46.837	16.083
+9264	Grad	46.800	16.100
+9265	Bodonci	46.744	16.092
+9501	Murska Sobota	46.663	16.166
+9502	Radenci	46.642	16.038
+9600	Murska Sobota	46.663	16.166

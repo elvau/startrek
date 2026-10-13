@@ -63,11 +63,20 @@ try {
   }, TRIPS);
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(e.message));
+  // Karten (#304): MapLibre-Worker muss laden, sonst bleiben die Kacheln weg (nur Hintergrund)
+  p.on("console", m => { if (m.text().includes("Worker failed to load")) errors.push("Karte: " + m.text()); });
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   const asked = { flights: [], stays: [] };
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
   const leg = (from, to, dep, arr) => ({ from, to, dep, arr, minutes: 150, stops: 0, route: [from, to], carriers: ["Sun Air"], flights: ["SA1"] });
+  // Feiertage (#163, Such-Dienst /holidays): Spanien Sa. 08.05.2027 im Reiseland, Deutschland Fr. 07.05.2027 zuhause
+  await p.route("https://flights.test/holidays?**", r => {
+    const cc = (r.request().url().match(/[?&]cc=([A-Z]{2})/) || [])[1];
+    const day = (d, n) => ({ from: d, to: d, n: { de: n, en: n }, nationwide: true });
+    r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" },
+      body: JSON.stringify({ school: [], public: cc === "ES" ? [day("2027-05-08", "Testfeiertag Spanien")] : cc === "DE" ? [day("2027-05-07", "Testfeiertag Zuhause")] : [] }) });
+  });
   await p.route("https://flights.test/flights/search", async r => {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
     asked.flights.push(JSON.parse(r.request().postData()));
@@ -194,7 +203,7 @@ try {
   // ohne Wohnort: Hinweis mit PLZ-Feld; Hamburger PLZ → Hamburg als Abflughafen (nicht mehr nur NRW)
   const fsm = p.locator(".modal-bg .modal");
   if (!(await fsm.locator(".fs-nohome").isVisible())) fail("Hinweis „Wohnort fehlt“ fehlt");
-  await fsm.locator(".fs-plz").fill("20095");
+  await fsm.locator(".fs-nohome .home-plz").fill("20095");
   await until(async () => (await fsm.locator(".fs-aps .chip.on").allInnerTexts()).join() .startsWith("HAM"), "Hamburg als Abflughafen", 10000);
   if (await fsm.locator(".fs-nohome").count()) fail("Hinweis bleibt nach PLZ");
   log("Ohne Wohnort: PLZ in der Flugsuche, danach Hamburg zuerst (" + (await fsm.locator(".fs-aps .chip.on").allInnerTexts()).join(", ") + ")");
@@ -207,24 +216,36 @@ try {
   if (await p.locator(".modal-bg .modal").count()) fail("Suche aus der anderen Reise noch offen");
   log("Reise gewechselt: aufgeklappte Flugsuche der vorigen Reise ist zu");
 
-  // Tagesplan: Tage der Reise, Flug und Unterkunft automatisch; eigener Eintrag; Erlebnis einem Tag zuordnen
+  // Tagesplan: Tage der Reise, Flug und Unterkunft automatisch; leere Tage als Lücke mit „+“ (#331); eigener Eintrag;
+  // Erlebnis über „+“ einem Tag zuordnen
   await p.locator("#plan").scrollIntoViewIfNeeded();
   const days = p.locator("#plan .dp-day");
-  await until(async () => (await days.count()) === 4, "4 Tage (07.–10.05.)");
+  await until(async () => (await days.count()) === 3, "3 Tage mit Inhalt (Tag 3 leer)");
+  const gap = p.locator("#plan .dp-gap");
+  if ((await gap.innerText()).trim().replace(/\s*\+$/, "") !== "Tag 3 ohne Einträge") fail("Lücke: " + (await gap.innerText()));
+  if (!(await p.locator("#plan .dp-open").innerText()).includes("1 Posten noch ohne Tag")) fail("Hinweis auf Posten ohne Tag fehlt");
+  // Feiertage (#163): im Reiseland als Eintrag am Tag, zuhause als Hinweis auf einen Urlaubstag weniger, mit Quelle
+  await until(async () => (await days.nth(1).innerText()).includes("Feiertag: Testfeiertag Spanien"), "Feiertag im Reiseland an Tag 2");
+  if (!(await p.locator("#plan .dp-homehol").innerText()).includes("Testfeiertag Zuhause")) fail("Hinweis auf Feiertag zuhause fehlt");
+  if (!(await p.locator("#plan .dp-holsrc").innerText()).includes("OpenHolidays")) fail("Quelle der Feiertage fehlt");
   const d1 = await days.nth(0).innerText();
   if (!d1.includes("DUS → PMI") || !d1.includes("08:00") || !d1.includes("Check-in")) fail("Tag 1: " + d1);
-  if (!(await days.nth(3).innerText()).includes("PMI → DUS")) fail("Rückflug nicht am letzten Tag");
+  if (!(await days.nth(2).innerText()).includes("PMI → DUS")) fail("Rückflug nicht am letzten Tag");
   await days.nth(1).locator(".dp-plus").click();
   await days.nth(1).locator(".dp-add .chip", { hasText: "Essen" }).click();
   await days.nth(1).locator(".dp-text").fill("Abendessen am Hafen");
   await days.nth(1).locator(".dp-time").fill("20:00");
   await days.nth(1).locator(".dp-add .btn.primary").click();
   await until(async () => (await days.nth(1).innerText()).includes("Abendessen am Hafen"), "eigener Eintrag");
+  // „+“ an der Lücke: Tag 3 aufgeklappt, Überschrift eintragen
+  await gap.locator(".dp-gap-add").click();
+  await until(async () => (await days.count()) === 4, "Tag 3 aufgeklappt");
   await days.nth(2).locator(".dp-title-in").fill("Ruhetag");
   await days.nth(2).locator(".dp-title-in").press("Tab");
-  await p.locator("#plan .dp-o", { hasText: "Bootstour" }).locator("select").selectOption({ index: 2 });
+  await days.nth(1).locator(".dp-plus").click();
+  await days.nth(1).locator(".dp-assign", { hasText: "Bootstour" }).click();
   await until(async () => (await days.nth(1).innerText()).includes("Bootstour"), "Bootstour an Tag 2");
-  if (await p.locator("#plan .dp-o", { hasText: "Bootstour" }).count()) fail("Bootstour noch ohne Tag");
+  if (await p.locator("#plan .dp-open").count()) fail("Bootstour noch ohne Tag");
   await until(async () => { const sv = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:palma") || "{}").days); return !!sv?.["2027-05-08"]?.notes?.[0]?.text && sv?.["2027-05-09"]?.title === "Ruhetag"; }, "Tagesplan gespeichert");
   if (process.env.SHOTS) await p.locator("#plan").screenshot({ path: `${process.env.SHOTS}/plan.png` });
   // Reiseroute: Vorschau als kleines Bild (Wohnort fehlt hier: Flughäfen und Ort)
@@ -232,7 +253,7 @@ try {
   await p.locator("#plan .dp-rbtn").click();
   await p.locator("#plan .rmap .rm-play").waitFor();
   await p.locator("#plan .dp-rbtn").click();
-  log("Tagesplan: 4 Tage, Flug und Check-in automatisch, „Abendessen am Hafen“ 20:00, Ruhetag, Bootstour an Tag 2; Routenvorschau, Karte mit Abspielen, Bild und Video");
+  log("Tagesplan: Feiertag im Reiseland an Tag 2, Feiertag zuhause als Hinweis; leerer Tag 3 als Lücke mit „+“, Flug und Check-in automatisch, „Abendessen am Hafen“ 20:00, Ruhetag, Bootstour an Tag 2; Routenvorschau, Karte mit Abspielen, Bild und Video");
   if (await p.locator("#transport .ground").count()) fail("Palma ist kein nahes Ziel");
 
   // nahes Ziel: Bahn, Fernbus, Auto, Reisebus mit Richtwerten; bahn.de vorbefüllt; Reisebus als Posten
@@ -363,10 +384,10 @@ try {
   await until(async () => ((await accLines()).match(/Gruppenbus ab Düsseldorf/g) || []).length === 3, "drei Familien im Gruppenbus");
   if (!(await accLines()).includes("Anteil 2 von 6 Personen")) fail("Gruppenbus ohne Anteil: " + await accLines());
   await p.locator(".hh-sum b", { hasText: /^West$/ }).click();
-  await p.locator(".hh.open select").first().selectOption("with");
+  await p.locator(".hh.open select:not(.home-cc)").first().selectOption("with");
   await p.locator(".hh.open label", { hasText: "bei" }).locator("select").selectOption("Nord");
   await p.locator(".hh-sum b", { hasText: /^Nord$/ }).click();
-  await p.locator(".hh.open select").first().selectOption("taxi");
+  await p.locator(".hh.open select:not(.home-cc)").first().selectOption("taxi");
   await p.locator(".hh.open .hh-ride").fill("60"); await p.locator(".hh.open .hh-ride").blur();
   await until(async () => (await accLines()).includes("Fahrgemeinschaft mit Nord · Anteil 2 von 4 Personen") && (await accLines()).includes("Fahrdienst 2 × 60 €"), "Fahrgemeinschaft und Fahrdienst");
   log("Anreise zum Flughafen: für alle Gruppenbus (Anteil je Person), Fahrgemeinschaft teilt die Kosten, Fahrdienst mit eigenem Preis");
@@ -378,7 +399,7 @@ try {
   await p.locator("#transport").scrollIntoViewIfNeeded();
   const ask = p.locator("#transport .gr-askhome");
   await ask.waitFor({ timeout: 10000 });
-  await ask.locator(".fs-plz").fill("50667");
+  await ask.locator(".home-plz").fill("50667");
   await until(async () => (await ask.count()) === 0, "PLZ übernommen");
   log("Ohne Flug und Wohnort: „Unterwegs“ fragt nach der PLZ, danach verschwindet die Frage");
 

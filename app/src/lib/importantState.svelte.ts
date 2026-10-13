@@ -1,7 +1,8 @@
 /*
  * „Wichtiges“ der aktuellen Reise: Bestimmungen zum Reiseland für die Bubble in der Menüleiste (Zähler, Popup), dazu
  * „Gut zu wissen“ (Früh buchen, besondere Orte) für das Kapitel Erlebnisse.
- * Lädt Einreise-Daten (visa.json) und Warnstufen (Such-Dienst) einmal, Orts- und Flughafendaten je Reise.
+ * Lädt Einreise-Daten (visa.json), persönliche Hinweise (hinweise.json) und Warnstufen (Such-Dienst) einmal, Orts- und
+ * Flughafendaten je Reise; Reisehinweise der eigenen Regierung je Reiseland nur, wenn jemand einen Pass mit offener Schnittstelle hat (GB, US, CA).
  */
 import { app } from "./store.svelte";
 import { dir } from "./directory.svelte";
@@ -12,12 +13,15 @@ import { airportData, ensureAirports, ensureGeo, geo } from "./geo/geo.svelte";
 import { ccOf } from "./geo/places";
 import { locOf } from "./geo/locations";
 import type { AdviceMap } from "./advice";
-import { loadAdvice } from "./adviceApp";
+import { loadAdvice, loadGovAdvice } from "./adviceApp";
+import { OWN_GOV, type GovMap } from "./govadvice";
+import { natsOf } from "./visa";
 import { loadVisa, type VisaData } from "./visa";
 import { bookAheadFor } from "./bookahead";
 import { importantPoints, isOpen, type PointKind } from "./important";
 import { docs } from "./traveldocs.svelte";
 import { cloud } from "./cloud/cloud.svelte";
+import { loadSafety, personalHints, type SafetyData } from "./personal";
 
 /** Bestimmungen: Warnstufen, Warnungen, Einreise, Grenze, Reisepass, dazu hohe Kautionen; Rest (Früh buchen, Orte) ist „Gut zu wissen“ */
 const RULES = new Set<PointKind>(["aa", "warn", "entry", "border", "pass", "deposit", "pet"]);
@@ -25,6 +29,8 @@ const RULES = new Set<PointKind>(["aa", "warn", "entry", "border", "pass", "depo
 class ImportantState {
   visa = $state<VisaData | null>(null);
   advice = $state<AdviceMap>({});
+  /** Reisehinweise der eigenen Regierungen je Reiseland */
+  gov = $state<Record<string, GovMap>>({});
   /** Popup offen */
   shown = $state(false);
   countries = $derived(tripCountries(app.trip, n => (n ? ccOf(geo, n) : null), c => locOf(airportData, c, "airport")?.cc));
@@ -33,7 +39,7 @@ class ImportantState {
   passports = $derived(docs.status === "ready" ? Object.fromEntries(app.trip.travelers.filter(x => x.personId && docs.map[x.personId]?.passExpiry).map(x => [x.id, docs.map[x.personId!].passExpiry!])) : {});
   canCheck = $derived(!!cloud.user && docs.status !== "ready" && docs.status !== "loading" && app.trip.travelers.some(x => x.personId));
   book = $derived(bookAheadFor(tripText(app.trip, this.places), tripAps(app.trip), app.trip.from));
-  points = $derived(importantPoints({ trip: app.trip, countries: this.countries, hints: [...hintsFor(app.trip, this.countries, this.places), ...petHints(app.trip, this.countries)], visa: this.visa, advice: this.advice, passports: this.passports, book: this.book }));
+  points = $derived(importantPoints({ trip: app.trip, countries: this.countries, hints: [...hintsFor(app.trip, this.countries, this.places), ...petHints(app.trip, this.countries)], visa: this.visa, advice: this.advice, gov: this.gov, passports: this.passports, book: this.book }));
   /** Bestimmungen zum Reiseland (Bubble in der Menüleiste) und „Gut zu wissen“ (Kapitel Erlebnisse) */
   rules = $derived(this.points.filter(p => RULES.has(p.kind)));
   tips = $derived(this.points.filter(p => !RULES.has(p.kind)));
@@ -41,6 +47,9 @@ class ImportantState {
   closed = $derived(this.rules.filter(p => !isOpen(p, app.trip.done || {})));
   /** man selbst in dieser Reise („Ich bin“ im Personenverzeichnis) */
   meId = $derived(dir.me ? app.trip.travelers.find(x => x.personId === dir.me)?.id : undefined);
+  /** Hinweise für Frauen, Passeintrag „X“, LGBTQ+: nur für einen selbst, nur aus dem Konto, nie in der Reise (personal.ts) */
+  safety = $state<SafetyData | null>(null);
+  personal = $derived(this.meId && dir.me && docs.status === "ready" ? personalHints(this.safety, docs.map[dir.me], this.countries) : []);
 }
 
 export const imp = new ImportantState();
@@ -52,7 +61,14 @@ export function loadImportant() {
     loaded = true;
     void loadVisa().then(d => (imp.visa = d));
     void loadAdvice().then(m => (imp.advice = m));
+    void loadSafety().then(d => (imp.safety = d));
   }
   void ensureGeo(app.trip).catch(() => {});
   void ensureAirports().catch(() => {});
+}
+
+/** Reisehinweise der eigenen Regierung für die Reiseländer; die Auswahl der Quelle bleibt im Browser. Aus einem eigenen $effect aufrufen (folgt Pässen und Ländern) */
+export function loadGov() {
+  if (!app.trip.travelers.some(p => natsOf(p).some(n => OWN_GOV[n]?.api))) return;
+  for (const cc of imp.countries) if (!imp.gov[cc]) void loadGovAdvice(cc).then(m => { if (Object.keys(m).length) imp.gov = { ...imp.gov, [cc]: m }; });
 }

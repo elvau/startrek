@@ -1,6 +1,6 @@
 <script lang="ts">
   import { netMessage, isNetworkError } from "../neterror";
-  import { arrow, t, tn, type Key } from "../i18n/index.svelte";
+  import { arrow, i18n, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * KI-Assistent (Beta) als Chat unten rechts: Wunsch schreiben, nachschärfen („lieber im Juni“, „günstiger“),
    * Vorschläge direkt übernehmen. Frühere Wünsche gehen als Zusammenhang mit, damit Nachfragen funktionieren.
@@ -23,6 +23,7 @@
   import { dir } from "../directory.svelte";
   import { agentPrefs, myHome, prefsFor } from "../prefs";
   import { agentChat, openChat } from "../agent/open.svelte";
+  import { upcomingSchool } from "../holidaysApp.svelte";
   import { bookingPrice, editCount, flightTotal, type AgentEdit, type AgentTrip } from "../agent/types";
   import type { Trip } from "../model";
   import AiMark from "./AiMark.svelte";
@@ -94,7 +95,10 @@
     try {
       const b = base();
       const withTrip = onTrip, tripId = app.trip.id, home = app.home;
-      const res = await askAgent(agentRequest(b, prompt, asked, agentPrefs(prefsFor(app.home ? null : b, dir)), withTrip), ctrl.signal);
+      const pf = agentPrefs(prefsFor(app.home ? null : b, dir));
+      // Schulferien laut Vorlieben als echte Termine (#163); ohne Such-Dienst bzw. Daten bleibt es bei der Region
+      const school = pf?.holidays ? await upcomingSchool(pf.holidays, new Date().toISOString().slice(0, 10), i18n.lang) : [];
+      const res = await askAgent({ ...agentRequest(b, prompt, asked, pf, withTrip), ...(school.length ? { schoolHolidays: school } : {}) }, ctrl.signal);
       remaining = res.remaining ?? remaining;
       msgs.push(res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
         : res.edit ? { me: false, text: res.edit.reply, ...(editCount(res.edit) ? { edit: res.edit, tripId, state: "open" as const } : {}) }
@@ -188,8 +192,10 @@
   /** Gesamtpreis wie nach dem Übernehmen: Flug mit Anreise, Unterkunft, vor Ort, Erlebnisse, Verpflegung */
   function preview(a: AgentTrip) {
     void geo.world.length;
-    const T = totals(previewTrip(base(), a, geo));
-    return { total: T.total, access: T.byCat.flights - flightTotal(a), food: T.byCat.misc, people: T.active };
+    const tr = previewTrip(base(), a, geo), T = totals(tr);
+    // Camper (#269): Stationen und Mietcamper als Richtwerte
+    const sum = (f: (h: string) => boolean) => tr.items.filter(i => f(i.hint || "")).reduce((s, i) => s + (T.items[i.id]?.net || 0), 0);
+    return { total: T.total, access: T.byCat.flights - flightTotal(a), food: T.byCat.misc, people: T.active, camp: sum(h => h.startsWith("camp:")), rent: sum(h => h === "camper:rent") };
   }
 
   function key(e: KeyboardEvent) {
@@ -275,6 +281,8 @@
                   {:else if f}<li>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {f.out.carriers.join(" / ")}<b>{eur(f.price)}</b></li>{/if}
                   {#if a.arrival}<li>🚗 {a.arrival.label || t("ai.ownArrival")}<b>≈ {eur(a.arrival.eur)}</b></li>{/if}
                   {#if pv.access > 0.5}<li>🚆 {t("ai.access")}<b>≈ {eur(pv.access)}</b></li>{/if}
+                  {#if a.camper}<li class="ai-camp">⛺ {a.camper.stops.map(s => `${s.place} (${s.nights})`).join(" · ")}<b>≈ {eur(pv.camp)}</b></li>
+                    {#if pv.rent > 0.5}<li>🚐 {t("camp.rent")}<b>≈ {eur(pv.rent)}</b></li>{/if}{/if}
                   {#if a.stay}<li>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{(a.stay.board || a.board) ? ` · ${t(`board.${a.stay.board || a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
                   {#if a.transport}<li>🚗 {a.transport.label}<b>≈ {eur(a.transport.eur)}</b></li>{/if}
                   {#if a.extras?.length}<li>🎟 {a.extras.map(x => x.name).join(", ")}<b>≈ {eur(a.extras.reduce((s, x) => s + x.eur, 0))}</b></li>{/if}

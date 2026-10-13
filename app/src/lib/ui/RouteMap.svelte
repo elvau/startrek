@@ -4,8 +4,9 @@
    * Strecke, Kamera folgt, Tage als Untertitel), die sich auch als Video speichern lässt. Alles im Browser.
    */
   import { onDestroy, onMount } from "svelte";
-  import { t, tn } from "../i18n/index.svelte";
+  import { arrow, t, tn } from "../i18n/index.svelte";
   import type { Map as MlMap, Marker } from "maplibre-gl";
+  import { loadMapLibre } from "./maplibre";
   import { arc, focus, type Route, type RSeg } from "../route";
   import type { Day } from "../itinerary";
   import { kmBetween } from "../geo/places";
@@ -39,7 +40,7 @@
 
   async function init() {
     try {
-      const [m] = await Promise.all([import("maplibre-gl"), import("maplibre-gl/dist/maplibre-gl.css")]);
+      const [m] = await Promise.all([loadMapLibre(), import("maplibre-gl/dist/maplibre-gl.css")]);
       lib = m;
       if (!box) return;
       map = new m.Map({ container: box, style: STYLE, center: [10, 45], zoom: 3, attributionControl: { compact: true }, cooperativeGestures: true,
@@ -172,13 +173,13 @@
   /** Untertitel zu einer Strecke: Flug, Weiterreise oder Tag an der Station */
   function captionFor(s: RSeg): string {
     const a = route.points[s.a], b = route.points[s.b];
-    if (s.mode === "flight") return `✈ ${a.name} → ${b.name}`;
+    if (s.mode === "flight") return `✈ ${a.name} ${arrow()} ${b.name}`;
     if (b.kind === "station") {
       const d = days.find(x => x.n === b.day);
       return `${t("day.n", { n: b.day ?? 1 })} · ${b.name}${d && (d.title || d.auto) ? ` · ${d.title || d.auto}` : ""}`;
     }
     if (b.kind === "home") return `🏠 ${t("route.home", { place: b.name })}`;
-    return `→ ${b.name}`;
+    return `${arrow()} ${b.name}`;
   }
   /** Tage an einer Station: Überschriften und eigene Einträge kurz hintereinander */
   function stationDays(s: RSeg): string[] {

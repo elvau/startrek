@@ -11,6 +11,7 @@
   import { openEventPlanner } from "../event/open.svelte";
   import { openFlightSearch } from "../flights/open.svelte";
   import { openStaySearch } from "../stays/open.svelte";
+  import { toCamper } from "./showItem";
   import { FLIGHTS_URL } from "../flights/app";
   import type { Item } from "../model";
   import { openExplore } from "../activities/open.svelte";
@@ -86,7 +87,7 @@
       {:else}<b>{t("hero.t.flights")}</b><span class="ht-sub">{t("hero.t.flightsSub")}</span>{/if}
     </span>
   </button>
-  <button class="ht-tile ht-st" class:empty={!st.list.length && !T.byCat.stay} onclick={() => go("stay", st.first, () => openStaySearch())}>
+  <button class="ht-tile ht-st" class:empty={!st.list.length && !T.byCat.stay} onclick={() => (app.trip.camper && !st.first ? toCamper() : go("stay", st.first, () => openStaySearch()))}>
     <span class="ht-ico" aria-hidden="true">🛏</span>
     <span class="ht-b">
       {#if st.list.length || T.byCat.stay}{@render body(t("ch.stay.label"), T.byCat.stay || 0, st)}

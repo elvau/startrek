@@ -1,6 +1,7 @@
 /* KI-Reiseplaner: gemeinsame Typen für App und Such-Dienst (worker/) */
 import type { FlightOffer } from "../flights/types";
 import type { StayOffer, StayQuery } from "../stays/types";
+import type { CampStop } from "../road/camper";
 import { BOARDS, CAT_KEYS, STYLES, type CatKey, type Prefs, type Status } from "../model";
 
 /** Was die App schickt: Wunsch in eigenen Worten und was über die Reisenden bekannt ist */
@@ -31,6 +32,8 @@ export interface AgentRequest {
   groups?: AgentGroupIn[];
   /** Tage, an denen jemand nicht kann (Termin finden, #174), JJJJ-MM-TT */
   blocked?: string[];
+  /** Schulferien am Wohnort in den nächsten zwölf Monaten (#163, aus den Vorlieben; nur Termine, keine Region) */
+  schoolHolidays?: { from: string; to: string; name: string }[];
 }
 
 /** Familie in der Anfrage: Kürzel statt Name, Personen, eigene An- und Abreise */
@@ -48,6 +51,8 @@ export interface TripBrief {
   country?: string;
   from?: string;
   to?: string;
+  /** Reise mit dem Camper (#269): Stationen statt Hotels */
+  camper?: { own: boolean };
   items: BriefItem[];
 }
 
@@ -76,11 +81,13 @@ export interface AgentEdit {
   stays?: { offer: StayOffer; q: StayQuery; replaces?: string }[];
   /** Schätzungen der KI (Beträge für alle) */
   estimates?: { cat: CatKey; name: string; eur: number; replaces?: string; arrival?: boolean }[];
+  /** Camper-Reise (#269): neue Stationen (hinten angehängt bzw. statt einer bisherigen) */
+  stations?: (CampStop & { replaces?: string })[];
 }
 
 /** Anzahl der Änderungen (0: nur eine Antwort) */
 export const editCount = (e: AgentEdit) =>
-  (e.trip ? Object.keys(e.trip).length : 0) + (e.remove?.length || 0) + (e.flights?.length || 0) + (e.stays?.length || 0) + (e.estimates?.length || 0);
+  (e.trip ? Object.keys(e.trip).length : 0) + (e.remove?.length || 0) + (e.flights?.length || 0) + (e.stays?.length || 0) + (e.estimates?.length || 0) + (e.stations?.length || 0);
 
 /**
  * Flug für einen Teil der Gruppe oder in kleinen Buchungen: das Angebot gilt für `seats` Plätze (so gesucht),
@@ -120,6 +127,8 @@ export interface AgentTrip {
   groups?: AgentGroup[];
   /** Verpflegung laut Unterkunft (Selbstversorgung, Frühstück, Halbpension, Vollpension, All-inclusive) */
   board?: "self" | "breakfast" | "half" | "full" | "all";
+  /** Camper-Reise (#269): Stationen statt Unterkunft, Richtwerte rechnet die App; gemietet: mit Mietcamper */
+  camper?: { own: boolean; stops: CampStop[] };
   /** Schätzung der KI: eigene Anreise (Auto, Bahn) für alle, statt Flug */
   arrival?: { label: string; eur: number };
   /** Schätzung der KI: Transport vor Ort für alle */
@@ -162,8 +171,11 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   const current = parseBrief(o.current);
   const groups = parseGroupsIn(o.groups);
   const blocked = Array.isArray(o.blocked) ? o.blocked.filter((d): d is string => typeof d === "string" && DATE.test(d)).slice(0, 120) : [];
+  const schoolHolidays = (Array.isArray(o.schoolHolidays) ? o.schoolHolidays : []).flatMap((x: any) =>
+    x && DATE.test(x.from) && DATE.test(x.to) && x.to >= x.from ? [{ from: x.from as string, to: x.to as string, name: String(x.name || "").slice(0, 40) }] : []).slice(0, 12);
   return {
     ...(blocked.length ? { blocked } : {}),
+    ...(schoolHolidays.length ? { schoolHolidays } : {}),
     ...(prefs ? { prefs } : {}),
     ...(groups.length ? { groups } : {}),
     ...(current ? { current } : {}),
@@ -208,6 +220,7 @@ export function parseBrief(v: unknown): TripBrief | undefined {
   const b: TripBrief = { items };
   for (const k of ["place", "country"] as const) { const x = s(o[k], 80); if (x) b[k] = x; }
   for (const k of ["from", "to"] as const) { const x = d(o[k]); if (x) b[k] = x; }
+  if (o.camper && typeof o.camper === "object") b.camper = { own: (o.camper as Record<string, unknown>).own === true };
   return b;
 }
 
@@ -227,7 +240,8 @@ export function parsePrefs(v: unknown): Prefs | undefined {
   const styles = codes(o.styles, /^[a-z]+$/, 8).filter(x => (STYLES as string[]).includes(x)); if (styles.length) p.styles = styles as Prefs["styles"];
   if (o.budget === "low" || o.budget === "mid" || o.budget === "high") p.budget = o.budget;
   if (typeof o.note === "string" && o.note.trim()) p.note = o.note.trim().slice(0, 300);
-  if (typeof o.holidays === "string" && /^[A-Z]{2}$/.test(o.holidays)) p.holidays = o.holidays;
+  // altes Bundesland („NW“) bzw. Region „DE-NW“, „AT-KÄ“, ganzes Land „BE-“ (#163)
+  if (typeof o.holidays === "string" && /^[A-Z]{2}(-[\p{Lu}0-9]{0,4})?$/u.test(o.holidays)) p.holidays = o.holidays;
   const months = Array.isArray(o.months) ? [...new Set(o.months.filter(m => int(m, 1, 12)))] as number[] : []; if (months.length) p.months = months;
   if (int(o.nightsMin, 1, 60)) p.nightsMin = o.nightsMin as number;
   if (int(o.nightsMax, 1, 60) && (p.nightsMin == null || (o.nightsMax as number) >= p.nightsMin)) p.nightsMax = o.nightsMax as number;

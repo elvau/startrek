@@ -7,14 +7,14 @@
   import { t } from "../i18n/index.svelte";
   import { access, app, setDetailed } from "../store.svelte";
   import { eur } from "../calc";
-  import { isActive, uid, type Item } from "../model";
+  import { isActive, type Item } from "../model";
   import { addDays } from "../calc/travel";
   import { ccOf, findCity } from "../geo/places";
   import { geo } from "../geo/geo.svelte";
   import { homeOf, tripDays } from "../ground";
-  import { CAMPER_RENT, CAMPING_SOURCE, campNight } from "../road/camper";
+  import { CAMPER_RENT } from "../road/camper";
+  import { campItem, rentItem, type CampKind } from "../road/stations";
   import { roadPlan } from "../road/road.svelte";
-  import { FEES_AS_OF } from "../fees";
   import { nights as nightsBetween } from "../format";
   import PartnerLinks from "./PartnerLinks.svelte";
   import { partnersOf } from "../partners";
@@ -38,18 +38,10 @@
   // neue Station: Ort, Nächte, Campingplatz oder Stellplatz
   let place = $state("");
   let n = $state(2);
-  let kind = $state<"site" | "pitch">("site");
+  let kind = $state<CampKind>("site");
   let err = $state(false);
   const ccOfPlace = (p: string) => (findCity(geo, p, ccOf(geo, app.trip.country)) || findCity(geo, p))?.cc;
-  function stayFor(p: string, k: "site" | "pitch", from: string, nn: number, cc?: string): Item {
-    return {
-      id: uid(), cat: "stay", hint: `camp:${k}`, status: "idea", name: t(k === "site" ? "camp.site" : "camp.pitch", { place: p }), from, to: addDays(from, nn),
-      options: [{ id: uid(), label: t(k === "site" ? "camp.siteEst" : "camp.pitchEst"), estimate: true,
-        price: { mode: "unit", currency: "EUR", unit: campNight(k, cc, persons), basis: "night" },
-        query: { place: p, checkin: from, checkout: addDays(from, nn), adults: persons, childAges: [], rooms: 1 },
-        source: { name: `${CAMPING_SOURCE}, ${FEES_AS_OF}` } }]
-    };
-  }
+  const stayFor = (p: string, k: CampKind, from: string, nn: number, cc?: string) => campItem({ place: p, kind: k, from, nights: nn, cc }, persons);
   function addStation(e: Event) {
     e.preventDefault();
     const p = place.trim();
@@ -65,7 +57,7 @@
     setDetailed("stay", true);
     place = ""; n = 2;
   }
-  function setKind(it: Item, k: "site" | "pitch") {
+  function setKind(it: Item, k: CampKind) {
     const p = it.options[0]?.query?.place || "";
     const nx = stayFor(p, k, it.from!, nightsBetween(it.from, it.to), ccOfPlace(p));
     it.hint = nx.hint; it.name = nx.name;
@@ -86,18 +78,7 @@
   const extraKm = $derived(Math.max(0, Math.round(km - CAMPER_RENT.kmPerDay * days)));
   function addRent() {
     setDetailed("transport", true);
-    const src = `${CAMPER_RENT.source}, ${FEES_AS_OF}`;
-    const it: Item = {
-      id: uid(), cat: "transport", icon: "car", hint: "camper:rent", status: "idea", name: t("camp.rent"),
-      note: t("camp.rentNote", { km: CAMPER_RENT.kmPerDay, v: eur(CAMPER_RENT.extraKm) }),
-      options: [{ id: uid(), label: t("camp.rentEst"), estimate: true, price: { mode: "unit", currency: "EUR", unit: CAMPER_RENT.day, qty: days },
-        extras: [
-          { id: `camp:service:${uid()}`, kind: "other", label: t("camp.service"), amount: CAMPER_RENT.service, basis: "booking", pay: "extra", est: true, source: src },
-          { id: `camp:cleaning:${uid()}`, kind: "cleaning", amount: CAMPER_RENT.cleaning, basis: "booking", pay: "extra", est: true, off: true, source: src },
-          ...(extraKm > 0 ? [{ id: `camp:km:${uid()}`, kind: "other" as const, label: t("camp.extraKm", { km: extraKm }), amount: Math.round(extraKm * CAMPER_RENT.extraKm), basis: "booking" as const, pay: "extra" as const, est: true, source: src }] : [])
-        ],
-        deposit: { amount: CAMPER_RENT.deposit, how: "credit", est: true, for: t("camp.rent") } }]
-    };
+    const it = rentItem(days, extraKm);
     app.trip.items.push(it);
     showItem(it.id);
   }

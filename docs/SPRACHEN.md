@@ -30,3 +30,17 @@ Schlüssel mit Endungen nach [Intl.PluralRules](https://developer.mozilla.org/do
 - Die Übersetzungen sind maschinell erstellt. Muttersprachler sollten sie prüfen.
 - Die Beispielreise und Fehlermeldungen des Such-Dienstes bleiben vorerst deutsch.
 - Die Browser-Tests laufen auf Deutsch (`locale: "de-DE"`).
+
+## Länder (#162)
+- **Wohnort je Land (#163):** ein gemeinsames Feld „Land + PLZ oder Ort“ (`app/src/lib/ui/HomeInput.svelte`,
+  `app/src/lib/home.ts`). Postleitzahlen: Deutschland aus `app/public/plz.txt`, europäische Länder aus GeoNames
+  (CC BY 4.0, Quellenhinweis am Feld) in `app/public/plz/<LAND>.txt`, je Land nachgeladen. Erzeugt mit `scripts/plz.mjs`
+  über den Workflow „Postleitzahlen erzeugen“ (legt das Ergebnis auf den Hilfs-Branch `daten/plz`, von dort übernehmen).
+  Portugal nur mit den ersten vier Ziffern. Länder ohne Postleitzahlen: Ort aus der Ortsliste (`world.json`).
+  Gespeichert wie bisher (PLZ, Ort, Koordinaten), dazu `cc` (fehlt: DE).
+- **Schulferien und Feiertage (#163):** OpenHolidays API (ODbL, etwa 36 Länder). Termine über den Such-Dienst
+  (`/holidays?cc=AT`, drei Tage zwischengespeichert, nur der Ländercode kommt an), Regionen in `app/public/regions.json`
+  (`scripts/regions.mjs`, Workflow „Ferien-Regionen erzeugen“, Ergebnis auf `daten/regions`). Vorlieben speichern
+  `holidays` als Region („DE-NW“, „AT-WI“) bzw. ganzes Land („BE-“); alte Angaben ohne Land sind Bundesländer.
+  Genutzt: echte Ferientermine für den KI-Planer, Feiertage im Reiseland im Tagesplan, Feiertage im Wohnland
+  (Werktage) als Hinweis „ein Urlaubstag weniger“. Logik: `app/src/lib/holidays.ts`, `holidaysApp.svelte.ts`.

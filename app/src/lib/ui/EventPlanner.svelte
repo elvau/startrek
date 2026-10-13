@@ -1,6 +1,6 @@
 <script lang="ts">
   import { netMessage, showError } from "../neterror";
-  import { arrow, locale, t, tn, type Key } from "../i18n/index.svelte";
+  import { arrow, i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Reise zu einem Event: Was, wo, wann. Daraus bis zu drei Vorschläge (ohne Nacht, eine Nacht, ab Vortag),
    * je mit dem günstigsten passenden Flug (inkl. Anfahrt) und einer gut bewerteten Unterkunft.
@@ -18,7 +18,12 @@
   import { pickOrigins } from "../flights/origin";
   import { capitalOf, ccOf, findCity, loadGeo, searchParts } from "../geo/places";
   import { areaAround, countryName, destAround, locLabel, locOf, resolveLoc, searchLocs, type Loc } from "../geo/locations";
-  import { loadPlz } from "../plz";
+  import { withHome } from "../plz";
+  import { holidayName, holidayPlace, holidaysIn, type HolidayData } from "../holidays";
+  import { holidayText, loadHolidays } from "../holidaysApp.svelte";
+  import { dir } from "../directory.svelte";
+  import { addDays as plusDays } from "../calc/travel";
+  import type { Home } from "../home";
   import { hhKey } from "../model";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
@@ -52,6 +57,18 @@
   let evBusy = $state(false);
   let evErr = $state("");
   let hits = $state<EventHit[] | null>(null);
+  // Schulferien und Feiertage zuhause laut Vorlieben (#163): Hinweis am Datum des Events
+  const hp = $derived(holidayPlace(dir.prefs?.holidays));
+  let hd = $state<HolidayData | null>(null);
+  $effect(() => { const p = hp; if (p) void loadHolidays(p.cc).then(d => (hd = d)); });
+  const evHol = $derived.by(() => {
+    if (!hd || !hp || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+    const to = endDate && endDate >= date ? endDate : date;
+    const s = holidaysIn(hd.school, date, to, hp.region)[0];
+    const near = holidaysIn(hd.public, plusDays(date, -1), plusDays(to, 1), hp.region)[0];
+    const school = s ? t("ev.inHolidays", { name: holidayName(s, i18n.lang) }) : t("ev.noHolidays", { region: holidayText(dir.prefs?.holidays, undefined, i18n.lang) });
+    return near ? `${school} · ${t("ev.homeHoliday", { d: dayShort(near.from), name: holidayName(near, i18n.lang) })}` : school;
+  });
   let picked = $state<EventHit | null>(null);
   /** angenommene Stadt (Hauptstadt), solange man sie nicht ändert */
   let guess = $state("");
@@ -120,16 +137,11 @@
   let allCodes = $state<string[]>([...aps0]);
   // ohne Wohnort: PLZ gleich hier (sonst Flughäfen aus NRW und keine Anfahrt)
   const noHome = $derived(flyers(trip).some(x => !trip.households?.[hhKey(x)]?.geo));
-  let plzErr = $state(false);
-  async function setPlz(v: string) {
-    plzErr = false;
-    if (!/^\d{5}$/.test(v.trim())) return;
-    const pl = (await loadPlz().catch(() => null))?.get(v.trim());
-    if (!pl) { plzErr = true; return; }
-    trip.households ||= {};
-    for (const h of new Set(flyers(trip).map(hhKey))) if (!trip.households[h]?.geo) trip.households[h] = { ...trip.households[h], plz: v.trim(), geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
+  function setHome(h: Home) {
+    trip.households = withHome(trip.households, flyers(trip).map(hhKey), h);
     aps = nearestAirports(trip); allCodes = [...new Set([...aps, ...allCodes])];
   }
+
   // ohne Wohnort: ungefährer Ort aus der Verbindung kommt nach; Vorschlag nachziehen, solange nichts selbst gewählt ist
   let apsTouched = $state(false);
   loadOrigin();
@@ -299,6 +311,7 @@
       <label class="f">{t("ev.hours")}<input class="n sm" type="number" min="1" max="24" step="0.5" bind:value={hours} /></label>
       <label class="f">{t("ev.end")}<input class="ev-end" type="date" min={date} bind:value={endDate} /></label>
     </div>
+    {#if evHol}<p class="small muted ev-hol">🏖 {evHol}</p>{/if}
     <details class="ev-more" bind:open={more}>
       <summary class="small">{t("ev.more")}</summary>
       <p class="muted small">{t("ev.moreHint")}</p>
@@ -309,7 +322,7 @@
     </details>
     <div>
       <span class="dlabel">{t("ev.origins")}</span>
-      {#if noHome}<HomeHint {setPlz} {plzErr} guessed={!apsTouched} />{/if}
+      {#if noHome}<HomeHint {setHome} guessed={!apsTouched} />{/if}
       <div class="chips fs-aps">
         {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} class:flash={flash.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} from={fromPt} />

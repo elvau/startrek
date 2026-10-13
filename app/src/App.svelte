@@ -33,10 +33,9 @@
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
   import SetupWizard from "./lib/ui/SetupWizard.svelte";
-  import { autoAllowed, seenLocally, setupWizard } from "./lib/setup/app.svelte";
+  import { autoAllowed, setupWizard } from "./lib/setup/app.svelte";
   import { shouldAutoStart } from "./lib/setup/setup";
   import { dir, dirReady } from "./lib/directory.svelte";
-  import { localTrips } from "./lib/store.svelte";
   import UsagePanel from "./lib/ui/UsagePanel.svelte";
   import ConnectDialog from "./lib/ui/ConnectDialog.svelte";
   import { connect } from "./lib/connector/app.svelte";
@@ -66,19 +65,20 @@
   import { eventWindow } from "./lib/activities/window";
   import { carItem, carPerDay, carWindow, insuranceItem } from "./lib/extras";
   import { airportOf, ccOf } from "./lib/geo/places";
-  import { showItem } from "./lib/ui/showItem";
+  import { showItem, toCamper } from "./lib/ui/showItem";
   import { stationName } from "./lib/stays/stationName";
   import { airportData, ensureAirports, ensureGeo, geo } from "./lib/geo/geo.svelte";
   import { applyPlanLink } from "./lib/planApp";
 
   let sheet = $state(false);
 
-  // Konto einrichten (#160): einmal von selbst, sobald der Stand des Kontos da ist und es noch leer ist
-  let setupChecked = false;
+  // Konto einrichten (#160, #330): erst ausprobieren; nach der Anmeldung einmal je Konto, sobald dessen Stand da ist
+  let setupChecked = "";
   $effect(() => {
-    if (setupChecked || !dirReady() || (cloud.user && !cloud.fresh)) return;
-    setupChecked = true;
-    if (autoAllowed() && shouldAutoStart(dir, localTrips().length + cloud.trips.length, seenLocally())) setupWizard.open = true;
+    const u = cloud.user?.uid;
+    if (!u || setupChecked === u || !dirReady() || !cloud.fresh) return;
+    setupChecked = u;
+    if (autoAllowed() && shouldAutoStart(dir, !!cloud.user)) setupWizard.open = true;
   });
   // Karte der Reise, aufgeklappt im Kapitel Unterkunft oder Erlebnisse
   let mapOpen = $state<"stay" | "attractions" | null>(null);
@@ -220,7 +220,8 @@
             <br />{t("ins.hint")}
           </p>
         {:else if ch.k === "stay" && !access.readonly}
-          <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
+          {#if app.trip.camper}<p class="search-row small st-camper">⛺ {t("camp.stayHint", { ch: t("ch.transport.label") })} <button class="linkbtn" onclick={toCamper}>{t("camp.toStations")}</button></p>{/if}
+          <div class="search-row"><button class="btn st-open" class:primary={!app.trip.camper} onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
             <button class="btn priv-open" onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
           {#if mapOpen === "stay"}<TripMap onclose={() => (mapOpen = null)} />{/if}

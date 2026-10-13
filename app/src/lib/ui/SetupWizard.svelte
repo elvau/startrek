@@ -13,7 +13,8 @@
   import { docs, loadDocs, saveDocsNow, setDocFields } from "../traveldocs.svelte";
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
-  import { loadPlz, type Place } from "../plz";
+  import { homeText, type Home } from "../home";
+  import HomeInput from "./HomeInput.svelte";
   import { FLIGHTS_URL, homeGuess } from "../flights/app";
   import { guessAirports } from "../flights/origin";
   import { loadOrigin } from "../flights/origin.svelte";
@@ -22,9 +23,11 @@
   import BirthInput from "./BirthInput.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { openChat } from "../agent/open.svelte";
-  import { FUELS, LICENSES, RAIL_DE, SETUP_TEXT_MAX, STATES } from "../setup/ai";
+  import { FUELS, LICENSES, RAIL_DE, SETUP_TEXT_MAX } from "../setup/ai";
+  import HolidayPicker from "./HolidayPicker.svelte";
+  import { holidayText } from "../holidaysApp.svelte";
   import { applyAi, applyDraft, draftFrom, type SetupDraft } from "../setup/setup";
-  import { askSetup, markSeen, setupWizard } from "../setup/app.svelte";
+  import { askSetup, setupWizard } from "../setup/app.svelte";
 
   const STEPS = ["me", "go", "who", "how", "when", "more", "done"] as const;
   // -1: Einstieg (mit KI oder Schritt für Schritt)
@@ -72,16 +75,8 @@
   let natPick = $state("");
 
   /* ---------- Wohnort ---------- */
-  let plzErr = $state(false);
-  let plzMap: Map<string, Place> | null = null;
-  async function setPlz(v: string) {
-    d.plz = v.trim(); plzErr = false;
-    if (!d.plz) { d.home = undefined; return; }
-    if (!/^\d{5}$/.test(d.plz)) return;
-    plzMap ??= await loadPlz().catch(() => null);
-    const pl = plzMap?.get(d.plz);
-    if (pl) d.home = { plz: d.plz, ort: pl.ort, lat: pl.lat, lon: pl.lon }; else plzErr = true;
-  }
+  // Wohnort je Land (#163): PLZ bzw. Ort, dazu das Land (fehlt: DE)
+  function setHome(h: Home) { d.plz = h.plz || h.ort; d.home = { plz: h.plz, ort: h.ort, lat: h.lat, lon: h.lon, ...(h.cc !== "DE" ? { cc: h.cc } : {}) }; }
 
   /* ---------- Vorlieben ---------- */
   function setP<K extends keyof Prefs>(k: K, v: Prefs[K] | undefined) { if (v == null || (Array.isArray(v) && !v.length)) delete d.prefs[k]; else d.prefs[k] = v; }
@@ -106,7 +101,6 @@
   function addAp(l: Loc) { apsTouched = true; setP("airports", [...new Set([...(d.prefs.airports || []), ...(l.kind === "airport" ? [l.code] : l.airports)])]); }
   const num = (v: string) => (v === "" ? undefined : Number(v));
   const monthName = (m: number) => new Date(2027, m - 1, 1).toLocaleDateString(i18n.lang, { month: "short" });
-  const STATE_NAMES: Record<string, string> = { BW: "Baden-Württemberg", BY: "Bayern", BE: "Berlin", BB: "Brandenburg", HB: "Bremen", HH: "Hamburg", HE: "Hessen", MV: "Mecklenburg-Vorpommern", NI: "Niedersachsen", NW: "Nordrhein-Westfalen", RP: "Rheinland-Pfalz", SL: "Saarland", SN: "Sachsen", ST: "Sachsen-Anhalt", SH: "Schleswig-Holstein", TH: "Thüringen" };
   function setCar(k: "seats" | "fuel", v: number | string | undefined) {
     const car = { ...(d.prefs.car || {}) } as NonNullable<Prefs["car"]>;
     if (v == null || v === "" || car[k] === v) delete car[k]; else (car as Record<string, unknown>)[k] = v;
@@ -127,7 +121,6 @@
   function next(store = true) { if (store) save(); step = Math.min(step + 1, STEPS.length - 1); }
   function close() {
     if (!dir.setup) dir.setup = new Date().toISOString().slice(0, 10);
-    markSeen();
     void saveDocsNow();
     setupWizard.open = false;
   }
@@ -144,11 +137,11 @@
   const joinNon = (xs: (string | number | false | undefined | null)[]) => xs.filter(Boolean).join(" · ");
   const ageNow = $derived(d.birth ? Math.floor((Date.now() - new Date(d.birth).getTime()) / (365.25 * 864e5)) : d.age);
   const summary = $derived([
-    { s: 0, icon: "👤", k: "setup.step.me", v: joinNon([d.first && `${d.first} ${d.last}`.trim(), ageNow != null && t("trav.ageYears", { n: ageNow }), d.nats.map(cname).join(", "), d.home && `${d.home.plz} ${d.home.ort}`]) },
+    { s: 0, icon: "👤", k: "setup.step.me", v: joinNon([d.first && `${d.first} ${d.last}`.trim(), ageNow != null && t("trav.ageYears", { n: ageNow }), d.nats.map(cname).join(", "), d.home && homeText(d.home)]) },
     { s: 1, icon: "🚗", k: "setup.step.go", v: joinNon([d.license && t(LIC_KEYS[d.license]), d.creditCard != null && `${t("setup.card")}: ${yesNo(d.creditCard)}`, d.prefs.car && joinNon([d.prefs.car.fuel && t(`setup.fuel.${d.prefs.car.fuel}` as Key), d.prefs.car.seats && t("setup.seatsN", { n: d.prefs.car.seats })]), d.rail.map(r => t(`setup.rail.${r}` as Key)).join(", ")]) },
     { s: 2, icon: "👨‍👩‍👧", k: "setup.step.who", v: joinNon([d.group, d.companions.filter(c => c.on && (c.first || c.id)).map(c => c.first).join(", ")]) },
     { s: 3, icon: "🏖️", k: "setup.step.how", v: joinNon([(d.prefs.styles || []).map(s => t(`prefs.s.${s}` as Key)).join(", "), d.prefs.budget && t(`prefs.b.${d.prefs.budget}` as Key), d.prefs.stayType === "whole" ? t("st.whole") : d.prefs.stayType === "hotel" ? t("st.hotel") : "", d.prefs.board && t(`board.${d.prefs.board}` as Key), d.prefs.airports?.join(", ")]) },
-    { s: 4, icon: "📅", k: "setup.step.when", v: joinNon([d.prefs.holidays && STATE_NAMES[d.prefs.holidays], (d.prefs.months || []).map(monthName).join(", "), (d.prefs.nightsMin || d.prefs.nightsMax) && tn("n.nights", d.prefs.nightsMax || d.prefs.nightsMin || 0).replace(/^\d+/, [d.prefs.nightsMin, d.prefs.nightsMax].filter(Boolean).join("–"))]) },
+    { s: 4, icon: "📅", k: "setup.step.when", v: joinNon([d.prefs.holidays && holidayText(d.prefs.holidays, undefined, i18n.lang), (d.prefs.months || []).map(monthName).join(", "), (d.prefs.nightsMin || d.prefs.nightsMax) && tn("n.nights", d.prefs.nightsMax || d.prefs.nightsMin || 0).replace(/^\d+/, [d.prefs.nightsMin, d.prefs.nightsMax].filter(Boolean).join("–"))]) },
     { s: 5, icon: "🐾", k: "setup.step.more", v: joinNon([d.prefs.pet && t("setup.pet"), d.prefs.stepFree && t("setup.stepFree"), d.prefs.diet && t(`setup.diet.${d.prefs.diet}` as Key)]) }
   ]);
 </script>
@@ -191,8 +184,7 @@
           {#if !d.birth}<label class="f">{t("setup.orAge")}<input class="n sm" type="number" min="0" max="120" value={d.age ?? ""} oninput={e => (d.age = num(e.currentTarget.value) ?? null)} /></label>{/if}
         </div>
         <div class="wz-grid">
-          <label class="f plzf">{t("setup.home")}<input class="wz-plz" inputmode="numeric" maxlength="5" value={d.plz} oninput={e => setPlz(e.currentTarget.value)} placeholder={t("fs.plzPh")} />
-            {#if plzErr}<small class="err">{t("fs.plzUnknown")}</small>{:else if d.home}<small class="muted">{d.home.ort}</small>{/if}</label>
+          <HomeInput cls="f plzf wz-home" label={t("setup.home")} value={d.home} onpick={setHome} onclear={() => { d.plz = ""; d.home = undefined; }} />
           <span class="muted small wz-hint">{t("setup.homeHint")}</span>
         </div>
         <div class="wz-sec">
@@ -284,10 +276,8 @@
           <div class="chips"><span class="muted small">{t("prefs.bags")}:</span>{#each [true, false] as v (v)}<button type="button" class="chip" class:on={d.prefs.bags === v} aria-pressed={d.prefs.bags === v} onclick={() => pick("bags", v)}>{v ? t("prefs.bagsYes") : t("prefs.bagsNo")}</button>{/each}</div></div>
 
       {:else if STEPS[step] === "when"}
-        <label class="f">{t("prefs.holidays")}{#if ai("holidays")} <span class="wz-ai-tag">{t("setup.fromText")}</span>{/if}
-          <select class="wz-hol" value={d.prefs.holidays ?? ""} onchange={e => setP("holidays", e.currentTarget.value || undefined)}>
-            <option value="">{t("prefs.unset")}</option>{#each STATES as s (s)}<option value={s}>{STATE_NAMES[s]}</option>{/each}
-          </select></label>
+        <div class="wz-sec"><span class="dlabel">{t("prefs.holidays")}{#if ai("holidays")} <span class="wz-ai-tag">{t("setup.fromText")}</span>{/if}</span>
+          <HolidayPicker cls="wz-hol" value={d.prefs.holidays} empty={t("prefs.unset")} onchange={v => setP("holidays", v)} /></div>
         <div class="wz-sec"><span class="dlabel">{t("prefs.months")}</span>
           <div class="chips">{#each Array.from({ length: 12 }, (_, i) => i + 1) as m (m)}<button type="button" class="chip sm" class:on={d.prefs.months?.includes(m)} aria-pressed={!!d.prefs.months?.includes(m)} onclick={() => toggleIn("months", m)}>{monthName(m)}</button>{/each}</div></div>
         <label class="f">{t("prefs.nights")}

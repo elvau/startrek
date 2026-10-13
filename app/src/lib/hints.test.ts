@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HINTS, hintsFor, tripCountries, warnHintsFor } from "./hints";
+import { HINTS, hintForPass, hintsFor, tripCountries, warnHintsFor } from "./hints";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
 const L = (dir: "out" | "via" | "back", from: string, to: string, dep: string) => ({ dir, from, to, dep: `${dep}T10:00`, arr: `${dep}T18:00` });
@@ -65,5 +65,21 @@ describe("Warnhinweise zum Flugziel", () => {
     expect(warnHintsFor(["KP"], "").map(h => h.id)).toEqual(["kp"]);
     expect(warnHintsFor([], "Pjöngjang").map(h => h.id)).toEqual(["kp"]);
     expect(warnHintsFor(["CN", undefined], "Peking")).toEqual([]);
+  });
+  it("Einreise-Hinweise geben an, für welche Pässe sie gelten", () => {
+    const h = (id: string) => HINTS.find(x => x.id === id)!;
+    for (const x of HINTS.filter(x => x.kind === "entry")) expect(x.pass, x.id).toBeDefined();
+    // ESTA: alle mit Reisegenehmigung laut visa.json, nicht mit Visum
+    expect(hintForPass(h("us"), "GB", "eta")).toBe(true);
+    expect(hintForPass(h("us"), "IN", "visa")).toBe(false);
+    // eVisitor: EU/EWR/Schweiz und Großbritannien
+    expect(hintForPass(h("au"), "AT", "eta")).toBe(true);
+    expect(hintForPass(h("au"), "GB", "eta")).toBe(true);
+    expect(hintForPass(h("au"), "US", "eta")).toBe(false);
+    // China: Text nur für Deutsche; Thailand: alle ausländischen Pässe, nicht im eigenen Land
+    expect(hintForPass(h("cn"), "DE", "free")).toBe(true);
+    expect(hintForPass(h("cn"), "FR", "free")).toBe(false);
+    expect(hintForPass(h("th"), "BR", "free")).toBe(true);
+    expect(hintForPass(h("th"), "TH", "home")).toBe(false);
   });
 });

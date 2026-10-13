@@ -464,6 +464,9 @@ try {
   await p.keyboard.press("Escape");
   const rc = p.locator("#flights .card[data-item]", { hasText: "GIG → EZE" });
   await rc.waitFor();
+  // Kopf der Rundreise (#327): ganze Route, kein „Direktflug“ für alle drei Tickets
+  const rhd = await rc.locator(".bp-hd").textContent(), rrt = await rc.locator(".bp-route").textContent();
+  if (rhd.includes("Direktflug") || !rrt.includes("GIG → EZE") || (rrt.match(/DUS/g) || []).length !== 2) fail("Rundreise-Kopf: " + rhd + " | " + rrt);
   const rxc = rc.locator(".xc").first();
   const rsum = await rxc.locator("summary").textContent();
   if (rsum.split("Koffer dazubuchen").length !== 2 || rsum.includes("→")) fail("Kurzzeile der Nebenkosten: " + rsum);
@@ -581,9 +584,10 @@ try {
   // ohne Wohnort: Abflughäfen aus dem ungefähren Ort der Verbindung (/where), sonst große Flughäfen des Landes
   const TRIP0 = { id: "wo", name: "Lissabon", place: "Lissabon", country: "Portugal", from: "2027-05-14", to: "2027-05-18",
     travelers: [{ id: "a", name: "Anna", household: "Klein" }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
-  for (const [where, expect, text, plz] of [
-    [{ cc: "DE", lat: 53.6, lon: 10, city: "Hamburg" }, "HAM", "in der Nähe von Hamburg", true],
-    [{ cc: "AT" }, "VIE", "Große Flughäfen in Österreich", false]
+  // Wohnort je Land (#163): das Feld steht immer da, das Land ist aus der Verbindung vorgewählt
+  for (const [where, expect, text, cc] of [
+    [{ cc: "DE", lat: 53.6, lon: 10, city: "Hamburg" }, "HAM", "in der Nähe von Hamburg", "DE"],
+    [{ cc: "AT" }, "VIE", "Große Flughäfen in Österreich", "AT"]
   ]) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
     await ctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, TRIP0);
@@ -597,10 +601,10 @@ try {
     const qm = q.locator(".modal-bg .modal");
     await until(async () => (await qm.locator(".fs-aps .chip.on").allInnerTexts())[0] === expect, `Abflughafen ${expect} zuerst`);
     const hint = await qm.locator(".fs-nohome").innerText();
-    if (!hint.includes(text) || (await qm.locator(".fs-nohome .fs-plz").count() > 0) !== plz) fail("Hinweis ohne Wohnort: " + hint);
+    if (!hint.includes(text) || (await qm.locator(".fs-nohome .home-cc").inputValue()) !== cc) fail("Hinweis ohne Wohnort: " + hint);
     await ctx.close();
   }
-  log("Ohne Wohnort: Hamburg aus der Verbindung → HAM zuerst mit Hinweis und PLZ-Feld; nur Österreich bekannt → VIE, Hinweis auf große Flughäfen, ohne PLZ");
+  log("Ohne Wohnort: Hamburg aus der Verbindung → HAM zuerst mit Hinweis und Wohnort-Feld (Deutschland); nur Österreich bekannt → VIE, Hinweis auf große Flughäfen, Feld mit Österreich");
 
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   console.log("\nAlle Schritte erfolgreich.");

@@ -1,33 +1,42 @@
 # Besondere Ziele und Reisehinweise
 
 Liste für die Karte „Einreise & Tipps“ (`app/src/lib/hints.ts`, Texte `hint.<id>.t/.x` in `app/src/lib/i18n/*.ts`).
-Einreise-Texte gelten für deutsche Staatsangehörige; andere Staatsangehörigkeiten laufen über `public/visa.json`
-(Passport Index Data). Warnstufen kommen live vom Auswärtigen Amt (`/advice` im Such-Dienst).
+Einreise je reisender Person mit ihrem Pass (bei zwei Pässen der günstigere, mit Hinweis) aus `public/visa.json`
+(Passport Index Data). Die Einreise-Texte gelten nur für die Pässe in `pass` (Spalte „gilt für“); für andere Pässe
+erscheinen nur der Überblick und der offizielle Link. Warnstufen kommen live vom Auswärtigen Amt (`/advice` im
+Such-Dienst), für britische, US- und kanadische Pässe von der eigenen Regierung (siehe unten).
 Kurze Hinweise, keine Rechtsberatung: maßgeblich ist immer der verlinkte offizielle Link. Stand der Recherche: Oktober 2026.
+
+**Nur für dich** (#302, Quelle entschieden in #329): Hinweise für Frauen, zum Passeintrag „X“ und zu LGBTQ+ je Land in
+`public/hinweise.json`, nur für einen selbst aus den Angaben im Konto, berechnet im Browser (`app/src/lib/personal.ts`).
+Daten aus Mignot/Our World in Data (CC BY 4.0) und den britischen Reisehinweisen (FCDO, Open Government Licence v3.0);
+AA und ILGA World nur verlinkt (ihre Bedingungen erlauben keine Übernahme). Pflegen: Workflow „Reisehinweise erzeugen“
+von Hand starten (`scripts/hinweise.mjs`, läuft auch bei Änderungen am Skript), Belege im Log prüfen, JSON aus dem Log
+übernehmen; Ausnahmen nach Prüfung in `OVERRIDE` im Skript, von Hand gepflegte Länder für „X“ in `xManual`.
 
 ## Eingebaut
 
 ### Einreise (vorab online)
-| ID | Land | Was | Link |
-|---|---|---|---|
-| us | USA | ESTA | esta.cbp.dhs.gov |
-| ca | Kanada | eTA | canada.ca |
-| gb | Großbritannien | ETA | gov.uk/eta |
-| au | Australien | eVisitor | immi.homeaffairs.gov.au |
-| nz | Neuseeland | NZeTA (+ IVL) | immigration.govt.nz |
-| th | Thailand | TDAC-Ankunftskarte | tdac.immigration.go.th |
-| ke | Kenia | eTA | etakenya.go.ke |
-| in | Indien | e-Visa | indianvisaonline.gov.in |
-| lk | Sri Lanka | ETA | eta.gov.lk |
-| eg | Ägypten | e-Visa / Visum bei Ankunft | visa2egypt.gov.eg |
-| il | Israel | ETA-IL (25 ILS) | israel-entry.piba.gov.il |
-| cu | Kuba | eVisa (seit Juli 2025) + D'Viajeros | evisacuba.cu, dviajeros.mitrans.gob.cu |
-| sc | Seychellen | Travel Authorisation | seychelles.govtas.com |
-| idn | Indonesien | All Indonesia (Ankunft) + e-VOA | allindonesia.imigrasi.go.id |
-| ph | Philippinen | eTravel (72 h vorher) | etravel.gov.ph |
-| bt | Bhutan | e-Visum + SDF 100 USD/Nacht (bis Aug. 2027) | bhutan.travel |
-| tz | Tansania | e-Visum | eservices.immigration.go.tz |
-| cn | China | visumfrei 30 Tage (bis 31.12.2026) | en.nia.gov.cn |
+| ID | Land | Was | Link | gilt für |
+|---|---|---|---|---|
+| us | USA | ESTA | esta.cbp.dhs.gov | Reisegenehmigung (laut visa.json) |
+| ca | Kanada | eTA | canada.ca | Reisegenehmigung |
+| gb | Großbritannien | ETA | gov.uk/eta | Reisegenehmigung |
+| au | Australien | eVisitor | immi.homeaffairs.gov.au | EU/EWR/CH, GB |
+| nz | Neuseeland | NZeTA (+ IVL) | immigration.govt.nz | Reisegenehmigung |
+| th | Thailand | TDAC-Ankunftskarte | tdac.immigration.go.th | alle |
+| ke | Kenia | eTA | etakenya.go.ke | alle |
+| in | Indien | e-Visa | indianvisaonline.gov.in | e-Visum |
+| lk | Sri Lanka | ETA | eta.gov.lk | DE |
+| eg | Ägypten | e-Visa / Visum bei Ankunft | visa2egypt.gov.eg | e-Visum, bei Ankunft |
+| il | Israel | ETA-IL (25 ILS) | israel-entry.piba.gov.il | Reisegenehmigung |
+| cu | Kuba | eVisa (seit Juli 2025) + D'Viajeros | evisacuba.cu, dviajeros.mitrans.gob.cu | e-Visum |
+| sc | Seychellen | Travel Authorisation | seychelles.govtas.com | alle |
+| idn | Indonesien | All Indonesia (Ankunft) + e-VOA | allindonesia.imigrasi.go.id | bei Ankunft |
+| ph | Philippinen | eTravel (72 h vorher) | etravel.gov.ph | alle |
+| bt | Bhutan | e-Visum + SDF 100 USD/Nacht (bis Aug. 2027) | bhutan.travel | e-Visum |
+| tz | Tansania | e-Visum | eservices.immigration.go.tz | e-Visum, bei Ankunft |
+| cn | China | visumfrei 30 Tage (bis 31.12.2026) | en.nia.gov.cn | DE |
 
 ### Warnung (für alle)
 | ID | Land | Was |
@@ -105,3 +114,14 @@ vor großen Releases stichprobenartig prüfen. Neuer Ort = ein Eintrag in `BOOK_
 - Südkorea K-ETA (Deutsche bis 31.12.2026 befreit; vor Jahresende prüfen, ob verlängert), weitere ETA-Länder
 - Länderseiten des AA: Einreisetext auszugsweise anzeigen
 - Staatsangehörigkeit im Personenverzeichnis speichern
+
+### Reisehinweise anderer Regierungen (`app/src/lib/govadvice.ts`, Such-Dienst `/advice/gov?cc=XX`)
+Der Such-Dienst bekommt nur das Reiseland und liefert alle Quellen dafür; welche gilt, wählt der Browser aus dem Pass
+(deutscher Pass: Auswärtiges Amt; sonst die eigene Regierung mit Schnittstelle; sonst Auswärtiges Amt mit Hinweis und
+Link zur eigenen Regierung). Stufen werden auf die des Auswärtigen Amts abgebildet.
+| Pass | Quelle | Schnittstelle | Zwischenspeicher | Abbildung |
+|---|---|---|---|---|
+| GB | FCDO | GOV.UK Content API: `www.gov.uk/api/content/foreign-travel-advice` (Liste) und `…/{slug}` (`details.alert_status`) | Liste 1 Tag, Land 6 h | ganzes Land meiden = Reisewarnung, sonst Teilreisewarnung; Botschaft: `gov.uk/world/{slug}` |
+| US | U.S. Department of State | `cadataapi.state.gov/api/TravelAdvisories` (Level im Titel) | 6 h | Level 4 Reisewarnung, 3 Teilreisewarnung, 2 Sicherheitshinweis |
+| CA | Government of Canada | `data.international.gc.ca/travel-voyage/index-updated.json` (`advisory-state`) | 6 h | 3 Reisewarnung, 2 oder regional Teilreisewarnung, 1 Sicherheitshinweis |
+| AT, CH, FR, NL, IE, AU, NZ, PL, ES, IT | eigene Regierung ohne offene Schnittstelle | – | – | Auswärtiges Amt mit Hinweis und Link |

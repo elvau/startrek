@@ -1,0 +1,1127 @@
+1010	Lefkosia	35.175	33.364
+1011	Lefkosia	35.175	33.364
+1015	Lefkosia	35.175	33.364
+1016	Lefkosia	35.175	33.364
+1017	Lefkosia	35.175	33.364
+1020	Lefkosia (Kaimakli)	35.175	33.372
+1021	Lefkosia (Kaimakli)	35.175	33.372
+1022	Lefkosia (Kaimakli)	35.175	33.372
+1025	Lefkosia (Kaimakli)	35.175	33.372
+1026	Lefkosia (Kaimakli)	35.175	33.372
+1027	Lefkosia (Kaimakli)	35.175	33.372
+1028	Lefkosia (Kaimakli)	35.175	33.372
+1035	Lefkosia (Pallouriotissa)	35.176	33.391
+1036	Lefkosia (Kaimakli)	35.176	33.391
+1036	Lefkosia (Pallouriotissa)	35.176	33.391
+1037	Lefkosia (Kaimakli)	35.176	33.391
+1040	Lefkosia (Pallouriotissa)	35.176	33.391
+1041	Lefkosia (Pallouriotissa)	35.176	33.391
+1042	Lefkosia (Pallouriotissa)	35.176	33.391
+1045	Lefkosia (Pallouriotissa)	35.176	33.391
+1046	Lefkosia (Pallouriotissa)	35.176	33.391
+1047	Lefkosia (Pallouriotissa)	35.176	33.391
+1048	Lefkosia (Pallouriotissa)	35.176	33.391
+1049	Lefkosia (Pallouriotissa)	35.176	33.391
+1055	Lefkosia (Lykavittos)	35.175	33.372
+1056	Lefkosia (Lykavittos)	35.175	33.372
+1057	Lefkosia (Lykavittos)	35.175	33.372
+1060	Lefkosia	35.175	33.364
+1061	Lefkosia	35.175	33.364
+1065	Lefkosia	35.175	33.364
+1066	Lefkosia	35.175	33.364
+1070	Lefkosia	35.175	33.364
+1071	Lefkosia	35.175	33.364
+1075	Lefkosia	35.175	33.364
+1076	Lefkosia	35.175	33.364
+1077	Lefkosia	35.175	33.364
+1080	Lefkosia	35.175	33.364
+1081	Lefkosia	35.175	33.364
+1082	Lefkosia	35.175	33.364
+1085	Lefkosia	35.175	33.364
+1086	Lefkosia	35.175	33.364
+1087	Lefkosia	35.175	33.364
+1090	Lefkosia	35.175	33.364
+1095	Lefkosia	35.175	33.364
+1096	Lefkosia	35.175	33.364
+1097	Lefkosia	35.175	33.364
+1100	Lefkosia	35.175	33.364
+1101	Lefkosia	35.175	33.364
+1102	Lefkosia	35.175	33.364
+1105	Lefkosia	35.175	33.364
+1106	Lefkosia	35.175	33.364
+1107	Lefkosia	35.175	33.364
+1370	Anglikos Stratos Lefkosias	34.671	32.902
+1380	Elliniki Dynamis Kyprou (EL.DY.K.)	35.149	33.334
+2000	Strovolos	35.149	33.334
+2001	Strovolos	35.149	33.334
+2002	Strovolos	35.149	33.334
+2003	Strovolos	35.149	33.334
+2006	Strovolos	35.149	33.334
+2007	Strovolos	35.149	33.334
+2008	Strovolos	35.149	33.334
+2011	Strovolos	35.149	33.334
+2012	Strovolos	35.149	33.334
+2013	Strovolos	35.149	33.334
+2014	Strovolos	35.149	33.334
+2015	Strovolos	35.149	33.334
+2018	Strovolos	35.149	33.334
+2019	Strovolos	35.149	33.334
+2020	Strovolos	35.149	33.334
+2021	Strovolos	35.149	33.334
+2023	Strovolos	35.149	33.334
+2024	Strovolos	35.149	33.334
+2025	Strovolos	35.149	33.334
+2027	Strovolos	35.149	33.334
+2028	Strovolos	35.149	33.334
+2029	Strovolos	35.149	33.334
+2030	Strovolos	35.149	33.334
+2031	Strovolos	35.149	33.334
+2032	Strovolos	35.149	33.334
+2033	Strovolos	35.149	33.334
+2034	Strovolos	35.149	33.334
+2035	Strovolos	35.149	33.334
+2036	Strovolos	35.149	33.334
+2037	Strovolos	35.149	33.334
+2038	Strovolos	35.149	33.334
+2039	Strovolos	35.149	33.334
+2040	Strovolos	35.149	33.334
+2042	Strovolos	35.149	33.334
+2043	Strovolos	35.149	33.334
+2044	Strovolos	35.149	33.334
+2045	Strovolos	35.149	33.334
+2046	Strovolos	35.149	33.334
+2047	Strovolos	35.149	33.334
+2048	Strovolos	35.149	33.334
+2049	Strovolos	35.149	33.334
+2050	Strovolos	35.149	33.334
+2051	Strovolos	35.149	33.334
+2052	Strovolos	35.149	33.334
+2054	Strovolos	35.149	33.334
+2055	Strovolos	35.149	33.334
+2057	Strovolos	35.149	33.334
+2058	Strovolos	35.149	33.334
+2059	Strovolos	35.149	33.334
+2060	Strovolos	35.149	33.334
+2062	Strovolos	35.149	33.334
+2063	Strovolos	35.149	33.334
+2064	Strovolos	35.149	33.334
+2066	Strovolos	35.149	33.334
+2100	Aglantzia	35.154	33.396
+2101	Aglantzia	35.154	33.396
+2102	Aglantzia	35.154	33.396
+2103	Aglantzia	35.154	33.396
+2107	Aglantzia	35.154	33.396
+2108	Aglantzia	35.154	33.396
+2109	Aglantzia	35.154	33.396
+2112	Aglantzia	35.154	33.396
+2113	Aglantzia	35.154	33.396
+2114	Aglantzia	35.154	33.396
+2115	Aglantzia	35.154	33.396
+2116	Aglantzia	35.154	33.396
+2120	Aglantzia	35.154	33.396
+2121	Aglantzia	35.154	33.396
+2122	Aglantzia	35.154	33.396
+2123	Aglantzia	35.154	33.396
+2200	Geri	35.106	33.420
+2201	Geri	35.106	33.420
+2202	Geri	35.106	33.420
+2220	Latsia	35.102	33.380
+2221	Latsia	35.102	33.380
+2222	Latsia	35.102	33.380
+2223	Latsia	35.102	33.380
+2224	Latsia	35.102	33.380
+2230	Latsia	35.102	33.380
+2231	Latsia	35.102	33.380
+2232	Latsia	35.102	33.380
+2233	Latsia	35.102	33.380
+2234	Latsia	35.102	33.380
+2235	Latsia	35.102	33.380
+2236	Latsia	35.102	33.380
+2237	Latsia	35.102	33.380
+2238	Latsia	35.102	33.380
+2300	Lakatameia	35.173	33.340
+2301	Lakatameia	35.173	33.340
+2302	Lakatameia	35.173	33.340
+2303	Lakatameia	35.173	33.340
+2304	Lakatameia	35.173	33.340
+2305	Lakatameia	35.173	33.340
+2306	Lakatameia	35.173	33.340
+2310	Lakatameia	35.173	33.340
+2311	Lakatameia	35.173	33.340
+2312	Lakatameia	35.173	33.340
+2313	Lakatameia	35.173	33.340
+2314	Lakatameia	35.173	33.340
+2320	Lakatameia	35.173	33.340
+2321	Lakatameia	35.173	33.340
+2322	Lakatameia	35.173	33.340
+2323	Lakatameia	35.173	33.340
+2324	Lakatameia	35.173	33.340
+2325	Lakatameia	35.173	33.340
+2326	Lakatameia	35.173	33.340
+2328	Lakatameia	35.173	33.340
+2330	Lakatameia	35.173	33.340
+2331	Lakatameia	35.173	33.340
+2332	Lakatameia	35.173	33.340
+2333	Lakatameia	35.173	33.340
+2334	Lakatameia	35.173	33.340
+2335	Lakatameia	35.173	33.340
+2350	Synoikismos Anthoupolis	35.173	33.340
+2360	Agios Dometios	35.173	33.340
+2361	Agios Dometios	35.173	33.340
+2362	Agios Dometios	35.173	33.340
+2363	Agios Dometios	35.173	33.340
+2364	Agios Dometios	35.173	33.340
+2365	Agios Dometios	35.173	33.340
+2368	Agios Dometios	35.173	33.340
+2369	Agios Dometios	35.173	33.340
+2370	Agios Dometios	35.173	33.340
+2371	Agios Dometios	35.173	33.340
+2373	Agios Dometios	35.173	33.340
+2400	Egkomi	35.163	33.340
+2401	Egkomi	35.163	33.340
+2402	Egkomi	35.163	33.340
+2404	Egkomi	35.163	33.340
+2406	Egkomi	35.163	33.340
+2407	Egkomi	35.163	33.340
+2408	Egkomi	35.163	33.340
+2409	Egkomi	35.163	33.340
+2410	Egkomi	35.163	33.340
+2411	Egkomi	35.163	33.340
+2412	Egkomi	35.163	33.340
+2413	Egkomi	35.163	33.340
+2414	Egkomi	35.163	33.340
+2415	Egkomi	35.163	33.340
+2416	Egkomi	35.163	33.340
+2417	Egkomi	35.163	33.340
+2450	Kato Deftera	35.085	33.276
+2460	Pano Deftera	35.078	33.266
+2470	Trachonas	35.196	33.360
+2480	Tseri	35.073	33.323
+2500	Kythrea	35.250	33.481
+2520	Voni	35.230	33.496
+2521	Eχο Metochi	35.222	33.506
+2522	Epicho	35.228	33.513
+2523	Kalyvakia	35.258	33.548
+2524	Kourou Monastiri	35.224	33.556
+2525	Mia Milia	35.207	33.420
+2526	Mora	35.175	33.551
+2527	Beikioi	35.237	33.502
+2528	Neo Chorio Lefkosias	35.235	33.476
+2529	Palaikythro	35.208	33.493
+2530	Petra Tou Digeni	35.238	33.546
+2531	Pyrogi	35.076	33.490
+2532	Trachoni Lefkosias	35.224	33.479
+2533	Tymvou	35.133	33.511
+2534	Mandres Lefkosias	35.168	33.507
+2540	Dali	35.023	33.422
+2546	Dali (Ilioupoli)	35.023	33.422
+2547	Dali (Konstantia)	35.023	33.422
+2548	Dali (Kallithea)	35.023	33.422
+2549	Dali (Nea Lidra)	35.023	33.422
+2560	Agia Varvara Lefkosias	34.997	33.370
+2561	Agia	35.109	33.564
+2562	Agios Sozomenos	35.066	33.438
+2563	Alampra	34.989	33.399
+2564	Kotsiatis	35.013	33.350
+2565	Lythrodontas	34.951	33.298
+2566	Lympia	34.999	33.462
+2567	Louroukina	35.010	33.465
+2568	Mathiatis	34.964	33.336
+2569	Margo	35.083	33.483
+2570	Moni Profitou Iliou	35.008	33.406
+2571	Nisou	35.021	33.394
+2572	Pera Chorio	35.012	33.394
+2573	Potamia	35.042	33.445
+2574	Sia	34.955	33.390
+2600	Klirou	35.020	33.178
+2610	Agios Epifanios Oreinis	34.982	33.159
+2611	Agios Ioannis Malountas	34.982	33.159
+2612	Malounta	35.035	33.183
+2613	Apliki	34.931	33.117
+2614	Arediou	35.048	33.196
+2615	Gourri	34.957	33.158
+2616	Kalo Chorio Oreinis	34.982	33.159
+2617	Agrokipia	35.044	33.158
+2618	Lazanias	34.949	33.175
+2619	Kampi	34.908	33.129
+2620	Farmakas	34.912	33.136
+2621	Moni Machaira	34.972	33.144
+2622	Mitsero	35.043	33.124
+2623	Fikardou	34.960	33.171
+2624	Moni Agiou Panteleimonos Achera	34.972	33.144
+2630	Psimolofou	35.063	33.263
+2640	Anageia	35.076	33.254
+2641	Analiontas	35.007	33.290
+2642	Episkopeio	35.043	33.246
+2643	Ergates	35.054	33.243
+2644	Kampia	35.008	33.256
+2645	Kapedes	34.976	33.254
+2646	Kataliontas	34.991	33.298
+2647	Margi	35.024	33.325
+2648	Moni Agiou Irakleidiou	35.022	33.271
+2649	Moni Archangelou Michail	35.022	33.271
+2650	Pera	35.033	33.254
+2651	Politiko	35.027	33.243
+2652	Filani	35.030	33.249
+2653	Moni Panagias Theotokou	35.030	33.249
+2660	Kokkinotrimithia	35.153	33.200
+2670	Agia Marina Skyllouras	35.227	33.130
+2671	Agioi Trimithias	35.115	33.210
+2672	Agios Vasileios	35.218	33.184
+2673	Avlona	35.161	33.107
+2674	Gerolakkos	35.181	33.253
+2675	Deneia	35.167	33.146
+2676	Dyo Potamoi	35.246	33.096
+2677	Kanli	35.222	33.260
+2678	Kioneli	35.211	33.309
+2679	Mammari	35.176	33.204
+2680	Masari	35.187	33.077
+2681	Ortakioi	35.202	33.339
+2682	Palaiometocho	35.125	33.191
+2683	Skylloura	35.230	33.165
+2684	Fyllia	35.188	33.092
+2700	Morfou	35.199	32.993
+2720	Akaki	35.133	33.129
+2721	Argaki	35.180	33.035
+2722	Astromeritis	35.141	33.038
+2723	Kato Zοdia	35.166	33.008
+2724	Pano Zodia	35.164	33.015
+2725	Katokopia	35.174	33.051
+2726	Kalo Chorio (Kapouti)	35.244	33.039
+2727	Kyra	35.204	33.060
+2728	Meniko	35.109	33.145
+2729	Syrianochori	35.224	32.941
+2730	Chrysida	35.072	33.036
+2731	Peristerona Lefkosias	35.072	33.036
+2740	Palaichori Morfou	35.072	33.036
+2745	Palaichori Oreinis	35.072	33.036
+2750	Alithinou	34.946	33.033
+2751	Alona	34.934	33.040
+2752	Askas	34.930	33.078
+2753	Lagoudera	34.962	33.010
+2754	Livadia Lefkosias	34.946	33.022
+2755	Platanistasa	34.947	33.046
+2756	Polystypos	34.940	33.018
+2757	Saranti	34.969	32.999
+2758	Fterikoudi	34.944	33.069
+2770	Kato Koutrafas	35.103	32.978
+2771	Pano Koutrafas	35.096	32.989
+2772	Agia Marina Xyliatou	35.050	33.057
+2773	Agios Georgios Kafkallou	35.038	33.013
+2774	Vyzakia	35.078	33.014
+2775	Agioi Iliofotoi	35.058	33.093
+2776	Kato Moni	35.060	33.094
+2777	Nikitari	35.073	32.993
+2778	Asinou	35.044	32.972
+2779	Orounta	35.101	33.094
+2780	Potami	35.104	33.030
+2781	Xyliatos	35.030	33.043
+2782	Dasikos Stathmos Panagias	35.067	33.037
+2800	Kakopetria	34.988	32.905
+2820	Agia Eirini Lefkosias	34.981	32.969
+2821	Agios Epifanios Soleas	35.064	32.886
+2822	Agios Georgios Soleas	35.051	32.919
+2823	Agios Theodoros Soleas	35.042	32.928
+2824	Agios Nikolaos Lefkas	35.102	32.880
+2825	Agios Nikolaos Stegis	35.051	32.919
+2826	Angolemi	35.118	32.948
+2827	Galata	34.997	32.899
+2828	Dasikos Stathmos Kapouras	35.051	32.919
+2829	Dasikos Stathmos Platanion	35.051	32.919
+2830	Elia Lefkosias	35.133	32.913
+2831	Evrychou	35.041	32.902
+2832	Kaliana	35.011	32.883
+2833	Kalo Chorio Soleas	35.051	32.906
+2834	Kannavia	34.983	32.977
+2835	Katydata	35.083	32.888
+2836	Korakou	35.041	32.887
+2837	Agroladou	35.049	32.897
+2838	Petra	35.109	32.908
+2839	Sinaoros	35.009	32.899
+2840	Skouriotissa	35.092	32.884
+2841	Spilia	34.967	32.956
+2842	Temvria	35.028	32.892
+2843	Kato Flasou	35.061	32.888
+2844	Pano Flasou	35.069	32.889
+2845	Linou	35.074	32.892
+2846	Kourdali	34.975	32.950
+2850	Pedoulas	34.968	32.829
+2860	Frodisia	35.068	32.661
+2861	Gerakies	35.000	32.805
+2862	Kalopanagiotis	34.990	32.827
+2863	Kampos	35.040	32.732
+2864	Mylikouri	34.962	32.751
+2865	Moni Kykkou	35.008	32.769
+2866	Moutoullas	34.984	32.825
+2867	Oikos	34.997	32.828
+2868	Stathmos Orgonta	35.008	32.769
+2869	Tsakistra	35.025	32.722
+2900	Lefka	35.112	32.850
+2920	Ampelikou	35.120	32.804
+2921	Variseia	35.130	32.750
+2922	Galini	35.136	32.767
+2923	Kazivera	35.172	32.916
+2924	Karavostasi	35.138	32.830
+2925	Neo Livadi	35.144	32.845
+2926	Nikitas	35.176	32.957
+2927	Xeros	35.139	32.834
+2928	Pentageia	35.153	32.885
+2929	Peristeronari	35.133	32.865
+2930	Potamos Tou Kampou	35.144	32.808
+2931	Prastio Lefkosias	35.176	32.940
+2932	Soloi	35.160	32.874
+2940	Kato Pyrgos	35.179	32.686
+2950	Pano Pyrgos	35.155	32.682
+2951	Agios Theodoros Tillirias	35.176	32.642
+2952	Agio Georgoudi	35.161	32.623
+2953	Alevga	35.154	32.606
+2954	Ammadies	35.157	32.717
+2955	Kokkina	35.178	32.612
+2956	Limnitis	35.168	32.737
+2957	Loutros	35.146	32.746
+2958	Mansoura	35.188	32.632
+2959	Mosfileri	35.180	32.631
+2960	Xerovounos	35.148	32.734
+2961	Pachyammos	35.172	32.585
+2962	Pigenia	35.168	32.654
+2963	Challeri	35.170	32.661
+2964	Selladi tou Appi	35.157	32.620
+2965	Agios Ioannis Selemani	35.149	32.707
+3010	Lemesos	34.684	33.038
+3011	Lemesos	34.684	33.038
+3012	Lemesos	34.684	33.038
+3013	Lemesos	34.684	33.038
+3015	Lemesos	34.684	33.038
+3016	Lemesos	34.684	33.038
+3017	Lemesos	34.684	33.038
+3020	Lemesos	34.684	33.038
+3021	Lemesos	34.684	33.038
+3022	Lemesos	34.684	33.038
+3025	Lemesos	34.684	33.038
+3026	Lemesos	34.684	33.038
+3027	Lemesos	34.684	33.038
+3030	Lemesos	34.684	33.038
+3031	Lemesos	34.684	33.038
+3032	Lemesos	34.684	33.038
+3035	Lemesos	34.684	33.038
+3036	Lemesos	34.684	33.038
+3040	Lemesos	34.684	33.038
+3041	Lemesos	34.684	33.038
+3042	Lemesos	34.684	33.038
+3045	Lemesos	34.684	33.038
+3046	Lemesos	34.684	33.038
+3047	Lemesos	34.684	33.038
+3048	Lemesos	34.684	33.038
+3050	Lemesos	34.684	33.038
+3051	Lemesos	34.684	33.038
+3052	Lemesos	34.684	33.038
+3055	Lemesos	34.684	33.038
+3056	Lemesos	34.684	33.038
+3060	Lemesos	34.684	33.038
+3061	Lemesos	34.684	33.038
+3065	Lemesos	34.684	33.038
+3066	Lemesos	34.684	33.038
+3067	Lemesos	34.684	33.038
+3070	Lemesos	34.684	33.038
+3071	Lemesos	34.684	33.038
+3075	Lemesos	34.684	33.038
+3076	Lemesos	34.684	33.038
+3077	Lemesos	34.684	33.038
+3080	Lemesos	34.684	33.038
+3081	Lemesos	34.684	33.038
+3082	Lemesos	34.684	33.038
+3083	Lemesos	34.684	33.038
+3085	Lemesos	34.684	33.038
+3086	Lemesos	34.684	33.038
+3087	Lemesos	34.684	33.038
+3090	Lemesos	34.684	33.038
+3091	Lemesos	34.684	33.038
+3095	Lemesos	34.684	33.038
+3096	Lemesos	34.684	33.038
+3100	Lemesos	34.684	33.038
+3101	Lemesos	34.684	33.038
+3105	Lemesos	34.684	33.038
+3106	Lemesos	34.684	33.038
+3107	Lemesos	34.684	33.038
+3110	Lemesos	34.684	33.038
+3111	Lemesos	34.684	33.038
+3112	Lemesos	34.684	33.038
+3113	Lemesos	34.684	33.038
+3115	Lemesos	34.684	33.038
+3116	Lemesos	34.684	33.038
+3117	Lemesos	34.684	33.038
+3118	Lemesos	34.684	33.038
+3119	Lemesos	34.684	33.038
+3120	Lemesos	34.684	33.038
+3150	Lemesos	34.684	33.038
+3370	Anglikos Stratos Akrotiriou	34.601	32.955
+4000	Mesa Geitonia	34.701	33.044
+4001	Mesa Geitonia	34.701	33.044
+4002	Mesa Geitonia	34.701	33.044
+4003	Mesa Geitonia	34.701	33.044
+4004	Mesa Geitonia	34.701	33.044
+4005	Mesa Geitonia	34.701	33.044
+4006	Mesa Geitonia	34.701	33.044
+4007	Mesa Geitonia	34.701	33.044
+4008	Mesa Geitonia	34.701	33.044
+4040	Germasogeia	34.721	33.084
+4041	Germasogeia	34.721	33.084
+4042	Germasogeia	34.721	33.084
+4043	Germasogeia	34.721	33.084
+4044	Germasogeia	34.721	33.084
+4045	Germasogeia	34.721	33.084
+4046	Germasogeia	34.721	33.084
+4047	Germasogeia	34.721	33.084
+4048	Germasogeia	34.721	33.084
+4049	Germasogeia	34.721	33.084
+4100	Agios Athanasios	34.709	33.050
+4101	Agios Athanasios	34.709	33.050
+4102	Agios Athanasios	34.709	33.050
+4103	Agios Athanasios	34.709	33.050
+4104	Agios Athanasios	34.709	33.050
+4105	Agios Athanasios	34.709	33.050
+4106	Agios Athanasios	34.709	33.050
+4107	Agios Athanasios	34.709	33.050
+4108	Agios Athanasios	34.709	33.050
+4130	Pano Polemidia	34.706	32.993
+4131	Pano Polemidia	34.706	32.993
+4150	Kato Polemidia	34.697	32.993
+4151	Kato Polemidia	34.697	32.993
+4152	Kato Polemidia	34.697	32.993
+4153	Kato Polemidia	34.697	32.993
+4154	Kato Polemidia	34.697	32.993
+4155	Kato Polemidia	34.697	32.993
+4156	Kato Polemidia	34.697	32.993
+4157	Kato Polemidia	34.697	32.993
+4158	Kato Polemidia	34.697	32.993
+4159	Kato Polemidia	34.697	32.993
+4170	Kato Polemidia	34.697	32.993
+4180	Ypsonas	34.688	32.962
+4181	Ypsonas	34.688	32.962
+4182	Ypsonas	34.688	32.962
+4183	Ypsonas	34.688	32.962
+4184	Ypsonas	34.688	32.962
+4185	Ypsonas	34.688	32.962
+4186	Ypsonas	34.688	32.962
+4187	Ypsonas	34.688	32.962
+4188	Ypsonas	34.688	32.962
+4189	Ypsonas	34.688	32.962
+4190	Ypsonas	34.688	32.962
+4191	Ypsonas	34.688	32.962
+4192	Ypsonas	34.688	32.962
+4193	Ypsonas	34.688	32.962
+4194	Ypsonas	34.688	32.962
+4500	Kellaki	34.816	33.158
+4501	Akapnou	34.839	33.187
+4502	Asgata	34.779	33.255
+4503	Platies Metalleia	34.822	33.189
+4504	Vasa Kellakiou	34.822	33.189
+4505	Prastio Kellakiou	34.822	33.189
+4506	Eptagoneia	34.847	33.158
+4507	Klonari	34.826	33.181
+4508	Moni Zoodochou Pigis	34.822	33.189
+4509	Vikla	34.827	33.196
+4510	Sanida	34.807	33.189
+4511	Profitis Ilias	34.807	33.189
+4520	Parekklisia	34.746	33.158
+4521	Agios Tychon	34.743	33.152
+4522	Akrounta	34.765	33.082
+4523	Armenochori	34.746	33.129
+4524	Monagroulli	34.749	33.213
+4525	Moni	34.733	33.200
+4526	Moni Agiou Georgiou Alamanou	34.743	33.152
+4527	Mouttagiaka	34.720	33.101
+4528	Akti Kyverniti	34.743	33.152
+4528	Pentakomo	34.743	33.152
+4529	Pyrgos	34.742	33.183
+4530	Foinikaria	34.752	33.098
+4531	Mouttagiaka Touristiki Periochi	34.752	33.098
+4532	Agios Tychon Touristiki Periochi	34.752	33.098
+4533	Parekklisia Touristiki Periochi	34.752	33.098
+4534	Pyrgos Touristiki Periochi	34.752	33.098
+4540	Paramytha	34.761	32.995
+4541	Apesia	34.789	32.978
+4542	Apsiou	34.797	33.017
+4543	Gerasa	34.803	32.998
+4544	Kapileio	34.833	32.959
+4545	Korfi	34.796	32.965
+4546	Limnatis	34.813	32.948
+4547	Mathikoloni	34.775	33.049
+4548	Moni Evangelistrias	34.790	32.990
+4549	Palodeia	34.745	33.006
+4550	Spitali	34.763	33.002
+4551	Fasoula Lemesou	34.764	33.027
+4552	Monte Korfi	34.764	33.015
+4560	Louvaras	34.837	33.040
+4561	Agios Konstantinos	34.867	33.066
+4562	Agios Pavlos	34.864	33.046
+4563	Arakapas	34.844	33.112
+4564	Dierona	34.830	33.111
+4565	Zoopigi	34.863	33.016
+4566	Kalo Chorio Lemesou	34.850	33.031
+4567	Athrakos	34.851	33.049
+4568	Stathmos Pefkou	34.854	33.065
+4569	Sykopetra	34.879	33.112
+4600	Avdimou	34.694	32.763
+4601	Prastio Avdimou	34.705	32.731
+4602	Alektora	34.709	32.684
+4603	Anogyra	34.740	32.734
+4604	Paramali	34.694	32.799
+4605	Platanisteia	34.712	32.711
+4606	Agios Thomas	34.716	32.725
+4607	Pissouri	34.669	32.701
+4608	Stathmos Pissouriou	34.705	32.731
+4620	Episkopi Lemesou	34.671	32.902
+4630	Erimi	34.678	32.918
+4631	Kantou	34.690	32.907
+4632	Kolossi	34.698	32.877
+4633	Sotira Lemesou	34.712	32.863
+4634	Symvoulos	34.698	32.877
+4635	Sterakovou	34.711	32.819
+4636	Kolossi (Synoikismos)	34.698	32.877
+4640	Akrotiri	34.638	32.960
+4645	Asomatos Lemesou	34.638	32.960
+4650	Moni Agiou Nikolaou Gaton	34.647	32.974
+4651	Trachoni Lemesou	34.647	32.974
+4652	Tserkezoi	34.647	32.974
+4653	Fasouri	34.647	32.974
+4700	Pachna	34.779	32.794
+4710	Agios Amvrosios Lemesou	34.781	32.826
+4711	Agios Therapon	34.798	32.840
+4712	Alassa	34.763	32.927
+4713	Zanakia	34.730	32.876
+4714	Kato Kivides	34.765	32.864
+4715	Pano Kivides	34.757	32.857
+4716	Lofou	34.816	32.875
+4717	Souni	34.740	32.881
+4730	Trimiklini	34.847	32.912
+4740	Agios Georgios Lemesou	34.844	32.910
+4741	Agios Mamas	34.851	32.949
+4742	Silikou	34.832	32.890
+4743	Kouka	34.851	32.888
+4744	Laneia	34.825	32.922
+4745	Mesa Potamos	34.844	32.910
+4746	Monagri	34.810	32.911
+4747	Moniatis	34.868	32.898
+4748	Saittas	34.869	32.916
+4749	Stathmos Filagron	34.844	32.910
+4750	Doros	34.815	32.909
+4751	Stathmos Laneias	34.815	32.909
+4760	Omodos	34.848	32.809
+4770	Arsos Lemesou	34.841	32.769
+4771	Vasa Koilaniou	34.829	32.803
+4772	Vouni	34.824	32.834
+4773	Gerovasa	34.813	32.739
+4774	Dora	34.781	32.738
+4775	Kissousa	34.811	32.795
+4776	Koilani	34.845	32.860
+4777	Malia	34.817	32.783
+4778	Mandria Lemesou	34.870	32.832
+4779	Pera Pedi	34.860	32.876
+4780	Potamiou	34.824	32.807
+4781	Trozaina	34.824	32.807
+4800	Troodos	34.923	32.880
+4810	Kato Amiantos	34.917	32.936
+4811	Pano Amiantos	34.928	32.917
+4812	Moni Trooditissis	34.904	32.883
+4813	Stathmos Mozora	34.904	32.883
+4814	Foini	34.892	32.838
+4815	Kato Platres	34.878	32.840
+4820	Pano Platres	34.887	32.860
+4840	Prodromos	34.949	32.831
+4841	Dasiko Kolegio Kyprou	34.936	32.809
+4842	Agios Dimitrios	34.926	32.809
+4843	Kaminaria	34.928	32.784
+4844	Lemithou	34.949	32.811
+4845	Palaiomylos	34.935	32.822
+4846	Treis Elies	34.931	32.794
+4847	Moni Panagias Trikoukkiotissis	34.936	32.809
+4848	Scholi Mitsi	34.936	32.809
+4860	Agros	34.918	33.018
+4870	Agios Theodoros Lemesou	34.894	33.032
+4871	Agios Ioannis Lemesou	34.915	32.993
+4872	Agridia	34.928	32.995
+4873	Dymes	34.917	32.984
+4874	Kato Mylos	34.895	33.006
+4875	Chandria	34.944	32.994
+4876	Kyperounta	34.938	32.975
+4877	Sanatorio Kyperountas	34.915	32.993
+4878	Pelendri	34.896	32.968
+4879	Potamitissa	34.907	32.990
+5280	Paralimni	35.039	33.982
+5281	Paralimni	35.039	33.982
+5282	Paralimni	35.039	33.982
+5283	Paralimni	35.039	33.982
+5284	Paralimni	35.039	33.982
+5285	Paralimni	35.039	33.982
+5286	Paralimni	35.039	33.982
+5288	Paralimni	35.039	33.982
+5289	Paralimni	35.039	33.982
+5290	Paralimni	35.039	33.982
+5291	Paralimni	35.039	33.982
+5292	Paralimni	35.039	33.982
+5295	Paralimni	35.039	33.982
+5296	Paralimni	35.039	33.982
+5297	Paralimni	35.039	33.982
+5320	Liopetri	35.009	33.893
+5330	Agia Napa	34.982	34.002
+5350	Frenaros	35.041	33.922
+5370	Kato Deryneia	35.025	33.946
+5380	Deryneia	35.065	33.961
+5390	Sotira Ammochostou	35.026	33.952
+5391	Agia Thekla	35.026	33.952
+5500	Achna	35.055	33.784
+5510	Avgorou	35.036	33.839
+5520	Agios Georgios Acheritou	35.100	33.861
+5521	Acheritou	35.100	33.861
+5522	Vrysoules	35.100	33.861
+5523	Dasaki Achnas	35.100	33.861
+5524	Moni Agiou Kendeou	35.100	33.861
+5525	Strovili	35.100	33.861
+5540	Lysi	35.105	33.681
+5560	Afanteia - Ornithi	35.120	33.717
+5561	Asseia (Askeia)	35.120	33.717
+5562	Vatili	35.133	33.656
+5563	Kalopsida	35.096	33.794
+5564	Kontea	35.103	33.716
+5565	Kouklia Ammochostou	35.108	33.751
+5566	Makrasyka	35.074	33.762
+5567	Sinta	35.157	33.701
+5568	Strongylos	35.166	33.639
+5600	Lefkonoiko	35.260	33.732
+5620	Agios Nikolaos Ammochostou	35.230	33.800
+5621	Agios Sergios	35.196	33.874
+5622	Artemi	35.321	33.711
+5623	Aloda	35.211	33.827
+5624	Gaidouras (Nea Sparti)	35.230	33.800
+5625	Goufes	35.283	33.688
+5626	Gypsou	35.260	33.786
+5627	Egkomi Ammochostou	35.163	33.883
+5628	Limnia	35.200	33.859
+5629	Maratha	35.212	33.777
+5630	Melounta	35.333	33.689
+5631	Milia Ammochostou	35.240	33.780
+5632	Moni Apostolou Varnava	35.225	33.769
+5633	Peristerona Ammochostou	35.218	33.761
+5634	Pigi	35.227	33.760
+5635	Prastio Ammochostou	35.175	33.758
+5636	Salamina	35.225	33.769
+5637	Santalaris	35.210	33.801
+5638	Stylloi	35.172	33.834
+5650	Marathovounos	35.223	33.618
+5651	Agios Chariton	35.305	33.605
+5652	Angastina	35.203	33.588
+5653	Vitsada	35.244	33.647
+5654	Kiados	35.255	33.601
+5655	Genagra	35.217	33.698
+5656	Knodara	35.265	33.660
+5657	Kornokipos	35.283	33.573
+5658	Mousoulita	35.193	33.641
+5659	Pyrga Ammochostou	35.183	33.727
+5660	Trypimeni	35.310	33.634
+5661	Psyllatos	35.254	33.687
+5700	Trikomo	35.286	33.892
+5720	Agios Georgios Ammochostou	35.341	33.969
+5721	Agios Efstathios	35.389	34.015
+5722	Agios Ilias	35.329	33.928
+5723	Agios Theodoros Ammochostou	35.366	34.029
+5724	Arnadi	35.237	33.861
+5725	Avgolida	35.355	33.963
+5726	Vokolida	35.380	34.071
+5727	Gastria	35.343	34.000
+5728	Lapathos	35.270	33.826
+5729	Livadia Ammochostou	35.399	34.026
+5730	Monarga	35.313	33.948
+5731	Bogazi	35.314	33.953
+5732	Patriki	35.363	33.996
+5733	Perivolia Trikomou	35.286	33.910
+5734	Spathariko	35.236	33.872
+5735	Sygkrasi	35.273	33.852
+5750	Akanthou	35.374	33.753
+5761	Agios Andronikos Trikomou	35.370	33.892
+5762	Agios Iakovos	35.327	33.815
+5763	Ardana	35.357	33.886
+5764	Gerani	35.359	33.922
+5765	Davlos	35.422	33.905
+5766	Kantara	35.389	33.899
+5767	Krideia	35.395	33.973
+5768	Mandres Ammochostou	35.347	33.799
+5769	Ovgoros	35.366	33.938
+5770	Platani	35.333	33.752
+5771	Flamoudi	35.397	33.857
+5800	Aigialousa	35.535	34.189
+5820	Agios Andronikos Karpasias	35.457	34.119
+5821	Agios Symeon	35.491	34.218
+5822	Vothylakas	35.483	34.187
+5823	Vasili	35.473	34.151
+5824	Eptakomi	35.447	34.032
+5825	Galateia	35.423	34.071
+5826	Koilanemos	35.491	34.142
+5827	Koma Tou Gialou	35.428	34.131
+5828	Komi	35.410	33.996
+5829	Leonarisso	35.469	34.139
+5830	Lythragkomi	35.480	34.171
+5831	Melanarga	35.515	34.197
+5832	Neta	35.470	34.215
+5833	Platanissos	35.479	34.107
+5834	Tavrou	35.397	34.077
+5850	Rizokarpaso	35.597	34.379
+5870	Agia Trias	35.539	34.216
+5871	Agios Therissos	35.524	34.264
+5872	Agios Filon	35.524	34.264
+5873	Moni Apostolou Andreou	35.524	34.264
+5874	Galinoporni	35.522	34.302
+5875	Koroveia	35.511	34.274
+5876	Stathmos Koroveias	35.524	34.264
+5877	Moni Panagias Eleousas	35.524	34.264
+5878	Chelones	35.524	34.264
+6010	Larnaka	34.923	33.623
+6011	Larnaka	34.923	33.623
+6012	Larnaka	34.923	33.623
+6013	Larnaka	34.923	33.623
+6015	Larnaka	34.923	33.623
+6016	Larnaka	34.923	33.623
+6017	Larnaka	34.923	33.623
+6018	Larnaka	34.923	33.623
+6019	Larnaka	34.923	33.623
+6020	Larnaka	34.923	33.623
+6021	Larnaka	34.923	33.623
+6022	Larnaka	34.923	33.623
+6023	Larnaka	34.923	33.623
+6025	Larnaka	34.923	33.623
+6026	Larnaka	34.923	33.623
+6027	Larnaka	34.923	33.623
+6028	Larnaka	34.923	33.623
+6030	Larnaka	34.923	33.623
+6031	Larnaka	34.923	33.623
+6035	Larnaka	34.923	33.623
+6036	Larnaka	34.923	33.623
+6037	Larnaka	34.923	33.623
+6040	Larnaka	34.923	33.623
+6041	Larnaka	34.923	33.623
+6042	Larnaka	34.923	33.623
+6043	Larnaka	34.923	33.623
+6045	Larnaka	34.923	33.623
+6046	Larnaka	34.923	33.623
+6047	Larnaka	34.923	33.623
+6050	Larnaka	34.923	33.623
+6051	Larnaka	34.923	33.623
+6052	Larnaka	34.923	33.623
+6053	Larnaka	34.923	33.623
+6055	Larnaka	34.923	33.623
+6056	Larnaka	34.923	33.623
+6057	Larnaka	34.923	33.623
+6058	Larnaka	34.923	33.623
+6059	Larnaka	34.923	33.623
+6060	Larnaka	34.923	33.623
+6370	Anglikos Stratos Dekeleias	34.996	33.734
+7000	Meneou	34.861	33.593
+7020	Dromolaxia	34.876	33.587
+7040	Voroklini	34.981	33.657
+7041	Voroklini Touristiki Periochi	34.981	33.657
+7060	Livadia Larnakas	34.955	33.627
+7080	Pyla	35.005	33.689
+7081	Pyla Touristiki Periochi	35.005	33.689
+7100	Aradippou	34.948	33.588
+7101	Aradippou	34.948	33.588
+7102	Aradippou	34.948	33.588
+7103	Aradippou	34.948	33.588
+7104	Aradippou	34.948	33.588
+7105	Aradippou	34.948	33.588
+7501	Avdellero	35.008	33.571
+7502	Dekeleia	35.015	33.629
+7503	Kellia	34.976	33.623
+7504	Pergamos	35.042	33.708
+7505	Troulloi	35.033	33.615
+7506	Prosfygikos Synoikismos EAC	35.015	33.629
+7508	Prosfygikos Synoikismos Vattaina	35.015	33.629
+7509	Moni Metamorfoseos tou Sotiros	35.015	33.629
+7510	Xylotymvou	35.016	33.743
+7520	Xylofagou	34.977	33.849
+7530	Ormideia	34.992	33.777
+7550	Kiti	34.849	33.575
+7560	Perivolia Larnakas	34.829	33.583
+7561	Softades	34.828	33.540
+7562	Tersefanou	34.854	33.547
+7570	Alethriko	34.861	33.494
+7571	Anglisides	34.855	33.456
+7572	Alaminos	34.807	33.435
+7573	Anafotida	34.824	33.464
+7574	Aplanta	34.830	33.475
+7575	Kivisili	34.840	33.505
+7576	Klavdia	34.893	33.515
+7577	Mazotos	34.804	33.489
+7578	Menogeia	34.844	33.441
+7600	Athienou	35.062	33.542
+7620	Arsos Larnakas	35.090	33.628
+7621	Kosi	34.967	33.550
+7622	Melouseia	35.077	33.584
+7623	Petrofani	35.031	33.509
+7624	Tremethousia	35.041	33.568
+7640	Kornos	34.922	33.396
+7641	Agia Anna	34.943	33.481
+7642	Delikipos	34.918	33.362
+7643	Kalo Chorio Larnakas	34.928	33.536
+7644	Moni Agias Theklis	34.934	33.442
+7645	Moni Stavrovouniou	34.934	33.442
+7646	Moni Panagias Galaktotrofousis	34.934	33.442
+7647	Mosfiloti	34.953	33.425
+7648	Pyrga Larnakas	34.926	33.434
+7649	Psevdas	34.945	33.461
+7650	Moni Agias Varvaras	34.980	33.492
+7700	Pano Lefkara	34.817	33.283
+7710	Kato Lefkara	34.862	33.317
+7711	Agioi Vavatsinias	34.880	33.191
+7712	Vavatsinia	34.894	33.228
+7713	Vavla	34.842	33.269
+7714	Kato Drys	34.851	33.304
+7715	Lageia	34.843	33.247
+7716	Melini	34.867	33.157
+7717	Moni Agiou Mina	34.865	33.229
+7718	Odou	34.885	33.151
+7719	Ora	34.862	33.196
+7721	Parsata	34.827	33.266
+7722	Drapeia	34.802	33.280
+7730	Agios Theodoros Larnakas	34.800	33.385
+7731	Skarinou	34.819	33.359
+7732	Stathmos Skarinou	34.776	33.348
+7733	Kalavasos	34.758	33.308
+7734	Stathmos Kalavasou	34.776	33.348
+7735	Kofinou	34.824	33.391
+7736	Mari	34.741	33.299
+7737	Maroni	34.757	33.357
+7738	Vasiliko	34.776	33.348
+7739	Zygi	34.729	33.338
+7740	Tochni	34.781	33.324
+7741	Choirokoitia	34.797	33.335
+7742	Stathmos Choirokoitias	34.776	33.336
+7743	Psematismenos	34.749	33.350
+8010	Pafos	34.777	32.425
+8011	Pafos	34.777	32.425
+8015	Pafos	34.777	32.425
+8016	Pafos	34.777	32.425
+8020	Pafos	34.777	32.425
+8021	Pafos	34.777	32.425
+8025	Pafos	34.777	32.425
+8026	Pafos	34.777	32.425
+8027	Pafos	34.777	32.425
+8028	Pafos	34.777	32.425
+8035	Pafos	34.777	32.425
+8036	Pafos	34.777	32.425
+8040	Pafos	34.777	32.425
+8041	Pafos	34.777	32.425
+8042	Pafos	34.777	32.425
+8045	Pafos	34.777	32.425
+8046	Pafos	34.777	32.425
+8047	Pafos	34.777	32.425
+8048	Pafos	34.777	32.425
+8049	Pafos	34.777	32.425
+8200	Geroskipou	34.761	32.448
+8201	Geroskipou	34.761	32.448
+8220	Chlorakas	34.798	32.407
+8221	Chlorakas	34.798	32.407
+8240	Agia Marinouda	34.760	32.476
+8250	Empa	34.807	32.424
+8260	Lempa	34.809	32.408
+8270	Tremithousa	34.817	32.444
+8280	Mesogi	34.815	32.456
+8290	Mesa Chorio	34.809	32.462
+8300	Konia	34.785	32.459
+8310	Koloni	34.749	32.466
+8500	Kouklia Pafou	34.710	32.573
+8501	Agia Varvara Pafou	34.751	32.512
+8502	Anarita	34.741	32.534
+8503	Acheleia	34.739	32.486
+8504	Mandria Pafou	34.716	32.532
+8505	Nikokleia	34.729	32.577
+8506	Souskiou	34.733	32.603
+8507	Timi	34.732	32.516
+8508	Foinikas	34.753	32.569
+8509	Kouklia Pafou (Lofoi Afroditis)	34.734	32.545
+8510	Kouklia Pafou (Cha Potami)	34.808	32.512
+8520	Marathounta	34.791	32.488
+8521	Axylou	34.806	32.564
+8522	Armou	34.799	32.478
+8523	Eledio	34.809	32.568
+8524	Episkopi Pafou	34.796	32.526
+8525	Nata	34.778	32.571
+8526	Choletria	34.763	32.599
+8540	Tsada	34.839	32.475
+8541	Kallepeia	34.846	32.500
+8542	Moro Nero	34.813	32.526
+8543	Koili	34.860	32.455
+8544	Kourdaka	34.850	32.508
+8545	Lemona	34.862	32.558
+8546	Letymvou	34.857	32.514
+8547	Pitargou	34.837	32.534
+8548	Kato Panagia	34.850	32.508
+8549	Polemi	34.886	32.507
+8550	Stroumpi	34.888	32.481
+8552	Choulou	34.873	32.558
+8560	Pegeia	34.884	32.382
+8570	Pegeia (Agios Georgios Pegeias)	34.865	32.420
+8571	Pegeia (Maa)	34.865	32.420
+8572	Akoursos	34.887	32.422
+8573	Kathikas	34.913	32.426
+8574	Kissonerga	34.823	32.401
+8575	Pegeia (Kolpos Korallion)	34.865	32.420
+8576	Moni Agiou Neofytou	34.865	32.420
+8577	Tala	34.836	32.431
+8600	Mamonia	34.770	32.637
+8601	Stavrokonnou	34.785	32.618
+8602	Kato Archimandrita	34.735	32.679
+8603	Pano Archimandrita	34.751	32.678
+8604	Maronas	34.768	32.667
+8605	Mousere	34.771	32.715
+8606	Prastio Pafou	34.791	32.694
+8607	Agios Georgios Pafou	34.779	32.652
+8608	Trachypedoula	34.801	32.679
+8609	Fasoula Pafou	34.751	32.632
+8620	Salamiou	34.840	32.690
+8621	Agios Ioannis Pafou	34.870	32.691
+8622	Malounta Pafou	34.865	32.691
+8623	Agios Nikolaos Pafou	34.862	32.754
+8624	Pera Vasa	34.844	32.706
+8625	Arminou	34.862	32.720
+8626	Kedares	34.836	32.736
+8627	Kidasi	34.807	32.713
+8628	Kelokedara	34.812	32.652
+8629	Fylousa Chrysochous	34.844	32.706
+8630	Praitori	34.849	32.746
+8631	Mesana	34.849	32.707
+8640	Pano Panagia	34.919	32.632
+8641	Agia Marina Kelokedaron	34.829	32.614
+8642	Amargeti	34.824	32.584
+8643	Asprogia	34.922	32.615
+8644	Vretsia	34.890	32.659
+8645	Galataria	34.877	32.632
+8646	Koilineia	34.885	32.617
+8647	Lapithiou	34.905	32.596
+8648	Mamountali	34.914	32.602
+8649	Moni Chrysorroiatissis	34.885	32.617
+8650	Pentalia	34.856	32.621
+8651	Statos - Agios Fotios	34.889	32.616
+8654	Faleia	34.860	32.589
+8700	Drouseia	34.963	32.391
+8701	Androlikou	34.999	32.382
+8702	Kato Arodes	34.941	32.402
+8703	Pano Arodes	34.936	32.407
+8704	Ineia	34.956	32.393
+8705	Pittokopos	34.963	32.391
+8706	Fasli	34.982	32.371
+8720	Giolou	34.924	32.475
+8721	Kato Akourdaleia	34.945	32.452
+8722	Pano Akourdaleia	34.942	32.444
+8723	Theletra	34.912	32.447
+8724	Kritou Tera	34.945	32.452
+8725	Loukrounou	34.951	32.464
+8726	Miliou	34.939	32.461
+8727	Moni Agion Anargyron	34.945	32.452
+8728	Skoulli	34.981	32.451
+8729	Tera	34.966	32.425
+8730	Choli	34.980	32.443
+8740	Lasa	34.925	32.528
+8741	Agios Dimitrianos	34.907	32.550
+8742	Drymou	34.925	32.513
+8743	Thrinia	34.918	32.544
+8744	Milia Pafou	34.920	32.540
+8745	Melamiou	34.918	32.544
+8746	Kannaviou	34.916	32.575
+8747	Kritou Marottou	34.927	32.563
+8748	Fyti	34.929	32.545
+8749	Psathi	34.898	32.533
+8800	Lysos	34.996	32.513
+8801	Agios Merkourios	34.976	32.524
+8802	Anadiou	34.944	32.566
+8803	Dasikos Stathmos Agias	34.976	32.524
+8804	Dasikos Stathmos Stavrou tis Psokas	34.976	32.524
+8805	Evretou	34.957	32.488
+8806	Zacharia	34.982	32.543
+8807	Kios	34.975	32.527
+8808	Meladeia	34.988	32.507
+8809	Melandra	34.989	32.525
+8810	Peristerona Pafou	34.990	32.490
+8811	Fylousa Kelokedaron	34.965	32.503
+8812	Simou	34.941	32.504
+8813	Trimithousa	34.974	32.487
+8814	Sarama	34.956	32.529
+8820	Polis	35.034	32.425
+8840	Latsi	35.041	32.394
+8850	Goudi	34.992	32.442
+8851	Karamoullides	34.999	32.443
+8852	Neo Chorio Pafou	35.025	32.365
+8853	Loutra Tis Afroditis	35.010	32.421
+8854	Prodromi	35.027	32.418
+8855	Chrysochou	35.004	32.440
+8870	Pomos	35.160	32.546
+8871	Paliampela	35.084	32.517
+8872	Agios Isidoros	35.005	32.471
+8873	Argaka	35.066	32.492
+8874	Kato Gialia	35.118	32.514
+8875	Pano Gialia	35.084	32.517
+8876	Kynousa	35.084	32.517
+8877	Limni	35.084	32.517
+8878	Livadi	35.102	32.594
+8879	Makounta	35.050	32.486
+8880	Nea Dimmata	35.137	32.527
+8881	Agia Marina Chrysochous	35.120	32.514
+8882	Pelathousa	35.028	32.476
+8883	Myrmigkofou	35.071	32.497
+8884	Steni	34.998	32.472
+9000	Keryneia	35.336	33.317
+9200	Karavas	35.341	33.196
+9300	Lapithos	35.338	33.174
+9390	Agios Georgios Keryneias	35.342	33.275
+9500	Agios Epiktitos	35.321	33.390
+9510	Thermeia	35.328	33.327
+9511	Kazafani	35.317	33.350
+9512	Karakoumi	35.334	33.348
+9513	Karmi	35.318	33.256
+9514	Belapais	35.306	33.356
+9515	Templos	35.332	33.295
+9516	Trimithi	35.329	33.260
+9530	Kato Dikomo	35.267	33.325
+9540	Pano Dikomo	35.278	33.322
+9541	Agirda	35.297	33.268
+9542	Vouno	35.271	33.391
+9543	Kiomourtzou	35.293	33.256
+9544	Koutsoventis	35.263	33.421
+9545	Krini	35.288	33.237
+9546	Moni Agiou Chrysostomou	35.282	33.312
+9547	Onisia	35.282	33.312
+9548	Pileri	35.291	33.218
+9549	Sichari	35.276	33.381
+9550	Stathmos Bogaziou	35.264	33.222
+9551	Fota	35.264	33.222
+9560	Agios Amvrosios Keryneias	35.339	33.583
+9570	Armenomonastiro	35.318	33.512
+9571	Kalograia	35.338	33.631
+9572	Klepini	35.306	33.435
+9573	Moni Archangelou Antifonitou	35.318	33.512
+9574	Moni Panagias Melandrinas	35.318	33.512
+9575	Trapeza	35.308	33.470
+9576	Chalefka	35.318	33.512
+9577	Charkeia (Chartzeia)	35.318	33.512
+9600	Myrtou	35.307	33.071
+9610	Agia Eirini Keryneias	35.299	32.963
+9611	Agios Ermolaos	35.278	33.172
+9612	Agridaki	35.307	33.151
+9613	Asomatos Keryneias	35.276	33.108
+9614	Diorios	35.306	33.055
+9615	Kampyli	35.301	33.108
+9616	Karpaseia	35.298	33.070
+9617	Kontemenos	35.269	33.125
+9618	Kormakitis	35.343	33.010
+9619	Larnakas Lapithou	35.313	33.142
+9620	Sysklipos	35.300	33.174
+9621	Moni Agiou Panteleimonos	35.300	33.174
+9630	Vavylas	35.342	33.129
+9631	Vasileia	35.345	33.124
+9632	Elia Keryneias	35.332	33.219
+9633	Livera	35.383	32.953
+9634	Moni Acheiropoiitou	35.342	33.129
+9635	Motides	35.335	33.207
+9636	Orga	35.358	33.033
+9637	Palaiosofos	35.326	33.207
+9638	Panagra	35.334	33.069
+9639	Ftericha	35.323	33.221

@@ -2,7 +2,8 @@
  * Gruppenreisen-Szenarien (aus Live-Tests gegen die echten Anbieter, hier mit nachgestelltem Such-Dienst):
  * Japan-Großfamilie mit Leuten, die später dazustoßen (eigene Daten, Zeitabschnitte, „alle zusammen“, Ausweichen bei
  * keiner Ferienwohnung für 9, Touren in Hakone), Ozeanien-Rundreise (Strecke nur mit 2 Umstiegen, Reisezeitraum folgt
- * den Flügen), Kalifornien mit Mietwagen (Einwegmiete, 2 Autos) und unplausible Flugpreise.
+ * den Flügen), Kalifornien mit Mietwagen (Einwegmiete, 2 Autos) und unplausible Flugpreise; New York mit deutschem
+ * und britischem Pass (Einreise und Reisehinweise je Pass, #164).
  * Start: npm run test:cloud
  */
 import { chromium } from "playwright";
@@ -38,7 +39,11 @@ const TRIPS = [
   { id: "ca", name: "Kalifornien", place: "San Francisco", country: "USA", from: "2027-08-01", to: "2027-08-22", ...base,
     travelers: [...fam("Klein", [42, 40, 12, 9]), ...fam("Hase", [38, 37, 5])], households: { Klein: geo.Köln, Hase: geo.Hamburg },
     items: [{ id: "r", cat: "flights", name: "Rundreise", status: "chosen", options: [{ id: "ro", label: "", price: { mode: "unit", currency: "EUR", unit: 9000 },
-      legs: [L("out", "DUS", "SFO", "2027-08-20T10:25", "2027-08-20T15:50", "San Francisco"), L("via", "SFO", "LAX", "2027-08-25T06:00", "2027-08-25T07:32", "Los Angeles"), L("via", "LAX", "SAN", "2027-08-30T06:00", "2027-08-30T07:00", "San Diego"), L("back", "SAN", "DUS", "2027-09-02T17:15", "2027-09-03T12:40")] }] }] }
+      legs: [L("out", "DUS", "SFO", "2027-08-20T10:25", "2027-08-20T15:50", "San Francisco"), L("via", "SFO", "LAX", "2027-08-25T06:00", "2027-08-25T07:32", "Los Angeles"), L("via", "LAX", "SAN", "2027-08-30T06:00", "2027-08-30T07:00", "San Diego"), L("back", "SAN", "DUS", "2027-09-02T17:15", "2027-09-03T12:40")] }] }] },
+  // Paar mit deutschem und britischem Pass (Tom hat dazu einen irischen)
+  { id: "ny", name: "New York Paar", place: "New York", country: "USA", from: "2027-06-01", to: "2027-06-08", ...base,
+    travelers: [{ id: "an", name: "Anna", household: "Paar", age: 30 }, { id: "to", name: "Tom", household: "Paar", age: 31, nat: "GB", nat2: "IE" }],
+    items: [flight("n", ["an", "to"], [L("out", "FRA", "JFK", "2027-06-01T10:00", "2027-06-01T13:00", "New York"), L("back", "JFK", "FRA", "2027-06-08T18:00", "2027-06-09T08:00")])] }
 ];
 
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4179", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
@@ -61,6 +66,9 @@ try {
   const asked = { flights: [], stays: [], tours: [] };
   // Auswärtiges Amt: Teilreisewarnung USA, Änderungsdatum lässt sich im Test umstellen
   let aaMod = "2026-09-01";
+  // Reisehinweise anderer Regierungen: nur das Reiseland geht hin
+  const govAsked = [];
+  await p.route("https://flights.test/advice/gov*", r => { govAsked.push(r.request().url()); return json(r, { cc: "US", sources: { GB: { level: "partial", url: "https://www.gov.uk/foreign-travel-advice/usa", embassy: "https://www.gov.uk/world/usa", modified: "2026-09-20" }, US: { level: null, url: "x" } } }); });
   await p.route("https://flights.test/advice", r => json(r, { countries: { US: { id: "usa-node", name: "USA", warning: false, partial: true, situation: false, situationPart: false, modified: aaMod } } }));
 
   // Flüge: je Tag im Fenster ein Flug; Fidschi → München nur mit 2 Umstiegen; Los Angeles → San Diego zum Fehlerpreis
@@ -277,6 +285,22 @@ try {
   if ((await p.locator(".top .imp-btn .imp-badge").innerText()) !== String(n0 + 1)) fail("geänderte Warnung nicht wieder offen");
   await p.keyboard.press("Escape");
   log("Wichtiges: Teilreisewarnung gelesen, nach Änderung beim Auswärtigen Amt wieder offen");
+
+  // ---- New York: Anna (deutscher Pass) und Tom (britisch, dazu irisch): Einreise und Reisehinweise je Pass
+  await open("New York Paar");
+  await p.locator(".top .imp-btn").click();
+  const ny = p.locator(".modal .imp");
+  const nyEntry = ny.locator(".imp-card[data-key='entry:US']");
+  await nyEntry.waitFor({ timeout: 8000 }).catch(async () => fail("Einreise fehlt: " + (await p.locator(".modal").innerText()).replace(/\n/g, " | ")));
+  const et = await nyEntry.innerText();
+  if (!/Anna \(🇩🇪\)/.test(et) || !/Tom \(🇬🇧, günstigster Pass\)/.test(et) || !et.includes("ESTA")) fail("Einreise USA nicht je Pass: " + et.replace(/\n/g, " | "));
+  const fcdo = ny.locator(".imp-card[data-key='gov:GB:US']");
+  await fcdo.waitFor();
+  if ((await fcdo.locator(".chip").allInnerTexts()).join() !== "Tom" || !(await fcdo.innerText()).includes("FCDO") || !(await fcdo.locator("a", { hasText: "Botschaft" }).count())) fail("FCDO-Hinweis nicht für Tom: " + (await fcdo.innerText()));
+  if ((await ny.locator(".imp-card[data-key='aa:US'] .chip").allInnerTexts()).join() !== "Anna") fail("Auswärtiges Amt nicht nur für Anna");
+  if (!govAsked.length || govAsked.some(u => !/\/advice\/gov\?cc=US$/.test(u))) fail("Such-Dienst bekommt mehr als das Reiseland: " + govAsked.join(", "));
+  await p.keyboard.press("Escape");
+  log("New York: Einreise je Pass (🇩🇪 Anna, 🇬🇧 Tom mit günstigstem Pass), FCDO-Hinweis mit Botschaft für Tom, Auswärtiges Amt für Anna; an den Such-Dienst nur das Reiseland");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nGruppenreisen: alles in Ordnung");

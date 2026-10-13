@@ -9,7 +9,7 @@ import { activeOption } from "./calc";
 import { addDays, okDate, stopsOf } from "./calc/travel";
 import { hhKey, isActive, type Item, type NoteKind, type Trip } from "./model";
 
-export type EntryKind = NoteKind | "flight" | "stay" | "event" | "item" | "drive" | "ferry";
+export type EntryKind = NoteKind | "flight" | "stay" | "event" | "item" | "drive" | "ferry" | "holiday";
 export interface DayEntry {
   key: string;
   kind: EntryKind;
@@ -38,7 +38,7 @@ export interface Day {
   entries: DayEntry[];
 }
 
-export const KIND_ICON: Record<EntryKind, string> = { flight: "✈️", stay: "🛏", event: "🎟", item: "📌", see: "🏛", food: "🍽", fun: "🎢", rest: "😌", move: "🚆", note: "📝", drive: "🚗", ferry: "⛴" };
+export const KIND_ICON: Record<EntryKind, string> = { flight: "✈️", stay: "🛏", event: "🎟", item: "📌", see: "🏛", food: "🍽", fun: "🎢", rest: "😌", move: "🚆", note: "📝", drive: "🚗", ferry: "⛴", holiday: "🎉" };
 export const NOTE_KINDS: NoteKind[] = ["see", "food", "fun", "rest", "move", "note"];
 
 const hm = (iso?: string) => (iso && iso.length >= 16 ? iso.slice(11, 16) : undefined);
@@ -139,6 +139,20 @@ export function itinerary(trip: Trip): Day[] {
     const entries = byDay.get(d)!.sort((a, b) => a.order.localeCompare(b.order));
     return { date: d, n: i + 1, place, moved, title: trip.days?.[d]?.title, ...(auto ? { auto } : {}), entries };
   });
+}
+
+/** Tag ohne Einträge und ohne eigene Überschrift (#331: wird nicht gezeigt) */
+export const emptyDay = (d: Day) => !d.entries.length && !d.title;
+
+/** Zeilen des Tagesplans: Tage mit Inhalt, leere hintereinander als eine Lücke; aufgeklappte Tage (opened) wie Tage mit Inhalt */
+export function dayRows(days: Day[], opened: Set<string> = new Set()): ({ day: Day } | { gap: Day[] })[] {
+  const out: ({ day: Day } | { gap: Day[] })[] = [];
+  for (const d of days) {
+    if (!emptyDay(d) || opened.has(d.date)) { out.push({ day: d }); continue; }
+    const last = out.at(-1);
+    if (last && "gap" in last) last.gap.push(d); else out.push({ gap: [d] });
+  }
+  return out;
 }
 
 /** Posten ohne Tag, die man einem Tag zuordnen kann (Erlebnisse und Transport vor Ort) */

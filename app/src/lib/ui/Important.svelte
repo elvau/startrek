@@ -6,6 +6,11 @@
    * Abgehakte sind minimiert und lassen sich wieder öffnen. Zähler in Rot (important.ts).
    * Reisepässe prüft die Seite nur, wenn die Buchungsdaten im Konto ohnehin geladen sind bzw. auf Knopfdruck; das Ablaufdatum
    * bleibt im Browser.
+   * „Nur für dich“ (#302): Hinweise für Frauen, Passeintrag „X“ und LGBTQ+ aus den eigenen Angaben im Konto (personal.ts).
+   * Dafür lädt das Popup die Buchungsdaten, wenn man angemeldet und selbst in der Reise ist; berechnet nur im Browser,
+   * ohne „gelesen“ (das stünde in der Reise), für Mitreisende nicht sichtbar.
+   * Einreise je Person mit ihrem (günstigsten) Pass; Texte aus hints.ts nur für die Pässe, für die sie gelten. Warnstufen
+   * von der eigenen Regierung (GB, US, CA), sonst vom Auswärtigen Amt mit Hinweis und Link zur eigenen Regierung.
    */
   import { locale, t, tn, type Key } from "../i18n/index.svelte";
   import { access, app, setDetailed } from "../store.svelte";
@@ -19,15 +24,19 @@
   import { money } from "../calc";
   import { isActive, uid } from "../model";
   import { adviceUrl } from "../advice";
-  import { entryFor, type EntryKind } from "../visa";
+  import { bestEntry, natsOf, type EntryKind } from "../visa";
+  import { OWN_GOV } from "../govadvice";
   import { doneIds, isOpen, isUrgent, markDone, reopen, type Point } from "../important";
-  import { imp, loadImportant } from "../importantState.svelte";
+  import { imp, loadGov, loadImportant } from "../importantState.svelte";
   import { showItem } from "./showItem";
   import { EES_LINKS, MIN_VALID, type MinValid } from "../borders";
   import { loadDocs } from "../traveldocs.svelte";
+  import { cloud } from "../cloud/cloud.svelte";
+  import { FCDO_LGBT_URL, ILGA_URL, OWID_URL, SOURCES, fcdoUrl, type PersonalHint } from "../personal";
 
   // gemeinsamer Stand mit der Bubble in der Menüleiste (importantState.svelte.ts)
   $effect(() => { void app.trip.id; loadImportant(); });
+  $effect(() => loadGov());
   const visa = $derived(imp.visa);
   const countries = $derived(imp.countries);
   /** tips: „Gut zu wissen“ im Kapitel Erlebnisse (Früh buchen, besondere Orte), sonst die Bestimmungen im Popup */
@@ -38,6 +47,8 @@
   const closed = $derived(points.filter(p => !isOpen(p, done)));
   const meId = $derived(imp.meId);
   const canCheck = $derived(imp.canCheck);
+  const personal = $derived(tips ? [] : imp.personal);
+  $effect(() => { if (!tips && cloud.user && imp.meId) void loadDocs(); });
   let more = $state(false);
   let unfolded = $state<Record<string, boolean>>({});
 
@@ -48,7 +59,7 @@
   const date = (iso: string) => iso.split("-").reverse().join(".");
   const validText = (v: MinValid) => t(`imp.valid.${v.months ? "m" : "d"}${v.from === "entry" ? "Entry" : "Exit"}` as Key, { n: v.months || v.days || 0 });
   function title(p: Point) {
-    if (p.kind === "aa") return `${flagOf(p.cc!)} ${countryName(p.cc!)}: ${t(LEVEL[p.level!])}`;
+    if (p.kind === "aa") return `${flagOf(p.cc!)} ${countryName(p.cc!)}: ${t(LEVEL[p.level!])}${p.src ? ` · ${OWN_GOV[p.src].name}` : ""}`;
     if (p.kind === "entry") return `${flagOf(p.cc!)} ${t("imp.entry", { c: countryName(p.cc!) })}`;
     if (p.kind === "border") return t("imp.border.t");
     if (p.kind === "pass") return t("imp.pass.t", { name: p.persons![0].name });
@@ -58,19 +69,72 @@
     return t(`hint.${p.hint!.id}.t` as Key);
   }
   function text(p: Point) {
-    if (p.kind === "aa") return t("imp.aaText") + (p.advice?.modified ? ` ${t("imp.aaChanged", { d: date(p.advice.modified) })}` : "");
+    if (p.kind === "aa") {
+      const mod = p.gov?.modified || p.advice?.modified;
+      return (p.src ? t("imp.govText", { src: OWN_GOV[p.src].name }) : t("imp.aaText")) + (mod ? ` ${t("imp.aaChanged", { d: date(mod) })}` : "")
+        + (fallbackNats(p).length ? ` ${t("imp.aaFallback")}` : "");
+    }
     if (p.kind === "border") return t("imp.border.x");
     if (p.kind === "book") return t("book.lead");
     if (p.kind === "deposit") return p.deposit!.how === "credit" ? t("imp.dep.credit") : t("imp.dep.other", { how: p.deposit!.how ? t(`dep.how.${p.deposit!.how}` as Key) : "–" });
     if (p.kind === "pass") return t("imp.pass.x", { d: date(p.pass!.expires), c: countryName(p.cc!), r: date(p.pass!.needed) });
     if (p.kind === "poll") return p.poll!.missing.length ? t("poll.missing", { names: p.poll!.missing.join(", ") }) : t("imp.poll.ready");
+    if (p.kind === "entry") {
+      const forPs = p.persons!.filter(x => x.hint);
+      if (!p.hint || !forPs.length) return "";
+      const x = t(`hint.${p.hint.id}.x` as Key);
+      return forPs.length < p.persons!.length ? `${t("imp.hintFor", { names: groupLabel(forPs.map(y => y.name || "?"), -1) })} ${x}` : x;
+    }
     if (p.hint) return t(`hint.${p.hint.id}.x` as Key);
     const k = p.persons?.find(x => x.kind && x.kind !== "unknown");
     return k ? t(ENT[k.kind!], { n: k.days ?? 0 }) : t("ent.unknown");
   }
-  const links = (p: Point) => (p.kind === "aa" ? [{ label: t("aa.link"), url: adviceUrl(p.advice!) }] : p.kind === "border" ? EES_LINKS : p.hint?.links || []);
+  /** Pässe der Personen, deren eigene Regierung keine offene Schnittstelle hat (Auswärtiges Amt statt eigener Hinweise) */
+  const fallbackNats = (p: Point) => [...new Set((p.persons || []).filter(x => x.fallback).map(x => x.nat))];
+  function links(p: Point) {
+    if (p.kind === "aa" && p.src) {
+      const emb = p.gov?.embassy || OWN_GOV[p.src].embassy;
+      return [{ label: OWN_GOV[p.src].name, url: p.gov!.url }, ...(emb ? [{ label: `🏛 ${t("imp.embassy")}`, url: emb }] : [])];
+    }
+    if (p.kind === "aa") return [{ label: t("aa.link"), url: adviceUrl(p.advice!) }, ...fallbackNats(p).filter(n => OWN_GOV[n]).map(n => ({ label: `${flagOf(n)} ${OWN_GOV[n].name}`, url: OWN_GOV[n].advice }))];
+    if (p.kind === "border") return EES_LINKS;
+    // Einreise: offizieller Link des Ziellands (aus hints.ts), sonst IATA
+    if (p.kind === "entry") return p.hint?.links.length ? p.hint.links : GENERAL_LINKS.slice(1);
+    return p.hint?.links || [];
+  }
+  /** Einreise je Pass und Art: „Anna, Ben (🇩🇪): visumfrei …“; nötig, wenn Pässe gemischt sind oder der Hinweis nicht für alle gilt */
+  function entryLines(p: Point) {
+    const ps = p.persons!;
+    if (ps.every(x => x.hint && !x.multi) && new Set(ps.map(x => x.nat)).size === 1) return [];
+    const gs = new Map<string, { names: string[]; nat: string; kind: EntryKind; days?: number; multi: boolean }>();
+    for (const x of ps) {
+      const k = `${x.nat}|${x.kind}|${x.days ?? ""}`;
+      if (!gs.has(k)) gs.set(k, { names: [], nat: x.nat, kind: x.kind || "unknown", days: x.days, multi: false });
+      const g = gs.get(k)!;
+      g.names.push(x.name || "?");
+      g.multi ||= !!x.multi;
+    }
+    return [...gs.values()].map(g => `${groupLabel(g.names, -1)} (${flagOf(g.nat)}${g.multi ? `, ${t("ent.bestPass")}` : ""}): ${t(ENT[g.kind], { n: g.days ?? 0 })}`);
+  }
+  const hintIds = (p: Point) => (p.kind === "entry" ? p.persons!.filter(x => x.hint).map(x => x.id) : undefined);
   const isTask = (p: Point) => p.kind === "entry" || p.kind === "pass";
   const verb = (p: Point) => (isTask(p) ? t("imp.done") : t("imp.read"));
+
+  // nur für einen selbst: Titel, Text und Quellen je Hinweis
+  const PICON: Record<PersonalHint["kind"], string> = { women: "♀", x: "🪪", xAny: "🪪", lgbt: "🏳️‍🌈" };
+  const pTitle = (h: PersonalHint) => (h.kind === "xAny" ? t("pers.xAny.t") : `${flagOf(h.cc)} ${t(`pers.${h.kind}.t` as Key, { c: countryName(h.cc) })}`);
+  const pTexts = (h: PersonalHint): string[] =>
+    h.kind === "women" ? h.tags.map(x => t(`pers.women.${x}` as Key)) : h.kind === "lgbt" ? [t(`pers.lgbt.${h.level}` as Key)] : [t(h.kind === "x" ? "pers.x.x" : "pers.xAny.x")];
+  function pLinks(h: PersonalHint) {
+    const out: { label: string; url: string }[] = [];
+    const f = h.kind !== "xAny" ? fcdoUrl(imp.safety, h.cc) : undefined;
+    if (f) out.push({ label: t("pers.fcdo"), url: f });
+    const a = h.kind !== "xAny" ? imp.advice[h.cc] : undefined;
+    if (a) out.push({ label: t("aa.link"), url: adviceUrl(a) });
+    if (h.kind === "lgbt") out.push({ label: "Our World in Data", url: OWID_URL }, { label: "ILGA World", url: ILGA_URL });
+    if (h.kind === "lgbt" || h.kind === "xAny") out.push({ label: "LGBT+ (FCDO)", url: FCDO_LGBT_URL });
+    return out;
+  }
 
   // abhaken schreibt in die Reise (alle Mitreisenden sehen, wer was erledigt bzw. gelesen hat)
   function edit(fn: (d: NonNullable<typeof app.trip.done>) => void) {
@@ -148,16 +212,17 @@
     if (!visa) return [];
     const act = app.trip.travelers.filter(isActive);
     return countries.map(cc => {
-      const gs = new Map<string, { kind: EntryKind; days?: number; names: string[]; nat: string }>();
+      const gs = new Map<string, { kind: EntryKind; days?: number; names: string[]; nat: string; multi?: boolean }>();
       for (const p of act) {
-        const nat = p.nat || "DE", e = entryFor(visa, nat, cc), k = `${nat}|${e.kind}|${e.days ?? ""}`;
-        if (!gs.has(k)) gs.set(k, { ...e, names: [], nat });
+        const e = bestEntry(visa, natsOf(p), cc), k = `${e.nat}|${e.kind}|${e.days ?? ""}`;
+        if (!gs.has(k)) gs.set(k, { kind: e.kind, ...(e.days != null ? { days: e.days } : {}), names: [], nat: e.nat });
         gs.get(k)!.names.push(p.name || "?");
+        if (e.multi) gs.get(k)!.multi = true;
       }
       return { cc, gs: [...gs.values()].filter(g => g.kind !== "home") };
     }).filter(x => x.gs.length);
   });
-  const mixed = $derived(new Set(app.trip.travelers.filter(isActive).map(p => p.nat || "DE")).size > 1);
+  const mixed = $derived(new Set(app.trip.travelers.filter(isActive).flatMap(p => natsOf(p))).size > 1);
 </script>
 
 {#snippet persons(p: Point)}
@@ -175,7 +240,8 @@
 {/snippet}
 
 {#snippet body(p: Point)}
-  <p>{text(p)}</p>
+  {#if p.kind === "entry"}{#each entryLines(p) as l (l)}<p class="imp-pass-line">🛂 {l}</p>{/each}{/if}
+  {#if text(p)}<p>{text(p)}</p>{/if}
   {#if p.book}
     <ul class="imp-books">
       {#each p.book.entries as x (x.e.id)}
@@ -194,10 +260,10 @@
     </ul>
   {/if}
   {#if p.valid}<p class="imp-valid">🪪 {validText(p.valid)}</p>{/if}
-  {#if links(p).length || p.hint?.fee}
+  {#if links(p).length || (p.hint?.fee && hintIds(p)?.length !== 0)}
     <p class="imp-links">
       {#each links(p) as l (l.url)}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}
-      {#if p.hint?.fee && !access.readonly}{#if hasFee(p.hint)}<small class="muted">✓ {t("hint.feeAdded")}</small>{:else}<button class="linkbtn imp-fee" onclick={() => addFee(p.hint!, p.kind === "entry" ? p.persons?.map(x => x.id) : undefined)}>+ {t("hint.fee")}</button>{/if}{/if}
+      {#if p.hint?.fee && !access.readonly && hintIds(p)?.length !== 0}{#if hasFee(p.hint)}<small class="muted">✓ {t("hint.feeAdded")}</small>{:else}<button class="linkbtn imp-fee" onclick={() => addFee(p.hint!, hintIds(p))}>+ {t("hint.fee")}</button>{/if}{/if}
     </p>
   {/if}
   {#if p.persons}{@render persons(p)}{:else if !access.readonly}<div class="imp-persons"><button class="btn sm" onclick={() => edit(d => markDone(d, p))}>✓ {verb(p)}</button></div>{/if}
@@ -210,6 +276,20 @@
       {:else if open.length}<span class="muted small">{tn("imp.openN", open.length)}</span>{:else}<span class="imp-ok">✓ {t("imp.allDone")}</span>{/if}
       {#if !tips || closed.length}<button class="linkbtn imp-more" aria-expanded={more} onclick={() => (more = !more)}>{closed.length ? t("imp.doneN", { n: closed.length }) : t("imp.details")} {more ? "▴" : "▾"}</button>{/if}
     </div>
+
+    {#if personal.length}
+      <div class="imp-own" data-personal>
+        <div class="imp-own-h"><b>🔒 {t("pers.title")}</b> <span class="muted small">{t("pers.lead")}</span></div>
+        {#each personal as h (h.kind + ("cc" in h ? h.cc : ""))}
+          <article class="imp-card imp-pers" data-pers={h.kind}>
+            <div class="imp-head"><span class="imp-ic" aria-hidden="true">{PICON[h.kind]}</span><b>{pTitle(h)}</b></div>
+            {#each pTexts(h) as x (x)}<p>{x}</p>{/each}
+            <p class="imp-links">{#each pLinks(h) as l (l.url)}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>{/each}</p>
+          </article>
+        {/each}
+        <p class="muted small">{t("pers.source", { src: SOURCES, d: imp.safety?.asOf ? date(imp.safety.asOf) : "–" })}</p>
+      </div>
+    {/if}
 
     {#each open as p (p.key)}
       {#if isUrgent(p) || unfolded[p.key]}
@@ -239,7 +319,7 @@
           <ul class="imp-entries">
             {#each entries as x (x.cc)}
               <li><b>{flagOf(x.cc)} {countryName(x.cc)}</b>
-                {#each x.gs as g (g.nat + g.kind)}<span>{#if mixed}{groupLabel(g.names, -1)} ({flagOf(g.nat)}):&nbsp;{/if}{t(ENT[g.kind], { n: g.days ?? 0 })}</span>{/each}
+                {#each x.gs as g (g.nat + g.kind)}<span>{#if mixed}{groupLabel(g.names, -1)} ({flagOf(g.nat)}{g.multi ? `, ${t("ent.bestPass")}` : ""}):&nbsp;{/if}{t(ENT[g.kind], { n: g.days ?? 0 })}</span>{/each}
                 {#if MIN_VALID[x.cc]}<span>🪪 {validText(MIN_VALID[x.cc])}</span>{/if}
               </li>
             {/each}
@@ -265,9 +345,14 @@
   .imp-card { background: var(--paper, #fff); border-radius: 14px; padding: 10px 14px; box-shadow: var(--shadow); border-inline-start: 4px solid var(--warn, #d08a12); display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
   .imp-card p { margin: 0; }
   .imp-hard { border-inline-start-color: #d0342c; background: color-mix(in srgb, #d0342c 6%, var(--paper, #fff)); }
+  .imp-own { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 14px; border: 1px dashed var(--line); }
+  .imp-own > p { margin: 0; }
+  .imp-own-h { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-size: 14px; }
+  .imp-pers { border-inline-start-color: #8a5cc7; }
   .imp-place { border-inline-start-color: var(--c-plan, #3b6fd8); }
   .imp-pet { border-inline-start-color: var(--c-trav); }
   .imp-pass { border-inline-start-color: #d0342c; }
+  .imp-pass-line { font-size: 14px; }
   .imp-valid { font-size: 13.5px; color: var(--ink-2); }
   .imp-books { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .imp-books li { display: flex; flex-direction: column; gap: 1px; padding-top: 6px; border-top: 1px solid var(--line); }

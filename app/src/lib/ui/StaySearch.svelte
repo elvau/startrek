@@ -15,6 +15,8 @@
   import { prefsFor } from "../prefs";
   import { tick, untrack } from "svelte";
   import { stationName } from "../stays/stationName";
+  import { addDays } from "../calc/travel";
+  import { toCamper } from "./showItem";
   import { FLIGHTS_URL, providerDown } from "../flights/app";
   import { loadPartner, partner } from "../partnerState.svelte";
   import { activeMins, effectiveSources, sourceNotWired, autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
@@ -62,6 +64,9 @@
   let place = $state(start.place || had?.place || (firstGap ? untrack(() => stationName(geo, airportData, firstGap.ap, firstGap.city)) : "") || trip.place || "");
   let checkin = $state(start.from || item?.from || had?.checkin || segStart?.from || firstGap?.from || win?.from || "");
   let checkout = $state(start.to || item?.to || had?.checkout || segStart?.to || firstGap?.to || win?.to || "");
+  // Camper-Reise (#269): übernachtet wird auf Campingplätzen bzw. Stellplätzen; ein Hotel nur für einzelne Nächte
+  const camper = !!trip.camper;
+  untrack(() => { if (camper && !start.to && !item && checkin) checkout = addDays(checkin, 1); });
   // ohne Stadt im Flug: Name erst, wenn die Ortsdaten geladen sind
   // Name der Station verbessert sich, sobald Flughafen- und Ortsdaten da sind (solange man den Ort nicht selbst geändert hat)
   let auto: string | null = firstGap ? untrack(() => place) : null;
@@ -341,6 +346,7 @@
 {/snippet}
 
 <Modal title={item ? `${t("st.open")}: ${autoName(item.name) || t("stay.new")}` : t("st.open")} {onclose} wide {inline}>
+  {#if camper}<p class="st-camper small">⛺ {t("camp.searchNote")} <button type="button" class="linkbtn" onclick={() => { onclose(); toCamper(); }}>{t("camp.toStations")}</button></p>{/if}
   {#if arr.length}
     <div class="st-pres">
       <span class="dlabel">{arr.some(a => a.arr || a.dep) ? t("st.presFlights") : t("st.pres")}</span>
@@ -518,3 +524,8 @@
     {/if}
   {/if}
 </Modal>
+
+<style>
+  .st-camper { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--paper-2); }
+</style>
+

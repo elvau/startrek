@@ -11,6 +11,8 @@
   import { onDestroy, onMount, untrack } from "svelte";
   import { t } from "../i18n/index.svelte";
   import type { Map as MlMap, Marker } from "maplibre-gl";
+  import { loadMapLibre } from "./maplibre";
+  import { nextFailed } from "./mapFail";
 
   let { points, selected = null, onselect, onbounds }: {
     points: MapPoint[]; selected?: string | null; onselect?: (id: string) => void;
@@ -25,20 +27,27 @@
   let markers: { id: string; m: Marker; el: HTMLElement }[] = [];
   let failed = $state(false);
   let fitted = "";
+  let ro: ResizeObserver | undefined;
+  let loaded = false;
 
   async function init() {
     try {
-      const [m] = await Promise.all([import("maplibre-gl"), import("maplibre-gl/dist/maplibre-gl.css")]);
+      const [m] = await Promise.all([loadMapLibre(), import("maplibre-gl/dist/maplibre-gl.css")]);
       lib = m;
       if (!box) return;
       map = new m.Map({ container: box, style: STYLE, center: [0, 30], zoom: 1.5, attributionControl: { compact: true }, cooperativeGestures: true });
       map.addControl(new m.NavigationControl({ showCompass: false }), "top-right");
       map.on("moveend", () => { const b = map!.getBounds(); onbounds?.({ w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() }); });
+      // Handy: Größe des Containers kann beim Start 0 sein oder sich danach ändern (Adressleiste, Drehen) → Karte bleibt grau
+      if (typeof ResizeObserver !== "undefined") { ro = new ResizeObserver(() => map?.resize()); ro.observe(box); }
+      map.once("load", () => { loaded = true; failed = nextFailed(failed, "load", loaded); map?.resize(); fitted = ""; draw(); });
+      // Stil nicht ladbar (Fehler vor dem ersten load): Hinweis statt grauer Fläche; Kachelfehler danach nicht
+      map.on("error", () => { failed = nextFailed(failed, "error", loaded); });
       draw();
     } catch { failed = true; }
   }
   onMount(() => { void init(); });
-  onDestroy(() => map?.remove());
+  onDestroy(() => { ro?.disconnect(); map?.remove(); });
 
   function draw() {
     if (!map || !lib) return;
