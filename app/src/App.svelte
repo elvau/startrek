@@ -41,6 +41,8 @@
   import { dir, dirReady } from "./lib/directory.svelte";
   import UsagePanel from "./lib/ui/UsagePanel.svelte";
   import ConnectDialog from "./lib/ui/ConnectDialog.svelte";
+  import MyDataDialog from "./lib/ui/MyDataDialog.svelte";
+  import { myData } from "./lib/mydata.svelte";
   import { connect } from "./lib/connector/app.svelte";
   import { admin } from "./lib/admin/app.svelte";
   import { FLIGHTS_URL } from "./lib/flights/app";
@@ -280,6 +282,7 @@
 {#if cloud.configured && FLIGHTS_URL}<BugButton />{/if}
 {#if admin.open && admin.is && cloud.user}<UsagePanel />{/if}
 {#if connect.open && cloud.user}<ConnectDialog />{/if}
+{#if myData.open && cloud.user}<MyDataDialog />{/if}
 {#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
 {#if setupWizard.open}<SetupWizard />{/if}
 <!-- Flug- und Unterkunftssuche im eigenen Fenster (aus Kapitel, Posten und Plan); danach ist man wieder dort -->

@@ -218,6 +218,44 @@ export async function deleteTravelDocs(uid: string) {
   if (!r.ok && r.status !== 404) throw new Error(`travelDocs ${r.status}`);
 }
 
+/* ---------- Auskunft (Art. 15 DSGVO): alles, was zum Konto gespeichert ist ---------- */
+
+export interface AccountData {
+  account: { uid: string; email: string; name: string; providers: string[]; verified: boolean; created?: string; lastSignIn?: string };
+  /** gespeicherte Personen, Gruppen, Vorlieben (JSON) */
+  profile: string | null;
+  /** Buchungsdaten (JSON) */
+  travelDocs: string | null;
+  /** Reisen, in denen man Mitglied ist (ohne den Schlüssel des Einladungslinks) */
+  trips: (Omit<TripDoc, "invite" | "updatedAt"> & { id: string; invite?: { role: string } | null })[];
+  campaigns: (CampaignDoc & { id: string })[];
+}
+
+/** liest alles direkt vom Server (nicht aus dem Zwischenspeicher), wie „Konto zurücksetzen“ es löschen würde */
+export async function collectAccount(uid: string): Promise<AccountData> {
+  const { db, auth } = start();
+  const u = auth.currentUser;
+  if (!u || u.uid !== uid) throw new Error("not signed in");
+  const [trips, camps, profile, travelDocs] = await Promise.all([
+    getDocsFromServer(query(collection(db, "trips"), where("memberIds", "array-contains", uid))),
+    getDocsFromServer(query(collection(db, "campaigns"), where("owner", "==", uid))),
+    getDocFromServer(profileRef(uid)).then(s => (s.exists() ? (s.data().data as string) : null)).catch(() => null),
+    loadTravelDocs(uid)
+  ]);
+  return {
+    account: {
+      uid, email: u.email || "", name: displayName(u), providers: u.providerData.map(p => p.providerId), verified: u.emailVerified,
+      created: u.metadata.creationTime, lastSignIn: u.metadata.lastSignInTime
+    },
+    profile, travelDocs,
+    trips: trips.docs.map(d => {
+      const { invite, updatedAt: _u, ...rest } = d.data() as TripDoc;
+      return { id: d.id, ...rest, ...(invite ? { invite: { role: invite.role } } : {}) };
+    }),
+    campaigns: camps.docs.map(d => ({ id: d.id, ...(d.data() as CampaignDoc) }))
+  };
+}
+
 /* ---------- Admin: eigenes Konto zurücksetzen ---------- */
 
 export interface WipeResult { deleted: number; left: number; campaigns: number }
