@@ -1051,3 +1051,10 @@ html:has(.modal-bg){overflow:hidden}
 .fs-when{display:flex;flex-direction:column;gap:8px}
 .fs-facts{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0;color:var(--ink-2)}
 .fs-reset{align-self:center}
+/* Unterkunftssuche: Symbole statt Beschriftungen (#357) */
+.st-ic{font-size:13px;line-height:1;cursor:default}
+.st-ap{font-size:12px;font-weight:700;color:var(--ink-2)}
+.st-when{white-space:normal}
+.st-kind{align-items:flex-end}
+.st-partial{margin:0;color:var(--warn)}
+.st-priv{margin:0}.st-hint{display:block}

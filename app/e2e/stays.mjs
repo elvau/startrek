@@ -279,7 +279,7 @@ try {
   log("Plan: Lücke 25.07. bis 29.07. für Klein, Hinweis zum Check-in");
   await gap.first().locator(".linkbtn", { hasText: "Unterkunft suchen" }).click();
   const pres = await m.locator(".st-pres").textContent();
-  if (!pres.includes("So 18.07. 08:05 an") || !pres.includes("Do 29.07. 16:25 ab") || pres.includes("Hase")) fail("Anwesenheit: " + pres);
+  if (!pres.includes("🛬 So 18.07. 08:05") || !pres.includes("🛫 Do 29.07. 16:25") || !pres.includes("⏳ Check-in meist erst ab 15 Uhr") || pres.includes("Hase")) fail("Anwesenheit: " + pres);
   if ((await m.locator(".st-dates .dr-btn").getAttribute("data-from")) !== "2027-07-25") fail("Check-in nicht aus der Lücke");
   if ((await m.locator(".st-dates .dr-btn").getAttribute("data-to")) !== "2027-07-29") fail("Check-out nicht aus der Lücke");
   const gg = await m.locator(".st-guests").textContent();
@@ -330,7 +330,7 @@ try {
   if ((await m.locator(".st-dates .dr-btn").getAttribute("data-from")) !== "2027-07-28") fail("Check-in nicht die letzte Nacht");
   const placeNow = await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue();
   if (!(await m.locator(".st-near .chip.on", { hasText: placeNow }).count())) fail("Ort am Flughafen nicht vorgewählt: " + placeNow);
-  if (!(await m.locator(".st-near", { hasText: "Am Flughafen SPU" }).count())) fail("Orte am Flughafen fehlen");
+  if (!(await m.locator(".st-near .st-ap", { hasText: "SPU" }).count())) fail("Orte am Flughafen fehlen");
   // Feld leeren: bleibt leer (früher sofort wieder mit dem Ort am Flughafen gefüllt)
   await m.locator("label.f", { hasText: "Ort" }).locator("input").fill("");
   await p.waitForTimeout(300);
