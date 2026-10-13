@@ -6,6 +6,7 @@
   import { isRoadTrip } from "../road/trip";
   import { itinerary, stations } from "../itinerary";
   import { t, tn } from "../i18n/index.svelte";
+  import ExtLink from "./ExtLink.svelte";
   import { access, app } from "../store.svelte";
   import { eur } from "../calc";
   import { hhKey, isActive } from "../model";
@@ -85,16 +86,16 @@
     </ul>
     <p class="muted small gr-pp">{t("gr.pp", { h: 2 })}</p>
     <p class="small fs-direct gr-links">{t("gr.search")}
-      <a href={bahnLink(plan.from.name, plan.to.name, app.trip.from)} target="_blank" rel="noopener noreferrer">bahn.de ↗</a> ·
+      <ExtLink href={bahnLink(plan.from.name, plan.to.name, app.trip.from)} gate name="bahn.de">bahn.de ↗</ExtLink> ·
       <a href={routeLink(plan.from.name, plan.to.name)} target="_blank" rel="noopener noreferrer">Google Maps ↗</a>
-      {#each RAIL_LINKS as l (l.name)} · <a href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>{/each}
+      {#each RAIL_LINKS as l (l.name)} · <ExtLink href={l.url} gate name={l.name}>{l.name} ↗</ExtLink>{/each}
     </p>
     {#if plan.coach}
       <div class="gr-coach">
         <p class="small">{t("gr.coachHint", { v: eur(plan.coach.total), n: plan.persons })}</p>
         {#if !access.readonly}<button class="btn sm primary gr-coach-add" onclick={addCoach}>🚍 {t("gr.coachAdd")}</button>{/if}
         <p class="small fs-direct gr-links">{t("gr.coachAsk")}
-          {#each COACH_LINKS as l, i (l.name)}{i ? " · " : ""}<a href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>{/each}
+          {#each COACH_LINKS as l, i (l.name)}{i ? " · " : ""}<ExtLink href={l.url} gate name={l.name}>{l.name} ↗</ExtLink>{/each}
         </p>
       </div>
     {:else if plan.persons < COACH_MIN}

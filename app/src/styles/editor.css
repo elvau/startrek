@@ -992,3 +992,8 @@ html:has(.modal-bg){overflow:hidden}
 .fu-acts{display:flex;gap:8px}
 .tk-fund{display:block;margin-top:4px;font-size:12.5px;opacity:.9}
 .sh-fl{cursor:default}
+/* Hinweis: kein Reiseveranstalter, Vertrag nur mit dem Anbieter (broker.svelte.ts) */
+.broker-note{margin-top:8px}
+.broker-gate p{margin:0 0 10px}
+.broker-gate .check{display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0 14px}
+.broker-gate .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}

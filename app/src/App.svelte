@@ -32,6 +32,7 @@
   import AppFooter from "./lib/ui/AppFooter.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
+  import BrokerGate from "./lib/ui/BrokerGate.svelte";
   import SetupWizard from "./lib/ui/SetupWizard.svelte";
   import { autoAllowed, setupWizard } from "./lib/setup/app.svelte";
   import { shouldAutoStart } from "./lib/setup/setup";
@@ -268,6 +269,7 @@
   </div>
 {/if}
 {/if}
+<BrokerGate />
 {#if cloud.configured}<AgentChat />{/if}
 {#if cloud.configured && FLIGHTS_URL}<BugButton />{/if}
 {#if admin.open && admin.is && cloud.user}<UsagePanel />{/if}
