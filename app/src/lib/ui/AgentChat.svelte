@@ -188,8 +188,10 @@
   /** Gesamtpreis wie nach dem Übernehmen: Flug mit Anreise, Unterkunft, vor Ort, Erlebnisse, Verpflegung */
   function preview(a: AgentTrip) {
     void geo.world.length;
-    const T = totals(previewTrip(base(), a, geo));
-    return { total: T.total, access: T.byCat.flights - flightTotal(a), food: T.byCat.misc, people: T.active };
+    const tr = previewTrip(base(), a, geo), T = totals(tr);
+    // Camper (#269): Stationen und Mietcamper als Richtwerte
+    const sum = (f: (h: string) => boolean) => tr.items.filter(i => f(i.hint || "")).reduce((s, i) => s + (T.items[i.id]?.net || 0), 0);
+    return { total: T.total, access: T.byCat.flights - flightTotal(a), food: T.byCat.misc, people: T.active, camp: sum(h => h.startsWith("camp:")), rent: sum(h => h === "camper:rent") };
   }
 
   function key(e: KeyboardEvent) {
@@ -275,6 +277,8 @@
                   {:else if f}<li>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {f.out.carriers.join(" / ")}<b>{eur(f.price)}</b></li>{/if}
                   {#if a.arrival}<li>🚗 {a.arrival.label || t("ai.ownArrival")}<b>≈ {eur(a.arrival.eur)}</b></li>{/if}
                   {#if pv.access > 0.5}<li>🚆 {t("ai.access")}<b>≈ {eur(pv.access)}</b></li>{/if}
+                  {#if a.camper}<li class="ai-camp">⛺ {a.camper.stops.map(s => `${s.place} (${s.nights})`).join(" · ")}<b>≈ {eur(pv.camp)}</b></li>
+                    {#if pv.rent > 0.5}<li>🚐 {t("camp.rent")}<b>≈ {eur(pv.rent)}</b></li>{/if}{/if}
                   {#if a.stay}<li>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{(a.stay.board || a.board) ? ` · ${t(`board.${a.stay.board || a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
                   {#if a.transport}<li>🚗 {a.transport.label}<b>≈ {eur(a.transport.eur)}</b></li>{/if}
                   {#if a.extras?.length}<li>🎟 {a.extras.map(x => x.name).join(", ")}<b>≈ {eur(a.extras.reduce((s, x) => s + x.eur, 0))}</b></li>{/if}

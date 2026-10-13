@@ -200,6 +200,25 @@ describe("KI-Reiseplaner", () => {
     expect(systemPrompt(req)).toMatch(/arrive on their own/);
   });
 
+  it("Camper-Rundreise (#269): Stationen statt Hotels, Ende nach den Nächten, ohne Suche vollständig", async () => {
+    const f = fake([
+      call("propose_trips", { trips: [{ title: "Nordkap", summary: "x", place: "Norwegen", country: "Norway", from: "2027-06-01", to: "2027-06-15",
+        camper: { own: false, stops: [{ place: "Oslo", cc: "no", nights: 3, kind: "site" }, { place: "", nights: 2, kind: "site" }, { place: "Trondheim", cc: "NO", nights: 40, kind: "pitch" }, { place: "Bergen", nights: 2, kind: "zelt" }] },
+        ownArrival: { label: "Fahrt mit dem Camper", eur: 600 } }] })
+    ]);
+    const res = await runAgent({ ...req, adults: 2, prompt: "Mit dem Wohnmobil einen Monat durch Nordeuropa" }, f.deps);
+    expect(f.asked.stays).toHaveLength(0);
+    expect(f.asked.bodies).toHaveLength(1);
+    const t = res.trips[0];
+    expect(t.stay).toBeUndefined();
+    // leere Station fällt weg, Nächte gedeckelt, unbekannte Art = Campingplatz, Land nur als ISO-2
+    expect(t.camper).toEqual({ own: false, stops: [{ place: "Oslo", cc: "NO", nights: 3, kind: "site" }, { place: "Trondheim", cc: "NO", nights: 30, kind: "pitch" }, { place: "Bergen", nights: 2, kind: "site" }] });
+    expect(t).toMatchObject({ from: "2027-06-01", to: "2027-07-06", arrival: { eur: 600 } });
+    // Richtwert: Oslo 3 × 40 € (2 Personen), Trondheim 30 × 22 € Stellplatz, Bergen ohne Land 2 × 39 € (Mittel Europa)
+    expect(t.total).toBe(3 * 40 + 30 * 22 + 2 * 39);
+    expect(systemPrompt(req)).toMatch(/camper or motorhome.*never search or propose hotels/);
+  });
+
   it("ohne Flug und ohne eigene Anreise geht der Vorschlag einmal zurück; mit Flug zählt keine eigene Anreise", async () => {
     const f = fake([
       call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13" }),

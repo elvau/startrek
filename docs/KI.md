@@ -42,6 +42,12 @@ Anwesenden) und Flüge je Familie für deren Daten (`flights` mit `group`).
   mit den Personen der jeweiligen Familie an. Die neue Reise bekommt dieselben Reisenden wie die Vorschau, damit
   Vorschau und Übernahme gleich rechnen (#226).
 
+## Camper-Reisen (#269)
+Mit Camper oder Wohnmobil schlägt die KI keine Hotels vor, sondern Stationen auf Campingplatz oder Stellplatz
+(`camper.stops` in `propose_trips`, `camperStations` in `update_trip`: Ort, Land als ISO-2, Nächte, `site`/`pitch`). Die
+Richtwerte je Nacht rechnet die App (`app/src/lib/road/camper.ts`), die Posten entstehen wie im Kapitel Vor Ort
+(`app/src/lib/road/stations.ts`); gemietet kommt der Mietcamper dazu. Die offene Reise meldet `camper` in `TripBrief`.
+
 ## Beratung in der offenen Reise
 
 Ist eine Reise offen (Ziel oder eigene Posten vorhanden), berät die KI dazu statt neue Reisen zu planen:

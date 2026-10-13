@@ -11,6 +11,8 @@ import type { GeoData } from "../geo/places";
 import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
 import type { AgentEdit, AgentGroupIn, AgentRequest, AgentResult, AgentTrip, FlightBooking, TripBrief } from "./types";
 import { noteError } from "../bugs/log";
+import { campItem, campItems, rentItem } from "../road/stations";
+import { tripDays } from "../ground";
 
 /** Wunsch plus Reisende, Abflughäfen und was über die Reise schon feststeht */
 export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: Prefs, withTrip = false): AgentRequest {
@@ -76,7 +78,8 @@ export function tripBrief(trip: Trip): TripBrief {
   return {
     items,
     ...(trip.place ? { place: trip.place } : {}), ...(trip.country ? { country: trip.country } : {}),
-    ...(trip.from ? { from: trip.from } : {}), ...(trip.to ? { to: trip.to } : {})
+    ...(trip.from ? { from: trip.from } : {}), ...(trip.to ? { to: trip.to } : {}),
+    ...(trip.camper ? { camper: { own: !!trip.camper.own } } : {})
   };
 }
 
@@ -170,6 +173,13 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
     const o = it.options.at(-1);
     // „ohne Verpflegung“ nur, wenn es die Unterkunft sagt: eine Vermutung der KI übernimmt die App nicht
     if (o && !o.stay?.board && a.board && a.board !== "self") o.stay = { ...(o.stay || {}), board: a.board };
+  }
+  // Camper (#269): Stationen statt Unterkunft, gemietet mit Mietcamper
+  if (a.camper) {
+    trip.camper = { ...(trip.camper || {}), own: a.camper.own };
+    trip.detail.stay = true;
+    for (const it of campItems(a.camper.stops, a.from, trip.travelers.filter(isActive).length || 1)) { it.ai = { at, kind: "suggested" }; trip.items.push(it); }
+    if (!a.camper.own) { trip.detail.transport = true; const it = rentItem(tripDays(trip)); it.ai = { at, kind: "created" }; trip.items.push(it); }
   }
   trip.ai = { at };
   trip.food = { ...(trip.food || {}), on: true };
@@ -270,6 +280,16 @@ export function applyEdit(trip: Trip, e: AgentEdit) {
     // nicht in einen leeren Unterkunftsposten legen (takeStay tut das), damit „ersetzt“ eindeutig bleibt
     const it = takeStay(trip, s.offer, s.q);
     place(it, "suggested", s.replaces);
+  }
+  // Camper (#269): neue Station hinter der letzten bzw. am Platz der ersetzten
+  for (const s of e.stations || []) {
+    trip.detail.stay = true;
+    const old = s.replaces ? trip.items.find(i => i.id === s.replaces) : undefined;
+    const last = trip.items.filter(i => i.cat === "stay" && i.status !== "dropped" && i.hint?.startsWith("camp:") && i.to).sort((a, b) => a.to!.localeCompare(b.to!)).at(-1);
+    const from = old?.from || last?.to || trip.from || at.slice(0, 10);
+    const it = campItem({ ...s, from }, trip.travelers.filter(isActive).length || 1);
+    place(it, "suggested", s.replaces);
+    if (!trip.to || it.to! > trip.to) trip.to = it.to;
   }
   for (const x of e.estimates || []) { trip.detail[x.cat] = true; place({ ...estimateItem(x.cat, x.name, x.eur), ...(x.arrival ? { arrival: true } : {}) }, "created", x.replaces); }
   const gone = new Set((e.remove || []).filter(id => !fixed(id)));

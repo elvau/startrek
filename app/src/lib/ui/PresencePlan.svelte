@@ -11,6 +11,7 @@
   import { dateDE, dayShort } from "../format";
   import { arrivals, gaps, hintList } from "../stays/presence";
   import { openStaySearch } from "../stays/open.svelte";
+  import { toCamper } from "./showItem";
   import { airportNights } from "../stays/airports";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { cluster, groupLabel } from "../groups";
@@ -109,7 +110,7 @@
         {#each plan.gs as g (g.from + g.to + g.who)}
           {@const where = stationName(geo, airportData, g.ap, g.city)}
           <li class="crit"><b title={g.who}>{plan.whoShort(g.ids, g.who)}</b>{where ? ` · ${where}` : ""}: {g.nights === 1 ? t("plan.gapOne", { d: dayShort(g.from) }) : t("plan.gap", { a: dayShort(g.from), b: dayShort(g.to), n: tn("n.nights", g.nights) })}
-            {#if !access.readonly}<button class="linkbtn" onclick={() => openStaySearch({ from: g.from, to: g.to, ids: g.ids, ...(where ? { place: where } : {}) })}>{t("st.open")}</button>{/if}</li>
+            {#if !access.readonly}{#if app.trip.camper}<button class="linkbtn" onclick={toCamper}>⛺ {t("camp.toStations")}</button>{:else}<button class="linkbtn" onclick={() => openStaySearch({ from: g.from, to: g.to, ids: g.ids, ...(where ? { place: where } : {}) })}>{t("st.open")}</button>{/if}{/if}</li>
         {/each}
         {#each plan.aps as a (a.kind + a.from + a.ids.join())}
           <li class:crit={a.crit} class:warn={!a.crit}>{a.text}

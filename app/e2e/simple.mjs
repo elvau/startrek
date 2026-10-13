@@ -526,6 +526,15 @@ try {
   await panel.locator(".chip", { hasText: "über 3,5 t" }).click();
   if (!(await panel.locator(".cp-heavy").innerText()).includes("C1")) fail("Hinweis über 3,5 t fehlt");
   log("Camper: drei Stationen (Campingplatz 44 €, Stellplatz 22 €, mit Quelle), Roadtrip mit Camper-Satz 0,25 €/km, Mietcamper mit Kaution und Pauschalen (Reinigung auf Wunsch), Hinweis über 3,5 t");
+  // Unterkunft mit Camper (#269): Hinweis auf die Stationen statt Hotelsuche, die Suche nur für einzelne Nächte
+  const stHint = cp.locator("#stay .st-camper");
+  if (!(await stHint.innerText()).includes("Stellplätzen")) fail("Hinweis auf Camper-Stationen im Kapitel Unterkunft fehlt");
+  if (await cp.locator("#stay .st-open.primary").count()) fail("Hotelsuche bei Camper-Reise als Hauptknopf");
+  await cp.locator("#stay .st-open").click();
+  await cp.locator(".modal .st-camper").waitFor();
+  await cp.locator(".modal .st-camper .linkbtn").click();
+  await until(async () => !(await cp.locator(".modal .st-camper").count()), "Suche zu, weiter zu den Stationen");
+  log("Camper: Kapitel Unterkunft verweist auf die Stationen, Hotelsuche nur noch mit Hinweis");
   await cctx.close();
 
   // Zeitleiste (#228): drei Familien, gleich lang → eine Zeile; Zeiten einer Familie setzen, Reise wächst mit, zurücksetzen
