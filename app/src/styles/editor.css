@@ -997,3 +997,9 @@ html:has(.modal-bg){overflow:hidden}
 .broker-gate p{margin:0 0 10px}
 .broker-gate .check{display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0 14px}
 .broker-gate .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+/* AGB: Haken im Anmeldefenster, Zustimmung für bestehende Konten (terms.ts) */
+.login-terms{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:0 0 12px;text-align:start}
+.login-terms input{margin-top:3px}
+.terms-gate p{margin:0 0 10px}
+.terms-gate .check{display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0 14px}
+.terms-gate .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}

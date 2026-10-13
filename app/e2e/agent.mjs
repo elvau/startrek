@@ -91,10 +91,37 @@ try {
   await c.locator(".ai-login").waitFor();
   if (await c.locator(".ai-bar").count()) fail("Eingabe ohne Anmeldung sichtbar");
   await c.locator(".ai-login .btn").click();
+  // AGB: ohne Haken keine Anmeldung; Links zu AGB und Datenschutz
+  if (!(await p.locator('.login-terms a[href$="agb.html"]').count())) fail("Link zu den AGB fehlt im Anmeldefenster");
+  await p.locator(".login .btn.google").click();
+  await p.locator(".login .err", { hasText: "stimme zuerst den AGB zu" }).waitFor();
   await p.locator(".login .test input").fill("Kira");
   await p.locator(".login .test button").click();
   await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
-  log("Chat unten rechts: ohne Anmeldung nur Hinweis, Anmeldung daraus");
+  await until(() => p.evaluate(() => !!JSON.parse(localStorage.getItem("rk2-dir") || "{}").terms?.v), "AGB-Zustimmung im Konto");
+  if (await p.locator(".terms-gate").count()) fail("AGB-Fenster trotz Zustimmung beim Anmelden");
+  if (!(await p.locator('.foot-legal a[href$="agb.html"]').count())) fail("AGB fehlen im Fuß");
+  log("Chat unten rechts: ohne Anmeldung nur Hinweis, Anmeldung daraus; ohne AGB-Haken gesperrt, Zustimmung mit Fassung im Konto");
+  // bestehendes Konto ohne Zustimmung (z. B. vor den AGB angelegt): erst zustimmen, „Zustimmen“ erst mit Haken
+  {
+    const FS = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
+    const H = { Authorization: "Bearer owner", "Content-Type": "application/json" };
+    const users = await (await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/demo-reisekasse/accounts:query", { method: "POST", headers: H, body: "{}" })).json();
+    const kira = (users.userInfo || users.users || []).find(u => u.displayName === "Kira")?.localId;
+    let doc;
+    await until(async () => { doc = await (await fetch(`${FS}/profiles/${kira}`, { headers: H })).json(); return !!doc.fields?.data?.stringValue?.includes("terms"); }, "Zustimmung im Konto gespeichert");
+    const d = JSON.parse(doc.fields.data.stringValue);
+    delete d.terms;
+    await fetch(`${FS}/profiles/${kira}?updateMask.fieldPaths=data`, { method: "PATCH", headers: H, body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify(d) } } }) });
+    const tg = p.locator(".terms-gate");
+    await tg.waitFor({ timeout: 10000 });
+    if (!(await tg.locator(".terms-accept").isDisabled())) fail("Zustimmen ohne Haken möglich");
+    await tg.locator(".check input").check();
+    await tg.locator(".terms-accept").click();
+    await tg.waitFor({ state: "detached" });
+    await until(() => p.evaluate(() => !!JSON.parse(localStorage.getItem("rk2-dir") || "{}").terms?.v), "Zustimmung nach dem Fenster");
+    log("Bestehendes Konto ohne AGB-Zustimmung: Fenster „Nutzungsbedingungen“, Zustimmen erst mit Haken, danach gespeichert");
+  }
 
   // Beispiel antippen schickt den Wunsch; Anfrage mit Anmelde-Nachweis und Reisenden
   await c.locator(".ai-ex .chip").first().click();

@@ -142,6 +142,8 @@ export interface Directory {
   prefs?: Prefs;
   /** Konto eingerichtet bzw. Assistent übersprungen (JJJJ-MM-TT): startet dann nicht mehr von selbst */
   setup?: string;
+  /** Zustimmung zu den AGB: Fassung und Tag (terms.ts) */
+  terms?: { v: string; at: string };
 }
 
 export interface Tier {

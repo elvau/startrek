@@ -2,7 +2,7 @@
   import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
   import { loadRates } from "./lib/currency.svelte";
-  import { access, app, calc, addItem, discardDetails, resumeScroll, setDetailed } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed } from "./lib/store.svelte";
   import { saveView } from "./lib/resume";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
@@ -33,6 +33,8 @@
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
   import BrokerGate from "./lib/ui/BrokerGate.svelte";
+  import TermsGate from "./lib/ui/TermsGate.svelte";
+  import { hasPending, takePending, termsAccepted } from "./lib/terms";
   import SetupWizard from "./lib/ui/SetupWizard.svelte";
   import { autoAllowed, setupWizard } from "./lib/setup/app.svelte";
   import { shouldAutoStart } from "./lib/setup/setup";
@@ -75,9 +77,12 @@
 
   // Konto einrichten (#160, #330): erst ausprobieren; nach der Anmeldung einmal je Konto, sobald dessen Stand da ist
   let setupChecked = "";
+  // AGB: Zustimmung aus dem Anmeldefenster ins Konto; ohne Zustimmung zur aktuellen Fassung erst zustimmen (TermsGate)
+  $effect(() => { if (cloud.user && dirReady() && !termsAccepted(dir) && !resetting()) takePending(dir); });
+  const needTerms = $derived(!!cloud.user && dirReady() && !termsAccepted(dir) && !hasPending() && !resetting());
   $effect(() => {
     const u = cloud.user?.uid;
-    if (!u || setupChecked === u || !dirReady() || !cloud.fresh) return;
+    if (!u || setupChecked === u || !dirReady() || !cloud.fresh || needTerms) return;
     setupChecked = u;
     if (autoAllowed() && shouldAutoStart(dir, !!cloud.user)) setupWizard.open = true;
   });
@@ -270,6 +275,7 @@
 {/if}
 {/if}
 <BrokerGate />
+{#if needTerms}<TermsGate />{/if}
 {#if cloud.configured}<AgentChat />{/if}
 {#if cloud.configured && FLIGHTS_URL}<BugButton />{/if}
 {#if admin.open && admin.is && cloud.user}<UsagePanel />{/if}
