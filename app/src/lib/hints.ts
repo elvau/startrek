@@ -1,10 +1,12 @@
 /*
- * Einreise & Tipps: Hinweise zur Reise mit Links zu offiziellen Stellen. Je Reiseland (Einreise für deutsche
- * Staatsangehörige, Stand Oktober 2026) und je besonderem Ort (Galápagos, Machu Picchu, Cristo Redentor …).
+ * Einreise & Tipps: Hinweise zur Reise mit Links zu offiziellen Stellen. Je Reiseland (Einreise, Stand Oktober 2026;
+ * für welche Pässe der Text gilt, steht in `pass`) und je besonderem Ort (Galápagos, Machu Picchu, Cristo Redentor …).
  * Keine Rechtsberatung: Texte sind kurze Hinweise, maßgeblich ist immer die verlinkte offizielle Stelle.
  * Länder kommen aus Reiseland, Flughäfen der Flüge und Orten der Unterkünfte; Orte aus Stationen, Flughäfen und Posten.
  */
 import type { Item, Trip } from "./model";
+import type { EntryKind } from "./visa";
+import { FREE_MOVEMENT } from "./borders";
 import { activeOption } from "./calc";
 
 export interface HintLink { label: string; url: string }
@@ -15,11 +17,25 @@ export interface Hint {
   /** Flughäfen und Stichwörter (Orte, Posten), bei denen der Hinweis gilt */
   aps?: string[];
   words?: RegExp;
-  /** Art: Einreise (Land, deutsche Staatsangehörige), Warnung (Land, für alle), Ort oder Haustier (#322, Bestimmung) */
+  /** Art: Einreise (Land, Pässe laut `pass`), Warnung (Land, für alle), Ort oder Haustier (#322, Bestimmung) */
   kind: "entry" | "warn" | "place" | "pet";
+  /**
+   * Einreise: für welche Pässe der Text gilt. „all“ = alle ausländischen Pässe; sonst Pässe (ISO-2, „EU“ = EU/EWR/Schweiz)
+   * oder Arten laut visa.json (z. B. alle, die eine Reisegenehmigung brauchen). Für andere Pässe nur der Überblick und der Link.
+   */
+  pass?: "all" | { cc?: string[]; kinds?: EntryKind[] };
   links: HintLink[];
   /** Richtwert als Posten (pro Person, in der Währung): Gebühren vor Ort bzw. für die Einreise (Stand in docs/NEBENKOSTEN.md) */
   fee?: { adult: number; child?: number; currency: string; cat: Item["cat"] };
+}
+
+/** gilt der Einreise-Hinweis für diesen Pass (mit seiner Einreise-Art laut visa.json)? */
+export function hintForPass(h: Hint, nat: string, kind: EntryKind): boolean {
+  if (kind === "home") return false;
+  const p = h.pass;
+  if (!p) return nat === "DE";
+  if (p === "all") return true;
+  return !!(p.cc?.some(c => c === nat || (c === "EU" && FREE_MOVEMENT.has(nat))) || p.kinds?.includes(kind));
 }
 
 /** Auswärtiges Amt (alle Länder) und IATA (für andere Staatsangehörigkeiten) */
@@ -29,29 +45,29 @@ export const GENERAL_LINKS: HintLink[] = [
 ];
 
 export const HINTS: Hint[] = [
-  // Einreise: vorab online anmelden (deutsche Staatsangehörige)
-  { id: "us", kind: "entry", cc: ["US"], links: [{ label: "ESTA (CBP)", url: "https://esta.cbp.dhs.gov/" }], fee: { adult: 40, currency: "USD", cat: "misc" } },
-  { id: "ca", kind: "entry", cc: ["CA"], links: [{ label: "eTA (Canada)", url: "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/eta.html" }], fee: { adult: 7, currency: "CAD", cat: "misc" } },
-  { id: "gb", kind: "entry", cc: ["GB"], links: [{ label: "ETA (GOV.UK)", url: "https://www.gov.uk/eta" }], fee: { adult: 20, currency: "GBP", cat: "misc" } },
-  { id: "au", kind: "entry", cc: ["AU"], links: [{ label: "eVisitor (Home Affairs)", url: "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/evisitor-651" }] },
-  { id: "nz", kind: "entry", cc: ["NZ"], links: [{ label: "NZeTA", url: "https://www.immigration.govt.nz/new-zealand-visas/visas/visa/nzeta" }], fee: { adult: 117, currency: "NZD", cat: "misc" } },
-  { id: "th", kind: "entry", cc: ["TH"], links: [{ label: "TDAC", url: "https://tdac.immigration.go.th/" }] },
-  { id: "ke", kind: "entry", cc: ["KE"], links: [{ label: "eTA Kenya", url: "https://www.etakenya.go.ke/" }], fee: { adult: 30, currency: "USD", cat: "misc" } },
-  { id: "in", kind: "entry", cc: ["IN"], links: [{ label: "e-Visa India", url: "https://indianvisaonline.gov.in/evisa/" }], fee: { adult: 25, currency: "USD", cat: "misc" } },
+  // Einreise: vorab online anmelden; pass = für welche Pässe der Text gilt (Rest: Überblick aus visa.json und der Link)
+  { id: "us", kind: "entry", pass: { kinds: ["eta"] }, cc: ["US"], links: [{ label: "ESTA (CBP)", url: "https://esta.cbp.dhs.gov/" }], fee: { adult: 40, currency: "USD", cat: "misc" } },
+  { id: "ca", kind: "entry", pass: { kinds: ["eta"] }, cc: ["CA"], links: [{ label: "eTA (Canada)", url: "https://www.canada.ca/en/immigration-refugees-citizenship/services/visit-canada/eta.html" }], fee: { adult: 7, currency: "CAD", cat: "misc" } },
+  { id: "gb", kind: "entry", pass: { kinds: ["eta"] }, cc: ["GB"], links: [{ label: "ETA (GOV.UK)", url: "https://www.gov.uk/eta" }], fee: { adult: 20, currency: "GBP", cat: "misc" } },
+  { id: "au", kind: "entry", pass: { cc: ["EU", "GB"] }, cc: ["AU"], links: [{ label: "eVisitor (Home Affairs)", url: "https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/evisitor-651" }] },
+  { id: "nz", kind: "entry", pass: { kinds: ["eta"] }, cc: ["NZ"], links: [{ label: "NZeTA", url: "https://www.immigration.govt.nz/new-zealand-visas/visas/visa/nzeta" }], fee: { adult: 117, currency: "NZD", cat: "misc" } },
+  { id: "th", kind: "entry", pass: "all", cc: ["TH"], links: [{ label: "TDAC", url: "https://tdac.immigration.go.th/" }] },
+  { id: "ke", kind: "entry", pass: "all", cc: ["KE"], links: [{ label: "eTA Kenya", url: "https://www.etakenya.go.ke/" }], fee: { adult: 30, currency: "USD", cat: "misc" } },
+  { id: "in", kind: "entry", pass: { kinds: ["evisa"] }, cc: ["IN"], links: [{ label: "e-Visa India", url: "https://indianvisaonline.gov.in/evisa/" }], fee: { adult: 25, currency: "USD", cat: "misc" } },
   // seit 25.5.2026 für Deutsche kostenlos (30 Tage)
-  { id: "lk", kind: "entry", cc: ["LK"], links: [{ label: "ETA Sri Lanka", url: "https://www.eta.gov.lk/" }] },
-  { id: "eg", kind: "entry", cc: ["EG"], links: [{ label: "Visa2Egypt", url: "https://www.visa2egypt.gov.eg/" }], fee: { adult: 25, currency: "USD", cat: "misc" } },
-  { id: "il", kind: "entry", cc: ["IL"], links: [{ label: "ETA-IL", url: "https://israel-entry.piba.gov.il/" }], fee: { adult: 25, currency: "ILS", cat: "misc" } },
-  { id: "cu", kind: "entry", cc: ["CU"], links: [{ label: "eVisa Cuba", url: "https://www.evisacuba.cu/" }, { label: "D'Viajeros", url: "https://dviajeros.mitrans.gob.cu/" }] },
-  { id: "sc", kind: "entry", cc: ["SC"], links: [{ label: "Seychelles Travel Authorisation", url: "https://seychelles.govtas.com/" }], fee: { adult: 10, currency: "EUR", cat: "misc" } },
-  { id: "idn", kind: "entry", cc: ["ID"], links: [{ label: "All Indonesia", url: "https://allindonesia.imigrasi.go.id/" }, { label: "e-VOA", url: "https://evisa.imigrasi.go.id/" }], fee: { adult: 500000, currency: "IDR", cat: "misc" } },
-  { id: "ph", kind: "entry", cc: ["PH"], links: [{ label: "eTravel", url: "https://etravel.gov.ph/" }] },
-  { id: "bt", kind: "entry", cc: ["BT"], links: [{ label: "Visit Bhutan", url: "https://www.bhutan.travel/" }] },
-  { id: "kh", kind: "entry", cc: ["KH"], links: [{ label: "e-Visa Cambodia", url: "https://www.evisa.gov.kh/" }], fee: { adult: 30, currency: "USD", cat: "misc" } },
-  { id: "jo", kind: "entry", cc: ["JO"], links: [{ label: "Jordan Pass", url: "https://www.jordanpass.jo/" }], fee: { adult: 40, currency: "JOD", cat: "misc" } },
-  { id: "np", kind: "entry", cc: ["NP"], links: [{ label: "Department of Immigration Nepal", url: "https://www.immigration.gov.np/" }], fee: { adult: 30, currency: "USD", cat: "misc" } },
-  { id: "tz", kind: "entry", cc: ["TZ"], links: [{ label: "e-Visa Tanzania", url: "https://eservices.immigration.go.tz/visa/" }], fee: { adult: 50, currency: "USD", cat: "misc" } },
-  { id: "cn", kind: "entry", cc: ["CN"], links: [{ label: "NIA China", url: "https://en.nia.gov.cn/" }] },
+  { id: "lk", kind: "entry", pass: { cc: ["DE"] }, cc: ["LK"], links: [{ label: "ETA Sri Lanka", url: "https://www.eta.gov.lk/" }] },
+  { id: "eg", kind: "entry", pass: { kinds: ["evisa", "arrival"] }, cc: ["EG"], links: [{ label: "Visa2Egypt", url: "https://www.visa2egypt.gov.eg/" }], fee: { adult: 25, currency: "USD", cat: "misc" } },
+  { id: "il", kind: "entry", pass: { kinds: ["eta"] }, cc: ["IL"], links: [{ label: "ETA-IL", url: "https://israel-entry.piba.gov.il/" }], fee: { adult: 25, currency: "ILS", cat: "misc" } },
+  { id: "cu", kind: "entry", pass: { kinds: ["evisa"] }, cc: ["CU"], links: [{ label: "eVisa Cuba", url: "https://www.evisacuba.cu/" }, { label: "D'Viajeros", url: "https://dviajeros.mitrans.gob.cu/" }] },
+  { id: "sc", kind: "entry", pass: "all", cc: ["SC"], links: [{ label: "Seychelles Travel Authorisation", url: "https://seychelles.govtas.com/" }], fee: { adult: 10, currency: "EUR", cat: "misc" } },
+  { id: "idn", kind: "entry", pass: { kinds: ["arrival"] }, cc: ["ID"], links: [{ label: "All Indonesia", url: "https://allindonesia.imigrasi.go.id/" }, { label: "e-VOA", url: "https://evisa.imigrasi.go.id/" }], fee: { adult: 500000, currency: "IDR", cat: "misc" } },
+  { id: "ph", kind: "entry", pass: "all", cc: ["PH"], links: [{ label: "eTravel", url: "https://etravel.gov.ph/" }] },
+  { id: "bt", kind: "entry", pass: { kinds: ["evisa"] }, cc: ["BT"], links: [{ label: "Visit Bhutan", url: "https://www.bhutan.travel/" }] },
+  { id: "kh", kind: "entry", pass: { kinds: ["evisa", "arrival"] }, cc: ["KH"], links: [{ label: "e-Visa Cambodia", url: "https://www.evisa.gov.kh/" }], fee: { adult: 30, currency: "USD", cat: "misc" } },
+  { id: "jo", kind: "entry", pass: { kinds: ["arrival"] }, cc: ["JO"], links: [{ label: "Jordan Pass", url: "https://www.jordanpass.jo/" }], fee: { adult: 40, currency: "JOD", cat: "misc" } },
+  { id: "np", kind: "entry", pass: { kinds: ["arrival"] }, cc: ["NP"], links: [{ label: "Department of Immigration Nepal", url: "https://www.immigration.gov.np/" }], fee: { adult: 30, currency: "USD", cat: "misc" } },
+  { id: "tz", kind: "entry", pass: { kinds: ["evisa", "arrival"] }, cc: ["TZ"], links: [{ label: "e-Visa Tanzania", url: "https://eservices.immigration.go.tz/visa/" }], fee: { adult: 50, currency: "USD", cat: "misc" } },
+  { id: "cn", kind: "entry", pass: { cc: ["DE"] }, cc: ["CN"], links: [{ label: "NIA China", url: "https://en.nia.gov.cn/" }] },
   { id: "aq", kind: "place", cc: ["AQ"], words: /antarkti|antarctic/i, links: [{ label: "Umweltbundesamt", url: "https://www.umweltbundesamt.de/themen/nachhaltigkeit-strategien-internationales/antarktis/antarktisreisende" }, { label: "IAATO", url: "https://iaato.org/" }] },
   // Reisen mit besonderen Risiken: für alle Staatsangehörigkeiten
   { id: "kp", kind: "warn", cc: ["KP"], words: /nordkorea|north korea|pjöngjang|pyongyang|rason|wonsan/i,

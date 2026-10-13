@@ -27,3 +27,19 @@ let cache: Promise<VisaData | null> | undefined;
 export function loadVisa(fetchFn: typeof fetch = fetch): Promise<VisaData | null> {
   return (cache ??= fetchFn(base() + "visa.json").then(r => (r.ok ? r.json() : null)).catch(() => null));
 }
+
+/** Pässe einer Person: Staatsangehörigkeit (leer = deutsch) und ggf. zweiter Pass */
+export const natsOf = (p: { nat?: string; nat2?: string }) => [...new Set([p.nat || "DE", ...(p.nat2 ? [p.nat2] : [])])];
+
+/** je Art, wie günstig: Heimat, visumfrei (mehr Tage besser), bei Ankunft, Reisegenehmigung, e-Visum, Visum, keine */
+const RANK: Record<EntryKind, number> = { home: 0, free: 1, arrival: 2, eta: 3, evisa: 4, visa: 5, none: 6, unknown: 7 };
+
+/** Einreise mit dem günstigsten Pass; multi = Person hat mehrere Pässe (Hinweis, welcher gilt) */
+export function bestEntry(d: VisaData | null, nats: string[], dest: string): Entry & { nat: string; multi?: boolean } {
+  let best: Entry & { nat: string } = { kind: "unknown", nat: nats[0] };
+  for (const nat of nats) {
+    const e = d ? entryFor(d, nat, dest) : nat === dest ? { kind: "home" as const } : { kind: "unknown" as const };
+    if (RANK[e.kind] < RANK[best.kind] || (e.kind === "free" && best.kind === "free" && (e.days || 0) > (best.days || 0))) best = { ...e, nat };
+  }
+  return nats.length > 1 ? { ...best, multi: true } : best;
+}
