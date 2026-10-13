@@ -257,7 +257,7 @@ try {
   if (!(await m.locator(".fs-who .chip.on", { hasText: "Klein (2)" }).count())) fail("Vorschlag erste Familie ohne Flug fehlt");
   const kAps = await m.locator(".fs-aps .chip.on").allTextContents();
   if (!kAps.includes("DUS") || kAps.includes("MUC")) fail("Flughäfen nicht zum Wohnort von Klein: " + kAps);
-  if (!(await m.locator("p", { hasText: "1 Erw. · 1 Kind (Klein)" }).count())) fail("Personen für Klein: " + await m.locator(".fs-form p.muted").last().textContent());
+  if (!(await m.locator(".fs-facts", { hasText: "1 Erw. · 1 Kind · Klein" }).count())) fail("Personen für Klein: " + await m.locator(".fs-facts").textContent());
   // Ziel aus der Reise: Split → Flughafen SPU; Auswahlliste bietet alle Flughäfen im Umkreis und jeden einzeln mit Entfernung
   const kDest = m.locator("label.f", { hasText: "Nach" }).locator("input");
   for (let i = 0; i < 50 && !(await kDest.inputValue()).startsWith("SPU"); i++) await p.waitForTimeout(100);

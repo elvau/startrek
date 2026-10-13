@@ -325,7 +325,7 @@
     </details>
     <div>
       <span class="dlabel">{t("ev.origins")}</span>
-      {#if noHome}<HomeHint {setHome} guessed={!apsTouched} />{/if}
+      {#if noHome}<HomeHint {setHome} />{/if}
       <div class="chips fs-aps">
         {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} class:flash={flash.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} from={fromPt} />
