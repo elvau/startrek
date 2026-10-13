@@ -464,6 +464,9 @@ try {
   await p.keyboard.press("Escape");
   const rc = p.locator("#flights .card[data-item]", { hasText: "GIG → EZE" });
   await rc.waitFor();
+  // Kopf der Rundreise (#327): ganze Route, kein „Direktflug“ für alle drei Tickets
+  const rhd = await rc.locator(".bp-hd").textContent(), rrt = await rc.locator(".bp-route").textContent();
+  if (rhd.includes("Direktflug") || !rrt.includes("GIG → EZE") || (rrt.match(/DUS/g) || []).length !== 2) fail("Rundreise-Kopf: " + rhd + " | " + rrt);
   const rxc = rc.locator(".xc").first();
   const rsum = await rxc.locator("summary").textContent();
   if (rsum.split("Koffer dazubuchen").length !== 2 || rsum.includes("→")) fail("Kurzzeile der Nebenkosten: " + rsum);

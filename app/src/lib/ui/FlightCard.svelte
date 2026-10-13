@@ -6,6 +6,7 @@
   import { dayShort, legDuration, time, dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
   import { focusHousehold } from "./hhFocus.svelte";
+  import { tourHead } from "./flightHead";
 
   let { item }: { item: Item } = $props();
   const r = $derived(calc.T.items[item.id]);
@@ -13,6 +14,8 @@
   const out = $derived(opt?.legs?.find(l => l.dir === "out"));
   const back = $derived(opt?.legs?.find(l => l.dir === "back"));
   const vias = $derived(opt?.legs?.filter(l => l.dir === "via") ?? []);
+  // Rundreise: Kopf zeigt die ganze Route und alle Airlines, keine Städte aus dem Postennamen
+  const tour = $derived(tourHead(opt?.legs));
   const pp = $derived(r && r.n ? r.net / r.n : 0);
   // Städte nur aus Namen wie „Flug Düsseldorf – Split“
   const cities = $derived(item.name.match(/^\S+\s+(.+?)\s+[–-]\s+(.+)$/));
@@ -44,13 +47,13 @@
     <div class="bp-hd">
       <StatusBadge status={item.status} extra={item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""} />
       {#if who}<span class="bp-who">{who}{item.follow && opt?.id.startsWith("follow:") ? ` · ${opt.label}` : ""}</span>{/if}
-      <span class="muted">{out?.carrier || opt?.label || ""}{out ? (out.stops ? ` · ${tn("n.stops", out.stops)}` : ` · ${t("fl.direct")}`) : ""}</span>
+      <span class="muted">{tour ? tour.carriers.join(" / ") : out?.carrier || opt?.label || ""}{out && !tour ? (out.stops ? ` · ${tn("n.stops", out.stops)}` : ` · ${t("fl.direct")}`) : ""}</span>
     </div>
     {#if out}
       <div class="bp-route">
-        <div class="bp-ap"><b>{out.from}</b><span>{cities?.[1] || ""}</span></div>
-        <div class="bp-line"><svg viewBox="0 0 24 24" style="transform:rotate(90deg)"><use href="#i-plane" /></svg><em>{legDuration(out)}</em></div>
-        <div class="bp-ap r"><b>{out.to}</b><span>{cities?.[2] || ""}</span></div>
+        <div class="bp-ap"><b>{out.from}</b><span>{tour ? "" : cities?.[1] || ""}</span></div>
+        <div class="bp-line"><svg viewBox="0 0 24 24" style="transform:rotate(90deg)"><use href="#i-plane" /></svg><em>{tour ? tour.chain.slice(1, -1).join(` ${arrow()} `) : legDuration(out)}</em></div>
+        <div class="bp-ap r"><b>{tour ? tour.chain[tour.chain.length - 1] : out.to}</b><span>{tour ? "" : cities?.[2] || ""}</span></div>
       </div>
       {#if r?.access}
         <div class="bp-acc">
