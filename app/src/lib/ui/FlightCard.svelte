@@ -66,8 +66,8 @@
       <div class="bp-legs">
         <div class="bp-leg"><b>{t("fl.out")} · {dayShort(out.dep)}</b><span>{time(out.dep)} {arrow()} {time(out.arr)}</span></div>
         <!-- Rundreise: weitere Flüge dazwischen -->
-        {#each vias as v, i (i)}<div class="bp-leg"><b>{v.from} → {v.to} · {dayShort(v.dep)}</b><span>{time(v.dep)} {arrow()} {time(v.arr)}</span></div>{/each}
-        {#if back}<div class="bp-leg"><b>{t("fl.back")}{vias.length ? ` ${back.from} → ${back.to}` : ""} · {dayShort(back.dep)}</b><span>{time(back.dep)} {arrow()} {time(back.arr)}</span></div>{/if}
+        {#each vias as v, i (i)}<div class="bp-leg"><b>{v.from} {arrow()} {v.to} · {dayShort(v.dep)}</b><span>{time(v.dep)} {arrow()} {time(v.arr)}</span></div>{/each}
+        {#if back}<div class="bp-leg"><b>{t("fl.back")}{vias.length ? ` ${back.from} ${arrow()} ${back.to}` : ""} · {dayShort(back.dep)}</b><span>{time(back.dep)} {arrow()} {time(back.arr)}</span></div>{/if}
       </div>
     {:else}
       <h3 class="bp-name">{autoName(item.name) || t("fl.new")}</h3>

@@ -3,7 +3,7 @@
    * Flughafentransfer: vom Ankunftsflughafen (aus den Flügen, sonst dem nächsten großen Flughafen am Ziel) zur
    * Unterkunft (mit Lage) oder in die Ortsmitte. Richtwert je Fahrt, Posten mit einem Klick, Anbieter zum Vergleichen.
    */
-  import { t } from "../i18n/index.svelte";
+  import { arrow, t } from "../i18n/index.svelte";
   import { access, app, setDetailed } from "../store.svelte";
   import { eur } from "../calc";
   import { isActive } from "../model";
@@ -60,7 +60,7 @@
 </script>
 
 {#each legs as { plan, ap, dest } (plan.ap + "|" + plan.to)}
-  {#if !access.readonly}<div class="search-row"><button class="btn tr-add" onclick={() => add(plan)}>🚐 {t("tr.add")}{legs.length > 1 ? ` (${plan.ap} → ${plan.to})` : ""}</button></div>{/if}
+  {#if !access.readonly}<div class="search-row"><button class="btn tr-add" onclick={() => add(plan)}>🚐 {t("tr.add")}{legs.length > 1 ? ` (${plan.ap} ${arrow()} ${plan.to})` : ""}</button></div>{/if}
   <p class="search-row muted small fs-direct tr-links">
     {t("tr.info", { ap: plan.ap, to: plan.to, km: Math.round(plan.km), v: vehicleText(plan), p: eur(plan.perRide) })}<br />
     {t("tr.compare")}

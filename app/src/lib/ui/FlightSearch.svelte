@@ -468,7 +468,7 @@
   <div class="fs-leg">
     <span class="fs-dir">{dir}</span>
     <span><b>{dayShort(l.dep)} {time(l.dep)} {arrow()} {time(l.arr)}</b> · {dur(l.minutes)} · {stopsText(l.stops)}</span>
-    <span class="muted">{l.route.join(" → ")} · {l.carriers.join(" / ")}</span>
+    <span class="muted">{l.route.join(` ${arrow()} `)} · {l.carriers.join(" / ")}</span>
   </div>
 {/snippet}
 
@@ -684,7 +684,7 @@
     {#if blockedOut}<p class="muted small fs-blocked">{tn("fs.blockedOut", blockedOut)}</p>{/if}
   {/if}
 
-  {#if list && listMore}<p class="muted small fs-morestops">{t("fs.moreStops", { list: `${aps.join("/")} → ${to}` })}</p>{/if}
+  {#if list && listMore}<p class="muted small fs-morestops">{t("fs.moreStops", { list: `${aps.join("/")} ${arrow()} ${to}` })}</p>{/if}
   {#if list}
     {@render bagBar()}
     {#if sources.length}
