@@ -61,7 +61,7 @@
       <p class="small muted cmp-note">{t("cmp.direct")}</p>
     </section>
 
-    <p class="cmp-foot small"><a href={base}>{t("cmp.planOwn")}</a> · <a href={legalUrl("imprint", base)}>{t("legal.imprint")}</a> · <a href={legalUrl("privacy", base)}>{t("legal.privacy")}</a></p>
+    <p class="cmp-foot small"><a href={base}>{t("cmp.planOwn")}</a> · <a href={legalUrl("imprint", base)}>{t("legal.imprint")}</a> · <a href={legalUrl("privacy", base)}>{t("legal.privacy")}</a> · <a href={legalUrl("terms", base)}>{t("legal.terms")}</a></p>
   {/if}
 </main>
 
