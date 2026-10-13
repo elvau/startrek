@@ -1,6 +1,6 @@
 /*
- * Konto einrichten (#160) gegen die Firebase-Emulatoren: Start von selbst beim ersten Öffnen, „Später“ merkt sich das;
- * angemeldet über das Kontomenü, KI-Text (Such-Dienst gemockt) füllt vor, sensible Angaben direkt, gespeichert;
+ * Konto einrichten (#160, #330) gegen die Firebase-Emulatoren: ohne Konto kein Start von selbst (erst ausprobieren),
+ * von Hand über die Vorlieben; nach der Anmeldung einmal von selbst, danach über „Ersteinrichtung neu starten“; KI-Text (Such-Dienst gemockt) füllt vor, sensible Angaben direkt, gespeichert;
  * danach persönliche Hinweise (#302) unter „Wichtiges“.
  * Start: npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/setup.mjs"
  */
@@ -32,9 +32,13 @@ async function page(name, auto) {
 }
 
 try {
-  // 1. erster Besuch ohne Konto: startet von selbst, ohne KI und ohne sensible Felder; „Später“ gilt dauerhaft
+  // 1. erster Besuch ohne Konto: startet nicht von selbst; über die Vorlieben ohne KI und ohne sensible Felder
   const a = await page("ohne Konto", true);
   await a.goto(URL);
+  await a.waitForTimeout(2500);
+  if (await a.locator(".wz").count()) fail("Assistent startet ohne Konto von selbst");
+  await a.locator(".top .prefs-btn").click();
+  await a.locator(".pv-restart .linkbtn").click();
   await a.locator(".wz").waitFor({ timeout: 15000 });
   if (await a.locator(".wz-ai").count()) fail("KI ohne Konto angeboten");
   if (await a.evaluate(() => getComputedStyle(document.documentElement).overflowY) !== "hidden") fail("Hintergrund scrollt hinter dem Assistenten");
@@ -51,11 +55,11 @@ try {
   await a.locator(".wz .x").click();
   await a.reload();
   await a.waitForTimeout(2500);
-  if (await a.locator(".wz").count()) fail("Assistent startet nach „Später“ erneut");
-  log("ohne Konto: startet einmal von selbst, danach nicht mehr; Abflughäfen am Wohnort vorausgewählt");
+  if (await a.locator(".wz").count()) fail("Assistent startet ohne Konto von selbst");
+  log("ohne Konto: kein Start von selbst, über die Vorlieben erreichbar; Abflughäfen am Wohnort vorausgewählt");
 
-  // 2. angemeldet: über das Kontomenü, mit KI-Text
-  const b = await page("angemeldet", false);
+  // 2. angemeldet: startet nach der Anmeldung von selbst, mit KI-Text
+  const b = await page("angemeldet", true);
   const asked = [];
   await b.route("https://flights.test/setup", async r => {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
@@ -66,13 +70,12 @@ try {
   });
   await b.goto(URL);
   await b.waitForTimeout(1500);
-  if (await b.locator(".wz").count()) fail("Assistent startet im automatisierten Browser ungefragt");
+  if (await b.locator(".wz").count()) fail("Assistent startet vor der Anmeldung");
   await b.locator(".top .acct .tm-btn", { hasText: "Anmelden" }).click();
   await b.locator(".login .test input").fill("Alex");
   await b.locator(".login .test button").click();
   await b.locator(".acct-btn").first().waitFor({ timeout: 15000 });
-  await b.locator(".top .acct-btn").click();
-  await b.locator(".tm-act.acct-setup").click();
+  await b.locator(".wz .wz-text").waitFor({ timeout: 15000 });
   await b.locator(".wz-text").fill("Wir sind zu dritt, Kind 6, ab Düsseldorf, Ferienwohnung am Strand, Halbpension, Sommerferien NRW, 10–14 Nächte, mit Hund. Diesel, 5 Sitze.");
   await b.locator(".wz-ai-go").click();
   await b.locator(".wz-b[data-step=me]").waitFor();
@@ -123,15 +126,17 @@ try {
   const store = await b.evaluate(() => JSON.stringify(Object.fromEntries(Object.entries(localStorage))));
   if (/gender|nats|\\"PL\\"|lgbtq|divers/.test(store)) fail("sensible Angaben im Browser-Speicher");
   await b.waitForTimeout(2000);
-  // neu laden: Geschlecht und Staatsangehörigkeit kommen aus dem Konto
+  // neu laden: kein zweiter Start von selbst; „Ersteinrichtung neu starten“ von vorn, vorbefüllt aus dem Konto
   await b.reload();
+  await b.waitForTimeout(2500);
+  if (await b.locator(".wz").count()) fail("Assistent startet nach der Einrichtung erneut");
   await b.locator(".top .acct-btn").click();
   await b.locator(".tm-act.acct-setup").click();
   await b.locator(".wz-manual").click();
   await until(async () => (await b.locator(".wz-gender .chip.on").count()) === 1 && (await b.locator(".wz-gender .chip.on").textContent()).includes("divers"), "Geschlecht aus dem Konto");
   if (!(await b.locator(".wz-b .chip.on", { hasText: "Polen" }).count())) fail("Staatsangehörigkeit nicht aus dem Konto");
   if ((await b.locator(".wz label", { hasText: "Vorname" }).locator("input").inputValue()) !== "Alex") fail("Name nicht wieder im Entwurf");
-  log("Geschlecht und Staatsangehörigkeit im Konto (travelDocs), beim erneuten Öffnen wieder da");
+  log("kein zweiter Start; neu starten von vorn, Geschlecht und Staatsangehörigkeit aus dem Konto (travelDocs) wieder da");
 
   // 3. „Nur für dich“ (#302): divers → Hinweis zum Passeintrag „X“ für Ägypten, nur im Popup, ohne „gelesen“, nichts in der Reise
   await b.locator(".wz .x").click();

@@ -150,5 +150,5 @@ export function applyDraft(dir: Directory, d: SetupDraft, now = new Date()): { m
   return { meId: me?.id || "", companions: d.companions.map(c => c.id), doc: { gender: d.gender || undefined, nats: d.nats.join(",") || undefined, lgbtq: d.lgbtq ? "1" : undefined } };
 }
 
-/** startet der Assistent von selbst? Nur einmal, nur bei leerem Konto (keine Personen, keine Reisen) */
-export const shouldAutoStart = (d: Directory, trips: number, seenLocally: boolean) => !d.setup && !seenLocally && !d.people.length && trips === 0;
+/** von selbst nur mit Konto, einmal je Konto (#330): erst ausprobieren, eingerichtet wird mit dem Konto; „Später“ zählt als eingerichtet */
+export const shouldAutoStart = (d: Directory, loggedIn: boolean) => loggedIn && !d.setup;

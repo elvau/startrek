@@ -1807,7 +1807,7 @@ export const en: Dict = {
   "setup.no": "no",
   "setup.noCar": "no car",
   "setup.noHealth": "We deliberately don't ask for health details (e.g. allergies).",
-  "setup.open": "Set up account",
+  "setup.open": "Restart account setup",
   "setup.or": "or",
   "setup.orAge": "or just age",
   "setup.pet": "Pet comes along",

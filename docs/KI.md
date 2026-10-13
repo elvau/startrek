@@ -14,7 +14,7 @@ Gemini sucht über unsere Flug- und Unterkunftssuche und schlägt 2–3 Reisen v
 
 ## Konto einrichten (#160)
 
-Der Assistent „Konto einrichten“ (`app/src/lib/ui/SetupWizard.svelte`, beim ersten Start bzw. im Kontomenü) kann aus
+Der Assistent „Konto einrichten“ (`app/src/lib/ui/SetupWizard.svelte`; nach der Anmeldung einmal je Konto, sonst über „Ersteinrichtung neu starten“ im Kontomenü bzw. in den Vorlieben, #330) kann aus
 freiem Text vorbefüllen: `POST /setup` mit `{ text }` (höchstens 1500 Zeichen), Anmeldung wie beim Planer, zählt als
 eine Anfrage im Tageskontingent (`AGENT_DAILY`). Gemini muss genau `fill_profile` aufrufen
 (`app/src/lib/setup/ai.ts`); App und Such-Dienst übernehmen nur bekannte Felder mit gültigen Werten (`parseSetupAi`).

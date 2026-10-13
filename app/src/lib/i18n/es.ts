@@ -1807,7 +1807,7 @@ export const es: Dict = {
   "setup.no": "no",
   "setup.noCar": "sin coche",
   "setup.noHealth": "No preguntamos a propósito datos de salud (p. ej. alergias).",
-  "setup.open": "Configurar cuenta",
+  "setup.open": "Reiniciar la configuración inicial",
   "setup.or": "o",
   "setup.orAge": "o solo la edad",
   "setup.pet": "Viaja con mascota",

@@ -89,10 +89,13 @@ describe("Entwurf des Assistenten", () => {
     expect(again).toMatchObject({ first: "Alex", license: "gt2", gender: "x", nats: ["DE", "PL"], lgbtq: true, group: "Familie" });
     expect(again.companions.every(c => c.on)).toBe(true);
   });
-  it("startet nur einmal und nur bei leerem Konto", () => {
-    expect(shouldAutoStart({ people: [], groups: [] }, 0, false)).toBe(true);
-    expect(shouldAutoStart({ people: [], groups: [], setup: "2026-10-10" }, 0, false)).toBe(false);
-    expect(shouldAutoStart({ people: [], groups: [] }, 1, false)).toBe(false);
-    expect(shouldAutoStart({ people: [], groups: [] }, 0, true)).toBe(false);
+  it("startet von selbst nur mit Konto und nur, solange es nicht eingerichtet ist (#330)", () => {
+    const used = { people: [{ id: "a", first: "Alex", last: "" }], groups: [] };
+    // ohne Konto nie, auch nicht beim allerersten Besuch
+    expect(shouldAutoStart({ people: [], groups: [] }, false)).toBe(false);
+    // nach dem Ausprobieren (Personen, Reisen) und Anmelden: ja
+    expect(shouldAutoStart(used, true)).toBe(true);
+    // eingerichtet bzw. „Später“: nicht mehr
+    expect(shouldAutoStart({ ...used, setup: "2026-10-10" }, true)).toBe(false);
   });
 });

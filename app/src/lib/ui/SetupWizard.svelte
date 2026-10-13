@@ -24,7 +24,7 @@
   import { openChat } from "../agent/open.svelte";
   import { FUELS, LICENSES, RAIL_DE, SETUP_TEXT_MAX, STATES } from "../setup/ai";
   import { applyAi, applyDraft, draftFrom, type SetupDraft } from "../setup/setup";
-  import { askSetup, markSeen, setupWizard } from "../setup/app.svelte";
+  import { askSetup, setupWizard } from "../setup/app.svelte";
 
   const STEPS = ["me", "go", "who", "how", "when", "more", "done"] as const;
   // -1: Einstieg (mit KI oder Schritt für Schritt)
@@ -127,7 +127,6 @@
   function next(store = true) { if (store) save(); step = Math.min(step + 1, STEPS.length - 1); }
   function close() {
     if (!dir.setup) dir.setup = new Date().toISOString().slice(0, 10);
-    markSeen();
     void saveDocsNow();
     setupWizard.open = false;
   }
