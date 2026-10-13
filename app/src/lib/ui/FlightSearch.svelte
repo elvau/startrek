@@ -563,7 +563,7 @@
       <div class="fs-flexbox">
         <div class="ed-row">
           <DateRange bind:from={rFrom} bind:to={rTo} label={t("dr.window")} fromLabel={t("fs.earliestOut")} toLabel={t("fs.homeBy")} unit="days" cls="grow" />
-          <label class="f fs-time">{t("fs.at")}<input type="time" bind:value={rToTime} /></label>
+          <label class="f fs-time">{t("fs.homeTime")}<input type="time" bind:value={rToTime} /></label>
         </div>
         {#if span == null}
           <p class="muted small">{t("fs.errFlex")}</p>

@@ -153,10 +153,10 @@ try {
   if ((await m.locator(".fs-cmp tbody tr").count()) !== 2) fail("Vergleichstabelle");
   const res0 = await m.locator(".fs-res").first().textContent();
   if (!res0.includes("11 Nächte vor Ort") || !res0.includes("zuhause ca. Do 29.07.") || !res0.includes("+ Anfahrt")) fail("Treffer: " + res0.slice(0, 300));
-  if (!(await m.locator(".fs-res").first().locator(".btn", { hasText: "Hier buchen" }).isDisabled())) fail("Hier buchen sollte ausgegraut sein");
+  if (await m.locator(".fs-res").first().locator(".btn", { hasText: "Hier buchen" }).count()) fail("„Hier buchen“ sollte weg sein (Buchen in der App kommt nicht)");
   const src = await m.locator(".fs-src").textContent();
   if (!src.includes("Kiwi.com: 4 Treffer") || !src.includes("Duffel: noch nicht eingerichtet")) fail("Quellen: " + src);
-  log("Vergleichstabelle mit 2 Flughäfen, Treffer mit Anfahrt, 11 Nächten und „zuhause ca.“; „Hier buchen“ ausgegraut");
+  log("Vergleichstabelle mit 2 Flughäfen, Treffer mit Anfahrt, 11 Nächten und „zuhause ca.“; kein „Hier buchen“");
 
   // zu spät zuhause: um 17:00 fällt alles raus (Landung 16:25 + Heimfahrt + Gepäck)
   await m.locator("label.fs-time input").fill("17:00");
