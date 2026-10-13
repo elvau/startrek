@@ -120,8 +120,30 @@ try {
     await tg.locator(".terms-accept").click();
     await tg.waitFor({ state: "detached" });
     await until(() => p.evaluate(() => !!JSON.parse(localStorage.getItem("rk2-dir") || "{}").terms?.v), "Zustimmung nach dem Fenster");
+    await until(async () => !!(await (await fetch(`${FS}/profiles/${kira}`, { headers: H })).json()).fields?.data?.stringValue?.includes("terms"), "Zustimmung wieder im Konto");
     log("Bestehendes Konto ohne AGB-Zustimmung: Fenster „Nutzungsbedingungen“, Zustimmen erst mit Haken, danach gespeichert");
   }
+
+  // Meine Daten (Auskunft, Art. 15 DSGVO): aus dem Kontomenü, als Seite und als Datei, Drucken über einen Rahmen
+  await c.locator(".ai-head .x").click();
+  await p.locator(".top .acct-btn").click();
+  await p.locator(".acct-data").click();
+  const md = p.locator(".mydata");
+  await md.locator(".mydata-sum").waitFor({ timeout: 15000 });
+  const [dl] = await Promise.all([p.waitForEvent("download"), md.locator(".mydata-json").click()]);
+  const dj = JSON.parse(await (await import("node:fs/promises")).readFile(await dl.path(), "utf8"));
+  if (dj.account?.email !== "kira@test.de" || !dj.profile?.terms?.v || !Array.isArray(dj.trips) || !dj.device?.some(e => e.key === "rk2-dir")) fail("JSON-Auskunft unvollständig: " + JSON.stringify(dj).slice(0, 300));
+  const [rp] = await Promise.all([p.context().waitForEvent("page"), md.locator(".mydata-tab").click()]);
+  await rp.waitForLoadState();
+  const rt = await rp.locator("body").innerText();
+  for (const x of ["Auskunft über deine gespeicherten Daten", "kira@test.de", "AGB zugestimmt", "Auf diesem Gerät gespeichert"]) if (!rt.includes(x)) fail("Auskunft ohne „" + x + "“");
+  if (process.env.SHOTS) await rp.screenshot({ path: `${process.env.SHOTS}/mydata.png`, fullPage: true });
+  await rp.close();
+  await md.locator(".mydata-print").click();
+  await p.locator("iframe.mydata-frame").waitFor({ state: "attached" });
+  await p.keyboard.press("Escape");
+  log("Meine Daten: Auskunft als Seite (Konto, AGB, Gerät), Datei mit Konto, Profil, Reisen und Browser-Einträgen, Drucken über Rahmen");
+  await p.locator(".ai-fab").click();
 
   // Beispiel antippen schickt den Wunsch; Anfrage mit Anmelde-Nachweis und Reisenden
   await c.locator(".ai-ex .chip").first().click();

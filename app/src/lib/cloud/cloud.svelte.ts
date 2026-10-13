@@ -261,6 +261,11 @@ export async function wipeAccount() {
   await f.clearCache();
   return r;
 }
+/** Auskunft (Art. 15 DSGVO): alles, was zum Konto gespeichert ist, frisch vom Server */
+export async function myAccountData() {
+  if (!fbUser) throw new Error("not signed in");
+  return (await load()).collectAccount(fbUser.uid);
+}
 export async function loginTest(email: string, name: string) { if (emulator) await (await load()).loginTest(email, name); }
 
 const message = errorMessage;

@@ -1003,3 +1003,6 @@ html:has(.modal-bg){overflow:hidden}
 .terms-gate p{margin:0 0 10px}
 .terms-gate .check{display:flex;gap:8px;align-items:center;font-size:13px;margin:4px 0 14px}
 .terms-gate .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+/* Meine Daten (Auskunft, MyDataDialog) */
+.mydata p{margin:0 0 10px}
+.mydata .row{display:flex;gap:8px;flex-wrap:wrap}
