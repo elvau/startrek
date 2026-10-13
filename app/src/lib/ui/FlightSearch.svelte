@@ -18,6 +18,7 @@
   import { prefsFor, touchesAvoided } from "../prefs";
   import { surchargeBanned, type BagNeed } from "../flights/addons";
   import DualRange from "./DualRange.svelte";
+  import DateRange from "./DateRange.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { ccOf, findCity } from "../geo/places";
@@ -529,8 +530,7 @@
     {#if kind === "round"}
       <div class="fs-flexbox">
         <div class="ed-row">
-          <label class="f">{t("fs.depEarliest")}<input type="date" bind:value={rFrom} required /></label>
-          <label class="f">{t("fs.latest")}<input type="date" bind:value={wTo} min={rFrom} required /></label>
+          <DateRange bind:from={rFrom} bind:to={wTo} label={t("dr.window")} fromLabel={t("fs.depEarliest")} toLabel={t("fs.latest")} unit="days" cls="grow" />
         </div>
         <div class="fs-stations">
           {#each stations as st, i (i)}
@@ -550,8 +550,7 @@
     {:else if kind === "oneway"}
       {#if mode === "flex"}
         <div class="ed-row">
-          <label class="f">{t("fs.earliestDep")}<input type="date" bind:value={rFrom} required /></label>
-          <label class="f">{t("fs.latestDep")}<input type="date" bind:value={wTo} min={rFrom} required /></label>
+          <DateRange bind:from={rFrom} bind:to={wTo} label={t("dr.window")} fromLabel={t("fs.earliestDep")} toLabel={t("fs.latestDep")} unit="days" cls="grow" />
         </div>
         <p class="muted small">{t("fs.onewayHint")}</p>
       {:else}
@@ -563,8 +562,7 @@
     {:else if mode === "flex"}
       <div class="fs-flexbox">
         <div class="ed-row">
-          <label class="f">{t("fs.earliestOut")}<input type="date" bind:value={rFrom} required /></label>
-          <label class="f">{t("fs.homeBy")}<input type="date" bind:value={rTo} min={rFrom} required /></label>
+          <DateRange bind:from={rFrom} bind:to={rTo} label={t("dr.window")} fromLabel={t("fs.earliestOut")} toLabel={t("fs.homeBy")} unit="days" cls="grow" />
           <label class="f fs-time">{t("fs.at")}<input type="time" bind:value={rToTime} /></label>
         </div>
         {#if span == null}
@@ -578,8 +576,7 @@
       </div>
     {:else}
       <div class="ed-row">
-        <label class="f">{t("fs.outOn")}<input type="date" bind:value={out} required /></label>
-        <label class="f">{t("fs.backOn")} <small class="muted">({t("fs.backEmpty")})</small><input type="date" bind:value={ret} min={out} /></label>
+        <DateRange bind:from={out} bind:to={ret} label={t("dr.trip")} fromLabel={t("fs.outOn")} toLabel={t("fs.backOn")} openEnd openEndLabel={t("dr.onlyOut")} cls="grow" />
         <label class="f fs-sel">{t("fs.plusMinus")}<select bind:value={flexDays}>{#each [0, 1, 2, 3] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
       </div>
     {/if}

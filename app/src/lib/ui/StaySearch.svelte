@@ -32,6 +32,7 @@
   import { keepStays, sortStays, type StaySort } from "../stays/sort";
   import { applyStayFilter, kmToCenter, noStayFilter, type StayCtx } from "../stays/filter";
   import StayFilters from "./StayFilters.svelte";
+  import DateRange from "./DateRange.svelte";
   import { kmText, nearest, tripSpots } from "../geo/spots";
   import type { SourceStatus } from "../flights/types";
   import PartnerLinks from "./PartnerLinks.svelte";
@@ -146,7 +147,9 @@
       places: placesNear(geo, ap!, 5), city: cityForAirport(geo, ap!)
     }));
   });
-  $effect(() => { if (!place && near[0]?.city) place = near[0].city.name; });
+  // nur zum Start vorbelegen: wer das Feld leert, will etwas Neues eintippen
+  let placeInit = !!untrack(() => place);
+  $effect(() => { if (!placeInit && near[0]?.city) { placeInit = true; if (!untrack(() => place)) place = near[0].city.name; } });
   // Stadtsuche im Ort-Feld: Länder der Reise zuerst, dann bekannte Städte weltweit
   let placeFocus = $state(false);
   const prefer = $derived([...new Set([ccOf(geo, trip.country), ...near.map(n => n.ap.cc), ...sts.map(s => airportOf(geo, s.ap)?.cc)].filter((x): x is string => !!x))]);
@@ -376,8 +379,7 @@
           <div class="sugg">{#each citySugg as h (h.cc + h.name)}<button type="button" onmousedown={e => e.preventDefault()} onclick={() => pickCity(h)}>{h.name} <small class="muted">{h.land}</small></button>{/each}</div>
         {/if}
       </label>
-      <label class="f">{t("st.checkin")}<input type="date" bind:value={checkin} required /></label>
-      <label class="f">{t("st.checkout")}<input type="date" bind:value={checkout} min={checkin} required /></label>
+      <DateRange bind:from={checkin} bind:to={checkout} label={t("dr.stay")} fromLabel={t("st.checkin")} toLabel={t("st.checkout")} cls="st-dates" />
       {#if type !== "hotel" || parts > 1 || all > 10}<label class="f">{t("st.parts")}<input class="n sm st-parts" type="number" min="1" max="10" bind:value={parts} oninput={() => (partsSet = true)} /></label>{/if}
       <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(30, per.adults)} bind:value={rooms} oninput={() => (roomsSet = true)} /></label>
     </div>
