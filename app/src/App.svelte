@@ -230,7 +230,7 @@
         {:else if ch.k === "stay" && !access.readonly}
           {#if app.trip.camper}<p class="search-row small st-camper">⛺ {t("camp.stayHint", { ch: t("ch.transport.label") })} <button class="linkbtn" onclick={toCamper}>{t("camp.toStations")}</button></p>{/if}
           <div class="search-row"><button class="btn st-open" class:primary={!app.trip.camper} onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
-            <button class="btn priv-open" onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
+            <button class="btn priv-open" title={t("priv.searchHint")} onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
           {#if mapOpen === "stay"}<TripMap onclose={() => (mapOpen = null)} />{/if}
         {/if}

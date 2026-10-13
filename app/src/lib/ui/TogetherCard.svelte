@@ -72,7 +72,6 @@
 <div class="tg">
   <h3>📅 {t("tg.title")} <Help k="avail" /></h3>
   {#if !plan}
-    <p class="muted small">{t("tg.lead")}</p>
     {#if !access.readonly}
       <div class="ed-row tg-new">
         <label class="f">{t("tg.from")}<input type="date" bind:value={fFrom} /></label>
@@ -154,8 +153,6 @@
         {#if !access.readonly}<button class="linkbtn danger small" onclick={() => removePoll(p.id)}>{t("poll.remove")}</button>{/if}
       </article>
     {/each}
-  {:else}
-    <p class="muted small">{t("poll.lead")}</p>
   {/if}
   {#if !access.readonly}
     {#if adding}
