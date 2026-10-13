@@ -1,6 +1,8 @@
 <script lang="ts">
   import { netMessage, showError } from "../neterror";
   import { arrow, i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
+  import BrokerNote from "./BrokerNote.svelte";
+  import ExtLink from "./ExtLink.svelte";
   /*
    * Reise zu einem Event: Was, wo, wann. Daraus bis zu drei Vorschläge (ohne Nacht, eine Nacht, ab Vortag),
    * je mit dem günstigsten passenden Flug (inkl. Anfahrt) und einer gut bewerteten Unterkunft.
@@ -294,6 +296,7 @@
         </button>
       {/each}
     </div>
+    {#if hits.length}<BrokerNote />{/if}
   {/if}
   <p class="muted small ev-or">{t("evs.or")}</p>
   <form class="fs-form ev-form" onsubmit={go}>
@@ -385,7 +388,7 @@
     </div>
     {#if mapLink || trip.event?.url}<p class="muted small">
       {#if mapLink}<a href={mapLink} target="_blank" rel="noopener noreferrer">{t("ev.map", { venue: venue.trim() })} ↗</a>{/if}
-      {#if trip.event?.url}{mapLink ? " · " : ""}<a class="ev-tickets" href={trip.event.url} target="_blank" rel="noopener noreferrer">{t("evs.tickets")} ↗</a>{/if}
+      {#if trip.event?.url}{mapLink ? " · " : ""}<ExtLink cls="ev-tickets" href={trip.event.url} gate>{t("evs.tickets")} ↗</ExtLink>{/if}
     </p>{/if}
   {/if}
 </Modal>

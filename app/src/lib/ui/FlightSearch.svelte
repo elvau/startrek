@@ -3,6 +3,7 @@
   import { blockedDays, hitsBlocked } from "../together";
   import Help from "./Help.svelte";
   import { arrow, autoName, t, tn, type Key } from "../i18n/index.svelte";
+  import BrokerNote from "./BrokerNote.svelte";
   /*
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
    * feste Daten (± Tage) oder flexibler Zeitraum mit „spätestens zuhause“ und Nächten per Schieberegler.
@@ -668,6 +669,7 @@
         {/each}
       </div>
       {#if rounds.some(x => x.rt.legs.some(l => l.sponsored))}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+      <BrokerNote />
       {#if into}<p class="muted small">{t("fs.roundTaken")}</p>{/if}
     {:else}
       <p class="muted small">{t("fs.roundNone")}</p>
@@ -775,6 +777,7 @@
         {/each}
       </div>
       {#if list.some(o => o.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
+      <BrokerNote />
       {#if into}<p class="muted small">{t("fs.takenHint")}</p>{/if}
     {:else}
       <p class="muted small">{t("fs.none")}</p>

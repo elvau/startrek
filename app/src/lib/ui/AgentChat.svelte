@@ -1,6 +1,7 @@
 <script lang="ts">
   import { netMessage, isNetworkError } from "../neterror";
   import { arrow, i18n, t, tn, type Key } from "../i18n/index.svelte";
+  import BrokerNote from "./BrokerNote.svelte";
   /*
    * KI-Assistent (Beta) als Chat unten rechts: Wunsch schreiben, nachschärfen („lieber im Juni“, „günstiger“),
    * Vorschläge direkt übernehmen. Frühere Wünsche gehen als Zusammenhang mit, damit Nachfragen funktionieren.
@@ -345,6 +346,7 @@
             {/each}
             {#if m.trips.length > 1}<button class="btn sm ai-all" onclick={() => takeAll(m.trips!)}>＋ {tn("ai.takeAll", m.trips.length)}</button>{/if}
             <small class="muted">{t("ai.refine")}</small>
+            <BrokerNote />
           {/if}
         </div>
       {/each}
