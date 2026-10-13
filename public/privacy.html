@@ -27,7 +27,7 @@
   <li>For flight and accommodation searches, only <strong>places, dates and the number of people</strong> are sent to the
     providers, no names and no email addresses.</li>
   <li>Booking details (ID card, passport) are optional, are stored only in your account and go nowhere else.</li>
-  <li>The AI planner (beta) is only available with an account; your travel request is sent to Google Gemini for it.</li>
+  <li>The AI planner (beta) is only available with an account; your travel request is sent to Anthropic (Claude) for it, or to Google Gemini as a fallback.</li>
   <li>The maps (accommodation search, “Trip map”) load map images from OpenFreeMap only when you open them; the small route images (start page, day plan) load a map section as soon as a trip has a route.</li>
   <li>Bug reports (beta) are stored in a non-public project on GitHub; images are deleted after 30 days.</li>
   <li>There are no advertising trackers and no cookies from me. I count visitors without cookies or profiles using Cloudflare Web Analytics. Fonts are served from this site.</li>
@@ -200,14 +200,16 @@
   image server (media-cdn.tripadvisor.com).
 </p>
 
-<h2>7. AI planner (Google Gemini, beta)</h2>
+<h2>7. AI planner (Anthropic Claude and Google Gemini, beta)</h2>
 <p>
   If you use the AI planner, the app sends your travel request (the text you enter), the number and ages of the
   travellers, the airports near your home, your preferences (without names, see section 5; for school holidays the dates of the next twelve months) and – if already entered –
   destination, travel dates and the days on which someone cannot travel (dates only, no names) to my search service. It checks your sign-in, counts requests per day (user ID and date,
-  deleted after two days) and passes the request and search results on to Google Gemini
-  (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Ireland). Google does not receive names, email
-  addresses or your IP address. Please do not write personal data into the travel request.
+  deleted after two days) and passes the request and search results on to the AI Claude by Anthropic
+  (Anthropic PBC, 548 Market Street, San Francisco, CA 94104, USA). If Claude does not respond (e.g. because the
+  service is overloaded), Google Gemini steps in for that request (Google Ireland Limited, Gordon House, Barrow Street,
+  Dublin 4, Ireland). Anthropic and Google do not receive names, email addresses or your IP address. Please do not
+  write personal data into the travel request.
 </p>
 <p>
   If you ask the AI assistant within an open trip, a summary of that trip is also sent: destination, travel dates and
@@ -216,7 +218,12 @@
   sent. The app only applies changes made by the AI once you confirm them.
 </p>
 <p>
-  <strong>Important:</strong> During the beta I use the free tier of the Gemini API. Under the
+  Under its commercial terms, Anthropic does not use input sent via its interface (API) to train its models and keeps
+  it only for a limited time (usually up to 30 days, e.g. to detect misuse). The transfer to the USA is based on
+  Anthropic's data processing agreement with standard contractual clauses.
+</p>
+<p>
+  <strong>Important about Gemini:</strong> For the fallback I use the free tier of the Gemini API during the beta. Under the
   <a href="https://ai.google.dev/gemini-api/terms" rel="noopener noreferrer">Gemini API terms of service</a>, Google may
   use the transmitted content (travel request and search results) to provide and improve its services; people at Google
   may also read it. Therefore do not enter names, contact details or other personal or confidential information in the
@@ -224,7 +231,7 @@
 </p>
 <p>
   <strong>Setting up your account with AI:</strong> When setting up your account you can describe in a short text how
-  you travel. Only this text is sent via my search service to Google Gemini (counts as one request in the daily
+  you travel. Only this text is sent via my search service to the AI (Anthropic Claude, or Google Gemini as a fallback; counts as one request in the daily
   quota); only fixed fields come back (e.g. travel style, airports, number and ages of fellow travellers), which you
   check page by page before anything is saved. Names, gender, nationality and date of birth are asked for directly in
   the app, never via the AI; please do not write them into the text either.
