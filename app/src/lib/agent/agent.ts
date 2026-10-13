@@ -11,6 +11,7 @@ import type { FlightOffer, FlightQuery, SearchResult } from "../flights/types";
 import type { StayOffer, StayQuery, StaySearchResult } from "../stays/types";
 import { onSiteFees } from "../stays/fees";
 import { CAT_KEYS, type CatKey } from "../model";
+import { campTotal, type CampStop } from "../road/camper";
 import { bookingPrice, type AgentEdit, type AgentGroup, type AgentParty, type AgentRequest, type AgentResult, type AgentTrip, type FlightBooking } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -98,6 +99,17 @@ export function toolsFor(r: Pick<AgentRequest, "asked" | "travelersKnown" | "cur
 const finalName = (r: Pick<AgentRequest, "current">) => (r.current ? "update_trip" : "propose_trips");
 
 const REPLACES = S("id of the existing trip item this replaces (omit to add it)");
+/** Station einer Camper-Reise (#269) */
+const STOP = {
+  type: "OBJECT",
+  properties: {
+    place: S("Town or area of the stop"),
+    cc: S("ISO-2 country code, e.g. 'NO'"),
+    nights: { type: "INTEGER", description: "Nights at this stop, 1-30" },
+    kind: { type: "STRING", enum: ["site", "pitch"], description: "site = campsite, pitch = motorhome pitch (Stellplatz), e.g. for a single night on the way" }
+  },
+  required: ["place", "nights", "kind"]
+};
 const UPDATE = {
   name: "update_trip",
   description: "Final answer about the open trip: a short reply and, only if the user asked for changes, all changes at once. Reference only offer ids from the searches and item ids from the trip.",
@@ -117,6 +129,10 @@ const UPDATE = {
       stays: {
         type: "ARRAY", description: "Real accommodation offers to add",
         items: { type: "OBJECT", properties: { offerId: S("id of the accommodation offer"), replaces: REPLACES }, required: ["offerId"] }
+      },
+      camperStations: {
+        type: "ARRAY", description: "Camper trips only: new stops (added after the last stop, or instead of the stop given in replaces)",
+        items: { ...STOP, properties: { ...STOP.properties, replaces: REPLACES } }
       },
       estimates: {
         type: "ARRAY", description: "Your estimates for costs without a searchable offer (own arrival by car or train, rental car, transfers, activities, meals out), total in EUR for all travelers",
@@ -140,7 +156,7 @@ const UPDATE = {
 const PROPOSE =
     {
       name: "propose_trips",
-      description: "Final answer: 2-3 distinct, complete trip proposals (accommodation plus flight, or plus ownArrival when the travelers arrive on their own; plus estimated local costs). Reference only offer ids returned by the searches.",
+      description: "Final answer: 2-3 distinct, complete trip proposals (accommodation plus flight, or plus ownArrival when the travelers arrive on their own; camper trips: camper stops instead of accommodation; plus estimated local costs). Reference only offer ids returned by the searches.",
       parameters: {
         type: "OBJECT",
         properties: {
@@ -180,7 +196,15 @@ const PROPOSE =
                   properties: { label: S("e.g. 'Own arrival by car, 2 × 650 km'"), eur: { type: "NUMBER", description: "Estimated round-trip total in EUR for all travelers" } },
                   required: ["label", "eur"]
                 },
-                stayId: S("id of the chosen accommodation offer"),
+                stayId: S("id of the chosen accommodation offer (not for camper trips)"),
+                camper: {
+                  type: "OBJECT", description: "Only for trips with a camper or motorhome: the route as stops instead of an accommodation",
+                  properties: {
+                    own: { type: "BOOLEAN", description: "true if the travelers own the camper, false if it is rented" },
+                    stops: { type: "ARRAY", description: "Stops in order; their nights add up to the whole trip", items: STOP }
+                  },
+                  required: ["own", "stops"]
+                },
                 board: { type: "STRING", enum: ["self", "breakfast", "half", "full", "all"], description: "Meals included in the accommodation, only if its board or facts say so ('self' only for self-catering); leave out if unknown" },
                 transport: {
                   type: "OBJECT", description: "Estimated local transport for the whole group and stay (airport transfers, rental car or public transport)",
@@ -192,7 +216,7 @@ const PROPOSE =
                   items: { type: "OBJECT", properties: { name: S("Activity or event"), eur: { type: "NUMBER", description: "Estimated total in EUR for all travelers" } }, required: ["name", "eur"] }
                 }
               },
-              required: ["title", "summary", "place", "from", "to", "stayId"]
+              required: ["title", "summary", "place", "from", "to"]
             }
           }
         },
@@ -204,6 +228,10 @@ const PROPOSE =
 const BOARDS = ["self", "breakfast", "half", "full", "all"];
 
 const LANGS: Record<string, string> = { de: "German", en: "English", es: "Spanish", fr: "French", pl: "Polish", ru: "Russian", ar: "Arabic" };
+
+/** Camper-Reisen (#269): keine Hotels, sondern Stationen auf Campingplatz oder Stellplatz */
+const CAMPER_NEW = "If the travelers travel with a camper or motorhome (camper van, RV, \"Wohnmobil\", \"Camper\"), own or rented: never search or propose hotels or other accommodation; with a camper they stay on campsites or motorhome pitches (wild camping only where allowed). Plan the route as camper.stops in order (place, ISO-2 country code, nights adding up to the whole trip, kind site or pitch) and set camper.own (false if the wish does not say they own one; the app then adds the rental). Do not search flights: give the drive from home and back as ownArrival (fuel and tolls). The app estimates the nightly costs.";
+const CAMPER_EDIT = "This trip is with a camper: never search or add hotels. For new or changed stops use camperStations (place, cc, nights, kind site or pitch; replaces to swap a stop); the app estimates the costs.";
 
 export function systemPrompt(r: AgentRequest): string {
   if (r.current) return tripPrompt(r);
@@ -225,6 +253,7 @@ export function systemPrompt(r: AgentRequest): string {
     ...prefsLines(r),
     "Use search_flights and search_stays to find real offers. Never invent prices, flights or hotels.",
     "If the travelers say they arrive on their own (by car, train or bus, \"we drive\", \"no flight\", \"Anreise selbst\" …), do not search flights: propose destinations within reach, each with a real accommodation and ownArrival (how, rough round-trip cost for the group), no flightId.",
+    CAMPER_NEW,
     "Otherwise every proposal is a complete package: a real flight AND a real accommodation for the same destination and dates (search both for each destination), plus your estimates for local transport (transfers, rental car or public transport) and up to 3 fitting activities or events. Set board from the accommodation's board or facts (all-inclusive, half board, breakfast …); if unknown, leave board out (do not guess). The app then adds only the meals not covered by the accommodation. Estimates are rough totals in EUR for the whole group.",
     groupLine(),
     ...timesLines(r),
@@ -251,6 +280,7 @@ function tripPrompt(r: AgentRequest): string {
     "If the user asks for changes, make all of them in ONE update_trip call: search real offers with search_flights and search_stays where possible (never invent flights, hotels or prices), use estimates only for costs without a searchable offer, and use replaces to swap an item instead of adding a duplicate. Remove items that no longer fit (e.g. flights when the travelers now arrive by car).",
     "If the travelers arrive on their own (car, train, bus), add an estimate in category transport with arrival true for the round trip for the whole group (car: about 0.30 EUR per km plus tolls) and remove the flights.",
     "If the dates change, also replace the accommodation and flights for the new dates.",
+    ...(r.current?.camper ? [CAMPER_EDIT] : []),
     groupLine(),
     "Never change or remove items with status booked or paid; mention it in reply if the user's wish would need that.",
     `Be economical: at most ${LIMITS.flights} flight searches and ${LIMITS.stays} accommodation searches in total.`,
@@ -396,14 +426,17 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
       const groups = groupsOf(t);
       const bookings = bookingsOf(t, groups);
       const flight = bookings[0]?.offer;
-      const st = typeof t.stayId === "string" ? stays.get(t.stayId) : undefined;
-      if (!flight && !st) continue;
+      const camp = t?.camper && typeof t.camper === "object" ? stopsOf(t.camper.stops) : [];
+      const st = !camp.length && typeof t.stayId === "string" ? stays.get(t.stayId) : undefined;
+      if (!flight && !st && !camp.length) continue;
       // eine Buchung für alle: wie bisher nur der Flug; mit Familien je Flug immer als Buchungen
       const split = bookings.length > 1 || bookings.some(b => b.seats < b.travelers || b.group);
       // Daten aus den echten Angeboten, falls Gemini sich vertut; mit Familien vom ersten Ankommen bis zur letzten Abreise
       const days = [st?.q.checkin, st?.q.checkout, ...groups.flatMap(g => [g.from, g.to])].filter((x): x is string => !!x).sort();
       const from = (groups.length ? days[0] : st?.q.checkin) || flight?.out.arr.slice(0, 10) || String(t.from || "");
-      const to = (groups.length ? days.at(-1) : st?.q.checkout) || flight?.back?.dep.slice(0, 10) || String(t.to || "") || addDays(from, 1);
+      // Camper: Ende nach den Nächten der Stationen
+      const campTo = camp.length && /^\d{4}-\d{2}-\d{2}$/.test(from) ? addDays(from, camp.reduce((a, s) => a + s.nights, 0)) : "";
+      const to = campTo || (groups.length ? days.at(-1) : st?.q.checkout) || flight?.back?.dep.slice(0, 10) || String(t.to || "") || addDays(from, 1);
       trips.push({
         title: String(t.title || "").slice(0, 60), summary: String(t.summary || "").slice(0, 300),
         place: String(t.place || st?.q.place || flight?.out.toCity || flight?.out.to || "").slice(0, 80),
@@ -412,7 +445,8 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
         ...(flight ? { flight } : {}),
         ...(split ? { bookings } : {}),
         ...(st ? { stay: st.offer, stayQuery: st.q } : {}),
-        total: Math.round(bookings.reduce((s, b) => s + bookingPrice(b), 0) + (st?.offer.total || 0)),
+        ...(camp.length ? { camper: { own: t.camper.own === true, stops: camp } } : {}),
+        total: Math.round(bookings.reduce((s, b) => s + bookingPrice(b), 0) + (st?.offer.total || 0) + (camp.length ? campTotal(camp, size()) : 0)),
         ...(partyFromAi && !groups.some(g => !knownGroups.has(g.key)) ? { party: { ...party, childAges: [...party.childAges] } } : {}),
         ...(groups.length ? { groups } : {}),
         ...(!flight && own(t) ? { arrival: own(t)! } : {}),
@@ -484,6 +518,17 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     return { ...(board ? { board } : {}), ...(tr ? { transport: tr } : {}), ...(ex.length ? { extras: ex } : {}) };
   }
 
+  /** Stationen einer Camper-Reise: Ort, Nächte (1–30), Art, Land nur als ISO-2 */
+  function stopsOf(v: unknown): CampStop[] {
+    return (Array.isArray(v) ? v : []).slice(0, 20).flatMap((x: any) => {
+      const place = String(x?.place || "").trim().slice(0, 60);
+      const nights = Number.isInteger(x?.nights) ? Math.min(30, Math.max(1, x.nights)) : 0;
+      if (!place || !nights) return [];
+      const cc = typeof x?.cc === "string" && /^[A-Za-z]{2}$/.test(x.cc) ? x.cc.toUpperCase() : undefined;
+      return [{ place, nights, kind: x?.kind === "pitch" ? "pitch" as const : "site" as const, ...(cc ? { cc } : {}) }];
+    });
+  }
+
   /** eigene Anreise laut KI (Auto, Bahn), gedeckelt; ohne Betrag keine */
   function own(t: any): AgentTrip["arrival"] | undefined {
     const v = t?.ownArrival, eur = typeof v?.eur === "number" && isFinite(v.eur) && v.eur > 0 ? Math.min(20000, Math.round(v.eur)) : 0;
@@ -493,7 +538,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
   /** Vorschläge ohne echte Unterkunft oder ohne echten Flug bzw. eigene Anreise (Titel), solange noch gesucht werden kann */
   function incomplete(a: any): string[] {
     const list = Array.isArray(a?.trips) ? a.trips.slice(0, LIMITS.trips) : [];
-    return list.filter((t: any) => !stays.has(t?.stayId) || (!bookingsOf(t).length && !own(t))).map((t: any) => `${t?.title || t?.place || "?"} (${t?.place || ""}, ${t?.from || ""} – ${t?.to || ""})`);
+    return list.filter((t: any) => (!stays.has(t?.stayId) && !stopsOf(t?.camper?.stops).length) || (!bookingsOf(t).length && !own(t))).map((t: any) => `${t?.title || t?.place || "?"} (${t?.place || ""}, ${t?.from || ""} – ${t?.to || ""})`);
   }
 
   /** Antwort zur offenen Reise: nur bekannte Posten und Angebote; gebuchte und bezahlte Posten bleiben */
@@ -522,6 +567,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
       const rp = rep(x.replaces);
       return [{ cat: x.cat as CatKey, name: n, eur: v, ...(x.arrival === true ? { arrival: true } : {}), ...(rp ? { replaces: rp } : {}) }];
     });
+    const sts = r.current?.camper ? list(a?.camperStations).flatMap((x: any) => { const s = stopsOf([x])[0]; if (!s) return []; const rp = rep(x.replaces); return [{ ...s, ...(rp ? { replaces: rp } : {}) }]; }) : [];
     const rm = list(a?.remove).map(rep).filter((x): x is string => !!x);
     const trip: NonNullable<AgentEdit["trip"]> = {};
     const txt = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 80) : "");
@@ -536,6 +582,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     if (fl.length) e.flights = fl;
     if (st.length) e.stays = st;
     if (es.length) e.estimates = es;
+    if (sts.length) e.stations = sts;
     if (!e.reply) e.reply = "OK";
     return { trips: [], edit: e };
   }

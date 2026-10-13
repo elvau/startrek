@@ -157,4 +157,33 @@ describe("Fehlermeldung der KI", () => {
     expect(agentError(503, "KI-Fehler 503", true)).not.toContain("Grund");
     expect(agentError(429, "x")).not.toContain("Grund");
   });
+  it("Camper-Reise (#269): Stationen statt Hotel, beim Übernehmen und beim Ändern", async () => {
+    // Vorschlag übernehmen: Stationen nacheinander, gemietet mit Mietcamper, keine Unterkunft aus der Suche
+    const nt: Trip = { ...trip(), place: "", from: "", to: "", items: [] };
+    takeAgentTrip(nt, { title: "Nordkap", summary: "", place: "Norwegen", from: "2027-06-01", to: "2027-06-06", total: 0,
+      camper: { own: false, stops: [{ place: "Oslo", cc: "NO", nights: 3, kind: "site" }, { place: "Lillehammer", nights: 2, kind: "pitch" }] } });
+    expect(nt.camper).toEqual({ own: false });
+    const camps = nt.items.filter(i => i.hint?.startsWith("camp:"));
+    expect(camps.map(c => [c.hint, c.from, c.to])).toEqual([["camp:site", "2027-06-01", "2027-06-04"], ["camp:pitch", "2027-06-04", "2027-06-06"]]);
+    expect(camps[0].options[0].price.unit).toBe(40);
+    expect(nt.items.find(i => i.hint === "camper:rent")?.options[0].price.qty).toBe(6);
+
+    // offene Camper-Reise: die KI bekommt das mit, neue Station hinten an, Hotels gibt es nicht
+    const t = nt;
+    const r = req(t);
+    expect(r.current?.camper).toEqual({ own: false });
+    expect(parseAgentRequest(JSON.parse(JSON.stringify(r)))).toMatchObject({ current: { camper: { own: false } } });
+    expect(systemPrompt(r)).toMatch(/This trip is with a camper/);
+    const f = fake([call("update_trip", { reply: "Noch zwei Nächte in Trondheim", camperStations: [{ place: "Trondheim", cc: "NO", nights: 2, kind: "site" }] })]);
+    const res = await runAgent({ ...r, prompt: "Noch zwei Nächte in Trondheim dranhängen" }, f.deps);
+    expect(res.edit?.stations).toEqual([{ place: "Trondheim", cc: "NO", nights: 2, kind: "site" }]);
+    expect(editCount(res.edit!)).toBe(1);
+    applyEdit(t, res.edit!);
+    const last = t.items.filter(i => i.hint?.startsWith("camp:")).at(-1)!;
+    expect([last.name, last.from, last.to]).toEqual(["Campingplatz Trondheim", "2027-06-06", "2027-06-08"]);
+    expect(t.to).toBe("2027-06-08");
+    // ohne Camper werden Stationen nicht übernommen
+    const f2 = fake([call("update_trip", { reply: "x", camperStations: [{ place: "Trondheim", nights: 2, kind: "site" }] })]);
+    expect((await runAgent(req(), f2.deps)).edit?.stations).toBeUndefined();
+  });
 });

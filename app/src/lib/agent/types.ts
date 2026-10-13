@@ -1,6 +1,7 @@
 /* KI-Reiseplaner: gemeinsame Typen für App und Such-Dienst (worker/) */
 import type { FlightOffer } from "../flights/types";
 import type { StayOffer, StayQuery } from "../stays/types";
+import type { CampStop } from "../road/camper";
 import { BOARDS, CAT_KEYS, STYLES, type CatKey, type Prefs, type Status } from "../model";
 
 /** Was die App schickt: Wunsch in eigenen Worten und was über die Reisenden bekannt ist */
@@ -48,6 +49,8 @@ export interface TripBrief {
   country?: string;
   from?: string;
   to?: string;
+  /** Reise mit dem Camper (#269): Stationen statt Hotels */
+  camper?: { own: boolean };
   items: BriefItem[];
 }
 
@@ -76,11 +79,13 @@ export interface AgentEdit {
   stays?: { offer: StayOffer; q: StayQuery; replaces?: string }[];
   /** Schätzungen der KI (Beträge für alle) */
   estimates?: { cat: CatKey; name: string; eur: number; replaces?: string; arrival?: boolean }[];
+  /** Camper-Reise (#269): neue Stationen (hinten angehängt bzw. statt einer bisherigen) */
+  stations?: (CampStop & { replaces?: string })[];
 }
 
 /** Anzahl der Änderungen (0: nur eine Antwort) */
 export const editCount = (e: AgentEdit) =>
-  (e.trip ? Object.keys(e.trip).length : 0) + (e.remove?.length || 0) + (e.flights?.length || 0) + (e.stays?.length || 0) + (e.estimates?.length || 0);
+  (e.trip ? Object.keys(e.trip).length : 0) + (e.remove?.length || 0) + (e.flights?.length || 0) + (e.stays?.length || 0) + (e.estimates?.length || 0) + (e.stations?.length || 0);
 
 /**
  * Flug für einen Teil der Gruppe oder in kleinen Buchungen: das Angebot gilt für `seats` Plätze (so gesucht),
@@ -120,6 +125,8 @@ export interface AgentTrip {
   groups?: AgentGroup[];
   /** Verpflegung laut Unterkunft (Selbstversorgung, Frühstück, Halbpension, Vollpension, All-inclusive) */
   board?: "self" | "breakfast" | "half" | "full" | "all";
+  /** Camper-Reise (#269): Stationen statt Unterkunft, Richtwerte rechnet die App; gemietet: mit Mietcamper */
+  camper?: { own: boolean; stops: CampStop[] };
   /** Schätzung der KI: eigene Anreise (Auto, Bahn) für alle, statt Flug */
   arrival?: { label: string; eur: number };
   /** Schätzung der KI: Transport vor Ort für alle */
@@ -208,6 +215,7 @@ export function parseBrief(v: unknown): TripBrief | undefined {
   const b: TripBrief = { items };
   for (const k of ["place", "country"] as const) { const x = s(o[k], 80); if (x) b[k] = x; }
   for (const k of ["from", "to"] as const) { const x = d(o[k]); if (x) b[k] = x; }
+  if (o.camper && typeof o.camper === "object") b.camper = { own: (o.camper as Record<string, unknown>).own === true };
   return b;
 }
 

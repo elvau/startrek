@@ -8,6 +8,9 @@ export function flashEl(el: HTMLElement | null | undefined, block: ScrollLogical
   setTimeout(() => el.classList.remove("flash"), 2000);
 }
 
+/* Camper-Reise (#269): zu den Stationen im Kapitel Vor Ort */
+export const toCamper = () => flashEl(document.querySelector<HTMLElement>("#transport .search-row.camper"), "start");
+
 /* Nach dem Übernehmen aus einer Suche: zum Posten scrollen und ihn kurz aufleuchten lassen */
 export function showItem(id: string) {
   setTimeout(() => {

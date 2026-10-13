@@ -65,7 +65,7 @@
   import { eventWindow } from "./lib/activities/window";
   import { carItem, carPerDay, carWindow, insuranceItem } from "./lib/extras";
   import { airportOf, ccOf } from "./lib/geo/places";
-  import { showItem } from "./lib/ui/showItem";
+  import { showItem, toCamper } from "./lib/ui/showItem";
   import { stationName } from "./lib/stays/stationName";
   import { airportData, ensureAirports, ensureGeo, geo } from "./lib/geo/geo.svelte";
   import { applyPlanLink } from "./lib/planApp";
@@ -220,7 +220,8 @@
             <br />{t("ins.hint")}
           </p>
         {:else if ch.k === "stay" && !access.readonly}
-          <div class="search-row"><button class="btn primary st-open" onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
+          {#if app.trip.camper}<p class="search-row small st-camper">⛺ {t("camp.stayHint", { ch: t("ch.transport.label") })} <button class="linkbtn" onclick={toCamper}>{t("camp.toStations")}</button></p>{/if}
+          <div class="search-row"><button class="btn st-open" class:primary={!app.trip.camper} onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
             <button class="btn priv-open" onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
           {#if mapOpen === "stay"}<TripMap onclose={() => (mapOpen = null)} />{/if}
