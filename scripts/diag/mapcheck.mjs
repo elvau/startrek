@@ -1,4 +1,4 @@
-/* Diagnose (vorläufig, Lauf 3 nach Fix): Karte der Reise auf der Testumgebung – Anfragen an die Kacheln, Fehler der Konsole */
+/* Diagnose (vorläufig, Lauf 4 nach Deploy): Karte der Reise auf der Testumgebung – Anfragen an die Kacheln, Fehler der Konsole */
 import { chromium } from "playwright";
 const URL = "https://elvau.github.io/startrek/";
 import { PNG } from "pngjs";
