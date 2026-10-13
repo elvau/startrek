@@ -8,7 +8,7 @@
   import { dir } from "../directory.svelte";
   import Modal from "./Modal.svelte";
   import PrefsEditor from "./PrefsEditor.svelte";
-  import { setupWizard } from "../setup/app.svelte";
+  import { restartSetup, setupWizard } from "../setup/app.svelte";
   import { diffCount } from "../prefsView";
 
   let { onclose }: { onclose: () => void } = $props();
@@ -41,10 +41,12 @@
       {#key cur.id}<PrefsEditor p={cur.prefs} base={dir.prefs || {}} onai={ai} />{/key}
     {/if}
     {#if !dir.groups.length}<p class="muted small">{t("grp.none")}</p>{/if}
+    <p class="small pv-restart"><button type="button" class="linkbtn" onclick={() => { onclose(); restartSetup(); }}>↺ {t("setup.open")}</button></p>
   </div>
 </Modal>
 
 <style>
+  .pv-restart{margin:6px 0 0}
   .pv-tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .pv-tab{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper-2);border-radius:99px;padding:8px 14px;font-weight:600;font-size:14px;color:var(--ink-2);min-height:40px}
   .pv-tab.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}

@@ -1,17 +1,19 @@
-/* Konto einrichten (#160): Fenster öffnen, von selbst einmal starten, KI-Vorbefüllung über den Such-Dienst */
+/* Konto einrichten (#160, #330): Fenster öffnen, nach der Anmeldung einmal von selbst, neu starten, KI-Vorbefüllung über den Such-Dienst */
 import { t } from "../i18n/index.svelte";
 import { FLIGHTS_URL } from "../flights/app";
 import { idToken } from "../cloud/cloud.svelte";
 import { agentError } from "../agent/app";
 import { noteError } from "../bugs/log";
 import { parseSetupAi, type SetupAi } from "./ai";
+import { dir } from "../directory.svelte";
 
 export const setupWizard = $state({ open: false });
 
-const SEEN = "rk2-setup";
-/** schon einmal gezeigt oder übersprungen (auf diesem Gerät) */
-export function seenLocally(): boolean { try { return !!localStorage.getItem(SEEN); } catch { return true; } }
-export function markSeen() { try { localStorage.setItem(SEEN, "1"); } catch {} }
+/** Ersteinrichtung neu starten (#330): von vorn, bisherige Angaben bleiben und sind vorbefüllt; bis zum Abschluss offen */
+export function restartSetup() {
+  delete dir.setup;
+  setupWizard.open = true;
+}
 /** automatisierte Browser (e2e) starten den Assistenten nur, wenn der Test es will */
 export function autoAllowed(): boolean {
   try { return !navigator.webdriver || !!localStorage.getItem("rk2-setup-auto"); } catch { return false; }

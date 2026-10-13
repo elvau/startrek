@@ -1948,7 +1948,7 @@ export const ar: Dict = {
   "setup.no": "لا",
   "setup.noCar": "لا سيارة",
   "setup.noHealth": "لا نسأل عمدًا عن البيانات الصحية (مثل الحساسية).",
-  "setup.open": "إعداد الحساب",
+  "setup.open": "إعادة بدء الإعداد الأولي",
   "setup.or": "أو",
   "setup.orAge": "أو العمر فقط",
   "setup.pet": "حيوان أليف يرافقنا",

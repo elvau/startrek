@@ -1805,7 +1805,7 @@ export const de = {
   "setup.no": "nein",
   "setup.noCar": "kein Auto",
   "setup.noHealth": "Gesundheitsangaben (z. B. Allergien) fragen wir bewusst nicht ab.",
-  "setup.open": "Konto einrichten",
+  "setup.open": "Ersteinrichtung neu starten",
   "setup.or": "oder",
   "setup.orAge": "oder nur Alter",
   "setup.pet": "Haustier reist mit",
