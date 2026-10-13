@@ -64,8 +64,16 @@ try {
   if (!(await m.locator(".chip.on", { hasText: "Ganze Unterkunft" }).count())) fail("Ganze Unterkunft nicht vorausgewählt");
   if ((await m.locator(".chip.on", { hasText: /Booking\.com|Trivago/ }).count()) !== 2) fail("nicht beide Quellen an");
   await m.locator("label.f", { hasText: "Ort" }).locator("input").fill("Split");
-  await m.locator("label.f", { hasText: "Check-in" }).locator("input").fill("2027-07-18");
-  await m.locator("label.f", { hasText: "Check-out" }).locator("input").fill("2027-07-25");
+  // Zeitraum in einem Kalender: zwei Tipps (wie bei Airbnb), schließt von selbst
+  await m.locator(".st-dates .dr-btn").click();
+  const jul = p.locator(".dr-sheet [data-m='2027-07']");
+  await jul.scrollIntoViewIfNeeded();
+  await jul.locator(".dr-d", { hasText: /^18$/ }).click();
+  if ((await p.locator(".dr-sheet .dr-d.on").count()) !== 1) fail("erster Tipp nicht markiert");
+  await jul.locator(".dr-d", { hasText: /^25$/ }).click();
+  await p.locator(".dr-sheet").waitFor({ state: "detached" });
+  if (!(await m.locator(".st-dates .dr-btn").innerText()).includes("7 Nächte")) fail("Zeitraum im Feld: " + (await m.locator(".st-dates .dr-btn").innerText()));
+  log("Zeitraum mit zwei Tipps im Kalender: 18.–25.07., 7 Nächte");
   if (!(await m.locator("p", { hasText: "7 Nächte" }).count())) fail("Nächte nicht angezeigt");
   const bk = await m.locator(".fs-direct a", { hasText: "Booking.com" }).getAttribute("href");
   if (!bk.includes("ss=Split") || !bk.includes("checkin=2027-07-18") || !bk.includes("checkout=2027-07-25")) fail("Booking-Link: " + bk);
@@ -272,8 +280,8 @@ try {
   await gap.first().locator(".linkbtn", { hasText: "Unterkunft suchen" }).click();
   const pres = await m.locator(".st-pres").textContent();
   if (!pres.includes("So 18.07. 08:05 an") || !pres.includes("Do 29.07. 16:25 ab") || pres.includes("Hase")) fail("Anwesenheit: " + pres);
-  if ((await m.locator("label.f", { hasText: "Check-in" }).locator("input").inputValue()) !== "2027-07-25") fail("Check-in nicht aus der Lücke");
-  if ((await m.locator("label.f", { hasText: "Check-out" }).locator("input").inputValue()) !== "2027-07-29") fail("Check-out nicht aus der Lücke");
+  if ((await m.locator(".st-dates .dr-btn").getAttribute("data-from")) !== "2027-07-25") fail("Check-in nicht aus der Lücke");
+  if ((await m.locator(".st-dates .dr-btn").getAttribute("data-to")) !== "2027-07-29") fail("Check-out nicht aus der Lücke");
   const gg = await m.locator(".st-guests").textContent();
   if (!gg.includes("2 Gäste") || !gg.includes("1 Erw., 1 Kind (9 J.)")) fail("Gäste: " + gg);
   log("Suche aus der Lücke: 25.07. bis 29.07., 2 Gäste (Anna, Ben 9 J.), Anwesenheit laut Flug");
@@ -319,10 +327,15 @@ try {
   if (!at.includes("06:30 ab SPU") || !at.includes("von Makarska") || !at.includes("Trogir")) fail("Vorschlag am Flughafen: " + at);
   log("Plan: Rückflug 06:30 ab SPU, von Makarska ca. 1 h → letzte Nacht am Flughafen, z. B. Trogir");
   await apn.locator(".linkbtn", { hasText: "Unterkunft am Flughafen suchen" }).click();
-  if ((await m.locator("label.f", { hasText: "Check-in" }).locator("input").inputValue()) !== "2027-07-28") fail("Check-in nicht die letzte Nacht");
+  if ((await m.locator(".st-dates .dr-btn").getAttribute("data-from")) !== "2027-07-28") fail("Check-in nicht die letzte Nacht");
   const placeNow = await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue();
   if (!(await m.locator(".st-near .chip.on", { hasText: placeNow }).count())) fail("Ort am Flughafen nicht vorgewählt: " + placeNow);
   if (!(await m.locator(".st-near", { hasText: "Am Flughafen SPU" }).count())) fail("Orte am Flughafen fehlen");
+  // Feld leeren: bleibt leer (früher sofort wieder mit dem Ort am Flughafen gefüllt)
+  await m.locator("label.f", { hasText: "Ort" }).locator("input").fill("");
+  await p.waitForTimeout(300);
+  if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "") fail("Ort füllt sich nach dem Löschen wieder");
+  log("Ort lässt sich leeren und neu eintippen");
   await m.locator(".st-near .chip", { hasText: "Trogir" }).click();
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
@@ -432,14 +445,14 @@ try {
   log("Rundreise: Lücken je Stadt (Quito 7, Lima 6, Rio 1 Nacht), Nachtflug nach Rio als ✈ statt Lücke");
   await rgaps.nth(1).locator(".linkbtn", { hasText: "Unterkunft suchen" }).click();
   if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Lima") fail("Ort aus der Station");
-  if ((await m.locator("label.f", { hasText: "Check-in" }).locator("input").inputValue()) !== "2027-04-14" || (await m.locator("label.f", { hasText: "Check-out" }).locator("input").inputValue()) !== "2027-04-20") fail("Daten aus der Station");
+  if ((await m.locator(".st-dates .dr-btn").getAttribute("data-from")) !== "2027-04-14" || (await m.locator(".st-dates .dr-btn").getAttribute("data-to")) !== "2027-04-20") fail("Daten aus der Station");
   if ((await m.locator(".st-stations .chip").count()) !== 3) fail("Stationen als Auswahl");
   await m.locator(".st-stations .chip", { hasText: "Rio de Janeiro" }).click();
-  if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Rio de Janeiro" || (await m.locator("label.f", { hasText: "Check-in" }).locator("input").inputValue()) !== "2027-04-21") fail("Station Rio gewählt");
+  if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Rio de Janeiro" || (await m.locator(".st-dates .dr-btn").getAttribute("data-from")) !== "2027-04-21") fail("Station Rio gewählt");
   await m.locator(".modal-h .x").click();
   // Kapitel-Knopf ohne Vorgabe: erste Station statt ganzer Reise
   await p.locator("#stay .st-open").click();
-  if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Quito" || (await m.locator("label.f", { hasText: "Check-out" }).locator("input").inputValue()) !== "2027-04-14") fail("Suche ohne Vorgabe: nicht die erste Station");
+  if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Quito" || (await m.locator(".st-dates .dr-btn").getAttribute("data-to")) !== "2027-04-14") fail("Suche ohne Vorgabe: nicht die erste Station");
   // echte Stadtsuche: Cusco (Land der Reise, ohne Land), Bogotá (anderes Land, mit Land; an die Anbieter englisch)
   const pf = m.locator("label.f", { hasText: "Ort" }).locator("input");
   await pf.fill("Cus");
