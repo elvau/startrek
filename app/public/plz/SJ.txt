@@ -1,0 +1,8 @@
+8099	Jan Mayen	70.950	-8.638
+9170	Longyearbyen	78.223	15.647
+9171	Longyearbyen	78.223	15.647
+9173	Ny-Ålesund	78.924	11.925
+9174	Hopen	76.624	25.271
+9175	Sveagruva	77.900	16.720
+9176	Bjørnøya	74.448	19.014
+9178	Barentsburg	78.064	14.212

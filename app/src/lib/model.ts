@@ -41,8 +41,8 @@ export interface Person {
   age?: number | null;
   /** Geburtsdatum JJJJ-MM-TT: das Alter zum Reisebeginn rechnet die App selbst */
   birth?: string;
-  /** ungefährer Wohnort für Anfahrt und Flughafensuche (deutsche PLZ) */
-  home?: { plz: string; ort: string; lat: number; lon: number };
+  /** ungefährer Wohnort für Anfahrt und Flughafensuche: PLZ (wo es Daten gibt, sonst leer), Ort, Land (fehlt: DE, #163) */
+  home?: { plz: string; ort: string; lat: number; lon: number; cc?: string };
   /** Führerschein seit ungefähr diesem Jahr (0: keiner); angezeigt als Stufe (unter 1, über 1, 2, 5 Jahre), wächst mit der Zeit mit */
   license?: number;
   /** Kreditkarte für die Mietwagen-Kaution */
@@ -97,6 +97,8 @@ export interface Prefs {
   airports?: string[];
   /** Postleitzahl des Wohnorts (nur eigene Vorlieben, im Konto): belegt die Flugsuche vor */
   plz?: string;
+  /** Land dazu (#163; fehlt: DE) */
+  plzCc?: string;
   maxStops?: number;
   bags?: boolean;
   /** Kinder sitzen im Flugzeug neben den Eltern (fehlt: ja); bei manchen Billigfliegern kostet das die Platzwahl */
@@ -358,8 +360,10 @@ export type AccessMode = "car" | "drop" | "taxi" | "train" | "bus" | "with";
 export const ACCESS_MODES: AccessMode[] = ["car", "drop", "taxi", "train", "bus", "with"];
 
 export interface Household {
-  /** Postleitzahl des Wohnorts */
+  /** Postleitzahl des Wohnorts (leer: nur Ort, z. B. ohne PLZ-Daten im Land) */
   plz?: string;
+  /** Land des Wohnorts (#163; fehlt: DE) */
+  cc?: string;
   /** aufgelöster Wohnort, wird beim Eintippen der PLZ gesetzt */
   geo?: { lat: number; lon: number; ort: string };
   /** Anreise zum Flughafen: selbst fahren und parken, bringen und abholen lassen, Fahrdienst/Taxi, Bahn, Gruppenbus, Fahrgemeinschaft */

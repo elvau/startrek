@@ -30,3 +30,11 @@ Schlüssel mit Endungen nach [Intl.PluralRules](https://developer.mozilla.org/do
 - Die Übersetzungen sind maschinell erstellt. Muttersprachler sollten sie prüfen.
 - Die Beispielreise und Fehlermeldungen des Such-Dienstes bleiben vorerst deutsch.
 - Die Browser-Tests laufen auf Deutsch (`locale: "de-DE"`).
+
+## Länder (#162)
+- **Wohnort je Land (#163):** ein gemeinsames Feld „Land + PLZ oder Ort“ (`app/src/lib/ui/HomeInput.svelte`,
+  `app/src/lib/home.ts`). Postleitzahlen: Deutschland aus `app/public/plz.txt`, europäische Länder aus GeoNames
+  (CC BY 4.0, Quellenhinweis am Feld) in `app/public/plz/<LAND>.txt`, je Land nachgeladen. Erzeugt mit `scripts/plz.mjs`
+  über den Workflow „Postleitzahlen erzeugen“ (legt das Ergebnis auf den Hilfs-Branch `daten/plz`, von dort übernehmen).
+  Portugal nur mit den ersten vier Ziffern. Länder ohne Postleitzahlen: Ort aus der Ortsliste (`world.json`).
+  Gespeichert wie bisher (PLZ, Ort, Koordinaten), dazu `cc` (fehlt: DE).

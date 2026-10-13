@@ -194,8 +194,8 @@ try {
   await pform.locator("input").nth(1).fill("Klein");
   await pform.locator("button").click();
   await gd.locator('.pmore[aria-label="Details zu Dani"]').click();
-  await gd.locator(".pdet label", { hasText: "Wohnort" }).locator("input").fill("41236");
-  await until(async () => (await gd.locator(".pdet label", { hasText: "Wohnort" }).locator("input").inputValue()).includes("Mönchengladbach"), "Wohnort Dani");
+  await gd.locator(".pdet .home-in", { hasText: "Wohnort" }).locator(".home-plz").fill("41236");
+  await until(async () => (await gd.locator(".pdet .home-in", { hasText: "Wohnort" }).locator(".home-plz").inputValue()).includes("Mönchengladbach"), "Wohnort Dani");
   // Vorlieben haben einen eigenen Knopf oben, nicht mehr bei Gruppen und Personen
   if (await gd.locator(".prefs").count()) fail("Vorlieben noch im Dialog Gruppen und Personen");
   await gd.locator(".modal-h .x").click();

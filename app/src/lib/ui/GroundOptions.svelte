@@ -9,7 +9,9 @@
   import { access, app } from "../store.svelte";
   import { eur } from "../calc";
   import { hhKey, isActive } from "../model";
-  import { loadPlz } from "../plz";
+  import { withHome } from "../plz";
+  import type { Home } from "../home";
+  import HomeInput from "./HomeInput.svelte";
   import { hasCoords } from "../geo/maps";
   import { ccOf, findCity } from "../geo/places";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
@@ -49,15 +51,10 @@
 
   // ohne Wohnort kein Vergleich: bei Reisen ohne Flug nach der PLZ fragen
   const askHome = $derived(!home && !!dest && !app.trip.items.some(i => i.cat === "flights" && i.status !== "dropped"));
-  let plzErr = $state(false);
-  async function setPlz(v: string) {
-    plzErr = false;
-    if (!/^\d{5}$/.test(v.trim())) return;
-    const pl = (await loadPlz().catch(() => null))?.get(v.trim());
-    if (!pl) { plzErr = true; return; }
-    app.trip.households ||= {};
-    for (const h of new Set(app.trip.travelers.filter(isActive).map(hhKey))) if (!app.trip.households[h]?.geo) app.trip.households[h] = { ...app.trip.households[h], plz: v.trim(), geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
+  function setHome(h: Home) {
+    app.trip.households = withHome(app.trip.households, app.trip.travelers.filter(isActive).map(hhKey), h);
   }
+
 
   function addCoach() {
     if (!plan?.coach) return;
@@ -69,7 +66,7 @@
 </script>
 
 {#if askHome && !access.readonly}
-  <p class="search-row small gr-askhome">🚆 {t("gr.askHome")} <input class="fs-plz" inputmode="numeric" maxlength="5" placeholder={t("fs.plzPh")} aria-label={t("fs.plzPh")} oninput={e => setPlz(e.currentTarget.value)} />{#if plzErr} <small class="err">{t("fs.plzUnknown")}</small>{/if}</p>
+  <div class="search-row small gr-askhome"><span>🚆 {t("gr.askHome")}</span> <HomeInput cls="gr-home" onpick={setHome} /></div>
 {/if}
 {#if plan}
   <div class="card ground">

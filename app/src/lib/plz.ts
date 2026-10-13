@@ -31,9 +31,9 @@ export function suggest(m: Map<string, Place>, q: string, max = 6): [string, Pla
   return out;
 }
 
-/** Wohnort (PLZ + Koordinaten) für die Haushalte setzen, die noch keinen haben; vorhandene bleiben unberührt */
-export function withHome<H extends { plz?: string; geo?: Place }>(hh: Record<string, H> | undefined, keys: string[], plz: string, pl: Place): Record<string, H> {
+/** Wohnort (PLZ bzw. Ort, Koordinaten, Land; #163) für die Haushalte setzen, die noch keinen haben; vorhandene bleiben unberührt */
+export function withHome<H extends { plz?: string; geo?: Place; cc?: string }>(hh: Record<string, H> | undefined, keys: string[], h: { plz: string; ort: string; lat: number; lon: number; cc?: string }): Record<string, H> {
   const out = { ...hh } as Record<string, H>;
-  for (const k of new Set(keys)) if (!out[k]?.geo) out[k] = { ...out[k], plz, geo: { lat: pl.lat, lon: pl.lon, ort: pl.ort } };
+  for (const k of new Set(keys)) if (!out[k]?.geo) out[k] = { ...out[k], plz: h.plz, geo: { lat: h.lat, lon: h.lon, ort: h.ort }, ...(h.cc && h.cc !== "DE" ? { cc: h.cc } : {}) };
   return out;
 }
