@@ -41,6 +41,10 @@ try {
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
     await new Promise(res => setTimeout(res, body.prompt?.includes("langsam") ? 6500 : 300));
     // Strandurlaub mit Kindern: erst eine Rückfrage, nach der Antwort Vorschläge für die Familie
+    // Vorlieben im Gespräch: nur ein Vorschlag zum Speichern, keine Reisen
+    if (!body.current && body.prompt.split("Jetzt: ").at(-1).includes("einen Hund")) {
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], reply: "Gemerkt, das kann ich für euch speichern.", prefs: { pet: true, bags: false }, context: "prefs", remaining: 1 }) });
+    }
     // offene Reise: Antwort mit Änderungen (eigene Anreise statt Flug)
     if (body.current) {
       const fl = body.current.items.find(i => i.cat === "flights");
@@ -226,6 +230,27 @@ try {
   if (q3.originsKnown === false || !q3.origins.includes("DUS")) fail("Wohnort von „Ich“ nicht genutzt: " + JSON.stringify({ o: q3.origins, k: q3.originsKnown }));
   if (JSON.stringify(q3).includes("Dani") || JSON.stringify(q3).includes("Klein")) fail("Name in der KI-Anfrage");
   log("Vorlieben: Ich = Dani (Mönchengladbach), Türkei gesperrt, 0 Umstiege, Strand → KI-Anfrage mit Vorlieben und Abflug ab DUS, ohne Namen");
+
+  // Kontexte: Chip zeigt „Neue Reise“, festgelegt „Vorlieben“ geht mit; erkannte Vorlieben erst nach „Übernehmen“ gespeichert
+  const chipSel = c3.locator(".ai-ctx select");
+  if (!(await chipSel.locator("option").first().innerText()).includes("Neue Reise")) fail("Kontext-Chip zeigt nicht „Neue Reise“");
+  if (await chipSel.locator("option", { hasText: "Diese Reise" }).count()) fail("„Diese Reise“ ohne offene Reise");
+  await chipSel.selectOption("prefs");
+  await c3.locator(".ai-bar textarea").fill("Wir haben jetzt einen Hund und reisen nur mit Handgepäck");
+  await c3.locator(".ai-bar textarea").press("Enter");
+  const pc = c3.locator(".ai-prefs").last();
+  await pc.waitFor();
+  if (asked.at(-1).body.focus !== "prefs") fail("gewählter Kontext fehlt in der Anfrage");
+  const pt = await pc.innerText();
+  if (!pt.includes("Haustier") || !pt.includes("nur Handgepäck")) fail("Vorschlag zeigt die Vorlieben nicht: " + pt);
+  if ((await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}").prefs?.pet))) fail("Vorlieben vor dem Übernehmen gespeichert");
+  await shot("ai-prefs");
+  await pc.locator(".ai-prefs-apply").click();
+  await pc.locator("small", { hasText: "gespeichert" }).waitFor();
+  const st2 = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}").prefs || {});
+  if (st2.pet !== true || st2.bags !== false || st2.maxStops !== 0 || st2.avoid?.join() !== "TR") fail("Vorlieben nicht richtig übernommen: " + JSON.stringify(st2));
+  await chipSel.selectOption("");
+  log("Kontexte: Chip „Neue Reise“, Vorlieben gewählt → Vorschlag Haustier + Handgepäck, erst nach „Übernehmen“ gespeichert (Rest bleibt)");
 
   // offene Reise: die KI kennt sie (ohne Namen), alle Änderungen eines Auftrags mit einer Rückfrage übernehmen
   await c3.locator(".ai-head .x").click();

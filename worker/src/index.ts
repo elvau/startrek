@@ -344,7 +344,7 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   await quota.bump();
   try {
     const fx = await rates(env);
-    const result = await runAgent(r, { deadline: Date.now() + AGENT_DEADLINE_MS, gemini, flights: q => searchAll(q, { ...env, FX: fx }, budget.fetch).then(real), stays: q => searchStays(q, { ...env, FX: fx }, budget.fetch).then(real), canSearch: budget.canSearch });
+    const result = await runAgent(r, { deadline: Date.now() + AGENT_DEADLINE_MS, gemini, flights: q => searchAll(q, { ...env, FX: fx }, budget.fetch).then(real), stays: q => searchStays(q, { ...env, FX: fx }, budget.fetch).then(real), events: q => cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, budget.fetch, cachedJson), r => r.events.length > 0), canSearch: budget.canSearch });
     // eine Rückfrage zählt nicht gegen das Tageslimit, erst die Suche danach
     if (result.question) { await quota.refund(); return json({ ...result, remaining: Math.max(0, limit - quota.used) }, 200, h); }
     return json({ ...result, remaining: Math.max(0, limit - quota.used - 1) }, 200, h);

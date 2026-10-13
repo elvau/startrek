@@ -13,6 +13,7 @@ import type { AgentEdit, AgentGroupIn, AgentRequest, AgentResult, AgentTrip, Fli
 import { noteError } from "../bugs/log";
 import { campItem, campItems, rentItem } from "../road/stations";
 import { tripDays } from "../ground";
+import { eventItem } from "../activities/app";
 
 /** Wunsch plus Reisende, Abflughäfen und was über die Reise schon feststeht */
 export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: Prefs, withTrip = false): AgentRequest {
@@ -188,6 +189,18 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
   if (a.arrival) { trip.detail.transport = true; trip.items.push({ ...est("transport", a.arrival.label || t("ai.ownArrival"), a.arrival.eur), arrival: true }); }
   if (a.transport) { trip.detail.transport = true; trip.items.push(est("transport", a.transport.label || t("ai.transport"), a.transport.eur)); }
   if (a.extras?.length) { trip.detail.attractions = true; a.extras.forEach(x => trip.items.push(est("attractions", x.name, x.eur))); }
+  // echte Events (Eventsuche): mit Termin, Ort und Ticketpreis ab
+  if (a.events?.length) { trip.detail.attractions = true; a.events.forEach(h => trip.items.push({ ...eventItem(h), ai: { at, kind: "suggested" } })); }
+}
+
+/** Vorschlag der KI in die Vorlieben übernehmen: gesperrte Länder kommen dazu, alles andere ersetzt den bisherigen Wert */
+export function withSuggestion(cur: Prefs | undefined, s: Prefs): Prefs {
+  const out: Prefs = { ...(cur || {}) };
+  for (const k of Object.keys(s) as (keyof Prefs)[]) {
+    if (k === "avoid") out.avoid = [...new Set([...(cur?.avoid || []), ...(s.avoid || [])])];
+    else (out as Record<string, unknown>)[k] = s[k];
+  }
+  return out;
 }
 
 /** Familien des Vorschlags → Familie in der Reise (bekannte über das Kürzel, neue über die Platzhalter) */
@@ -291,6 +304,7 @@ export function applyEdit(trip: Trip, e: AgentEdit) {
     place(it, "suggested", s.replaces);
     if (!trip.to || it.to! > trip.to) trip.to = it.to;
   }
+  for (const h of e.events || []) { trip.detail.attractions = true; place(eventItem(h), "suggested"); }
   for (const x of e.estimates || []) { trip.detail[x.cat] = true; place({ ...estimateItem(x.cat, x.name, x.eur), ...(x.arrival ? { arrival: true } : {}) }, "created", x.replaces); }
   const gone = new Set((e.remove || []).filter(id => !fixed(id)));
   if (gone.size) {
