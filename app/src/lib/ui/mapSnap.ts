@@ -62,16 +62,25 @@ export function mapSnap(v: View, w: number, h: number): Promise<string | null> {
     const box = mp.getContainer();
     box.style.width = `${w}px`; box.style.height = `${h}px`;
     mp.resize();
-    let bad = false;
-    const onErr = () => { bad = true; };
-    mp.on("error", onErr);
-    mp.jumpTo({ center: v.center, zoom: v.zoom });
-    await new Promise<void>(ok => { mp.once("idle", () => ok()); setTimeout(ok, 15000); });
-    mp.off("error", onErr);
-    const url = mp.getCanvas().toDataURL("image/jpeg", 0.82);
-    mem.set(k, url);
-    if (!bad) store(k, url);
-    return url;
+    // Kacheln können fehlen (Anfragen gedrosselt/abgelehnt, Zeitüberschreitung): bis zu 3 Versuche, ein Bild mit Lücken
+    // wird nie gemerkt, sondern verworfen (dann bleibt der ruhige Hintergrund der Karte)
+    for (let i = 0; i < 3; i++) {
+      let bad = false;
+      const onErr = () => { bad = true; };
+      mp.on("error", onErr);
+      // zweiter Versuch von woanders aus, damit die Kacheln wirklich neu angefragt werden
+      mp.jumpTo({ center: i ? [v.center[0] + 0.5, v.center[1]] : v.center, zoom: v.zoom });
+      if (i) await new Promise<void>(ok => { mp.once("idle", () => ok()); setTimeout(ok, 5000); });
+      mp.jumpTo({ center: v.center, zoom: v.zoom });
+      const timedOut = await new Promise<boolean>(ok => { mp.once("idle", () => ok(false)); setTimeout(() => ok(true), 15000); });
+      mp.off("error", onErr);
+      if (bad || timedOut || !mp.areTilesLoaded()) { await new Promise(r => setTimeout(r, 1500 * (i + 1))); continue; }
+      const url = mp.getCanvas().toDataURL("image/jpeg", 0.82);
+      mem.set(k, url);
+      store(k, url);
+      return url;
+    }
+    return null;
   });
   queue = job.catch(() => null);
   return job.catch(() => null);
