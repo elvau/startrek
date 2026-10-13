@@ -42,6 +42,7 @@ export const CF_LIMITS = { workersPerDay: 100_000, r2Bytes: 10 * GB, r2ClassA: 1
 /** Anbieter nach Host; Grenzen nur, wo der kostenlose Tarif eine feste Zahl nennt */
 const PROVIDERS: Record<string, { name: string; limit?: number; per?: Per }> = {
   "generativelanguage.googleapis.com": { name: "Gemini" },
+  "api.anthropic.com": { name: "Claude" },
   "app.ticketmaster.com": { name: "Ticketmaster", limit: 5000, per: "day" },
   "api.football-data.org": { name: "football-data.org", limit: 10, per: "min" },
   "api.github.com": { name: "GitHub (Fehlerberichte)" },
@@ -127,12 +128,13 @@ export function partnerRows(rep: UsageReport | null, list: PartnerEntry[]): Part
   }));
 }
 
-/** Links für das, was der Such-Dienst nicht sieht (Firebase, Gemini-Grenzen) */
+/** Links für das, was der Such-Dienst nicht sieht (Firebase, Kosten bei Claude, Gemini-Grenzen) */
 export function consoleLinks(projectId?: string) {
   const fb = projectId ? `https://console.firebase.google.com/project/${projectId}` : "https://console.firebase.google.com";
   return [
     { label: "adm.m.firestore", href: `${fb}/usage/details` },
     { label: "adm.m.hosting", href: `${fb}/hosting` },
+    { label: "adm.m.claude", href: "https://platform.claude.com/" },
     { label: "adm.m.gemini", href: "https://aistudio.google.com/usage" },
     { label: "adm.m.cf", href: "https://dash.cloudflare.com/?to=/:account/workers-and-pages" },
     { label: "adm.m.visits", href: "https://dash.cloudflare.com/?to=/:account/web-analytics" }

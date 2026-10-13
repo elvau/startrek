@@ -41,6 +41,10 @@ try {
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
     await new Promise(res => setTimeout(res, body.prompt?.includes("langsam") ? 6500 : 300));
     // Strandurlaub mit Kindern: erst eine Rückfrage, nach der Antwort Vorschläge für die Familie
+    // Vorlieben im Gespräch: nur ein Vorschlag zum Speichern, keine Reisen
+    if (!body.current && body.prompt.split("Jetzt: ").at(-1).includes("einen Hund")) {
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], reply: "Gemerkt, das kann ich für euch speichern.", prefs: { pet: true, bags: false }, context: "prefs", remaining: 1 }) });
+    }
     // offene Reise: Antwort mit Änderungen (eigene Anreise statt Flug)
     if (body.current) {
       const fl = body.current.items.find(i => i.cat === "flights");
@@ -87,10 +91,59 @@ try {
   await c.locator(".ai-login").waitFor();
   if (await c.locator(".ai-bar").count()) fail("Eingabe ohne Anmeldung sichtbar");
   await c.locator(".ai-login .btn").click();
+  // AGB: ohne Haken keine Anmeldung; Links zu AGB und Datenschutz
+  if (!(await p.locator('.login-terms a[href$="agb.html"]').count())) fail("Link zu den AGB fehlt im Anmeldefenster");
+  await p.locator(".login .btn.google").click();
+  await p.locator(".login .err", { hasText: "stimme zuerst den AGB zu" }).waitFor();
   await p.locator(".login .test input").fill("Kira");
   await p.locator(".login .test button").click();
   await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
-  log("Chat unten rechts: ohne Anmeldung nur Hinweis, Anmeldung daraus");
+  await until(() => p.evaluate(() => !!JSON.parse(localStorage.getItem("rk2-dir") || "{}").terms?.v), "AGB-Zustimmung im Konto");
+  if (await p.locator(".terms-gate").count()) fail("AGB-Fenster trotz Zustimmung beim Anmelden");
+  if (!(await p.locator('.foot-legal a[href$="agb.html"]').count())) fail("AGB fehlen im Fuß");
+  log("Chat unten rechts: ohne Anmeldung nur Hinweis, Anmeldung daraus; ohne AGB-Haken gesperrt, Zustimmung mit Fassung im Konto");
+  // bestehendes Konto ohne Zustimmung (z. B. vor den AGB angelegt): erst zustimmen, „Zustimmen“ erst mit Haken
+  {
+    const FS = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
+    const H = { Authorization: "Bearer owner", "Content-Type": "application/json" };
+    const users = await (await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/demo-reisekasse/accounts:query", { method: "POST", headers: H, body: "{}" })).json();
+    const kira = (users.userInfo || users.users || []).find(u => u.displayName === "Kira")?.localId;
+    let doc;
+    await until(async () => { doc = await (await fetch(`${FS}/profiles/${kira}`, { headers: H })).json(); return !!doc.fields?.data?.stringValue?.includes("terms"); }, "Zustimmung im Konto gespeichert");
+    const d = JSON.parse(doc.fields.data.stringValue);
+    delete d.terms;
+    await fetch(`${FS}/profiles/${kira}?updateMask.fieldPaths=data`, { method: "PATCH", headers: H, body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify(d) } } }) });
+    const tg = p.locator(".terms-gate");
+    await tg.waitFor({ timeout: 10000 });
+    if (!(await tg.locator(".terms-accept").isDisabled())) fail("Zustimmen ohne Haken möglich");
+    await tg.locator(".check input").check();
+    await tg.locator(".terms-accept").click();
+    await tg.waitFor({ state: "detached" });
+    await until(() => p.evaluate(() => !!JSON.parse(localStorage.getItem("rk2-dir") || "{}").terms?.v), "Zustimmung nach dem Fenster");
+    await until(async () => !!(await (await fetch(`${FS}/profiles/${kira}`, { headers: H })).json()).fields?.data?.stringValue?.includes("terms"), "Zustimmung wieder im Konto");
+    log("Bestehendes Konto ohne AGB-Zustimmung: Fenster „Nutzungsbedingungen“, Zustimmen erst mit Haken, danach gespeichert");
+  }
+
+  // Meine Daten (Auskunft, Art. 15 DSGVO): aus dem Kontomenü, als Seite und als Datei, Drucken über einen Rahmen
+  await c.locator(".ai-head .x").click();
+  await p.locator(".top .acct-btn").click();
+  await p.locator(".acct-data").click();
+  const md = p.locator(".mydata");
+  await md.locator(".mydata-sum").waitFor({ timeout: 15000 });
+  const [dl] = await Promise.all([p.waitForEvent("download"), md.locator(".mydata-json").click()]);
+  const dj = JSON.parse(await (await import("node:fs/promises")).readFile(await dl.path(), "utf8"));
+  if (dj.account?.email !== "kira@test.de" || !dj.profile?.terms?.v || !Array.isArray(dj.trips) || !dj.device?.some(e => e.key === "rk2-dir")) fail("JSON-Auskunft unvollständig: " + JSON.stringify(dj).slice(0, 300));
+  const [rp] = await Promise.all([p.context().waitForEvent("page"), md.locator(".mydata-tab").click()]);
+  await rp.waitForLoadState();
+  const rt = await rp.locator("body").innerText();
+  for (const x of ["Auskunft über deine gespeicherten Daten", "kira@test.de", "AGB zugestimmt", "Auf diesem Gerät gespeichert"]) if (!rt.includes(x)) fail("Auskunft ohne „" + x + "“");
+  if (process.env.SHOTS) await rp.screenshot({ path: `${process.env.SHOTS}/mydata.png`, fullPage: true });
+  await rp.close();
+  await md.locator(".mydata-print").click();
+  await p.locator("iframe.mydata-frame").waitFor({ state: "attached" });
+  await p.keyboard.press("Escape");
+  log("Meine Daten: Auskunft als Seite (Konto, AGB, Gerät), Datei mit Konto, Profil, Reisen und Browser-Einträgen, Drucken über Rahmen");
+  await p.locator(".ai-fab").click();
 
   // Beispiel antippen schickt den Wunsch; Anfrage mit Anmelde-Nachweis und Reisenden
   await c.locator(".ai-ex .chip").first().click();
@@ -226,6 +279,27 @@ try {
   if (q3.originsKnown === false || !q3.origins.includes("DUS")) fail("Wohnort von „Ich“ nicht genutzt: " + JSON.stringify({ o: q3.origins, k: q3.originsKnown }));
   if (JSON.stringify(q3).includes("Dani") || JSON.stringify(q3).includes("Klein")) fail("Name in der KI-Anfrage");
   log("Vorlieben: Ich = Dani (Mönchengladbach), Türkei gesperrt, 0 Umstiege, Strand → KI-Anfrage mit Vorlieben und Abflug ab DUS, ohne Namen");
+
+  // Kontexte: Chip zeigt „Neue Reise“, festgelegt „Vorlieben“ geht mit; erkannte Vorlieben erst nach „Übernehmen“ gespeichert
+  const chipSel = c3.locator(".ai-ctx select");
+  if (!(await chipSel.locator("option").first().innerText()).includes("Neue Reise")) fail("Kontext-Chip zeigt nicht „Neue Reise“");
+  if (await chipSel.locator("option", { hasText: "Diese Reise" }).count()) fail("„Diese Reise“ ohne offene Reise");
+  await chipSel.selectOption("prefs");
+  await c3.locator(".ai-bar textarea").fill("Wir haben jetzt einen Hund und reisen nur mit Handgepäck");
+  await c3.locator(".ai-bar textarea").press("Enter");
+  const pc = c3.locator(".ai-prefs").last();
+  await pc.waitFor();
+  if (asked.at(-1).body.focus !== "prefs") fail("gewählter Kontext fehlt in der Anfrage");
+  const pt = await pc.innerText();
+  if (!pt.includes("Haustier") || !pt.includes("nur Handgepäck")) fail("Vorschlag zeigt die Vorlieben nicht: " + pt);
+  if ((await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}").prefs?.pet))) fail("Vorlieben vor dem Übernehmen gespeichert");
+  await shot("ai-prefs");
+  await pc.locator(".ai-prefs-apply").click();
+  await pc.locator("small", { hasText: "gespeichert" }).waitFor();
+  const st2 = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}").prefs || {});
+  if (st2.pet !== true || st2.bags !== false || st2.maxStops !== 0 || st2.avoid?.join() !== "TR") fail("Vorlieben nicht richtig übernommen: " + JSON.stringify(st2));
+  await chipSel.selectOption("");
+  log("Kontexte: Chip „Neue Reise“, Vorlieben gewählt → Vorschlag Haustier + Handgepäck, erst nach „Übernehmen“ gespeichert (Rest bleibt)");
 
   // offene Reise: die KI kennt sie (ohne Namen), alle Änderungen eines Auftrags mit einer Rückfrage übernehmen
   await c3.locator(".ai-head .x").click();

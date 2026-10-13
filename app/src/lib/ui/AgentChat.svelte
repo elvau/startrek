@@ -1,12 +1,15 @@
 <script lang="ts">
   import { netMessage, isNetworkError } from "../neterror";
   import { arrow, i18n, t, tn, type Key } from "../i18n/index.svelte";
+  import BrokerNote from "./BrokerNote.svelte";
   /*
    * KI-Assistent (Beta) als Chat unten rechts: Wunsch schreiben, nachschärfen („lieber im Juni“, „günstiger“),
    * Vorschläge direkt übernehmen. Frühere Wünsche gehen als Zusammenhang mit, damit Nachfragen funktionieren.
    * Nur für angemeldete Nutzer, begrenzt pro Tag (Such-Dienst).
    * In einer offenen Reise berät die KI dazu: Fragen beantworten, Posten tauschen oder ergänzen. Änderungen eines
    * Auftrags kommen gesammelt und werden mit einer Rückfrage übernommen (oder als KI-Vergleichsreise angelegt).
+   * Kontext (neue Reise, Event, diese Reise, Vorlieben): erkennt die KI selbst, der Chip oben zeigt ihn und lässt
+   * ihn festlegen. Vorlieben, die die KI erkennt, kommen als Vorschlag mit „Übernehmen“.
    */
   import { tick } from "svelte";
   import { app, duplicateTrip, goHome, openTrip, startTrip } from "../store.svelte";
@@ -14,7 +17,8 @@
   import { eur } from "../calc";
   import { dayShort, nights, range, time, dateDE } from "../format";
   import { flyers } from "../flights/app";
-  import { agentRequest, applyEdit, askAgent, groupKeys, hasPlan, previewTrip, takeAgentTrip } from "../agent/app";
+  import { agentRequest, applyEdit, askAgent, groupKeys, hasPlan, previewTrip, takeAgentTrip, withSuggestion } from "../agent/app";
+  import { summary } from "../prefsView";
   import { totals } from "../calc";
   import { syncFood } from "../food";
   import { geo } from "../geo/geo.svelte";
@@ -24,8 +28,8 @@
   import { agentPrefs, myHome, prefsFor } from "../prefs";
   import { agentChat, openChat } from "../agent/open.svelte";
   import { upcomingSchool } from "../holidaysApp.svelte";
-  import { bookingPrice, editCount, flightTotal, type AgentEdit, type AgentTrip } from "../agent/types";
-  import type { Trip } from "../model";
+  import { bookingPrice, CONTEXTS, editCount, flightTotal, type AgentContext, type AgentEdit, type AgentTrip } from "../agent/types";
+  import type { Prefs, Trip } from "../model";
   import AiMark from "./AiMark.svelte";
 
   /** Nachricht; bei einer Rückfrage der KI mit Antworten zum Antippen */
@@ -35,12 +39,30 @@
     edit?: AgentEdit; tripId?: string; state?: "open" | "applied" | "variant" | "undone"; snap?: string;
     /** Vorschläge von der Startseite aus angefragt: Übernehmen legt eine neue Reise an, auch wenn inzwischen eine offen ist */
     home?: boolean;
+    /** Vorschlag für die Vorlieben: offen, gespeichert, verworfen */
+    prefs?: Prefs; pstate?: "open" | "applied" | "dropped";
   }
   const EXAMPLES = ["ai.ex1", "ai.ex2", "ai.ex3"] as const;
   const TRIP_EXAMPLES = ["ai.tx1", "ai.tx2", "ai.tx3"] as const;
   /** KI berät zur offenen Reise (statt neue Reisen zu planen) */
   const onTrip = $derived(!app.home && hasPlan(app.trip));
   let msgs = $state<Msg[]>([]);
+  /** im Chip festgelegter Kontext ("" = die KI erkennt ihn) und der Kontext der letzten Antwort */
+  let focus = $state<AgentContext | "">("");
+  let lastCtx = $state<AgentContext | "">("");
+  const CTX_ICON: Record<AgentContext, string> = { trip: "🧭", event: "🎫", edit: "🧳", prefs: "⚙" };
+  const ctxList = $derived(CONTEXTS.filter(c => c !== "edit" || onTrip));
+  // „Diese Reise“ gibt es nur in einer offenen Reise; beim Wechsel zählt wieder die Erkennung
+  $effect(() => { if (!onTrip && focus === "edit") focus = ""; void onTrip; lastCtx = ""; });
+  const ctx = $derived<AgentContext>(focus || lastCtx || (onTrip ? "edit" : "trip"));
+  /** Länder mit Namen in der Sprache der App (gesperrte Länder im Vorschlag) */
+  function cname(k: string) { try { return new Intl.DisplayNames([i18n.lang], { type: "region" }).of(k) || k; } catch { return k; } }
+  const prefChips = (p: Prefs) => { const l = summary(p, undefined, cname).map(x => x.text); return l.length ? l : [t("ai.prefs.some")]; };
+  function takePrefs(m: Msg) {
+    if (!m.prefs) return;
+    dir.prefs = withSuggestion(dir.prefs, m.prefs);
+    m.pstate = "applied";
+  }
   let input = $state("");
   let busy = $state(false);
   // Wartezeit sichtbar: Minuten und Sekunden seit dem Absenden, nach 90 s ein Hinweis, dass es heute länger dauert
@@ -98,12 +120,16 @@
       const pf = agentPrefs(prefsFor(app.home ? null : b, dir));
       // Schulferien laut Vorlieben als echte Termine (#163); ohne Such-Dienst bzw. Daten bleibt es bei der Region
       const school = pf?.holidays ? await upcomingSchool(pf.holidays, new Date().toISOString().slice(0, 10), i18n.lang) : [];
-      const res = await askAgent({ ...agentRequest(b, prompt, asked, pf, withTrip), ...(school.length ? { schoolHolidays: school } : {}) }, ctrl.signal);
+      const res = await askAgent({ ...agentRequest(b, prompt, asked, pf, withTrip), ...(school.length ? { schoolHolidays: school } : {}), ...(focus ? { focus } : {}) }, ctrl.signal);
       remaining = res.remaining ?? remaining;
-      msgs.push(res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
+      if (res.context) lastCtx = res.context;
+      const m: Msg = res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
         : res.edit ? { me: false, text: res.edit.reply, ...(editCount(res.edit) ? { edit: res.edit, tripId, state: "open" as const } : {}) }
-        : res.trips.length ? { me: false, text: t("ai.here"), trips: res.trips, home } : { me: false, text: t("ai.none") });
-      done(res.question ? "question" : res.edit || res.trips.length ? "done" : "none");
+        : res.trips.length ? { me: false, text: t("ai.here"), trips: res.trips, home }
+        : res.reply || res.prefs ? { me: false, text: res.reply || t("ai.prefs.found") } : { me: false, text: t("ai.none") };
+      if (res.prefs) { m.prefs = res.prefs; m.pstate = "open"; }
+      msgs.push(m);
+      done(res.question ? "question" : res.edit || res.trips.length || res.reply || res.prefs ? "done" : "none");
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       const r = (err as { remaining?: number }).remaining;
@@ -220,6 +246,17 @@
     </header>
 
     {#if onTrip}<p class="ai-trip muted" title={app.trip.name}>🧳 {t("ai.onTrip", { n: app.trip.name })}</p>{/if}
+    {#if cloud.user}
+      <div class="ai-ctx">
+        <label class="ai-ctx-chip" class:fixed={!!focus}>
+          <span aria-hidden="true">{CTX_ICON[ctx]}</span>
+          <select value={focus} onchange={e => (focus = e.currentTarget.value as AgentContext | "")} aria-label={t("ai.ctx.label")}>
+            <option value="">{t(`ai.ctx.${ctx}` as Key)} · {t("ai.ctx.auto")}</option>
+            {#each ctxList as c (c)}<option value={c}>{t(`ai.ctx.${c}` as Key)}</option>{/each}
+          </select>
+        </label>
+      </div>
+    {/if}
     <div class="ai-msgs" bind:this={list}>
       <p class="ai-msg">{onTrip ? t("ai.helloTrip") : t("ai.hello")}</p>
       {#if !cloud.user}
@@ -238,6 +275,18 @@
           {#if m.question && m.options?.length && i === msgs.length - 1 && !busy}
             <div class="chips ai-opts">
               {#each m.options as o (o)}<button class="chip" onclick={() => send(o)}>{o}</button>{/each}
+            </div>
+          {/if}
+          {#if m.prefs}
+            <div class="ai-prefs">
+              <b>⚙ {t("ai.prefs.title")}</b>
+              <div class="chips">{#each prefChips(m.prefs) as c, k (k)}<span class="chip static">{c}</span>{/each}</div>
+              {#if m.pstate === "open"}
+                <button class="btn sm primary ai-prefs-apply" onclick={() => takePrefs(m)}>{t("ai.prefs.apply")}</button>
+                <button class="btn sm" onclick={() => (m.pstate = "dropped")}>{t("ai.prefs.drop")}</button>
+              {:else}
+                <small class="muted">{m.pstate === "applied" ? `✓ ${t("ai.prefs.applied")}` : t("ai.prefs.dropped")}</small>
+              {/if}
             </div>
           {/if}
           {#if m.edit}
@@ -285,6 +334,7 @@
                     {#if pv.rent > 0.5}<li>🚐 {t("camp.rent")}<b>≈ {eur(pv.rent)}</b></li>{/if}{/if}
                   {#if a.stay}<li>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{(a.stay.board || a.board) ? ` · ${t(`board.${a.stay.board || a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
                   {#if a.transport}<li>🚗 {a.transport.label}<b>≈ {eur(a.transport.eur)}</b></li>{/if}
+                  {#if a.events?.length}<li class="ai-events">🎫 {a.events.map(e => `${e.name} · ${dayShort(e.start.slice(0, 10))}${e.start.length > 10 ? ` ${e.start.slice(11, 16)}` : ""}`).join(", ")}</li>{/if}
                   {#if a.extras?.length}<li>🎟 {a.extras.map(x => x.name).join(", ")}<b>≈ {eur(a.extras.reduce((s, x) => s + x.eur, 0))}</b></li>{/if}
                   {#if pv.food > 0.5}<li>🍽 {t("ai.food")}<b>≈ {eur(pv.food)}</b></li>{/if}
                 </ul>
@@ -296,6 +346,7 @@
             {/each}
             {#if m.trips.length > 1}<button class="btn sm ai-all" onclick={() => takeAll(m.trips!)}>＋ {tn("ai.takeAll", m.trips.length)}</button>{/if}
             <small class="muted">{t("ai.refine")}</small>
+            <BrokerNote />
           {/if}
         </div>
       {/each}

@@ -5,6 +5,7 @@
    */
   import { netMessage, showError } from "../neterror";
   import { i18n, t, type Key } from "../i18n/index.svelte";
+  import BrokerNote from "./BrokerNote.svelte";
   import { app, setDetailed } from "../store.svelte";
   import { eur } from "../calc";
   import { dayShort, nights, range } from "../format";
@@ -201,7 +202,7 @@
                   {#if h.price}<span class="xp-price">{t("xp.from", { p: money(h.price.min, h.price.currency) })}</span>{/if}
                 </div>
                 <div class="xp-acts">
-                  {#if h.url}<a class="linkbtn" href={h.url} target="_blank" rel="noopener noreferrer">{h.join ? t("sp.reg") : h.sport ? t("sp.info") : t("xp.tickets")} ↗</a>{/if}
+                  {#if h.url}<ExtLink cls="linkbtn" href={h.url} gate name={h.sourceName}>{h.join ? t("sp.reg") : h.sport ? t("sp.info") : t("xp.tickets")} ↗</ExtLink>{/if}
                   <button class="btn xp-take" class:primary={!taken[h.id]} disabled={taken[h.id]} onclick={() => take(h.id, () => eventItem(h))}>{taken[h.id] ? t("xp.taken") : t("xp.take")}</button>
                 </div>
               </article>
@@ -259,6 +260,7 @@
         {#if sponsoredAny(partnersOf("activity"), aq, partner.on) && !tours?.some(a => a.sponsored)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
       {/if}
       <p class="muted small">{t("xp.hint")}</p>
+      <BrokerNote />
     {/if}
   </div>
 </Modal>

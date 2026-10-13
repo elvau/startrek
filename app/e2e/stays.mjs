@@ -74,11 +74,23 @@ try {
   const clicks = [];
   await p.route("https://flights.test/click", r => { clicks.push(r.request().postData()); return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*" } }); });
   await p.context().route("https://www.booking.com/**", r => r.fulfill({ status: 200, contentType: "text/html", body: "<p>Booking</p>" }));
-  const [tab] = await Promise.all([p.context().waitForEvent("page"), m.locator(".fs-direct a", { hasText: "Booking.com" }).click()]);
+  // erst der Hinweis „kein Reiseveranstalter, Vertrag nur mit dem Anbieter“; gezählt wird erst beim Weitergehen
+  await m.locator(".fs-direct a", { hasText: "Booking.com" }).click();
+  const gate = p.locator(".broker-gate");
+  await gate.waitFor();
+  if (!(await gate.innerText()).includes("kein Reiseveranstalter") || !(await gate.innerText()).includes("nur mit Booking.com")) fail("Hinweis beim Wechsel: " + (await gate.innerText()));
+  await p.waitForTimeout(300);
+  if (clicks.length) fail("vor dem Weitergehen gezählt");
+  await gate.locator("label.check input").check();
+  const [tab] = await Promise.all([p.context().waitForEvent("page"), gate.locator(".broker-go").click()]);
   await tab.close();
   for (let i = 0; i < 20 && !clicks.length; i++) await p.waitForTimeout(100);
   if (clicks[0] !== JSON.stringify({ p: "booking", c: "stay" })) fail("Klickzählung: " + JSON.stringify(clicks));
-  log("Klick auf Booking.com gezählt (nur Partner und Kategorie)");
+  // „nicht mehr anzeigen“: der nächste Klick öffnet direkt
+  const [tab2] = await Promise.all([p.context().waitForEvent("page"), m.locator(".fs-direct a", { hasText: "Booking.com" }).click()]);
+  await tab2.close();
+  if (!(await m.locator(".broker-note", { hasText: "kein Reiseveranstalter" }).count())) fail("Hinweis unter den Ergebnissen fehlt");
+  log("Wechsel zu Booking.com: erst Hinweis (kein Reiseveranstalter, Vertrag nur mit Booking.com), dann gezählt; „nicht mehr anzeigen“ wirkt; Hinweis unter den Ergebnissen");
   const gyg = p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" });
   if (await gyg.count()) fail("Erlebnis-Links ohne Reiseziel");
   // Ausstattung und Bewertung gehen an den Such-Dienst

@@ -359,6 +359,9 @@ export async function moveAllToCloud() {
  * löschen, geteilte Reisen verlassen; auf dem Gerät: alle Einstellungen und Reisen der App (rk…) und der Zwischenspeicher.
  * Angemeldet bleibt man. Danach die Seite neu laden.
  */
+/** Konto wird gerade zurückgesetzt (danach lädt man neu): kein AGB-Fenster, nichts neu anlegen */
+export const resetting = () => wiping;
+
 export async function resetAccount() {
   clearTimeout(timer); timer = undefined;
   wiping = true;

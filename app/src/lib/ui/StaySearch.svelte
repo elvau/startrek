@@ -1,6 +1,8 @@
 <script lang="ts">
   import { netMessage, showError, isNetText } from "../neterror";
   import { autoName, locale, t, tn } from "../i18n/index.svelte";
+  import BrokerNote from "./BrokerNote.svelte";
+  import ExtLink from "./ExtLink.svelte";
   /*
    * Unterkünfte suchen (wie im Artefakt): Zeitraum und Gäste aus der Anwesenheit (Flüge oder eigene Daten),
    * Booking.com und Trivago gleichzeitig, zusammengeführt nach Preis.
@@ -336,7 +338,7 @@
       <div class="fs-acts">
         {#if !taken[o.id] && isCurrent(o)}<span class="pill-n">{t("st.chosen")}</span>
         {:else}<button class="btn primary sm" disabled={taken[o.id]} onclick={() => take(o)}>{taken[o.id] ? `✓ ${t("search.taken")}` : t("search.take")}</button>{/if}
-        {#if o.url}<a class="btn sm" href={o.url} target="_blank" rel="noopener noreferrer">{t("search.atProvider")} ↗</a>{/if}
+        {#if o.url}<ExtLink cls="btn sm" href={o.url} gate name={o.sourceName}>{t("search.atProvider")} ↗</ExtLink>{/if}
         {#if hasCoords(o)}<button type="button" class="btn sm st-onmap" onclick={() => onMap(o)}>🗺 {t("map.onMap")}</button>{/if}
         {#if mapLink(o)}<a class="btn sm st-gmap" href={mapLink(o)} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
         <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
@@ -459,6 +461,7 @@
       {@const pets = petsAlong(trip, who.map(x => x.t.id))}
       {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), ...(pets ? { pets } : {}) }}
       <p class="muted small fs-direct">{t("search.direct")} <PartnerLinks ids={partnersOf("stay")} q={lq} /></p>
+      <BrokerNote />
       {#if pets}<p class="muted small st-pets">🐾 {t("pet.stayHint")}</p>{/if}
     {/if}
   </form>

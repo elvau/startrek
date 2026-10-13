@@ -2,6 +2,7 @@
 import type { FlightOffer } from "../flights/types";
 import type { StayOffer, StayQuery } from "../stays/types";
 import type { CampStop } from "../road/camper";
+import type { EventHit } from "../events/types";
 import { BOARDS, CAT_KEYS, STYLES, type CatKey, type Prefs, type Status } from "../model";
 
 /** Was die App schickt: Wunsch in eigenen Worten und was über die Reisenden bekannt ist */
@@ -34,7 +35,13 @@ export interface AgentRequest {
   blocked?: string[];
   /** Schulferien am Wohnort in den nächsten zwölf Monaten (#163, aus den Vorlieben; nur Termine, keine Region) */
   schoolHolidays?: { from: string; to: string; name: string }[];
+  /** im Chat gewählter Kontext; fehlt: die KI erkennt ihn aus der Nachricht */
+  focus?: AgentContext;
 }
+
+/** Kontext des KI-Assistenten: neue Reise, Reise zu einem Event, Änderungen an der offenen Reise, Vorlieben */
+export const CONTEXTS = ["trip", "event", "edit", "prefs"] as const;
+export type AgentContext = (typeof CONTEXTS)[number];
 
 /** Familie in der Anfrage: Kürzel statt Name, Personen, eigene An- und Abreise */
 export interface AgentGroupIn { key: string; adults: number; childAges: number[]; infants: number; from?: string; to?: string }
@@ -83,11 +90,13 @@ export interface AgentEdit {
   estimates?: { cat: CatKey; name: string; eur: number; replaces?: string; arrival?: boolean }[];
   /** Camper-Reise (#269): neue Stationen (hinten angehängt bzw. statt einer bisherigen) */
   stations?: (CampStop & { replaces?: string })[];
+  /** echte Events aus der Eventsuche, als Erlebnis dazu */
+  events?: EventHit[];
 }
 
 /** Anzahl der Änderungen (0: nur eine Antwort) */
 export const editCount = (e: AgentEdit) =>
-  (e.trip ? Object.keys(e.trip).length : 0) + (e.remove?.length || 0) + (e.flights?.length || 0) + (e.stays?.length || 0) + (e.estimates?.length || 0) + (e.stations?.length || 0);
+  (e.trip ? Object.keys(e.trip).length : 0) + (e.remove?.length || 0) + (e.flights?.length || 0) + (e.stays?.length || 0) + (e.estimates?.length || 0) + (e.stations?.length || 0) + (e.events?.length || 0);
 
 /**
  * Flug für einen Teil der Gruppe oder in kleinen Buchungen: das Angebot gilt für `seats` Plätze (so gesucht),
@@ -135,6 +144,8 @@ export interface AgentTrip {
   transport?: { label: string; eur: number };
   /** Schätzung der KI: Erlebnisse und Events für alle */
   extras?: { name: string; eur: number }[];
+  /** echte Events aus der Eventsuche, um die die Reise geplant ist */
+  events?: EventHit[];
 }
 
 export interface AgentResult {
@@ -144,6 +155,12 @@ export interface AgentResult {
   options?: string[];
   /** Antwort zur offenen Reise (statt Vorschlägen) */
   edit?: AgentEdit;
+  /** kurze Antwort ohne Vorschläge (Frage beantwortet, Vorlieben bestätigt) */
+  reply?: string;
+  /** vorgeschlagene Änderungen an den gespeicherten Vorlieben (übernimmt die App erst nach Bestätigung) */
+  prefs?: Prefs;
+  /** in welchem Kontext die KI gearbeitet hat (Anzeige im Chat) */
+  context?: AgentContext;
   /** verbleibende Anfragen heute */
   remaining?: number;
 }
@@ -181,7 +198,8 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
     ...(current ? { current } : {}),
     prompt, lang, today, origins, adults: adults as number, childAges: childAges as number[], infants: infants as number,
     ...(trip.place || trip.from || trip.to ? { trip } : {}),
-    originsKnown: o.originsKnown !== false, travelersKnown: o.travelersKnown !== false, asked: o.asked === true
+    originsKnown: o.originsKnown !== false, travelersKnown: o.travelersKnown !== false, asked: o.asked === true,
+    ...((CONTEXTS as readonly unknown[]).includes(o.focus) ? { focus: o.focus as AgentContext } : {})
   };
 }
 

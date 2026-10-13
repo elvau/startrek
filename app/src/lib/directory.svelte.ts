@@ -6,6 +6,7 @@ import { uid, type Directory, type Group, type Household, type Person, type Trav
 import { cloud } from "./cloud/cloud.svelte";
 import { configured } from "./cloud/config";
 import { personAge } from "./people";
+import { newerTerms } from "./terms";
 
 const KEY = "rk2-dir";
 
@@ -43,12 +44,12 @@ export function canonDir(json: string): string {
   try { return JSON.stringify(sort(JSON.parse(json))); } catch { return json; }
 }
 
-/** zwei Stände zusammenführen: alles aus beiden, bei gleicher ID gewinnt a; „Ich“ und eigene Vorlieben aus a, sonst b */
+/** zwei Stände zusammenführen: alles aus beiden, bei gleicher ID gewinnt a; „Ich“ und eigene Vorlieben aus a, sonst b; AGB: die neuere Zustimmung */
 export function mergeDir(a: Directory, b: Directory): Directory {
   const people = [...a.people, ...b.people.filter(p => !a.people.some(x => x.id === p.id))];
   const groups = [...a.groups, ...b.groups.filter(g => !a.groups.some(x => x.id === g.id))];
-  const me = a.me ?? b.me, prefs = a.prefs ?? b.prefs, setup = a.setup ?? b.setup;
-  return { people, groups, ...(me ? { me } : {}), ...(prefs ? { prefs } : {}), ...(setup ? { setup } : {}) };
+  const me = a.me ?? b.me, prefs = a.prefs ?? b.prefs, setup = a.setup ?? b.setup, terms = newerTerms(a.terms, b.terms);
+  return { people, groups, ...(me ? { me } : {}), ...(prefs ? { prefs } : {}), ...(setup ? { setup } : {}), ...(terms ? { terms } : {}) };
 }
 
 /** Stand aus dem Konto übernehmen (Personen, Gruppen, „Ich“, eigene Vorlieben) */
@@ -57,6 +58,7 @@ function apply(next: Directory) {
   if (next.me) dir.me = next.me; else delete dir.me;
   if (next.prefs) dir.prefs = next.prefs; else delete dir.prefs;
   if (next.setup) dir.setup = next.setup; else delete dir.setup;
+  if (next.terms) dir.terms = next.terms; else delete dir.terms;
 }
 
 $effect.root(() => {

@@ -6,6 +6,7 @@
   import { admin, checkAdmin } from "../admin/app.svelte";
   import { connect } from "../connector/app.svelte";
   import { restartSetup } from "../setup/app.svelte";
+  import { myData } from "../mydata.svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
   let open = $state(false);
@@ -48,6 +49,7 @@
           <div class="tm-sep"></div>
           <button class="tm-act acct-setup" onclick={() => { open = false; restartSetup(); }}>{t("setup.open")}</button>
           <button class="tm-act acct-mcp" onclick={() => { open = false; connect.open = true; }}>{t("mcp.open")}</button>
+          <button class="tm-act acct-data" onclick={() => { open = false; myData.open = true; }}>{t("acct.myData")}</button>
           {#if admin.is && admin.uid === cloud.user.uid}
             <div class="tm-sep"></div>
             <button class="tm-act acct-usage" onclick={() => { open = false; admin.open = true; }}>{t("adm.open")}</button>
