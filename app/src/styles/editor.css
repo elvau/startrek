@@ -582,11 +582,11 @@ html:has(.modal-bg){overflow:hidden}
 
 /* Startseite */
 .start{position:relative;z-index:1;min-height:100svh;padding:72px 16px 48px;color:#0E2438}
-.home-in{max-width:960px;margin:0 auto;padding-top:clamp(40px,12vh,120px);text-align:center}
+.start>.home-in{max-width:960px;margin:0 auto;padding-top:clamp(40px,12vh,120px);text-align:center}
 .home-title{font:800 clamp(40px,8vw,88px)/1 "Bricolage Grotesque Variable",sans-serif;margin:0 0 14px}
 .home-lead{font-size:17px;font-weight:500;opacity:.8;margin:0 auto 30px;max-width:560px}
 /* mit eigenen Reisen: Begrüßung kleiner, damit die Reisen weiter oben stehen */
-.start.has-trips .home-in{padding-top:clamp(16px,5vh,48px)}
+.start.has-trips>.home-in{padding-top:clamp(16px,5vh,48px)}
 .start.has-trips .home-title{font-size:clamp(32px,5vw,52px);margin-bottom:18px}
 .start.has-trips .home-lead{display:none}
 .home-cont{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 14px;text-align:start;border:1px solid var(--glass-line);background:rgba(255,255,255,.72);backdrop-filter:blur(10px);border-radius:22px;padding:16px 22px;color:var(--ink);box-shadow:0 20px 50px -24px rgba(14,36,56,.45);transition:transform .15s}
@@ -1047,3 +1047,7 @@ html:has(.modal-bg){overflow:hidden}
 }
 .dr-wd-m{display:none}
 @media (min-width:641px){.dr-sheet>.dr-wd{display:none}.dr-wd-m{display:grid;border:0}}
+/* Flugsuche: Abschnitte mit Symbol statt Erklärsätzen (#356) */
+.fs-when{display:flex;flex-direction:column;gap:8px}
+.fs-facts{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0;color:var(--ink-2)}
+.fs-reset{align-self:center}

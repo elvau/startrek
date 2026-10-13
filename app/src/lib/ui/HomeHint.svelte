@@ -7,7 +7,7 @@
   import { resolveHome, type Home } from "../home";
   import HomeInput from "./HomeInput.svelte";
 
-  let { setHome, saved, guessed = false }: { setHome: (h: Home) => unknown; saved?: { plz: string; cc?: string }; guessed?: boolean } = $props();
+  let { setHome, saved }: { setHome: (h: Home) => unknown; saved?: { plz: string; cc?: string } } = $props();
   const g = $derived(homeGuess(4));
   const text = $derived(g?.how === "ip" ? (g.city ? t("fs.homeIp", { city: g.city }) : t("fs.homeIpNear"))
     : g?.how === "country" && g.cc ? t("fs.homeCountry", { country: countryName(g.cc) }) : t("fs.homeDefault"));
@@ -20,9 +20,9 @@
 </script>
 
 <div class="fs-home fs-nohome">
-  <p class="fs-home-t"><span aria-hidden="true">📍</span> {text}{#if guessed} <span class="fs-home-pick">{t("fs.homePick")}</span>{/if}</p>
+  <p class="fs-home-t"><span aria-hidden="true">📍</span> {text}</p>
   <div class="fs-home-row">
-    <HomeInput cls="f fs-homein" label={t("fs.homePlz")} value={{ cc: g?.cc && g.cc.length === 2 ? g.cc : undefined }} onpick={setHome} />
+    <HomeInput cls="f fs-homein" value={{ cc: g?.cc && g.cc.length === 2 ? g.cc : undefined }} onpick={setHome} />
     {#if saved}<button type="button" class="btn sm fs-useplz" onclick={useSaved}>{t("fs.usePlz")}</button>{/if}
   </div>
 </div>
