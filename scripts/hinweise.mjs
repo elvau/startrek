@@ -95,7 +95,7 @@ const RE = {
   // Satz über gleichgeschlechtliche Handlungen, nicht über Diskriminierung und nicht verneint
   acts: /same[- ]sex|homosexual|between men|sexual (acts|activity|relations)/i,
   notIllegal: /\bnot\b|\bno longer\b|discriminat|decriminali[sz]|marriage|civil union|adoption|partnership/i,
-  restrict: /propaganda|extremis|cross-?dress|impersonat|gender expression|disguis|non-traditional|debauchery|public decency|indecency/i,
+  restrict: /propaganda|extremis|cross-?dress|impersonat|gender expression|disguis|non-traditional|debauchery/i,
   womenDress: /\b(wom[ae]n|female|females|headscarf|hijab|abaya|chador)\b/i,
   dressRule: /\b(should|must|expected|cover|covered|avoid|required|offen[cs]e|forbidden|not allowed)\b/i,
   guardian: /male guardian|guardian’?s? permission|husband’?s? permission|permission (from|of) (her|your) husband|exit permit from your husband|without a male (relative|companion|guardian)|accompanied by a male|accompanied by (their|her) husband|mahram/i,
@@ -130,7 +130,7 @@ for (const k of kids) {
   }
   // von Hand geprüft: FCDO-Text betrifft ein anderes Gebiet
   if (cc in OVERRIDE) { ev.push(`LGBT: von Hand ${OVERRIDE[cc]} statt ${lv}`); lv = OVERRIDE[cc]; }
-  else if (RE.restrict.test(lgCore)) lv = "restrict";
+  else if (!lv && RE.restrict.test(lgCore)) lv = "restrict";
   if (crime.has(cc) && lv !== "crime" && lv !== "death") ev.push("LGBT: Mignot strafbar");
   if (lv) { lgbt[cc] = lv; ev.push(...pick(lgCore, lv === "death" ? RE.death : lv === "restrict" ? RE.restrict : RE.illegal, 1).map(s => `LGBT ${lv}: ${s}`)); }
   // Frauen
