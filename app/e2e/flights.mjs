@@ -104,14 +104,14 @@ try {
   await p.goto(URL);
   await p.locator(".start .home-new").click();
   await p.locator(".modal .newtrip .btn.primary").click();
-  // Kopf der neuen Reise: vier Kacheln als Einstieg; „Zu den Flügen“ öffnet die Suche im Kapitel
+  // Kopf der neuen Reise: vier Kacheln als Einstieg; „Flüge“ öffnet die Suche im Kapitel
   const tiles = (await p.locator(".hero .ht-tile b").allInnerTexts()).join("|");
-  if (tiles !== "Zu den Flügen|Zu den Hotels|Events & Aktivitäten|Sonstige Kosten") fail("Kacheln im Kopf: " + tiles);
+  if (tiles !== "Flüge ›|Unterkünfte ›|Erlebnisse ›|Sonstige Kosten ›") fail("Kacheln im Kopf: " + tiles);
   await p.locator(".hero .ht-fl").click();
   await p.locator(".modal-bg .modal").waitFor();
   await p.locator(".modal-bg .modal .x").click();
   await p.locator(".modal-bg .modal").waitFor({ state: "detached" });
-  log("Kopf: Zu den Flügen, Zu den Hotels, Events & Aktivitäten, Sonstige Kosten; Flüge öffnet die Suche");
+  log("Kopf: Flüge, Unterkünfte, Erlebnisse, Sonstige Kosten (Symbol und ein Wort); Flüge öffnet die Suche");
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   const m = p.locator(".modal");
