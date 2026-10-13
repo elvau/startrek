@@ -63,6 +63,8 @@ try {
   }, TRIPS);
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(e.message));
+  // Karten (#304): MapLibre-Worker muss laden, sonst bleiben die Kacheln weg (nur Hintergrund)
+  p.on("console", m => { if (m.text().includes("Worker failed to load")) errors.push("Karte: " + m.text()); });
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   const asked = { flights: [], stays: [] };

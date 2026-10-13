@@ -11,6 +11,7 @@
   import { onDestroy, onMount, untrack } from "svelte";
   import { t } from "../i18n/index.svelte";
   import type { Map as MlMap, Marker } from "maplibre-gl";
+  import { loadMapLibre } from "./maplibre";
   import { nextFailed } from "./mapFail";
 
   let { points, selected = null, onselect, onbounds }: {
@@ -31,7 +32,7 @@
 
   async function init() {
     try {
-      const [m] = await Promise.all([import("maplibre-gl"), import("maplibre-gl/dist/maplibre-gl.css")]);
+      const [m] = await Promise.all([loadMapLibre(), import("maplibre-gl/dist/maplibre-gl.css")]);
       lib = m;
       if (!box) return;
       map = new m.Map({ container: box, style: STYLE, center: [0, 30], zoom: 1.5, attributionControl: { compact: true }, cooperativeGestures: true });
