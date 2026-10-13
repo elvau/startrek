@@ -1,0 +1,27 @@
+name: Ferien-Regionen erzeugen
+# Regionen für Schulferien je Land aus der OpenHolidays API (scripts/regions.mjs, #163). Ergebnis auf dem Hilfs-Branch
+# „daten/regions“ (nur app/public/regions.json): prüfen und von dort übernehmen. Läuft von Hand und bei Änderungen am Skript.
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main, pre-release]
+    paths: [scripts/regions.mjs, .github/workflows/regions.yml]
+permissions:
+  contents: write
+jobs:
+  regions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/regions.mjs --probe
+      - name: Auf daten/regions ablegen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B daten/regions
+          git add app/public/regions.json
+          git commit -qm "Ferien-Regionen aus OpenHolidays (scripts/regions.mjs)"
+          git push -qf origin daten/regions
