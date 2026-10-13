@@ -766,7 +766,6 @@
             <div class="fs-acts">
               <button class="btn primary sm" disabled={taken[o.id + o.origin]} onclick={() => take(o)}>{taken[o.id + o.origin] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
               {#if o.url}<ExtLink cls="btn sm" href={o.url} sponsored={o.sponsored} inside track={[o.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}
-              <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
             </div>
           </article>
         {:else}
