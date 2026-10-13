@@ -3,6 +3,7 @@
  * bleibt im Speicher und (klein, als JPEG) im Browser. Mehrere Bilder nacheinander mit derselben Karte.
  */
 import type { Map as MlMap } from "maplibre-gl";
+import { loadMapLibre } from "./maplibre";
 
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const KEY = "rk2-mapsnap:";
@@ -29,7 +30,7 @@ function store(k: string, url: string) {
 function getMap(): Promise<MlMap | null> {
   return (map ??= (async () => {
     try {
-      const m = await import("maplibre-gl");
+      const m = await loadMapLibre();
       const box = document.createElement("div");
       box.setAttribute("aria-hidden", "true");
       box.style.cssText = "position:fixed;left:-10000px;top:0;width:300px;height:150px;pointer-events:none;";

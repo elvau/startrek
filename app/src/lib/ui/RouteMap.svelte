@@ -6,6 +6,7 @@
   import { onDestroy, onMount } from "svelte";
   import { arrow, t, tn } from "../i18n/index.svelte";
   import type { Map as MlMap, Marker } from "maplibre-gl";
+  import { loadMapLibre } from "./maplibre";
   import { arc, focus, type Route, type RSeg } from "../route";
   import type { Day } from "../itinerary";
   import { kmBetween } from "../geo/places";
@@ -39,7 +40,7 @@
 
   async function init() {
     try {
-      const [m] = await Promise.all([import("maplibre-gl"), import("maplibre-gl/dist/maplibre-gl.css")]);
+      const [m] = await Promise.all([loadMapLibre(), import("maplibre-gl/dist/maplibre-gl.css")]);
       lib = m;
       if (!box) return;
       map = new m.Map({ container: box, style: STYLE, center: [10, 45], zoom: 3, attributionControl: { compact: true }, cooperativeGestures: true,
