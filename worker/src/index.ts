@@ -25,7 +25,8 @@ import { HOLIDAY_CC, fetchHolidays } from "./holidays";
 import { CA_LIST, parseCanada, parseUkCountry, parseUkIndex, parseUsa, UK_LIST, ukCountry, US_LIST, type GovAdvice, type GovMap } from "../../app/src/lib/govadvice";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
 import { agentBudget } from "./budget";
-import { geminiCaller, isOverloaded } from "./gemini";
+import { isOverloaded } from "./gemini";
+import { kiCaller, kiModels, kiReady, type KiEnv } from "./ki";
 import { isAdmin, meter, noteClick, noteRoute, usageReport, type UsageEnv } from "./usage";
 import { checkLimit, IP_LIMITS, ipKey, searchWindows, type LimitEnv } from "./ratelimit";
 import { issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
@@ -35,16 +36,11 @@ import pkg from "../../app/package.json";
 import { partnerOn } from "../../app/src/lib/partner";
 import { parseRouteQuery, routeOrs, type RoadResult } from "../../app/src/lib/road/ors";
 
-interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv {
+interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv, KiEnv {
   /** KI-Konnektor: Suchen pro Schlüssel und Tag (Standard 50) */
   MCP_DAILY?: string;
   /** erlaubte Herkünfte, kommagetrennt */
   ALLOWED_ORIGINS?: string;
-  /** KI-Reiseplaner: Schlüssel aus Google AI Studio (Secret); fehlt er, ist der Planer aus */
-  GEMINI_API_KEY?: string;
-  GEMINI_MODEL?: string;
-  /** optional: springt ein, wenn GEMINI_MODEL überlastet ist */
-  GEMINI_FALLBACK_MODEL?: string;
   /** optional: Tagesgrenze des Gemini-Modells laut AI Studio, nur für die Admin-Ansicht */
   GEMINI_RPD?: string;
   /** Anfragen pro Nutzer und Tag (Standard 5) */
@@ -299,10 +295,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
   }
 }
 
-/* ---------- KI-Reiseplaner (Gemini) ---------- */
-
-// ältere Modelle (gemini-2.5-flash) gibt Google neuen Konten nicht mehr; mit GEMINI_MODEL überschreibbar
-const DEFAULT_MODEL = "gemini-3.8-flash";
+/* ---------- KI-Reiseplaner (Claude, sonst Gemini) ---------- */
 
 /** so lange darf der KI-Planer rechnen, dann schlägt er das bisher Gefundene vor */
 const AGENT_DEADLINE_MS = 80_000;
@@ -324,7 +317,7 @@ async function countToday(env: Env, uid: string, kind = "agent"): Promise<{ used
 }
 
 async function agent(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
-  if (!env.GEMINI_API_KEY) return json({ error: "Der KI-Planer ist noch nicht eingerichtet" }, 503, h);
+  if (!kiReady(env)) return json({ error: "Der KI-Planer ist noch nicht eingerichtet" }, 503, h);
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Bitte anmelden, um den KI-Planer zu nutzen" }, 401, h);
   let uid: string;
@@ -340,13 +333,13 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   const quota = await countToday(env, uid);
   if (quota.used >= limit) return json({ error: `Tageslimit erreicht (${limit} Anfragen). Morgen geht es weiter.`, remaining: 0 }, 429, h);
 
-  const model = env.GEMINI_MODEL || DEFAULT_MODEL;
+  const model = kiModels(env).join(" → ");
   // Cloudflare (kostenloser Tarif): höchstens 50 ausgehende Anfragen pro Aufruf. Eine Flugsuche braucht bis zu 9
-  // (Kiwi 3, Travelpayouts je Flughafenpaar 1), eine Unterkunftssuche 3; für Gemini bleiben immer RESERVE frei.
+  // (Kiwi 3, Travelpayouts je Flughafenpaar 1), eine Unterkunftssuche 3; für die KI bleiben immer RESERVE frei.
   const net = meter(env);
   const budget = agentBudget(48, 8, 9, net);
-  // überlastet: kurz warten und wiederholen, dann das Ausweichmodell
-  const gemini = geminiCaller({ key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], f: net, onCall: () => { budget.used++; } });
+  // überlastet: kurz warten und wiederholen, dann der andere Anbieter bzw. das Ausweichmodell
+  const gemini = kiCaller(env, { f: net, onCall: () => { budget.used++; } });
   // gleich zählen, nicht erst nach dem Lauf: sonst kämen viele gleichzeitige Anfragen alle durch
   await quota.bump();
   try {
@@ -358,7 +351,7 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
   } catch (e) {
     // in den Workers-Logs sichtbar (Observability), die App zeigt nur eine übersetzte Meldung
     console.log(JSON.stringify({ at: "agent", model, error: (e as Error).message }));
-    // Fehler auf unserer Seite oder bei Gemini zählen nicht gegen das Tageslimit
+    // Fehler auf unserer Seite oder bei der KI zählen nicht gegen das Tageslimit
     await quota.refund().catch(() => {});
     const msg = (e as Error).message;
     // Anbieter überlastet (nach Wiederholung und Ausweichmodell): 503 statt 502, die App zeigt eine eigene Meldung
@@ -369,7 +362,7 @@ async function agent(req: Request, env: Env, h: Record<string, string>): Promise
 
 /** Konto einrichten (#160): freier Text → Felder; zählt als eine Anfrage im Tageskontingent des KI-Planers */
 async function setup(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
-  if (!env.GEMINI_API_KEY) return json({ error: "Der KI-Planer ist noch nicht eingerichtet" }, 503, h);
+  if (!kiReady(env)) return json({ error: "Der KI-Planer ist noch nicht eingerichtet" }, 503, h);
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "Bitte anmelden, um den KI-Planer zu nutzen" }, 401, h);
   let uid: string;
@@ -381,9 +374,9 @@ async function setup(req: Request, env: Env, h: Record<string, string>): Promise
   const quota = await countToday(env, uid);
   if (quota.used >= limit) return json({ error: `Tageslimit erreicht (${limit} Anfragen). Morgen geht es weiter.`, remaining: 0 }, 429, h);
   await quota.bump();
-  const model = env.GEMINI_MODEL || DEFAULT_MODEL;
+  const model = kiModels(env).join(" → ");
   try {
-    const res = await geminiCaller({ key: env.GEMINI_API_KEY!, models: [model, env.GEMINI_FALLBACK_MODEL || ""], f: meter(env) })(setupPayload(r.text));
+    const res = await kiCaller(env, { f: meter(env) })(setupPayload(r.text));
     return json({ fields: setupFromGemini(res), remaining: Math.max(0, limit - quota.used - 1) }, 200, h);
   } catch (e) {
     console.log(JSON.stringify({ at: "setup", model, error: (e as Error).message }));
@@ -473,8 +466,8 @@ async function admin(req: Request, env: Env, h: Record<string, string>): Promise
   // Stellschrauben, ohne Schlüssel: nur ob sie gesetzt sind
   const config = {
     agentDaily: Number(env.AGENT_DAILY) || 5, bugDaily: Number(env.BUG_DAILY) || 5,
-    model: env.GEMINI_MODEL || DEFAULT_MODEL, fallback: env.GEMINI_FALLBACK_MODEL || "", geminiPerDay: Number(env.GEMINI_RPD) || 0,
-    gemini: !!env.GEMINI_API_KEY, travelpayouts: !!env.TRAVELPAYOUTS_TOKEN, ticketmaster: !!env.TICKETMASTER_KEY, viator: !!env.VIATOR_API_KEY,
+    model: kiModels(env)[0] || "", fallback: kiModels(env).slice(1).join(" → "), geminiPerDay: Number(env.GEMINI_RPD) || 0,
+    gemini: !!env.GEMINI_API_KEY, claude: !!env.ANTHROPIC_API_KEY, travelpayouts: !!env.TRAVELPAYOUTS_TOKEN, ticketmaster: !!env.TICKETMASTER_KEY, viator: !!env.VIATOR_API_KEY,
     footballData: !!env.FOOTBALL_DATA_KEY, mcp: !!env.MCP_KEY_SECRET, partnerLinks: partnerOn(env), mcpTrips: !!tripStore(env), mcpDaily: Number(env.MCP_DAILY) || 50, bugs: !!(env.GITHUB_TOKEN && env.BUG_REPO), bugImages: !!env.BUG_BUCKET, kv: !!env.AGENT_KV
   };
   return json(await usageReport(env, config), 200, { ...h, "cache-control": "no-store" });

@@ -1,7 +1,7 @@
-# KI-Planer (Beta, Google Gemini)
+# KI-Planer (Beta, Claude von Anthropic, ersatzweise Google Gemini)
 
 Man beschreibt die Wunschreise in eigenen Worten („4 Freunde, Anfang Mai, 3 Nächte am Meer, max. 500 € p. P.“).
-Gemini sucht über unsere Flug- und Unterkunftssuche und schlägt 2–3 Reisen vor, die man mit „Übernehmen“ in die Reise holt.
+Die KI sucht über unsere Flug- und Unterkunftssuche und schlägt 2–3 Reisen vor, die man mit „Übernehmen“ in die Reise holt.
 
 ## Ablauf
 
@@ -64,11 +64,31 @@ Fragen beantworten („Was fehlt noch?“) oder Änderungen vorschlagen („gün
   Posten, an derselben Stelle). Auf der Karte als Leiste „&✈KI Von der KI …“, Reisen auf der Startseite mit &✈KI.
 - Marke: `ui/AiMark.svelte`, Kurzwort je Sprache in `ai.brand` (KI, AI, IA, ИИ).
 
+## Anbieter
+
+Planer und Kontoeinrichtung bauen ihre Anfragen im Format von Gemini. `worker/src/ki.ts` wählt den Anbieter:
+**Claude** (`worker/src/claude.ts`, Standard `claude-haiku-5-5`), wenn `ANTHROPIC_API_KEY` gesetzt ist, sonst Gemini.
+Mit beiden Schlüsseln springt Gemini ein, wenn Claude beim ersten Aufruf einer Anfrage überlastet ist, nicht rechtzeitig
+antwortet oder einen Serverfehler meldet; danach bleibt die Anfrage beim Anbieter, der geantwortet hat.
+`claude.ts` übersetzt Anfrage und Antwort (Schema, Werkzeugaufrufe, Ergebnisse) und schickt die Denkblöcke von Claude
+unverändert zurück; der Verlauf wird nur angehängt. Ohne SDK, weil Cloudflare den Dienst ohne Installationsschritt baut.
+Kosten mit Haiku: grob unter 1 Cent je Planung (0,10 $ / 0,50 $ je Mio. Token Ein-/Ausgabe, Verlauf im Zwischenspeicher).
+
 ## Einrichten
 
+**Claude (Hauptanbieter):**
+1. Konto unter [platform.claude.com](https://platform.claude.com) anlegen (mit der E-Mail des Gewerbes), Organisation
+   „Split&Fly“ benennen, unter *Billing* Zahlungsmittel hinterlegen und Guthaben aufladen (z. B. 10 $). Optional unter
+   *Limits* ein Monatslimit setzen (z. B. 20 $) und eine E-Mail-Warnung.
+2. *API keys* → *Create key*, Name „startrek-worker“, Schlüssel kopieren (er wird nur einmal angezeigt).
+3. **Cloudflare:** Workers & Pages → **startrek** → Settings → Variables and Secrets → Add → Typ **Secret**,
+   Name `ANTHROPIC_API_KEY`, Wert = Schlüssel. Wirkt sofort, ohne Release.
+4. Optional als Variablen (Typ Text): `CLAUDE_MODEL` (Standard `claude-haiku-5-5`), `CLAUDE_EFFORT` (Denktiefe
+   `low`, `medium` = Standard, `high`).
+
+**Gemini (Ersatz):**
 1. **Schlüssel:** [aistudio.google.com](https://aistudio.google.com) → *Get API key* → *Create API key* (Projekt wählen).
-2. **Cloudflare:** Workers & Pages → **startrek** → Settings → Variables and Secrets → Add → Typ **Secret**,
-   Name `GEMINI_API_KEY`, Wert = Schlüssel. Ohne Schlüssel meldet der Planer „noch nicht eingerichtet“.
+2. **Cloudflare:** wie oben, Name `GEMINI_API_KEY`. Ohne beide Schlüssel meldet der Planer „noch nicht eingerichtet“.
 3. Optional als Variablen (Typ Text):
    - `GEMINI_MODEL` – Modell, Standard `gemini-3.8-flash` (bei Google nachsehen, welche Modelle aktuell sind; ältere wie `gemini-2.5-flash` gibt es für neue Konten nicht mehr)
    - `GEMINI_FALLBACK_MODEL` – optional: Ausweichmodell, falls das erste überlastet ist (Google meldet 503). Vorher wird nach 1 und 3 Sekunden wiederholt. Ohne diese Variable sucht sich der Such-Dienst selbst ein anderes Flash-Modell aus der Liste, die Google für den Schlüssel anbietet; weitere Runden derselben Anfrage bleiben beim Modell, das geantwortet hat.
@@ -78,13 +98,16 @@ Fragen beantworten („Was fehlt noch?“) oder Änderungen vorschlagen („gün
 
 ## Datenschutz und Kosten
 
-- Der kostenlose Tarif der Gemini-API hat Mengengrenzen, und Google darf die Eingaben dort zur Verbesserung nutzen.
-  Für den echten Betrieb den kostenpflichtigen Tarif nehmen und `public/datenschutz.html` (Abschnitt 7) anpassen.
+- Anthropic nutzt Eingaben über die API nicht zum Training; Abrechnung nach Verbrauch, Kosten in der Claude Console
+  (Admin-Ansicht verlinkt sie).
+- Der kostenlose Tarif der Gemini-API (Ersatz) hat Mengengrenzen, und Google darf die Eingaben dort zur Verbesserung
+  nutzen; steht so in `public/datenschutz.html` (Abschnitt 7).
 - Nur angemeldete Nutzer mit bestätigter E-Mail (Google, Anmelde-Link; `requireVerified`), Tageslimit pro Nutzer (gezählt vor dem Lauf, zurück bei Fehler oder Rückfrage), dazu je IP
   höchstens 15 pro Stunde und 40 pro Tag (`worker/src/ratelimit.ts`, `IP_LIMITS`). Nach 80 s schlägt der Planer das
-  bisher Gefundene vor; Gemini-Aufrufe brechen nach 40 s ab und gehen ans nächste Modell. Bezahlung (Premium) folgt später.
+  bisher Gefundene vor; KI-Aufrufe brechen nach 40 s ab und gehen an den nächsten Anbieter bzw. das nächste Modell. Bezahlung (Premium) folgt später.
 
 ## Tests
 
+- `worker/src/claude.test.ts`: Übersetzung für Claude, Denkblöcke im Verlauf, Wiederholung, Anbieterwechsel
 - `app/src/lib/agent/*.test.ts`: Ablauf mit nachgestelltem Gemini, Grenzen, Anmeldeprüfung mit eigenen Schlüsseln
 - `app/e2e/agent.mjs`: Anmeldung, Anfrage, Vorschlag übernehmen, offene Reise ändern, Rückgängig, KI-Vergleichsreise (Such-Dienst nachgestellt)

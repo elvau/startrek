@@ -26,7 +26,7 @@
   <li>Für Flug- und Unterkunftssuchen gehen nur <strong>Orte, Daten und die Anzahl der Personen</strong> an die
     Anbieter, keine Namen und keine E-Mail-Adressen.</li>
   <li>Buchungsdaten (Ausweis, Reisepass) sind freiwillig, liegen nur in eurem Konto und gehen nirgendwo sonst hin.</li>
-  <li>Den KI-Planer (Beta) gibt es nur mit Konto; euer Reisewunsch geht dafür an Google Gemini.</li>
+  <li>Den KI-Planer (Beta) gibt es nur mit Konto; euer Reisewunsch geht dafür an Anthropic (Claude), ersatzweise an Google Gemini.</li>
   <li>Die Karten (Unterkunftssuche, „Karte der Reise“) laden Kartenbilder von OpenFreeMap, erst wenn ihr sie öffnet; die kleinen Routenbilder (Startseite, Tagesplan) laden einen Kartenausschnitt, sobald eine Reise eine Route hat.</li>
   <li>Fehlermeldungen (Beta) landen in einem nicht öffentlichen Projekt bei GitHub, Bilder werden nach 30 Tagen gelöscht.</li>
   <li>Es gibt keine Werbe-Tracker und keine Cookies von mir. Besucherzahlen zähle ich cookielos und ohne Profil mit Cloudflare Web Analytics. Schriften kommen von dieser Seite.</li>
@@ -200,16 +200,18 @@
   (media-cdn.tripadvisor.com).
 </p>
 
-<h2>7. KI-Planer (Google Gemini, Beta)</h2>
+<h2>7. KI-Planer (Anthropic Claude und Google Gemini, Beta)</h2>
 <p>
   Nutzt ihr den KI-Planer, schickt die App euren Reisewunsch (den Text, den ihr eingebt), die Anzahl und das Alter
   der Reisenden, die Flughäfen in der Nähe eures Wohnorts, eure Vorlieben (ohne Namen, siehe Abschnitt 5; bei Schulferien
   die Termine der nächsten zwölf Monate) sowie – falls
   schon eingetragen – Ziel, Reisedaten und die Tage, an denen jemand nicht kann (nur die Daten, ohne Namen)
   an meinen Such-Dienst. Dieser prüft eure Anmeldung, zählt die Anfragen pro Tag (Nutzerkennung und Datum, nach
-  zwei Tagen gelöscht) und gibt Wunsch und Suchergebnisse an Google Gemini weiter
-  (Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland). Namen, E-Mail-Adressen oder eure
-  IP-Adresse erhält Google dabei nicht. Schreibt bitte keine persönlichen Daten in den Reisewunsch.
+  zwei Tagen gelöscht) und gibt Wunsch und Suchergebnisse an die KI Claude von Anthropic weiter
+  (Anthropic PBC, 548 Market Street, San Francisco, CA 94104, USA). Antwortet Claude nicht (z. B. weil der Dienst
+  überlastet ist), springt für diese Anfrage Google Gemini ein (Google Ireland Limited, Gordon House, Barrow Street,
+  Dublin 4, Irland). Namen, E-Mail-Adressen oder eure IP-Adresse erhalten Anthropic und Google dabei nicht. Schreibt
+  bitte keine persönlichen Daten in den Reisewunsch.
 </p>
 <p>
   Fragt ihr den KI-Assistenten in einer offenen Reise, geht zusätzlich eine Kurzfassung dieser Reise mit: Ziel,
@@ -219,7 +221,13 @@
   der KI übernimmt die App erst, wenn ihr sie bestätigt.
 </p>
 <p>
-  <strong>Wichtig:</strong> In der Beta nutze ich den kostenlosen Tarif der Gemini-API. Google darf die übermittelten
+  Anthropic verwendet Eingaben über seine Schnittstelle (API) nach seinen kommerziellen Bedingungen nicht zum Training
+  seiner Modelle und speichert sie nur befristet (in der Regel bis zu 30 Tage, etwa zur Erkennung von Missbrauch).
+  Die Übermittlung in die USA stützt sich auf die Datenverarbeitungsvereinbarung von Anthropic mit
+  Standardvertragsklauseln.
+</p>
+<p>
+  <strong>Wichtig zu Gemini:</strong> Für den Ersatzfall nutze ich in der Beta den kostenlosen Tarif der Gemini-API. Google darf die übermittelten
   Inhalte (Reisewunsch und Suchergebnisse) nach den
   <a href="https://ai.google.dev/gemini-api/terms" rel="noopener noreferrer">Nutzungsbedingungen der Gemini-API</a>
   zur Bereitstellung und Verbesserung seiner Dienste verwenden; dabei können auch Menschen bei Google sie lesen.
@@ -228,7 +236,7 @@
 </p>
 <p>
   <strong>Konto einrichten mit KI:</strong> Beim Einrichten des Kontos könnt ihr in einem kurzen Text erzählen, wie ihr
-  reist. Nur dieser Text geht über meinen Such-Dienst an Google Gemini (zählt als eine Anfrage im Tageskontingent);
+  reist. Nur dieser Text geht über meinen Such-Dienst an die KI (Anthropic Claude, ersatzweise Google Gemini; zählt als eine Anfrage im Tageskontingent);
   zurück kommen nur feste Felder (z. B. Reisestil, Flughäfen, Anzahl und Alter der Mitreisenden), die ihr Seite für Seite
   prüft, bevor etwas gespeichert wird. Namen, Geschlecht, Staatsangehörigkeit und Geburtsdatum fragt die App direkt ab,
   nie über die KI; schreibt sie bitte auch nicht in den Text.
