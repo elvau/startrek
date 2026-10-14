@@ -322,6 +322,8 @@ html:has(.modal-bg){overflow:hidden}
 .qf-step button{border:0;background:var(--paper-2);color:var(--ink);width:26px;height:30px;border-radius:8px;font-size:16px;line-height:1}
 .qf-step b{min-width:18px;text-align:center}
 .qf-step b{grid-column:2;line-height:1.1}
+.qf-step .qf-n{grid-column:2;width:44px;padding:0;border:0;background:transparent;text-align:center;font:inherit;font-weight:700;line-height:1.1;color:var(--ink);-moz-appearance:textfield}
+.qf-step .qf-n::-webkit-inner-spin-button,.qf-step .qf-n::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .qf-step small{grid-column:2;color:var(--ink-2);font-size:11px;line-height:1.1}
 .qf-row .x{width:30px;height:30px;font-size:18px}
 .av.emoji{font-size:24px;background:var(--paper);box-shadow:inset 0 0 0 3px var(--ring)}

@@ -51,6 +51,7 @@
   /* Wer fährt mit: Solo, Partner, Familie, Gruppe; bei Familie und Gruppe danach der Weg (gespeichert, neu, Tiere) */
   import QuickFamilies from "./QuickFamilies.svelte";
   import { uid } from "../model";
+  import { clampCount } from "../count";
 
   let { who = $bindable() }: { who: Who } = $props();
   const OPTS = $derived<{ k: WhoMode; t: string; s: string }[]>([
@@ -66,6 +67,12 @@
     { k: "animals", ico: "🦊", t: t("who.src.animals"), s: t("who.src.animalsSub") }
   ]);
   const other = (cur: string) => nextAnimal([cur]);
+  // Zahl direkt eintippen; Ungültiges springt auf den alten Wert zurück
+  const typeGroup = (k: "adults" | "kids", e: Event) => {
+    const el = e.currentTarget as HTMLInputElement;
+    who.group[k] = clampCount(el.value, k === "adults" ? 1 : 0, 40, who.group[k]);
+    el.value = String(who.group[k]);
+  };
   const step = (k: "adults" | "kids", d: number) => (who.group[k] = Math.max(k === "adults" ? 1 : 0, Math.min(40, who.group[k] + d)));
   const byId = (id: string) => dir.people.find(p => p.id === id);
   const pname = (id: string) => { const p = byId(id); return p ? fullName(p) : "?"; };
@@ -252,7 +259,7 @@
           {#each [["adults", t("age.adultShort"), t("age.adults")], ["kids", t("age.kids"), t("age.kids")]] as [k, l, full] (k)}
             <span class="qf-step" role="group" aria-label={full}>
               <button type="button" onclick={() => step(k as "adults", -1)} aria-label={t("step.less", { what: full })}>−</button>
-              <b>{who.group[k as "adults"]}</b><small>{l}</small>
+              <input class="qf-n" type="number" inputmode="numeric" min={k === "adults" ? 1 : 0} max="40" value={who.group[k as "adults"]} aria-label={full} onchange={e => typeGroup(k as "adults", e)} /><small>{l}</small>
               <button type="button" onclick={() => step(k as "adults", 1)} aria-label={t("step.more", { what: full })}>+</button>
             </span>
           {/each}
