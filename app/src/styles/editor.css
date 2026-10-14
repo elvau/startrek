@@ -1061,3 +1061,24 @@ html:has(.modal-bg){overflow:hidden}
 .st-partial{margin:0;color:var(--warn)}
 .st-priv{margin:0}.st-hint{display:block}
 .ht-go{color:var(--ink-3);font-weight:600}
+/* Wer fährt mit: ab 4 Personen Liste statt Kacheln, nach Familien gruppiert */
+.people.list{display:flex;flex-direction:column;gap:0;padding:6px 18px 14px}
+.people.list .p-fam{display:flex;align-items:baseline;gap:8px;margin:12px 0 2px;font-size:14px}
+.people.list .p-fam:first-child{margin-top:4px}
+.people.list .person{flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:7px 4px;border-radius:0;background:none;text-align:start;border-bottom:1px solid var(--line)}
+.people.list .person .av{width:32px;height:32px;font-size:14px;margin:0}
+.people.list .person.kid .av{width:26px;height:26px;font-size:12px;margin:0 3px}
+.people.list .person .av.emoji{font-size:16px;box-shadow:inset 0 0 0 2px var(--ring)}
+.people.list .person b{flex:1 1 7em;min-width:0;font-size:14.5px}
+.people.list .person .p-x{position:static;order:9}
+.people.list .person .inp{width:auto;flex:1 1 9em;text-align:start}
+.people.list .person .inp.num{flex:0 0 64px}
+.people.list .person.add{flex-direction:row;align-self:flex-start;border:1.5px dashed var(--line);border-radius:12px;margin-top:10px;padding:6px 14px 6px 8px}
+.people.list .person.add .av{width:28px;height:28px;font-size:16px}
+.people.list:not(.editing) .person:not(.add){display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"av name in x" "av info in x";column-gap:10px;row-gap:0}
+.people.list:not(.editing) .person .av{grid-area:av}
+.people.list:not(.editing) .person b{grid-area:name;line-height:1.25}
+.people.list:not(.editing) .person>span:not(.av){grid-area:info;font-size:12px;line-height:1.3}
+.people.list:not(.editing) .person .dabei{grid-area:in}
+.people.list:not(.editing) .person .p-x{grid-area:x}
+.people.list:not(.editing) .person .repl{grid-column:2/-1;justify-self:start;margin:0}
