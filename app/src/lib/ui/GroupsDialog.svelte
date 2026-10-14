@@ -30,7 +30,7 @@
   }
   const summary = (p: (typeof dir.people)[number]) => {
     const a = personAge(p);
-    return [a != null ? t("trav.ageYears", { n: a }) : "", p.home ? `📍 ${p.home.ort}` : "", hasDoc(p.id) ? "🔒" : ""].filter(Boolean).join(" · ");
+    return [a != null ? tn("trav.ageYears", a) : "", p.home ? `📍 ${p.home.ort}` : "", hasDoc(p.id) ? "🔒" : ""].filter(Boolean).join(" · ");
   };
 
   function newPerson(e: Event) {

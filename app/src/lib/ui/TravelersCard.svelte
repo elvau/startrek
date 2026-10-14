@@ -162,7 +162,7 @@
       <button class="linkbtn danger" onclick={() => remove(t.id)}>{tt("remove")}</button>
     {:else}
       <b>{t.placeholder || short ? t.name || tt("trav.noName") : `${t.name || tt("trav.noName")} ${t.household}`}</b>
-      <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}{#if t.nat || t.nat2} <span title={[t.nat || "DE", t.nat2].filter(Boolean).map(c => countryName(c!)).join(" · ")}>· {flagOf(t.nat || "DE")}{t.nat2 ? flagOf(t.nat2) : ""}</span>{/if}{#if list && t.placeholder && !access.readonly}{" · "}<button class="linkbtn repl" class:on={replacing === t.id} onclick={() => { replacing = replacing === t.id ? null : t.id; pick = quick = false; }}>{tt("trav.replace")}</button>{/if}</span>
+      <span>{t.age != null && String(t.age) !== "" ? `${tn("trav.ageYears", Number(t.age))} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}{#if t.nat || t.nat2} <span title={[t.nat || "DE", t.nat2].filter(Boolean).map(c => countryName(c!)).join(" · ")}>· {flagOf(t.nat || "DE")}{t.nat2 ? flagOf(t.nat2) : ""}</span>{/if}{#if list && t.placeholder && !access.readonly}{" · "}<button class="linkbtn repl" class:on={replacing === t.id} onclick={() => { replacing = replacing === t.id ? null : t.id; pick = quick = false; }}>{tt("trav.replace")}</button>{/if}</span>
       <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
         onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? `✓ ${tt("trav.in")}` : tt("trav.out")}</button>
       {#if t.placeholder && !access.readonly && !list}
