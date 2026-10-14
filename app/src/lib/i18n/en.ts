@@ -1174,6 +1174,7 @@ export const en: Dict = {
   "hint.short.early": "very early: night before at the airport?",
   "home.ai": "Plan with AI",
   "home.aiSub": "Describe your dream trip, the AI suggests trips (beta)",
+  "home.sampleSub": "See what a fully planned trip looks like",
   "home.aiTag": "AI suggestion",
   "home.back": "Overview",
   "home.booked": "Booked trips",

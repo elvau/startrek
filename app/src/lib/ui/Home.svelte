@@ -4,7 +4,7 @@
    * Startseite bei jedem neuen Besuch (ein Neuladen im selben Tab bleibt in der Reise): Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
+  import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openSample, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { summarize, type TripState, type TripSummary } from "../overview";
   import { ensureAirports, geo } from "../geo/geo.svelte";
@@ -110,6 +110,9 @@
           <span class="home-ico" aria-hidden="true"><AiMark /></span><b>{t("home.ai")}</b><small>{t("home.aiSub")}</small>
         </button>
       {/if}
+      <button class="home-act home-sample" onclick={openSample}>
+        <span class="home-ico" aria-hidden="true">🧭</span><b>{t("sample.open")}</b><small>{t("home.sampleSub")}</small>
+      </button>
     </div>
 
     {#if rows.length > 1}
