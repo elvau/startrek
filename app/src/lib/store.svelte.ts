@@ -400,6 +400,8 @@ function open(trip: Trip, why: string) {
   app.trip = normalize(trip);
   setBaseline(app.trip);
   app.editing = null;
+  // gemerkter Scrollstand gilt nur für die Reise, die beim Laden offen war (#369, #370)
+  resumeScroll.y = 0;
   put(K_CUR, trip.id);
   if (!isCloud(trip.id) && !app.index.some(x => x.id === trip.id)) {
     app.index.push(meta(trip));
