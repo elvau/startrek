@@ -1,6 +1,6 @@
 <script lang="ts">
   import { netMessage, showError, isNetText } from "../neterror";
-  import { autoName, locale, t, tn } from "../i18n/index.svelte";
+  import { arrow, autoName, locale, t, tn } from "../i18n/index.svelte";
   import BrokerNote from "./BrokerNote.svelte";
   import ExtLink from "./ExtLink.svelte";
   /*
@@ -364,7 +364,7 @@
           <li>
             <b>{a.who}</b>
             {#if a.p}
-              <span class="st-when"><span aria-hidden="true">🛬</span> {a.arr ? `${dayShort(a.arr)} ${time(a.arr)}` : dayShort(a.p.a)} → <span aria-hidden="true">🛫</span> {a.dep ? `${dayShort(a.dep)} ${time(a.dep)}` : dayShort(a.p.d)} · <span aria-hidden="true">🌙</span> {nights(a.p.a, a.p.d)}{#if a.p.src === "manual"} <span class="muted" title={t("hh.ownDates")} aria-label={t("hh.ownDates")}>✎</span>{/if}</span>
+              <span class="st-when"><span aria-hidden="true">🛬</span> {a.arr ? `${dayShort(a.arr)} ${time(a.arr)}` : dayShort(a.p.a)} {arrow()} <span aria-hidden="true">🛫</span> {a.dep ? `${dayShort(a.dep)} ${time(a.dep)}` : dayShort(a.p.d)} · <span aria-hidden="true">🌙</span> {nights(a.p.a, a.p.d)}{#if a.p.src === "manual"} <span class="muted" title={t("hh.ownDates")} aria-label={t("hh.ownDates")}>✎</span>{/if}</span>
               {#each hintList(a) as h (h.kind)}<small class="muted st-hint" title={h.text}>{HINT_IC[h.kind]} {hintShort(a, h.kind)}</small>{/each}
             {:else}
               <span class="muted">—</span>

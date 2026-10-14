@@ -4,7 +4,7 @@
    * Auf dem Handy als Blatt von unten mit Monaten zum Durchscrollen, sonst als Fenster mit zwei Monaten nebeneinander.
    * openEnd: „bis“ darf leer bleiben (z. B. nur Hinflug).
    */
-  import { locale, t, tn } from "../i18n/index.svelte";
+  import { arrow, locale, t, tn } from "../i18n/index.svelte";
   import { dayShort } from "../format";
   import { addMonth, daysBetween, monthGrid, pickDay } from "../daterange";
   import { portal } from "./portal";
@@ -66,7 +66,7 @@
   <button type="button" class="dr-btn" bind:this={btn} onclick={show} aria-haspopup="dialog" data-from={from} data-to={to}>
     <span class="dr-ic" aria-hidden="true">📅</span>
     {#if from}
-      <span class="dr-v"><b>{dayShort(from)}</b> → {#if to}<b>{dayShort(to)}</b>{:else}<span class="muted">{openEnd ? openEndLabel || "–" : toLabel}</span>{/if}</span>
+      <span class="dr-v"><b>{dayShort(from)}</b> {arrow()} {#if to}<b>{dayShort(to)}</b>{:else}<span class="muted">{openEnd ? openEndLabel || "–" : toLabel}</span>{/if}</span>
       {#if to}<small class="dr-n">{count(from, to)}</small>{/if}
     {:else}
       <span class="muted">{t("dr.pick")}</span>
