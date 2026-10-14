@@ -13,6 +13,10 @@ const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"
 /** Tiername in der gewählten Sprache (gespeichert wird der Name, wie er beim Anlegen angezeigt wurde) */
 export const animalName = (id: string) => t(`animal.${id}` as Key);
 
+/** Beispiel-Familienname für Platzhalter und Beispiele („z. B. Familie Bär“): Tier, wechselt bei jedem Laden; k für ein zweites Beispiel */
+const EX = Math.floor(Math.random() * ANIMALS.length);
+export const exampleFamily = (k = 0) => animalName(ANIMALS[(EX + k) % ANIMALS.length][0]);
+
 /** Emoji zur Tierfamilie, auch für „Fuchs 2“ (deutscher oder übersetzter Name) */
 export const animalEmoji = (household: string) => { const w = household.split(" ")[0]; return ANIMALS.find(([n]) => n === w || animalName(n) === w)?.[1] ?? null; };
 

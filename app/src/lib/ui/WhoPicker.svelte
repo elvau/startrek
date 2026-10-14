@@ -1,4 +1,5 @@
 <script module lang="ts">
+  import { exampleFamily } from "../placeholders";
   import { t, tn } from "../i18n/index.svelte";
   import { addGroup, addPerson, dir, fullName, travelersFrom } from "../directory.svelte";
   import { animalEmoji, animalName, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler } from "../placeholders";
@@ -236,7 +237,7 @@
       {/if}
       <div class="ed-row ng-add">
         <label class="f">{t("trav.first")}<input bind:value={first} placeholder={t("grp.firstPh")} onkeydown={e => { if (e.key === "Enter") addDraft(e); }} /></label>
-        <label class="f">{t("trav.last")}<input bind:value={last} placeholder={famLast || t("grp.lastPh")} onkeydown={e => { if (e.key === "Enter") addDraft(e); }} /></label>
+        <label class="f">{t("trav.last")}<input bind:value={last} placeholder={famLast || exampleFamily()} onkeydown={e => { if (e.key === "Enter") addDraft(e); }} /></label>
         <label class="f">{t("trav.age")}<input class="n sm" type="number" min="0" max="120" bind:value={age} /></label>
         <button type="button" class="btn" disabled={!first.trim() || !(last.trim() || famLast)} onclick={addDraft}>{t("who.ngAddBtn")}</button>
       </div>
