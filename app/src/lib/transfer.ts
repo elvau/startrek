@@ -6,6 +6,7 @@
 import { t } from "./i18n/index.svelte";
 import { uid, type Item } from "./model";
 import { kmBetween } from "./geo/places";
+import type { TransferChoice, TransferKind } from "./transit";
 
 export interface Pt { lat: number; lon: number }
 export type Vehicle = "taxi" | "van" | "minibus" | "coach";
@@ -66,12 +67,25 @@ export function transferLegs(dests: ({ name: string } & Pt)[], aps: ({ code: str
   return out;
 }
 
-/** Posten „Flughafentransfer“: zwei Fahrten (hin und zurück), Preis für die ganze Gruppe */
-export function transferItem(p: TransferPlan): Item {
+export const TRANSFER_ICON: Record<TransferKind, string> = { rail: "🚆", bus: "🚌", public: "🚆", taxi: "🚕" };
+
+/**
+ * Posten „Flughafentransfer“: zwei Fahrten (hin und zurück). Mit Auswahl (Bahn, Bus, Taxi) wird jede Möglichkeit
+ * ein Angebot, die gewählte ist aktiv; Bahn und Bus je Person (Kinder die Hälfte, Kleinkinder frei), Taxi für die Gruppe.
+ */
+export function transferItem(p: TransferPlan, choices: TransferChoice[] = [], pick: TransferKind = "taxi"): Item {
+  const taxi = { id: uid(), label: `${TRANSFER_ICON.taxi} ${t("tr.estimate", { v: vehicleText(p) })}`, estimate: true, price: { mode: "unit" as const, currency: "EUR", unit: p.perRide, qty: 2 } };
+  const pub = choices.filter(c => c.k !== "taxi" && c.adult != null).map(c => ({
+    k: c.k, id: uid(), estimate: true,
+    label: `${TRANSFER_ICON[c.k]} ${t(`tr.k.${c.k}`)}${c.line ? `: ${c.line}` : ""}`,
+    price: { mode: "person" as const, currency: "EUR", adult: c.adult, child: Math.round(c.adult! * 50) / 100, infant: 0, qty: 2 }
+  }));
+  const chosen = pick === "taxi" ? taxi.id : pub.find(o => o.k === pick)?.id ?? taxi.id;
   return {
     id: uid(), cat: "transport", name: t("tr.name"), icon: "car", status: "idea",
     note: t("tr.note", { ap: p.ap, to: p.to, km: Math.round(p.km) }),
-    options: [{ id: uid(), label: t("tr.estimate", { v: vehicleText(p) }), estimate: true, price: { mode: "unit", currency: "EUR", unit: p.perRide, qty: 2 } }]
+    ...(pub.length ? { chosen } : {}),
+    options: [...pub.map(({ k: _k, ...o }) => o), taxi]
   };
 }
 

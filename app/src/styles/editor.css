@@ -1101,3 +1101,17 @@ html:has(.modal-bg){overflow:hidden}
   .people.list{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;align-items:start}
   .people.list>.p-sum,.people.list>.p-fam,.people.list>.p-more,.people.list>.person.add{grid-column:1/-1;justify-self:start}
 }
+/* Flughafentransfer: Auswahl Bahn, Bus, Taxi, Mietwagen */
+.tr-box{flex-direction:column;flex-wrap:nowrap;align-items:stretch;align-self:start;gap:6px}
+.tr-head{margin:0;font-size:13.5px;font-weight:600}
+.tr-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;align-content:start;align-items:start;max-width:760px}
+.tr-c{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"ic t" "ic p";align-items:center;column-gap:8px;text-align:start;padding:8px 10px;border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);font:inherit;cursor:pointer}
+.tr-c:hover:not(:disabled){border-color:var(--a);background:var(--a-soft)}
+.tr-ic{grid-area:ic;font-size:22px;line-height:1}
+.tr-t{grid-area:t;display:flex;flex-direction:column;min-width:0}
+.tr-t b{font-size:14px}
+.tr-t small{font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr-p{grid-area:p;font-weight:700;font-size:14px}
+.tr-p small{font-weight:500;font-size:11px;color:var(--ink-3);margin-inline-start:4px}
+.tr-car{grid-template-areas:"ic t"}
+@media (max-width:640px){.tr-pick{grid-template-columns:1fr 1fr}}
