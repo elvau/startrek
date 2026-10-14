@@ -127,13 +127,18 @@
   });
 
   // Mietwagen und Reiseversicherung als Richtwert-Posten
+  // Mietwagen-Richtwert pro Tag und Auto: Preisniveau des Ziellandes (Reise, sonst Land des Ankunftsflughafens)
+  const carDay = $derived.by(() => {
+    void geo.world.length;
+    const w = carWindow(app.trip);
+    const cc = ccOf(geo, app.trip.country) || (w && "ap" in w && w.ap ? airportOf(geo, w.ap)?.cc : undefined);
+    return carPerDay(geo.world.find(x => x.k === cc)?.pli);
+  });
   async function addCar() {
     await ensureGeo(app.trip).catch(() => {});
     const w = carWindow(app.trip) || { pick: "", drop: "", days: Math.max(1, nn || 1) };
     setDetailed("transport", true);
-    // Preisniveau des Ziellandes (Reise, sonst Land des Ankunftsflughafens)
-    const cc = ccOf(geo, app.trip.country) || ("ap" in w && w.ap ? airportOf(geo, w.ap)?.cc : undefined);
-    const it = carItem(w, carPerDay(geo.world.find(x => x.k === cc)?.pli));
+    const it = carItem(w, carDay);
     app.trip.items.push(it);
     showItem(it.id);
   }
@@ -214,8 +219,8 @@
           <CamperPanel />
           <RoadCosts city={evWin.city} />
           <GroundOptions city={evWin.city} />
-          <TransferOptions city={evWin.city} oncar={access.readonly ? undefined : addCar} />
-          {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.add")}</button></div>{/if}
+          <TransferOptions city={evWin.city} />
+          {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.addTrip")} <small class="car-day">{t("car.perDay", { v: eur(carDay) })}</small></button></div>{/if}
           <p class="search-row muted small fs-direct car-links">{t("car.compare")}
             <PartnerLinks ids={partnersOf("car")} q={{ w: cw, place: evWin.city }} />
             {#if cw}<br />{t(cw.ap ? "car.when" : "car.whenTrip", { a: `${cw.ap ? `${cw.ap} ` : ""}${cw.pick.slice(8, 10)}.${cw.pick.slice(5, 7)}. ${cw.pick.slice(11, 16)}`, b: `${cw.drop.slice(8, 10)}.${cw.drop.slice(5, 7)}. ${cw.drop.slice(11, 16)}`, d: tn("n.days", cw.days) })}{/if}

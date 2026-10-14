@@ -1,7 +1,8 @@
 <script lang="ts">
   /*
    * Flughafentransfer: vom Ankunftsflughafen (aus den Flügen, sonst dem nächsten großen Flughafen am Ziel) zur
-   * Unterkunft (mit Lage) oder in die Ortsmitte. Auswahl Bahn, Bus, Taxi (Richtwert je Fahrt) oder Mietwagen; ein Tipp
+   * Unterkunft (mit Lage) oder in die Ortsmitte. Auswahl Bahn, Bus oder Taxi (Richtwert je Fahrt; Mietwagen gilt für die
+   * ganze Reise und steht darunter im Kapitel); ein Tipp
    * legt den Posten mit allen Möglichkeiten als Angebote an, die gewählte aktiv. Anbieter und Route zum Vergleichen.
    */
   import { t } from "../i18n/index.svelte";
@@ -20,7 +21,7 @@
   import { transferChoices, type TransferChoice, type TransferKind } from "../transit";
   import { showItem } from "./showItem";
 
-  let { city, oncar }: { city: string; oncar?: () => void } = $props();
+  let { city }: { city: string } = $props();
 
   $effect(() => { void ensureGeo(app.trip).catch(() => {}); void ensureAirports().catch(() => {}); });
 
@@ -82,11 +83,6 @@
           <span class="tr-p num">≈ {eur(c.perRide)}<small>{t("tr.perRide")}</small></span>
         </button>
       {/each}
-      {#if oncar && !access.readonly}
-        <button type="button" class="tr-c tr-car" onclick={oncar}>
-          <span class="tr-ic" aria-hidden="true">🚗</span><span class="tr-t"><b>{t("tr.k.car")}</b></span>
-        </button>
-      {/if}
     </div>
   </div>
   <p class="search-row muted small fs-direct tr-links">
