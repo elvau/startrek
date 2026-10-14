@@ -1,27 +1,30 @@
 import { DEFAULT_SETTINGS, uid, type Trip } from "./model";
 import { i18n, t } from "./i18n/index.svelte";
+import { exampleFamily } from "./placeholders";
 
 /** Ländername in der gewählten Sprache (wird von der Ländererkennung in allen Sprachen verstanden) */
 const countryName = (cc: string) => { try { return new Intl.DisplayNames([i18n.lang], { type: "region" }).of(cc) || cc; } catch { return cc; } };
 
 /** Beispielreise für den ersten Start, in der gewählten Sprache. Eigene ID, damit Beispiele verschiedener Personen im Konto nicht kollidieren. */
 export function sampleTrip(): Trip {
+  // Familie mit Tiernamen (wechselt), keine echten Nachnamen als Beispiel
+  const fam = exampleFamily();
   return {
     id: "b-" + uid(),
     name: t("seed.name"),
     place: "Makarska",
     country: countryName("HR"),
-    kicker: t("seed.kicker"),
+    kicker: t("seed.kicker", { a: fam }),
     from: "2027-07-18",
     to: "2027-07-29",
     travelers: [
-      { id: "anna", name: "Anna", age: 41, household: "Klein", color: "#D2693C" },
-      { id: "jonas", name: "Jonas", age: 43, household: "Klein", color: "#2F6FDB" },
-      { id: "mia", name: "Mia", age: 11, household: "Klein", color: "#C0487A" },
-      { id: "ben", name: "Ben", age: 8, household: "Klein", color: "#1F8A70" }
+      { id: "anna", name: "Anna", age: 41, household: fam, color: "#D2693C" },
+      { id: "jonas", name: "Jonas", age: 43, household: fam, color: "#2F6FDB" },
+      { id: "mia", name: "Mia", age: 11, household: fam, color: "#C0487A" },
+      { id: "ben", name: "Ben", age: 8, household: fam, color: "#1F8A70" }
     ],
     households: {
-      Klein: { plz: "40210", geo: { lat: 51.223, lon: 6.779, ort: "Düsseldorf" }, mode: "car", cars: 1 }
+      [fam]: { plz: "40210", geo: { lat: 51.223, lon: 6.779, ort: "Düsseldorf" }, mode: "car", cars: 1 }
     },
     tiers: {},
     settings: { ...DEFAULT_SETTINGS },

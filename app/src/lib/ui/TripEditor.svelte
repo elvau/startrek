@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exampleFamily } from "../placeholders";
   import { t, tn } from "../i18n/index.svelte";
   import { app } from "../store.svelte";
   import { autoName, nights } from "../format";
@@ -38,7 +39,7 @@
     {#if nn}<span class="muted ed-note">{tn("n.nights", nn)}</span>{/if}
   </div>
   <div class="ed-row">
-    <label class="f grow">{t("te.kicker")}<input bind:value={trip.kicker} placeholder={t("te.kickerPh")} /></label>
+    <label class="f grow">{t("te.kicker")}<input bind:value={trip.kicker} placeholder={t("te.kickerPh", { a: exampleFamily() })} /></label>
   </div>
   <label class="te-home"><input type="checkbox" checked={homeOn} onchange={e => setHome(e.currentTarget.checked)} /> <span>🏠 {t("home.switch")}<small class="muted">{t("home.switchHint")}</small></span></label>
   <div class="ed-foot"><span class="muted">{t("autosave")}</span><button class="btn primary" onclick={onclose}>{t("done")}</button></div>

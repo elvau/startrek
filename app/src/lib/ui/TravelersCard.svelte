@@ -10,7 +10,7 @@
   import Households from "./Households.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
   import QuickFamilies from "./QuickFamilies.svelte";
-  import { animalEmoji, nextAnimal, placeholderTravelers, type FamilyRow } from "../placeholders";
+  import { animalEmoji, exampleFamily, nextAnimal, placeholderTravelers, type FamilyRow } from "../placeholders";
   import { countryName } from "../geo/locations";
   import { flagOf } from "../format";
   import { loadVisa } from "../visa";
@@ -97,7 +97,7 @@
     // Platzhalter bleiben in der Reise und kommen nicht in gespeicherte Gruppen
     const real = app.trip.travelers.filter(t => !t.placeholder);
     if (!real.length) { saved = t("trav.noPlaceholders"); return; }
-    const name = prompt(t("trav.groupPrompt"), app.trip.name);
+    const name = prompt(t("trav.groupPrompt", { a: exampleFamily() }), app.trip.name);
     if (!name?.trim()) return;
     const g = saveAsGroup(name, real, app.trip.households);
     saved = t("trav.savedGroup", { name: g.name, p: tn("n.persons", g.memberIds.length) });
