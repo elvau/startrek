@@ -41,8 +41,15 @@ export function suggestPostal(rows: PostalRow[], q: string, max = 6): PostalRow[
   return out;
 }
 
-/** gekürzte Postleitzahlen (wie scripts/plz.mjs): Portugal nur „1000“ statt „1000-001“ */
-export const shortCode = (cc: string, q: string) => (cc === "PT" ? q.split("-")[0] : q);
+/** vollständige Postleitzahl je Land -> gekürzter Code der Daten (wie scripts/plz.mjs); unvollständige Eingaben bleiben unverändert */
+const SHORT: Record<string, [RegExp, string]> = {
+  PT: [/^(\d{4})-\d{3}$/, "$1"], // „1000-001“ -> „1000“
+  NL: [/^(\d{4})\s*[a-z]{2}$/i, "$1"], // „1012 AB“, „1012AB“ -> „1012“
+  IE: [/^([a-z]\d{2}|d6w)\s*[a-z\d]{4}$/i, "$1"], // Eircode „D02 X285“ -> „D02“
+  MT: [/^([a-z]{3})\s*\d{1,4}$/i, "$1"], // „ATD 1234“ -> „ATD“
+};
+for (const cc of ["GB", "GG", "IM", "JE"]) SHORT[cc] = [/^([a-z]{1,2}\d[a-z\d]?)\s*\d[a-z]{2}$/i, "$1"]; // „SW1A 1AA“ -> „SW1A“
+export const shortCode = (cc: string, q: string) => { const m = SHORT[cc]; const v = q.trim(); return m && m[0].test(v) ? v.replace(m[0], m[1]) : q; };
 
 /** vollständig eingetippte Postleitzahl: genau diese, und keine längere fängt so an */
 export function exactPostal(rows: PostalRow[], q: string): PostalRow | undefined {
