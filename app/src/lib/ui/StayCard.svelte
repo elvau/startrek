@@ -63,7 +63,7 @@
     </div>
     <h3>{autoName(item.name) || t("stay.new")}</h3>
     {#if !item.private && r?.option?.label && r.option.label !== autoName(item.name)}<div class="stay-opt">{r.option.label}{r.option.source?.name ? ` · ${r.option.source.name}` : ""}{item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""}</div>{/if}
-    {#if item.from && item.to}<div class="muted">{t("range.fromTo", { a: dateDE(item.from), b: dateDE(item.to) })} · {tn("n.nights", nn)}{r?.stay ? ` · ${t("stay.upTo", { g: tn("n.guests", r.stay.maxOcc) })}` : ""}</div>{/if}
+    {#if item.from && item.to}<div class="muted">{t("range.fromTo", { a: dateDE(item.from), b: dateDE(item.to) })} · {tn("n.nights", nn)}{r?.stay ? ` · ${tn("stay.upTo", r.stay.maxOcc)}` : ""}</div>{/if}
     {#if item.private}
       <p class="muted small priv-line">📍 {[item.private.place, item.private.country].filter(Boolean).join(", ")}{#if app.trip.place === item.private.place}{` · ${t("priv.destLine")}`}{/if}
         {#if !access.readonly}<button class="linkbtn priv-edit" onclick={e => { e.stopPropagation(); openPrivStay(item.id); }}>{t("priv.edit")} ›</button>{/if}</p>
