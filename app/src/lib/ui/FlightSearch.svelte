@@ -18,6 +18,7 @@
   import { prefsFor, touchesAvoided } from "../prefs";
   import { surchargeBanned, type BagNeed } from "../flights/addons";
   import DualRange from "./DualRange.svelte";
+  import DateRange from "./DateRange.svelte";
   import LocationPicker from "./LocationPicker.svelte";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
   import { ccOf, findCity } from "../geo/places";
@@ -471,7 +472,7 @@
 <Modal title={item ? `${t("fs.open")}: ${autoName(item.name) || t("ie.flight")}` : t("fs.open")} {onclose} wide {inline}>
   <form class="fs-form" onsubmit={search}>
     <div class="fs-who">
-      <span class="dlabel">{t("fs.who")}</span>
+      <span class="dlabel"><span aria-hidden="true">👥</span> {t("fs.who")}{#if hhs.length > 1} <Help k="fsWho" />{/if}</span>
       <div class="chips">
         <button type="button" class="chip" class:on={!who} aria-pressed={!who} onclick={() => setWho(undefined)}>{t("all")} ({act.length})</button>
         {#if hhs.length > 1}
@@ -484,7 +485,6 @@
       <details class="more"><summary class="muted small">{t("fs.single")}</summary>
         <div class="chips">{#each act as p (p.id)}<button type="button" class="chip sm" class:on={whoIds.includes(p.id)} aria-pressed={whoIds.includes(p.id)} onclick={() => togglePerson(p.id)}>{p.name}{#if cov.has(p.id) && !item}<small class="fs-has" title={t("fs.hasFlight")}> ✓</small>{/if}</button>{/each}</div>
       </details>
-      {#if hhs.length > 1 && !who}<p class="muted small">{t("fs.tipFamily")}</p>{/if}
       {#if who && mains.length && !item}
         <div class="chips fs-along"><span class="muted small">{t("fs.alongLabel")}</span>
           {#each mains as mm (mm.id)}<button type="button" class="chip sm" onclick={() => flyAlong(mm.id)}>{t("ie.like", { name: mm.name })}</button>{/each}
@@ -493,8 +493,8 @@
       {#if alongCost != null}<p class="muted small">{t("fs.alongCost", { name: trip.items.find(i => i.id === item?.follow)?.name || "", v: eur(alongCost) })}</p>{/if}
     </div>
     <div>
-      <span class="dlabel">{t("fs.origins")} <Help k="origins" /></span>
-      {#if noHome}<HomeHint {setHome} saved={savedHome} guessed={!custom} />{/if}
+      <span class="dlabel"><span aria-hidden="true">🛫</span> {t("fs.origins")} <Help k="origins" /></span>
+      {#if noHome}<HomeHint {setHome} saved={savedHome} />{/if}
       <div class="chips fs-aps">
         {#each allCodes as c (c)}
           {@const a = known.find(x => x.code === c)}
@@ -502,11 +502,8 @@
           <button type="button" class="chip" class:on={aps.includes(c)} class:flash={flash === c} aria-pressed={aps.includes(c)} title={a?.name || (l ? locLabel(l) : c)} onclick={() => toggleAp(c)}>{c}{#if l?.kind === "city"}<small>{t("fs.cityAll", { name: l.name })}</small>{/if}</button>
         {/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} />
+        {#if custom}<button type="button" class="linkbtn fs-reset" onclick={resetAps}>↺ {t("fs.reset")}</button>{/if}
       </div>
-      <p class="muted small">
-        {#if custom}{t("fs.custom")} <button type="button" class="linkbtn" onclick={resetAps}>{t("fs.reset")}</button>
-        {:else}{t("fs.default")}{/if}
-      </p>
     </div>
 
     <div class="chips fs-kind" role="radiogroup" aria-label={t("fs.kind")}>
@@ -516,21 +513,23 @@
     </div>
 
     {#if kind !== "round"}
-    <div class="chips fs-mode" role="radiogroup" aria-label={t("fs.dates")}>
-      <button type="button" role="radio" aria-checked={mode === "fixed"} class="chip" class:on={mode === "fixed"} onclick={() => (mode = "fixed")}>{t("fs.fixed")}</button>
-      <button type="button" role="radio" aria-checked={mode === "flex"} class="chip" class:on={mode === "flex"} onclick={() => (mode = "flex")}>{t("fs.flex")}</button>
-    </div>
-
     <LocationPicker label={t("ie.to")} bind:value={toLoc} bind:text={to} placeholder={t("fs.toPh")} required near={nearDest} {areaFor} from={fromPt} />
     {#if toLoc && toLoc.kind !== "airport"}<p class="muted small fs-note">{t("fs.multiNote", { n: toLoc.airports.length, list: toLoc.airports.join(", ") })}</p>{/if}
+    {/if}
 
+    <div class="fs-when">
+    <span class="dlabel"><span aria-hidden="true">📅</span> {t("fs.whenH")}{#if kind === "round"} <Help k="fsRound" />{:else if mode === "flex"} <Help k={kind === "oneway" ? "fsOneway" : "fsFlex"} />{/if}</span>
+    {#if kind !== "round"}
+    <div class="chips fs-mode" role="radiogroup" aria-label={t("fs.dates")}>
+      <button type="button" role="radio" aria-checked={mode === "fixed"} class="chip sm" class:on={mode === "fixed"} onclick={() => (mode = "fixed")}>{t("fs.fixed")}</button>
+      <button type="button" role="radio" aria-checked={mode === "flex"} class="chip sm" class:on={mode === "flex"} onclick={() => (mode = "flex")}>{t("fs.flex")}</button>
+    </div>
     {/if}
 
     {#if kind === "round"}
       <div class="fs-flexbox">
         <div class="ed-row">
-          <label class="f">{t("fs.depEarliest")}<input type="date" bind:value={rFrom} required /></label>
-          <label class="f">{t("fs.latest")}<input type="date" bind:value={wTo} min={rFrom} required /></label>
+          <DateRange bind:from={rFrom} bind:to={wTo} label={t("dr.window")} fromLabel={t("fs.depEarliest")} toLabel={t("fs.latest")} unit="days" cls="grow" />
         </div>
         <div class="fs-stations">
           {#each stations as st, i (i)}
@@ -545,15 +544,12 @@
           {#if stations.length < 5}<button type="button" class="btn sm fs-addst" onclick={() => (stations = [...stations, { loc: null, text: "", min: 3, max: 6 }])}>+ {t("fs.addStation")}</button>{/if}
         </div>
         <label class="in-row"><input type="checkbox" bind:checked={home} /> {t("fs.homeAtEnd", { list: aps.join(", ") })}</label>
-        <p class="muted small">{t("fs.roundHint")}</p>
       </div>
     {:else if kind === "oneway"}
       {#if mode === "flex"}
         <div class="ed-row">
-          <label class="f">{t("fs.earliestDep")}<input type="date" bind:value={rFrom} required /></label>
-          <label class="f">{t("fs.latestDep")}<input type="date" bind:value={wTo} min={rFrom} required /></label>
+          <DateRange bind:from={rFrom} bind:to={wTo} label={t("dr.window")} fromLabel={t("fs.earliestDep")} toLabel={t("fs.latestDep")} unit="days" cls="grow" />
         </div>
-        <p class="muted small">{t("fs.onewayHint")}</p>
       {:else}
         <div class="ed-row">
           <label class="f">{t("fs.depOn")}<input type="date" bind:value={out} required /></label>
@@ -563,29 +559,26 @@
     {:else if mode === "flex"}
       <div class="fs-flexbox">
         <div class="ed-row">
-          <label class="f">{t("fs.earliestOut")}<input type="date" bind:value={rFrom} required /></label>
-          <label class="f">{t("fs.homeBy")}<input type="date" bind:value={rTo} min={rFrom} required /></label>
-          <label class="f fs-time">{t("fs.at")}<input type="time" bind:value={rToTime} /></label>
+          <DateRange bind:from={rFrom} bind:to={rTo} label={t("dr.window")} fromLabel={t("fs.earliestOut")} toLabel={t("fs.homeBy")} unit="days" cls="grow" />
+          <label class="f fs-time">{t("fs.homeTime")}<input type="time" bind:value={rToTime} /></label>
         </div>
-        {#if span == null}
-          <p class="muted small">{t("fs.errFlex")}</p>
-        {:else if span < 1}
+        {#if span != null && span < 1}
           <p class="warnline small">{t("fs.errFlexOrder")}</p>
-        {:else}
+        {:else if span != null}
           <DualRange bind:lo bind:hi min={1} max={span} label={t("fs.duration")} unit={t("fs.nightsUnit")} maxNote={t("fs.maxNote", { n: span })} />
         {/if}
-        <p class="muted small">{t("fs.flexHint")}</p>
       </div>
     {:else}
       <div class="ed-row">
-        <label class="f">{t("fs.outOn")}<input type="date" bind:value={out} required /></label>
-        <label class="f">{t("fs.backOn")} <small class="muted">({t("fs.backEmpty")})</small><input type="date" bind:value={ret} min={out} /></label>
+        <DateRange bind:from={out} bind:to={ret} label={t("dr.trip")} fromLabel={t("fs.outOn")} toLabel={t("fs.backOn")} openEnd openEndLabel={t("dr.onlyOut")} cls="grow" />
         <label class="f fs-sel">{t("fs.plusMinus")}<select bind:value={flexDays}>{#each [0, 1, 2, 3] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
       </div>
     {/if}
 
     {#if kind !== "round" && FLIGHTS_URL}<RoughCalendar query={roughQuery} start={roughStart} onpick={roughPick} />{/if}
+    </div>
 
+    <span class="dlabel"><span aria-hidden="true">🧳</span> {t("fs.optsH")}</span>
     <div class="ed-row fs-opts">
       <label class="f fs-sel">{t("fs.maxStops")}<select bind:value={maxStops}>{#each [0, 1, 2] as v (v)}<option value={v}>{v}</option>{/each}</select></label>
       <div class="f fs-sel">{t("fs.bags")}{@render bagStep()}</div>
@@ -596,7 +589,7 @@
       <label class="in-row"><input type="checkbox" bind:checked={withAccess} /> {t("fs.withAccess")}</label>
     </div>
     {#if split.bookings > 1}<p class="small fs-split-hint">{t("fs.split.hint", { n: split.bookings, k: split.size, all: n })}</p>{/if}
-    <p class="muted small">{people}{who ? ` (${[...new Set(flyers(trip, who).map(hhKey))].join(", ")})` : ` (${t("fs.allTrav")})`}. {who ? ([...new Set(flyers(trip, who).map(hhKey))].length === 1 ? t("fs.pricesOne") : t("fs.pricesSome")) : t("fs.pricesAll")}</p>
+    <p class="fs-facts small"><span><span aria-hidden="true">👥</span> {people}{who ? ` · ${[...new Set(flyers(trip, who).map(hhKey))].join(", ")}` : ""}</span>{#if aps.length && kind !== "round"}<span><span aria-hidden="true">🛫</span> {aps.join(", ")}</span>{/if}</p>
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `${t("fs.busy")} ${progress}` : kind === "round" ? t("fs.roundBtn") : aps.length > 1 ? t("fs.compareN", { n: aps.length }) : t("fs.searchBtn")}</button>
     {#if kind !== "round" && to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
@@ -769,7 +762,6 @@
             <div class="fs-acts">
               <button class="btn primary sm" disabled={taken[o.id + o.origin]} onclick={() => take(o)}>{taken[o.id + o.origin] ? `✓ ${t("search.taken")}` : t("search.take")}</button>
               {#if o.url}<ExtLink cls="btn sm" href={o.url} sponsored={o.sponsored} inside track={[o.source, "flight"]}>{t("search.atProvider")} ↗</ExtLink>{/if}
-              <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
             </div>
           </article>
         {:else}

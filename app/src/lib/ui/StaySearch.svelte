@@ -22,7 +22,7 @@
   import { FLIGHTS_URL, providerDown } from "../flights/app";
   import { loadPartner, partner } from "../partnerState.svelte";
   import { activeMins, effectiveSources, sourceNotWired, autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
-  import { arrivals, gaps, guestsIn, hints, segments, stations, stayWindow } from "../stays/presence";
+  import { arrivals, gaps, guestsIn, hintList, segments, stations, stayWindow } from "../stays/presence";
   import { groupLabel } from "../groups";
   import { hhKey, isActive } from "../model";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
@@ -32,6 +32,8 @@
   import { keepStays, sortStays, type StaySort } from "../stays/sort";
   import { applyStayFilter, kmToCenter, noStayFilter, type StayCtx } from "../stays/filter";
   import StayFilters from "./StayFilters.svelte";
+  import DateRange from "./DateRange.svelte";
+  import Help from "./Help.svelte";
   import { kmText, nearest, tripSpots } from "../geo/spots";
   import type { SourceStatus } from "../flights/types";
   import PartnerLinks from "./PartnerLinks.svelte";
@@ -86,6 +88,10 @@
     const names = hs.flatMap(h => { const ms = actAll.filter(x => hhKey(x) === h); const inn = ms.filter(x => sg.ids.includes(x.id)); return inn.length === ms.length ? [h] : inn.map(x => x.name); });
     return `${groupLabel(names, -1)} (${sg.ids.length})`;
   }
+  // Hinweise zu An- und Abreise kurz: Tag und Uhrzeit stehen schon in der Zeile, der ganze Satz im Tooltip
+  const HINT_IC = { checkin: "⏳", checkout: "🧳", early: "⏰" } as const;
+  const hintShort = (a: (typeof arr)[number], k: keyof typeof HINT_IC) =>
+    t(`hint.short.${k}`, k === "checkout" && a.dep ? { h: Math.round(+a.dep.slice(11, 13) + +a.dep.slice(14, 16) / 60 - 11) } : {});
   function pickStation(s: (typeof sts)[number]) {
     place = stationName(geo, airportData, s.ap, s.city);
     checkin = s.from; checkout = s.to;
@@ -146,7 +152,9 @@
       places: placesNear(geo, ap!, 5), city: cityForAirport(geo, ap!)
     }));
   });
-  $effect(() => { if (!place && near[0]?.city) place = near[0].city.name; });
+  // nur zum Start vorbelegen: wer das Feld leert, will etwas Neues eintippen
+  let placeInit = !!untrack(() => place);
+  $effect(() => { if (!placeInit && near[0]?.city) { placeInit = true; if (!untrack(() => place)) place = near[0].city.name; } });
   // Stadtsuche im Ort-Feld: Länder der Reise zuerst, dann bekannte Städte weltweit
   let placeFocus = $state(false);
   const prefer = $derived([...new Set([ccOf(geo, trip.country), ...near.map(n => n.ap.cc), ...sts.map(s => airportOf(geo, s.ap)?.cc)].filter((x): x is string => !!x))]);
@@ -341,7 +349,6 @@
         {#if o.url}<ExtLink cls="btn sm" href={o.url} gate name={o.sourceName}>{t("search.atProvider")} ↗</ExtLink>{/if}
         {#if hasCoords(o)}<button type="button" class="btn sm st-onmap" onclick={() => onMap(o)}>🗺 {t("map.onMap")}</button>{/if}
         {#if mapLink(o)}<a class="btn sm st-gmap" href={mapLink(o)} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
-        <button class="btn sm" disabled title={t("search.bookSoonTitle")}>{t("search.bookHere")} <small>{t("search.soon")}</small></button>
       </div>
     </div>
   </article>
@@ -351,16 +358,16 @@
   {#if camper}<p class="st-camper small">⛺ {t("camp.searchNote")} <button type="button" class="linkbtn" onclick={() => { onclose(); toCamper(); }}>{t("camp.toStations")}</button></p>{/if}
   {#if arr.length}
     <div class="st-pres">
-      <span class="dlabel">{arr.some(a => a.arr || a.dep) ? t("st.presFlights") : t("st.pres")}</span>
+      <span class="dlabel"><span aria-hidden="true">👥</span> {t("st.pres")} <Help k="stPres" /></span>
       <ul>
         {#each arr as a (a.ids.join())}
           <li>
             <b>{a.who}</b>
             {#if a.p}
-              <span>{t("st.arrDep", { a: a.arr ? `${dayShort(a.arr)} ${time(a.arr)}` : dayShort(a.p.a), d: a.dep ? `${dayShort(a.dep)} ${time(a.dep)}` : dayShort(a.p.d) })} · {tn("n.nights", nights(a.p.a, a.p.d))}{a.p.src === "manual" ? ` (${t("hh.ownDates")})` : ""}</span>
-              {#each hints(a) as h (h)}<small class="muted">{h}</small>{/each}
+              <span class="st-when"><span aria-hidden="true">🛬</span> {a.arr ? `${dayShort(a.arr)} ${time(a.arr)}` : dayShort(a.p.a)} → <span aria-hidden="true">🛫</span> {a.dep ? `${dayShort(a.dep)} ${time(a.dep)}` : dayShort(a.p.d)} · <span aria-hidden="true">🌙</span> {nights(a.p.a, a.p.d)}{#if a.p.src === "manual"} <span class="muted" title={t("hh.ownDates")} aria-label={t("hh.ownDates")}>✎</span>{/if}</span>
+              {#each hintList(a) as h (h.kind)}<small class="muted st-hint" title={h.text}>{HINT_IC[h.kind]} {hintShort(a, h.kind)}</small>{/each}
             {:else}
-              <span class="muted">{t("st.presOpen")}</span>
+              <span class="muted">—</span>
             {/if}
           </li>
         {/each}
@@ -376,51 +383,51 @@
           <div class="sugg">{#each citySugg as h (h.cc + h.name)}<button type="button" onmousedown={e => e.preventDefault()} onclick={() => pickCity(h)}>{h.name} <small class="muted">{h.land}</small></button>{/each}</div>
         {/if}
       </label>
-      <label class="f">{t("st.checkin")}<input type="date" bind:value={checkin} required /></label>
-      <label class="f">{t("st.checkout")}<input type="date" bind:value={checkout} min={checkin} required /></label>
-      {#if type !== "hotel" || parts > 1 || all > 10}<label class="f">{t("st.parts")}<input class="n sm st-parts" type="number" min="1" max="10" bind:value={parts} oninput={() => (partsSet = true)} /></label>{/if}
-      <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(30, per.adults)} bind:value={rooms} oninput={() => (roomsSet = true)} /></label>
     </div>
-    {#if parts > 1}<p class="small st-split-hint">{t("st.split.hint", { all, n: parts, k: per.adults + per.childAges.length })}</p>{/if}
     {#if blocked}<p class="warnline">{t("st.avoided")}</p>{/if}
     {#if sts.length > 1}
-      <div class="st-stations">
-        <span class="muted small">{t("st.stations")}</span>
+      <div class="st-stations" aria-label={t("st.stations")}>
+        <span class="st-ic" title={t("st.stations")} aria-hidden="true">🧭</span>
         {#each sts as s (`${s.ap}|${s.from}|${s.to}`)}
           {@const nm = stationName(geo, airportData, s.ap, s.city)}
           <button type="button" class="chip sm" class:on={place === nm && checkin === s.from && checkout === s.to} onclick={() => pickStation(s)}>{nm} <small>{dayShort(s.from)}–{dayShort(s.to)} · {tn("n.nights", nights(s.from, s.to))}</small></button>
         {/each}
       </div>
     {/if}
-    {#if segs.length}
-      <div class="st-stations st-segs">
-        <span class="muted small">{t("st.segments")}</span>
-        {#each segs as sg (sg.from)}
-          <button type="button" class="chip sm" class:on={checkin === sg.from && checkout === sg.to} onclick={() => { checkin = sg.from; checkout = sg.to; }}>{segLabel(sg)} <small>{dayShort(sg.from)}–{dayShort(sg.to)} · {tn("n.nights", nights(sg.from, sg.to))}</small></button>
-        {/each}
-      </div>
-    {/if}
-    {#if near.length || trip.place}
+    {#if (near.length && near.some(n => n.places.length)) || trip.place}
       <div class="st-near">
-        {#if trip.place}<span class="muted small">{t("st.dest")}</span><button type="button" class="chip sm" class:on={place === trip.place} onclick={() => (place = trip.place)}>{trip.place}</button>{/if}
+        {#if trip.place}<span class="st-ic" title={t("st.dest")} aria-hidden="true">🎯</span><button type="button" class="chip sm" class:on={place === trip.place} onclick={() => (place = trip.place)}>{trip.place}</button>{/if}
         {#each near as n (n.ap.code)}
           {#if n.places.length}
-            <span class="muted small">{t("st.atAirport", { ap: n.ap.code, role: n.role })}</span>
+            <span class="st-ic st-ap" title={t("st.atAirport", { ap: n.ap.code, role: n.role })}>✈️ {n.ap.code}</span>
             {@const sug = stayNear(geo, n.ap)}
             {#each sug && !n.places.some(p => p.name === sug.name) ? [sug, ...n.places] : n.places as p (p.name)}<button type="button" class="chip sm" class:on={place === p.name} onclick={() => (place = p.name)}>{p.name} <small>{Math.round(p.km)} km</small></button>{/each}
           {/if}
         {/each}
       </div>
     {/if}
-    <div class="ed-row fs-opts">
+    <DateRange bind:from={checkin} bind:to={checkout} label={t("dr.stay")} fromLabel={t("st.checkin")} toLabel={t("st.checkout")} cls="st-dates" />
+    {#if segs.length}
+      <div class="st-stations st-segs" aria-label={t("st.segments")}>
+        <span class="st-ic" title={t("st.segments")} aria-hidden="true">👥</span>
+        {#each segs as sg (sg.from)}
+          <button type="button" class="chip sm" class:on={checkin === sg.from && checkout === sg.to} onclick={() => { checkin = sg.from; checkout = sg.to; }}>{segLabel(sg)} <small>{dayShort(sg.from)}–{dayShort(sg.to)} · {tn("n.nights", nights(sg.from, sg.to))}</small></button>
+        {/each}
+      </div>
+    {/if}
+    <span class="dlabel"><span aria-hidden="true">🛏</span> {t("st.type")}</span>
+    <div class="ed-row fs-opts st-kind">
       <div class="chips" role="radiogroup" aria-label={t("st.type")}>
         <button type="button" role="radio" aria-checked={type === "whole"} class="chip" class:on={type === "whole"} onclick={() => (type = "whole")}>{t("st.whole")}</button>
         <button type="button" role="radio" aria-checked={type === "hotel"} class="chip" class:on={type === "hotel"} onclick={() => (type = "hotel")}>{t("st.hotel")}</button>
         <button type="button" role="radio" aria-checked={type === "all"} class="chip" class:on={type === "all"} onclick={() => (type = "all")}>{t("all")}</button>
       </div>
+      {#if type !== "hotel" || parts > 1 || all > 10}<label class="f">{t("st.parts")}<input class="n sm st-parts" type="number" min="1" max="10" bind:value={parts} oninput={() => (partsSet = true)} /></label>{/if}
+      <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(30, per.adults)} bind:value={rooms} oninput={() => (roomsSet = true)} /></label>
     </div>
+    {#if parts > 1}<p class="small st-split-hint">{t("st.split.short", { k: per.adults + per.childAges.length, n: parts })} <Help k="stSplit" /></p>{/if}
     <!-- privat bzw. schon vorhanden (#233): ohne Suche eintragen -->
-    {#if !item}<p class="small st-priv">🏠 {t("priv.searchHint")} <button type="button" class="linkbtn st-priv-open" onclick={() => openPrivStay()}>{t("priv.save")} ›</button></p>{/if}
+    {#if !item}<p class="small st-priv"><span aria-hidden="true">🏠</span> {t("priv.searchHint")} <button type="button" class="linkbtn st-priv-open" onclick={() => openPrivStay()}>{t("priv.save")} ›</button></p>{/if}
     <!-- Ausstattung, Sterne, Bewertung, Quellen: zugeklappt mit Zusammenfassung (gemerkt) -->
     <details class="fs-more" bind:open={more}>
       <summary><b>{t("fs.more")}</b> <span class="muted small">{moreSummary}</span></summary>
@@ -449,12 +456,12 @@
         {/each}
       </div>
     </details>
-    <p class="muted small st-guests">
-      {#if nn > 0}{t("range.fromTo", { a: dayShort(checkin), b: dayShort(checkout) })} · {tn("n.nights", nn)} · {/if}
-      {#if who.length}<b>{tn("n.guests", who.length)}</b>: {people(g.adults, g.childAges)}{:else}{t("st.nobody")}{/if}
-      · {ids ? t("st.fromOnly") : t("st.from")}
-      {#if partial.length}<br />{t("stay.partial", { list: partial.map(x => t("st.partialOf", { name: x.t.name, a: x.nights, b: nn })).join(", ") })}{/if}
+    <p class="fs-facts small st-guests">
+      {#if nn > 0}<span><span aria-hidden="true">📅</span> {tn("n.nights", nn)}</span>{/if}
+      <span><span aria-hidden="true">👥</span> {#if who.length}<b>{tn("n.guests", who.length)}</b>: {people(g.adults, g.childAges)}{:else}{t("st.nobody")}{/if}</span>
+      <span><span aria-hidden="true">🛏</span> {parts > 1 ? `${parts} × ` : ""}{rooms} {t("st.rooms")}</span>
     </p>
+    {#if partial.length}<p class="small st-partial"><span aria-hidden="true">⚠️</span> {t("stay.partial", { list: partial.map(x => t("st.partialOf", { name: x.t.name, a: x.nights, b: nn })).join(", ") })}</p>{/if}
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
     <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? t("st.busy", { src: SOURCES.filter(s => eff.includes(s.id)).map(s => s.name).join(` ${t("and")} `) }) : t("st.searchBtn")}</button>
     {#if place.trim() && nn > 0}

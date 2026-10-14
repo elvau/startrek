@@ -13,6 +13,19 @@ import { spawn } from "node:child_process";
 const URL = "http://127.0.0.1:4179/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+/** Zeitraum im Kalender antippen: erster und letzter Tag (ohne letzten: „nur Hinflug“) */
+async function pickRange(p, btn, a, b) {
+  // per Tastatur: offene Vorschlagslisten (Ziel nur eingetippt) liegen sonst über dem Feld
+  await btn.focus(); await p.keyboard.press("Enter");
+  const s = p.locator(".dr-sheet");
+  for (const d of [a, b].filter(Boolean)) {
+    const mo = s.locator(`[data-m='${d.slice(0, 7)}']`);
+    await mo.scrollIntoViewIfNeeded();
+    await mo.locator(".dr-d", { hasText: new RegExp(`^${+d.slice(8)}$`) }).click();
+  }
+  if (!b) await s.locator(".dr-foot .btn.primary").click();
+  await s.waitFor({ state: "detached" });
+}
 const until = async (fn, what, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
 
 const settings = { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 };
@@ -112,11 +125,11 @@ try {
   const fm = p.locator(".modal-bg .modal");
   await fm.waitFor();
   if (!(await fm.locator(".fs-who > .chips > .chip[aria-pressed=true]", { hasText: "Onkel Jens" }).count())) fail("Vorschlag: Onkel Jens (noch ohne Flug)");
-  const dates = await fm.locator(".fs-form input[type=date]").evaluateAll(els => els.map(e => e.value));
+  const dates = await fm.locator(".fs-form .dr-btn").evaluateAll(els => els.map(e => e.dataset.from));
   if (dates[0] !== "2027-04-15") fail("Flugsuche nicht ab Jens' erster Nacht: " + dates.join(","));
   await fm.locator(".fs-who > .chips > .chip", { hasText: "Klein (5)" }).click();
   await fm.locator(".fs-who > .chips > .chip", { hasText: "Onkel Jens" }).click();
-  await until(async () => (await fm.locator(".fs-form input[type=date]").first().inputValue()) === "2027-04-01", "Daten folgen der Auswahl (Klein: Reisezeitraum)");
+  await until(async () => (await fm.locator(".fs-form .dr-btn").first().getAttribute("data-from")) === "2027-04-01", "Daten folgen der Auswahl (Klein: Reisezeitraum)");
   await p.keyboard.press("Escape");
   log("Japan: Flugsuche für den Onkel ab seiner ersten Nacht (15.04.), bei Familie Klein wieder der Reisezeitraum");
   // Früh buchen: ein Punkt für Tokio unter „Wichtiges“ mit Shibuya Sky, Fenster in Worten, als Posten übernehmen
@@ -147,7 +160,7 @@ try {
   if ((st.match(/Tokio/g) || []).length > 1) fail("Tokio mehrfach als Station: " + st);
   const segs = await sm.locator(".st-segs").innerText();
   for (const s of ["Klein (5)", "alle 8 zusammen"]) if (!segs.includes(s)) fail(`Abschnitt „${s}“ fehlt: ${segs}`);
-  const ci = await sm.locator("label.f", { hasText: "Check-in" }).locator("input").inputValue(), co = await sm.locator("label.f", { hasText: "Check-out" }).locator("input").inputValue();
+  const ci = await sm.locator(".st-dates .dr-btn").getAttribute("data-from"), co = await sm.locator(".st-dates .dr-btn").getAttribute("data-to");
   if (ci !== "2027-04-02" || co !== "2027-04-08") fail(`Start nicht mit dem ersten Abschnitt: ${ci}–${co}`);
   await sm.locator(".st-segs .chip", { hasText: "zusammen" }).click();
   await sm.locator(".chip", { hasText: "Ganze Unterkunft" }).first().click();
@@ -199,8 +212,7 @@ try {
   await p.locator("#flights .fs-open").click();
   const om = p.locator(".modal-bg .modal");
   await om.locator(".fs-kind .chip", { hasText: "Rundreise" }).click();
-  await om.locator(".fs-flexbox label", { hasText: "frühestens" }).locator("input").fill("2027-02-01");
-  await om.locator(".fs-flexbox label", { hasText: "spätestens" }).locator("input").fill("2027-02-02");
+  await pickRange(p, om.locator(".fs-form .dr-btn"), "2027-02-01", "2027-02-02");
   for (const [i, [code, lo, hi]] of [["SYD", 8, 9], ["AKL", 9, 10], ["NAN", 5, 6]].entries()) {
     if (i) await om.locator(".fs-addst").click();
     const s = om.locator(".fs-station").nth(i);

@@ -124,16 +124,14 @@ try {
   if (!(await m.locator(".lp-list li", { hasText: "LCY" }).count())) fail("Flughäfen am Stadion nicht zur Auswahl");
   await dest.press("Escape");
   log("Event gesucht und übernommen: Name, Stadt, Stadion, Datum, Uhrzeit; Ziel aus der Lage des Stadions, Flughäfen dort zur Auswahl");
-  // Abflughäfen ohne Wohnort: Vorauswahl erklärt; ein Flughafen aus der Suche ersetzt sie, danach kommen weitere dazu
+  // Abflughäfen ohne Wohnort: ein Flughafen aus der Suche ersetzt die Vorauswahl, danach kommen weitere dazu (ohne Erklärsatz, #356)
   const chips = m.locator(".ev-form .fs-aps .chip");
   const first = (await chips.first().textContent()).trim();
-  if (!(await m.locator(".ev-form .fs-home-pick").isVisible())) fail("Hinweis zur Vorauswahl fehlt");
   await m.locator(".ev-form .fs-add input").fill("AMS");
   await m.locator(".lp-list li", { hasText: "AMS" }).first().click();
   const onAps = async () => (await m.locator(".ev-form .fs-aps .chip.on").allTextContents()).map(x => x.trim());
   if ((await onAps()).join() !== "AMS") fail("Suche ersetzt die Vorauswahl nicht: " + (await onAps()));
   if (!(await m.locator(".ev-form .fs-aps .chip.flash", { hasText: "AMS" }).count())) fail("gewählter Flughafen nicht hervorgehoben");
-  if (await m.locator(".ev-form .fs-home-pick").count()) fail("Hinweis zur Vorauswahl bleibt nach eigener Wahl");
   await m.locator(".ev-form .fs-add input").fill("BRU");
   await m.locator(".lp-list li", { hasText: "BRU" }).first().click();
   const onAps0 = await onAps();

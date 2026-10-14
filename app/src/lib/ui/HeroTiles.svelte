@@ -1,7 +1,7 @@
 <script lang="ts">
   /*
    * Kopf der Reise: vier Kacheln als Einstieg und Mini-Übersicht.
-   * Leer: „Zu den Flügen“, „Zu den Hotels“, „Event hinzufügen“, „Sonstige Kosten“;
+   * Leer: Symbol und ein Wort („Flüge“, „Unterkünfte“, „Erlebnisse“, „Sonstige Kosten“);
    * sonst Strecke, Unterkunft, Event und Betrag. Ein Klick führt ins Kapitel (leer: Suche gleich offen).
    */
   import { autoName, t, tn } from "../i18n/index.svelte";
@@ -84,14 +84,14 @@
     <span class="ht-ico" aria-hidden="true">✈</span>
     <span class="ht-b">
       {#if fl.list.length || T.byCat.flights}{@render body(t("ch.flights.label"), T.byCat.flights || 0, fl)}
-      {:else}<b>{t("hero.t.flights")}</b><span class="ht-sub">{t("hero.t.flightsSub")}</span>{/if}
+      {:else}<b>{t("hero.t.flights")} <span class="ht-go" aria-hidden="true">›</span></b>{/if}
     </span>
   </button>
   <button class="ht-tile ht-st" class:empty={!st.list.length && !T.byCat.stay} onclick={() => (app.trip.camper && !st.first ? toCamper() : go("stay", st.first, () => openStaySearch()))}>
     <span class="ht-ico" aria-hidden="true">🛏</span>
     <span class="ht-b">
       {#if st.list.length || T.byCat.stay}{@render body(t("ch.stay.label"), T.byCat.stay || 0, st)}
-      {:else}<b>{t("hero.t.stay")}</b><span class="ht-sub">{t("hero.t.staySub")}</span>{/if}
+      {:else}<b>{t("hero.t.stay")} <span class="ht-go" aria-hidden="true">›</span></b>{/if}
     </span>
   </button>
   <!-- Events & Aktivitäten: das Event der Reise und die Erlebnisse (Touren, Tickets) -->
@@ -107,14 +107,14 @@
         {/if}
         {#each act.list.slice(0, ev ? 1 : 2) as x (x.id)}<span class="ht-line"><span>{x.text}</span><i>{eur(x.v)}</i></span>{/each}
         {#if act.more + (ev && act.list.length > 1 ? 1 : 0)}<span class="ht-sub">{t("hero.t.more", { n: act.more + (ev && act.list.length > 1 ? 1 : 0) })}</span>{/if}
-      {:else}<b>{t("hero.t.event")}</b><span class="ht-sub">{t("hero.t.eventSub")}</span>{/if}
+      {:else}<b>{t("hero.t.event")} <span class="ht-go" aria-hidden="true">›</span></b>{/if}
     </span>
   </button>
   <button class="ht-tile ht-misc" class:empty={!other} onclick={() => go(otherChapter, ot.first)}>
     <span class="ht-ico" aria-hidden="true">🧾</span>
     <span class="ht-b">
       {#if other || ot.list.length}{@render body(t("hero.t.other"), other, ot)}
-      {:else}<b>{t("hero.t.other")}</b><span class="ht-sub">{t("hero.t.otherSub")}</span>{/if}
+      {:else}<b>{t("hero.t.other")} <span class="ht-go" aria-hidden="true">›</span></b>{/if}
     </span>
   </button>
 </div>

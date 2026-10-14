@@ -19,6 +19,19 @@ async function setBags(scope, n) {
   }
   fail("Kofferzahl nicht einstellbar: " + n);
 }
+/** Zeitraum im Kalender antippen: erster und letzter Tag (ohne letzten: „nur Hinflug“) */
+async function pickRange(p, btn, a, b) {
+  // per Tastatur: offene Vorschlagslisten (Ziel nur eingetippt) liegen sonst über dem Feld
+  await btn.focus(); await p.keyboard.press("Enter");
+  const s = p.locator(".dr-sheet");
+  for (const d of [a, b].filter(Boolean)) {
+    const mo = s.locator(`[data-m='${d.slice(0, 7)}']`);
+    await mo.scrollIntoViewIfNeeded();
+    await mo.locator(".dr-d", { hasText: new RegExp(`^${+d.slice(8)}$`) }).click();
+  }
+  if (!b) await s.locator(".dr-foot .btn.primary").click();
+  await s.waitFor({ state: "detached" });
+}
 async function until(fn, what, ms = 10000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
@@ -91,14 +104,14 @@ try {
   await p.goto(URL);
   await p.locator(".start .home-new").click();
   await p.locator(".modal .newtrip .btn.primary").click();
-  // Kopf der neuen Reise: vier Kacheln als Einstieg; „Zu den Flügen“ öffnet die Suche im Kapitel
+  // Kopf der neuen Reise: vier Kacheln als Einstieg; „Flüge“ öffnet die Suche im Kapitel
   const tiles = (await p.locator(".hero .ht-tile b").allInnerTexts()).join("|");
-  if (tiles !== "Zu den Flügen|Zu den Hotels|Events & Aktivitäten|Sonstige Kosten") fail("Kacheln im Kopf: " + tiles);
+  if (tiles !== "Flüge ›|Unterkünfte ›|Erlebnisse ›|Sonstige Kosten ›") fail("Kacheln im Kopf: " + tiles);
   await p.locator(".hero .ht-fl").click();
   await p.locator(".modal-bg .modal").waitFor();
   await p.locator(".modal-bg .modal .x").click();
   await p.locator(".modal-bg .modal").waitFor({ state: "detached" });
-  log("Kopf: Zu den Flügen, Zu den Hotels, Events & Aktivitäten, Sonstige Kosten; Flüge öffnet die Suche");
+  log("Kopf: Flüge, Unterkünfte, Erlebnisse, Sonstige Kosten (Symbol und ein Wort); Flüge öffnet die Suche");
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   const m = p.locator(".modal");
@@ -116,8 +129,7 @@ try {
   // flexibler Zeitraum ist Standard: früheste Hinreise, spätestens zuhause am … um …, Nächte per Schieberegler
   if (!(await m.locator(".fs-mode .chip.on").textContent()).includes("Flexibler Zeitraum")) fail("flexibel nicht vorausgewählt");
   await m.locator("label.f", { hasText: "Nach" }).locator("input").fill("SPU");
-  await m.locator("label", { hasText: "Früheste Hinreise" }).locator("input").fill("2027-07-15");
-  await m.locator("label", { hasText: "Spätestens zuhause am" }).locator("input").fill("2027-07-29");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-07-15", "2027-07-29");
   await m.locator("label.fs-time input").fill("20:00");
   const setRange = (label, v) => m.locator(`input[type=range][aria-label="${label}"]`).evaluate((el, v) => { el.value = String(v); el.dispatchEvent(new Event("input", { bubbles: true })); }, v);
   await setRange("Reisedauer (Nächte vor Ort): bis", 12);
@@ -141,10 +153,10 @@ try {
   if ((await m.locator(".fs-cmp tbody tr").count()) !== 2) fail("Vergleichstabelle");
   const res0 = await m.locator(".fs-res").first().textContent();
   if (!res0.includes("11 Nächte vor Ort") || !res0.includes("zuhause ca. Do 29.07.") || !res0.includes("+ Anfahrt")) fail("Treffer: " + res0.slice(0, 300));
-  if (!(await m.locator(".fs-res").first().locator(".btn", { hasText: "Hier buchen" }).isDisabled())) fail("Hier buchen sollte ausgegraut sein");
+  if (await m.locator(".fs-res").first().locator(".btn", { hasText: "Hier buchen" }).count()) fail("„Hier buchen“ sollte weg sein (Buchen in der App kommt nicht)");
   const src = await m.locator(".fs-src").textContent();
   if (!src.includes("Kiwi.com: 4 Treffer") || !src.includes("Duffel: noch nicht eingerichtet")) fail("Quellen: " + src);
-  log("Vergleichstabelle mit 2 Flughäfen, Treffer mit Anfahrt, 11 Nächten und „zuhause ca.“; „Hier buchen“ ausgegraut");
+  log("Vergleichstabelle mit 2 Flughäfen, Treffer mit Anfahrt, 11 Nächten und „zuhause ca.“; kein „Hier buchen“");
 
   // zu spät zuhause: um 17:00 fällt alles raus (Landung 16:25 + Heimfahrt + Gepäck)
   await m.locator("label.fs-time input").fill("17:00");
@@ -186,8 +198,7 @@ try {
 
   // wieder 20:00, feste Daten mit ± Tagen prüfen, dann übernehmen
   await m.locator(".fs-mode .chip", { hasText: "Feste Daten" }).click();
-  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
-  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-07-18", "2027-07-29");
   await m.locator("label", { hasText: "± Tage" }).locator("select").selectOption("2");
   const sky = await m.locator(".fs-direct a", { hasText: "Skyscanner" }).getAttribute("href");
   if (!/\/flights\/[a-z]{3}\/spu\/270718\/270729\//.test(sky)) fail("Skyscanner-Link: " + sky);
@@ -214,7 +225,7 @@ try {
   // zweites Angebot: Suche am Posten erneut öffnen
   await card.first().click();
   await p.locator("#flights .fs-item").first().click();
-  if ((await m.locator("label", { hasText: "Hin am" }).locator("input").inputValue()) !== "2027-07-18") fail("Datum beim erneuten Öffnen nicht aus dem Flug");
+  if ((await m.locator(".fs-form .dr-btn").getAttribute("data-from")) !== "2027-07-18") fail("Datum beim erneuten Öffnen nicht aus dem Flug");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-cmp .btn", { hasText: "Wählen" }).nth(1).click();
   await m.waitFor({ state: "detached" });
@@ -246,7 +257,7 @@ try {
   if (!(await m.locator(".fs-who .chip.on", { hasText: "Klein (2)" }).count())) fail("Vorschlag erste Familie ohne Flug fehlt");
   const kAps = await m.locator(".fs-aps .chip.on").allTextContents();
   if (!kAps.includes("DUS") || kAps.includes("MUC")) fail("Flughäfen nicht zum Wohnort von Klein: " + kAps);
-  if (!(await m.locator("p", { hasText: "1 Erw. · 1 Kind (Klein)" }).count())) fail("Personen für Klein: " + await m.locator(".fs-form p.muted").last().textContent());
+  if (!(await m.locator(".fs-facts", { hasText: "1 Erw. · 1 Kind · Klein" }).count())) fail("Personen für Klein: " + await m.locator(".fs-facts").textContent());
   // Ziel aus der Reise: Split → Flughafen SPU; Auswahlliste bietet alle Flughäfen im Umkreis und jeden einzeln mit Entfernung
   const kDest = m.locator("label.f", { hasText: "Nach" }).locator("input");
   for (let i = 0; i < 50 && !(await kDest.inputValue()).startsWith("SPU"); i++) await p.waitForTimeout(100);
@@ -280,8 +291,7 @@ try {
   await m.locator(".fs-who .chip", { hasText: "Jan" }).click();
   // (die nachgestellten Treffer starten alle in DUS: von München aus wären sie „zu spät zuhause“, darum feste Daten)
   await m.locator(".fs-mode .chip", { hasText: "Feste Daten" }).click();
-  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
-  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-07-18", "2027-07-29");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   const h = asked.at(-1);
@@ -330,8 +340,7 @@ try {
   await p.locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
-  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
-  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-07-18", "2027-07-29");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().locator(".btn", { hasText: "Übernehmen" }).click();
   await p.keyboard.press("Escape");
@@ -358,8 +367,7 @@ try {
   if (!(await p.locator(".editor .chip.on", { hasText: "Wie Flug Klein" }).count())) fail("Editor zeigt Mitfliegen nicht");
   await p.locator(".editor .fs-item", { hasText: "Eigenen Flug suchen" }).click();
   if (!(await m.locator("p", { hasText: "Bisher: mitfliegen wie „Flug Klein“" }).count())) fail("Vergleich zum Mitfliegen fehlt");
-  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
-  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-07-18", "2027-07-29");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   if (!(await m.locator(".fs-res .st-diff", { hasText: "als mitfliegen" }).count())) fail("Treffer ohne Vergleich zum Mitfliegen");
@@ -376,8 +384,7 @@ try {
   const nach = m.locator("label.f", { hasText: "Nach" }).locator("input");
   await nach.fill("GIG");
   await m.locator(".lp-list li", { hasText: "GIG" }).first().click();
-  await m.locator("label", { hasText: "Früheste Abreise" }).locator("input").fill("2027-03-01");
-  await m.locator("label", { hasText: "Späteste Abreise" }).locator("input").fill("2027-03-05");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-03-01", "2027-03-05");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   const ow = asked.at(-1);
@@ -419,8 +426,7 @@ try {
 
   // Rundreise: DUS → Rio (5–7 Nächte) → Buenos Aires (3–4 Nächte) → zurück
   await m.locator(".fs-kind .chip", { hasText: "Rundreise" }).click();
-  await m.locator("label", { hasText: "Abflug frühestens" }).locator("input").fill("2027-03-01");
-  await m.locator("label", { hasText: "spätestens" }).locator("input").first().fill("2027-03-03");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-03-01", "2027-03-03");
   const st1 = m.locator(".fs-station").nth(0);
   if (!(await st1.locator("input").first().inputValue()).startsWith("GIG")) fail("erste Station übernimmt das Ziel nicht: " + await st1.locator("input").first().inputValue());
   await st1.locator("label", { hasText: "Nächte von" }).locator("input").fill("5");
@@ -480,8 +486,7 @@ try {
   // kurzer Aufenthalt (0–1 Nacht in Rio): zusätzlich als Gabelflug, ein Ticket DUS → EZE mit langem Umstieg in GIG
   await p.locator("#flights .fs-open").click();
   await m.locator(".fs-kind .chip", { hasText: "Rundreise" }).click();
-  await m.locator("label", { hasText: "Abflug frühestens" }).locator("input").fill("2027-03-01");
-  await m.locator("label", { hasText: "spätestens" }).locator("input").first().fill("2027-03-03");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-03-01", "2027-03-03");
   const s1 = m.locator(".fs-station").nth(0);
   await s1.locator("input").first().fill("GIG");
   await m.locator(".lp-list li", { hasText: "GIG" }).first().click();
@@ -512,8 +517,7 @@ try {
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   if ((await m.locator("label", { hasText: "Umstiege max." }).locator("select").inputValue()) !== "0") fail("Umstiege nicht aus den Vorlieben");
-  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-07-18");
-  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-07-29");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-07-18", "2027-07-29");
   const beforeP = asked.length;
   await m.locator(".fs-form .btn.primary").click();
   await m.locator("p", { hasText: "über gesperrte Länder ausgeblendet" }).waitFor();
@@ -533,10 +537,9 @@ try {
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   const fsForm = m.locator(".fs-form");
-  await m.locator("label", { hasText: "Hin am" }).locator("input").fill("2027-08-12");
-  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-08-14");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-08-12", "2027-08-14");
   if ((await bagsOf(fsForm)) !== 0) fail("3 Reisetage ohne Vorliebe: Koffer " + await bagsOf(fsForm));
-  await m.locator("label", { hasText: "Rück am" }).locator("input").fill("2027-08-22");
+  await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-08-12", "2027-08-22");
   if ((await bagsOf(fsForm)) !== 4) fail("11 Reisetage ohne Vorliebe: Koffer " + await bagsOf(fsForm));
   const pmiIn = m.locator("label.f", { hasText: "Nach" }).locator("input");
   await pmiIn.fill("PMI");
