@@ -19,6 +19,7 @@
   import ImportantButton from "./ImportantButton.svelte";
   import { access, goHome } from "../store.svelte";
   import { heroEdit } from "./heroEdit.svelte";
+  import { openInfo } from "../info/app.svelte";
 
   let { home = false }: { home?: boolean } = $props();
 
@@ -88,6 +89,7 @@
             <button class="tm-act" onclick={() => { more = false; groups = true; }}><Icon name="users" size={16} /> {t("groups.title")}</button>
             <button class="tm-act" onclick={() => { more = false; prefs = true; }}><Icon name="sliders" size={16} /> {t("prefs.title")}</button>
             <button class="tm-act" onclick={toggleTheme}><Icon name="moon" size={16} /> {t("nav.theme")}</button>
+            <button class="tm-act top-info" onclick={() => { more = false; openInfo(); }}><span aria-hidden="true">✨</span> {t("info.title")}</button>
             <label class="top-lang"><span>{t("nav.language")}</span><LangSelect short /></label>
             <label class="top-lang"><span>{t("nav.currency")}</span><CurrencySelect /></label>
           </div>
