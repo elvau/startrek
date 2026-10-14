@@ -19,4 +19,11 @@ describe("Reisen ohne Kosten aufräumen (Fehlerbericht #21)", () => {
     expect(s.emptyTrips()).toHaveLength(0);
     expect(s.homeTrips()).toHaveLength(0);
   });
+
+  it("neue Reise verwirft den gemerkten Scrollstand der zuvor offenen (#369)", async () => {
+    const s = await import("./store.svelte");
+    s.resumeScroll.y = 4200;
+    s.newTrip({ place: "" });
+    expect(s.resumeScroll.y).toBe(0);
+  });
 });
