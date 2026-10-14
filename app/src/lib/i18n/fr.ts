@@ -1174,6 +1174,7 @@ export const fr: Dict = {
   "hint.short.early": "très tôt : nuit d'avant à l'aéroport ?",
   "home.ai": "Planifier avec l’IA",
   "home.aiSub": "Décris ton voyage idéal, l’IA propose des voyages (bêta)",
+  "home.sampleSub": "Voici à quoi ressemble un voyage déjà planifié",
   "home.aiTag": "Proposition IA",
   "home.back": "Aperçu",
   "home.booked": "Voyages réservés",

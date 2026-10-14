@@ -1172,6 +1172,7 @@ export const de = {
   "hint.short.early": "sehr früh: Nacht davor am Flughafen?",
   "home.ai": "Mit KI planen",
   "home.aiSub": "Beschreib deine Wunschreise, die KI macht Vorschläge (Beta)",
+  "home.sampleSub": "So sieht eine fertig geplante Reise aus",
   "home.aiTag": "KI-Vorschlag",
   "home.back": "Übersicht",
   "home.booked": "Gebuchte Reisen",
