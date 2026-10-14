@@ -1081,4 +1081,23 @@ html:has(.modal-bg){overflow:hidden}
 .people.list:not(.editing) .person>span:not(.av){grid-area:info;font-size:12px;line-height:1.3}
 .people.list:not(.editing) .person .dabei{grid-area:in}
 .people.list:not(.editing) .person .p-x{grid-area:x}
-.people.list:not(.editing) .person .repl{grid-column:2/-1;justify-self:start;margin:0}
+.people.list .person .repl{display:inline;font-size:inherit;margin:0;padding:0}
+/* kompakter: Übersicht oben, kleinere Zeilen, „Alle anzeigen“ */
+.people.list .p-sum{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:4px 0 6px;font-size:13px;color:var(--ink-2)}
+.people.list .p-sum b{font-size:15px;color:var(--ink)}
+.people.list .p-fam{margin:8px 0 0;font-size:13px}
+.people.list .person:not(.add){padding:4px 2px}
+.people.list .person .av{width:26px;height:26px;font-size:12px}
+.people.list .person.kid .av{width:22px;height:22px;font-size:11px;margin:0 2px}
+.people.list .person .av.emoji{font-size:14px}
+.people.list .person b{font-size:14px}
+.people.list .person .dabei{padding:2px 8px;font-size:11.5px}
+.people.list .person .p-x{width:22px;height:22px;font-size:16px}
+.people.list .p-more{align-self:flex-start;margin-top:6px;font-size:13px}
+.people.list .person.add{flex-wrap:nowrap;gap:8px}
+.people.list .person.add b{flex:none}
+/* breit: zwei Spalten, Übersicht, Familien und Knöpfe über die ganze Breite */
+@media (min-width:900px){
+  .people.list{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;align-items:start}
+  .people.list>.p-sum,.people.list>.p-fam,.people.list>.p-more,.people.list>.person.add{grid-column:1/-1;justify-self:start}
+}

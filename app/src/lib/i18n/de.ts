@@ -2218,6 +2218,8 @@ export const de = {
   "trav.replaceWith": "„{name}“ ersetzen durch",
   "trav.saveGroup": "Als Gruppe speichern",
   "trav.savedGroup": "Gespeichert als Gruppe „{name}“ ({p}).",
+  "trav.showAll": "Alle {n} anzeigen",
+  "trav.showLess": "▴ Weniger anzeigen",
   "trav.years": "Jahre",
   "trip": "Reise",
   "trip.untitled": "Neue Reise",

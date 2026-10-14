@@ -162,7 +162,13 @@ try {
   const [A, B] = fams;
   if (fams.length !== 2 || A === B) fail("Familien: " + fams);
   await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
-  await until(async () => (await a.locator(".person:not(.add) b").count()) === 10, "Familien-Reise offen");
+  // große Gruppe: Übersicht oben, erst 4 Personen, der Rest über „Alle 10 anzeigen“
+  await until(async () => (await a.locator(".people.list .p-sum").count()) === 1, "Familien-Reise offen");
+  const pSum = (await a.locator(".people.list .p-sum").innerText()).replace(/\s+/g, " ");
+  if (!pSum.includes("10 Personen") || !pSum.includes("4 Erw.") || !pSum.includes("5 Kinder") || !pSum.includes("1 Kleink.")) fail("Übersicht: " + pSum);
+  if ((await a.locator(".person:not(.add) b").count()) !== 4) fail("zugeklappt nicht 4 Personen: " + await a.locator(".person:not(.add) b").count());
+  await a.locator(".people .p-more", { hasText: "Alle 10 anzeigen" }).click();
+  await until(async () => (await a.locator(".person:not(.add) b").count()) === 10, "alle 10 angezeigt");
   const ph = await a.locator(".person:not(.add) b").allTextContents();
   if (ph.length !== 10 || ph[0] !== `${A} Erw. 1` || ph[9] !== `${B} Kleinkind 1`) fail("Platzhalter: " + ph);
   const kids = await a.locator(".person", { hasText: `${A} Kind 1` }).locator("span").allTextContents();
@@ -182,10 +188,10 @@ try {
   if (!cand.some(c => c.includes("Dani Klein"))) fail("Kandidaten: " + cand);
   await a.locator(".repl-pick .chip", { hasText: "Dani Klein" }).click();
   const after = await a.locator(".person:not(.add) b").allTextContents();
-  if (after.length !== 10 || after[0] !== "Dani" || after.includes(`${A} Erw. 1`)) fail("nach Ersetzen: " + after);
-  // ab 4 Personen Liste statt Kacheln, nach Familien gruppiert (Vorname je Zeile, Familie darüber)
+  if (after.length !== 10 || after[0] !== "Dani Klein" || after.includes(`${A} Erw. 1`)) fail("nach Ersetzen: " + after);
+  // ab 4 Personen Liste nach Familien: Überschrift nur bei mehreren Personen (Dani allein in „Klein“ mit vollem Namen)
   const famHeads = (await a.locator(".people.list .p-fam b").allTextContents()).map(x => x.trim());
-  if (famHeads.length !== 3 || !famHeads[0].endsWith("Klein")) fail("Familien in der Liste: " + famHeads);
+  if (famHeads.length !== 2 || famHeads.some(x => x.endsWith("Klein"))) fail("Familien in der Liste: " + famHeads);
   const hh3 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
   if (!hh3.some(x => x.startsWith("Klein") && x.includes("100 €"))) fail("Klein nach Ersetzen: " + hh3);
   // × an der Person: schnell entfernen (mit Rückfrage), ohne „Personen bearbeiten“

@@ -2381,6 +2381,8 @@ export const ar: Dict = {
   "trav.replaceWith": "استبدال «{name}» بـ",
   "trav.saveGroup": "حفظ كمجموعة",
   "trav.savedGroup": "حُفظت كمجموعة «{name}» ({p}).",
+  "trav.showAll": "عرض الكل ({n})",
+  "trav.showLess": "▴ عرض أقل",
   "trav.years": "سنة",
   "trip": "رحلة",
   "trip.untitled": "رحلة جديدة",

@@ -2302,6 +2302,8 @@ export const ru: Dict = {
   "trav.replaceWith": "Заменить «{name}» на",
   "trav.saveGroup": "Сохранить как группу",
   "trav.savedGroup": "Сохранено как группа «{name}» ({p}).",
+  "trav.showAll": "Показать всех ({n})",
+  "trav.showLess": "▴ Свернуть",
   "trav.years": "лет",
   "trip": "Поездка",
   "trip.untitled": "Новая поездка",
