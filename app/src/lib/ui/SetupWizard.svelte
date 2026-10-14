@@ -137,7 +137,7 @@
   const joinNon = (xs: (string | number | false | undefined | null)[]) => xs.filter(Boolean).join(" · ");
   const ageNow = $derived(d.birth ? Math.floor((Date.now() - new Date(d.birth).getTime()) / (365.25 * 864e5)) : d.age);
   const summary = $derived([
-    { s: 0, icon: "👤", k: "setup.step.me", v: joinNon([d.first && `${d.first} ${d.last}`.trim(), ageNow != null && t("trav.ageYears", { n: ageNow }), d.nats.map(cname).join(", "), d.home && homeText(d.home)]) },
+    { s: 0, icon: "👤", k: "setup.step.me", v: joinNon([d.first && `${d.first} ${d.last}`.trim(), ageNow != null && tn("trav.ageYears", ageNow), d.nats.map(cname).join(", "), d.home && homeText(d.home)]) },
     { s: 1, icon: "🚗", k: "setup.step.go", v: joinNon([d.license && t(LIC_KEYS[d.license]), d.creditCard != null && `${t("setup.card")}: ${yesNo(d.creditCard)}`, d.prefs.car && joinNon([d.prefs.car.fuel && t(`setup.fuel.${d.prefs.car.fuel}` as Key), d.prefs.car.seats && t("setup.seatsN", { n: d.prefs.car.seats })]), d.rail.map(r => t(`setup.rail.${r}` as Key)).join(", ")]) },
     { s: 2, icon: "👨‍👩‍👧", k: "setup.step.who", v: joinNon([d.group, d.companions.filter(c => c.on && (c.first || c.id)).map(c => c.first).join(", ")]) },
     { s: 3, icon: "🏖️", k: "setup.step.how", v: joinNon([(d.prefs.styles || []).map(s => t(`prefs.s.${s}` as Key)).join(", "), d.prefs.budget && t(`prefs.b.${d.prefs.budget}` as Key), d.prefs.stayType === "whole" ? t("st.whole") : d.prefs.stayType === "hotel" ? t("st.hotel") : "", d.prefs.board && t(`board.${d.prefs.board}` as Key), d.prefs.airports?.join(", ")]) },
@@ -241,7 +241,7 @@
           {#each d.companions as c, i (i)}
             <div class="wz-person" class:off={!c.on}>
               {#if c.id}
-                <label class="wz-check"><input type="checkbox" bind:checked={c.on} /> <b>{c.first}</b>{#if c.age != null}<span class="muted"> · {t("trav.ageYears", { n: c.age })}</span>{/if}</label>
+                <label class="wz-check"><input type="checkbox" bind:checked={c.on} /> <b>{c.first}</b>{#if c.age != null}<span class="muted"> · {tn("trav.ageYears", c.age)}</span>{/if}</label>
               {:else}
                 <input class="inp wz-pfirst" bind:value={c.first} placeholder={t("setup.firstPh")} aria-label={t("setup.first")} />
                 <input class="inp n sm wz-page" type="number" min="0" max="120" value={c.age ?? ""} oninput={e => (c.age = num(e.currentTarget.value) ?? null)} placeholder={t("trav.age")} aria-label={t("trav.age")} />

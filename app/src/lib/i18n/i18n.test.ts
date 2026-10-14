@@ -22,6 +22,14 @@ describe("Übersetzungen", () => {
     expect(tn("n.nights", 3)).toBe("3 Nächte");
   });
 
+  it("Alter in Jahren mit Mehrzahlformen", () => {
+    expect([0, 1, 2, 12].map(n => tn("trav.ageYears", n))).toEqual(["0 Jahre", "1 Jahr", "2 Jahre", "12 Jahre"]);
+    inLang("en", () => expect([1, 2].map(n => tn("trav.ageYears", n))).toEqual(["1 year", "2 years"]));
+    inLang("ru", () => expect([1, 2, 5, 21].map(n => tn("trav.ageYears", n))).toEqual(["1 год", "2 года", "5 лет", "21 год"]));
+    inLang("pl", () => expect([1, 2, 5].map(n => tn("trav.ageYears", n))).toEqual(["1 rok", "2 lata", "5 lat"]));
+    inLang("ar", () => expect([1, 2].map(n => tn("trav.ageYears", n))).toEqual(["سنة واحدة", "سنتان"]));
+  });
+
   it("Englisch mit eigenen Mehrzahlformen", () => {
     inLang("en", () => {
       expect(t("fs.open")).toBe("Search flights");
