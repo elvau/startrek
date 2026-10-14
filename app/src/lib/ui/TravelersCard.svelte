@@ -10,7 +10,7 @@
   import Households from "./Households.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
   import QuickFamilies from "./QuickFamilies.svelte";
-  import { animalEmoji, nextAnimal, placeholderTravelers, type FamilyRow } from "../placeholders";
+  import { animalEmoji, exampleFamily, nextAnimal, placeholderTravelers, type FamilyRow } from "../placeholders";
   import { countryName } from "../geo/locations";
   import { flagOf } from "../format";
   import { loadVisa } from "../visa";
@@ -28,6 +28,10 @@
   let quick = $state(false);
   let fams = $state<FamilyRow[]>([]);
   const households = $derived([...new Set(app.trip.travelers.map(t => t.household))]);
+  // ab 4 Personen Liste statt Kacheln, nach Familien gruppiert (Vorname je Zeile, Familie als Überschrift)
+  const LIST_FROM = 4;
+  const list = $derived(app.trip.travelers.length >= LIST_FROM);
+  const byHh = $derived(households.map(h => ({ h, ms: app.trip.travelers.map((t, i) => ({ t, i })).filter(x => x.t.household === h) })));
   function openQuick() { fams = [{ animal: nextAnimal(households), adults: 2, kids: 0, infants: 0 }]; quick = !quick; }
   function addQuick() {
     app.trip.travelers.push(...placeholderTravelers(fams, app.trip.travelers.length));
@@ -93,7 +97,7 @@
     // Platzhalter bleiben in der Reise und kommen nicht in gespeicherte Gruppen
     const real = app.trip.travelers.filter(t => !t.placeholder);
     if (!real.length) { saved = t("trav.noPlaceholders"); return; }
-    const name = prompt(t("trav.groupPrompt"), app.trip.name);
+    const name = prompt(t("trav.groupPrompt", { a: exampleFamily() }), app.trip.name);
     if (!name?.trim()) return;
     const g = saveAsGroup(name, real, app.trip.households);
     saved = t("trav.savedGroup", { name: g.name, p: tn("n.persons", g.memberIds.length) });
@@ -101,40 +105,50 @@
   }
 </script>
 
-<div class="people">
-  {#each app.trip.travelers as t, i (t.id)}
-    {@const emoji = t.placeholder ? animalEmoji(t.household) : null}
-    {@const cls = ageClass(t.age, app.trip.settings, t.kind)}
-    <div class="person" class:off={!isActive(t)} class:kid={cls !== "adult"}>
-      {#if !edit && !access.readonly}<button class="p-x" aria-label={tt("trav.removeAria", { name: t.name || tt("trav.noName") })} title={tt("remove")} onclick={() => remove(t.id)}>×</button>{/if}
-      <span class="av" class:emoji style:--ring={t.color || COLORS[i % COLORS.length]} style:background={emoji ? null : t.color || COLORS[i % COLORS.length]}>{emoji || (t.name || "?")[0]}</span>
-      {#if edit}
-        <!-- ein echter Name macht aus dem Platzhalter eine Person -->
-        <input class="inp" class:need={missing(t.name)} bind:value={t.name} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.first')} *" aria-label={tt("trav.first")} />
-        <input class="inp" class:need={missing(t.household)} bind:value={t.household} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.last')} *" aria-label={tt("trav.last")} />
-        <label class="in-row"><input class="inp num" type="number" min="0" max="120" bind:value={t.age} placeholder="?" aria-label={tt("trav.age")} /> {tt("trav.years")}</label>
-        <!-- Staatsangehörigkeit: für die Einreise-Hinweise (Visum, Reisegenehmigung); leer = deutsch -->
-        <select class="inp t-nat" value={t.nat || ""} aria-label={tt("trav.nat")} title={tt("trav.nat")} onchange={e => { const v = e.currentTarget.value; if (v && v !== "DE") t.nat = v; else delete t.nat; }}>
-          <option value="">{flagOf("DE")} {countryName("DE")}</option>
-          {#each natList as c (c)}<option value={c}>{flagOf(c)} {countryName(c)}</option>{/each}
-        </select>
-        <!-- zweiter Pass (optional): für die Einreise zählt der günstigere -->
-        <select class="inp t-nat2" value={t.nat2 || ""} aria-label={tt("trav.nat2")} title={tt("trav.nat2")} onchange={e => { const v = e.currentTarget.value; if (v && v !== (t.nat || "DE")) t.nat2 = v; else delete t.nat2; }}>
-          <option value="">{tt("trav.nat2")}</option>
-          {#each ["DE", ...natList] as c (c)}<option value={c}>{flagOf(c)} {countryName(c)}</option>{/each}
-        </select>
-        <button class="linkbtn danger" onclick={() => remove(t.id)}>{tt("remove")}</button>
-      {:else}
-        <b>{t.placeholder ? t.name : `${t.name || tt("trav.noName")} ${t.household}`}</b>
-        <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}{#if t.nat || t.nat2} <span title={[t.nat || "DE", t.nat2].filter(Boolean).map(c => countryName(c!)).join(" · ")}>· {flagOf(t.nat || "DE")}{t.nat2 ? flagOf(t.nat2) : ""}</span>{/if}</span>
-        <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
-          onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? `✓ ${tt("trav.in")}` : tt("trav.out")}</button>
-        {#if t.placeholder && !access.readonly}
-          <button class="linkbtn repl" class:on={replacing === t.id} onclick={() => { replacing = replacing === t.id ? null : t.id; pick = quick = false; }}>{tt("trav.replace")}</button>
-        {/if}
+{#snippet person(t: (typeof app.trip.travelers)[number], i: number, short: boolean)}
+  {@const emoji = t.placeholder ? animalEmoji(t.household) : null}
+  {@const cls = ageClass(t.age, app.trip.settings, t.kind)}
+  <div class="person" class:off={!isActive(t)} class:kid={cls !== "adult"}>
+    {#if !edit && !access.readonly}<button class="p-x" aria-label={tt("trav.removeAria", { name: t.name || tt("trav.noName") })} title={tt("remove")} onclick={() => remove(t.id)}>×</button>{/if}
+    <span class="av" class:emoji style:--ring={t.color || COLORS[i % COLORS.length]} style:background={emoji ? null : t.color || COLORS[i % COLORS.length]}>{emoji || (t.name || "?")[0]}</span>
+    {#if edit}
+      <!-- ein echter Name macht aus dem Platzhalter eine Person -->
+      <input class="inp" class:need={missing(t.name)} bind:value={t.name} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.first')} *" aria-label={tt("trav.first")} />
+      <input class="inp" class:need={missing(t.household)} bind:value={t.household} oninput={() => (t.placeholder = undefined)} placeholder="{tt('trav.last')} *" aria-label={tt("trav.last")} />
+      <label class="in-row"><input class="inp num" type="number" min="0" max="120" bind:value={t.age} placeholder="?" aria-label={tt("trav.age")} /> {tt("trav.years")}</label>
+      <!-- Staatsangehörigkeit: für die Einreise-Hinweise (Visum, Reisegenehmigung); leer = deutsch -->
+      <select class="inp t-nat" value={t.nat || ""} aria-label={tt("trav.nat")} title={tt("trav.nat")} onchange={e => { const v = e.currentTarget.value; if (v && v !== "DE") t.nat = v; else delete t.nat; }}>
+        <option value="">{flagOf("DE")} {countryName("DE")}</option>
+        {#each natList as c (c)}<option value={c}>{flagOf(c)} {countryName(c)}</option>{/each}
+      </select>
+      <!-- zweiter Pass (optional): für die Einreise zählt der günstigere -->
+      <select class="inp t-nat2" value={t.nat2 || ""} aria-label={tt("trav.nat2")} title={tt("trav.nat2")} onchange={e => { const v = e.currentTarget.value; if (v && v !== (t.nat || "DE")) t.nat2 = v; else delete t.nat2; }}>
+        <option value="">{tt("trav.nat2")}</option>
+        {#each ["DE", ...natList] as c (c)}<option value={c}>{flagOf(c)} {countryName(c)}</option>{/each}
+      </select>
+      <button class="linkbtn danger" onclick={() => remove(t.id)}>{tt("remove")}</button>
+    {:else}
+      <b>{t.placeholder || short ? t.name || tt("trav.noName") : `${t.name || tt("trav.noName")} ${t.household}`}</b>
+      <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}{#if t.nat || t.nat2} <span title={[t.nat || "DE", t.nat2].filter(Boolean).map(c => countryName(c!)).join(" · ")}>· {flagOf(t.nat || "DE")}{t.nat2 ? flagOf(t.nat2) : ""}</span>{/if}</span>
+      <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
+        onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? `✓ ${tt("trav.in")}` : tt("trav.out")}</button>
+      {#if t.placeholder && !access.readonly}
+        <button class="linkbtn repl" class:on={replacing === t.id} onclick={() => { replacing = replacing === t.id ? null : t.id; pick = quick = false; }}>{tt("trav.replace")}</button>
       {/if}
-    </div>
-  {/each}
+    {/if}
+  </div>
+{/snippet}
+
+<div class="people" class:list class:editing={edit}>
+  <!-- beim Bearbeiten nicht gruppieren: sonst springt die Zeile beim Tippen des Nachnamens in eine andere Familie -->
+  {#if list && !edit}
+    {#each byHh as f (f.h)}
+      {#if households.length > 1}<div class="p-fam"><b>{animalEmoji(f.h) || "👪"} {f.h || tt("trav.noName")}</b> <span class="muted">{tn("n.persons", f.ms.length)}</span></div>{/if}
+      {#each f.ms as x (x.t.id)}{@render person(x.t, x.i, households.length > 1)}{/each}
+    {/each}
+  {:else}
+    {#each app.trip.travelers as t, i (t.id)}{@render person(t, i, false)}{/each}
+  {/if}
   {#if !access.readonly}<button class="person add" onclick={add}><span class="av plus">+</span><b>{t("trav.person")}</b></button>{/if}
 </div>
 

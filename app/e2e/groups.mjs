@@ -182,7 +182,10 @@ try {
   if (!cand.some(c => c.includes("Dani Klein"))) fail("Kandidaten: " + cand);
   await a.locator(".repl-pick .chip", { hasText: "Dani Klein" }).click();
   const after = await a.locator(".person:not(.add) b").allTextContents();
-  if (after.length !== 10 || after[0] !== "Dani Klein" || after.includes(`${A} Erw. 1`)) fail("nach Ersetzen: " + after);
+  if (after.length !== 10 || after[0] !== "Dani" || after.includes(`${A} Erw. 1`)) fail("nach Ersetzen: " + after);
+  // ab 4 Personen Liste statt Kacheln, nach Familien gruppiert (Vorname je Zeile, Familie darüber)
+  const famHeads = (await a.locator(".people.list .p-fam b").allTextContents()).map(x => x.trim());
+  if (famHeads.length !== 3 || !famHeads[0].endsWith("Klein")) fail("Familien in der Liste: " + famHeads);
   const hh3 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
   if (!hh3.some(x => x.startsWith("Klein") && x.includes("100 €"))) fail("Klein nach Ersetzen: " + hh3);
   // × an der Person: schnell entfernen (mit Rückfrage), ohne „Personen bearbeiten“
@@ -190,7 +193,7 @@ try {
   await until(async () => (await a.locator(".person:not(.add) b").count()) === 9, "Kleinkind entfernt");
   if ((await a.locator(".person:not(.add) b").allTextContents()).includes(`${B} Kleinkind 1`)) fail("Kleinkind noch da");
   log("× entfernt einen Platzhalter direkt");
-  log(`„${A} Erw. 1“ durch die gespeicherte`, " Dani Klein ersetzt, Familie Klein zahlt 100 €");
+  log(`„${A} Erw. 1“ durch die gespeicherte`, " Dani Klein ersetzt, Familie Klein zahlt 100 €; ab 4 Personen Liste nach Familien");
   log(`Platzhalter: Familie ${A} (2+3) und ${B} (2+2+1 Kleinkind)`, " 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
 
   // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da

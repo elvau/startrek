@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exampleFamily } from "../placeholders";
   import { t } from "../i18n/index.svelte";
   import Help from "./Help.svelte";
   /*
@@ -40,7 +41,7 @@
     {:else if cur?.prefs}
       {#key cur.id}<PrefsEditor p={cur.prefs} base={dir.prefs || {}} onai={ai} />{/key}
     {/if}
-    {#if !dir.groups.length}<p class="muted small">{t("grp.none")}</p>{/if}
+    {#if !dir.groups.length}<p class="muted small">{t("grp.none", { a: exampleFamily() })}</p>{/if}
     <p class="small pv-restart"><button type="button" class="linkbtn" onclick={() => { onclose(); restartSetup(); }}>↺ {t("setup.open")}</button></p>
   </div>
 </Modal>

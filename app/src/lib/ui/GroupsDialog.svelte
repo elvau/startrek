@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { exampleFamily } from "../placeholders";
   import { t, tn } from "../i18n/index.svelte";
   import Help from "./Help.svelte";
   /* Gespeicherte Gruppen und Personen verwalten. Eine Person kann in mehreren Gruppen sein. */
@@ -74,7 +75,7 @@
           {/if}
         </div>
       {:else}
-        <p class="muted small">{t("grp.none")}</p>
+        <p class="muted small">{t("grp.none", { a: exampleFamily() })}</p>
       {/each}
       <form class="ed-row" onsubmit={newGroup}>
         <label class="f grow">{t("grp.new")}<input bind:value={gname} placeholder={t("grp.newPh")} /></label>
@@ -99,7 +100,7 @@
       </ul>
       <form class="ed-row" onsubmit={newPerson}>
         <label class="f">{t("trav.first")} *<input bind:value={first} placeholder={t("grp.firstPh")} /></label>
-        <label class="f">{t("trav.last")} *<input bind:value={last} placeholder={t("grp.lastPh")} /></label>
+        <label class="f">{t("trav.last")} *<input bind:value={last} placeholder={exampleFamily()} /></label>
         <label class="f">{t("trav.age")}<input class="n sm" type="number" min="0" max="120" bind:value={age} /></label>
         <button class="btn">{open && dir.groups.find(x => x.id === open) ? t("grp.addTo", { name: dir.groups.find(x => x.id === open)?.name || "" }) : t("grp.addPerson")}</button>
       </form>

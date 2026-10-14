@@ -43,6 +43,8 @@ describe("Übersetzungen", () => {
   it("Russisch und Polnisch zählen mit drei Formen", () => {
     inLang("ru", () => {
       expect([1, 2, 5, 21, 22, 25].map(n => tn("n.nights", n))).toEqual(["1 ночь", "2 ночи", "5 ночей", "21 ночь", "22 ночи", "25 ночей"]);
+      // nach „до“ steht der Genitiv
+      expect([1, 2, 3, 5, 21].map(n => tn("stay.upTo", n))).toEqual(["до 1 гостя", "до 2 гостей", "до 3 гостей", "до 5 гостей", "до 21 гостя"]);
     });
     inLang("pl", () => {
       expect([1, 2, 5, 12, 22].map(n => tn("n.persons", n))).toEqual(["1 osoba", "2 osoby", "5 osób", "12 osób", "22 osoby"]);

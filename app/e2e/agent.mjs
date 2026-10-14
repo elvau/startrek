@@ -125,7 +125,7 @@ try {
   }
 
   // Meine Daten (Auskunft, Art. 15 DSGVO): aus dem Kontomenü, als Seite und als Datei, Drucken über einen Rahmen
-  await c.locator(".ai-head .x").click();
+  // das Kontomenü liegt auch bei offenem Chat darüber (#352)
   await p.locator(".top .acct-btn").click();
   await p.locator(".acct-data").click();
   const md = p.locator(".mydata");
@@ -143,7 +143,6 @@ try {
   await p.locator("iframe.mydata-frame").waitFor({ state: "attached" });
   await p.keyboard.press("Escape");
   log("Meine Daten: Auskunft als Seite (Konto, AGB, Gerät), Datei mit Konto, Profil, Reisen und Browser-Einträgen, Drucken über Rahmen");
-  await p.locator(".ai-fab").click();
 
   // Beispiel antippen schickt den Wunsch; Anfrage mit Anmelde-Nachweis und Reisenden
   await c.locator(".ai-ex .chip").first().click();

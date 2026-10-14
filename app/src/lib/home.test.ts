@@ -25,6 +25,18 @@ describe("Wohnort je Land (#163)", () => {
     expect(exactPostal(GB, "sw1a")?.[0]).toBe("SW1A");
     expect(shortCode("PT", "1000-001")).toBe("1000");
     expect(shortCode("AT", "1010")).toBe("1010");
+    expect(shortCode("PT", "1000")).toBe("1000");
+    expect(shortCode("GB", "SW1A 1AA")).toBe("SW1A");
+    expect(shortCode("GB", "sw1a1aa")).toBe("sw1a");
+    expect(shortCode("GB", "SW1A")).toBe("SW1A");
+    expect(shortCode("GB", "SW1A 1")).toBe("SW1A 1");
+    expect(shortCode("NL", "1012 AB")).toBe("1012");
+    expect(shortCode("NL", "1012AB")).toBe("1012");
+    expect(shortCode("NL", "1012")).toBe("1012");
+    expect(shortCode("IE", "D02 X285")).toBe("D02");
+    expect(shortCode("IE", "D02")).toBe("D02");
+    expect(shortCode("MT", "ATD 1234")).toBe("ATD");
+    expect(shortCode("MT", "ATD")).toBe("ATD");
   });
   it("Wohnort mit Land und Text", () => {
     const h = rowHome("AT", AT[2]);
