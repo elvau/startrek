@@ -8,11 +8,13 @@
   import Modal from "./Modal.svelte";
   import ShareDialog from "./ShareDialog.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
+  import ReportDialog from "./ReportDialog.svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
   let open = $state(false);
   let share = $state(false);
   let creating = $state(false);
+  let report = $state(false);
 
   const trips = $derived(allTrips());
   const cur = $derived(cloudTrip(app.trip.id));
@@ -55,6 +57,7 @@
     <button class="btn primary" onclick={() => { open = false; creating = true; }}>+ {t("newtrip.title")}</button>
     <div class="tm-h">{t("tm.current")}</div>
     <div class="tm-acts">
+      <button class="tm-act tm-report" onclick={() => { report = true; open = false; }}>📄 {t("rep.btn")}</button>
       <button class="tm-act" onclick={() => act(duplicateTrip)}>{t("tm.copy")}</button>
       {#if cloud.user && !cur}
         <button class="tm-act" onclick={() => act(() => moveToCloud(app.trip.id))}>☁ {t("tm.saveCloud")}</button>
@@ -72,3 +75,4 @@
 {/if}
 {#if share}<ShareDialog id={app.trip.id} onclose={() => (share = false)} />{/if}
 {#if creating}<NewTripDialog onclose={() => (creating = false)} />{/if}
+{#if report}<ReportDialog onclose={() => (report = false)} />{/if}
