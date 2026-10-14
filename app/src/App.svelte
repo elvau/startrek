@@ -214,7 +214,7 @@
           <CamperPanel />
           <RoadCosts city={evWin.city} />
           <GroundOptions city={evWin.city} />
-          <TransferOptions city={evWin.city} />
+          <TransferOptions city={evWin.city} oncar={access.readonly ? undefined : addCar} />
           {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.add")}</button></div>{/if}
           <p class="search-row muted small fs-direct car-links">{t("car.compare")}
             <PartnerLinks ids={partnersOf("car")} q={{ w: cw, place: evWin.city }} />

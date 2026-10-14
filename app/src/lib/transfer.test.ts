@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { transferItem, transferLegs, transferPlan, vehicleFor, vehicleText } from "./transfer";
+import { transferChoices } from "./transit";
 
 const PMI = { code: "PMI", lat: 39.551, lon: 2.736 }, PALMA = { name: "Palma", lat: 39.57, lon: 2.65 };
 
@@ -39,5 +40,32 @@ describe("Flughafentransfer", () => {
     expect(transferLegs([{ name: "Irgendwo", lat: 10, lon: 10 }], [UIO], () => null, 2)).toEqual([]);
     // gleiche Strecke nur einmal
     expect(transferLegs([lima, lima], [LIM], () => null, 2)).toHaveLength(1);
+  });
+});
+
+describe("Flughafentransfer mit Auswahl", () => {
+  it("Bahn und Bus aus der Tabelle, günstigste zuerst, Taxi immer dabei", () => {
+    const c = transferChoices("HND", 19, { adults: 2, children: 1 }, 46);
+    expect(c.map(x => x.k)).toEqual(["rail", "bus", "taxi"]);
+    // Kinder zahlen die Hälfte: 3 € × 2,5
+    expect(c[0]).toMatchObject({ adult: 3, perRide: 8, line: expect.stringContaining("Keikyu") });
+    expect(c.at(-1)).toEqual({ k: "taxi", perRide: 46 });
+  });
+  it("ohne Tabelle grob geschätzt, zu weit draußen nur Taxi", () => {
+    const c = transferChoices("XXX", 20, { adults: 2, children: 0 }, 50, 1);
+    expect(c[0]).toMatchObject({ k: "public", guess: true });
+    expect(transferChoices("HND", 120, { adults: 2, children: 0 }, 200).map(x => x.k)).toEqual(["taxi"]);
+  });
+  it("Posten: alle Möglichkeiten als Angebote, die gewählte aktiv", () => {
+    const p = transferPlan(PMI, PALMA, 3);
+    const c = transferChoices("PMI", p.km, { adults: 2, children: 1 }, p.perRide);
+    const it = transferItem(p, c, "bus");
+    expect(it.options).toHaveLength(2);
+    const bus = it.options.find(o => o.id === it.chosen)!;
+    expect(bus.label).toContain("TIB A1");
+    expect(bus.price).toMatchObject({ mode: "person", adult: 5, child: 2.5, infant: 0, qty: 2 });
+    const tx = transferItem(p, c, "taxi");
+    expect(tx.chosen).toBe(tx.options.at(-1)!.id);
+    expect(tx.options.at(-1)!.price).toMatchObject({ mode: "unit", unit: p.perRide, qty: 2 });
   });
 });
