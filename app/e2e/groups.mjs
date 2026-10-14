@@ -67,7 +67,9 @@ try {
   await a.keyboard.press("Escape");
 
   // Neue Reise für die Kegelgruppe, einfacher Modus
-  await a.evaluate(() => scrollTo(0, 0));
+  // vorher weit nach unten: die neue Reise öffnet oben, nicht an der Stelle der vorigen (#369)
+  await a.evaluate(() => scrollTo({ top: document.body.scrollHeight, behavior: "instant" }));
+  await until(async () => (await a.evaluate(() => scrollY)) > 300, "nach unten gescrollt");
   await a.locator(".top .tm-plus").click();
   if (await a.locator(".newtrip label", { hasText: "Wohin" }).count()) fail("Wohin noch im Dialog");
   if (!(await a.locator(".newtrip .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
@@ -79,6 +81,7 @@ try {
   await a.locator(".newtrip .sg-h", { hasText: "Kegeln" }).click();
   await a.locator(".newtrip .btn.primary", { hasText: "Reise mit Kegeln anlegen (2 Personen)" }).click();
   await until(async () => (await a.locator(".hero h1").textContent()).startsWith("Neue Reise"), "neue Reise offen");
+  await until(async () => (await a.evaluate(() => scrollY)) < 50, "neue Reise steht oben");
   // Ort und Zeitraum oben in der Reise: der Name bildet sich daraus
   await a.locator(".top-edit").click();
   await a.locator(".trip-ed label", { hasText: "Ort" }).locator("input").fill("Mosel");

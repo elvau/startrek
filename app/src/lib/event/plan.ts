@@ -128,6 +128,14 @@ export function pickStayNear(offers: StayOffer[], at?: { lat?: number; lon?: num
   return pickStay(near.length ? near : offers);
 }
 
+/**
+ * Der Reisename folgt dem Anlass, solange man keinen eigenen vergeben hat (#379): beim ersten Mal (autoName nicht
+ * false) und wenn der Name noch der des zuvor gewählten Anlasses ist. Ändert man ihn selbst, bleibt er.
+ */
+export function followEventName(trip: Trip, prev: string | undefined, next: string) {
+  if (trip.autoName !== false || (prev && trip.name === prev)) { trip.name = next; trip.autoName = false; }
+}
+
 /** Vorschlag übernehmen: Reisedaten setzen, Flug und Unterkunft als Posten anlegen */
 export function takePlan(trip: Trip, v: Variant, flight: FlightOffer | null, stay: StayOffer | null, q: StayQuery | null, ids?: string[]) {
   trip.from = v.out;

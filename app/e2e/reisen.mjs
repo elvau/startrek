@@ -7,6 +7,7 @@
  * Start: npm run test:cloud
  */
 import { chromium } from "playwright";
+import { readFileSync } from "node:fs";
 import { reloadHome } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
@@ -313,6 +314,35 @@ try {
   if (!govAsked.length || govAsked.some(u => !/\/advice\/gov\?cc=US$/.test(u))) fail("Such-Dienst bekommt mehr als das Reiseland: " + govAsked.join(", "));
   await p.keyboard.press("Escape");
   log("New York: Einreise je Pass (🇩🇪 Anna, 🇬🇧 Tom mit günstigstem Pass), FCDO-Hinweis mit Botschaft für Tom, Auswärtiges Amt für Anna; an den Such-Dienst nur das Reiseland");
+
+  // Reise als PDF: Reiseplan und Rückblick in einem neuen Tab (Route, Unterkünfte, Kosten, geplant gegen tatsächlich)
+  await open("Japan Großfamilie");
+  for (const [mode, want] of [["Reiseplan", ["Wann wohin", "Kosten", "Aufteilung je Familie"]], ["Rückblick", ["Geplant und tatsächlich"]]]) {
+    await p.locator(".top .tm-btn").first().click();
+    await p.locator(".tm-report").click();
+    await p.locator(".rep-opt", { hasText: mode }).click();
+    const [tab] = await Promise.all([ctx.waitForEvent("page"), p.locator(".rep-tab").click()]);
+    await until(async () => (await tab.locator("h2").count()) > 0, "Bericht " + mode, 60000);
+    const txt = await tab.locator("body").innerText();
+    for (const w of want) if (!txt.toLowerCase().includes(w.toLowerCase())) fail(`Bericht ${mode} ohne „${w}“: ` + txt.slice(0, 300));
+    if (!txt.includes("Japan Großfamilie")) fail("Bericht ohne Reisename");
+    await tab.close();
+    await p.keyboard.press("Escape");
+  }
+  // ohne PDF: als Seite in der App ansehen und als HTML-Datei speichern
+  await p.locator(".top .tm-btn").first().click();
+  await p.locator(".tm-report").click();
+  await p.locator(".rep-opt", { hasText: "Reiseplan" }).click();
+  await p.locator(".rep-view").click();
+  const vf = p.frameLocator(".rep-viewer iframe");
+  await vf.locator("h2", { hasText: "Wann wohin" }).waitFor({ timeout: 60000 });
+  await p.locator(".rep-viewer .x").click();
+  const [dl] = await Promise.all([p.waitForEvent("download"), p.locator(".rep-file").click()]);
+  // Inhalt der Datei prüfen (der Testbrowser liefert bei blob:-Downloads keinen Dateinamen)
+  const saved = readFileSync(await dl.path(), "utf8");
+  if (!saved.startsWith("<!doctype html>") || !saved.includes("Wann wohin") || !saved.includes("Japan Großfamilie")) fail("HTML-Datei: " + saved.slice(0, 200));
+  await p.keyboard.press("Escape");
+  log("Reise als PDF: Reiseplan (Route, Kosten je Familie) und Rückblick (geplant und tatsächlich) im neuen Tab; Reiseplan in der App angesehen und als HTML-Datei gespeichert");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nGruppenreisen: alles in Ordnung");

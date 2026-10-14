@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, planTotal, takePlan, variants } from "./plan";
+import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, planTotal, followEventName, takePlan, variants } from "./plan";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import type { StayOffer } from "../stays/types";
@@ -103,5 +103,18 @@ describe("planTotal", () => {
   it("mit Flug: Flug plus gerundete Unterkunft", () => {
     expect(planTotal({ total: 200 }, stay("Hotel", 300.4))).toBe(500);
     expect(planTotal({ total: 200 }, null)).toBe(200);
+  });
+});
+
+describe("Reisename folgt dem Anlass (#379)", () => {
+  it("Wechsel des Anlasses ändert den automatischen Namen, ein eigener Name bleibt", () => {
+    const t = trip();
+    followEventName(t, undefined, "Spiel A");
+    expect(t.name).toBe("Spiel A");
+    followEventName(t, "Spiel A", "Konzert B");
+    expect(t.name).toBe("Konzert B");
+    t.name = "Unser Ausflug";
+    followEventName(t, "Konzert B", "Spiel C");
+    expect(t.name).toBe("Unser Ausflug");
   });
 });

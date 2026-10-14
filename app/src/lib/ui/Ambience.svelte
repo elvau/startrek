@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { view } from "../scroll.svelte";
 
+  let trav: HTMLDivElement, people: HTMLElement[] = [], pin: HTMLElement;
   let fp: SVGPathElement, fmp: SVGPathElement, plane: SVGSVGElement, rail: SVGPathElement, railDone: SVGPathElement, veh: HTMLDivElement, track: HTMLDivElement, flights: HTMLDivElement, town: SVGSVGElement, stay: HTMLDivElement, fun: HTMLDivElement, misc: HTMLDivElement, split: HTMLDivElement;
   let windows: SVGRectElement[] = [];
   /** Unterwegs: Taxi, dann Bus, dann Bahn */
@@ -49,6 +50,20 @@
       x += w + 4;
     }
     town.innerHTML = tw;
+    // Wer fährt mit: Reisende (einige mit Koffer) kommen von links und rechts und sammeln sich am Treffpunkt
+    const COL = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"];
+    for (let i = 0; i < 11; i++) {
+      const left = i % 2 === 0, kid = i % 4 === 3;
+      const f = document.createElement("span");
+      f.className = "walker" + (left ? "" : " rtl");
+      const from = left ? -12 + rnd() * 22 : 90 + rnd() * 22, to = 32 + (i / 10) * 36 + rnd() * 2;
+      f.dataset.from = from.toFixed(1); f.dataset.to = to.toFixed(1);
+      f.style.left = from + "%"; f.style.color = COL[i % COL.length];
+      f.style.setProperty("--s", kid ? ".68" : (0.92 + rnd() * 0.16).toFixed(2));
+      const bag = !kid && rnd() < 0.6;
+      f.innerHTML = `<svg viewBox="0 0 40 64"><circle cx="16" cy="9" r="7"/><path d="M6 24 Q6 18 12 18 H20 Q26 18 26 24 V40 H6 Z"/><path class="leg l1" d="M10 39 V60"/><path class="leg l2" d="M22 39 V60"/>${bag ? `<rect x="28" y="36" width="10" height="16" rx="2" class="bag"/><path d="M31 36 V32 H35 V36" class="bagh"/>` : ""}</svg>`;
+      trav.appendChild(f); people.push(f);
+    }
     windows = [...town.querySelectorAll<SVGRectElement>(".w")];
     for (let i = 0; i < 60; i++) {
       const s = document.createElement("i");
@@ -97,6 +112,16 @@
 
   $effect(() => {
     const p = view.p, a = view.active;
+    // Reisende laufen zum Treffpunkt, stehen am Ende in einer Gruppe; Pin erscheint, wenn alle fast da sind
+    if (a === "trav" && people.length) {
+      const e = 1 - (1 - Math.min(1, p * 1.25)) ** 2;
+      for (const f of people) {
+        const x = +f.dataset.from! + (+f.dataset.to! - +f.dataset.from!) * e;
+        f.style.left = x + "%";
+        f.classList.toggle("go", e < 0.98);
+      }
+      pin.classList.toggle("on", e > 0.85);
+    }
     if (a === "flights" && fp) {
       const len = fp.getTotalLength();
       const pt = fp.getPointAtLength(p * len), pt2 = fp.getPointAtLength(Math.min(len, p * len + 4));
@@ -131,7 +156,10 @@
     <div class="sun"></div>
     <div class="sea"></div>
   </div>
-  <div class="amb-trav"></div>
+  <div class="amb-trav" bind:this={trav}>
+    <span class="meet" bind:this={pin}><svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" /></svg></span>
+    <div class="ground"></div>
+  </div>
   <div class="amb-flights" bind:this={flights}>
     <svg class="cloud" style="left:5%;top:20%;width:220px;--dx:-160px" viewBox="0 0 180 60"><use href="#cl" /></svg>
     <svg class="cloud" style="left:60%;top:8%;width:160px;opacity:.6;--dx:-90px" viewBox="0 0 180 60"><use href="#cl" /></svg>
