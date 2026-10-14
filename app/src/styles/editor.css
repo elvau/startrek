@@ -1115,3 +1115,6 @@ html:has(.modal-bg){overflow:hidden}
 .tr-p small{font-weight:500;font-size:11px;color:var(--ink-3);margin-inline-start:4px}
 .tr-car{grid-template-areas:"ic t"}
 @media (max-width:640px){.tr-pick{grid-template-columns:1fr 1fr}}
+.search-row>.btn.car-add{white-space:normal;text-align:start;max-width:100%}
+.car-day{font-weight:500;opacity:.85;margin-inline-start:4px}
+@media (max-width:640px){.car-day{display:block;margin:2px 0 0}}

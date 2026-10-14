@@ -186,7 +186,8 @@ try {
   const trBox = p.locator("#transport .tr-box");
   await until(async () => (await trBox.count()) && (await trBox.innerText()).includes("PMI → Palma"), "Transfer PMI → Palma", 10000);
   const trText = await trBox.innerText();
-  if (!trText.includes("Bus") || !trText.includes("TIB A1") || !trText.includes("Taxi") || !trText.includes("Mietwagen")) fail("Transfer-Auswahl: " + trText);
+  if (!trText.includes("Bus") || !trText.includes("TIB A1") || !trText.includes("Taxi") || trText.includes("Mietwagen")) fail("Transfer-Auswahl (Bus, Taxi, ohne Mietwagen): " + trText);
+  if (!(await p.locator("#transport .car-add").innerText()).includes("pro Tag und Auto")) fail("Mietwagen-Knopf ohne Preis pro Tag");
   if (!(await p.locator("#transport .tr-links a", { hasText: "Kiwitaxi" }).count())) fail("Transfer-Anbieter fehlen");
   await p.locator("#transport .tr-c.tr-bus").click();
   const tr = p.locator("#transport .card[data-item]", { hasText: "Flughafentransfer" });
@@ -195,7 +196,7 @@ try {
   const trSaved = () => p.evaluate(() => { const t = JSON.parse(localStorage.getItem(`rk2-t:${localStorage.getItem("rk2-current")}`) || "null"); const it = t?.items.find(i => i.name === "Flughafentransfer"); return it && { n: it.options.length, chosen: it.options.find(o => o.id === it.chosen)?.label }; });
   await until(async () => { const x = await trSaved(); return x && x.n === 2 && x.chosen?.includes("TIB A1"); }, "Transfer-Posten mit Bus gewählt und Taxi als Angebot").catch(async e => { console.log("Posten:", JSON.stringify(await trSaved())); throw e; });
   await p.keyboard.press("Escape");
-  log("Flughafentransfer PMI → Palma: Auswahl Bus, Taxi, Mietwagen; Bus (TIB A1) als Posten, Taxi als zweites Angebot, Kiwitaxi & Co. zum Vergleichen");
+  log("Flughafentransfer PMI → Palma: Auswahl Bus und Taxi (Mietwagen mit Preis pro Tag darunter); Bus (TIB A1) als Posten, Taxi als zweites Angebot, Kiwitaxi & Co. zum Vergleichen");
   await p.locator("#misc .ins-add").click();
   const ins = p.locator("#misc .card", { hasText: "Reiseversicherung" });
   await ins.waitFor();
