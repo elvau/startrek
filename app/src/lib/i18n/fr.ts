@@ -2220,6 +2220,8 @@ export const fr: Dict = {
   "trav.replaceWith": "Remplacer « {name} » par",
   "trav.saveGroup": "Enregistrer comme groupe",
   "trav.savedGroup": "Enregistré comme groupe « {name} » ({p}).",
+  "trav.showAll": "Afficher les {n}",
+  "trav.showLess": "▴ Afficher moins",
   "trav.years": "ans",
   "trip": "Voyage",
   "trip.untitled": "Nouveau voyage",

@@ -32,6 +32,39 @@
   const LIST_FROM = 4;
   const list = $derived(app.trip.travelers.length >= LIST_FROM);
   const byHh = $derived(households.map(h => ({ h, ms: app.trip.travelers.map((t, i) => ({ t, i })).filter(x => x.t.household === h) })));
+  // Zeilen der Liste: Überschrift nur für Familien mit mehreren Personen (sonst stünde der Name doppelt)
+  type Row = { fam: (typeof byHh)[number] } | { t: (typeof app.trip.travelers)[number]; i: number; short: boolean };
+  const rows = $derived.by(() => {
+    const out: Row[] = [];
+    for (const f of byHh) {
+      const head = f.ms.length > 1 && households.length > 1;
+      if (head) out.push({ fam: f });
+      for (const x of f.ms) out.push({ ...x, short: head });
+    }
+    return out;
+  });
+  // große Gruppen: erst nur die ersten 4 Personen, der Rest über „Alle anzeigen“
+  const FOLD_FROM = 7, FOLD_SHOW = 4;
+  let showAll = $state(false);
+  const folded = $derived(!showAll && app.trip.travelers.length >= FOLD_FROM);
+  const shown = $derived.by(() => {
+    if (!folded) return rows;
+    const out: Row[] = [];
+    let n = 0;
+    for (const r of rows) {
+      if ("t" in r && ++n > FOLD_SHOW) break;
+      out.push(r);
+    }
+    // Familien-Überschrift ohne Person darunter weglassen
+    while (out.length && "fam" in out[out.length - 1]) out.pop();
+    return out;
+  });
+  // auf einen Blick: für wie viele (Erwachsene, Kinder, Kleinkinder) gebucht wird; nur wer dabei ist
+  const counts = $derived.by(() => {
+    const c = { adult: 0, child: 0, infant: 0 };
+    for (const x of app.trip.travelers) if (isActive(x)) c[ageClass(x.age, app.trip.settings, x.kind) as keyof typeof c]++;
+    return c;
+  });
   function openQuick() { fams = [{ animal: nextAnimal(households), adults: 2, kids: 0, infants: 0 }]; quick = !quick; }
   function addQuick() {
     app.trip.travelers.push(...placeholderTravelers(fams, app.trip.travelers.length));
@@ -129,10 +162,10 @@
       <button class="linkbtn danger" onclick={() => remove(t.id)}>{tt("remove")}</button>
     {:else}
       <b>{t.placeholder || short ? t.name || tt("trav.noName") : `${t.name || tt("trav.noName")} ${t.household}`}</b>
-      <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}{#if t.nat || t.nat2} <span title={[t.nat || "DE", t.nat2].filter(Boolean).map(c => countryName(c!)).join(" · ")}>· {flagOf(t.nat || "DE")}{t.nat2 ? flagOf(t.nat2) : ""}</span>{/if}</span>
+      <span>{t.age != null && String(t.age) !== "" ? `${tt("trav.ageYears", { n: t.age })} · ` : ""}{#if cls === "adult"}{L(cls)}{:else}<em class="age-pill {cls}">{L(cls)}</em>{/if}{#if t.nat || t.nat2} <span title={[t.nat || "DE", t.nat2].filter(Boolean).map(c => countryName(c!)).join(" · ")}>· {flagOf(t.nat || "DE")}{t.nat2 ? flagOf(t.nat2) : ""}</span>{/if}{#if list && t.placeholder && !access.readonly}{" · "}<button class="linkbtn repl" class:on={replacing === t.id} onclick={() => { replacing = replacing === t.id ? null : t.id; pick = quick = false; }}>{tt("trav.replace")}</button>{/if}</span>
       <button class="dabei" class:on={isActive(t)} disabled={access.readonly} aria-pressed={isActive(t)}
         onclick={() => (t.active = isActive(t) ? false : undefined)}>{isActive(t) ? `✓ ${tt("trav.in")}` : tt("trav.out")}</button>
-      {#if t.placeholder && !access.readonly}
+      {#if t.placeholder && !access.readonly && !list}
         <button class="linkbtn repl" class:on={replacing === t.id} onclick={() => { replacing = replacing === t.id ? null : t.id; pick = quick = false; }}>{tt("trav.replace")}</button>
       {/if}
     {/if}
@@ -141,11 +174,18 @@
 
 <div class="people" class:list class:editing={edit}>
   <!-- beim Bearbeiten nicht gruppieren: sonst springt die Zeile beim Tippen des Nachnamens in eine andere Familie -->
+  {#if list}
+    <p class="p-sum"><b>👥 {tn("n.persons", counts.adult + counts.child + counts.infant)}</b>
+      <span>{counts.adult} {t("age.adultShort")}</span>{#if counts.child}<span>{tn("n.kids", counts.child)}</span>{/if}{#if counts.infant}<span>{counts.infant} {t("age.infantShort")}</span>{/if}</p>
+  {/if}
   {#if list && !edit}
-    {#each byHh as f (f.h)}
-      {#if households.length > 1}<div class="p-fam"><b>{animalEmoji(f.h) || "👪"} {f.h || tt("trav.noName")}</b> <span class="muted">{tn("n.persons", f.ms.length)}</span></div>{/if}
-      {#each f.ms as x (x.t.id)}{@render person(x.t, x.i, households.length > 1)}{/each}
+    {#each shown as r ("fam" in r ? `f:${r.fam.h}` : r.t.id)}
+      {#if "fam" in r}<div class="p-fam"><b>{animalEmoji(r.fam.h) || "👪"} {r.fam.h || tt("trav.noName")}</b> <span class="muted">{tn("n.persons", r.fam.ms.length)}</span></div>
+      {:else}{@render person(r.t, r.i, r.short)}{/if}
     {/each}
+    {#if app.trip.travelers.length >= FOLD_FROM}
+      <button type="button" class="linkbtn p-more" onclick={() => (showAll = !showAll)}>{showAll ? t("trav.showLess") : `▾ ${t("trav.showAll", { n: app.trip.travelers.length })}`}</button>
+    {/if}
   {:else}
     {#each app.trip.travelers as t, i (t.id)}{@render person(t, i, false)}{/each}
   {/if}

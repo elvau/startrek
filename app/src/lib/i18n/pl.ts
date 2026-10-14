@@ -2302,6 +2302,8 @@ export const pl: Dict = {
   "trav.replaceWith": "Zastąp „{name}” przez",
   "trav.saveGroup": "Zapisz jako grupę",
   "trav.savedGroup": "Zapisano jako grupę „{name}” ({p}).",
+  "trav.showAll": "Pokaż wszystkie ({n})",
+  "trav.showLess": "▴ Pokaż mniej",
   "trav.years": "lat",
   "trip": "Podróż",
   "trip.untitled": "Nowa podróż",
