@@ -74,6 +74,7 @@
   import { stationName } from "./lib/stays/stationName";
   import { airportData, ensureAirports, ensureGeo, geo } from "./lib/geo/geo.svelte";
   import { applyPlanLink } from "./lib/planApp";
+  import { applyInfoLink, infoDialog } from "./lib/info/app.svelte";
 
   let sheet = $state(false);
 
@@ -95,6 +96,8 @@
   onMount(() => { void loadRates(); });
   // Link von einer Inhaltsseite (?ziel=…): neue Reise mit Ziel und Gruppe
   onMount(() => { applyPlanLink(); });
+  // …/?info öffnet „Neues & Ausblick“
+  onMount(applyInfoLink);
   onMount(() => {
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
     applyDocument();
@@ -295,3 +298,4 @@
 {#if staySearch.open}{#key staySearch.scope}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}
 {#if privStay.open}{#key privStay.itemId}<PrivateStay itemId={privStay.itemId} onclose={() => (privStay.open = false)} />{/key}{/if}
 {#if eventPlanner.open}<EventPlanner onclose={() => (eventPlanner.open = false)} />{/if}
+{#if infoDialog.open}{#await import("./lib/ui/InfoDialog.svelte") then m}<m.default />{/await}{/if}

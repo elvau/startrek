@@ -1,0 +1,168 @@
+{
+ "stand": "2026-10-14",
+ "neu": [],
+ "bald": [],
+ "fehler": [],
+ "faq": [
+  {
+   "f": {
+    "de": "Was ist Split&Fly?",
+    "en": "What is Split&Fly?",
+    "es": "¿Qué es Split&Fly?",
+    "fr": "Qu'est-ce que Split&Fly ?",
+    "pl": "Czym jest Split&Fly?",
+    "ru": "Что такое Split&Fly?",
+    "ar": "ما هو Split&Fly؟"
+   },
+   "a": {
+    "de": "Ein Planer für Reisen mit Familie, Freunden oder Verein: Flüge, Unterkünfte, Anreise und Ausgaben an einem Ort. Split&Fly rechnet aus, was jede Person und jede Familie am Ende zahlt.",
+    "en": "A planner for trips with family, friends or a club: flights, stays, getting there and expenses in one place. Split&Fly works out what each person and each family pays in the end.",
+    "es": "Un planificador para viajes en familia, con amigos o con un club: vuelos, alojamientos, traslados y gastos en un solo lugar. Split&Fly calcula cuánto paga al final cada persona y cada familia.",
+    "fr": "Un planificateur pour voyager en famille, entre amis ou en club : vols, hébergements, trajets et dépenses au même endroit. Split&Fly calcule ce que chaque personne et chaque famille paie au final.",
+    "pl": "Planer podróży z rodziną, przyjaciółmi lub klubem: loty, noclegi, dojazd i wydatki w jednym miejscu. Split&Fly oblicza, ile na koniec płaci każda osoba i każda rodzina.",
+    "ru": "Планировщик поездок с семьёй, друзьями или клубом: перелёты, жильё, дорога и расходы в одном месте. Split&Fly считает, сколько в итоге платит каждый человек и каждая семья.",
+    "ar": "مخطِّط للرحلات مع العائلة أو الأصدقاء أو النادي: الرحلات الجوية والإقامة والوصول والمصاريف في مكان واحد. يحسب Split&Fly ما يدفعه كل شخص وكل عائلة في النهاية."
+   }
+  },
+  {
+   "f": {
+    "de": "Kann ich über Split&Fly buchen?",
+    "en": "Can I book through Split&Fly?",
+    "es": "¿Puedo reservar a través de Split&Fly?",
+    "fr": "Puis-je réserver via Split&Fly ?",
+    "pl": "Czy mogę rezerwować przez Split&Fly?",
+    "ru": "Можно ли бронировать через Split&Fly?",
+    "ar": "هل يمكنني الحجز عبر Split&Fly؟"
+   },
+   "a": {
+    "de": "Nein. Split&Fly ist kein Reiseveranstalter. Die Links führen zum Anbieter, dort buchst und bezahlst du. Den Preis trägst du danach als gebucht in der Reise ein.",
+    "en": "No. Split&Fly is not a tour operator. The links take you to the provider, where you book and pay. Afterwards you enter the price in the trip as booked.",
+    "es": "No. Split&Fly no es un operador turístico. Los enlaces te llevan al proveedor, donde reservas y pagas. Después anotas el precio en el viaje como reservado.",
+    "fr": "Non. Split&Fly n'est pas un voyagiste. Les liens mènent au prestataire, où tu réserves et paies. Ensuite, tu saisis le prix dans le voyage comme réservé.",
+    "pl": "Nie. Split&Fly nie jest organizatorem turystyki. Linki prowadzą do dostawcy, u którego rezerwujesz i płacisz. Potem wpisujesz cenę w podróży jako zarezerwowaną.",
+    "ru": "Нет. Split&Fly не туроператор. Ссылки ведут к поставщику, там ты бронируешь и платишь. Потом вносишь цену в поездку как забронированную.",
+    "ar": "لا. Split&Fly ليس منظِّم رحلات. تنقلك الروابط إلى المزوِّد حيث تحجز وتدفع. بعد ذلك تُدخل السعر في الرحلة كمحجوز."
+   }
+  },
+  {
+   "f": {
+    "de": "Wie genau sind die Preise?",
+    "en": "How accurate are the prices?",
+    "es": "¿Qué tan exactos son los precios?",
+    "fr": "Les prix sont-ils précis ?",
+    "pl": "Jak dokładne są ceny?",
+    "ru": "Насколько точны цены?",
+    "ar": "ما مدى دقة الأسعار؟"
+   },
+   "a": {
+    "de": "Es sind Richtwerte aus aktuellen Suchen und Erfahrungswerten, damit ihr früh planen könnt. Verbindlich ist nur der Preis beim Anbieter.",
+    "en": "They are estimates from current searches and typical values, so you can plan early. Only the provider's price is binding.",
+    "es": "Son valores orientativos de búsquedas actuales y de la experiencia, para que podáis planificar pronto. Solo es vinculante el precio del proveedor.",
+    "fr": "Ce sont des estimations issues de recherches actuelles et de valeurs habituelles, pour planifier tôt. Seul le prix du prestataire fait foi.",
+    "pl": "To szacunki z aktualnych wyszukiwań i typowych wartości, abyście mogli planować wcześnie. Wiążąca jest tylko cena u dostawcy.",
+    "ru": "Это ориентировочные значения из текущих поисков и опыта, чтобы планировать заранее. Обязательна только цена поставщика.",
+    "ar": "هي قيم تقديرية من عمليات بحث حالية وقيم معتادة لتتمكنوا من التخطيط مبكرًا. السعر الملزم هو سعر المزوِّد فقط."
+   }
+  },
+  {
+   "f": {
+    "de": "Wo werden meine Reisen gespeichert?",
+    "en": "Where are my trips stored?",
+    "es": "¿Dónde se guardan mis viajes?",
+    "fr": "Où mes voyages sont-ils enregistrés ?",
+    "pl": "Gdzie zapisywane są moje podróże?",
+    "ru": "Где хранятся мои поездки?",
+    "ar": "أين تُحفظ رحلاتي؟"
+   },
+   "a": {
+    "de": "Ohne Konto nur in diesem Browser. Mit Konto liegen sie in deinem Konto (☁): auf allen Geräten verfügbar und mit der Gruppe teilbar.",
+    "en": "Without an account only in this browser. With an account they are stored in your account (☁): available on all devices and shareable with the group.",
+    "es": "Sin cuenta, solo en este navegador. Con cuenta se guardan en tu cuenta (☁): disponibles en todos tus dispositivos y para compartir con el grupo.",
+    "fr": "Sans compte, uniquement dans ce navigateur. Avec un compte, ils sont dans ton compte (☁) : disponibles sur tous tes appareils et partageables avec le groupe.",
+    "pl": "Bez konta tylko w tej przeglądarce. Z kontem są na twoim koncie (☁): dostępne na wszystkich urządzeniach i do udostępnienia grupie.",
+    "ru": "Без аккаунта только в этом браузере. С аккаунтом они хранятся в твоём аккаунте (☁): доступны на всех устройствах, ими можно делиться с группой.",
+    "ar": "بدون حساب تُحفظ في هذا المتصفح فقط. مع حساب تُحفظ في حسابك (☁): متاحة على كل أجهزتك ويمكن مشاركتها مع المجموعة."
+   }
+  },
+  {
+   "f": {
+    "de": "Wie wird fair aufgeteilt?",
+    "en": "How are costs split fairly?",
+    "es": "¿Cómo se reparte de forma justa?",
+    "fr": "Comment le partage est-il équitable ?",
+    "pl": "Jak koszty dzielone są sprawiedliwie?",
+    "ru": "Как расходы делятся честно?",
+    "ar": "كيف تُقسَّم التكاليف بعدل؟"
+   },
+   "a": {
+    "de": "Nach Personen und Familien: Kinder zählen je nach Alter, und wer nur einen Teil der Zeit dabei ist, zahlt nur dafür. Einzelne Posten kannst du anders aufteilen, zum Beispiel nur auf eine Familie.",
+    "en": "By person and family: children count by age, and anyone who joins for only part of the time pays only for that. You can split single items differently, for example to one family only.",
+    "es": "Por personas y familias: los niños cuentan según su edad, y quien solo va una parte del tiempo paga solo esa parte. Puedes repartir gastos concretos de otra forma, por ejemplo solo a una familia.",
+    "fr": "Par personne et par famille : les enfants comptent selon leur âge, et qui ne vient qu'une partie du temps ne paie que cette partie. Tu peux répartir certains postes autrement, par exemple sur une seule famille.",
+    "pl": "Według osób i rodzin: dzieci liczą się zależnie od wieku, a kto jedzie tylko na część czasu, płaci tylko za nią. Pojedyncze pozycje możesz podzielić inaczej, np. tylko na jedną rodzinę.",
+    "ru": "По людям и семьям: дети учитываются по возрасту, а кто едет только на часть времени, платит только за неё. Отдельные расходы можно разделить иначе, например только на одну семью.",
+    "ar": "حسب الأشخاص والعائلات: يُحتسب الأطفال حسب العمر، ومن يشارك جزءًا من الوقت فقط يدفع عن هذا الجزء فقط. يمكنك تقسيم بنود معيّنة بشكل مختلف، مثلًا على عائلة واحدة فقط."
+   }
+  },
+  {
+   "f": {
+    "de": "Wie plane ich mit anderen zusammen?",
+    "en": "How do I plan together with others?",
+    "es": "¿Cómo planifico junto con otros?",
+    "fr": "Comment planifier avec d'autres ?",
+    "pl": "Jak planować razem z innymi?",
+    "ru": "Как планировать вместе с другими?",
+    "ar": "كيف أخطط مع الآخرين؟"
+   },
+   "a": {
+    "de": "Im Reisemenü „Teilen und Mitglieder“ öffnen und den Link schicken. Wer mitplant, sieht dieselbe Reise und kann abstimmen, Ausgaben eintragen und Wünsche angeben.",
+    "en": "Open “Share and members” in the trip menu and send the link. Everyone planning along sees the same trip and can vote, add expenses and state wishes.",
+    "es": "Abre «Compartir y miembros» en el menú del viaje y envía el enlace. Quien planifica contigo ve el mismo viaje y puede votar, anotar gastos e indicar deseos.",
+    "fr": "Ouvre « Partager et membres » dans le menu du voyage et envoie le lien. Chaque participant voit le même voyage et peut voter, saisir des dépenses et indiquer ses souhaits.",
+    "pl": "W menu podróży otwórz „Udostępnianie i członkowie” i wyślij link. Kto planuje z tobą, widzi tę samą podróż i może głosować, wpisywać wydatki i podawać życzenia.",
+    "ru": "Открой «Доступ и участники» в меню поездки и отправь ссылку. Все, кто планирует вместе, видят ту же поездку и могут голосовать, вносить расходы и указывать пожелания.",
+    "ar": "افتح «المشاركة والأعضاء» في قائمة الرحلة وأرسل الرابط. يرى كل من يخطط معك الرحلة نفسها ويمكنه التصويت وإدخال المصاريف وذكر رغباته."
+   }
+  },
+  {
+   "f": {
+    "de": "Ich habe einen Fehler gefunden. Was nun?",
+    "en": "I found a bug. What now?",
+    "es": "He encontrado un error. ¿Y ahora?",
+    "fr": "J'ai trouvé un bug. Et maintenant ?",
+    "pl": "Znalazłem błąd. Co teraz?",
+    "ru": "Я нашёл ошибку. Что делать?",
+    "ar": "وجدتُ خطأً. ماذا الآن؟"
+   },
+   "a": {
+    "de": "Über 🐞 „Fehler melden“. Wir schauen jeden Bericht an; bekannte Fehler stehen hier in der Liste, bis sie behoben sind.",
+    "en": "Use 🐞 “Report a bug”. We look at every report; known bugs are listed here until they are fixed.",
+    "es": "Usa 🐞 «Informar de un error». Revisamos cada informe; los errores conocidos aparecen aquí hasta que se corrigen.",
+    "fr": "Utilise 🐞 « Signaler un bug ». Nous lisons chaque signalement ; les bugs connus restent listés ici jusqu'à leur correction.",
+    "pl": "Użyj 🐞 „Zgłoś błąd”. Sprawdzamy każde zgłoszenie; znane błędy są tu na liście, dopóki nie zostaną naprawione.",
+    "ru": "Нажми 🐞 «Сообщить об ошибке». Мы смотрим каждое сообщение; известные ошибки перечислены здесь, пока их не исправят.",
+    "ar": "استخدم 🐞 «الإبلاغ عن خطأ». نراجع كل بلاغ؛ وتبقى الأخطاء المعروفة مدرجة هنا حتى يتم إصلاحها."
+   }
+  },
+  {
+   "f": {
+    "de": "Wie aktuell ist „Bald“?",
+    "en": "How current is “Coming soon”?",
+    "es": "¿Qué tan actual es «Próximamente»?",
+    "fr": "« Bientôt » est-il à jour ?",
+    "pl": "Jak aktualne jest „Wkrótce”?",
+    "ru": "Насколько актуален раздел «Скоро»?",
+    "ar": "ما مدى حداثة «قريبًا»؟"
+   },
+   "a": {
+    "de": "Die Liste wird täglich aus unserem öffentlichen Plan aktualisiert. Reihenfolge und Zeitpunkt können sich ändern.",
+    "en": "The list is updated daily from our public plan. Order and timing may change.",
+    "es": "La lista se actualiza a diario desde nuestro plan público. El orden y las fechas pueden cambiar.",
+    "fr": "La liste est mise à jour chaque jour à partir de notre plan public. L'ordre et le calendrier peuvent changer.",
+    "pl": "Lista jest codziennie aktualizowana z naszego publicznego planu. Kolejność i terminy mogą się zmienić.",
+    "ru": "Список ежедневно обновляется по нашему открытому плану. Порядок и сроки могут меняться.",
+    "ar": "تُحدَّث القائمة يوميًا من خطتنا العامة. قد يتغير الترتيب والتوقيت."
+   }
+  }
+ ]
+}

@@ -9,6 +9,7 @@ import { parseStayQuery, searchStays, type StayEnv } from "../../app/src/lib/sta
 import type { FlightQuery } from "../../app/src/lib/flights/types";
 import type { StayQuery } from "../../app/src/lib/stays/types";
 import { runAgent } from "../../app/src/lib/agent/agent";
+import { AUSBLICK_RAW, parseAusblick, type Ausblick } from "../../app/src/lib/info/ausblick";
 import { requireVerified, verifyAnyIdToken, verifyIdToken } from "../../app/src/lib/agent/auth";
 import { whereFrom } from "./where";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
@@ -160,6 +161,20 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
         }, m => Object.keys(m).length > 100, ctx);
         return json({ countries, source: "Auswärtiges Amt (OpenData)" }, 200, { ...h, "cache-control": "max-age=3600" });
       } catch { return json({ error: "Hinweise gerade nicht erreichbar" }, 503, h); }
+    }
+
+    // „Neues & Ausblick“: Datei der Routine SAF 8 vom Branch „ausblick“, geprüft, eine Stunde zwischengespeichert
+    if (url.pathname === "/ausblick" && req.method === "GET") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      try {
+        const data = await cachedJson<Ausblick | null>("gh/ausblick", 3600, async () => {
+          const r = await fetch(AUSBLICK_RAW, { headers: { "user-agent": "SplitAndFly/1.0 (+https://splitandfly.com)" } });
+          if (!r.ok) throw new Error("Ausblick " + r.status);
+          return parseAusblick(await r.json());
+        }, d => !!d, ctx);
+        if (!data) throw new Error("Ausblick ungültig");
+        return json(data, 200, { ...h, "cache-control": "max-age=900" });
+      } catch { return json({ error: "Ausblick gerade nicht erreichbar" }, 503, h); }
     }
 
     // Schulferien und Feiertage je Land (#163, OpenHolidays), drei Tage zwischengespeichert; nur das Land kommt an
