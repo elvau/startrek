@@ -314,6 +314,22 @@ try {
   await p.keyboard.press("Escape");
   log("New York: Einreise je Pass (🇩🇪 Anna, 🇬🇧 Tom mit günstigstem Pass), FCDO-Hinweis mit Botschaft für Tom, Auswärtiges Amt für Anna; an den Such-Dienst nur das Reiseland");
 
+  // Reise als PDF: Reiseplan und Rückblick in einem neuen Tab (Route, Unterkünfte, Kosten, geplant gegen tatsächlich)
+  await open("Japan Großfamilie");
+  for (const [mode, want] of [["Reiseplan", ["Wann wohin", "Kosten", "Aufteilung je Familie"]], ["Rückblick", ["Geplant und tatsächlich"]]]) {
+    await p.locator(".top .tm-btn").first().click();
+    await p.locator(".tm-report").click();
+    await p.locator(".rep-opt", { hasText: mode }).click();
+    const [tab] = await Promise.all([ctx.waitForEvent("page"), p.locator(".rep-tab").click()]);
+    await until(async () => (await tab.locator("h2").count()) > 0, "Bericht " + mode, 60000);
+    const txt = await tab.locator("body").innerText();
+    for (const w of want) if (!txt.toLowerCase().includes(w.toLowerCase())) fail(`Bericht ${mode} ohne „${w}“: ` + txt.slice(0, 300));
+    if (!txt.includes("Japan Großfamilie")) fail("Bericht ohne Reisename");
+    await tab.close();
+    await p.keyboard.press("Escape");
+  }
+  log("Reise als PDF: Reiseplan (Route, Kosten je Familie) und Rückblick (geplant und tatsächlich) im neuen Tab");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nGruppenreisen: alles in Ordnung");
 } finally {
