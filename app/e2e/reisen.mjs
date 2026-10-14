@@ -201,7 +201,7 @@ try {
   const mv = await ks.locator(".ks-moves").innerText();
   if (!/Trainer → Ali\s*60/.test(mv.replace(/\s+/g, " ")) || !mv.includes("+1")) fail("Ausgleich Mannschaft: " + mv);
   await ks.locator(".ks-modes summary").click();
-  await ks.locator(".ks-mode", { hasText: "Trainer" }).locator(".chip", { hasText: "jeder Erwachsene" }).click();
+  await ks.locator(".ks-mode", { hasText: "Trainer" }).locator(".chip", { hasText: "jeder zahlt selbst" }).click();
   await ks.locator(".ks-mode", { hasText: "Trainer" }).locator("select").selectOption("tm");
   // Kim zahlt Tina: Tina 40 €, Tom 20 €
   await until(async () => { const t = (await ks.locator(".ks-moves").innerText()).replace(/\s+/g, " "); return /Tina → Ali 40/.test(t) && /\+2 → Ali · jeweils 20/.test(t); }, "getrennte Kassen mit Kind bei Tina")
