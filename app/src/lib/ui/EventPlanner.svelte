@@ -29,7 +29,7 @@
   import { hhKey } from "../model";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
-  import { DEFAULT_H, fits, fixWindow, km, nearestStay, pickStayNear, planTotal, takePlan, variants, type Variant } from "../event/plan";
+  import { DEFAULT_H, fits, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, variants, type Variant } from "../event/plan";
   import { cityFromAddress, evWhen, searchEventsRemote, sportTag, SPORT_ICON } from "../events/app";
   import { uniqueById } from "../events/search";
   import { noteError } from "../bugs/log";
@@ -212,9 +212,10 @@
       ...(endDate > date ? { end: endDate } : {}),
       ...(same && picked!.lat != null ? { lat: picked!.lat, lon: picked!.lon } : {}), ...(same && picked!.url ? { url: picked!.url } : {})
     };
+    const prevName = trip.event?.name;
     trip.event = ev;
     if (trip.place !== city) { trip.place = city; if (dest.cc) trip.country = countryName(dest.cc); }
-    if (trip.autoName !== false) { trip.name = ev.name; trip.autoName = false; }
+    followEventName(trip, prevName, ev.name);
 
     const list = variants(ev, wFrom && wTo ? { from: wFrom, to: wTo } : undefined);
     const pax = passengers(trip);
