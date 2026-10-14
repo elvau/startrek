@@ -63,3 +63,22 @@ export function groupTravelers(adults: number, kids = 0, rnd = Math.random): Tra
   }
   return out;
 }
+
+/**
+ * Anzahl der Mitreisenden auf n bringen (z. B. im Event-Planer): zusätzliche als erwachsene Tiere ergänzen,
+ * zu viele von hinten wegnehmen (auch aus den Posten); mindestens 1. Gibt die neue Anzahl zurück.
+ */
+export function resizeTravelers(trip: { travelers: Traveler[]; items: { participants?: string[] }[] }, n: number): number {
+  const want = Math.max(1, Math.min(40, Math.round(n)));
+  while (trip.travelers.length < want) {
+    const a = animalName(nextAnimal(trip.travelers.map(x => x.household)));
+    const k = trip.travelers.filter(x => x.household.split(" ")[0] === a).length + 1;
+    const name = k > 1 ? `${a} ${k}` : a;
+    trip.travelers.push({ id: uid(), name, household: name, kind: "adult", color: COLORS[trip.travelers.length % COLORS.length], placeholder: true });
+  }
+  while (trip.travelers.length > want) {
+    const gone = trip.travelers.pop()!;
+    for (const it of trip.items) if (it.participants?.includes(gone.id)) it.participants = it.participants.filter(p => p !== gone.id);
+  }
+  return trip.travelers.length;
+}
