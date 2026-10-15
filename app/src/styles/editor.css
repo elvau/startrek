@@ -3,7 +3,6 @@
 .bp-hd,.stay-hd{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .bp-name{font-size:22px}
 .price.r{text-align:end}
-.nights.in span{opacity:1;transform:none}
 .s-dropped{background:var(--paper-2);color:var(--ink-3)}
 .card.dropped{opacity:.55}
 .card{cursor:pointer}
@@ -117,7 +116,6 @@ select option,select optgroup{background:var(--paper);color:var(--ink)}
 
 /* Unterkunft */
 .warnline{font-size:12.5px;color:var(--warn);font-weight:600}
-.nights span.empty{background:repeating-linear-gradient(135deg,var(--paper) 0 3px,var(--line) 3px 6px);opacity:.6}
 
 /* Wer ist wann wo */
 .plan-card{cursor:default}

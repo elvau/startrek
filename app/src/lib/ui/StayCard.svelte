@@ -84,12 +84,7 @@
       {/if}
     </div>
     {#if nn}
-      <div class="nights" class:in={shown}>
-        {#each Array(Math.min(nn, 31)) as _, i}
-          {@const x = sc?.nights[i]}
-          <span style="transition-delay:{i * 60}ms" class:empty={x && !sc?.occ[x]} title={x ? `${dateDE(x)}: ${tn("n.guests", sc?.occ[x] || 0)}` : ""}><svg width="13" height="13"><use href="#i-moon" /></svg></span>
-        {/each}
-      </div>
+      <div class="nights-n" title={tn("n.nights", nn)}><b class="num">{nn}</b> × <svg width="14" height="14" aria-hidden="true"><use href="#i-moon" /></svg></div>
     {/if}
     {#if sc?.over}<div class="warnline">⚠ {t("stay.over", { g: sc.maxOcc, c: r?.option?.price.capacity ?? "?" })}</div>{/if}
     {#if absent}<div class="warnline">⚠ {t("stay.empty", { n: tn("n.nights", absent) })}</div>{/if}
