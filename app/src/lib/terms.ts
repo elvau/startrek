@@ -33,3 +33,13 @@ export function newerTerms(a?: Directory["terms"], b?: Directory["terms"]): Dire
   if (!a || !b) return a || b;
   return b.v > a.v || (b.v === a.v && b.at > a.at) ? b : a;
 }
+
+/**
+ * Stand aus dem Zwischenspeicher des Browsers, der die aktuelle Zustimmung nicht enthält: noch nicht als Stand des Kontos
+ * nehmen, sondern auf den Server warten (sonst blitzt das Zustimmungsfenster kurz auf, obwohl das Konto zugestimmt hat).
+ */
+export function waitForServer(data: string | null, fromCache: boolean): boolean {
+  if (!fromCache) return false;
+  if (!data) return true;
+  try { return !termsAccepted(JSON.parse(data)); } catch { return true; }
+}
