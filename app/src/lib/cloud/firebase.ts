@@ -172,8 +172,8 @@ export const removeCampaign = (id: string) => deleteDoc(doc(start().db, "campaig
 
 const profileRef = (uid: string) => doc(start().db, "profiles", uid);
 
-export function watchProfile(uid: string, fn: (data: string | null, pending: boolean) => void, err: (e: Error) => void): Unsubscribe {
-  return onSnapshot(profileRef(uid), s => fn(s.exists() ? (s.data().data as string) : null, s.metadata.hasPendingWrites), err);
+export function watchProfile(uid: string, fn: (data: string | null, pending: boolean, fromCache: boolean) => void, err: (e: Error) => void): Unsubscribe {
+  return onSnapshot(profileRef(uid), s => fn(s.exists() ? (s.data().data as string) : null, s.metadata.hasPendingWrites, s.metadata.fromCache), err);
 }
 
 export const saveProfile = (uid: string, data: string) => setDoc(profileRef(uid), { data, updatedAt: serverTimestamp() });

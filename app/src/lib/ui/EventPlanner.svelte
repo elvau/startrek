@@ -27,6 +27,7 @@
   import { addDays as plusDays } from "../calc/travel";
   import type { Home } from "../home";
   import { hhKey } from "../model";
+  import { resizeTravelers, rowsAfterResize } from "../placeholders";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
   import { DEFAULT_H, fits, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, variants, type Variant } from "../event/plan";
@@ -166,7 +167,7 @@
   });
   /** Flughäfen rund um das gewählte Event (Vorschläge im Zielfeld) */
   let evNear = $state<Loc[]>([]);
-  const people = flyers(trip);
+  const people = $derived(flyers(trip));
   // Land: das des gewählten Events, sonst das der Reise
   const cc = $derived(picked?.cc || ccOf(geo, trip.country));
 
@@ -265,7 +266,7 @@
     rows = null;
   }
 
-  const n = people.length || 1;
+  const n = $derived(people.length || 1);
   const found = $derived(rows?.filter(r => r.flight) ?? []);
   const cheapest = $derived(found.length ? Math.min(...found.map(totalOf)) : null);
   const multi = $derived(endDate > date);
@@ -331,6 +332,10 @@
         {#each allCodes as c (c)}<button type="button" class="chip" class:on={aps.includes(c)} class:flash={flash.includes(c)} aria-pressed={aps.includes(c)} onclick={() => toggleAp(c)}>{c}</button>{/each}
         <LocationPicker cls="fs-add" placeholder={t("fs.addOrigin")} clearOnPick onpick={addAp} from={fromPt} />
       </div>
+    </div>
+    <div class="ed-row">
+      <label class="f">{t("grp.people")}<input class="n sm" type="number" inputmode="numeric" min="1" max="40" value={trip.travelers.length}
+        onchange={e => { const el = e.currentTarget; const before = trip.travelers.length; const after = resizeTravelers(trip, Number(el.value) || before); el.value = String(after); rows = rowsAfterResize(rows, before, after); }} /></label>
     </div>
     <p class="muted small">{t("ev.from", { aps: aps.join(", "), p: tn("n.persons", people.length) })} {t("ev.rule")}</p>
     <button class="btn primary" disabled={busy}>{busy ? t("ev.progress") : t("ev.go")}</button>

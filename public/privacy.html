@@ -69,7 +69,9 @@
   recently used search options in your browser’s storage (localStorage) so they are still there on your next visit.
   With an account, Firebase additionally stores your sign-in and a copy of your trips in the browser (IndexedDB) so the
   app also works offline; when signing in with an email link, the app remembers the email address until you open the
-  link. Booking details are not stored in the browser (see section 5). All of this is strictly necessary for the
+  link. So that the app starts without a connection and can be installed, a service worker stores the program files and
+  general data (e.g. airports, countries) in the browser (Cache Storage); they contain no personal data. Booking details
+  are not stored in the browser (see section 5). All of this is strictly necessary for the
   function you request (§ 25(2) no. 2 TDDDG). You can delete this data at any time in your browser settings.
 </p>
 
