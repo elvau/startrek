@@ -1,4 +1,5 @@
-# splitandfly.com: alles indexieren außer Einladungs- und Aktionslinks und der alten Adresse /neu/
+# splitandfly.com: alles crawlen außer Einladungs- und Aktionslinks und der alten Adresse /neu/
+# (Rechtliches hat noindex und steht deshalb nicht in der Sitemap)
 # (Testumgebung bekommt aus scripts/site.sh ein „Disallow: /“)
 User-agent: *
 Disallow: /neu/

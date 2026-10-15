@@ -3,6 +3,9 @@ import html from "../../index.html?raw";
 import robots from "../../../public/robots.txt?raw";
 import sitemap from "../../../public/sitemap.xml?raw";
 
+// Rechtliches ist noindex; stünde es in der Sitemap, widerspräche sich das (Search Console: „Gecrawlt – zurzeit nicht indexiert“)
+const LEGAL = import.meta.glob("../../../public/*.html", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+
 // SEO-Grundlagen (#313): Meta-Angaben in index.html, robots.txt und Sitemap für splitandfly.com
 
 describe("SEO", () => {
@@ -20,5 +23,10 @@ describe("SEO", () => {
   it("robots.txt verweist auf die Sitemap, Sitemap enthält die Startseite", () => {
     expect(robots).toContain("Sitemap: https://splitandfly.com/sitemap.xml");
     expect(sitemap).toContain("<loc>https://splitandfly.com/</loc>");
+  });
+  it("Sitemap enthält keine Seite mit noindex", () => {
+    const noindex = Object.entries(LEGAL).filter(([, src]) => src.includes('name="robots" content="noindex"')).map(([f]) => f.split("/").pop()!);
+    expect(noindex).toContain("impressum.html");
+    for (const f of noindex) expect(sitemap, f).not.toContain(`/${f}<`);
   });
 });
