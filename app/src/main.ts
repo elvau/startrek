@@ -11,6 +11,9 @@ import { loadBeacon } from "./lib/visits";
 // Besucherzahlen (nur splitandfly.com, cookielos)
 loadBeacon();
 
+// installierbare App (PWA): Service Worker hält die App für den Start ohne Netz vor (public/sw.js, nur im Build)
+if (import.meta.env.PROD && "serviceWorker" in navigator) void navigator.serviceWorker.register(import.meta.env.BASE_URL + "sw.js").catch(() => {});
+
 // gewählte Sprache zuerst laden (Deutsch und Englisch sind schon da), sonst blitzt kurz Englisch auf
 await i18nReady();
 // Aktionsseite (…/?aktion=ID): eigene, schlanke Seite ohne Reise und ohne Konto
