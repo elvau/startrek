@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Anleitung „App installieren“ für iPhone und iPad (Safari hat kein Installationsfenster) */
+  /* Anleitung „App installieren“ ohne Installationsfenster des Browsers: iPhone/iPad (Safari) oder Android (Chrome-Menü) */
   import { t } from "../i18n/index.svelte";
   import { install } from "../install.svelte";
   import Modal from "./Modal.svelte";
@@ -7,10 +7,16 @@
 
 <Modal title={t("install.title")} onclose={() => (install.help = false)}>
   <ol class="install-steps">
-    <li>{t("install.ios1")}</li>
-    <li>{t("install.ios2")}</li>
+    {#if install.ios}
+      <li>{t("install.ios1")}</li>
+      <li>{t("install.ios2")}</li>
+    {:else}
+      <li>{t("install.and1")}</li>
+      <li>{t("install.and2")}</li>
+    {/if}
   </ol>
   <p class="muted small">{t("install.why")}</p>
+  {#if !install.ios}<p class="muted small">{t("install.andRetry")}</p>{/if}
 </Modal>
 
 <style>
