@@ -6,7 +6,7 @@ import { uid, type Directory, type Group, type Household, type Person, type Trav
 import { cloud } from "./cloud/cloud.svelte";
 import { configured } from "./cloud/config";
 import { personAge } from "./people";
-import { newerTerms } from "./terms";
+import { newerTerms, waitForServer } from "./terms";
 
 const KEY = "rk2-dir";
 
@@ -85,8 +85,10 @@ $effect.root(() => {
     if (!u || !configured) return;
     let first = true;
     void import("./cloud/firebase").then(f => {
-      stop = f.watchProfile(u.uid, (data, pending) => {
+      stop = f.watchProfile(u.uid, (data, pending, fromCache) => {
         if (pending) return;
+        // Stand nur aus dem Zwischenspeicher ohne aktuelle AGB-Zustimmung: auf den Server warten (kein kurzes Aufblitzen des Zustimmungsfensters)
+        if (first && waitForServer(data, fromCache)) return;
         // Echo des eigenen Speicherns oder noch ungespeicherte Eingaben: der Stand im Browser ist neuer, nichts überschreiben
         // (sonst sprangen Felder beim Tippen zurück, z. B. in den Vorlieben einer Gruppe)
         if (!first && (timer || (data && sent.includes(data)))) { sync.loaded = u.uid; return; }
