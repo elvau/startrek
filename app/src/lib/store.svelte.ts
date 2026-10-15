@@ -5,7 +5,6 @@ import { untrack } from "svelte";
 import { t as tr, type Key } from "./i18n/index.svelte";
 import { totals } from "./calc";
 import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type SimpleLine, type Traveler, type Trip } from "./model";
-import { sampleTrip } from "./seed";
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
@@ -54,7 +53,7 @@ function normalize(t: Trip): Trip {
   return t;
 }
 
-type NewOpts = { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[] };
+type NewOpts = { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[]; items?: Item[]; kicker?: string };
 
 /** Leere Reise; ohne Namen heißt sie „Neue Reise“, bis Ort oder Zeitraum da sind oder man selbst einen vergibt */
 function emptyTrip(o: NewOpts = {}): Trip {
@@ -65,7 +64,7 @@ function emptyTrip(o: NewOpts = {}): Trip {
   return {
     id: uid(), name: own || auto || "", autoName: !own,
     place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
-    travelers, items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
+    travelers, items: o.items || [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...(o.kicker ? { kicker: o.kicker } : {})
   };
 }
 
@@ -112,7 +111,7 @@ function boot(): { index: TripMeta[]; trip: Trip } {
     if (get(K_CUR) === "beispiel") put(K_CUR, nid);
   }
   const cur = get(K_CUR);
-  const trip = (cur && readTrip(cur)) || readTrip(index[0].id) || normalize(sampleTrip());
+  const trip = (cur && readTrip(cur)) || readTrip(index[0].id) || emptyTrip();
   return { index, trip };
 }
 
@@ -568,17 +567,6 @@ export function renameTrip(name: string) {
   const v = name.trim();
   if (v) { app.trip.name = v; app.trip.autoName = false; }
   else { app.trip.autoName = true; app.trip.name = autoName(app.trip) || app.trip.name; }
-}
-
-/** Beispielreise als neue Reise öffnen; die offene Reise bleibt unangetastet */
-export function openSample() {
-  flush();
-  const prev = app.trip;
-  const s = sampleTrip();
-  open({ ...s, id: uid(), name: tr("store.sampleName", { name: s.name }) }, "Beispiel");
-  dropIfPristine(prev);
-  app.home = false;
-  if (cloud.user) void moveToCloud(app.trip.id);
 }
 
 /* ---------- Einfach oder detailliert ---------- */

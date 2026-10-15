@@ -95,8 +95,8 @@
 
   // Tageskurse für die Anzeige in anderer Währung und für Preise in Fremdwährung (einmal am Tag)
   onMount(() => { void loadRates(); });
-  // Link von einer Inhaltsseite (?ziel=…): neue Reise mit Ziel und Gruppe
-  onMount(() => { applyPlanLink(); });
+  // Link von einer Inhaltsseite (?ziel=…&idee=…): neue Reise mit Ziel, Gruppe und den Kosten der Reiseidee
+  onMount(() => { void applyPlanLink(); });
   // …/?info öffnet „Neues & Ausblick“
   onMount(applyInfoLink);
   onMount(() => {

@@ -28,7 +28,7 @@ Schlüssel mit Endungen nach [Intl.PluralRules](https://developer.mozilla.org/do
 ## Hinweise
 
 - Die Übersetzungen sind maschinell erstellt. Muttersprachler sollten sie prüfen.
-- Die Beispielreise und Fehlermeldungen des Such-Dienstes bleiben vorerst deutsch.
+- Die Reiseideen (Inhaltsseiten /reise/ und die Posten, die sie in der App anlegen) und Fehlermeldungen des Such-Dienstes bleiben vorerst deutsch.
 - Die Browser-Tests laufen auf Deutsch (`locale: "de-DE"`).
 
 ## Länder (#162)

@@ -4,7 +4,7 @@
    * Startseite bei jedem neuen Besuch (ein Neuladen im selben Tab bleibt in der Reise): Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openSample, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
+  import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { summarize, type TripState, type TripSummary } from "../overview";
   import { ensureAirports, geo } from "../geo/geo.svelte";
@@ -19,6 +19,8 @@
   import AiMark from "./AiMark.svelte";
   import TopNav from "./TopNav.svelte";
   import AppFooter from "./AppFooter.svelte";
+  // Reiseideen liegen neben der App (…/startrek/reise/)
+  const BASE = (import.meta.env.BASE_URL as string) || "/";
 
   let picking = $state(false);
   const today = new Date().toISOString().slice(0, 10);
@@ -110,9 +112,10 @@
           <span class="home-ico" aria-hidden="true"><AiMark /></span><b>{t("home.ai")}</b><small>{t("home.aiSub")}</small>
         </button>
       {/if}
-      <button class="home-act home-sample" onclick={openSample}>
-        <span class="home-ico" aria-hidden="true">🧭</span><b>{t("sample.open")}</b><small>{t("home.sampleSub")}</small>
-      </button>
+      <!-- Reiseideen (Inhaltsseiten /reise/): öffnen eine fertig gerechnete Reise, ersetzen die Beispielreise (#402) -->
+      <a class="home-act home-ideas" href="{BASE}reise/">
+        <span class="home-ico" aria-hidden="true">🧭</span><b>{t("home.ideas")}</b><small>{t("home.ideasSub")}</small>
+      </a>
     </div>
 
     {#if rows.length > 1}
