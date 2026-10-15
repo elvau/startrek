@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMALS, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler } from "./placeholders";
+import { ANIMALS, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler, resizeTravelers, rowsAfterResize } from "./placeholders";
 import { ageClass, totals } from "./calc";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
@@ -49,5 +49,35 @@ describe("Platzhalter-Familien", () => {
     expect(new Set(g.map(t => t.household)).size).toBe(28);
     expect(g.filter(t => t.kind === "child")).toHaveLength(3);
     expect(g.some(t => / 2$/.test(t.name))).toBe(true);
+  });
+});
+
+describe("resizeTravelers", () => {
+  const mk = () => ({ travelers: soloOnly(), items: [{ participants: [] as string[] }] });
+  function soloOnly() { return groupTravelers(1); }
+  it("ergänzt erwachsene Platzhalter", () => {
+    const tr = mk();
+    expect(resizeTravelers(tr, 3)).toBe(3);
+    expect(tr.travelers.every(x => x.kind === "adult" && x.placeholder)).toBe(true);
+    expect(new Set(tr.travelers.map(x => x.id)).size).toBe(3);
+  });
+  it("nimmt von hinten weg, auch aus den Posten, und lässt mindestens 1", () => {
+    const tr = mk();
+    resizeTravelers(tr, 3);
+    tr.items[0].participants = tr.travelers.map(x => x.id);
+    expect(resizeTravelers(tr, 2)).toBe(2);
+    expect(tr.items[0].participants).toHaveLength(2);
+    expect(resizeTravelers(tr, 0)).toBe(1);
+  });
+});
+
+describe("rowsAfterResize", () => {
+  it("behält Ergebnisse bei gleicher Personenzahl", () => {
+    const rows = [1, 2];
+    expect(rowsAfterResize(rows, 2, 2)).toBe(rows);
+  });
+  it("verwirft Ergebnisse, wenn sich die Personenzahl ändert", () => {
+    expect(rowsAfterResize([1, 2], 2, 3)).toBeNull();
+    expect(rowsAfterResize([1, 2], 3, 2)).toBeNull();
   });
 });
