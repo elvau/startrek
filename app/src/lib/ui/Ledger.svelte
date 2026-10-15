@@ -273,15 +273,15 @@
 </article>
 
 <style>
-  .kasse { display: flex; flex-direction: column; gap: 10px; }
+  .kasse { display: flex; flex-direction: column; gap: 16px; }
   .ks-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
   .ks-head h3 { margin: 0; }
-  .ks-head p { margin: 2px 0 0; }
-  .ks-form { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 14px; background: var(--paper-2); }
+  .ks-head p { margin: 4px 0 0; }
+  .ks-form { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 14px; background: var(--paper-2); }
   .ks-amt { display: flex; gap: 4px; }
   .ks-amt input { width: 90px; }
-  .ks-moves ul, .ks-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-  .ks-moves li { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 12px; background: color-mix(in srgb, var(--good) 10%, transparent); }
+  .ks-moves ul, .ks-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .ks-moves li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--good) 10%, transparent); }
   .ks-moves li span { flex: 1; }
   .ks-even { margin: 0; color: var(--good); font-weight: 600; }
   .ks-modes summary { cursor: pointer; }
@@ -294,7 +294,7 @@
   .ks-bal .num { text-align: end; }
   .ks-bal .pos { color: var(--good); font-weight: 700; }
   .ks-bal .neg { color: var(--bad, #c0392b); font-weight: 700; }
-  .ks-list li { display: flex; align-items: baseline; gap: 8px; font-size: 14px; padding: 3px 0; }
+  .ks-list li { display: flex; align-items: baseline; gap: 10px; font-size: 14px; padding: 6px 0; }
   .ks-ic { width: 20px; text-align: center; }
   .ks-n { flex: 1; display: flex; flex-direction: column; }
   .ks-n small { font-size: 12px; }
@@ -308,7 +308,7 @@
   .ks-vote .on { outline: 2px solid var(--c-split, var(--ink-2)); }
   .ks-why { display: flex; gap: 6px; margin-top: 4px; }
   .ks-why input { flex: 1; min-width: 0; }
-  .ks-pend { margin: 0; padding: 6px 10px; border-radius: 12px; background: var(--paper-2); font-size: 14px; }
+  .ks-pend { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--paper-2); font-size: 14px; }
   .ks-alert { background: color-mix(in srgb, var(--bad, #c0392b) 12%, transparent); font-weight: 600; }
   .dp-del { border: 0; background: none; color: var(--ink-3); font-size: 16px; cursor: pointer; }
 </style>
