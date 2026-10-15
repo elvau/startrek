@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMALS, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler, resizeTravelers } from "./placeholders";
+import { ANIMALS, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler, resizeTravelers, rowsAfterResize } from "./placeholders";
 import { ageClass, totals } from "./calc";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
@@ -68,5 +68,16 @@ describe("resizeTravelers", () => {
     expect(resizeTravelers(tr, 2)).toBe(2);
     expect(tr.items[0].participants).toHaveLength(2);
     expect(resizeTravelers(tr, 0)).toBe(1);
+  });
+});
+
+describe("rowsAfterResize", () => {
+  it("behält Ergebnisse bei gleicher Personenzahl", () => {
+    const rows = [1, 2];
+    expect(rowsAfterResize(rows, 2, 2)).toBe(rows);
+  });
+  it("verwirft Ergebnisse, wenn sich die Personenzahl ändert", () => {
+    expect(rowsAfterResize([1, 2], 2, 3)).toBeNull();
+    expect(rowsAfterResize([1, 2], 3, 2)).toBeNull();
   });
 });

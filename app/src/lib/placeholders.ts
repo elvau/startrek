@@ -82,3 +82,8 @@ export function resizeTravelers(trip: { travelers: Traveler[]; items: { particip
   }
   return trip.travelers.length;
 }
+
+/** Suchergebnisse gelten nur für die Personenzahl, mit der sie gerechnet wurden: bei anderer Zahl verwerfen. */
+export function rowsAfterResize<T>(rows: T[] | null, before: number, after: number): T[] | null {
+  return before === after ? rows : null;
+}
