@@ -27,6 +27,7 @@ describe("Inhaltsseiten (#314)", () => {
       expect(plan.place).toBe(p.plan.ziel);
       expect(plan.cc).toBe(p.plan.land);
       expect(!!(plan.group || plan.fam?.length)).toBe(true);
+      expect(plan.idea).toBe(p.slug);
     }
   });
   it("Seite: Summe gerundet, Hinweis Richtwerte, strukturierte Daten gültig", () => {

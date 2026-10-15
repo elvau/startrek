@@ -5,7 +5,8 @@
  * Ohne Importe, damit Node die Datei direkt laden kann.
  */
 
-export interface CostRow { label: string; from: number; to: number; note?: string }
+/** cat: Bereich des Postens, der daraus in der App entsteht (Reiseidee öffnen, #402) */
+export interface CostRow { cat: "flights" | "stay" | "transport" | "attractions" | "misc"; label: string; from: number; to: number; note?: string }
 export interface Faq { q: string; a: string }
 export interface Page {
   slug: string;
@@ -44,12 +45,12 @@ export const PAGES: Page[] = [
     ],
     example: "8 Erwachsene, 5 Nächte im Juni, Finca mit Pool im Inselinneren, Flug ab Deutschland, zwei Mietwagen",
     costs: [
-      { label: "Hin- und Rückflug inkl. Gepäck", from: 120, to: 250 },
-      { label: "Finca mit Pool (5 Nächte, geteilt durch 8)", from: 250, to: 440 },
-      { label: "Mietwagen und Sprit (2 Autos, geteilt)", from: 40, to: 80 },
-      { label: "Essen und Getränke (Einkauf und Restaurants)", from: 175, to: 300 },
-      { label: "Ausflüge, Beach Club, Bootstour", from: 40, to: 120 },
-      { label: "Touristensteuer vor Ort", from: 5, to: 20, note: "je Nacht und Person, je nach Unterkunft" }
+      { cat: "flights", label: "Hin- und Rückflug inkl. Gepäck", from: 120, to: 250 },
+      { cat: "stay", label: "Finca mit Pool (5 Nächte, geteilt durch 8)", from: 250, to: 440 },
+      { cat: "transport", label: "Mietwagen und Sprit (2 Autos, geteilt)", from: 40, to: 80 },
+      { cat: "misc", label: "Essen und Getränke (Einkauf und Restaurants)", from: 175, to: 300 },
+      { cat: "attractions", label: "Ausflüge, Beach Club, Bootstour", from: 40, to: 120 },
+      { cat: "misc", label: "Touristensteuer vor Ort", from: 5, to: 20, note: "je Nacht und Person, je nach Unterkunft" }
     ],
     tips: [
       "Flüge nach Palma sind dienstags bis donnerstags oft günstiger als am Wochenende.",
@@ -76,11 +77,11 @@ export const PAGES: Page[] = [
     ],
     example: "10 Erwachsene, 3 Nächte, Anreise mit Bahn oder Fernbus, zwei Apartments in der Altstadt",
     costs: [
-      { label: "Bahn oder Fernbus hin und zurück", from: 40, to: 120 },
-      { label: "Apartments (3 Nächte, geteilt)", from: 75, to: 150 },
-      { label: "Essen und Getränke", from: 90, to: 150 },
-      { label: "Programm (Stadtführung, Bootsfahrt, Escape Room)", from: 30, to: 80 },
-      { label: "Nahverkehr (Mehrtageskarte)", from: 10, to: 20 }
+      { cat: "transport", label: "Bahn oder Fernbus hin und zurück", from: 40, to: 120 },
+      { cat: "stay", label: "Apartments (3 Nächte, geteilt)", from: 75, to: 150 },
+      { cat: "misc", label: "Essen und Getränke", from: 90, to: 150 },
+      { cat: "attractions", label: "Programm (Stadtführung, Bootsfahrt, Escape Room)", from: 30, to: 80 },
+      { cat: "transport", label: "Nahverkehr (Mehrtageskarte)", from: 10, to: 20 }
     ],
     tips: [
       "Sparpreise der Bahn ab Dresden, Berlin oder München gibt es früh gebucht schon ab wenigen Euro.",
@@ -107,11 +108,11 @@ export const PAGES: Page[] = [
     ],
     example: "6 Erwachsene, 3 Nächte, Anreise mit der Bahn, Apartment oder Hotel außerhalb des Grachtengürtels",
     costs: [
-      { label: "Bahn hin und zurück", from: 60, to: 150 },
-      { label: "Unterkunft (3 Nächte, geteilt) inkl. Touristensteuer", from: 210, to: 360 },
-      { label: "Essen und Getränke", from: 135, to: 210 },
-      { label: "Museen, Grachtenfahrt", from: 50, to: 100 },
-      { label: "Nahverkehr oder Leihräder", from: 20, to: 40 }
+      { cat: "transport", label: "Bahn hin und zurück", from: 60, to: 150 },
+      { cat: "stay", label: "Unterkunft (3 Nächte, geteilt) inkl. Touristensteuer", from: 210, to: 360 },
+      { cat: "misc", label: "Essen und Getränke", from: 135, to: 210 },
+      { cat: "attractions", label: "Museen, Grachtenfahrt", from: 50, to: 100 },
+      { cat: "transport", label: "Nahverkehr oder Leihräder", from: 20, to: 40 }
     ],
     tips: [
       "Rijksmuseum, Van Gogh Museum und Anne Frank Haus nur mit Zeitfenster – früh online buchen.",
@@ -138,12 +139,12 @@ export const PAGES: Page[] = [
     ],
     example: "8 Erwachsene, 4 Nächte im Frühjahr, Flug ab Deutschland, großes Apartment in Eixample oder Gràcia",
     costs: [
-      { label: "Hin- und Rückflug inkl. Gepäck", from: 100, to: 220 },
-      { label: "Apartment (4 Nächte, geteilt)", from: 180, to: 320 },
-      { label: "Touristensteuer", from: 20, to: 35, note: "pro Nacht und Person, je nach Unterkunft" },
-      { label: "Essen und Getränke", from: 160, to: 240 },
-      { label: "Eintritte (Sagrada Família, Park Güell)", from: 50, to: 100 },
-      { label: "Metro und Bus", from: 12, to: 25 }
+      { cat: "flights", label: "Hin- und Rückflug inkl. Gepäck", from: 100, to: 220 },
+      { cat: "stay", label: "Apartment (4 Nächte, geteilt)", from: 180, to: 320 },
+      { cat: "misc", label: "Touristensteuer", from: 20, to: 35, note: "pro Nacht und Person, je nach Unterkunft" },
+      { cat: "misc", label: "Essen und Getränke", from: 160, to: 240 },
+      { cat: "attractions", label: "Eintritte (Sagrada Família, Park Güell)", from: 50, to: 100 },
+      { cat: "transport", label: "Metro und Bus", from: 12, to: 25 }
     ],
     tips: [
       "Sagrada Família und Park Güell sind oft Tage vorher ausgebucht – Tickets gleich mit der Reise buchen.",
@@ -170,11 +171,11 @@ export const PAGES: Page[] = [
     ],
     example: "3 Familien mit 6 Erwachsenen und 5 Kindern, 7 Nächte im Sommer, Ferienhaus mit Pool, Anreise mit drei Autos",
     costs: [
-      { label: "Anreise mit dem Auto (Sprit, Vignette, Maut, geteilt)", from: 50, to: 90 },
-      { label: "Ferienhaus mit Pool (7 Nächte, geteilt durch 11)", from: 230, to: 380 },
-      { label: "Kurtaxe (Kinder oft frei)", from: 7, to: 17 },
-      { label: "Essen und Getränke", from: 210, to: 315 },
-      { label: "Ausflüge (Freizeitpark, Bootsfahrt)", from: 60, to: 120 }
+      { cat: "transport", label: "Anreise mit dem Auto (Sprit, Vignette, Maut, geteilt)", from: 50, to: 90 },
+      { cat: "stay", label: "Ferienhaus mit Pool (7 Nächte, geteilt durch 11)", from: 230, to: 380 },
+      { cat: "misc", label: "Kurtaxe (Kinder oft frei)", from: 7, to: 17 },
+      { cat: "misc", label: "Essen und Getränke", from: 210, to: 315 },
+      { cat: "attractions", label: "Ausflüge (Freizeitpark, Bootsfahrt)", from: 60, to: 120 }
     ],
     costNote: "Für eine Familie mit 2 Erwachsenen und 2 Kindern sind das grob 2.200 bis 3.700 € für die Woche – je nachdem, ob Kinder bei Haus und Essen einen geringeren Anteil zahlen.",
     tips: [
@@ -202,11 +203,11 @@ export const PAGES: Page[] = [
     ],
     example: "10 Erwachsene, 7 Nächte im Sommer, Ferienhaus mit Pool in Istrien, Anreise mit vier Autos",
     costs: [
-      { label: "Anreise mit dem Auto (Sprit, Vignetten, Maut, geteilt)", from: 70, to: 120 },
-      { label: "Ferienhaus mit Pool (7 Nächte, geteilt durch 10)", from: 300, to: 550 },
-      { label: "Kurtaxe", from: 10, to: 18 },
-      { label: "Essen und Getränke", from: 210, to: 350 },
-      { label: "Ausflüge (Bootstour, Nationalpark)", from: 50, to: 120 }
+      { cat: "transport", label: "Anreise mit dem Auto (Sprit, Vignetten, Maut, geteilt)", from: 70, to: 120 },
+      { cat: "stay", label: "Ferienhaus mit Pool (7 Nächte, geteilt durch 10)", from: 300, to: 550 },
+      { cat: "misc", label: "Kurtaxe", from: 10, to: 18 },
+      { cat: "misc", label: "Essen und Getränke", from: 210, to: 350 },
+      { cat: "attractions", label: "Ausflüge (Bootstour, Nationalpark)", from: 50, to: 120 }
     ],
     tips: [
       "Für die Fahrt durch Österreich und Slowenien braucht ihr Vignetten, in Kroatien zahlt ihr Maut.",
@@ -233,12 +234,12 @@ export const PAGES: Page[] = [
     ],
     example: "6 Erwachsene, 4 Nächte im Frühjahr oder Herbst, Flug ab Deutschland, Apartment in Alfama oder Graça",
     costs: [
-      { label: "Hin- und Rückflug inkl. Gepäck", from: 120, to: 260 },
-      { label: "Apartment (4 Nächte, geteilt)", from: 200, to: 340 },
-      { label: "Touristenabgabe", from: 8, to: 16 },
-      { label: "Essen und Getränke", from: 140, to: 220 },
-      { label: "Ausflüge (Sintra, Belém)", from: 40, to: 90 },
-      { label: "Nahverkehr", from: 15, to: 30 }
+      { cat: "flights", label: "Hin- und Rückflug inkl. Gepäck", from: 120, to: 260 },
+      { cat: "stay", label: "Apartment (4 Nächte, geteilt)", from: 200, to: 340 },
+      { cat: "misc", label: "Touristenabgabe", from: 8, to: 16 },
+      { cat: "misc", label: "Essen und Getränke", from: 140, to: 220 },
+      { cat: "attractions", label: "Ausflüge (Sintra, Belém)", from: 40, to: 90 },
+      { cat: "transport", label: "Nahverkehr", from: 15, to: 30 }
     ],
     tips: [
       "Die Straßenbahn 28 ist oft überfüllt – früh morgens fahren oder zu Fuß gehen.",
@@ -265,11 +266,11 @@ export const PAGES: Page[] = [
     ],
     example: "3 Familien mit 6 Erwachsenen und 6 Kindern, 7 Nächte in den Herbstferien, Poolhaus an der Nordsee, Anreise mit drei Autos",
     costs: [
-      { label: "Anreise mit dem Auto (geteilt)", from: 40, to: 80 },
-      { label: "Ferienhaus mit Pool (7 Nächte, geteilt durch 12)", from: 150, to: 335 },
-      { label: "Strom, Wasser, Endreinigung", from: 25, to: 60 },
-      { label: "Essen und Getränke (überwiegend selbst gekocht)", from: 210, to: 315 },
-      { label: "Ausflüge (Freizeitpark, Zoo, Schwimmbad)", from: 40, to: 100 }
+      { cat: "transport", label: "Anreise mit dem Auto (geteilt)", from: 40, to: 80 },
+      { cat: "stay", label: "Ferienhaus mit Pool (7 Nächte, geteilt durch 12)", from: 150, to: 335 },
+      { cat: "misc", label: "Strom, Wasser, Endreinigung", from: 25, to: 60 },
+      { cat: "misc", label: "Essen und Getränke (überwiegend selbst gekocht)", from: 210, to: 315 },
+      { cat: "attractions", label: "Ausflüge (Freizeitpark, Zoo, Schwimmbad)", from: 40, to: 100 }
     ],
     costNote: "Für eine Familie mit 2 Erwachsenen und 2 Kindern sind das grob 1.850 bis 3.550 € für die Woche.",
     tips: [
@@ -297,11 +298,11 @@ export const PAGES: Page[] = [
     ],
     example: "10 Erwachsene, 2 Nächte in Hamburg, Anreise mit der Bahn, Hostel oder Apartment auf St. Pauli",
     costs: [
-      { label: "Bahn hin und zurück", from: 40, to: 120 },
-      { label: "Unterkunft (2 Nächte, geteilt)", from: 80, to: 160 },
-      { label: "Programm (Kiezführung, Escape Room, Bootstour)", from: 60, to: 150 },
-      { label: "Essen und Getränke", from: 80, to: 150 },
-      { label: "Anteil fürs Brautpaar (von der Gruppe übernommen)", from: 10, to: 25 }
+      { cat: "transport", label: "Bahn hin und zurück", from: 40, to: 120 },
+      { cat: "stay", label: "Unterkunft (2 Nächte, geteilt)", from: 80, to: 160 },
+      { cat: "attractions", label: "Programm (Kiezführung, Escape Room, Bootstour)", from: 60, to: 150 },
+      { cat: "misc", label: "Essen und Getränke", from: 80, to: 150 },
+      { cat: "misc", label: "Anteil fürs Brautpaar (von der Gruppe übernommen)", from: 10, to: 25 }
     ],
     tips: [
       "Budget vorab in der Gruppe abfragen und das Programm danach ausrichten, nicht umgekehrt.",
@@ -328,11 +329,11 @@ export const PAGES: Page[] = [
     ],
     example: "25 Schülerinnen und Schüler und 2 Lehrkräfte, 4 Nächte, Anreise mit der Bahn (Gruppenangebot), Jugendherberge mit Halbpension",
     costs: [
-      { label: "Bahn hin und zurück (Gruppenpreis)", from: 40, to: 80 },
-      { label: "Jugendherberge mit Frühstück und Abendessen (4 Nächte)", from: 140, to: 200 },
-      { label: "Programm (Führungen, Museen mit Schülerpreis)", from: 30, to: 60 },
-      { label: "Mittagessen und Taschengeld", from: 40, to: 70 },
-      { label: "Nahverkehr (Gruppenkarte)", from: 10, to: 20 }
+      { cat: "transport", label: "Bahn hin und zurück (Gruppenpreis)", from: 40, to: 80 },
+      { cat: "stay", label: "Jugendherberge mit Frühstück und Abendessen (4 Nächte)", from: 140, to: 200 },
+      { cat: "attractions", label: "Programm (Führungen, Museen mit Schülerpreis)", from: 30, to: 60 },
+      { cat: "misc", label: "Mittagessen und Taschengeld", from: 40, to: 70 },
+      { cat: "transport", label: "Nahverkehr (Gruppenkarte)", from: 10, to: 20 }
     ],
     tips: [
       "Den Bundestag und das Kanzleramt könnt ihr kostenlos besuchen – Termine aber Monate vorher anfragen.",
@@ -359,11 +360,11 @@ export const PAGES: Page[] = [
     ],
     example: "2 Familien mit 4 Erwachsenen und 4 Kindern, 7 Nächte im Sommer, Ferienhaus auf Usedom, Anreise mit zwei Autos",
     costs: [
-      { label: "Anreise mit dem Auto (geteilt pro Auto)", from: 30, to: 60 },
-      { label: "Ferienhaus (7 Nächte, geteilt durch 8)", from: 180, to: 320 },
-      { label: "Kurtaxe (Kinder oft frei)", from: 10, to: 20 },
-      { label: "Essen und Getränke", from: 175, to: 280 },
-      { label: "Ausflüge (Schwimmbad, Schiff, Fahrräder)", from: 40, to: 90 }
+      { cat: "transport", label: "Anreise mit dem Auto (geteilt pro Auto)", from: 30, to: 60 },
+      { cat: "stay", label: "Ferienhaus (7 Nächte, geteilt durch 8)", from: 180, to: 320 },
+      { cat: "misc", label: "Kurtaxe (Kinder oft frei)", from: 10, to: 20 },
+      { cat: "misc", label: "Essen und Getränke", from: 175, to: 280 },
+      { cat: "attractions", label: "Ausflüge (Schwimmbad, Schiff, Fahrräder)", from: 40, to: 90 }
     ],
     costNote: "Für eine Familie mit 2 Erwachsenen und 2 Kindern sind das grob 1.750 bis 3.100 € für die Woche.",
     tips: [
@@ -391,12 +392,12 @@ export const PAGES: Page[] = [
     ],
     example: "8 Erwachsene, 6 Nächte im Januar, Chalet im Zillertal, 6-Tage-Skipass, Anreise mit zwei Autos",
     costs: [
-      { label: "Anreise mit dem Auto (Sprit, Vignette, geteilt)", from: 40, to: 80 },
-      { label: "Chalet oder Apartment (6 Nächte, geteilt)", from: 300, to: 540 },
-      { label: "Skipass 6 Tage", from: 350, to: 420 },
-      { label: "Ski- und Schuhverleih (wer keine eigene Ausrüstung hat)", from: 0, to: 200 },
-      { label: "Essen, Hütten und Après-Ski", from: 240, to: 360 },
-      { label: "Ortstaxe", from: 12, to: 20 }
+      { cat: "transport", label: "Anreise mit dem Auto (Sprit, Vignette, geteilt)", from: 40, to: 80 },
+      { cat: "stay", label: "Chalet oder Apartment (6 Nächte, geteilt)", from: 300, to: 540 },
+      { cat: "attractions", label: "Skipass 6 Tage", from: 350, to: 420 },
+      { cat: "misc", label: "Ski- und Schuhverleih (wer keine eigene Ausrüstung hat)", from: 0, to: 200 },
+      { cat: "misc", label: "Essen, Hütten und Après-Ski", from: 240, to: 360 },
+      { cat: "misc", label: "Ortstaxe", from: 12, to: 20 }
     ],
     tips: [
       "Januar nach den Ferien und März sind günstiger als Weihnachten, Fasching und Ostern.",
@@ -423,11 +424,11 @@ export const PAGES: Page[] = [
     ],
     example: "6 Erwachsene, 4 Tage Camping auf einem großen Festival in Deutschland, Anreise mit zwei Autos",
     costs: [
-      { label: "Festivalticket inkl. Camping", from: 200, to: 300 },
-      { label: "Anreise mit dem Auto (geteilt)", from: 30, to: 60 },
-      { label: "Gemeinsame Ausrüstung (Pavillon, Grill, Gas, geteilt)", from: 20, to: 60 },
-      { label: "Essen und Getränke (Einkauf und Stände)", from: 100, to: 200 },
-      { label: "Müllpfand und Parkticket", from: 10, to: 25 }
+      { cat: "attractions", label: "Festivalticket inkl. Camping", from: 200, to: 300 },
+      { cat: "transport", label: "Anreise mit dem Auto (geteilt)", from: 30, to: 60 },
+      { cat: "misc", label: "Gemeinsame Ausrüstung (Pavillon, Grill, Gas, geteilt)", from: 20, to: 60 },
+      { cat: "misc", label: "Essen und Getränke (Einkauf und Stände)", from: 100, to: 200 },
+      { cat: "misc", label: "Müllpfand und Parkticket", from: 10, to: 25 }
     ],
     tips: [
       "Tickets in der ersten Verkaufsphase sind deutlich günstiger.",
@@ -454,11 +455,11 @@ export const PAGES: Page[] = [
     ],
     example: "20 Erwachsene, 2 Nächte in Hamburg, gemieteter Reisebus aus dem Westen Deutschlands, Hotel mit Doppelzimmern, Musicalbesuch",
     costs: [
-      { label: "Reisebus mit Fahrer (geteilt durch 20)", from: 90, to: 140 },
-      { label: "Hotel im Doppelzimmer (2 Nächte)", from: 90, to: 150 },
-      { label: "Musical oder Theater", from: 70, to: 150 },
-      { label: "Essen und Getränke", from: 60, to: 100 },
-      { label: "Hafenrundfahrt", from: 20, to: 30 }
+      { cat: "transport", label: "Reisebus mit Fahrer (geteilt durch 20)", from: 90, to: 140 },
+      { cat: "stay", label: "Hotel im Doppelzimmer (2 Nächte)", from: 90, to: 150 },
+      { cat: "attractions", label: "Musical oder Theater", from: 70, to: 150 },
+      { cat: "misc", label: "Essen und Getränke", from: 60, to: 100 },
+      { cat: "attractions", label: "Hafenrundfahrt", from: 20, to: 30 }
     ],
     tips: [
       "Busangebote von mehreren Unternehmen einholen; Lenk- und Ruhezeiten des Fahrers bestimmen den Preis mit.",
@@ -485,12 +486,12 @@ export const PAGES: Page[] = [
     ],
     example: "6 Erwachsene, 3 Nächte, Anreise mit Bahn oder Flug, Apartment in einem Innenbezirk",
     costs: [
-      { label: "Anreise mit Bahn oder Flug", from: 60, to: 180 },
-      { label: "Apartment (3 Nächte, geteilt)", from: 135, to: 240 },
-      { label: "Ortstaxe", from: 5, to: 10 },
-      { label: "Essen und Getränke", from: 135, to: 195 },
-      { label: "Museen, Prater, Heuriger", from: 40, to: 90 },
-      { label: "Öffentlicher Verkehr (72-Stunden-Karte)", from: 15, to: 20 }
+      { cat: "transport", label: "Anreise mit Bahn oder Flug", from: 60, to: 180 },
+      { cat: "stay", label: "Apartment (3 Nächte, geteilt)", from: 135, to: 240 },
+      { cat: "misc", label: "Ortstaxe", from: 5, to: 10 },
+      { cat: "misc", label: "Essen und Getränke", from: 135, to: 195 },
+      { cat: "attractions", label: "Museen, Prater, Heuriger", from: 40, to: 90 },
+      { cat: "transport", label: "Öffentlicher Verkehr (72-Stunden-Karte)", from: 15, to: 20 }
     ],
     tips: [
       "Der Nachtzug spart eine Hotelnacht und ist für Gruppen ein Erlebnis.",
@@ -522,7 +523,7 @@ export function total(p: Page): { from: number; to: number } {
 
 /** Link in die App, relativ zur Seite /reise/<slug>/ */
 export function planHref(p: Page): string {
-  const q = new URLSearchParams({ ziel: p.plan.ziel, land: p.plan.land, name: p.plan.name });
+  const q = new URLSearchParams({ ziel: p.plan.ziel, land: p.plan.land, name: p.plan.name, idee: p.slug });
   if (p.plan.fam) q.set("fam", p.plan.fam);
   else if (p.plan.gruppe) q.set("gruppe", String(p.plan.gruppe));
   return `../../?${q}`;
@@ -601,7 +602,7 @@ ${rows}
 </table>
 ${p.costNote ? `<p>${esc(p.costNote)}</p>` : ""}
 <p><small>Richtwerte, Stand ${STAND}. Preise schwanken stark nach Saison, Buchungszeitpunkt und Ansprüchen. Keine Angebote.</small></p>
-<p><a class="cta" href="${planHref(p)}">Mit diesen Werten eigene Reise planen</a><br><small>Kostenlos und ohne Anmeldung: Ziel und Gruppe sind schon eingetragen, die echten Preise sucht ihr direkt in Split&amp;Fly.</small></p>
+<p><a class="cta" href="${planHref(p)}">Mit diesen Werten eigene Reise planen</a><br><small>Kostenlos und ohne Anmeldung: Ziel, Gruppe und diese Kosten sind schon eingetragen, die echten Preise sucht ihr direkt in Split&amp;Fly.</small></p>
 </section>
 <h2>Tipps</h2>
 <ul>
