@@ -570,19 +570,26 @@ try {
   log("Zeitleiste: drei Familien gleich lang kompakt, Zeiten der Oma gesetzt (Reise wächst auf 23 Nächte, Aufteilung am Ferienhaus: Oma 8 von 21 Nächten), zurückgesetzt");
   await tctx.close();
 
-  // Link von einer Inhaltsseite (#314): neue Reise mit Ziel, Land und drei Familien, ohne Startseite
+  // Link von einer Inhaltsseite (#314, #402): neue Reise mit Ziel, Land, drei Familien und den Kosten der Reiseidee, ohne Startseite
   const lctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
   const lp = await lctx.newPage();
   lp.on("pageerror", e => errors.push(e.message));
-  await lp.goto(URL + "?ziel=Riva%20del%20Garda&land=IT&name=Gardasee%20mit%20Familien&fam=2-2,2-2,2-1");
+  await lp.goto(URL + "?ziel=Riva%20del%20Garda&land=IT&name=Gardasee%20mit%20Familien&fam=2-2,2-2,2-1&idee=gardasee-mehrere-familien-kosten");
   await until(async () => (await lp.locator("body").innerText()).includes("Gardasee mit Familien"), "Reise aus dem Link", 15000);
-  if (lp.url().includes("ziel=")) fail("Link-Angaben noch in der Adresse: " + lp.url());
+  if (lp.url().includes("ziel=") || lp.url().includes("idee=")) fail("Link-Angaben noch in der Adresse: " + lp.url());
   const current = () => lp.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "null"));
   await until(async () => !!(await current()), "Reise gespeichert");
   const saved = await current();
   if (saved.place !== "Riva del Garda" || saved.country !== "Italien") fail("Ziel falsch: " + saved.place + " / " + saved.country);
   if (saved.travelers.length !== 11 || new Set(saved.travelers.map(x => x.household)).size !== 3) fail("Familien falsch: " + saved.travelers.map(x => x.name).join(", "));
-  log("Link von Inhaltsseite: Reise „Gardasee mit Familien“ in Riva del Garda (Italien) mit 3 Familien, 6 Erw. und 5 Kindern; Adresse bereinigt");
+  const cats = saved.items.map(i => i.cat).sort().join(",");
+  if (cats !== "attractions,misc,misc,stay,transport") fail("Posten der Reiseidee: " + cats);
+  const ideaHouse = lp.locator("#stay .card", { hasText: "Ferienhaus mit Pool" });
+  await ideaHouse.scrollIntoViewIfNeeded();
+  // Richtwert 230–380 € pro Person → 305 € × 11 Personen
+  if (!(await ideaHouse.innerText()).includes("3.355")) fail("Ferienhaus ohne Richtwert: " + (await ideaHouse.innerText()));
+  if (!saved.kicker?.includes("3 Familien")) fail("Beispielrechnung fehlt in der Reise: " + saved.kicker);
+  log("Link von Inhaltsseite: Reise „Gardasee mit Familien“ in Riva del Garda (Italien) mit 3 Familien, 6 Erw. und 5 Kindern und 5 Posten aus der Reiseidee (Richtwerte); Adresse bereinigt");
   await lctx.close();
 
   // Haustiere (#322): Familie Klein mit Hund (reist mit) → Hinweise unter „Wichtiges“ für London;

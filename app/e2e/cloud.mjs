@@ -15,8 +15,8 @@ async function dbState(tag) {
   const r = await fetch(`http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/${tripId}`, { headers: { Authorization: "Bearer owner" } });
   const j = await r.json();
   const data = JSON.parse(j.fields?.data?.stringValue || "{}");
-  const auto = (data.items || []).find(x => x.id === "auto");
-  console.log(`  [db ${tag}] Mietwagen=${auto?.options?.[0]?.price?.unit} von=${j.fields?.updatedBy?.stringValue?.slice(0, 6)} zeit=${j.updateTime}`);
+  const auto = (data.items || []).find(x => x.name?.startsWith("Mietwagen"));
+  console.log(`  [db ${tag}] Mietwagen=${auto?.options?.[0]?.price?.adult} von=${j.fields?.updatedBy?.stringValue?.slice(0, 6)} zeit=${j.updateTime}`);
 }
 
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4174", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
@@ -47,9 +47,9 @@ try {
   // Anna meldet sich an und übernimmt ihre Reise ins Konto
   const anna = await person("Anna");
   await anna.goto(URL);
-  // erster Besuch: Willkommen, Anna schaut sich das Beispiel an
-  await anna.locator(".start .linkbtn", { hasText: "Beispielreise ansehen" }).click();
-  await until(async () => (await anna.locator(".hero-in").textContent()).includes("Makarska"), "Beispielreise offen");
+  // erster Besuch: Anna übernimmt die Reiseidee Mallorca (Link von der Inhaltsseite, #402)
+  await anna.goto(URL + "?ziel=Mallorca&land=ES&name=Gruppenreise%20Mallorca&gruppe=8&idee=gruppenreise-mallorca-kosten");
+  await until(async () => (await anna.locator(".hero-in").textContent()).includes("Mallorca"), "Reiseidee offen");
   if ((await anna.locator(".top .tm-btn").first().click(), await anna.locator(".tm-trip").count()) !== 1) fail("leere Reise nicht weggeräumt");
   await anna.keyboard.press("Escape");
   await anna.locator(".top .acct .tm-btn", { hasText: "Anmelden" }).click();
@@ -77,18 +77,22 @@ try {
   await oma.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
   await login(oma, "Oma");
   await until(async () => (await oma.locator(".top .tm-btn").first().textContent()).includes("☁"), "Oma hat die Reise im Konto");
-  await until(async () => (await oma.locator(".hero-in").textContent()).includes("Makarska"), "Oma sieht die Reise");
+  await until(async () => (await oma.locator(".hero-in").textContent()).includes("Mallorca"), "Oma sieht die Reise");
   await until(async () => !(await oma.locator(".banner").count()), "Stand geladen");
-  if ((await total(oma)) !== before) fail(`Oma sieht ${await total(oma)} statt ${before}`);
+  // Summe zählt nach dem Laden hoch: warten, bis sie steht
+  await until(async () => (await total(oma)) === before, `Oma sieht ${await total(oma)} statt ${before}`);
   log("Oma ist beigetreten und sieht dieselbe Summe");
 
   // Oma ändert den Mietwagen, Anna sieht es live
   await oma.locator("#transport .card", { hasText: "Mietwagen" }).scrollIntoViewIfNeeded();
   await oma.locator("#transport .card", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
   await oma.locator(".editor [data-sec=price] summary").click();
-  await oma.locator(".editor label", { hasText: "Preis" }).locator("input").fill("45");
+  // Mietwagen der Reiseidee: Richtwert pro Person (Erwachsene)
+  await oma.locator(".editor label", { hasText: "Erwachsene" }).locator("input").fill("45");
   await oma.keyboard.press("Escape");
-  const omaTotal = await total(oma);
+  // Summe zählt hoch: warten, bis sie sich geändert hat und steht
+  let omaTotal = before;
+  await until(async () => { const a = await total(oma); await new Promise(r => setTimeout(r, 600)); const b = await total(oma); omaTotal = b; return a === b && b !== before; }, "Omas Summe geändert");
   await dbState("nach Omas Eingabe");
   await new Promise(r => setTimeout(r, 1500));
   await dbState("1,5 s später");

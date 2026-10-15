@@ -9,11 +9,15 @@ describe("parsePlan", () => {
     expect(parsePlan("?ziel=Blåvand&land=DK&fam=2-2,2-1,9-20,x")).toEqual({ place: "Blåvand", cc: "DK", fam: [{ adults: 2, kids: 2 }, { adults: 2, kids: 1 }, { adults: 6, kids: 8 }] });
     expect(parsePlan("?ziel=Prag&gruppe=500")?.group).toBe(40);
   });
+  it("Reiseidee: Kennung übernommen, ungültige weg (#402)", () => {
+    expect(parsePlan("?ziel=Prag&gruppe=10&idee=gruppenreise-prag-kosten")?.idea).toBe("gruppenreise-prag-kosten");
+    expect(parsePlan("?ziel=Prag&idee=../x")?.idea).toBeUndefined();
+  });
   it("ohne Ziel nichts, ungültiges Land weg", () => {
     expect(parsePlan("?gruppe=4")).toBeNull();
     expect(parsePlan("?ziel=Prag&land=Tschechien")).toEqual({ place: "Prag" });
   });
   it("Adresse danach ohne Plan-Angaben, andere bleiben", () => {
-    expect(stripPlan(new URL("https://x/?ziel=Prag&gruppe=4&join=a.b.editor")).search).toBe("?join=a.b.editor");
+    expect(stripPlan(new URL("https://x/?ziel=Prag&gruppe=4&idee=gruppenreise-prag-kosten&join=a.b.editor")).search).toBe("?join=a.b.editor");
   });
 });
