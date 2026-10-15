@@ -75,6 +75,7 @@
   import { airportData, ensureAirports, ensureGeo, geo } from "./lib/geo/geo.svelte";
   import { applyPlanLink } from "./lib/planApp";
   import { applyInfoLink, infoDialog } from "./lib/info/app.svelte";
+  import { install } from "./lib/install.svelte";
 
   let sheet = $state(false);
 
@@ -298,4 +299,5 @@
 {#if staySearch.open}{#key staySearch.scope}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}
 {#if privStay.open}{#key privStay.itemId}<PrivateStay itemId={privStay.itemId} onclose={() => (privStay.open = false)} />{/key}{/if}
 {#if eventPlanner.open}<EventPlanner onclose={() => (eventPlanner.open = false)} />{/if}
+{#if install.help}{#await import("./lib/ui/InstallHelp.svelte") then m}<m.default />{/await}{/if}
 {#if infoDialog.open}{#await import("./lib/ui/InfoDialog.svelte") then m}<m.default />{/await}{/if}

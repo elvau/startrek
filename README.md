@@ -50,7 +50,7 @@ Konto und Teilen: Einrichtung in [`docs/FIREBASE.md`](docs/FIREBASE.md). Ohne Fi
 | `public/places/` | Orte ab 2000 Einwohnern (GeoNames), nach Land verteilt |
 | `public/impressum.html`, `public/datenschutz.html` | Rechtliches |
 | `public/neu/` | Weiterleitung von der früheren Adresse `/neu/` |
-| `public/sw.js` | räumt den Service Worker der früheren Reisekasse auf |
+| `public/sw.js` | Service Worker der installierbaren App (Start ohne Netz), räumt auch den der früheren Reisekasse auf |
 | `docs/design/prototyp.html` | ursprünglicher Designprototyp |
 
 ## Veröffentlichen
