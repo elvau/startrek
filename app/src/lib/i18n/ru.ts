@@ -2375,7 +2375,7 @@ export const ru: Dict = {
   "watch.check": "Проверить цены",
   "watch.checking": "Проверка {n} из {of} …",
   "watch.failed": "Поиск не удался",
-  "watch.gone": "Предложение больше не найдено",
+  "watch.gone": "Больше недоступно",
   "watch.nothing": "Дешевле не найдено",
   "watch.take": "Выбрать",
   "welcome.haveAccount": "Войти или создать аккаунт",

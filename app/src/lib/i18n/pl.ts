@@ -2375,7 +2375,7 @@ export const pl: Dict = {
   "watch.check": "Sprawdź ceny",
   "watch.checking": "Sprawdzam {n} z {of} …",
   "watch.failed": "Wyszukiwanie nie powiodło się",
-  "watch.gone": "Oferta niedostępna",
+  "watch.gone": "Już niedostępny",
   "watch.nothing": "Nie znaleziono nic tańszego",
   "watch.take": "Wybierz",
   "welcome.haveAccount": "Zaloguj się lub załóż konto",

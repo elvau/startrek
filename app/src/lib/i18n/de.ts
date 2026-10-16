@@ -2287,7 +2287,7 @@ export const de = {
   "watch.check": "Preise prüfen",
   "watch.checking": "Prüfe {n} von {of} …",
   "watch.failed": "Suche fehlgeschlagen",
-  "watch.gone": "Angebot nicht mehr gefunden",
+  "watch.gone": "Nicht mehr verfügbar",
   "watch.nothing": "Nichts Günstigeres gefunden",
   "watch.take": "Übernehmen",
   "welcome.haveAccount": "Anmelden oder Konto anlegen",

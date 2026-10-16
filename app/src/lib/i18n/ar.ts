@@ -2458,7 +2458,7 @@ export const ar: Dict = {
   "watch.check": "تحقق من الأسعار",
   "watch.checking": "جارٍ التحقق {n} من {of} …",
   "watch.failed": "فشل البحث",
-  "watch.gone": "لم يعد العرض موجودًا",
+  "watch.gone": "لم يعد متاحًا",
   "watch.nothing": "لم يُعثر على ما هو أرخص",
   "watch.take": "استخدم هذا",
   "welcome.haveAccount": "تسجيل الدخول أو إنشاء حساب",
