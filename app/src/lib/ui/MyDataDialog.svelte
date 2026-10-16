@@ -40,7 +40,15 @@
     f.className = "mydata-frame";
     f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
     f.srcdoc = html();
-    f.onload = () => { try { f.contentWindow?.focus(); f.contentWindow?.print(); } finally { setTimeout(() => f.remove(), 60_000); } };
+    const back = document.activeElement as HTMLElement | null;
+    f.onload = () => {
+      try { f.contentWindow?.focus(); f.contentWindow?.print(); }
+      finally {
+        // Fokus zurück ins Fenster, sonst kommt Esc im Rahmen an und schließt „Meine Daten“ nicht
+        window.focus(); back?.focus?.();
+        setTimeout(() => f.remove(), 60_000);
+      }
+    };
     document.body.appendChild(f);
   }
   /** als Seite in einem neuen Tab (z. B. auf dem Handy, wo Drucken aus dem Rahmen nicht überall geht) */

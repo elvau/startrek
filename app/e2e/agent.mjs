@@ -141,7 +141,9 @@ try {
   await rp.close();
   await md.locator(".mydata-print").click();
   await p.locator("iframe.mydata-frame").waitFor({ state: "attached" });
+  await p.waitForTimeout(500); // Rahmen geladen (Druck ausgelöst), danach muss Esc das Fenster schließen
   await p.keyboard.press("Escape");
+  await p.locator(".mydata").waitFor({ state: "detached", timeout: 5000 });
   log("Meine Daten: Auskunft als Seite (Konto, AGB, Gerät), Datei mit Konto, Profil, Reisen und Browser-Einträgen, Drucken über Rahmen");
 
   // Beispiel antippen schickt den Wunsch; Anfrage mit Anmelde-Nachweis und Reisenden
