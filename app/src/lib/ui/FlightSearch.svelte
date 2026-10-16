@@ -620,10 +620,11 @@
             <div class="fs-top">
               <span class="pill-ap">{t("fs.from", { ap: x.rt.legs[0].out.from })}</span>
               <b class="num fs-price">{eur(x.r.total)}</b>
+              {#if n > 1}<span class="fs-pp small">{t("pp", { v: eur(x.r.total / n) })}</span>{/if}
               {#if x.rt.legs.some(l => l.test)}<span class="pill-test">{t("test.badge")}</span>{/if}
               <span class="fs-badge">{tn("n.tickets", x.rt.legs.length)}</span>
             </div>
-            <p class="muted small fs-sub">{t("fs.flightsPrice", { v: eur(x.rt.price) })}{withAccess && x.r.access ? ` + ${t("fs.accessPrice", { v: eur(x.r.access) })}` : ""}{x.r.add?.bagFee ? ` + ${t("fs.addBags", { v: eur(x.r.add.bagFee) })}` : ""}{x.r.add?.seatFee ? ` + ${t("fs.addSeats", { v: eur(x.r.add.seatFee) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(x.r.total / n) })}` : ""}</p>
+            <p class="muted small fs-sub">{t("fs.flightsPrice", { v: eur(x.rt.price) })}{withAccess && x.r.access ? ` + ${t("fs.accessPrice", { v: eur(x.r.access) })}` : ""}{x.r.add?.bagFee ? ` + ${t("fs.addBags", { v: eur(x.r.add.bagFee) })}` : ""}{x.r.add?.seatFee ? ` + ${t("fs.addSeats", { v: eur(x.r.add.seatFee) })}` : ""}</p>
             <div class="fs-pills">
               {#each x.rt.stays as st, i (i)}
                 {#if st.hours != null}<span class="pill-h">{st.name}: {t("fs.layover", { h: Math.round(st.hours) })}</span>
@@ -741,11 +742,12 @@
             <div class="fs-top">
               <span class="pill-ap">{t("fs.from", { ap: o.out.from })}</span>
               <b class="num fs-price">{eur(o.total)}</b>
+              {#if n > 1}<span class="fs-pp small">{t("pp", { v: eur(o.total / n) })}</span>{/if}
               {#if o.test}<span class="pill-test" title={t("test.title")}>{t("test.badge")}</span>{/if}
               <span class="fs-badge">{o.sourceName}</span>
             </div>
             {#if alongCost != null && Math.abs(o.total - alongCost) >= 1}<p class="st-diff fs-sub" class:good={o.total < alongCost}>{o.total < alongCost ? t("fs.cheaperAlong", { v: eur(alongCost - o.total) }) : t("fs.dearerAlong", { v: eur(o.total - alongCost) })}</p>{/if}
-            <p class="muted small fs-sub">{t("fs.flightPrice", { v: eur(o.price) })}{withAccess && o.access ? ` + ${t("fs.accessPrice", { v: eur(o.access) })}` : ""}{o.add?.bagFee ? ` + ${t("fs.addBags", { v: eur(o.add.bagFee) })}` : ""}{o.add?.seatFee ? ` + ${t("fs.addSeats", { v: eur(o.add.seatFee) })}` : ""}{n > 1 ? ` · ${t("pp", { v: eur(o.total / n) })}` : ""}{o.orig ? ` · ${t("fx.orig", { v: money(o.orig.amount, o.orig.currency) })}` : ""}</p>
+            <p class="muted small fs-sub">{t("fs.flightPrice", { v: eur(o.price) })}{withAccess && o.access ? ` + ${t("fs.accessPrice", { v: eur(o.access) })}` : ""}{o.add?.bagFee ? ` + ${t("fs.addBags", { v: eur(o.add.bagFee) })}` : ""}{o.add?.seatFee ? ` + ${t("fs.addSeats", { v: eur(o.add.seatFee) })}` : ""}{o.orig ? ` · ${t("fx.orig", { v: money(o.orig.amount, o.orig.currency) })}` : ""}</p>
             <div class="fs-pills">
               {#if o.baggage}<span class="pill-n fs-bag" class:miss={shownBags > o.baggage.checked}>🧳 {o.baggage.checked ? t("fs.bagsIncl", { n: tn("n.bags", o.baggage.checked) }) : t("fs.bagsNoneIncl")}</span>
               {:else if shownBags && !o.add?.bagFee}<span class="pill-n fs-bag unk">🧳 {t("fs.bagsUnknown")}</span>{/if}
