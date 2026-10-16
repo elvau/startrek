@@ -402,6 +402,7 @@ html:has(.modal-bg){overflow:hidden}
 .fs-res{border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:var(--paper)}
 .fs-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .fs-price{font:800 22px "Bricolage Grotesque Variable",sans-serif}
+.fs-pp{font-weight:700;color:var(--ink-2)}
 .fs-badge{margin-inline-start:auto;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--a-soft);color:var(--a)}
 .fs-leg{display:grid;grid-template-columns:52px 1fr;gap:0 8px;font-size:13.5px}
 .fs-leg .muted{grid-column:2;font-size:12.5px}
