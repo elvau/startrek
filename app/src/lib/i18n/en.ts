@@ -820,6 +820,8 @@ export const en: Dict = {
   "imp.read": "Read",
   "imp.readPersons": "Read: {a} of {b}",
   "imp.reopen": "reopen",
+  "imp.showLess": "Show less",
+  "imp.showMore": "Show more (+{n})",
   "imp.tips": "Good to know",
   "imp.title": "Important",
   "imp.valid.dEntry": "Passport must be valid for at least {n} days from entry (applies to most passports, check officially)",

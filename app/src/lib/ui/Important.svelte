@@ -50,6 +50,10 @@
   const personal = $derived(tips ? [] : imp.personal);
   $effect(() => { if (!tips && cloud.user && imp.meId) void loadDocs(); });
   let more = $state(false);
+  /** „Gut zu wissen“ zeigt zunächst nur wenige Punkte (z. B. Tokio hat viele besondere Orte), der Rest hinter „Mehr anzeigen“ */
+  const TIPS_SHOWN = 3;
+  let allTips = $state(false);
+  const shown = $derived(tips && !allTips ? open.slice(0, TIPS_SHOWN) : open);
   let unfolded = $state<Record<string, boolean>>({});
 
   const LEVEL: Record<string, Key> = { warning: "aa.warning", partial: "aa.partial", situation: "aa.situation" };
@@ -291,7 +295,7 @@
       </div>
     {/if}
 
-    {#each open as p (p.key)}
+    {#each shown as p (p.key)}
       {#if isUrgent(p) || unfolded[p.key]}
         <article class="imp-card imp-{p.kind}" class:imp-hard={p.kind === "warn" || p.level === "warning"} data-key={p.key}>
           <div class="imp-head"><span class="imp-ic" aria-hidden="true">{icon(p)}</span><b>{title(p)}</b>
@@ -304,6 +308,10 @@
         </button>
       {/if}
     {/each}
+
+    {#if tips && open.length > TIPS_SHOWN}
+      <button class="linkbtn imp-tips-more" aria-expanded={allTips} onclick={() => (allTips = !allTips)}>{allTips ? t("imp.showLess") : t("imp.showMore", { n: open.length - TIPS_SHOWN })} {allTips ? "▴" : "▾"}</button>
+    {/if}
 
     {#if more}
       <div class="imp-details">
@@ -342,6 +350,7 @@
   .imp-more { margin-inline-start: auto; font-size: 13.5px; }
   .imp-tips { margin: 4px 0 12px; }
   .imp-tips h3 { margin: 0; font-size: 16px; }
+  .imp-tips-more { font-size: 13.5px; align-self: flex-start; }
   .imp-card { background: var(--paper, #fff); border-radius: 14px; padding: 10px 14px; box-shadow: var(--shadow); border-inline-start: 4px solid var(--warn, #d08a12); display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
   .imp-card p { margin: 0; }
   .imp-hard { border-inline-start-color: #d0342c; background: color-mix(in srgb, #d0342c 6%, var(--paper, #fff)); }
