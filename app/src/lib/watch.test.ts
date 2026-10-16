@@ -75,6 +75,15 @@ describe("Reisebeobachtung", () => {
     expect(changed(tr)).toBe(0);
   });
 
+  it("gebuchte Posten werden nicht geprüft und nie als nicht mehr verfügbar gekennzeichnet", async () => {
+    const tr = trip();
+    tr.items[0].status = "booked";
+    applyRefresh(tr, await refreshTrip(tr, { flights: async () => ({ offers: [], sources: [] }), stays: async () => ({ offers: [], sources: [] }) }));
+    expect(hitFor(tr, tr.items[0])).toBeNull();
+    expect(hitFor(tr, tr.items[2])).toBeNull();
+    expect(tr.items[0].options[0].price.unit).toBe(400);
+  });
+
   it("Günstigeres je Posten: bestes fremdes Angebot, Übernehmen wählt es", async () => {
     const tr = trip();
     const s: Searchers = {

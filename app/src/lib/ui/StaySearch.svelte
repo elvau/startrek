@@ -329,6 +329,7 @@
       </div>
       <div class="fs-top">
         <b class="num fs-price">{eur(o.total)}</b>
+        {#if n > 1}<span class="fs-pp small">{t("pp", { v: eur(o.total / n) })}</span>{/if}
         {#if askedParts > 1}<span class="small st-times">× {askedParts} = <b class="num">{eur(o.total * askedParts)}</b></span>{/if}
         {#if o.test}<span class="pill-test" title={t("test.title")}>{t("test.badge")}</span>{/if}
         <span class="muted small">{t("perNight", { v: eur(o.total / an) })}{n > 1 ? ` · ${t("st.ppNight", { v: eur(o.total / an / n) })}` : ""}</span>
