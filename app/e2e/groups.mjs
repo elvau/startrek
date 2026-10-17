@@ -205,13 +205,13 @@ try {
   log(`„${A} Erw. 1“ durch die gespeicherte`, " Dani Klein ersetzt, Familie Klein zahlt 100 €; ab 4 Personen Liste nach Familien");
   log(`Platzhalter: Familie ${A} (2+3) und ${B} (2+2+1 Kleinkind)`, " 1.000 € → 100 € pro Person, je Familie 500 €, nicht als Gruppe gespeichert");
 
-  // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da
+  // Anmelden: Gruppen landen im Konto und sind auf einem zweiten Gerät da. Bewusst ohne Pause: B meldet sich an, während
+  // A noch hochlädt; B darf A's Gruppen beim Speichern der Zustimmung nicht überschreiben (#364)
   await a.evaluate(() => scrollTo(0, 0));
   await a.locator(".top .acct .tm-btn", { hasText: "Anmelden" }).click();
   await a.locator(".login .test input").fill("Anna");
   await a.locator(".login .test button").click();
   await a.locator(".top .acct-btn").waitFor();
-  await new Promise(r => setTimeout(r, 2000));
   const b = await page("Anna2");
   await b.goto(URL);
   await b.locator(".start .linkbtn", { hasText: "Konto anlegen" }).click();

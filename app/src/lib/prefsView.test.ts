@@ -51,6 +51,6 @@ describe("Vorlieben: abweichend von meine", () => {
   it("jedes Feld der Vorlieben gehört zu genau einer Karte", () => {
     const all = Object.values(CARD_KEYS).flat();
     expect(new Set(all).size).toBe(all.length);
-    for (const k of ["avoid", "airports", "plz", "maxStops", "bags", "seatsTogether", "maxHours", "access", "stayType", "minStars", "board", "styles", "budget", "note", "holidays", "months", "nightsMin", "nightsMax", "car", "pet", "homeCare", "stepFree", "diet"]) expect(all).toContain(k);
+    for (const k of ["avoid", "airports", "plz", "maxStops", "bags", "seatsTogether", "maxHours", "access", "stayType", "minStars", "board", "styles", "budget", "note", "holidays", "months", "nightsMin", "nightsMax", "car", "pet", "homeCare", "stepFree", "diet", "foodSwitch"]) expect(all).toContain(k);
   });
 });

@@ -30,9 +30,11 @@ let fromCloud = "";
 /** zuletzt ins Konto geschickte Stände: kommt einer davon zurück, ist es das Echo des eigenen Speicherns */
 const sent: string[] = [];
 /** Konto, dessen Stand schon empfangen wurde; vorher wird nichts hochgeladen */
-const sync = $state({ loaded: "" });
+const sync = $state({ loaded: "", halted: false });
 let timer: ReturnType<typeof setTimeout> | undefined;
 let stop: (() => void) | null = null;
+/** laufendes Speichern ins Konto (beim Zurücksetzen abwarten) */
+let saving: Promise<unknown> | null = null;
 
 /** Stand des Kontos ist da (bzw. ohne Anmeldung sofort): erst dann entscheiden, ob der Assistent von selbst startet */
 export const dirReady = () => !cloud.user ? cloud.ready : sync.loaded === cloud.user.uid;
@@ -42,6 +44,26 @@ export function canonDir(json: string): string {
   const sort = (v: unknown): unknown => Array.isArray(v) ? v.map(sort)
     : v && typeof v === "object" ? Object.fromEntries(Object.keys(v as object).sort().map(k => [k, sort((v as Record<string, unknown>)[k])])) : v;
   try { return JSON.stringify(sort(JSON.parse(json))); } catch { return json; }
+}
+
+/** Stand aus dem Konto lesen; fehlende oder kaputte Listen als leer (sonst „people is not iterable“) */
+export function parseDir(data: string | null): Directory {
+  let d: Partial<Directory> | null = null;
+  try { d = data ? JSON.parse(data) : null; } catch {}
+  if (!d || typeof d !== "object") return { people: [], groups: [] };
+  return { ...d, people: Array.isArray(d.people) ? d.people : [], groups: Array.isArray(d.groups) ? d.groups : [] };
+}
+
+const remember = (json: string) => { sent.push(json); if (sent.length > 5) sent.shift(); };
+
+/**
+ * Was ins Konto geschrieben wird: der eigene Stand, außer im Konto liegt inzwischen ein anderer als zuletzt gesehen (base),
+ * etwa weil ein zweites Gerät nach der Anmeldung gleichzeitig gespeichert hat. Dann beide zusammenführen, sonst gingen
+ * dessen Personen und Gruppen verloren (#364). Gelöschtes kann dabei vom anderen Stand zurückkommen; besser als Verlust.
+ */
+export function toWrite(local: string, remote: string | null, base: string): string {
+  if (remote === null || canonDir(remote) === canonDir(base) || canonDir(remote) === canonDir(local)) return local;
+  try { return JSON.stringify(mergeDir(parseDir(local), parseDir(remote))); } catch { return local; }
 }
 
 /** zwei Stände zusammenführen: alles aus beiden, bei gleicher ID gewinnt a; „Ich“ und eigene Vorlieben aus a, sonst b; AGB: die neuere Zustimmung */
@@ -65,6 +87,7 @@ $effect.root(() => {
   // lokal speichern und ins Konto schreiben
   $effect(() => {
     const json = JSON.stringify(dir);
+    if (sync.halted) return;
     try { localStorage.setItem(KEY, localJson(json)); } catch {}
     const u = cloud.user;
     if (!u || sync.loaded !== u.uid || json === fromCloud || canonDir(json) === canonDir(fromCloud)) return;
@@ -72,9 +95,23 @@ $effect.root(() => {
     timer = setTimeout(async () => {
       timer = undefined;
       const f = await import("./cloud/firebase");
+      if (sync.halted) return;
+      const base = fromCloud;
       fromCloud = json;
-      sent.push(json); if (sent.length > 5) sent.shift();
-      try { await f.saveProfile(u.uid, json); } catch (e) { console.warn(e); fromCloud = ""; }
+      remember(json);
+      // ohne Verbindung wie bisher (wartet im Zwischenspeicher), sonst als Transaktion gegen das Überschreiben durch ein anderes Gerät
+      const run = navigator.onLine === false ? f.saveProfile(u.uid, json).then(() => json)
+        : f.saveProfileTx(u.uid, remote => toWrite(json, remote, base));
+      saving = run;
+      try {
+        const out = await run;
+        if (out !== json && !sync.halted) {
+          // im Konto lag ein neuerer Stand: zusammengeführt übernehmen (Eingaben seit dem Speichern bleiben vorn)
+          fromCloud = out; remember(out);
+          const now = JSON.stringify($state.snapshot(dir));
+          apply(now === json ? parseDir(out) : mergeDir(parseDir(now), parseDir(out)));
+        }
+      } catch (e) { console.warn(e); fromCloud = ""; } finally { saving = null; }
     }, 500);
   });
   // bei Anmeldung das Profil aus dem Konto beobachten
@@ -82,9 +119,10 @@ $effect.root(() => {
     const u = cloud.user;
     stop?.(); stop = null;
     sync.loaded = "";
-    if (!u || !configured) return;
+    if (!u || !configured || sync.halted) return;
     let first = true;
     void import("./cloud/firebase").then(f => {
+      if (sync.halted) return;
       stop = f.watchProfile(u.uid, (data, pending, fromCache) => {
         if (pending) return;
         // Stand nur aus dem Zwischenspeicher ohne aktuelle AGB-Zustimmung: auf den Server warten (kein kurzes Aufblitzen des Zustimmungsfensters)
@@ -92,7 +130,7 @@ $effect.root(() => {
         // Echo des eigenen Speicherns oder noch ungespeicherte Eingaben: der Stand im Browser ist neuer, nichts überschreiben
         // (sonst sprangen Felder beim Tippen zurück, z. B. in den Vorlieben einer Gruppe)
         if (!first && (timer || (data && sent.includes(data)))) { sync.loaded = u.uid; return; }
-        const remote: Directory = data ? JSON.parse(data) : { people: [], groups: [] };
+        const remote = parseDir(data);
         // beim ersten Mal lokale Einträge mitnehmen, danach gilt der Stand aus dem Konto
         const next = first ? mergeDir(remote, $state.snapshot(dir)) : remote;
         first = false;
@@ -103,6 +141,18 @@ $effect.root(() => {
     });
   });
 });
+
+/**
+ * Vor dem Zurücksetzen des Kontos: Profil nicht mehr beobachten und nicht mehr speichern, auf ein laufendes Speichern
+ * warten (#339). on = false: Zurücksetzen fehlgeschlagen, wieder wie vorher. Sonst legte das gelöschte Profil (leerer Stand aus dem Konto oder verzögertes Speichern) es gleich wieder an.
+ */
+export async function haltDirectory(on = true) {
+  sync.halted = on;
+  if (!on) return;
+  clearTimeout(timer); timer = undefined;
+  stop?.(); stop = null;
+  try { await saving; } catch { /* schon gemeldet */ }
+}
 
 export const fullName = (p: Person) => `${p.first} ${p.last}`.trim();
 

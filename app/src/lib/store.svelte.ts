@@ -10,6 +10,7 @@ import { soloTraveler } from "./placeholders";
 import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 import { readView, saveView } from "./resume";
+import { haltDirectory } from "./directory.svelte";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
 export interface TripEntry extends TripMeta { cloud: boolean; role?: Role; shared?: boolean; /** zuletzt bearbeitet (ISO), für die Sortierung */ edited?: string; /** geteilte Reise: Vornamen der anderen Mitglieder */ members?: string[] }
@@ -365,12 +366,13 @@ export async function resetAccount() {
   clearTimeout(timer); timer = undefined;
   wiping = true;
   try {
+    await haltDirectory();
     const r = await wipeAccount();
     for (const st of [localStorage, sessionStorage]) {
       try { Object.keys(st).filter(k => k.startsWith("rk")).forEach(k => st.removeItem(k)); } catch { /* gesperrt */ }
     }
     return r;
-  } catch (e) { wiping = false; throw e; }
+  } catch (e) { wiping = false; void haltDirectory(false); throw e; }
 }
 
 export async function logout() {
