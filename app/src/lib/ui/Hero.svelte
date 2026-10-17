@@ -9,6 +9,7 @@
   import { nights, range } from "../format";
   import TripEditor from "./TripEditor.svelte";
   import HeroTiles from "./HeroTiles.svelte";
+  import { dir } from "../directory.svelte";
 
   import { heroEdit } from "./heroEdit.svelte";
   // „Reise bearbeiten“ sitzt in der Leiste oben; beim Öffnen einer Reise zu
@@ -48,7 +49,11 @@
     };
     requestAnimationFrame(step);
   });
-  const value = $derived(counting ? shown : calc.T.total);
+  // Umschalter „mit / ohne Verpflegung“ (Vorliebe, #388): Essen kostet auch zu Hause; gilt nur für diese Ansicht
+  const foodSwitch = $derived(!!dir.prefs?.foodSwitch && calc.T.food > 0);
+  let noFood = $state(false);
+  const minus = $derived(foodSwitch && noFood ? calc.T.food : 0);
+  const value = $derived(counting ? shown : calc.T.total - minus);
   // nur wer dabei ist
   const n = $derived(calc.T.active);
 </script>
@@ -78,7 +83,13 @@
     {/if}
     <div class="total">
       <b class="num">{eur(value)}</b>
-      <span>{n ? t("perPerson", { v: eurPP(calc.T.due / n) }) : t("nobody")}{calc.T.funds ? ` · ${t("fund.minus", { v: eur(calc.T.funds) })}` : ""}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
+      <span>{n ? t("perPerson", { v: eurPP((calc.T.due - minus) / n) }) : t("nobody")}{calc.T.funds ? ` · ${t("fund.minus", { v: eur(calc.T.funds) })}` : ""}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
+      {#if foodSwitch}
+        <div class="mode food-sw" role="radiogroup" aria-label={t("hero.foodAria")}>
+          <button role="radio" aria-checked={!noFood} class:on={!noFood} onclick={() => (noFood = false)}>{t("hero.withFood")}</button>
+          <button role="radio" aria-checked={noFood} class:on={noFood} onclick={() => (noFood = true)}>{t("hero.noFood")}</button>
+        </div>
+      {/if}
     </div>
   </div>
   <button class="hint" onclick={() => document.getElementById("trav")?.scrollIntoView({ behavior: "smooth", block: "start" })} aria-label={t("hero.discoverAria")}>

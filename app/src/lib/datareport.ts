@@ -36,7 +36,7 @@ const L = {
       memberIds: "Mitglieder", airports: "Flughäfen", avoid: "Gesperrte Länder", maxStops: "Höchstens Umstiege", bags: "Koffer", maxHours: "Höchstens Flugstunden",
       stayType: "Unterkunft", minStars: "Sterne ab", board: "Verpflegung", styles: "Reisestil", budget: "Budget", note: "Notiz für die KI", holidays: "Schulferien",
       months: "Monate", nightsMin: "Nächte ab", nightsMax: "Nächte bis", car: "Auto", pet: "Haustier", stepFree: "Stufenlos", diet: "Ernährung", seatsTogether: "Kinder neben Eltern",
-      access: "Anfahrt zum Flughafen", homeCare: "Zuhause versorgen", plzCc: "Land des Wohnorts", seats: "Plätze", fuel: "Antrieb", lat: "Breite", lon: "Länge"
+      access: "Anfahrt zum Flughafen", homeCare: "Zuhause versorgen", foodSwitch: "Gesamt auch ohne Verpflegung", plzCc: "Land des Wohnorts", seats: "Plätze", fuel: "Antrieb", lat: "Breite", lon: "Länge"
     } as Record<string, string>
   },
   en: {
@@ -64,7 +64,7 @@ const L = {
       memberIds: "Members", airports: "Airports", avoid: "Blocked countries", maxStops: "Max. stops", bags: "Checked bags", maxHours: "Max. flight hours",
       stayType: "Accommodation", minStars: "Stars from", board: "Meals", styles: "Travel style", budget: "Budget", note: "Note for the AI", holidays: "School holidays",
       months: "Months", nightsMin: "Nights from", nightsMax: "Nights up to", car: "Car", pet: "Pet", stepFree: "Step-free", diet: "Diet", seatsTogether: "Children next to parents",
-      access: "Getting to the airport", homeCare: "Home care", plzCc: "Country of residence", seats: "Seats", fuel: "Fuel", lat: "Latitude", lon: "Longitude"
+      access: "Getting to the airport", homeCare: "Home care", foodSwitch: "Total also without food", plzCc: "Country of residence", seats: "Seats", fuel: "Fuel", lat: "Latitude", lon: "Longitude"
     } as Record<string, string>
   }
 };

@@ -16,7 +16,7 @@ export const CARD_KEYS: Record<CardId, (keyof Prefs)[]> = {
   style: ["styles", "budget"],
   times: ["holidays", "months", "nightsMin", "nightsMax"],
   avoid: ["avoid"],
-  special: ["pet", "homeCare", "stepFree", "diet", "car"],
+  special: ["pet", "homeCare", "stepFree", "diet", "car", "foodSwitch"],
   note: ["note"]
 };
 
@@ -82,6 +82,7 @@ export function summary(p: Prefs, base?: Prefs, cname: (k: string) => string = k
   add("homeCare", "special", eff.homeCare && t("home.pref"));
   add("stepFree", "special", eff.stepFree && t("setup.stepFree"));
   add("diet", "special", eff.diet && t(`setup.diet.${eff.diet}` as Key));
+  add("foodSwitch", "special", !base && eff.foodSwitch && t("prefs.foodSwitch"));
   if (eff.avoid?.length) out.push({ text: t("prefs.sum.avoid", { c: eff.avoid.map(cname).join(", ") }), key: "avoid", card: "avoid", ...(base && (p.avoid || []).some(k => !(base.avoid || []).includes(k)) ? { group: true } : {}) });
   return out;
 }

@@ -235,6 +235,8 @@ export interface Totals {
   fixed: number;
   /** Idee oder gewählt, dazu alle einfachen Beträge */
   open: number;
+  /** davon Verpflegung (automatische Posten „Verpflegung …“), für „ohne Verpflegung“ (#388) */
+  food: number;
   paid: number;
   byCat: Record<CatKey, number>;
   byPerson: Record<string, number>;
@@ -268,7 +270,7 @@ export function totals(trip: Trip): Totals {
   const byPersonCat: Record<string, Partial<Record<CatKey, number>>> = {};
   const addPC = (id: string, cat: CatKey, v: number) => { const m = (byPersonCat[id] ||= {}); m[cat] = (m[cat] || 0) + v; };
   const act = activeTravelers(trip);
-  let total = 0, saved = 0, fixed = 0, paid = 0;
+  let total = 0, saved = 0, fixed = 0, paid = 0, food = 0;
   const extras = { onsite: 0, extra: 0, est: 0, included: 0, deposit: 0, deposits: [] as string[] };
   for (const cat of CAT_KEYS) {
     if (isDetailed(trip, cat)) continue;
@@ -300,6 +302,7 @@ export function totals(trip: Trip): Totals {
     saved += r.saved;
     paid += Math.min(r.paid, r.net);
     if (FIXED.includes(it.status)) fixed += r.net;
+    if (it.auto === "food") food += r.net;
     byCat[it.cat] += r.net;
     for (const id in r.per) { byPerson[id] = (byPerson[id] || 0) + r.per[id]; addPC(id, it.cat, r.per[id]); }
     if (r.extras) {
@@ -314,7 +317,7 @@ export function totals(trip: Trip): Totals {
     // je Haushalt der Eigenanteil (Kosten minus Zuschüsse)
     byHousehold[h] = (byHousehold[h] || 0) + (byPerson[t.id] || 0) - (f.by[t.id] || 0);
   });
-  return { total, saved, fixed, open: total - fixed, paid, byCat, byPerson, byHousehold, items, simple, active: act.length,
+  return { total, saved, fixed, open: total - fixed, food, paid, byCat, byPerson, byHousehold, items, simple, active: act.length,
     funds: f.total, fundsReceived: f.received, fundBy: f.by, fundUse: f.use, due: total - f.total, byPersonCat, extras };
 }
 

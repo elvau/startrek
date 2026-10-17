@@ -42,6 +42,10 @@ describe("Verpflegung wie im Artefakt", () => {
     expect(p.child).toBe(Math.round(p.adult! / 2));
     expect(totals(t).items[klein.id].net).toBe((p.adult! + p.child!) * 7);
     expect(syncFood(t, g)).toBe(false);
+    // Summe „davon Verpflegung“ für den Umschalter am Gesamtbetrag (#388)
+    const T = totals(t);
+    expect(T.food).toBe(t.items.reduce((a, i) => a + T.items[i.id].net, 0));
+    expect(T.food).toBe(T.total);
     t.food.on = false;
     expect(syncFood(t, g)).toBe(true);
     expect(t.items).toHaveLength(0);
