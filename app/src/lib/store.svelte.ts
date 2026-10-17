@@ -65,7 +65,9 @@ function emptyTrip(o: NewOpts = {}): Trip {
   return {
     id: uid(), name: own || auto || "", autoName: !own,
     place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
-    travelers, items: o.items || [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...(o.kicker ? { kicker: o.kicker } : {})
+    travelers, items: o.items || [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...(o.kicker ? { kicker: o.kicker } : {}),
+    // Verpflegung gehört zu den versteckten Kosten: bei neuen Reisen eingerechnet, gespeicherte behalten ihre Einstellung (#388, #418)
+    food: { on: true }
   };
 }
 
@@ -73,7 +75,7 @@ function emptyTrip(o: NewOpts = {}): Trip {
 function pristine(t: Trip): boolean {
   // höchstens das anonyme Reh vom Start, sonst nichts eingetragen
   const onlySolo = t.travelers.length <= 1 && t.travelers.every(x => x.placeholder);
-  return onlySolo && !t.items.length && !t.lines?.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
+  return onlySolo && !t.items.some(i => !i.auto) && !t.lines?.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
     && (!t.place.trim() || t.place === "Neue Reise") && (!!t.autoName || t.name === "Neue Reise");
 }
 
@@ -585,7 +587,8 @@ const CAT_NAMES = (c: CatKey) => tr(`ch.${c}.label` as Key);
 export function setDetailed(cat: CatKey, on: boolean, edit = false) {
   const trip = app.trip;
   if (isDetailed(trip, cat) === on) return;
-  const has = trip.items.some(i => i.cat === cat);
+  // automatische Posten (Verpflegung) zählen in beiden Modi und bleiben außen vor
+  const has = trip.items.some(i => i.cat === cat && !i.auto);
   trip.detail ||= {};
   if (on) {
     trip.detail[cat] = true;
@@ -618,7 +621,8 @@ export function setDetailed(cat: CatKey, on: boolean, edit = false) {
   }
   if (has) {
     trip.simple ||= {};
-    trip.simple[cat] = Math.round(calc.T.byCat[cat] * 100) / 100;
+    const auto = trip.items.filter(i => i.cat === cat && i.auto).reduce((a, i) => a + (calc.T.items[i.id]?.counts ? calc.T.items[i.id].net : 0), 0);
+    trip.simple[cat] = Math.round((calc.T.byCat[cat] - auto) * 100) / 100;
   }
   trip.detail[cat] = false;
   if (app.editing) app.editing = null;

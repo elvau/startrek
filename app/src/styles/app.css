@@ -162,7 +162,7 @@ body[data-ch="transport"] .amb-transport,body[data-ch="attractions"] .amb-attrac
 .hero .meta{font-size:17px;font-weight:500;opacity:.8}
 .hero .total{margin-top:28px;display:inline-flex;flex-direction:column;align-items:center;padding:18px 28px;border-radius:22px;background:rgba(255,255,255,.6);backdrop-filter:blur(10px);box-shadow:0 20px 50px -20px rgba(14,36,56,.4)}
 .hero .total b{font:800 clamp(38px,6vw,56px) "Bricolage Grotesque Variable",sans-serif}
-.hero .total span{font-size:13px;opacity:.75}
+.hero .total > span{font-size:13px;opacity:.75}
 .hint{position:absolute;bottom:calc(28px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:8px 16px 8px 12px;border:1px solid rgba(255,255,255,.6);border-radius:99px;background:rgba(255,255,255,.7);backdrop-filter:blur(10px);box-shadow:0 12px 30px -12px rgba(14,36,56,.45);color:#0E2438;font-size:14px;font-weight:700;cursor:pointer;animation:hintBob 2.2s ease-in-out infinite}
 .hint i{width:18px;height:28px;border:2px solid currentColor;border-radius:10px;position:relative;flex:none}
 .hint i::after{content:"";position:absolute;left:50%;top:5px;width:4px;height:6px;margin-inline-start:-2px;border-radius:2px;background:currentColor;animation:wheel 1.8s ease-in-out infinite}

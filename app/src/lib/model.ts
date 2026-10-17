@@ -131,8 +131,6 @@ export interface Prefs {
   homeCare?: boolean;
   stepFree?: boolean;
   diet?: "veg" | "vegan";
-  /** Gesamtbetrag mit Umschalter „mit / ohne Verpflegung“ (Essen kostet auch zu Hause, #388); nur eigene Vorlieben */
-  foodSwitch?: boolean;
 }
 
 export interface Directory {
@@ -603,4 +601,5 @@ export function addOffer(item: Item, opt: Option) {
   if (item.chosen && !item.options.some(o => o.id === item.chosen)) item.chosen = undefined;
 }
 
-export const isDetailed = (trip: Trip, cat: CatKey) => trip.detail?.[cat] ?? trip.items.some(i => i.cat === cat);
+/** automatische Posten (Verpflegung) schalten nicht auf detailliert: sie zählen auch im einfachen Modus (#418) */
+export const isDetailed = (trip: Trip, cat: CatKey) => trip.detail?.[cat] ?? trip.items.some(i => i.cat === cat && !i.auto);
