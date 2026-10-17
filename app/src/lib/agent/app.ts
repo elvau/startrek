@@ -7,6 +7,7 @@ import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
 import { hhKey, isActive, uid, type AiMark, type Item, type Prefs, type Traveler, type Trip } from "../model";
 import { syncFood } from "../food";
+import { syncSouvenir } from "../souvenir";
 import type { GeoData } from "../geo/places";
 import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
 import type { AgentEdit, AgentGroupIn, AgentRequest, AgentResult, AgentTrip, FlightBooking, TripBrief } from "./types";
@@ -318,10 +319,12 @@ export function applyEdit(trip: Trip, e: AgentEdit) {
  * Vorschlag als fertige Reise, ohne etwas zu speichern: so, wie sie beim Übernehmen entsteht (mit Verpflegung und
  * Anreise zum Flughafen). Für den Gesamtpreis auf der Karte; ohne Orts- und Länderdaten ohne Verpflegung.
  */
-export function previewTrip(base: Trip, a: AgentTrip, g?: GeoData): Trip {
+export function previewTrip(base: Trip, a: AgentTrip, g?: GeoData, prefs: Prefs = {}): Trip {
   const trip: Trip = JSON.parse(JSON.stringify(base));
   trip.items = [];
   takeAgentTrip(trip, a);
   if (g?.world.length) syncFood(trip, g);
+  // Souvenirs wie beim Übernehmen (#421)
+  syncSouvenir(trip, prefs);
   return trip;
 }

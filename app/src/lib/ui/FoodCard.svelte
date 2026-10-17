@@ -4,7 +4,7 @@
   import { flagOf } from "../format";
   import { t, tn, type Key } from "../i18n/index.svelte";
   /* Verpflegung wie im Artefakt: Essensstil für alle oder je Familie, Tagessatz aus den Länderdaten, dazu Restaurants und Supermärkte */
-  import { access, app, calc, setDetailed } from "../store.svelte";
+  import { access, app, calc } from "../store.svelte";
   import { eur } from "../calc";
   import { FOOD_STYLES, foodCfg, foodGroups, foodPlan, syncFood } from "../food";
   import { ensureGeo, geo } from "../geo/geo.svelte";
@@ -27,7 +27,7 @@
   const place = $derived(app.trip.place);
 
   function turnOn() {
-    setDetailed("misc", true);
+    // zählt auch im einfachen Modus mit (#418), kein Umschalten auf detailliert
     app.trip.food = { ...(app.trip.food || {}), on: true };
   }
   const setStyle = (k: FoodStyle) => (app.trip.food = { ...foodCfg(app.trip), style: k });

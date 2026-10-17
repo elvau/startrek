@@ -106,7 +106,9 @@ try {
   await p.locator(".modal .newtrip .btn.primary").click();
   // Kopf der neuen Reise: vier Kacheln als Einstieg; „Flüge“ öffnet die Suche im Kapitel
   const tiles = (await p.locator(".hero .ht-tile b").allInnerTexts()).join("|");
-  if (tiles !== "Flüge ›|Unterkünfte ›|Erlebnisse ›|Sonstige Kosten ›") fail("Kacheln im Kopf: " + tiles);
+  if (tiles !== "Flüge ›|Unterkünfte ›|Erlebnisse ›") fail("Kacheln im Kopf: " + tiles);
+  // Sonstiges ist nicht leer: Souvenirs sind bei neuen Reisen eingerechnet (#421)
+  if (!(await p.locator(".hero .ht-misc").innerText()).includes("Souvenirs")) fail("Kachel Sonstiges ohne Souvenirs");
   await p.locator(".hero .ht-fl").click();
   await p.locator(".modal-bg .modal").waitFor();
   await p.locator(".modal-bg .modal .x").click();

@@ -68,7 +68,7 @@ function emptyTrip(o: NewOpts = {}): Trip {
     travelers, items: o.items || [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...(o.kicker ? { kicker: o.kicker } : {}),
     // Verpflegung gehört zu den versteckten Kosten: bei neuen Reisen eingerechnet, gespeicherte behalten ihre Einstellung (#388, #418).
     // Sonstiges bleibt dabei einfach (sonst schalteten die Verpflegungsposten es auf detailliert); sie zählen trotzdem mit
-    food: { on: true }, detail: { misc: false }
+    food: { on: true }, souvenir: { on: true }, detail: { misc: false }
   };
 }
 

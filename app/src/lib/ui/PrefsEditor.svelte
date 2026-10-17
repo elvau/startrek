@@ -8,6 +8,7 @@
   import { i18n, t, type Key } from "../i18n/index.svelte";
   import { BOARDS, STYLES, type Prefs } from "../model";
   import { dir } from "../directory.svelte";
+  import { SOUVENIR_DEFAULT } from "../souvenir";
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
   import { cloud } from "../cloud/cloud.svelte";
@@ -66,8 +67,8 @@
   }
   const listSt = (k: "styles" | "months", v: string | number): "" | "on" | "inh" | "chg" =>
     own(k) ? ((p[k] as (string | number)[]).includes(v) ? (group ? "chg" : "on") : "") : group && ((base?.[k] as (string | number)[] | undefined) || []).includes(v) ? "inh" : "";
-  function step(k: "maxHours" | "nightsMin" | "nightsMax", d: number, lo: number, hi: number) {
-    const cur = p[k] ?? base?.[k] ?? (k === "maxHours" ? 6 : k === "nightsMin" ? 3 : 7);
+  function step(k: "maxHours" | "nightsMin" | "nightsMax" | "souvenirs", d: number, lo: number, hi: number) {
+    const cur = p[k] ?? base?.[k] ?? (k === "maxHours" ? 6 : k === "nightsMin" ? 3 : k === "souvenirs" ? SOUVENIR_DEFAULT : 7);
     set(k, Math.max(lo, Math.min(hi, cur + d)));
   }
   function setCar<K extends "seats" | "fuel">(k: K, v: NonNullable<Prefs["car"]>[K] | undefined) {
@@ -216,6 +217,15 @@
       <div class="pv-seg">
         {#if !group}{@render chip(t("prefs.any"), st("budget", undefined), () => set("budget", undefined))}{/if}
         {#each ["low", "mid", "high"] as const as b}{@render chip(t(`prefs.b.${b}` as Key), st("budget", b), () => pick("budget", b))}{/each}
+      </div>
+      {@render lbl(t("prefs.souvenirs"), "souvenirs", base?.souvenirs != null ? `${base.souvenirs} €` : null)}
+      <div class="pv-nights">
+        <span class="pv-step pv-souv" class:inh={group && !own("souvenirs")} class:chg={group && own("souvenirs")}>
+          <button type="button" aria-label={t("souv.less")} onclick={() => step("souvenirs", -10, 0, 500)}>−</button>
+          <b>{p.souvenirs ?? base?.souvenirs ?? SOUVENIR_DEFAULT} €</b>
+          <button type="button" aria-label={t("souv.more")} onclick={() => step("souvenirs", 10, 0, 500)}>+</button>
+        </span>
+        <span class="muted small">{t("prefs.souvenirsHint")}</span>
       </div>
     {/snippet}
     {@render card("style", style)}
