@@ -110,6 +110,12 @@ try {
   if (names !== "Monika Klein, Uwe Schmitz") fail("Reisende: " + names);
   if ((await a.locator(".simple-card").count()) !== 5) fail("nicht alle Bereiche einfach");
   log("Neue Reise für „Kegeln“:", names, "· alle Bereiche einfach");
+  // Verpflegung ist bei neuen Reisen eingerechnet (#418), zählt im einfachen Modus mit; für glatte Summen hier aus
+  await a.locator("#misc .food .food-rows li").first().waitFor();
+  await a.locator("#misc .food .linkbtn", { hasText: "ausschalten" }).click();
+  await a.locator("#misc .food .btn", { hasText: "Verpflegung einrechnen" }).waitFor();
+  if ((await a.locator(".simple-card").count()) !== 5) fail("Verpflegung schaltet Sonstiges auf detailliert");
+  log("Verpflegung bei neuer Reise an, Sonstiges bleibt einfach; hier ausgeschaltet");
 
   const amount = async (cat, v) => { const i = a.locator(`#${cat} .simple-in input`); await i.scrollIntoViewIfNeeded(); await i.fill(v); };
   await amount("flights", "600");

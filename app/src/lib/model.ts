@@ -131,8 +131,6 @@ export interface Prefs {
   homeCare?: boolean;
   stepFree?: boolean;
   diet?: "veg" | "vegan";
-  /** Gesamtbetrag mit Umschalter „mit / ohne Verpflegung“ (Essen kostet auch zu Hause, #388); nur eigene Vorlieben */
-  foodSwitch?: boolean;
 }
 
 export interface Directory {

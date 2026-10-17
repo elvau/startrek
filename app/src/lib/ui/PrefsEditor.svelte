@@ -272,9 +272,6 @@
           </select>
           <div class="pv-seg">{#each FUELS as f (f)}{@render chip(t(`setup.fuel.${f}` as Key), p.car?.fuel === f ? "on" : "", () => setCar("fuel", f))}{/each}</div>
         </div>
-        {@render lbl(t("prefs.c.show"), null)}
-        <div class="pv-seg">{@render chip("🍽️ " + t("prefs.foodSwitch"), p.foodSwitch ? "on" : "", () => set("foodSwitch", p.foodSwitch ? undefined : true))}</div>
-        <p class="muted small">{t("prefs.foodSwitchHint")}</p>
       {/if}
     {/snippet}
     {@render card("special", special)}

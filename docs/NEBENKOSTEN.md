@@ -15,6 +15,10 @@ Kurtaxen bzw. City Tax, Vignetten, Maut, Durchfahrten, Trinkgeld und Einreisegeb
   Mietwagen aus Österreich bzw. der Schweiz haben die Vignette meist schon, daher keine Automatik am Mietwagen.
 - **Einreisegebühren:** In „Wichtiges“ am Einreise-Punkt „+ Gebühr als Posten“, nur für die Personen, die sie brauchen.
 - **Trinkgeld:** Nur als Hinweis bei der Verpflegung, nicht in den Kosten.
+- **Am Gesamtbetrag (#418):** Die Summe ist aufgeteilt in *gebucht* (Posten gebucht oder bezahlt), *geplant* (gewählt,
+  Idee, einfache Beträge) und *versteckt*. Versteckt sind alle Nebenkosten vor Ort, Nebenkosten bei der Buchung solange
+  der Posten nicht gebucht ist, die Anreise zum Flughafen (samt Parken) und automatische Posten (Verpflegung, Anreise mit
+  dem eigenen Auto). Kautionen stehen nur als Hinweis darunter. Rechnung in `app/src/lib/calc/parts.ts`.
 
 Neuer Ort: eine Zeile in `CITY_TAXES` (Wörter zum Erkennen, Währung, Abrechnung, Betrag, ggf. Sterne, Kinder frei, Höchstnächte, Quelle).
 

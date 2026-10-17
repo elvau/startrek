@@ -361,23 +361,20 @@ try {
   if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
   log("Verpflegung: Klein 11 Tage (An- und Abreise je halb), Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
 
-  // Vorliebe „Gesamt auch ohne Verpflegung zeigen“: Umschalter am Gesamtbetrag (#388)
-  const heroSum = () => p.locator(".hero .total b.num").textContent();
-  if (await p.locator(".hero .food-sw").count()) fail("Umschalter ohne Vorliebe sichtbar");
+  // Zusammensetzung am Gesamtbetrag (#418): Verpflegung unter „Versteckt“, Klick klappt auf, zweiter Klick zu; Summe stimmt
+  const n = x => Number(x.replace(/\D/g, ""));
   await p.evaluate(() => scrollTo(0, 0));
-  await p.locator(".top .prefs-btn").click();
-  await p.locator(".modal .pv-card[data-card=special] .pv-c", { hasText: "Gesamt auch ohne Verpflegung zeigen" }).click();
-  await p.locator(".modal .x").click();
-  const withFood = await heroSum();
-  await p.locator(".hero .food-sw button", { hasText: "ohne Verpflegung" }).click();
-  await until(async () => (await heroSum()) !== withFood, "Gesamt ohne Verpflegung");
-  const n = s => Number(s.replace(/\D/g, ""));
-  const food = await p.locator("#misc .food-rows b.num").allTextContents();
-  // gerundete Anzeige: ein, zwei Euro Abweichung sind Rundung
-  if (Math.abs(n(withFood) - n(await heroSum()) - food.reduce((a, x) => a + n(x), 0)) > 2) fail(`ohne Verpflegung: ${withFood} → ${await heroSum()}, Verpflegung ${food}`);
-  await p.locator(".hero .food-sw button", { hasText: "mit Verpflegung" }).click();
-  if ((await heroSum()) !== withFood) fail("zurück mit Verpflegung");
-  log(`Vorliebe „ohne Verpflegung“: Umschalter am Gesamtbetrag, ${withFood} → ohne Verpflegung um die Verpflegung kleiner`);
+  const tabs = await p.locator(".hero .cp-tab b").allTextContents();
+  const total = n(await p.locator(".hero .total b.num").first().textContent());
+  if (tabs.length !== 3 || Math.abs(tabs.reduce((a, x) => a + n(x), 0) - total) > 3) fail(`Zusammensetzung ${tabs} ≠ ${total}`);
+  await p.locator(".hero .cp-t-hidden").click();
+  const hidden = await p.locator(".hero .cp-list .cp-row").allInnerTexts();
+  if (!hidden.some(r => r.includes("Verpflegung Klein"))) fail("Verpflegung nicht unter Versteckt: " + hidden);
+  await p.locator(".hero .cp-row", { hasText: "Verpflegung Klein" }).locator(".cp-name").click();
+  if (!(await p.locator(".hero .cp-calc").textContent()).includes("Tage")) fail("Rechenweg Verpflegung fehlt");
+  await p.locator(".hero .cp-t-hidden").click();
+  if (await p.locator(".hero .cp-list").count()) fail("Aufschlüsselung nicht zugeklappt");
+  log(`Zusammensetzung: ${tabs.join(" + ")} = Gesamt, Verpflegung unter „Versteckt“ mit Rechenweg, zweiter Klick klappt zu`);
 
   // Währung umschalten: alle Beträge in Złoty (Tageskurs vom Such-Dienst), Eingabe ebenfalls; zurück auf Euro
   await p.locator(".top .cur-sel").selectOption("PLN");
