@@ -15,6 +15,18 @@ Kurtaxen bzw. City Tax, Vignetten, Maut, Durchfahrten, Trinkgeld und Einreisegeb
   Mietwagen aus Österreich bzw. der Schweiz haben die Vignette meist schon, daher keine Automatik am Mietwagen.
 - **Einreisegebühren:** In „Wichtiges“ am Einreise-Punkt „+ Gebühr als Posten“, nur für die Personen, die sie brauchen.
 - **Trinkgeld:** Nur als Hinweis bei der Verpflegung, nicht in den Kosten.
+- **Am Gesamtbetrag (#418):** Die Summe ist aufgeteilt in *gebucht* (Posten gebucht oder bezahlt), *geplant* (gewählt,
+  Idee, einfache Beträge) und *versteckt*. Versteckt sind alle Nebenkosten vor Ort, Nebenkosten bei der Buchung solange
+  der Posten nicht gebucht ist, die Anreise zum Flughafen (samt Parken) und automatische Posten (Verpflegung, Anreise mit
+  dem eigenen Auto). Kautionen stehen nur als Hinweis darunter. Rechnung in `app/src/lib/calc/parts.ts`.
+- **Souvenirs (#421):** automatischer Posten unter Sonstiges, Betrag pro Person aus den Vorlieben (Richtwert 30 €),
+  je Reise änderbar. `app/src/lib/souvenir.ts`.
+- **Unterwegs vor Ort (#420):** solange kein eigener Transport-Posten da ist, schätzt die App den Flughafentransfer hin und
+  zurück (günstigste Möglichkeit aus Bahn, Bus, Taxi) und das Unterwegssein: ohne Auto Nahverkehr 5 € je Erwachsenem und
+  Tag × Preisniveau^0,7 (Kinder die Hälfte, Kleinkinder frei), mit Mietwagen bzw. Camper Sprit für 40 km pro Tag zu
+  0,13 €/km, mit eigenem Auto zum km-Satz der Reise. Eigene Transfers ersetzen den Transfer, eigene Tickets bzw. Pässe das
+  Unterwegssein. `app/src/lib/localcost.ts`.
+- Neue Reisen rechnen Verpflegung, Souvenirs und Transport vor Ort ein; gespeicherte behalten ihre Einstellung.
 
 Neuer Ort: eine Zeile in `CITY_TAXES` (Wörter zum Erkennen, Währung, Abrechnung, Betrag, ggf. Sterne, Kinder frei, Höchstnächte, Quelle).
 

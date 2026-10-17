@@ -4,6 +4,7 @@
   import { access, app, calc } from "../store.svelte";
   import { cloud, isCloud } from "../cloud/cloud.svelte";
   import { activeOption, eur, eurPP, testItems } from "../calc";
+  import { costParts, PART_KEYS } from "../calc/parts";
   import { isDetailed } from "../model";
   import { CAT_CHAPTERS } from "../chapters";
   import { nights } from "../format";
@@ -16,6 +17,7 @@
   let { sheet = false, onpick }: { sheet?: boolean; onpick?: () => void } = $props();
 
   const T = $derived(calc.T);
+  const parts = $derived(costParts(app.trip, T));
   let openCat = $state<Record<string, boolean>>({});
   // Testpreise (Sandbox) in der Summe: deutlich sagen, dass die Summe nicht echt ist
   const tests = $derived(testItems(app.trip));
@@ -54,12 +56,12 @@
       {#if tests.length}<span class="tk-test" title={tests.map(x => x.name).join(", ")}>⚠ {tn("test.inTotal", tests.length)}</span>{/if}
     </div>
     <div class="tk-b">
-      {#if anyDetail}<div class="fix">
+      <!-- wie am Gesamtbetrag (#418): gebucht, geplant, versteckte Kosten -->
+      {#if T.total > 0}<div class="fix">
         <div class="bar">
-          <i style="background:var(--good)" style:width="{T.total ? (T.fixed / T.total) * 100 : 0}%"></i>
-          <i style="background:var(--idea);opacity:.55" style:width="{T.total ? (T.open / T.total) * 100 : 0}%"></i>
+          {#each PART_KEYS as k (k)}<i class="tp-{k}" style:width="{(parts.sum[k] / T.total) * 100}%"></i>{/each}
         </div>
-        <div class="lg"><span>{t("fixed")} <b class="num">{eur(T.fixed)}</b></span><span>{t("open")} <b class="num">{eur(T.open)}</b></span></div>
+        <div class="lg">{#each PART_KEYS as k (k)}{#if parts.sum[k] > 0}<span>{t(`parts.${k}`)} <b class="num">{parts.rows[k].some(r => r.est) ? t("parts.ca", { v: eur(parts.sum[k]) }) : eur(parts.sum[k])}</b></span>{/if}{/each}</div>
       </div>{/if}
       {#if xAdd > 0 || T.extras.included > 0 || T.extras.deposit > 0}
         <details class="xc-sum" open={xAdd > 0 || T.extras.deposit > 0}>
@@ -123,4 +125,8 @@
   .xc-l { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; color: inherit; text-decoration: none; }
   .xc-k { margin-top: 4px; color: var(--a); font-weight: 700; }
   .xc-ki { padding-inline-start: 18px; font-size: 12.5px; color: var(--ink-2); }
+  .fix .lg{flex-wrap:wrap;gap:2px 12px}
+  .tp-booked{background:var(--good)}
+  .tp-planned{background:var(--c-flights)}
+  .tp-hidden{background:repeating-linear-gradient(135deg,var(--warn) 0 4px,color-mix(in srgb,var(--warn) 45%,transparent) 4px 7px)}
 </style>

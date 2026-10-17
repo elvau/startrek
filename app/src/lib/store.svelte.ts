@@ -10,6 +10,7 @@ import { soloTraveler } from "./placeholders";
 import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 import { readView, saveView } from "./resume";
+import { haltDirectory } from "./directory.svelte";
 
 interface TripMeta { id: string; name: string; place: string; from?: string; to?: string; people?: number }
 export interface TripEntry extends TripMeta { cloud: boolean; role?: Role; shared?: boolean; /** zuletzt bearbeitet (ISO), für die Sortierung */ edited?: string; /** geteilte Reise: Vornamen der anderen Mitglieder */ members?: string[] }
@@ -61,10 +62,15 @@ function emptyTrip(o: NewOpts = {}): Trip {
   const auto = autoName(o);
   // Standard: eine Person als Tier
   const travelers = o.travelers ?? [soloTraveler()];
+  // Bereiche, für die schon Posten mitkommen (z. B. aus einer Reiseidee), richten sich wie bisher nach den Posten
+  const simple = (c: CatKey) => ((o.items || []).some(i => i.cat === c && !i.auto) ? {} : { [c]: false });
   return {
     id: uid(), name: own || auto || "", autoName: !own,
     place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
-    travelers, items: o.items || [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...(o.kicker ? { kicker: o.kicker } : {})
+    travelers, items: o.items || [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...(o.kicker ? { kicker: o.kicker } : {}),
+    // Verpflegung gehört zu den versteckten Kosten: bei neuen Reisen eingerechnet, gespeicherte behalten ihre Einstellung (#388, #418).
+    // Sonstiges und Vor Ort bleiben dabei einfach (sonst schalteten die automatischen Posten sie auf detailliert); sie zählen trotzdem mit
+    food: { on: true }, souvenir: { on: true }, local: { on: true }, detail: { ...simple("misc"), ...simple("transport") }
   };
 }
 
@@ -72,7 +78,7 @@ function emptyTrip(o: NewOpts = {}): Trip {
 function pristine(t: Trip): boolean {
   // höchstens das anonyme Reh vom Start, sonst nichts eingetragen
   const onlySolo = t.travelers.length <= 1 && t.travelers.every(x => x.placeholder);
-  return onlySolo && !t.items.length && !t.lines?.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
+  return onlySolo && !t.items.some(i => !i.auto) && !t.lines?.length && !Object.values(t.simple || {}).some(Boolean) && !t.from
     && (!t.place.trim() || t.place === "Neue Reise") && (!!t.autoName || t.name === "Neue Reise");
 }
 
@@ -365,12 +371,13 @@ export async function resetAccount() {
   clearTimeout(timer); timer = undefined;
   wiping = true;
   try {
+    await haltDirectory();
     const r = await wipeAccount();
     for (const st of [localStorage, sessionStorage]) {
       try { Object.keys(st).filter(k => k.startsWith("rk")).forEach(k => st.removeItem(k)); } catch { /* gesperrt */ }
     }
     return r;
-  } catch (e) { wiping = false; throw e; }
+  } catch (e) { wiping = false; void haltDirectory(false); throw e; }
 }
 
 export async function logout() {
@@ -583,7 +590,8 @@ const CAT_NAMES = (c: CatKey) => tr(`ch.${c}.label` as Key);
 export function setDetailed(cat: CatKey, on: boolean, edit = false) {
   const trip = app.trip;
   if (isDetailed(trip, cat) === on) return;
-  const has = trip.items.some(i => i.cat === cat);
+  // automatische Posten (Verpflegung) zählen in beiden Modi und bleiben außen vor
+  const has = trip.items.some(i => i.cat === cat && !i.auto);
   trip.detail ||= {};
   if (on) {
     trip.detail[cat] = true;
@@ -616,7 +624,8 @@ export function setDetailed(cat: CatKey, on: boolean, edit = false) {
   }
   if (has) {
     trip.simple ||= {};
-    trip.simple[cat] = Math.round(calc.T.byCat[cat] * 100) / 100;
+    const auto = trip.items.filter(i => i.cat === cat && i.auto).reduce((a, i) => a + (calc.T.items[i.id]?.counts ? calc.T.items[i.id].net : 0), 0);
+    trip.simple[cat] = Math.round((calc.T.byCat[cat] - auto) * 100) / 100;
   }
   trip.detail[cat] = false;
   if (app.editing) app.editing = null;

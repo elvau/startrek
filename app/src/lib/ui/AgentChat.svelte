@@ -21,7 +21,10 @@
   import { summary } from "../prefsView";
   import { totals } from "../calc";
   import { syncFood } from "../food";
-  import { geo } from "../geo/geo.svelte";
+  import { syncSouvenir } from "../souvenir";
+  import { localPlanFor, syncLocal } from "../localcost";
+  import { moneyExact } from "../calc";
+  import { airportData, ensureAirports, geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
   import { soloTraveler } from "../placeholders";
   import { dir } from "../directory.svelte";
@@ -158,11 +161,19 @@
     if (fromTrip && copy.settings) app.trip.settings = copy.settings;
   }
 
+  /** automatische Posten nachführen: Verpflegung (mit Länderdaten) und Souvenirs (#421) */
+  function syncAuto(tr: Trip = app.trip) {
+    if (geo.world.length) syncFood(tr, geo);
+    syncSouvenir(tr, prefsFor(tr, dir));
+    // Transport vor Ort (#420) wie im Kapitel, sobald Länder- und Flughafendaten da sind
+    if (geo.world.length && airportData.airports.length) syncLocal(tr, localPlanFor(tr, geo, airportData), v => moneyExact(v, "EUR"));
+  }
+
   function take(a: AgentTrip, m: Msg) {
     // von der Startseite aus angefragt: neue Reise anlegen, sonst in die offene Reise
     if (app.home || m.home) startLike(base(), !app.home);
     takeAgentTrip(app.trip, a);
-    if (geo.world.length) syncFood(app.trip, geo);
+    syncAuto();
     msgs.push({ me: false, text: t("ai.taken") });
     agentChat.open = false;
   }
@@ -172,7 +183,7 @@
     if (!m.edit || app.trip.id !== m.tripId) return;
     m.snap = JSON.stringify(app.trip);
     applyEdit(app.trip, m.edit);
-    if (geo.world.length) syncFood(app.trip, geo);
+    syncAuto();
     m.state = "applied";
     void scrollDown();
   }
@@ -185,7 +196,7 @@
     app.trip.name = t("ai.variantName", { n: name });
     app.trip.autoName = false;
     applyEdit(app.trip, m.edit);
-    if (geo.world.length) syncFood(app.trip, geo);
+    syncAuto();
     m.state = "variant";
     m.tripId = app.trip.id;
     void scrollDown();
@@ -206,22 +217,25 @@
     for (const a of list) {
       startLike(b, fromTrip);
       takeAgentTrip(app.trip, a);
-      if (geo.world.length) syncFood(app.trip, geo);
+      syncAuto();
     }
     goHome();
     msgs.push({ me: false, text: tn("ai.takenAll", list.length) });
     agentChat.open = false;
   }
 
-  // Länderdaten für die Verpflegung im Gesamtpreis der Vorschläge
-  $effect(() => { if (agentChat.open) void loadGeo(geo, []); });
+  // Länder- und Flughafendaten für Verpflegung und Transport vor Ort im Gesamtpreis der Vorschläge
+  $effect(() => { if (agentChat.open) { void loadGeo(geo, []); void ensureAirports().catch(() => {}); } });
   /** Gesamtpreis wie nach dem Übernehmen: Flug mit Anreise, Unterkunft, vor Ort, Erlebnisse, Verpflegung */
   function preview(a: AgentTrip) {
     void geo.world.length;
-    const tr = previewTrip(base(), a, geo), T = totals(tr);
+    void airportData.airports.length;
+    const b = base(), tr = previewTrip(b, a, geo, prefsFor(b, dir));
+    syncAuto(tr);
+    const T = totals(tr);
     // Camper (#269): Stationen und Mietcamper als Richtwerte
     const sum = (f: (h: string) => boolean) => tr.items.filter(i => f(i.hint || "")).reduce((s, i) => s + (T.items[i.id]?.net || 0), 0);
-    return { total: T.total, access: T.byCat.flights - flightTotal(a), food: T.byCat.misc, people: T.active, camp: sum(h => h.startsWith("camp:")), rent: sum(h => h === "camper:rent") };
+    return { total: T.total, access: T.byCat.flights - flightTotal(a), food: tr.items.filter(i => i.auto === "food").reduce((s, i) => s + (T.items[i.id]?.net || 0), 0), souv: tr.items.filter(i => i.auto === "souvenir").reduce((s, i) => s + (T.items[i.id]?.net || 0), 0), people: T.active, camp: sum(h => h.startsWith("camp:")), rent: sum(h => h === "camper:rent") };
   }
 
   function key(e: KeyboardEvent) {
@@ -337,6 +351,7 @@
                   {#if a.events?.length}<li class="ai-events">🎫 {a.events.map(e => `${e.name} · ${dayShort(e.start.slice(0, 10))}${e.start.length > 10 ? ` ${e.start.slice(11, 16)}` : ""}`).join(", ")}</li>{/if}
                   {#if a.extras?.length}<li>🎟 {a.extras.map(x => x.name).join(", ")}<b>≈ {eur(a.extras.reduce((s, x) => s + x.eur, 0))}</b></li>{/if}
                   {#if pv.food > 0.5}<li>🍽 {t("ai.food")}<b>≈ {eur(pv.food)}</b></li>{/if}
+                  {#if pv.souv > 0.5}<li>🎁 {t("souv.title")}<b>≈ {eur(pv.souv)}</b></li>{/if}
                 </ul>
                 <footer>
                   <span><small class="muted">{t("ai.total")}</small> <b class="num">{eur(pv.total)}</b>{#if pp > 1} <small class="muted">{t("perPerson", { v: eur(pv.total / pp) })}</small>{/if}</span>

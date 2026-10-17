@@ -131,6 +131,8 @@ export interface Prefs {
   homeCare?: boolean;
   stepFree?: boolean;
   diet?: "veg" | "vegan";
+  /** Souvenirs pro Person und Reise in € (#421; fehlt: Standard) */
+  souvenirs?: number;
 }
 
 export interface Directory {
@@ -326,9 +328,9 @@ export interface Item {
   to?: string;
   /** Flug: Anreise zum Abflughafen automatisch einrechnen (Standard: ja) */
   access?: boolean;
-  /** automatisch gerechnet (Verpflegung je Familie), wird bei Änderungen neu gesetzt */
-  auto?: "food";
-  /** automatische Verpflegung: Familien des Postens („Klein“, „Klein|Hase“, „*“ für alle) */
+  /** automatisch gerechnet (Verpflegung je Familie, Souvenirs), wird bei Änderungen neu gesetzt */
+  auto?: "food" | "souvenir" | "local";
+  /** automatische Verpflegung: Familien des Postens („Klein“, „Klein|Hase“, „*“ für alle); Transport vor Ort: „transfer“ bzw. „daily“ */
   hh?: string;
   /** Flug: fliegt mit im Flug dieses Postens (gleicher Flug, gleicher Preis pro Person, wie im Artefakt „Wie Klein“) */
   follow?: string;
@@ -533,6 +535,10 @@ export interface Trip {
   settings: Settings;
   /** Verpflegung wie im Artefakt: Essensstil für alle oder je Familie, Kinder und Babys in Prozent */
   food?: FoodCfg;
+  /** Souvenirs (#421): einrechnen, eigener Betrag pro Person (fehlt: aus den Vorlieben) */
+  souvenir?: { on?: boolean; eur?: number };
+  /** Transport vor Ort schätzen (#420): Flughafentransfer, Nahverkehr bzw. Sprit */
+  local?: { on?: boolean };
   /** Reisebeobachtung: letzter Preisvergleich der Posten */
   watch?: TripWatch;
   /** vom KI-Assistenten vorgeschlagen (Kennzeichnung in der Übersicht) */

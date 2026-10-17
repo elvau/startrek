@@ -292,8 +292,8 @@ export function totals(trip: Trip): Totals {
   }
   for (const it of trip.items) {
     const r = calcItem(it, trip);
-    // Posten in einfachen Bereichen bleiben erhalten, zählen aber nicht
-    if (!isDetailed(trip, it.cat)) r.counts = false;
+    // Posten in einfachen Bereichen bleiben erhalten, zählen aber nicht; automatische (Verpflegung) zählen immer
+    if (!isDetailed(trip, it.cat) && !it.auto) r.counts = false;
     items[it.id] = r;
     if (!r.counts) continue;
     total += r.net;

@@ -361,6 +361,44 @@ try {
   if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
   log("Verpflegung: Klein 11 Tage (An- und Abreise je halb), Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
 
+  // Souvenirs (#421): unter Sonstiges, Betrag pro Person für diese Reise änderbar
+  const souv = p.locator("#misc .souv");
+  await souv.scrollIntoViewIfNeeded();
+  if (await souv.locator(".souv-on").count()) await souv.locator(".souv-on").click();
+  await souv.locator(".souv-step b", { hasText: "30 € pro Person" }).waitFor();
+  const s1 = await souv.locator(".plan-h .muted").textContent();
+  await souv.locator(".souv-step button").last().click();
+  await souv.locator(".souv-step b", { hasText: "40 € pro Person" }).waitFor();
+  await until(async () => (await souv.locator(".plan-h .muted").textContent()) !== s1, "Souvenirs neu gerechnet");
+  if (!(await souv.innerText()).includes("für diese Reise")) fail("Souvenirs: Herkunft fehlt");
+  log(`Souvenirs: 30 € → 40 € pro Person für diese Reise, ${s1} → ${await souv.locator(".plan-h .muted").textContent()}`);
+
+  // Transport vor Ort (#420): geschätzt, solange nichts Eigenes geplant ist
+  const loc = p.locator("#transport .local");
+  await loc.scrollIntoViewIfNeeded();
+  if (await loc.locator(".local-on").count()) await loc.locator(".local-on").click();
+  await until(async () => (await loc.locator(".local-rows li").count()) > 0, "Transport vor Ort geschätzt");
+  const locRows = (await loc.locator(".local-rows li b:not(.num)").allTextContents()).join(", ");
+  if (!/Nahverkehr|Sprit|Flughafentransfer/.test(locRows)) fail("Transport vor Ort: " + locRows);
+  log("Transport vor Ort geschätzt: " + locRows);
+
+  // Zusammensetzung am Gesamtbetrag (#418): Verpflegung unter „Versteckt“, Klick klappt auf, zweiter Klick zu; Summe stimmt
+  const n = x => Number(x.replace(/\D/g, ""));
+  await p.evaluate(() => scrollTo(0, 0));
+  const tabs = await p.locator(".hero .cp-tab b").allTextContents();
+  const total = n(await p.locator(".hero .total b.num").first().textContent());
+  if (tabs.length !== 3 || Math.abs(tabs.reduce((a, x) => a + n(x), 0) - total) > 3) fail(`Zusammensetzung ${tabs} ≠ ${total}`);
+  await p.locator(".hero .cp-t-hidden").click();
+  const hidden = await p.locator(".hero .cp-list .cp-row").allInnerTexts();
+  if (!hidden.some(r => r.includes("Verpflegung Klein"))) fail("Verpflegung nicht unter Versteckt: " + hidden);
+  if (!hidden.some(r => r.includes("Souvenirs"))) fail("Souvenirs nicht unter Versteckt: " + hidden);
+  if (!hidden.some(r => /Nahverkehr|Sprit|Flughafentransfer/.test(r))) fail("Transport vor Ort nicht unter Versteckt: " + hidden);
+  await p.locator(".hero .cp-row", { hasText: "Verpflegung Klein" }).locator(".cp-name").click();
+  if (!(await p.locator(".hero .cp-calc").textContent()).includes("Tage")) fail("Rechenweg Verpflegung fehlt");
+  await p.locator(".hero .cp-t-hidden").click();
+  if (await p.locator(".hero .cp-list").count()) fail("Aufschlüsselung nicht zugeklappt");
+  log(`Zusammensetzung: ${tabs.join(" + ")} = Gesamt, Verpflegung unter „Versteckt“ mit Rechenweg, zweiter Klick klappt zu`);
+
   // Währung umschalten: alle Beträge in Złoty (Tageskurs vom Such-Dienst), Eingabe ebenfalls; zurück auf Euro
   await p.locator(".top .cur-sel").selectOption("PLN");
   // auf Deutsch schreibt Intl „PLN“, in anderen Sprachen „zł“

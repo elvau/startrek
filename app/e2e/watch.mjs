@@ -177,7 +177,7 @@ try {
   const kayak = await p.locator("#transport .car-links a", { hasText: "KAYAK" }).getAttribute("href");
   if (kayak !== "https://www.kayak.de/cars/PMI/2027-10-15-13h/2027-10-19-16h") fail("KAYAK-Link: " + kayak);
   await p.locator("#transport .car-add").click();
-  const car = p.locator("#transport .card", { hasText: "Mietwagen" });
+  const car = p.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" });
   await car.waitFor();
   // Spanien: Preisniveau 0,8 → 34 € am Tag statt 40 €
   if (!(await car.innerText()).includes("170")) fail("Mietwagen-Richtwert (5 Tage × 34 €): " + await car.innerText());

@@ -583,7 +583,8 @@ try {
   if (saved.place !== "Riva del Garda" || saved.country !== "Italien") fail("Ziel falsch: " + saved.place + " / " + saved.country);
   if (saved.travelers.length !== 11 || new Set(saved.travelers.map(x => x.household)).size !== 3) fail("Familien falsch: " + saved.travelers.map(x => x.name).join(", "));
   const cats = saved.items.map(i => i.cat).sort().join(",");
-  if (cats !== "attractions,misc,misc,stay,transport") fail("Posten der Reiseidee: " + cats);
+  // misc: Verpflegung, Souvenirs (#421) und der Posten der Idee
+  if (cats !== "attractions,misc,misc,misc,stay,transport") fail("Posten der Reiseidee: " + cats);
   const ideaHouse = lp.locator("#stay .card", { hasText: "Ferienhaus mit Pool" });
   await ideaHouse.scrollIntoViewIfNeeded();
   // Richtwert 230–380 € pro Person → 305 € × 11 Personen

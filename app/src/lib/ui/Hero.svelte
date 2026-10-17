@@ -9,6 +9,7 @@
   import { nights, range } from "../format";
   import TripEditor from "./TripEditor.svelte";
   import HeroTiles from "./HeroTiles.svelte";
+  import CostParts from "./CostParts.svelte";
 
   import { heroEdit } from "./heroEdit.svelte";
   // „Reise bearbeiten“ sitzt in der Leiste oben; beim Öffnen einer Reise zu
@@ -78,7 +79,8 @@
     {/if}
     <div class="total">
       <b class="num">{eur(value)}</b>
-      <span>{n ? t("perPerson", { v: eurPP(calc.T.due / n) }) : t("nobody")}{calc.T.funds ? ` · ${t("fund.minus", { v: eur(calc.T.funds) })}` : ""}{calc.T.fixed ? ` · ${t("hero.fixedPart", { v: eur(calc.T.fixed) })}` : ""}</span>
+      <span>{n ? t("perPerson", { v: eurPP(calc.T.due / n) }) : t("nobody")}{calc.T.funds ? ` · ${t("fund.minus", { v: eur(calc.T.funds) })}` : ""}</span>
+      {#if calc.T.total > 0}<CostParts />{/if}
     </div>
   </div>
   <button class="hint" onclick={() => document.getElementById("trav")?.scrollIntoView({ behavior: "smooth", block: "start" })} aria-label={t("hero.discoverAria")}>

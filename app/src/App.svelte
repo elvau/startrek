@@ -53,6 +53,8 @@
   import EventPlanner from "./lib/ui/EventPlanner.svelte";
   import { eventPlanner } from "./lib/event/open.svelte";
   import FoodCard from "./lib/ui/FoodCard.svelte";
+  import SouvenirCard from "./lib/ui/SouvenirCard.svelte";
+  import LocalCard from "./lib/ui/LocalCard.svelte";
   import TripMap from "./lib/ui/TripMap.svelte";
   import GroundOptions from "./lib/ui/GroundOptions.svelte";
   import TransferOptions from "./lib/ui/TransferOptions.svelte";
@@ -243,7 +245,8 @@
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
           {#if mapOpen === "stay"}<TripMap onclose={() => (mapOpen = null)} />{/if}
         {/if}
-        {#if ch.k === "misc"}<article class="card plan-card" use:reveal><FoodCard /></article>{/if}
+        {#if ch.k === "misc"}<article class="card plan-card" use:reveal><FoodCard /><SouvenirCard /></article>{/if}
+        {#if ch.k === "transport"}<article class="card plan-card" use:reveal><LocalCard /></article>{/if}
         {#if !det}
           <SimpleCard cat={ch.k} label={ch.label} />
         {:else}
