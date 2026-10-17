@@ -178,6 +178,18 @@ export function watchProfile(uid: string, fn: (data: string | null, pending: boo
 
 export const saveProfile = (uid: string, data: string) => setDoc(profileRef(uid), { data, updatedAt: serverTimestamp() });
 
+/**
+ * Profil in einer Transaktion speichern: resolve bekommt den Stand im Konto und gibt zurück, was geschrieben wird
+ * (zusammengeführt, falls ein anderes Gerät inzwischen gespeichert hat, #364). Gibt das Geschriebene zurück.
+ */
+export const saveProfileTx = (uid: string, resolve: (remote: string | null) => string) =>
+  runTransaction(start().db, async tx => {
+    const s = await tx.get(profileRef(uid));
+    const data = resolve(s.exists() ? (s.data().data as string) : null);
+    tx.set(profileRef(uid), { data, updatedAt: serverTimestamp() });
+    return data;
+  });
+
 /* ---------- Buchungsdaten (travelDocs/{uid}) ----------
  * Bewusst über die REST-Schnittstelle statt über den Firestore-Client: der legt eine Kopie im Browser (IndexedDB) ab,
  * die Buchungsdaten sollen aber nur im Konto liegen.
