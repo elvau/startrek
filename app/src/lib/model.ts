@@ -329,8 +329,8 @@ export interface Item {
   /** Flug: Anreise zum Abflughafen automatisch einrechnen (Standard: ja) */
   access?: boolean;
   /** automatisch gerechnet (Verpflegung je Familie, Souvenirs), wird bei Änderungen neu gesetzt */
-  auto?: "food" | "souvenir";
-  /** automatische Verpflegung: Familien des Postens („Klein“, „Klein|Hase“, „*“ für alle) */
+  auto?: "food" | "souvenir" | "local";
+  /** automatische Verpflegung: Familien des Postens („Klein“, „Klein|Hase“, „*“ für alle); Transport vor Ort: „transfer“ bzw. „daily“ */
   hh?: string;
   /** Flug: fliegt mit im Flug dieses Postens (gleicher Flug, gleicher Preis pro Person, wie im Artefakt „Wie Klein“) */
   follow?: string;
@@ -537,6 +537,8 @@ export interface Trip {
   food?: FoodCfg;
   /** Souvenirs (#421): einrechnen, eigener Betrag pro Person (fehlt: aus den Vorlieben) */
   souvenir?: { on?: boolean; eur?: number };
+  /** Transport vor Ort schätzen (#420): Flughafentransfer, Nahverkehr bzw. Sprit */
+  local?: { on?: boolean };
   /** Reisebeobachtung: letzter Preisvergleich der Posten */
   watch?: TripWatch;
   /** vom KI-Assistenten vorgeschlagen (Kennzeichnung in der Übersicht) */

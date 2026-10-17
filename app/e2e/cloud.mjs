@@ -84,8 +84,8 @@ try {
   log("Oma ist beigetreten und sieht dieselbe Summe");
 
   // Oma ändert den Mietwagen, Anna sieht es live
-  await oma.locator("#transport .card", { hasText: "Mietwagen" }).scrollIntoViewIfNeeded();
-  await oma.locator("#transport .card", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
+  await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).scrollIntoViewIfNeeded();
+  await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
   await oma.locator(".editor [data-sec=price] summary").click();
   // Mietwagen der Reiseidee: Richtwert pro Person (Erwachsene)
   await oma.locator(".editor label", { hasText: "Erwachsene" }).locator("input").fill("45");
@@ -130,7 +130,7 @@ try {
   await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
   await anna.locator(".members li", { hasText: "Oma" }).locator("select").selectOption("viewer");
   await until(async () => (await oma.locator(".banner", { hasText: "nur an" }).count()) > 0, "Oma ist nur noch Zuschauerin");
-  await oma.locator("#transport .card", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
+  await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
   if (await oma.locator(".editor").count()) fail("Zuschauerin kann bearbeiten");
   log("Oma sieht nur noch zu und kann nichts bearbeiten");
 

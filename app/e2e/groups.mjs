@@ -116,8 +116,10 @@ try {
   await a.locator("#misc .food .btn", { hasText: "Verpflegung einrechnen" }).waitFor();
   await a.locator("#misc .souv .souv-off").click();
   await a.locator("#misc .souv .souv-on").waitFor();
+  await a.locator("#transport .local .local-off").click();
+  await a.locator("#transport .local .local-on").waitFor();
   if ((await a.locator(".simple-card").count()) !== 5) fail("Verpflegung schaltet Sonstiges auf detailliert");
-  log("Verpflegung und Souvenirs bei neuer Reise an, Sonstiges bleibt einfach; hier ausgeschaltet");
+  log("Verpflegung, Souvenirs und Transport vor Ort bei neuer Reise an, Sonstiges bleibt einfach; hier ausgeschaltet");
 
   const amount = async (cat, v) => { const i = a.locator(`#${cat} .simple-in input`); await i.scrollIntoViewIfNeeded(); await i.fill(v); };
   await amount("flights", "600");

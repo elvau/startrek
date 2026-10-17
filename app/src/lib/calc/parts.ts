@@ -76,7 +76,7 @@ export function costParts(trip: Trip, T: Totals): Parts {
     const ex = r.extras;
     const acc = r.access?.cost || 0;
     if (!booked && estimated(it)) {
-      add("hidden", { key: it.id, itemId: it.id, name: it.name, how: t("parts.estimated"), calc: priceCalc(it, T), v: r.net, est: true });
+      add("hidden", { key: it.id, itemId: it.id, name: it.name, how: t("parts.estimated"), calc: it.auto === "local" ? r.option?.detail : priceCalc(it, T), v: r.net, est: true });
       continue;
     }
     // Angebotspreis ohne Nebenkosten und Anreise

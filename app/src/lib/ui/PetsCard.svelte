@@ -7,7 +7,7 @@
    * nur für diese Familie.
    */
   import { t, type Key } from "../i18n/index.svelte";
-  import { access, app } from "../store.svelte";
+  import { access, app, setDetailed } from "../store.svelte";
   import { dir } from "../directory.svelte";
   import { prefsFor } from "../prefs";
   import { HOME_TASKS, hhKey, isActive, PET_KINDS, type HomeCare, type HomeTask, type PetCare, type PetKind, type Pets } from "../model";
@@ -67,7 +67,7 @@
   function saveItem(k: string) {
     const fresh = careItem(app.trip, k, petsOf(k), on.home ? careOfHh(k) : undefined);
     const it = existing(k);
-    if (it) updateCareItem(it, fresh); else app.trip.items.push(fresh);
+    if (it) updateCareItem(it, fresh); else { setDetailed("misc", true); app.trip.items.push(fresh); }
     showItem(it?.id || fresh.id);
   }
   async function share(k: string) {
