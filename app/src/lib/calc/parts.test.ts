@@ -40,7 +40,7 @@ describe("Zusammensetzung des Gesamtbetrags (#418)", () => {
   it("automatische Verpflegung ist versteckt (auch im einfachen Modus), gebucht wird sie gebucht", () => {
     const food: Item = { id: "v", cat: "misc", auto: "food", hh: "Klein", name: "Verpflegung", status: "idea",
       options: [{ id: "o", label: "", price: { mode: "person", currency: "EUR", adult: 40, child: 20, qty: 7 } }] };
-    const t = trip([food], { detail: {}, simple: { misc: 100 }, place: "Musterdorf" });
+    const t = trip([food], { detail: { misc: false }, simple: { misc: 100 }, place: "Musterdorf" });
     const p = parts(t);
     expect(p.sum).toEqual({ booked: 0, planned: 100, hidden: 560 });
     expect(p.rows.hidden[0].calc).toContain("× 7 Tage");
