@@ -87,7 +87,7 @@ try {
 
   // während die Reise offen ist: Claude ergänzt einen Posten → erscheint live
   await tool("add_cost", { tripId: id, category: "transport", name: "Mietwagen", amountEur: 150 });
-  await p.locator("#transport .card", { hasText: "Mietwagen" }).locator(".aif", { hasText: "Von der KI erstellt" }).waitFor({ timeout: 15000 });
+  await p.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).locator(".aif", { hasText: "Von der KI erstellt" }).waitFor({ timeout: 15000 });
   const got = await tool("get_trip", { tripId: id });
   if (got.items.length !== 2 || got.approxTotalEur !== 630) fail("Reise für Claude: " + JSON.stringify(got));
   if (JSON.stringify(got).includes("Claudia")) fail("Name in der Reise für Claude");

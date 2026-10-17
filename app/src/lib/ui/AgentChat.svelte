@@ -22,7 +22,9 @@
   import { totals } from "../calc";
   import { syncFood } from "../food";
   import { syncSouvenir } from "../souvenir";
-  import { geo } from "../geo/geo.svelte";
+  import { localPlanFor, syncLocal } from "../localcost";
+  import { moneyExact } from "../calc";
+  import { airportData, ensureAirports, geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
   import { soloTraveler } from "../placeholders";
   import { dir } from "../directory.svelte";
@@ -160,9 +162,11 @@
   }
 
   /** automatische Posten nachführen: Verpflegung (mit Länderdaten) und Souvenirs (#421) */
-  function syncAuto() {
-    if (geo.world.length) syncFood(app.trip, geo);
-    syncSouvenir(app.trip, prefsFor(app.trip, dir));
+  function syncAuto(tr: Trip = app.trip) {
+    if (geo.world.length) syncFood(tr, geo);
+    syncSouvenir(tr, prefsFor(tr, dir));
+    // Transport vor Ort (#420) wie im Kapitel, sobald Länder- und Flughafendaten da sind
+    if (geo.world.length && airportData.airports.length) syncLocal(tr, localPlanFor(tr, geo, airportData), v => moneyExact(v, "EUR"));
   }
 
   function take(a: AgentTrip, m: Msg) {
@@ -220,12 +224,15 @@
     agentChat.open = false;
   }
 
-  // Länderdaten für die Verpflegung im Gesamtpreis der Vorschläge
-  $effect(() => { if (agentChat.open) void loadGeo(geo, []); });
+  // Länder- und Flughafendaten für Verpflegung und Transport vor Ort im Gesamtpreis der Vorschläge
+  $effect(() => { if (agentChat.open) { void loadGeo(geo, []); void ensureAirports().catch(() => {}); } });
   /** Gesamtpreis wie nach dem Übernehmen: Flug mit Anreise, Unterkunft, vor Ort, Erlebnisse, Verpflegung */
   function preview(a: AgentTrip) {
     void geo.world.length;
-    const b = base(), tr = previewTrip(b, a, geo, prefsFor(b, dir)), T = totals(tr);
+    void airportData.airports.length;
+    const b = base(), tr = previewTrip(b, a, geo, prefsFor(b, dir));
+    syncAuto(tr);
+    const T = totals(tr);
     // Camper (#269): Stationen und Mietcamper als Richtwerte
     const sum = (f: (h: string) => boolean) => tr.items.filter(i => f(i.hint || "")).reduce((s, i) => s + (T.items[i.id]?.net || 0), 0);
     return { total: T.total, access: T.byCat.flights - flightTotal(a), food: tr.items.filter(i => i.auto === "food").reduce((s, i) => s + (T.items[i.id]?.net || 0), 0), souv: tr.items.filter(i => i.auto === "souvenir").reduce((s, i) => s + (T.items[i.id]?.net || 0), 0), people: T.active, camp: sum(h => h.startsWith("camp:")), rent: sum(h => h === "camper:rent") };

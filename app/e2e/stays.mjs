@@ -373,6 +373,15 @@ try {
   if (!(await souv.innerText()).includes("für diese Reise")) fail("Souvenirs: Herkunft fehlt");
   log(`Souvenirs: 30 € → 40 € pro Person für diese Reise, ${s1} → ${await souv.locator(".plan-h .muted").textContent()}`);
 
+  // Transport vor Ort (#420): geschätzt, solange nichts Eigenes geplant ist
+  const loc = p.locator("#transport .local");
+  await loc.scrollIntoViewIfNeeded();
+  if (await loc.locator(".local-on").count()) await loc.locator(".local-on").click();
+  await until(async () => (await loc.locator(".local-rows li").count()) > 0, "Transport vor Ort geschätzt");
+  const locRows = (await loc.locator(".local-rows li b:not(.num)").allTextContents()).join(", ");
+  if (!/Nahverkehr|Sprit|Flughafentransfer/.test(locRows)) fail("Transport vor Ort: " + locRows);
+  log("Transport vor Ort geschätzt: " + locRows);
+
   // Zusammensetzung am Gesamtbetrag (#418): Verpflegung unter „Versteckt“, Klick klappt auf, zweiter Klick zu; Summe stimmt
   const n = x => Number(x.replace(/\D/g, ""));
   await p.evaluate(() => scrollTo(0, 0));
@@ -383,6 +392,7 @@ try {
   const hidden = await p.locator(".hero .cp-list .cp-row").allInnerTexts();
   if (!hidden.some(r => r.includes("Verpflegung Klein"))) fail("Verpflegung nicht unter Versteckt: " + hidden);
   if (!hidden.some(r => r.includes("Souvenirs"))) fail("Souvenirs nicht unter Versteckt: " + hidden);
+  if (!hidden.some(r => /Nahverkehr|Sprit|Flughafentransfer/.test(r))) fail("Transport vor Ort nicht unter Versteckt: " + hidden);
   await p.locator(".hero .cp-row", { hasText: "Verpflegung Klein" }).locator(".cp-name").click();
   if (!(await p.locator(".hero .cp-calc").textContent()).includes("Tage")) fail("Rechenweg Verpflegung fehlt");
   await p.locator(".hero .cp-t-hidden").click();

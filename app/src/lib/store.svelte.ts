@@ -62,13 +62,15 @@ function emptyTrip(o: NewOpts = {}): Trip {
   const auto = autoName(o);
   // Standard: eine Person als Tier
   const travelers = o.travelers ?? [soloTraveler()];
+  // Bereiche, für die schon Posten mitkommen (z. B. aus einer Reiseidee), richten sich wie bisher nach den Posten
+  const simple = (c: CatKey) => ((o.items || []).some(i => i.cat === c && !i.auto) ? {} : { [c]: false });
   return {
     id: uid(), name: own || auto || "", autoName: !own,
     place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
     travelers, items: o.items || [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...(o.kicker ? { kicker: o.kicker } : {}),
     // Verpflegung gehört zu den versteckten Kosten: bei neuen Reisen eingerechnet, gespeicherte behalten ihre Einstellung (#388, #418).
-    // Sonstiges bleibt dabei einfach (sonst schalteten die Verpflegungsposten es auf detailliert); sie zählen trotzdem mit
-    food: { on: true }, souvenir: { on: true }, detail: { misc: false }
+    // Sonstiges und Vor Ort bleiben dabei einfach (sonst schalteten die automatischen Posten sie auf detailliert); sie zählen trotzdem mit
+    food: { on: true }, souvenir: { on: true }, local: { on: true }, detail: { ...simple("misc"), ...simple("transport") }
   };
 }
 

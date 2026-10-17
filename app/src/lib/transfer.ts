@@ -82,7 +82,7 @@ export function transferItem(p: TransferPlan, choices: TransferChoice[] = [], pi
   }));
   const chosen = pick === "taxi" ? taxi.id : pub.find(o => o.k === pick)?.id ?? taxi.id;
   return {
-    id: uid(), cat: "transport", name: t("tr.name"), icon: "car", status: "idea",
+    id: uid(), cat: "transport", name: t("tr.name"), icon: "car", status: "idea", hint: "transfer",
     note: t("tr.note", { ap: p.ap, to: p.to, km: Math.round(p.km) }),
     ...(pub.length ? { chosen } : {}),
     options: [...pub.map(({ k: _k, ...o }) => o), taxi]

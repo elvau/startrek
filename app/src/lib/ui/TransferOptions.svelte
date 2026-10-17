@@ -7,61 +7,21 @@
    */
   import { t } from "../i18n/index.svelte";
   import { access, app, setDetailed } from "../store.svelte";
-  import { ageClass, eur } from "../calc";
-  import { isActive } from "../model";
-  import { hasCoords } from "../geo/maps";
-  import { ccOf, findCity, kmBetween } from "../geo/places";
-  import { tripSpots } from "../geo/spots";
+  import { eur } from "../calc";
   import { airportData, ensureAirports, ensureGeo, geo } from "../geo/geo.svelte";
-  import { arrivals } from "../stays/presence";
-  import { GROUND_MAX_KM, homeOf, nearestAirport, routeLink } from "../ground";
+  import { routeLink } from "../ground";
+  import { tripTransferLegs } from "../localcost";
   import PartnerLinks from "./PartnerLinks.svelte";
   import { partnersOf } from "../partners";
-  import { TRANSFER_ICON, transferItem, transferLegs, transferPlan, vehicleText, type TransferPlan } from "../transfer";
-  import { transferChoices, type TransferChoice, type TransferKind } from "../transit";
+  import { TRANSFER_ICON, transferItem, vehicleText, type TransferPlan } from "../transfer";
+  import type { TransferChoice, TransferKind } from "../transit";
   import { showItem } from "./showItem";
 
   let { city }: { city: string } = $props();
 
   $effect(() => { void ensureGeo(app.trip).catch(() => {}); void ensureAirports().catch(() => {}); });
 
-  // Ziele: jede Unterkunft mit Lage; sonst Veranstaltung bzw. Ortsmitte
-  const dests = $derived.by(() => {
-    void Object.keys(geo.places).length;
-    const stays = tripSpots(app.trip, geo).filter(s => s.kind === "stay").map(s => ({ name: s.name, lat: s.lat, lon: s.lon }));
-    if (stays.length) return stays;
-    const ev = app.trip.event;
-    if (ev && hasCoords(ev)) return [{ name: city || ev.name, lat: ev.lat!, lon: ev.lon! }];
-    const c = city ? findCity(geo, city, ccOf(geo, app.trip.country)) || findCity(geo, city) : null;
-    return c ? [{ name: city, lat: c.lat, lon: c.lon }] : [];
-  });
-  const flying = $derived(app.trip.items.some(i => i.cat === "flights" && i.status !== "dropped"));
-  // Flughäfen der Reise (Anreise und Abreise aller Gruppen)
-  const tripAps = $derived.by(() => {
-    const codes = new Set(arrivals(app.trip).flatMap(a => [a.arrAp, a.depAp]).filter((c): c is string => !!c));
-    return airportData.airports.filter(x => codes.has(x[0])).map(a => ({ code: a[0], lat: a[4], lon: a[5] }));
-  });
-  const persons = $derived(app.trip.travelers.filter(isActive).length);
-  // Fahrpreise Bahn/Bus: Kinder die Hälfte, Kleinkinder frei
-  const group = $derived.by(() => {
-    const g = { adults: 0, children: 0 };
-    for (const x of app.trip.travelers.filter(isActive)) { const c = ageClass(x.age, app.trip.settings, x.kind); if (c === "adult") g.adults++; else if (c === "child") g.children++; }
-    if (!g.adults && !g.children) g.adults = 1;
-    return g;
-  });
-  const legs = $derived.by(() => {
-    const h = homeOf(app.trip);
-    // nahes Ziel ohne Flug (Bahn, Bus, Auto): kein Flughafentransfer
-    const ds = dests.filter(d => flying || !h || kmBetween(h, d) > GROUND_MAX_KM);
-    const fb = (d: { lat: number; lon: number }) => nearestAirport(airportData, d);
-    const ccOfAp = (code: string) => airportData.airports.find(x => x[0] === code)?.[3];
-    return transferLegs(ds, tripAps, fb, persons, 1).map(l => {
-      const cc = ccOfAp(l.ap.code) || ccOf(geo, app.trip.country);
-      const pli = geo.world.find(x => x.k === cc)?.pli;
-      const plan = transferPlan(l.ap, l.dest, persons, pli);
-      return { ...l, plan, choices: transferChoices(plan.ap, plan.km, group, plan.perRide, pli) };
-    });
-  });
+  const legs = $derived.by(() => { void Object.keys(geo.places).length; return tripTransferLegs(app.trip, geo, airportData, city); });
 
   function add(plan: TransferPlan, choices: TransferChoice[], pick: TransferKind) {
     setDetailed("transport", true);
