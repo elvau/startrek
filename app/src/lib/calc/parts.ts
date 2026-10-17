@@ -44,8 +44,8 @@ export function extraHow(l: ExtraLine, cur: string): string {
 
 const extraName = (l: ExtraLine) => l.x.label || t(`xc.kind.${l.x.kind}` as Key);
 
-/** automatischer Posten, dessen Betrag die App schätzt: Verpflegung, Anreise mit dem eigenen Auto */
-const estimated = (it: Item) => it.auto === "food" || it.hint === "road:car";
+/** automatischer Posten, dessen Betrag die App schätzt: Verpflegung, Souvenirs, Anreise mit dem eigenen Auto */
+const estimated = (it: Item) => !!it.auto || it.hint === "road:car";
 
 /** Verpflegung u. ä.: „40 € Erw. · 20 € Kind × 7 Tage“ aus dem Preis pro Person */
 function priceCalc(it: Item, T: Totals): string | undefined {

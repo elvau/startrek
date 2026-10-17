@@ -114,8 +114,10 @@ try {
   await a.locator("#misc .food .food-rows li").first().waitFor();
   await a.locator("#misc .food .linkbtn", { hasText: "ausschalten" }).click();
   await a.locator("#misc .food .btn", { hasText: "Verpflegung einrechnen" }).waitFor();
+  await a.locator("#misc .souv .souv-off").click();
+  await a.locator("#misc .souv .souv-on").waitFor();
   if ((await a.locator(".simple-card").count()) !== 5) fail("Verpflegung schaltet Sonstiges auf detailliert");
-  log("Verpflegung bei neuer Reise an, Sonstiges bleibt einfach; hier ausgeschaltet");
+  log("Verpflegung und Souvenirs bei neuer Reise an, Sonstiges bleibt einfach; hier ausgeschaltet");
 
   const amount = async (cat, v) => { const i = a.locator(`#${cat} .simple-in input`); await i.scrollIntoViewIfNeeded(); await i.fill(v); };
   await amount("flights", "600");
@@ -184,6 +186,9 @@ try {
   if (!kids.some(x => x.includes("Kind"))) fail("Kind nicht als Kind: " + kids);
   const baby = await a.locator(".person", { hasText: `${B} Kleinkind 1` }).locator("span").allTextContents();
   if (!baby.some(x => x.includes("Kleinkind"))) fail("Kleinkind nicht als Kleinkind: " + baby);
+  // Souvenirs sind bei neuen Reisen an (#421); für glatte Anteile hier aus
+  await a.locator("#misc .souv .souv-off").scrollIntoViewIfNeeded();
+  await a.locator("#misc .souv .souv-off").click();
   await amount("stay", "1000");
   await until(async () => (await a.locator("#stay .simple-out b").textContent()) === "100 €", "100 € pro Person");
   const hh2 = await a.evaluate(() => [...document.querySelectorAll(".share .sh-head")].map(x => x.textContent.replace(/\s+/g, " ").trim()));
@@ -341,9 +346,12 @@ try {
   await reloadHome(a, { url: URL });
   const card = a.locator(".start .home-trip", { hasText: "Zweitgerät-Test" });
   await card.waitFor();
-  await until(async () => (await card.innerText()).includes("840"), "Betrag der Reise vom anderen Gerät auf der Startseite", 10000)
+  // Gesamt wie auf dem anderen Gerät: 840 € Unterkunft plus Souvenirs (#421, bei neuen Reisen an)
+  const bTotal = (await b.locator(".hero .total b.num").first().textContent()).replace(/\s*€/, "");
+  if (bTotal === "840") fail("Souvenirs nicht eingerechnet");
+  await until(async () => (await card.innerText()).includes(bTotal), `Betrag der Reise vom anderen Gerät auf der Startseite (${bTotal})`, 10000)
     .catch(async e => { console.log("Karte:", await card.innerText()); throw e; });
-  log("Auf einem Gerät gefüllt, auf dem anderen nie geöffnet: Startseite zeigt den Betrag (840 €) ohne Öffnen");
+  log(`Auf einem Gerät gefüllt, auf dem anderen nie geöffnet: Startseite zeigt den Betrag (840 € + Souvenirs = ${bTotal} €) ohne Öffnen`);
 
   console.log("\nAlle Schritte erfolgreich.");
 } finally {

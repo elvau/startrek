@@ -361,6 +361,18 @@ try {
   if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
   log("Verpflegung: Klein 11 Tage (An- und Abreise je halb), Posten „Verpflegung Klein“, „Genießer“ ändert den Betrag; Links zu Restaurants und Supermärkten");
 
+  // Souvenirs (#421): unter Sonstiges, Betrag pro Person für diese Reise änderbar
+  const souv = p.locator("#misc .souv");
+  await souv.scrollIntoViewIfNeeded();
+  if (await souv.locator(".souv-on").count()) await souv.locator(".souv-on").click();
+  await souv.locator(".souv-step b", { hasText: "30 € pro Person" }).waitFor();
+  const s1 = await souv.locator(".plan-h .muted").textContent();
+  await souv.locator(".souv-step button").last().click();
+  await souv.locator(".souv-step b", { hasText: "40 € pro Person" }).waitFor();
+  await until(async () => (await souv.locator(".plan-h .muted").textContent()) !== s1, "Souvenirs neu gerechnet");
+  if (!(await souv.innerText()).includes("für diese Reise")) fail("Souvenirs: Herkunft fehlt");
+  log(`Souvenirs: 30 € → 40 € pro Person für diese Reise, ${s1} → ${await souv.locator(".plan-h .muted").textContent()}`);
+
   // Zusammensetzung am Gesamtbetrag (#418): Verpflegung unter „Versteckt“, Klick klappt auf, zweiter Klick zu; Summe stimmt
   const n = x => Number(x.replace(/\D/g, ""));
   await p.evaluate(() => scrollTo(0, 0));
@@ -370,6 +382,7 @@ try {
   await p.locator(".hero .cp-t-hidden").click();
   const hidden = await p.locator(".hero .cp-list .cp-row").allInnerTexts();
   if (!hidden.some(r => r.includes("Verpflegung Klein"))) fail("Verpflegung nicht unter Versteckt: " + hidden);
+  if (!hidden.some(r => r.includes("Souvenirs"))) fail("Souvenirs nicht unter Versteckt: " + hidden);
   await p.locator(".hero .cp-row", { hasText: "Verpflegung Klein" }).locator(".cp-name").click();
   if (!(await p.locator(".hero .cp-calc").textContent()).includes("Tage")) fail("Rechenweg Verpflegung fehlt");
   await p.locator(".hero .cp-t-hidden").click();
