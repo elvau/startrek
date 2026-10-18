@@ -176,6 +176,37 @@ try {
   if (await oma.locator(".editor").count()) fail("Zuschauerin kann bearbeiten");
   log("Oma sieht nur noch zu und kann nichts bearbeiten");
 
+  // Abstimmen (#432): Anna legt eine Abstimmung an, wählt sich („Wer bist du?“) und stimmt; Oma stimmt als Zuschauerin
+  // mit dem eigenen Konto („✕ Ohne mich“), Anna sieht es live
+  await anna.keyboard.press("Escape");
+  await anna.locator(".modal").waitFor({ state: "detached" });
+  const atg = anna.locator("#together .tg");
+  await atg.scrollIntoViewIfNeeded();
+  await atg.locator(".poll-new").click();
+  await atg.locator(".poll-q").fill("Welcher Strand?");
+  await atg.locator(".poll-opts").fill("Es Trenc\nCala Agulla");
+  await atg.locator(".poll-add").click();
+  const apoll = atg.locator(".poll", { hasText: "Welcher Strand?" });
+  await apoll.locator(".pv-who .linkbtn").click();
+  const awho = anna.locator(".modal", { hasText: "Wer bist du?" });
+  await awho.locator(".who-p").first().click();
+  await awho.locator("input").fill("Anna");
+  await awho.locator(".who-ok").click();
+  await apoll.locator("li", { hasText: "Es Trenc" }).locator(".pv-for").click();
+  await until(async () => (await apoll.locator("li", { hasText: "Es Trenc" }).innerText()).includes("1 Stimme"), "Annas Stimme gezählt");
+  const otg = oma.locator("#together .tg");
+  await otg.scrollIntoViewIfNeeded();
+  const opoll = otg.locator(".poll", { hasText: "Welcher Strand?" });
+  await until(async () => (await opoll.locator("li", { hasText: "Es Trenc" }).innerText().catch(() => "")).includes("1 Stimme"), "Oma sieht Annas Stimme");
+  await opoll.locator("li", { hasText: "Es Trenc" }).locator(".pv-veto").click();
+  await opoll.locator("li", { hasText: "Cala Agulla" }).locator(".pv-for").click();
+  await until(async () => (await apoll.locator("li", { hasText: "Es Trenc" }).innerText()).includes("✕ Oma"), "Anna sieht Omas „Ohne mich“")
+    .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); console.log("OMA:", (await opoll.innerText()).replace(/\s+/g, " ")); throw e; });
+  await until(async () => (await apoll.locator("li", { hasText: "Cala Agulla" }).innerText()).includes("1 Stimme"), "Omas Stimme bei Anna");
+  log("Abstimmen: Anna wählt sich und stimmt, Oma stimmt als Zuschauerin mit eigenem Konto („✕ Ohne mich“ mit Namen), Anna sieht es live");
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
+
   // Anna zieht den Link zurück; Mallory kommt nicht mehr hinein
   await anna.locator(".linkbtn", { hasText: "Link zurückziehen" }).click();
   await anna.locator(".modal .btn", { hasText: "Link erstellen" }).waitFor();

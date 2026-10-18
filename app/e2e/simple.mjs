@@ -250,10 +250,14 @@ try {
   const poll = tg.locator(".poll").first();
   await poll.waitFor({ timeout: 4000 }).catch(async () => fail("Abstimmung fehlt: " + (await tg.innerText()).slice(-900).replace(/\n/g, " / ") + " | " + errors.join(" | ")));
   await tg.locator(".tg-me select").selectOption({ label: "Anna" });
-  await poll.locator("li").nth(1).locator(".chip", { hasText: "👍" }).click();
+  await poll.locator("li").nth(1).locator(".pv-for").click();
   await tg.locator(".tg-me select").selectOption({ label: "Cleo" });
-  await poll.locator("li").nth(1).locator(".chip", { hasText: "👍" }).click();
-  await poll.locator("li").nth(0).locator(".chip", { hasText: "👎" }).click();
+  // eine Stimme (#432): zweite Wahl ersetzt die erste
+  await poll.locator("li").nth(0).locator(".pv-for").click();
+  await poll.locator("li").nth(1).locator(".pv-for").click();
+  if (await poll.locator("li").nth(0).locator(".pv-for.on").count()) fail("Eine Stimme: erste Wahl bleibt");
+  await poll.locator("li").nth(0).locator(".pv-veto").click();
+  if (!(await poll.locator("li").nth(0).innerText()).includes("✕ Cleo")) fail("Ohne mich nicht mit Namen: " + await poll.locator("li").nth(0).innerText());
   if (!(await poll.innerText()).includes("Noch nicht abgestimmt: Ben")) fail("Wer fehlt: " + await poll.innerText());
   const second = (await poll.locator("li").nth(1).locator(".poll-l").innerText()).split(" – ")[0];
   await poll.locator(".poll-apply").click();
@@ -266,12 +270,23 @@ try {
   await tg.locator(".poll-opts").fill("Mallorca");
   if (await tg.locator(".poll-add").isEnabled()) fail("Abstimmung mit einer Möglichkeit startbar");
   await tg.locator(".poll-opts").fill("Mallorca\nKroatien");
+  // Meilen-Wahl (#432): 4 Meilen je Person, alle auf eine Möglichkeit
+  await tg.locator(".poll-mode").selectOption("miles");
+  await tg.locator(".poll-miles").fill("4");
   await tg.locator(".poll-add").click();
-  await tg.locator(".poll", { hasText: "Welches Ziel?" }).waitFor();
+  const mp = tg.locator(".poll", { hasText: "Welches Ziel?" });
+  await mp.waitFor();
+  if (!(await mp.locator(".pv-mode").innerText()).includes("Meilen-Wahl · 4 Meilen")) fail("Meilen-Wahl: " + await mp.locator(".pv-mode").innerText());
+  await tg.locator(".tg-me select").selectOption({ label: "Ben" });
+  const kro = mp.locator("li", { hasText: "Kroatien" });
+  for (let i = 0; i < 4; i++) await kro.locator(".pv-more").click();
+  if (await kro.locator(".pv-more").isEnabled()) fail("Mehr Meilen als erlaubt");
+  if (!(await mp.locator(".pv-left").innerText()).includes("Noch 0 von 4")) fail("Meilen übrig: " + await mp.locator(".pv-left").innerText());
+  if (!(await kro.innerText()).includes("4 Meilen")) fail("Meilen gezählt: " + await kro.innerText());
   // offene Abstimmung steht unter „Wichtiges“
   if (!(await gp.locator(".imp-btn").getAttribute("aria-label") || "").match(/Wichtig/)) fail("Wichtiges-Knopf fehlt");
   await gctx.close();
-  log("Abstimmen: über die Zeiträume (Anna und Cleo, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten");
+  log("Abstimmen: über die Zeiträume (eine Stimme, Cleo „ohne mich“, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten, Meilen-Wahl mit 4 Meilen");
 
   // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
   const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",

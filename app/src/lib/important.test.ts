@@ -191,3 +191,16 @@ describe("Mindestgültigkeit für alle Pässe", () => {
     expect(isUrgent(q)).toBe(false);
   });
 });
+
+describe("offene Abstimmungen (#432)", () => {
+  const poll = { id: "p", q: "Wohin?", kind: "free" as const, mode: "one" as const, due: "2027-03-10", options: [{ id: "x", label: "Malle" }, { id: "y", label: "Hamburg" }], votes: { a: { x: 1 } } };
+  const tr = () => ({ ...trip([anna, tom]), polls: [structuredClone(poll)] });
+  it("Stimmen aus dem Konto zählen mit, Frist steht dabei", () => {
+    const at = Date.parse("2027-03-01T12:00:00Z");
+    expect(importantPoints({ trip: tr(), countries: [], hints: [], visa, advice: {}, now: at })[0].poll).toEqual({ id: "p", q: "Wohin?", missing: ["Tom"], due: "2027-03-10" });
+    expect(importantPoints({ trip: tr(), countries: [], hints: [], visa, advice: {}, now: at, votes: { p: { t: { y: -1 } } } })[0].poll!.missing).toEqual([]);
+  });
+  it("nach der Frist kein Punkt mehr", () => {
+    expect(importantPoints({ trip: tr(), countries: [], hints: [], visa, advice: {}, now: Date.parse("2027-03-11T12:00:00Z") })).toEqual([]);
+  });
+});

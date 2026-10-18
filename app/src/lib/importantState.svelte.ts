@@ -21,6 +21,7 @@ import { bookAheadFor } from "./bookahead";
 import { importantPoints, isOpen, type PointKind } from "./important";
 import { docs } from "./traveldocs.svelte";
 import { cloud } from "./cloud/cloud.svelte";
+import { remoteAll } from "./polls.svelte";
 import { loadSafety, personalHints, type SafetyData } from "./personal";
 
 /** Bestimmungen: Warnstufen, Warnungen, Einreise, Grenze, Reisepass, dazu hohe Kautionen; Rest (Früh buchen, Orte) ist „Gut zu wissen“ */
@@ -39,7 +40,7 @@ class ImportantState {
   passports = $derived(docs.status === "ready" ? Object.fromEntries(app.trip.travelers.filter(x => x.personId && docs.map[x.personId]?.passExpiry).map(x => [x.id, docs.map[x.personId!].passExpiry!])) : {});
   canCheck = $derived(!!cloud.user && docs.status !== "ready" && docs.status !== "loading" && app.trip.travelers.some(x => x.personId));
   book = $derived(bookAheadFor(tripText(app.trip, this.places), tripAps(app.trip), app.trip.from));
-  points = $derived(importantPoints({ trip: app.trip, countries: this.countries, hints: [...hintsFor(app.trip, this.countries, this.places), ...petHints(app.trip, this.countries)], visa: this.visa, advice: this.advice, gov: this.gov, passports: this.passports, book: this.book }));
+  points = $derived(importantPoints({ trip: app.trip, countries: this.countries, hints: [...hintsFor(app.trip, this.countries, this.places), ...petHints(app.trip, this.countries)], visa: this.visa, advice: this.advice, gov: this.gov, passports: this.passports, book: this.book, votes: remoteAll() }));
   /** Bestimmungen zum Reiseland (Bubble in der Menüleiste) und „Gut zu wissen“ (Kapitel Erlebnisse) */
   rules = $derived(this.points.filter(p => RULES.has(p.kind)));
   tips = $derived(this.points.filter(p => !RULES.has(p.kind)));

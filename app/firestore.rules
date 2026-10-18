@@ -132,6 +132,17 @@ service cloud.firestore {
           && request.resource.data.get('memberNames', {}).diff(resource.data.get('memberNames', {})).affectedKeys().hasOnly([uid()]));
 
       allow delete: if isOwner(resource.data);
+
+      // Stimmen (#432): je Mitglied ein eigenes Dokument, damit sich gleichzeitige Stimmen nicht überschreiben.
+      // Lesen alle Mitglieder; schreiben nur die eigene Stimme (auch „nur ansehen“ und Gäste); Besitzer darf löschen.
+      match /votes/{userId} {
+        function tripDoc() { return get(/databases/$(database)/documents/trips/$(tripId)).data; }
+        allow read: if isMember(tripDoc());
+        allow create, update: if isMember(tripDoc()) && uid() == userId
+          && request.resource.data.keys().hasOnly(['v', 'at'])
+          && request.resource.data.v is map && request.resource.data.v.size() <= 40;
+        allow delete: if signedIn() && (uid() == userId || isOwner(tripDoc()));
+      }
     }
   }
 }

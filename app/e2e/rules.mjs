@@ -87,6 +87,18 @@ await expect("Anna (Besitzerin) löst Mallorys Zuordnung", patch("anna", "/trips
 await expect("Mallory wählt sich wieder", claim("mallory", "mallory", { t: "p2", n: "Mal" }), 200);
 log("Wer bist du: jede Rolle nur die eigene Zuordnung, nur Kennung und Vorname; Besitzerin kann lösen");
 
+// Stimmen (#432): eigenes Dokument je Mitglied, lesen nur Mitglieder
+const vote = (uid, who, v) => patch(uid, `/trips/regeltest/votes/${who}`, { v });
+await expect("Mallory (Zuschauer) stimmt ab", vote("mallory", "mallory", { p1: { o1: 3 } }), 200);
+await expect("Ben liest Mallorys Stimme", req("ben", "/trips/regeltest/votes/mallory"), 200);
+await expect("Mallory stimmt für Ben", vote("mallory", "ben", { p1: { o1: 1 } }), 403);
+await expect("Mallory stimmt mit Zusatzfeld", patch("mallory", "/trips/regeltest/votes/mallory", { v: { p1: { o1: 1 } }, rolle: "owner" }), 403);
+await expect("Fremder liest Stimmen", req("fremd", "/trips/regeltest/votes/mallory"), 403);
+await expect("Fremder stimmt ab", vote("fremd", "fremd", { p1: { o1: 1 } }), 403);
+await expect("Ben löscht Mallorys Stimme", req("ben", "/trips/regeltest/votes/mallory", { method: "DELETE" }), 403);
+await expect("Anna (Besitzerin) löscht Mallorys Stimme", req("anna", "/trips/regeltest/votes/mallory", { method: "DELETE" }), 200);
+log("Stimmen: nur die eigene, lesen nur Mitglieder, löschen nur selbst oder die Besitzerin");
+
 // Gast ohne Konto (anonyme Anmeldung): beitreten und sich wählen ja, eigene Reisen und Aktionsseiten nein
 await expect("Gast legt eine Reise an", patch("gast1", "/trips/gastreise", { name: "G", data: "{}", owner: "gast1", memberIds: ["gast1"], members: { gast1: "owner" }, invite: null }), 403);
 await expect("Gast tritt mit Schlüssel bei", patch("gast1", "/trips/regeltest",
