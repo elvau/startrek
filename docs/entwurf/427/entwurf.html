@@ -1,0 +1,360 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entwurf Reisen vergleichen</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400..800&display=swap">
+<style>
+/* Layout: Entwurfsseite mit Reitern; jeder Reiter zeigt eine Ansicht der App, Desktop breit, daneben bzw. darunter die Handy-Fassung im Rahmen.
+   Farben und Schriften aus dem Design-System der App (app/src/styles/app.css). */
+:root{
+  --bg:#F4F2EE; --paper:#FFFFFF; --paper-2:#F7F6F3; --ink:#15202E; --ink-2:#4B5566; --ink-3:#7D8696;
+  --line:#E3E0DA; --shadow:0 1px 2px rgba(21,32,46,.06),0 12px 32px -12px rgba(21,32,46,.18);
+  --good:#2E7D4F; --good-soft:#E2F2E8; --warn:#A0660B; --warn-soft:#FBEFD9; --idea:#6B5BD2; --idea-soft:#ECE9FB;
+  --a:#2F6FDB; --a-soft:#E4EDFB; --sky:#CFE6F5; --stay:#C0487A; --stay-s:#FAE3ED;
+  --hid:repeating-linear-gradient(135deg,var(--warn-soft) 0 5px,transparent 5px 9px);
+  --f-d:"Bricolage Grotesque",Figtree,system-ui,sans-serif; --f-b:Figtree,system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D131C; --paper:#161E2A; --paper-2:#1C2533; --ink:#E8EDF4; --ink-2:#AEB8C7; --ink-3:#7F8A9B;
+    --line:#2A3445; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -12px rgba(0,0,0,.6);
+    --good:#7ACB98; --good-soft:#193224; --warn:#E6B45E; --warn-soft:#352914; --idea:#AEA2F2; --idea-soft:#262143;
+    --a:#7FAEF5; --a-soft:#1B2A45; --sky:#13243A; --stay:#EB86B1; --stay-s:#3A1E2B; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D131C; --paper:#161E2A; --paper-2:#1C2533; --ink:#E8EDF4; --ink-2:#AEB8C7; --ink-3:#7F8A9B;
+  --line:#2A3445; --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px -12px rgba(0,0,0,.6);
+  --good:#7ACB98; --good-soft:#193224; --warn:#E6B45E; --warn-soft:#352914; --idea:#AEA2F2; --idea-soft:#262143;
+  --a:#7FAEF5; --a-soft:#1B2A45; --sky:#13243A; --stay:#EB86B1; --stay-s:#3A1E2B; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-b)}
+h1,h2,h3,h4{font-family:var(--f-d);margin:0;letter-spacing:-.01em;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-3)}
+.wrap{max-width:1240px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+
+/* Kopf der Entwurfsseite */
+.doc-h{display:flex;flex-direction:column;gap:6px}
+.doc-h .kick{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a)}
+.doc-h h1{font-size:clamp(24px,4vw,34px)}
+.doc-h p{margin:0;color:var(--ink-2);max-width:70ch}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:7px 14px;font-weight:600;font-size:14px}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.q{border:1px dashed var(--idea);background:var(--idea-soft);border-radius:14px;padding:10px 14px;font-size:13.5px;color:var(--ink-2)}
+.q b{color:var(--idea)}
+
+/* Bühne: Desktop links, Handy rechts */
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:22px;align-items:start}
+.stage.one{grid-template-columns:minmax(0,1fr)}
+@media (max-width:1060px){.stage{grid-template-columns:minmax(0,1fr)}}
+.lbl{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.screen{background:linear-gradient(180deg,var(--sky),var(--bg) 340px);border:1px solid var(--line);border-radius:20px;padding:18px;min-width:0;overflow:hidden}
+.phone{width:min(390px,100%);border:10px solid var(--ink);border-radius:34px;background:linear-gradient(180deg,var(--sky),var(--bg) 300px);padding:14px 12px;min-width:0;overflow:hidden}
+@media (max-width:520px){.phone{border-width:6px;border-radius:24px}}
+.mini-sw{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;background:var(--paper)}
+.mini-sw button{border:0;background:none;padding:3px 10px;font-size:12px;font-weight:700;color:var(--ink-2);text-transform:none;letter-spacing:0}
+.mini-sw button[aria-pressed="true"]{background:var(--a);color:#fff}
+
+/* App-Bausteine */
+.topbar{display:flex;align-items:center;gap:10px;background:var(--paper);border-radius:14px;padding:8px 12px;box-shadow:var(--shadow);margin-bottom:16px;font-weight:800;font-family:var(--f-d)}
+.topbar .sp{flex:1}
+.topbar .av{width:26px;height:26px;border-radius:50%;background:var(--a);color:#fff;display:grid;place-items:center;font-size:12px}
+.home-h{font-size:20px;margin:14px 0 10px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.tile{background:var(--paper);border-radius:20px;box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;gap:8px;text-align:start;border:0;min-width:0}
+.tile b.t{font-family:var(--f-d);font-size:16.5px;line-height:1.25}
+.tile .facts{font-size:13px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:4px 12px}
+.ai{font-size:10.5px;font-weight:800;color:var(--idea);background:var(--idea-soft);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.cmp-tile{grid-column:span 2;border:1px solid var(--a-soft)}
+@media (max-width:700px){.cmp-tile{grid-column:auto}}
+.cmp-tile .head{display:flex;gap:8px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}
+.badge{font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;background:var(--a-soft);color:var(--a);white-space:nowrap}
+.badge.good{background:var(--good-soft);color:var(--good)}
+.badge.vote{background:var(--idea-soft);color:var(--idea)}
+.vrows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.vrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:9px 12px;border:0;border-top:1px solid var(--line);background:var(--paper);text-align:start}
+.vrow:first-child{border-top:0}
+.vrow:hover{background:var(--paper-2)}
+.vrow .fl{font-size:18px}
+.vrow .nm{display:flex;flex-direction:column;min-width:0}
+.vrow .nm b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vrow .nm small{color:var(--ink-3);font-size:12px}
+.vrow .pr{text-align:end;display:flex;flex-direction:column;align-items:flex-end}
+.vrow .pr b{font-size:14.5px}
+.vrow .pr small{font-size:11.5px;color:var(--ink-3)}
+.vrow.chosen{background:var(--good-soft)}
+.votebar{display:flex;gap:2px;margin-top:3px}
+.votebar i{width:14px;height:5px;border-radius:3px;background:var(--line)}
+.votebar i.on{background:var(--idea)}
+.tile .foot{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:13px}
+.lnk{border:0;background:none;color:var(--a);font-weight:700;padding:4px 0}
+.more{font-size:12.5px;color:var(--ink-3);padding:7px 12px;border-top:1px solid var(--line);background:var(--paper)}
+
+/* Vergleichsansicht */
+.cv-h{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
+.cv-h .back{border:0;background:none;color:var(--a);font-weight:700;padding:0;align-self:flex-start;font-size:13.5px}
+.cv-h h2{font-size:24px}
+.cv-h .sub{color:var(--ink-2);font-size:13.5px}
+.cv-scroll{overflow-x:auto;border-radius:18px;background:var(--paper);box-shadow:var(--shadow)}
+.cv{display:grid;min-width:max-content}
+.cv>div{padding:10px 12px;border-top:1px solid var(--line);min-width:0}
+.cv .rl{font-weight:700;font-size:13px;color:var(--ink-2);display:flex;flex-direction:column;gap:1px;background:var(--paper)}
+.cv .rl small{font-weight:500;color:var(--ink-3);font-size:11.5px}
+.cv .sticky{position:sticky;left:0;z-index:1;box-shadow:1px 0 0 var(--line)}
+.cv .hd{border-top:0;display:flex;flex-direction:column;gap:6px;background:var(--paper)}
+.cv .hd .t{display:flex;gap:6px;align-items:center;font-weight:800;font-family:var(--f-d);font-size:15px}
+.cv .hd .pl{font-size:12.5px;color:var(--ink-3)}
+.cv .hd .tot{font-size:20px;font-weight:800;font-family:var(--f-d)}
+.cv .hd .pp{font-size:12.5px;color:var(--ink-2)}
+.cv .hd.chosen{background:var(--good-soft)}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:5px 10px;font-size:12.5px;font-weight:700}
+.btn.pri{background:var(--a);border-color:var(--a);color:#fff}
+.btn.good{background:var(--good);border-color:var(--good);color:#fff}
+.btn.vote{border-color:var(--idea);color:var(--idea)}
+.btn.vote[aria-pressed="true"]{background:var(--idea);color:#fff}
+.cell{display:flex;flex-direction:column;gap:1px;font-size:13px}
+.cell b{font-size:14px}
+.cell .it{color:var(--ink-3);font-size:12px;line-height:1.35}
+.cell .d{font-size:11.5px;font-weight:700;color:var(--warn)}
+.cell.best b{color:var(--good)}
+.cell.best .d{color:var(--good)}
+.cv .hidrow{background-image:var(--hid)}
+.cv .tl{font-family:var(--f-d)}
+.cv .vote-c{display:flex;flex-direction:column;gap:5px}
+.who{display:flex;gap:3px;flex-wrap:wrap}
+.who span{font-size:11px;font-weight:700;border-radius:99px;padding:1px 7px;background:var(--idea-soft);color:var(--idea)}
+.who span.open{background:var(--paper-2);color:var(--ink-3)}
+
+/* Handy B: Kapitel untereinander */
+.chap{background:var(--paper);border-radius:16px;box-shadow:var(--shadow);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.chap h4{font-size:14px;display:flex;justify-content:space-between}
+.chap .r{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px}
+.chap .r .bar{height:6px;border-radius:4px;background:var(--a-soft);grid-column:2/4}
+.chap .r .bar i{display:block;height:100%;border-radius:4px;background:var(--a)}
+.chap .r.best b{color:var(--good)}
+.chap .r.best .bar i{background:var(--good)}
+.stack{display:flex;flex-direction:column;gap:10px}
+.sumcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.sumcards button{border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:7px 6px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:11.5px;min-width:0}
+.sumcards button b{font-size:13.5px}
+.sumcards button.chosen{border-color:var(--good);background:var(--good-soft)}
+
+/* In der Reise */
+.hero{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:22px 8px}
+.hero h1{font-size:clamp(24px,4vw,38px)}
+.hero .meta{color:var(--ink-2);font-size:14px}
+.vchip{display:inline-flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:4px 6px 4px 12px;font-size:13px;box-shadow:var(--shadow);flex-wrap:wrap;justify-content:center}
+.vchip .pills{display:flex;gap:3px}
+.vchip .pills button{border:0;border-radius:99px;padding:3px 9px;font-size:12px;font-weight:700;background:var(--paper-2)}
+.vchip .pills button[aria-current="true"]{background:var(--a);color:#fff}
+.total{background:var(--paper);border-radius:16px;padding:10px 18px;box-shadow:var(--shadow);font-family:var(--f-d);font-size:22px;font-weight:800}
+
+/* Abstimmung starten */
+.panel{background:var(--paper);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px}
+.panel h3{font-size:18px}
+.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:9px 11px;font-size:13.5px}
+.opt input{margin-top:3px}
+.opt span{display:flex;flex-direction:column}
+.opt small{color:var(--ink-3)}
+.note{font-size:12.5px;color:var(--ink-2);background:var(--paper-2);border-radius:10px;padding:8px 10px}
+.invite{background:var(--idea-soft);border-radius:14px;padding:10px 12px;font-size:13.5px}
+.vcard{background:var(--paper);border-radius:14px;box-shadow:var(--shadow);padding:10px 12px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:center}
+.vcard .who{grid-column:1/-1}
+@media (prefers-reduced-motion:no-preference){.tab,.btn,.vrow{transition:background .15s ease,color .15s ease}}
+</style>
+
+<div class="wrap">
+  <header class="doc-h">
+    <span class="kick">Entwurf zu #427 · nur zur Entscheidung</span>
+    <h1>Reisen vergleichen und gemeinsam entscheiden</h1>
+    <p>Beispiel: Chalet-Wochenende mit 3 Familien (12 Personen, 5. bis 9. Mai) in drei Varianten. Alles ist anklickbar: Kachel öffnet den Vergleich, „Diese nehmen“ und „Dafür“ wirken sofort.</p>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Ansichten">
+    <button class="tab" role="tab" id="t-home" aria-selected="true">1 · Startseite</button>
+    <button class="tab" role="tab" id="t-cmp" aria-selected="false">2 · Vergleich</button>
+    <button class="tab" role="tab" id="t-vote" aria-selected="false">3 · Abstimmung</button>
+    <button class="tab" role="tab" id="t-trip" aria-selected="false">4 · In der Reise</button>
+  </nav>
+  <main id="view"></main>
+</div>
+
+<script>
+const V = [
+  { id: "fr", flag: "🇫🇷", name: "Ardennen Frankreich", place: "Signy-l'Abbaye, Frankreich", ai: false,
+    c: { anreise: [214, "3 Autos ab NRW · Sprit, Maut"], stay: [1680, "Gîte des Forges · 4 Nächte"], local: [90, "Sprit vor Ort"], events: [420, "Kanu, Klettergarten, Markt"], hidden: [638, "Verpflegung 518 · Souvenirs 120"] } },
+  { id: "be", flag: "🇧🇪", name: "Ardennen Belgien", place: "Durbuy, Belgien", ai: true,
+    c: { anreise: [196, "3 Autos ab NRW · Sprit"], stay: [2380, "Chalet Ourthe · 4 Nächte"], local: [90, "Sprit vor Ort"], events: [610, "Kajak, Höhle, Brauerei"], hidden: [868, "Verpflegung 748 · Souvenirs 120"] } },
+  { id: "de", flag: "🇩🇪", name: "Eifel", place: "Monschau, Deutschland", ai: true,
+    c: { anreise: [120, "3 Autos ab NRW · Sprit"], stay: [1890, "Ferienhaus am Rursee · 4 Nächte"], local: [90, "Sprit vor Ort"], events: [380, "Wildpark, Sommerrodeln"], hidden: [760, "Verpflegung 640 · Souvenirs 120"] } }
+];
+const ROWS = [["anreise", "Anreise", "zum Ziel"], ["stay", "Unterkunft", ""], ["local", "Vor Ort", "Transport"], ["events", "Erlebnisse", ""], ["hidden", "Versteckte Kosten", "geschätzt"]];
+const PEOPLE = 12, MEMBERS = ["Dani", "Monika", "Jonas", "Sarah"];
+const S = { tab: "home", chosen: null, votes: { fr: ["Sarah"], be: ["Monika"], de: [] }, mine: "fr", phone: "A", tileState: "open" };
+S.votes[S.mine].push("Dani");
+const eur = v => v.toLocaleString("de-DE") + " €";
+const total = v => Object.values(v.c).reduce((s, x) => s + x[0], 0);
+const pp = v => Math.round(total(v) / PEOPLE);
+const cheapest = () => V.reduce((a, b) => (total(a) <= total(b) ? a : b));
+const best = k => Math.min(...V.map(v => v.c[k][0]));
+const votesOf = id => S.votes[id] || [];
+const voted = () => MEMBERS.filter(m => Object.values(S.votes).some(l => l.includes(m)));
+const order = () => S.chosen ? [V.find(v => v.id === S.chosen), ...V.filter(v => v.id !== S.chosen)] : V;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function voteBar(id) { return `<span class="votebar" aria-label="${votesOf(id).length} von ${MEMBERS.length} Stimmen">${MEMBERS.map((_, i) => `<i class="${i < votesOf(id).length ? "on" : ""}"></i>`).join("")}</span>`; }
+
+function tile() {
+  const ch = cheapest(), list = order(), shown = S.chosen ? list.slice(0, 1) : list;
+  const missing = MEMBERS.filter(m => !voted().includes(m));
+  return `<div class="tile cmp-tile">
+    <div class="head"><b class="t">☁ Chalet-Wochenende</b>${S.chosen ? `<span class="badge good">✓ entschieden</span>` : `<span class="badge">${V.length} Varianten</span>`}</div>
+    <div class="facts"><span>📅 5. bis 9. Mai · 4 Nächte</span><span>👥 12 Personen</span><span>☁ mit Monika, Jonas, Sarah</span></div>
+    <div class="vrows">
+      ${shown.map(v => `<button class="vrow ${S.chosen === v.id ? "chosen" : ""}" data-open="${v.id}">
+        <span class="fl" aria-hidden="true">${v.flag}</span>
+        <span class="nm"><b>${esc(v.name)} ${v.ai ? '<span class="ai">&amp;✈KI</span>' : ""}</b><small>${esc(v.place)}${S.chosen ? "" : voteBar(v.id)}</small></span>
+        <span class="pr num"><b>${eur(total(v))}</b><small>${eur(pp(v))} p. P.${v === ch ? " · günstigste" : ""}</small></span>
+      </button>`).join("")}
+      ${S.chosen ? `<div class="more">+${V.length - 1} weitere Varianten im Vergleich</div>` : ""}
+    </div>
+    <div class="foot">
+      ${S.chosen ? `<span class="muted">Abstimmung beendet · ${votesOf(S.chosen).length} von ${MEMBERS.length} dafür</span>` : `<span class="badge vote">🗳 Abstimmung läuft · ${missing.length ? esc(missing.join(", ")) + " fehlt noch" : "alle haben abgestimmt"}</span>`}
+      <button class="lnk" data-go="cmp">Vergleichen →</button>
+    </div>
+  </div>`;
+}
+function plainTile() {
+  return `<div class="tile"><b class="t">☁ Sommer in Kroatien</b><div class="facts"><span>📍 Makarska, Kroatien</span><span>📅 18. bis 29. Juli</span><span>👥 4 Personen</span></div><div class="facts"><b class="num" style="color:var(--ink)">ca. 5.496 € gesamt</b><span>1.374 € p. P.</span></div></div>`;
+}
+function home(narrow) {
+  return `<div class="topbar">Split&amp;Fly<span class="sp"></span><span class="av">D</span></div>
+    <h2 class="home-h">Als Nächstes</h2>
+    <div class="tiles">${tile()}${narrow ? "" : plainTile()}</div>`;
+}
+
+function head(v) {
+  const c = S.chosen === v.id;
+  return `<div class="hd ${c ? "chosen" : ""}">
+    <span class="t"><span aria-hidden="true">${v.flag}</span>${esc(v.name)} ${v.ai ? '<span class="ai">&amp;✈KI</span>' : ""}</span>
+    <span class="pl">${esc(v.place)}</span>
+    <span class="tot num">${eur(total(v))}</span>
+    <span class="pp num">${eur(pp(v))} pro Person${v === cheapest() ? ' · <b style="color:var(--good)">günstigste</b>' : ` · +${eur(total(v) - total(cheapest()))}`}</span>
+    <span class="acts">${c ? `<span class="badge good">✓ Gewählt</span>` : `<button class="btn good" data-choose="${v.id}">Diese nehmen</button>`}<button class="btn" data-open="${v.id}">Bearbeiten</button><button class="btn" title="Umbenennen, aus dem Vergleich nehmen, als Variante kopieren" aria-label="Weitere Aktionen">⋯</button></span>
+  </div>`;
+}
+function cell(v, k) {
+  const [s, it] = v.c[k], b = best(k), isB = s === b;
+  return `<div class="cell ${isB ? "best" : ""} ${k === "hidden" ? "hidrow" : ""}"><b class="num">${eur(s)}</b><span class="it">${esc(it)}</span>${isB ? `<span class="d">am günstigsten</span>` : `<span class="d num">+${eur(s - b)}</span>`}</div>`;
+}
+function voteCell(v) {
+  const l = votesOf(v.id), mine = l.includes("Dani");
+  return `<div class="vote-c"><div class="who">${l.map(n => `<span>${n}</span>`).join("") || '<span class="open">noch keine Stimme</span>'}</div>
+    ${S.chosen ? "" : `<button class="btn vote" aria-pressed="${mine}" data-vote="${v.id}">${mine ? "✓ Meine Stimme" : "Dafür"}</button>`}</div>`;
+}
+function grid(colW, labelW) {
+  const L = order(), cols = `${labelW}px repeat(${L.length}, ${colW})`;
+  let h = `<div class="cv" style="grid-template-columns:${cols}">`;
+  h += `<div class="rl sticky hd" style="justify-content:flex-end"><small>${L.length} Varianten · ${PEOPLE} Personen</small></div>` + L.map(head).join("");
+  for (const [k, t, sub] of ROWS) h += `<div class="rl sticky ${k === "hidden" ? "hidrow" : ""}">${t}${sub ? `<small>${sub}</small>` : ""}</div>` + L.map(v => cell(v, k)).join("");
+  h += `<div class="rl sticky">Abstimmung<small>${voted().length} von ${MEMBERS.length} haben abgestimmt</small></div>` + L.map(voteCell).join("");
+  return h + `</div>`;
+}
+function cvHead() {
+  return `<div class="cv-h"><button class="back" data-go="home">← Startseite</button><h2>☁ Chalet-Wochenende</h2>
+    <span class="sub">5. bis 9. Mai · 12 Personen · mit Monika, Jonas, Sarah · <button class="lnk" style="padding:0">+ Variante hinzufügen</button></span></div>`;
+}
+function compareDesktop() { return cvHead() + `<div class="cv-scroll">${grid("minmax(190px,1fr)", 130)}</div>`; }
+function comparePhoneA() { return cvHead() + `<p class="muted" style="font-size:12px;margin:0 0 6px">← seitlich wischen für weitere Varianten →</p><div class="cv-scroll">${grid("150px", 92)}</div>`; }
+function comparePhoneB() {
+  const L = order();
+  let h = cvHead() + `<div class="stack"><div class="sumcards">${L.map(v => `<button class="${S.chosen === v.id ? "chosen" : ""}" data-open="${v.id}"><span aria-hidden="true">${v.flag}</span><b class="num">${eur(total(v))}</b><span class="muted num">${eur(pp(v))} p. P.</span></button>`).join("")}</div>`;
+  for (const [k, t] of ROWS) {
+    const max = Math.max(...L.map(v => v.c[k][0])), b = best(k);
+    h += `<div class="chap ${k === "hidden" ? "hidrow" : ""}"><h4>${t}<span class="muted num" style="font-size:12px">Unterschied ${eur(max - b)}</span></h4>${L.map(v => `<div class="r ${v.c[k][0] === b ? "best" : ""}"><span aria-hidden="true">${v.flag}</span><span class="muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.c[k][1])}</span><b class="num">${eur(v.c[k][0])}</b><span class="bar"><i style="width:${Math.round(v.c[k][0] / max * 100)}%"></i></span></div>`).join("")}</div>`;
+  }
+  h += `<div class="chap"><h4>Abstimmung<span class="muted" style="font-size:12px">${voted().length} von ${MEMBERS.length}</span></h4>${L.map(v => `<div class="r"><span aria-hidden="true">${v.flag}</span><span class="who">${votesOf(v.id).map(n => `<span>${n}</span>`).join("")}</span>${S.chosen ? "" : `<button class="btn vote" aria-pressed="${votesOf(v.id).includes("Dani")}" data-vote="${v.id}">${votesOf(v.id).includes("Dani") ? "✓" : "Dafür"}</button>`}</div>`).join("")}</div>`;
+  h += `<div class="acts" style="justify-content:center">${L.filter(v => v.id !== S.chosen).map(v => `<button class="btn good" data-choose="${v.id}">${v.flag} nehmen</button>`).join("")}</div></div>`;
+  return h;
+}
+
+function votePanel() {
+  return `<div class="panel">
+    <h3>🗳 Zur Abstimmung stellen</h3>
+    <p class="muted" style="margin:0;font-size:13.5px">Alle Mitglieder des Vergleichs mit Konto können abstimmen, auch wer nur ansehen darf. Du entscheidest am Ende mit „Diese nehmen“.</p>
+    <label class="opt"><input type="radio" name="vm" id="vm1" checked><span><b>Eine Stimme pro Person</b><small>Einfach: jede und jeder tippt „Dafür“ bei einer Variante.</small></span></label>
+    <label class="opt"><input type="radio" name="vm" id="vm2"><span><b>Mehrere Stimmen</b><small>Man kann alle Varianten markieren, die passen würden.</small></span></label>
+    <label class="opt"><input type="radio" name="vm" id="vm3"><span><b>Reihenfolge</b><small>Jede Person sortiert die Varianten; gewinnt, wer im Schnitt vorn liegt.</small></span></label>
+    <label class="opt"><input type="checkbox" id="dl" checked><span><b>Frist: bis Sonntag, 20 Uhr</b><small>Danach schließt die Abstimmung, du siehst das Ergebnis und entscheidest.</small></span></label>
+    <div class="note">Wer noch nicht dabei ist, bekommt den Einladungslink zum Vergleich (wie beim Teilen einer Reise). Die Stimmen sehen nur Mitglieder.</div>
+    <div class="acts"><button class="btn pri">Abstimmung starten</button><button class="btn">Abbrechen</button></div>
+  </div>`;
+}
+function voterPhone() {
+  return `<div class="topbar">Split&amp;Fly<span class="sp"></span><span class="av" style="background:var(--stay)">M</span></div>
+    <div class="stack">
+      <div class="invite"><b>Dani fragt: Wohin fahren wir im Mai?</b><br><span class="muted">Chalet-Wochenende · 3 Varianten · bis Sonntag, 20 Uhr</span></div>
+      ${V.map(v => `<div class="vcard"><span style="font-size:20px" aria-hidden="true">${v.flag}</span><span style="min-width:0"><b>${esc(v.name)}</b><br><small class="muted num">${eur(total(v))} · ${eur(pp(v))} p. P.</small></span>
+        <button class="btn vote" aria-pressed="${votesOf(v.id).includes("Monika")}" data-mvote="${v.id}">${votesOf(v.id).includes("Monika") ? "✓ Dafür" : "Dafür"}</button>
+        <div class="who">${votesOf(v.id).map(n => `<span>${n}</span>`).join("")}</div></div>`).join("")}
+      <button class="lnk" data-go="cmp" style="align-self:center">Alle Posten nebeneinander vergleichen →</button>
+    </div>`;
+}
+
+function inTrip(id, narrow) {
+  const v = V.find(x => x.id === id), i = order().indexOf(v) + 1;
+  return `<div class="topbar">Split&amp;Fly<span class="sp"></span><span class="av">D</span></div>
+    <div class="hero">
+      <span class="vchip">${S.chosen === id ? "✓ Gewählt" : `Variante ${i} von ${V.length}`}<span class="pills">${order().map(x => `<button aria-current="${x.id === id}" data-trip="${x.id}" title="${esc(x.name)}">${x.flag}</button>`).join("")}</span><button class="lnk" data-go="cmp" style="padding:0 6px">Vergleichen</button></span>
+      <h1>Chalet-Wochenende${narrow ? "<br>" : " "}<span style="color:var(--ink-3)">· ${esc(v.name)}</span></h1>
+      <span class="meta">${esc(v.place)} · 5. bis 9. Mai · 4 Nächte · 12 Personen</span>
+      <span class="total num">${eur(total(v))} <small style="font-size:14px;color:var(--ink-2);font-family:var(--f-b);font-weight:600">· ${eur(pp(v))} p. P.</small></span>
+    </div>
+    <p class="muted" style="text-align:center;font-size:13px;margin:0">… darunter die Planung wie bisher (Reisende, Flüge, Unterkunft …)</p>`;
+}
+
+let tripView = "be";
+function render() {
+  const el = document.getElementById("view");
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.id === "t-" + S.tab)));
+  if (S.tab === "home") el.innerHTML = `<div class="q"><b>Offen:</b> Kachel bei „nach Land sortiert“: bei jedem Land einer Variante oder unter eigener Überschrift „Vergleiche“? · Nach „Diese nehmen“: andere einklappen (hier gezeigt), archivieren oder löschen?</div>
+    <div class="stage" style="margin-top:14px"><div><div class="lbl">Desktop <span class="mini-sw"><button aria-pressed="${!S.chosen}" data-state="open">Abstimmung läuft</button><button aria-pressed="${!!S.chosen}" data-state="done">entschieden</button></span></div><div class="screen">${home(false)}</div></div>
+    <div><div class="lbl">Handy</div><div class="phone">${home(true)}</div></div></div>`;
+  if (S.tab === "cmp") el.innerHTML = `<div class="q"><b>Offen:</b> Handy-Fassung A (Spalten, seitlich wischen) oder B (Kapitel untereinander, Varianten als Balken)? Zellen zeigen Summe, Posten und Abstand zur günstigsten; versteckte Kosten schraffiert wie im Gesamtbetrag.</div>
+    <div class="stage" style="margin-top:14px"><div><div class="lbl">Desktop</div><div class="screen">${compareDesktop()}</div></div>
+    <div><div class="lbl">Handy <span class="mini-sw"><button aria-pressed="${S.phone === "A"}" data-phone="A">A · Spalten</button><button aria-pressed="${S.phone === "B"}" data-phone="B">B · Kapitel</button></span></div><div class="phone">${S.phone === "A" ? comparePhoneA() : comparePhoneB()}</div></div></div>`;
+  if (S.tab === "vote") el.innerHTML = `<div class="q"><b>Offen:</b> Eine Stimme, mehrere Stimmen oder Reihenfolge? Frist ja oder nein? Mein Vorschlag: eine Stimme, Frist freiwillig.</div>
+    <div class="stage" style="margin-top:14px"><div><div class="lbl">Planerin bzw. Planer (Desktop)</div><div class="screen">${votePanel()}</div></div>
+    <div><div class="lbl">Mitreisende (Handy, z. B. Monika)</div><div class="phone">${voterPhone()}</div></div></div>`;
+  if (S.tab === "trip") el.innerHTML = `<div class="q"><b>Hinweis in der Reise:</b> „Variante 2 von 3“ mit Wechsel per Flagge und „Vergleichen“ zurück zur Ansicht 2.</div>
+    <div class="stage" style="margin-top:14px"><div><div class="lbl">Desktop</div><div class="screen">${inTrip(tripView, false)}</div></div>
+    <div><div class="lbl">Handy</div><div class="phone">${inTrip(tripView, true)}</div></div></div>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.classList.contains("tab")) { S.tab = b.id.slice(2); return render(); }
+  const d = b.dataset;
+  if (d.go) S.tab = d.go;
+  else if (d.open) { tripView = d.open; S.tab = "trip"; }
+  else if (d.trip) tripView = d.trip;
+  else if (d.choose) S.chosen = d.choose;
+  else if (d.state) S.chosen = d.state === "done" ? (S.chosen || "fr") : null;
+  else if (d.phone) S.phone = d.phone;
+  else if (d.vote || d.mvote) {
+    const who = d.vote ? "Dani" : "Monika", id = d.vote || d.mvote;
+    const had = votesOf(id).includes(who);
+    for (const k in S.votes) S.votes[k] = S.votes[k].filter(n => n !== who);
+    if (!had) S.votes[id].push(who);
+  } else return;
+  render();
+  if (d.go || d.open) window.scrollTo({ top: 0 });
+});
+render();
+</script>
+</html>
