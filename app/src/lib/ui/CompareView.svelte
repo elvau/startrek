@@ -5,7 +5,7 @@
    * „Bearbeiten“ (öffnet die Planung), umbenennen, aus dem Vergleich nehmen, Variante hinzufügen.
    */
   import { i18n, t, tn, type Key } from "../i18n/index.svelte";
-  import { addVariant, allTrips, app, editTrip, goHome, openTrip, switchTrip, tripFor } from "../store.svelte";
+  import { addVariant, allTrips, app, editTrip, goHome, openTrip, splitCompare, switchTrip, tripFor } from "../store.svelte";
   import { eur } from "../calc";
   import { flagOf, range } from "../format";
   import { ccOf, loadGeo } from "../geo/places";
@@ -80,6 +80,10 @@
     addVariant();
   }
   let menu = $state<string | null>(null);
+  // Vergleich trennen: alle wieder eigene Reisen, danach zurück zur Startseite (Effekt oben)
+  async function split() {
+    if (confirm(t("cmpv.splitQ", { title, n: all.length }))) await splitCompare(id);
+  }
 </script>
 
 <TopNav home />
@@ -88,7 +92,8 @@
     <button class="linkbtn cv-back" onclick={goHome}>← {t("cmpv.back")}</button>
     <h1 class="home-title cv-title">{first?.cloud ? "☁ " : ""}{title}</h1>
     <p class="cv-meta">{[sameDates && first?.tr.from ? range(first.tr.from, first.tr.to) : "", first ? tn("n.persons", first.col.people) : "", first?.members.length ? t("home.with", { names: first.members.join(", ") }) : ""].filter(Boolean).join(" · ")}
-      {#if first?.edit}· <button class="linkbtn cv-add" onclick={add}>+ {t("cmpv.add")}</button>{/if}</p>
+      {#if first?.edit}· <button class="linkbtn cv-add" onclick={add}>+ {t("cmpv.add")}</button>{/if}
+      {#if all.some(v => v.edit)}· <button class="linkbtn cv-split" onclick={split}>✂ {t("cmpv.split")}</button>{/if}</p>
 
     <div class="chips cv-mode" role="group" aria-label={t("cmpv.rows")}>
       <button class="chip sm" class:on={!diffMode} aria-pressed={!diffMode} onclick={() => (onlyDiff = false)}>{t("cmpv.all")}</button>

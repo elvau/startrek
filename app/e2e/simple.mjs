@@ -699,6 +699,8 @@ try {
   await tile.waitFor();
   if (!(await tile.innerText()).includes("3 Varianten") || (await tile.locator(".hc-var").count()) !== 3) fail("Kachel: " + await tile.innerText());
   if (!(await tile.locator(".hc-var", { hasText: "Ardennen Frankreich" }).innerText()).includes("günstigste")) fail("günstigste nicht markiert");
+  // Reisen bleiben zusätzlich einzeln sichtbar, mit Hinweis auf den Vergleich
+  if ((await cp.locator(".home-trip:not(.home-cmp) .ht-incmp", { hasText: "Chalet-Wochenende" }).count()) !== 3) fail("Varianten nicht als eigene Kacheln");
   await tile.locator(".hc-cmp-go").click();
   const cv = cp.locator(".cmpv");
   await cv.locator(".cv-table").waitFor();
@@ -736,8 +738,30 @@ try {
   await cp.setViewportSize({ width: 390, height: 844 });
   await cv.locator(".cv-mob .cv-ch[data-row=stay]").waitFor();
   if ((await cv.locator(".cv-mob .cv-ch[data-row=stay] .cv-bar").count()) !== 1) fail("Handy: eingeklappt sollte eine Variante zeigen");
+  // herausgenommene Reise wieder auf die Kachel ziehen, danach per ⇆ und Antippen
+  await cp.setViewportSize({ width: 1280, height: 900 });
+  await cv.locator(".cv-back").click();
+  await tile.waitFor();
+  await cp.locator(".home-trip:not(.home-cmp)", { hasText: "Monschau" }).dragTo(tile.locator(".hc-open"));
+  await cv.locator(".cv-table").waitFor();
+  await cv.locator(".cv-others").click();
+  await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 3, "Reise auf den Vergleich gezogen");
+  await cv.locator(".cv-var[data-var=v3] .cv-menu").click();
+  await cv.locator(".cv-var[data-var=v3] .cv-remove").click();
+  await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 2, "wieder herausgenommen");
+  await cv.locator(".cv-back").click();
+  await cp.locator(".ht-wrap", { hasText: "Monschau" }).locator(".ht-cmp").click();
+  await cp.locator(".home-pick").waitFor();
+  if (await cp.locator(".ht-wrap", { hasText: "Monschau" }).locator(".ht-pick").count()) fail("Reise selbst als Ziel angeboten");
+  await cp.locator(".home-cmp-wrap .ht-pick").click();
+  await cv.locator(".cv-table").waitFor();
+  await cv.locator(".cv-others").click();
+  await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 3, "Reise per Antippen zum Vergleich");
+  // Vergleich trennen: alle wieder eigene Reisen
+  await cv.locator(".cv-split").click();
+  await until(async () => !(await cp.locator(".home-cmp").count()) && (await cp.locator(".home-trip:not(.home-cmp)").count()) === 3, "Vergleich getrennt");
   await vctx.close();
-  log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Diese nehmen (andere eingeklappt), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln");
+  log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Diese nehmen (andere eingeklappt), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln, Reise auf den Vergleich ziehen bzw. per ⇆ antippen, Vergleich trennen");
   }
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
