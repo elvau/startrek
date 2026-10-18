@@ -68,10 +68,10 @@ export const FERRIES: Ferry[] = [
   { id: "piraeus-paros", a: P("Piräus", "GR", 37.94, 23.63), b: P("Paros", "GR", 37.09, 25.15), hours: 4, night: false, car: 130, person: 40, currency: "EUR", ops: ["Blue Star", "SeaJets"], source: FH },
   { id: "piraeus-naxos", a: P("Piräus", "GR", 37.94, 23.63), b: P("Naxos", "GR", 37.11, 25.37), hours: 5, night: false, car: 83, person: 42, currency: "EUR", ops: ["Blue Star", "SeaJets"], source: FH },
   // Kroatische Inseln
-  { id: "split-stari-grad", a: P("Split", "HR", 43.50, 16.44), b: P("Stari Grad (Hvar)", "HR", 43.18, 16.60), hours: 2, night: false, car: 47.6, person: 8.5, currency: "EUR", ops: ["Jadrolinija"], source: "Jadrolinija" },
-  { id: "split-supetar", a: P("Split", "HR", 43.50, 16.44), b: P("Supetar (Brač)", "HR", 43.38, 16.55), hours: 0.83, night: false, car: 32, person: 5.2, currency: "EUR", ops: ["Jadrolinija"], source: "Jadrolinija" },
+  { id: "split-stari-grad", a: P("Split", "HR", 43.50, 16.44), b: P("Stari Grad (Hvar)", "HR", 43.18, 16.60), hours: 2, night: false, car: 47.6, person: 8.4, currency: "EUR", ops: ["Jadrolinija"], source: "Jadrolinija" },
+  { id: "split-supetar", a: P("Split", "HR", 43.50, 16.44), b: P("Supetar (Brač)", "HR", 43.38, 16.55), hours: 0.83, night: false, car: 26.1, person: 6.5, currency: "EUR", ops: ["Jadrolinija"], source: "Jadrolinija" },
   { id: "split-vela-luka", a: P("Split", "HR", 43.50, 16.44), b: P("Vela Luka (Korčula)", "HR", 42.96, 16.72), hours: 3, night: false, car: 73.7, person: 10.8, currency: "EUR", ops: ["Jadrolinija"], source: "Jadrolinija" },
-  { id: "valbiska-merag", a: P("Valbiska (Krk)", "HR", 45.02, 14.49), b: P("Merag (Cres)", "HR", 44.96, 14.45), hours: 0.42, night: false, car: 19.89, camper: 30.53, person: 4.25, currency: "EUR", ops: ["Jadrolinija"], source: "Jadrolinija" },
+  { id: "valbiska-merag", a: P("Valbiska (Krk)", "HR", 45.02, 14.49), b: P("Merag (Cres)", "HR", 44.96, 14.45), hours: 0.42, night: false, car: 20.7, camper: 31.8, person: 4.4, currency: "EUR", ops: ["Jadrolinija"], source: "Jadrolinija" },
   // Elba
   { id: "piombino-portoferraio", a: P("Piombino", "IT", 42.93, 10.55), b: P("Portoferraio", "IT", 42.81, 10.33), hours: 1, night: false, car: 85, person: 18, currency: "EUR", ops: ["Moby", "Toremar", "Blu Navy"], source: FH },
   // Großbritannien, Irland
