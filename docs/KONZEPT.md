@@ -88,6 +88,8 @@ die erste Version, **P2** bald danach, **P3** später.
   Dazu (#441): Entfernung zum Meer aus der Küstenlinie von Natural Earth (`public/coast/`, erzeugt mit
   `scripts/coast.mjs`, Genauigkeit etwa 1 km), eigene Bezugspunkte je Reise (Ort, Koordinaten oder Google-Maps-Link),
   bei weit auseinander liegenden Angeboten der Ortskern je Angebot, „kostenlos stornierbar“, wo die Suche es weiß.
+  Flüge (#441): Buchstaben, Hin- und Rückflug, Umstiege, Gepäck, ganze Reise pro Person; Erlebnisse und andere
+  Posten mit mehreren Angeboten: Vergleich in der Karte mit Entfernung zur Unterkunft (`OptionCompare.svelte`).
 - **C3 [neu, P1]** Die Übersicht trennt **fest** (gebucht und bezahlt) von **offen** (noch in
   Planung). Ich sehe sofort, wie viel schon sicher ist und wie viel sich noch ändern kann.
 - **C4 [neu, P2]** Bei *Gebucht* halte ich Buchungsnummer, Anbieter, Link und Stornobedingungen fest.

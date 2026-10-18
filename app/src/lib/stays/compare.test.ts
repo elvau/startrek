@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import world from "../../../../public/world.json";
 import packs from "../../../../public/packs.json";
 import places from "../../../../public/places/pa.json";
-import { distances, effectOf, letter, nearestTo, parseSpot, refPoints, spreadKm, townsOf, NEAR_KM } from "./compare";
+import { distances, effectOf, flightFacts, letter, nearestTo, parseSpot, refPoints, spreadKm, townsOf, NEAR_KM } from "./compare";
 import { findCity, type GeoData } from "../geo/places";
 import type { Item, Option, Trip } from "../model";
 
@@ -94,5 +94,20 @@ describe("Angebote vergleichen (#438)", () => {
     expect(b.total - a.total).toBeCloseTo(b.food - a.food, 5);
     expect(a.perPerson).toBeCloseTo(a.total / 2, 5);
     expect(JSON.stringify(t)).toBe(before);
+  });
+});
+
+describe("Flüge und Erlebnisse vergleichen (#441)", () => {
+  const leg = (dir: "out" | "back", dep: string, arr: string, stops = 0, minutes = 150) => ({ dir, from: "DUS", to: "PMI", dep, arr, stops, minutes });
+  it("Flug: Hin und Rück, meiste Umstiege, Flugzeit, Gepäck", () => {
+    const o: Option = { id: "f", label: "EW", price: { mode: "unit", currency: "EUR", unit: 400 }, legs: [leg("out", "2027-06-10T06:00", "2027-06-10T08:30"), leg("back", "2027-06-14T20:00", "2027-06-14T23:40", 1, 220)], baggage: { personal: 2, cabin: 2, checked: 0 } };
+    expect(flightFacts(o)).toMatchObject({ out: { dep: "2027-06-10T06:00" }, back: { stops: 1 }, stops: 1, minutes: 370, bag: "cabin" });
+    expect(flightFacts({ ...o, baggage: undefined }).bag).toBeUndefined();
+  });
+  it("Erlebnisse: Unterkünfte als Bezug (wie weit vom Hotel)", () => {
+    const s = stay([opt("a", 800, split.lat, split.lon)]);
+    const ev: Item = { id: "e", cat: "attractions", name: "Bootstour", status: "idea", options: [{ id: "eo", label: "Boot", price: { mode: "person", currency: "EUR" }, loc: { lat: 43.52, lon: 16.47 } }] };
+    expect(refPoints(trip([s, ev]), g, ev, true).map(r => r.kind)).toEqual(["center", "stay"]);
+    expect(refPoints(trip([s, ev]), g, ev).map(r => r.kind)).toEqual(["center"]);
   });
 });
