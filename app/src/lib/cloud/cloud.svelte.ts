@@ -46,6 +46,17 @@ let wanted = "", retries = 0;
 const creating = new Set<string>();
 /** zuletzt gespeicherter oder empfangener Stand je Reise, um Echos zu erkennen */
 const synced = new Map<string, string>();
+/**
+ * frühere eigene Stände je Reise (angelegt bzw. gespeichert): Der Server kann direkt nach dem Anlegen noch den ersten
+ * Stand melden, wenn auf dem Gerät schon weiter geändert und gespeichert wurde. Das ist kein fremder Stand (#416).
+ */
+const older = new Map<string, string[]>();
+/** neuen eigenen Stand merken; der bisherige zählt ab jetzt als älterer eigener */
+function sent(id: string, json: string) {
+  const prev = synced.get(id);
+  if (prev && prev !== json) older.set(id, [...(older.get(id) || []), prev].slice(-5));
+  synced.set(id, json);
+}
 let onRemote: (id: string, trip: Trip) => void = () => {};
 let onGone: (id: string) => void = () => {};
 
@@ -98,7 +109,7 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
   f.onUser(u => {
     fbUser = u;
     unTrips?.(); unTrips = null;
-    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
+    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); older.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
     cloud.user = { uid: u.uid, name: f.displayName(u), email: u.email || "" };
     cloud.showLogin = false;
     // Meldung eines abgebrochenen Versuchs soll nach erfolgreicher Anmeldung nicht stehen bleiben
@@ -161,7 +172,10 @@ export async function watch(id: string) {
     if (pending) return;
     cloud.loaded[id] = true;
     if (synced.get(id) === d.data) { cloud.status = navigator.onLine ? "saved" : "offline"; return; }
+    // eigener älterer Stand (z. B. vom Anlegen), der neuere ist schon unterwegs: nicht übernehmen
+    if (older.get(id)?.includes(d.data)) { dbg("älterer eigener Stand", id); return; }
     synced.set(id, d.data);
+    older.delete(id);
     try { onRemote(id, JSON.parse(d.data) as Trip); } catch (e) { cloud.error = message(e); }
     retries = 0;
   }, e => {
@@ -194,7 +208,7 @@ export async function push(trip: Trip, json: string) {
   // erst senden, wenn der aktuelle Stand empfangen wurde, sonst würde ein alter Stand ihn überschreiben
   if (!cloud.loaded[trip.id]) return;
   if (synced.get(trip.id) === json) return;
-  synced.set(trip.id, json);
+  sent(trip.id, json);
   cloud.status = navigator.onLine ? "saving" : "offline";
   const f = await load();
   try { await f.saveTrip(trip.id, trip.name || t("trip"), json, fbUser.uid); cloud.status = "saved"; }
@@ -206,7 +220,7 @@ export async function upload(trip: Trip) {
   if (!fbUser) return;
   const f = await load();
   const json = JSON.stringify(trip);
-  synced.set(trip.id, json);
+  sent(trip.id, json);
   cloud.loaded[trip.id] = true;
   creating.add(trip.id);
   try { await f.createTrip(trip.id, trip.name || t("trip"), json, fbUser); }
