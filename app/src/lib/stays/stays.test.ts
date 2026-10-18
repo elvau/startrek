@@ -92,6 +92,14 @@ describe("Unterkunftssuche: zusammenführen", () => {
     const only = await searchStays({ ...q, sources: ["trivago"] }, { BOOKING_MCP_URL: "https://b.test/mcp" }, fakeMcp({ structuredContent: trivago }));
     expect(only.sources.map(s => s.id)).toEqual(["trivago"]);
   });
+  it("mit Filter „kostenlos stornierbar“ gesucht: alle Treffer so gekennzeichnet, im Angebot gemerkt (#441)", async () => {
+    const r = await searchStays({ ...q, must: ["freeCancel"] }, {}, fakeMcp({ structuredContent: trivago }));
+    expect(r.offers.length).toBeGreaterThan(0);
+    expect(r.offers.every(o => o.freeCancel)).toBe(true);
+    expect(stayToOption(r.offers[0], 3).stay?.freeCancel).toBe(true);
+    const plain = await searchStays(q, {}, fakeMcp({ structuredContent: trivago }));
+    expect(plain.offers.some(o => o.freeCancel)).toBe(false);
+  });
   it("Quelle nicht erreichbar: Fehler je Quelle, keine Ausnahme", async () => {
     const r = await searchStays(q, {}, (async () => new Response("", { status: 503 })) as typeof fetch);
     expect(r.offers).toEqual([]);

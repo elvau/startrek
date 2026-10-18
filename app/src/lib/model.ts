@@ -209,7 +209,7 @@ export interface Option {
   /** test: aus einem Testzugang übernommen, Preis nicht echt */
   source?: { name: string; at?: string; url?: string; sponsored?: boolean; test?: boolean };
   legs?: FlightLeg[];
-  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string };
+  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string; freeCancel?: boolean };
   /** Foto vom Anbieter (nur https), z. B. einer Tour */
   image?: string;
   /** Lage (Unterkunft, Veranstaltungsort): Koordinaten vom Anbieter und Suchtext für Google Maps */
@@ -511,6 +511,8 @@ export interface Trip {
   /** „Zuhause während der Reise“ (#323) für diese Reise ein- bzw. ausgeschaltet; fehlt: aus den Vorlieben */
   homeCare?: boolean;
   event?: TripEvent;
+  /** eigene Bezugspunkte für Entfernungen (z. B. Partylocation, Stadion), #441 */
+  refs?: { id: string; name: string; lat: number; lon: number }[];
   travelers: Traveler[];
   households?: Record<string, Household>;
   /** Gruppenbus zum Flughafen für alle Familien mit Anreise „Gruppenbus“: Abfahrt beim Wohnort dieser Familie, Preis gesamt (leer = Richtwert) */
