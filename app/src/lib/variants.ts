@@ -23,6 +23,17 @@ export function asVariant(orig: Trip, copy: Trip) {
 /** aus dem Vergleich nehmen: wieder eine normale Reise */
 export function leaveCompare(t: Trip) { delete t.cmp; }
 
+/**
+ * Reise auf eine andere gezogen: Vergleich des Ziels, sonst ein neuer (Titel aus dem gemeinsamen Namensanfang, sonst
+ * beide Namen); null, wenn die Reise schon in diesem Vergleich ist
+ */
+export function joinTarget(dst: Pick<Trip, "cmp" | "name">, src: Pick<Trip, "cmp" | "name">, id = uid()): { id: string; title: string } | null {
+  if (dst.cmp && src.cmp?.id === dst.cmp.id) return null;
+  if (dst.cmp) return { id: dst.cmp.id, title: dst.cmp.title };
+  const a = dst.name.trim(), b = src.name.trim();
+  return { id, title: (commonTitle([a, b]) || (a === b ? a : `${a} · ${b}`)).slice(0, 120) };
+}
+
 /** gemeinsamer Anfang der Namen als Titel („JGA Malle“, „JGA Hamburg“ → „JGA“); sonst leer */
 export function commonTitle(names: string[]): string {
   const ws = names.map(n => n.trim().split(/\s+/));
