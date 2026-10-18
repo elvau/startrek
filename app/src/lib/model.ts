@@ -22,6 +22,8 @@ export interface Traveler {
   active?: boolean;
   /** gespeicherte Person, aus der dieser Reisende stammt */
   personId?: string;
+  /** Konto (auch Gast), das diese Person in einer geteilten Reise ist (#435, über „Wer bist du?“) */
+  member?: string;
   /** Altersklasse, wenn kein Alter bekannt ist (z. B. bei Platzhaltern) */
   kind?: "adult" | "child" | "infant";
   /** Platzhalter mit Tiernamen („Reh Kind 1“), nur in dieser Reise, nicht in Gruppen gespeichert */

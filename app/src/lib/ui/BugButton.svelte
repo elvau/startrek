@@ -2,7 +2,7 @@
   /* Beta: Fehler melden (🐞 unten links). Beschreibung, optional ein Bild; Umgebung und letzte Fehler gehen automatisch mit. */
   import { netMessage } from "../neterror";
   import { t } from "../i18n/index.svelte";
-  import { cloud } from "../cloud/cloud.svelte";
+  import { cloud, hasAccount } from "../cloud/cloud.svelte";
   import { BUG_IMAGE_TYPES } from "../bugs/types";
   import { bugDialog, sendBug, shrink } from "../bugs/app.svelte";
   import Modal from "./Modal.svelte";
@@ -45,7 +45,7 @@
       {#if done != null}
         <p class="bug-done">✓ {t("bug.thanks")}{done ? ` (#${done})` : ""}</p>
         <button class="btn primary" onclick={close}>{t("close")}</button>
-      {:else if !cloud.user}
+      {:else if !hasAccount()}
         <p class="muted">{t("bug.needLogin")}</p>
         <button class="btn primary" onclick={() => { bugDialog.open = false; cloud.showLogin = true; }}>{t("ai.login")}</button>
       {:else}

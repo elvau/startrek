@@ -4,9 +4,9 @@
  */
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import {
-  GoogleAuthProvider, connectAuthEmulator, getAuth, isSignInWithEmailLink, onAuthStateChanged, sendSignInLinkToEmail,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithEmailLink, signInWithPopup, signInWithRedirect, signOut,
-  updateProfile, type Auth, type User
+  EmailAuthProvider, GoogleAuthProvider, connectAuthEmulator, getAuth, isSignInWithEmailLink, onAuthStateChanged, sendSignInLinkToEmail,
+  signInAnonymously, signInWithCredential, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithEmailLink, signInWithPopup,
+  signInWithRedirect, signOut, linkWithCredential, linkWithPopup, linkWithRedirect, updateProfile, type Auth, type User
 } from "firebase/auth";
 import {
   arrayRemove, arrayUnion, clearIndexedDbPersistence, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDocFromServer, getDocsFromServer,
@@ -25,6 +25,8 @@ export interface TripDoc {
   members: Record<string, Role>;
   memberNames?: Record<string, string>;
   invite?: { key: string; role: "editor" | "viewer" } | null;
+  /** „Wer bist du?“ (#435): Konto → Reisende-Kennung und Vorname */
+  claims?: Record<string, { t: string; n: string }>;
   updatedAt?: unknown;
   updatedBy?: string;
 }
@@ -60,14 +62,29 @@ export function start(): { auth: Auth; db: Firestore } {
 
 export const onUser = (fn: (u: User | null) => void) => onAuthStateChanged(start().auth, fn);
 
+/** Gast (#435): mitplanen ohne Konto, als anonyme Anmeldung mit Vornamen; später zu einem Konto verknüpfbar */
+// Firebase meldet den Gast an, bevor der Name gesetzt ist: bis dahin gilt dieser (für Mitglieder und „Wer bist du?“)
+let guestName = "";
+export async function loginGuest(name: string) {
+  const { auth } = start();
+  guestName = name;
+  const c = await signInAnonymously(auth);
+  await updateProfile(c.user, { displayName: name });
+}
+
+const codeOf = (e: unknown) => (e as { code?: string }).code || "";
+
 export async function loginGoogle() {
   const { auth } = start();
   const p = new GoogleAuthProvider();
-  try { await signInWithPopup(auth, p); }
+  const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
+  try { await (guest ? linkWithPopup(guest, p) : signInWithPopup(auth, p)); }
   catch (e) {
-    const code = (e as { code?: string }).code || "";
+    const code = codeOf(e);
     // Popups sind in installierten Apps und manchen Handy-Browsern blockiert
-    if (code.includes("popup-blocked") || code.includes("operation-not-supported")) await signInWithRedirect(auth, p);
+    if (code.includes("popup-blocked") || code.includes("operation-not-supported")) await (guest ? linkWithRedirect(guest, p) : signInWithRedirect(auth, p));
+    // Gast, aber das Google-Konto gibt es schon: dort anmelden (die Gast-Teilnahme bleibt beim Gast)
+    else if (guest && code.includes("credential-already-in-use")) { const cr = GoogleAuthProvider.credentialFromError(e as never); if (cr) await signInWithCredential(auth, cr); else throw e; }
     else throw e;
   }
 }
@@ -88,7 +105,12 @@ export async function finishLoginLink(ask: () => string | null): Promise<boolean
   try { email = localStorage.getItem(EMAIL_KEY); } catch {}
   email ||= ask();
   if (!email) return false;
-  await signInWithEmailLink(auth, email, location.href);
+  // Gast: das Konto übernimmt die Gast-Kennung (Reisen, Zuordnung und Stimmen bleiben)
+  const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
+  if (guest) {
+    try { await linkWithCredential(guest, EmailAuthProvider.credentialWithLink(email, location.href)); }
+    catch (e) { if (codeOf(e).includes("already-in-use")) await signInWithEmailLink(auth, email, location.href); else throw e; }
+  } else await signInWithEmailLink(auth, email, location.href);
   try { localStorage.removeItem(EMAIL_KEY); } catch {}
   const u = new URL(location.href);
   ["apiKey", "oobCode", "mode", "lang", "continueUrl"].forEach(k => u.searchParams.delete(k));
@@ -99,6 +121,12 @@ export async function finishLoginLink(ask: () => string | null): Promise<boolean
 /** Nur im Emulator: Anmelden ohne Google, für Tests */
 export async function loginTest(email: string, name: string) {
   const { auth } = start();
+  // Gast: wie beim echten Konto die Gast-Kennung verknüpfen
+  const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
+  if (guest) {
+    try { await linkWithCredential(guest, EmailAuthProvider.credential(email, "test-passwort")); await updateProfile(guest, { displayName: name }); return; }
+    catch (e) { if (!codeOf(e).includes("already-in-use")) throw e; }
+  }
   try { await signInWithEmailAndPassword(auth, email, "test-passwort"); }
   catch { const c = await createUserWithEmailAndPassword(auth, email, "test-passwort"); await updateProfile(c.user, { displayName: name }); }
 }
@@ -150,12 +178,16 @@ export const setInvite = (id: string, invite: TripDoc["invite"]) => updateDoc(tr
 export const setRole = (id: string, uid: string, role: Role) => updateDoc(tripRef(id), { [`members.${uid}`]: role });
 
 export const removeMember = (id: string, uid: string) =>
-  updateDoc(tripRef(id), { memberIds: arrayRemove(uid), [`members.${uid}`]: deleteField(), [`memberNames.${uid}`]: deleteField() });
+  updateDoc(tripRef(id), { memberIds: arrayRemove(uid), [`members.${uid}`]: deleteField(), [`memberNames.${uid}`]: deleteField(), [`claims.${uid}`]: deleteField() });
+
+/** „Wer bist du?“: eigene Zuordnung setzen (t = Reisende-Kennung) oder lösen (null); Besitzer darf jede lösen */
+export const setClaim = (id: string, uid: string, c: { t: string; n: string } | null) =>
+  updateDoc(tripRef(id), { [`claims.${uid}`]: c ?? deleteField() });
 
 export const joinTrip = (id: string, key: string, role: Role, u: User) =>
   updateDoc(tripRef(id), { memberIds: arrayUnion(u.uid), [`members.${u.uid}`]: role, [`memberNames.${u.uid}`]: displayName(u), joinKey: key });
 
-export const displayName = (u: User) => u.displayName || (u.email ? u.email.split("@")[0] : "Mitreisende");
+export const displayName = (u: User) => u.displayName || (u.isAnonymous && guestName) || (u.email ? u.email.split("@")[0] : "Mitreisende");
 
 export function newKey(): string {
   const a = new Uint8Array(18);

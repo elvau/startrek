@@ -10,7 +10,7 @@ const fail = m => { throw new Error(m); };
 // unsignierte Anmelde-Tokens nimmt nur der Emulator an
 const b64 = o => Buffer.from(JSON.stringify(o)).toString("base64url");
 const now = Math.floor(Date.now() / 1000);
-const token = uid => `${b64({ alg: "none", typ: "JWT" })}.${b64({ iss: `https://securetoken.google.com/${P}`, aud: P, sub: uid, user_id: uid, auth_time: now, iat: now, exp: now + 3600, firebase: { sign_in_provider: "password" } })}.`;
+const token = uid => `${b64({ alg: "none", typ: "JWT" })}.${b64({ iss: `https://securetoken.google.com/${P}`, aud: P, sub: uid, user_id: uid, auth_time: now, iat: now, exp: now + 3600, firebase: { sign_in_provider: uid.startsWith("gast") ? "anonymous" : "password" } })}.`;
 const H = uid => ({ "content-type": "application/json", ...(uid === "admin" ? { Authorization: "Bearer owner" } : uid ? { Authorization: `Bearer ${token(uid)}` } : {}) });
 
 const sv = v => Array.isArray(v) ? { arrayValue: { values: v.map(sv) } } : typeof v === "string" ? { stringValue: v } : typeof v === "number" ? { integerValue: String(v) }
@@ -75,8 +75,32 @@ await expect("Mallory tritt mit Schlüssel als Zuschauer bei", join("mallory", K
 await expect("Mallory (Zuschauer) ändert den Inhalt", patch("mallory", "/trips/regeltest", { data: "{\"m\":1}" }, ["data"]), 403);
 log("Beitreten nur mit Schlüssel und der Rolle der Einladung; Zuschauer ändern nichts");
 
+// „Wer bist du?“ (#435): jede Rolle setzt nur die eigene Zuordnung { t, n }
+const claim = (uid, who, c) => patch(uid, "/trips/regeltest", { claims: { [who]: c } }, [`claims.${who}`]);
+await expect("Mallory (Zuschauer) wählt sich", claim("mallory", "mallory", { t: "p2", n: "Mal" }), 200);
+await expect("Mallory wählt für Ben", claim("mallory", "ben", { t: "p1", n: "Ben" }), 403);
+await expect("Mallory wählt sich mit Zusatzfeld", claim("mallory", "mallory", { t: "p2", n: "Mal", rolle: "owner" }), 403);
+await expect("Mallory wählt sich mit zu langem Namen", claim("mallory", "mallory", { t: "p2", n: "x".repeat(41) }), 403);
+await expect("Ben (Mitbearbeiter) ändert Inhalt und Mallorys Zuordnung", patch("ben", "/trips/regeltest", { data: "{\"b\":2}", claims: { mallory: { t: "p9", n: "X" } } }, ["data", "claims.mallory"]), 403);
+await expect("Ben wählt sich", claim("ben", "ben", { t: "p1", n: "Ben" }), 200);
+await expect("Anna (Besitzerin) löst Mallorys Zuordnung", patch("anna", "/trips/regeltest", {}, ["claims.mallory"]), 200);
+await expect("Mallory wählt sich wieder", claim("mallory", "mallory", { t: "p2", n: "Mal" }), 200);
+log("Wer bist du: jede Rolle nur die eigene Zuordnung, nur Kennung und Vorname; Besitzerin kann lösen");
+
+// Gast ohne Konto (anonyme Anmeldung): beitreten und sich wählen ja, eigene Reisen und Aktionsseiten nein
+await expect("Gast legt eine Reise an", patch("gast1", "/trips/gastreise", { name: "G", data: "{}", owner: "gast1", memberIds: ["gast1"], members: { gast1: "owner" }, invite: null }), 403);
+await expect("Gast tritt mit Schlüssel bei", patch("gast1", "/trips/regeltest",
+  { memberIds: ["anna", "ben", "mallory", "gast1"], members: { anna: "owner", ben: "editor", mallory: "viewer", gast1: "viewer" }, memberNames: { anna: "Anna", ben: "Ben", mallory: "mallory", gast1: "Jonas" }, joinKey: KEY },
+  ["memberIds", "members", "memberNames", "joinKey"]), 200);
+await expect("Gast wählt sich", claim("gast1", "gast1", { t: "p3", n: "Jonas" }), 200);
+await expect("Gast legt Aktionsseite an", patch("gast1", "/campaigns/gastcamp1", { owner: "gast1", trip: "regeltest", title: "T", text: "", place: "", from: "", to: "", goal: 0, raised: 0, pledged: 0, paypal: "", link: "" }), 403);
+await expect("Gast verlässt die Reise samt Zuordnung", patch("gast1", "/trips/regeltest",
+  { memberIds: ["anna", "ben", "mallory"], members: { anna: "owner", ben: "editor", mallory: "viewer" }, memberNames: { anna: "Anna", ben: "Ben", mallory: "mallory" } },
+  ["memberIds", "members", "memberNames", "claims.gast1"]), 200);
+log("Gäste: beitreten und sich wählen ja; keine eigenen Reisen oder Aktionsseiten; verlassen samt Zuordnung");
+
 // Verlassen: nur sich selbst entfernen, Namen der anderen bleiben
-const leave = names => patch("mallory", "/trips/regeltest", { memberIds: ["anna", "ben"], members: { anna: "owner", ben: "editor" }, memberNames: names }, ["memberIds", "members", "memberNames"]);
+const leave = names => patch("mallory", "/trips/regeltest", { memberIds: ["anna", "ben"], members: { anna: "owner", ben: "editor" }, memberNames: names }, ["memberIds", "members", "memberNames", "claims.mallory"]);
 await expect("Mallory verlässt die Reise und benennt Anna um", leave({ anna: "Hacker", ben: "Ben" }), 403);
 await expect("Mallory verlässt die Reise", leave({ anna: "Anna", ben: "Ben" }), 200);
 await expect("Mallory liest nach dem Verlassen", req("mallory", "/trips/regeltest"), 403);

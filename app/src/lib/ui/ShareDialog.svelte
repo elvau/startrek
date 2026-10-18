@@ -1,7 +1,8 @@
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
   import Help from "./Help.svelte";
-  import { changeRole, cloud, cloudTrip, inviteLink, kick, makeInvite, revokeInvite, type Role } from "../cloud/cloud.svelte";
+  import { changeRole, cloud, cloudTrip, dropClaim, inviteLink, kick, makeInvite, revokeInvite, type Role } from "../cloud/cloud.svelte";
+  import { app } from "../store.svelte";
   import Modal from "./Modal.svelte";
   import type { Key } from "../i18n/index.svelte";
 
@@ -15,6 +16,8 @@
   let err = $state("");
   const link = $derived(ct?.invite ? inviteLink(id, ct.invite.key, ct.invite.role) : "");
   const L = (r: Role) => t(`share.role.${r}` as Key);
+  // „Wer bist du?“ (#435): welche Person der Reise ein Mitglied ist (Name aus der Reise, sonst wie gewählt)
+  const isWho = (uid: string) => { const c = ct?.claims[uid]; if (!c) return ""; return (id === app.trip.id ? app.trip.travelers.find(x => x.id === c.t)?.name : "") || c.n; };
 
   async function run(fn: () => Promise<unknown>) {
     busy = true; err = "";
@@ -61,7 +64,9 @@
         {#each Object.entries(ct?.members || {}) as [uid, r] (uid)}
           <li>
             <span class="av sm">{(ct?.memberNames[uid] || "?")[0].toUpperCase()}</span>
-            <span class="mn">{ct?.memberNames[uid] || t("share.unknown")}{uid === me ? ` (${t("share.you")})` : ""}</span>
+            <span class="mn">{ct?.memberNames[uid] || t("share.unknown")}{uid === me ? ` (${t("share.you")})` : ""}
+              {#if isWho(uid)}<small class="muted share-who">= {isWho(uid)}{#if owner && uid !== me} <button class="linkbtn small share-unlink" disabled={busy} onclick={() => run(() => dropClaim(id, uid))}>{t("share.unlink")}</button>{/if}</small>
+              {:else if r !== "owner"}<small class="muted share-who">{t("share.noWho")}</small>{/if}</span>
             {#if owner && r !== "owner"}
               <select value={r} aria-label={t("share.roleLabel")} onchange={e => run(() => changeRole(id, uid, e.currentTarget.value as Role))}>
                 <option value="editor">{L("editor")}</option><option value="viewer">{L("viewer")}</option>
@@ -77,3 +82,7 @@
     {#if err}<p class="err">{err}</p>{/if}
   </div>
 </Modal>
+
+<style>
+  .share-who { display: block; }
+</style>

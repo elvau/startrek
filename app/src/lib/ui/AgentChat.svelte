@@ -13,7 +13,7 @@
    */
   import { tick } from "svelte";
   import { app, duplicateTrip, goHome, openTrip, startTrip } from "../store.svelte";
-  import { cloud } from "../cloud/cloud.svelte";
+  import { cloud, hasAccount } from "../cloud/cloud.svelte";
   import { eur } from "../calc";
   import { dayShort, nights, range, time, dateDE } from "../format";
   import { flyers } from "../flights/app";
@@ -260,7 +260,7 @@
     </header>
 
     {#if onTrip}<p class="ai-trip muted" title={app.trip.name}>🧳 {t("ai.onTrip", { n: app.trip.name })}</p>{/if}
-    {#if cloud.user}
+    {#if hasAccount()}
       <div class="ai-ctx">
         <label class="ai-ctx-chip" class:fixed={!!focus}>
           <span aria-hidden="true">{CTX_ICON[ctx]}</span>
@@ -273,7 +273,7 @@
     {/if}
     <div class="ai-msgs" bind:this={list}>
       <p class="ai-msg">{onTrip ? t("ai.helloTrip") : t("ai.hello")}</p>
-      {#if !cloud.user}
+      {#if !hasAccount()}
         <p class="ai-msg ai-login">{t("ai.needLogin")} <button class="btn sm primary" onclick={() => (cloud.showLogin = true)}>{t("ai.login")}</button></p>
       {:else if !msgs.length}
         <div class="chips ai-ex">
@@ -369,7 +369,7 @@
         <br><small class="muted">{t("ai.bgHint")}</small> <button class="linkbtn ai-cancel" onclick={cancel}>{t("ai.cancel")}</button></p>{/if}
     </div>
 
-    {#if cloud.user}
+    {#if hasAccount()}
       <form class="ai-bar" onsubmit={e => { e.preventDefault(); if (!busy) void send(); }}>
         <textarea rows="2" maxlength="600" bind:value={input} onkeydown={key} placeholder={onTrip ? t("ai.phTrip") : t("ai.ph")} aria-label={t("ai.wish")}></textarea>
         <button class="btn primary" disabled={busy || !input.trim()}>{t("ai.send")}</button>

@@ -7,6 +7,7 @@ import { totals } from "./calc";
 import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type SimpleLine, type Traveler, type Trip } from "./model";
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
+import { applyClaims } from "./claims";
 import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 import { readView, saveView } from "./resume";
@@ -233,6 +234,13 @@ void initCloud({
 });
 
 $effect.root(() => {
+  // „Wer bist du?“ (#435): Zuordnungen aus dem Konto in die Reise übernehmen (nur wer bearbeiten darf, erst wenn der
+  // Stand aus dem Konto da ist, nicht mitten im Bearbeiten)
+  $effect(() => {
+    const id = app.trip.id, c = cloudTrip(id)?.claims;
+    if (!c || access.readonly || !cloud.loaded[id] || app.editing) return;
+    untrack(() => applyClaims(app.trip, c));
+  });
   // aktuelle Reise beobachten, sobald sie als Konto-Reise bekannt ist
   $effect(() => { const id = app.trip.id; void cloud.trips.length; void watch(id); });
   // zurückgehaltene Änderung anwenden, wenn nicht mehr bearbeitet wird

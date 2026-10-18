@@ -8,6 +8,10 @@
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
   import { cloud } from "./lib/cloud/cloud.svelte";
   import LoginDialog from "./lib/ui/LoginDialog.svelte";
+  import WhoAmI from "./lib/ui/WhoAmI.svelte";
+  import GuestNote from "./lib/ui/GuestNote.svelte";
+  import { cloudTrip } from "./lib/cloud/cloud.svelte";
+  import { claimable } from "./lib/claims";
   import { eur } from "./lib/calc";
   import { CHAPTERS, CAT_CHAPTERS, PLAN, SPLIT } from "./lib/chapters";
   import DayPlan from "./lib/ui/DayPlan.svelte";
@@ -160,10 +164,20 @@
   const hhLabel = $derived(households > 1 && households === calc.T.active ? tn("n.persons", households) : tn("n.families", households));
   const evWin = $derived(eventWindow(app.trip, ap => stationName(geo, airportData, ap)));
   $effect(() => { if (!app.trip.place && app.trip.items.some(i => i.cat === "flights")) void ensureAirports(); });
+  // „Wer bist du?“ (#435): beigetreten (nicht Besitzer), noch keine Zuordnung, es gibt eine wählbare Person; „Später“ je Reise gemerkt
+  const WHO_KEY = "rk2-who-later";
+  let whoLater = $state<string[]>((() => { try { return JSON.parse(localStorage.getItem(WHO_KEY) || "[]"); } catch { return []; } })());
+  const whoCt = $derived(cloudTrip(app.trip.id));
+  const showWho = $derived(!app.home && !!cloud.user && !!whoCt && whoCt.owner !== cloud.user.uid && !!cloud.loaded[app.trip.id]
+    && !whoCt.claims[cloud.user.uid] && !whoLater.includes(app.trip.id) && claimable(app.trip, whoCt.claims, cloud.user.uid).length > 0);
+  function whoClose() {
+    if (whoCt && cloud.user && !whoCt.claims[cloud.user.uid]) { whoLater = [...whoLater, app.trip.id]; try { localStorage.setItem(WHO_KEY, JSON.stringify(whoLater)); } catch {} }
+  }
 </script>
 
 <Sprite />
 <Ambience />
+<GuestNote />
 {#if app.home}
 <Home />
 {:else}
@@ -295,8 +309,9 @@
 {#if admin.open && admin.is && cloud.user}<UsagePanel />{/if}
 {#if connect.open && cloud.user}<ConnectDialog />{/if}
 {#if myData.open && cloud.user}<MyDataDialog />{/if}
-{#if cloud.showLogin && !cloud.user}<LoginDialog />{/if}
+{#if cloud.showLogin && (!cloud.user || cloud.user.guest)}<LoginDialog />{/if}
 {#if setupWizard.open}<SetupWizard />{/if}
+{#if showWho}<WhoAmI onclose={whoClose} />{/if}
 <!-- Flug- und Unterkunftssuche im eigenen Fenster (aus Kapitel, Posten und Plan); danach ist man wieder dort -->
 {#if flightSearch.open}{#key flightSearch.scope}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/key}{/if}
 {#if staySearch.open}{#key staySearch.scope}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}

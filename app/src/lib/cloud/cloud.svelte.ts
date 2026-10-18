@@ -13,14 +13,15 @@ import type { Role, TripDoc } from "./firebase";
 import type { CampaignDoc } from "../campaign";
 
 export type { Role };
-export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** zuletzt im Konto gespeichert (ISO) */ updated?: string; /** von wem (Konto-ID) */ by?: string }
+export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** „Wer bist du?“ (#435): Konto → Reisende-Kennung, Vorname */ claims: NonNullable<TripDoc["claims"]>; /** zuletzt im Konto gespeichert (ISO) */ updated?: string; /** von wem (Konto-ID) */ by?: string }
 type FB = typeof import("./firebase");
 
 export const cloud = $state({
   configured,
   /** Firebase geladen und Anmeldestatus bekannt */
   ready: !configured,
-  user: null as { uid: string; name: string; email: string } | null,
+  /** guest: ohne Konto beigetreten (anonyme Anmeldung, #435) */
+  user: null as { uid: string; name: string; email: string; guest: boolean } | null,
   trips: [] as CloudTrip[],
   status: "local" as "local" | "saving" | "saved" | "offline" | "error",
   error: "",
@@ -110,14 +111,14 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
     fbUser = u;
     unTrips?.(); unTrips = null;
     if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); older.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
-    cloud.user = { uid: u.uid, name: f.displayName(u), email: u.email || "" };
+    setUser(u);
     cloud.showLogin = false;
     // Meldung eines abgebrochenen Versuchs soll nach erfolgreicher Anmeldung nicht stehen bleiben
     cloud.error = "";
     unTrips = f.watchMyTrips(u.uid, (list, fromCache) => {
       const next = list.map(d => ({
         id: d.id, name: d.name, role: d.members[u.uid], owner: d.owner, members: d.members,
-        memberNames: d.memberNames || {}, invite: d.invite ?? null, ...stamp(d.updatedAt), ...(d.updatedBy ? { by: d.updatedBy } : {})
+        memberNames: d.memberNames || {}, invite: d.invite ?? null, claims: d.claims || {}, ...stamp(d.updatedAt), ...(d.updatedBy ? { by: d.updatedBy } : {})
       })).sort((a, b) => a.name.localeCompare(b.name, "de"));
       // auch bei reinen Statusänderungen (Zwischenspeicher → Server) gemeldet: Liste nur bei echter Änderung ersetzen
       if (JSON.stringify(next) !== JSON.stringify($state.snapshot(cloud.trips))) cloud.trips = next;
@@ -131,6 +132,31 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
   addEventListener("online", () => { if (cloud.status === "offline") cloud.status = "saving"; });
   addEventListener("offline", () => { if (cloud.user) cloud.status = "offline"; });
 }
+
+function setUser(u: User) {
+  cloud.user = { uid: u.uid, name: fb!.displayName(u), email: u.email || "", guest: u.isAnonymous };
+}
+/** nach dem Verknüpfen eines Gasts mit einem Konto meldet Firebase keinen neuen Nutzer: Stand neu lesen */
+function refreshUser() {
+  if (fbUser) void fbUser.reload().catch(() => {}).then(() => { if (!fbUser) return; setUser(fbUser); if (!fbUser.isAnonymous) cloud.showLogin = false; });
+}
+
+/** angemeldet mit Konto (nicht als Gast): KI-Planer, Fehlermeldungen, eigene Reisen im Konto */
+export const hasAccount = () => !!cloud.user && !cloud.user.guest;
+
+/** als Gast ohne Konto beitreten (#435); der Vorname erscheint bei den Mitreisenden */
+export async function loginGuest(name: string) {
+  cloud.error = "";
+  try { await (await load()).loginGuest(name); refreshUser(); } catch (e) { cloud.error = message(e); }
+}
+
+/** „Wer bist du?“: eigene Zuordnung in einer Reise setzen oder lösen */
+export async function claimTraveler(tripId: string, c: { t: string; n: string } | null) {
+  if (!fbUser) return;
+  await (await load()).setClaim(tripId, fbUser.uid, c);
+}
+/** Besitzer: Zuordnung eines Mitglieds lösen */
+export async function dropClaim(tripId: string, uid: string) { await (await load()).setClaim(tripId, uid, null); }
 
 function readJoinLink() {
   const u = new URL(location.href);
@@ -259,7 +285,7 @@ let signing = false;
 export async function loginGoogle() {
   if (signing) return;
   signing = true; cloud.error = "";
-  try { await (await load()).loginGoogle(); } catch (e) { cloud.error = message(e); } finally { signing = false; }
+  try { await (await load()).loginGoogle(); refreshUser(); } catch (e) { cloud.error = message(e); } finally { signing = false; }
 }
 export async function loginEmail(email: string) { cloud.error = ""; await (await load()).sendLoginLink(email); }
 /** Anmelde-Nachweis für den Such-Dienst (KI-Planer); ohne Anmeldung null */
@@ -280,7 +306,7 @@ export async function myAccountData() {
   if (!fbUser) throw new Error("not signed in");
   return (await load()).collectAccount(fbUser.uid);
 }
-export async function loginTest(email: string, name: string) { if (emulator) await (await load()).loginTest(email, name); }
+export async function loginTest(email: string, name: string) { if (emulator) { await (await load()).loginTest(email, name); refreshUser(); } }
 
 const message = errorMessage;
 
