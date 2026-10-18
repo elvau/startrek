@@ -14,7 +14,8 @@
   const HINT = (c: CatKey) => t(`simple.hint.${c}` as Key);
   const v = $derived(app.trip.simple?.[cat]);
   const n = $derived(calc.T.active);
-  const hiddenItems = $derived(app.trip.items.filter(i => i.cat === cat));
+  // automatische Posten (Verpflegung, Souvenirs, Nahverkehr) zählen auch im einfachen Modus und sind keine versteckten Details
+  const hiddenItems = $derived(app.trip.items.filter(i => i.cat === cat && !i.auto));
   const hidden = $derived(hiddenItems.length);
   // einzelne Einträge (z. B. „Stadionführung 50 € · Daniel, Henning“), zusätzlich zum Betrag für alle
   const lines = $derived((app.trip.lines || []).filter(l => l.cat === cat));

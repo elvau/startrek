@@ -87,6 +87,16 @@ export function placesNear(g: GeoData, ap: Airport, n = 5, maxKm = 40): Place[] 
   return citiesOf(g, ap.cc).map(c => ({ ...c, km: kmBetween(ap, c) })).filter(c => c.km <= maxKm).sort((a, b) => a.km - b.km).slice(0, n);
 }
 
+/** nächster Ort (ab 2000 Einwohnern bzw. aus den Paketen) zu einem Punkt im Land, höchstens maxKm entfernt */
+export function townNear(g: GeoData, p: { lat: number; lon: number }, cc: string, maxKm = 25): Place | null {
+  let best: Place | null = null;
+  for (const c of citiesOf(g, cc)) {
+    const km = kmBetween(p, c);
+    if (km <= maxKm && (!best || km < best.km)) best = { ...c, km };
+  }
+  return best;
+}
+
 /** Vorschlag für eine Nacht am Flughafen: bekannter Ort (aus Paketen oder Weltdaten) bis 20 km, sonst der nächste Ort */
 export function stayNear(g: GeoData, ap: Airport): Place | null {
   const known = citiesOf(g, ap.cc).filter(c => c.top !== undefined).map(c => ({ ...c, km: kmBetween(ap, c) })).filter(c => c.km <= 20).sort((a, b) => a.km - b.km)[0];

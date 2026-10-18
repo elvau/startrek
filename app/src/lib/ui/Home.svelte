@@ -4,7 +4,7 @@
    * Startseite bei jedem neuen Besuch (ein Neuladen im selben Tab bleibt in der Reise): Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
+  import { app, openCompare, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { summarize, type TripState, type TripSummary } from "../overview";
   import { ensureAirports, geo } from "../geo/geo.svelte";
@@ -12,7 +12,9 @@
   import RouteMini from "./RouteMini.svelte";
   import { loadGeo } from "../geo/places";
   import { cloud } from "../cloud/cloud.svelte";
-  import { range } from "../format";
+  import { flagOf, range } from "../format";
+  import { ccOf } from "../geo/places";
+  import { bundle, isBundle, pickedOf, variantLabel, type Bundle } from "../variants";
   import { openEventPlanner } from "../event/open.svelte";
   import { openChat } from "../agent/open.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
@@ -24,10 +26,26 @@
 
   let picking = $state(false);
   const today = new Date().toISOString().slice(0, 10);
-  type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null };
-  const rows = $derived<Row[]>(homeTrips().map(m => { const tr = tripFor(m.id); return { ...m, s: tr ? summarize(tr, today, geo, i18n.lang) : null, route: tr ? tripRoute(tr) : null }; }));
-  const stateOf = (r: Row): TripState => r.s?.state ?? (r.to && r.to < today ? "past" : "planned");
-  const byDate = (dir: number) => (a: Row, b: Row) => dir * (a.from || "9999").localeCompare(b.from || "9999");
+  type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null; cmp?: { id: string; title: string; chosen?: string }; label: string };
+  const rows = $derived<Row[]>(homeTrips().map(m => {
+    const tr = tripFor(m.id);
+    // Zeitraum und Personen aus der Reise selbst (der Eintrag in der Liste kann älter sein)
+    const fresh = tr ? { from: tr.from, to: tr.to, people: tr.travelers.filter(x => x.active !== false).length } : {};
+    return { ...m, ...fresh, s: tr ? summarize(tr, today, geo, i18n.lang) : null, route: tr ? tripRoute(tr) : null, cmp: tr?.cmp, label: tr ? variantLabel(tr) : m.name };
+  }));
+  /* Varianten eines Vergleichs als eine Kachel (#429); Werte des Bündels: frühestes Datum, günstigster Preis, zuletzt bearbeitet */
+  type Unit = Row | Bundle<Row>;
+  // Varianten im Bündel nach Namen (wie in der Reise, „Variante x von y“)
+  const units = $derived<Unit[]>(bundle(rows).map(u => (isBundle(u) ? { ...u, list: [...u.list].sort((a, b) => a.label.localeCompare(b.label, i18n.lang, { numeric: true })) } : u)));
+  const all = (u: Unit) => (isBundle(u) ? u.list : [u]);
+  const rowState = (r: Row): TripState => r.s?.state ?? (r.to && r.to < today ? "past" : "planned");
+  const stateOf = (u: Unit): TripState => {
+    const s = all(u).map(rowState);
+    return s.includes("booked") ? "booked" : s.every(x => x === "past") ? "past" : s.includes("planned") ? "planned" : s[0];
+  };
+  const fromOf = (u: Unit) => all(u).map(r => r.from || "9999").sort()[0];
+  const byDate = (dir: number) => (a: Unit, b: Unit) => dir * fromOf(a).localeCompare(fromOf(b));
+  const editedOf = (u: Unit) => all(u).map(r => r.edited || "").sort().pop() || "";
   // Sortierung und Ansicht, je Gerät gemerkt
   type Sort = "next" | "recent" | "price" | "country";
   type View = "tiles" | "list";
@@ -38,21 +56,24 @@
   $effect(() => { try { localStorage.setItem(K_VIEW, JSON.stringify({ sort, view })); } catch {} });
   const SORTS: Sort[] = ["next", "recent", "price", "country"];
 
-  const price = (r: Row) => r.s?.total || 0;
+  const price = (u: Unit) => Math.min(...all(u).map(r => r.s?.total || 0));
   /** Land der Reise; Rundreisen und Reisen ohne Land in eigenen Gruppen */
-  const countryOf = (r: Row) => (r.s?.round ? t("home.round") : r.s?.country || t("home.noCountry"));
+  const rowCountry = (r: Row) => (r.s?.round ? t("home.round") : r.s?.country || t("home.noCountry"));
+  /** Vergleich: alle Varianten im selben Land → dort, sonst unter „Vergleiche“ (#433) */
+  const countryOf = (u: Unit) => { const c = [...new Set(all(u).map(rowCountry))]; return c.length === 1 ? c[0] : t("home.cmpGroup"); };
+  const keyOf = (u: Unit) => (isBundle(u) ? `cmp:${u.cmp}` : u.id);
   const groups = $derived.by(() => {
-    const byState = (cmp: (a: Row, b: Row) => number, pastCmp = cmp) => [
-      { k: "planned", title: t("home.planned"), list: rows.filter(r => stateOf(r) === "planned").sort(cmp) },
-      { k: "booked", title: t("home.booked"), list: rows.filter(r => stateOf(r) === "booked").sort(cmp) },
-      { k: "past", title: t("home.past"), list: rows.filter(r => stateOf(r) === "past").sort(pastCmp) }
+    const byState = (cmp: (a: Unit, b: Unit) => number, pastCmp = cmp) => [
+      { k: "planned", title: t("home.planned"), list: units.filter(r => stateOf(r) === "planned").sort(cmp) },
+      { k: "booked", title: t("home.booked"), list: units.filter(r => stateOf(r) === "booked").sort(cmp) },
+      { k: "past", title: t("home.past"), list: units.filter(r => stateOf(r) === "past").sort(pastCmp) }
     ];
-    let out: { k: string; title: string; list: Row[] }[];
-    if (sort === "recent") out = [{ k: "recent", title: t("home.recent"), list: [...rows].sort((a, b) => (b.edited || "").localeCompare(a.edited || "") || byDate(1)(a, b)) }];
+    let out: { k: string; title: string; list: Unit[] }[];
+    if (sort === "recent") out = [{ k: "recent", title: t("home.recent"), list: [...units].sort((a, b) => editedOf(b).localeCompare(editedOf(a)) || byDate(1)(a, b)) }];
     else if (sort === "price") out = byState((a, b) => price(a) - price(b));
     else if (sort === "country") {
-      const names = [...new Set(rows.map(countryOf))].sort((a, b) => a.localeCompare(b, i18n.lang));
-      out = names.map(n => ({ k: `c:${n}`, title: n, list: rows.filter(r => countryOf(r) === n).sort((a, b) => Number(stateOf(a) === "past") - Number(stateOf(b) === "past") || byDate(1)(a, b)) }));
+      const names = [...new Set(units.map(countryOf))].sort((a, b) => a.localeCompare(b, i18n.lang));
+      out = names.map(n => ({ k: `c:${n}`, title: n, list: units.filter(r => countryOf(r) === n).sort((a, b) => Number(stateOf(a) === "past") - Number(stateOf(b) === "past") || byDate(1)(a, b)) }));
     } else out = byState(byDate(1), byDate(-1));
     return out.filter(g => g.list.length);
   });
@@ -60,6 +81,12 @@
   const firstOpen = $derived(groups.find(g => !(g.k === "past" && sort !== "country"))?.k);
   // Länder für Rundreisen: Weltdaten nur laden, wenn es Flüge gibt
   $effect(() => { if (rows.some(r => r.s && tripFor(r.id)?.items.some(i => i.cat === "flights"))) { loadGeo(geo, []); void ensureAirports().catch(() => {}); } });
+  // Flaggen der Varianten
+  $effect(() => { if (units.some(isBundle)) loadGeo(geo, []); });
+  const flagFor = (r: Row) => { const cc = r.s?.country && geo.world.length ? ccOf(geo, r.s.country) : null; return cc ? flagOf(cc) : "📍"; };
+  /** günstigste Variante (nur wenn mindestens zwei einen Preis haben) */
+  const cheapest = (b: Bundle<Row>) => { const p = b.list.filter(r => (r.s?.total || 0) > 0); return p.length > 1 ? p.reduce((a, c) => (c.s!.total < a.s!.total ? c : a)).id : ""; };
+  const sameDates = (b: Bundle<Row>) => b.list.every(r => r.from === b.list[0].from && r.to === b.list[0].to);
   // „in 12 Tagen“, „in 7 Monaten“, „morgen“
   function until(from: string): string {
     const d = Math.round((Date.parse(from + "T00:00:00Z") - Date.parse(new Date().toISOString().slice(0, 10) + "T00:00:00Z")) / 86400000);
@@ -69,6 +96,7 @@
   }
   // zuletzt geöffnete Reise (bleibt im Hintergrund offen): oben direkt weiterplanen
   const last = $derived(rows.find(r => r.id === app.trip.id));
+  const lastCmp = $derived(last?.cmp ? units.find(u => isBundle(u) && u.cmp === last.cmp!.id) as Bundle<Row> | undefined : undefined);
   function event() { startTrip(); openEventPlanner(); }
   // unberührte Entwürfe beim Anzeigen der Startseite aufräumen; Reisen ohne Kosten nur nach Rückfrage
   $effect(() => { if (cloud.ready || !cloud.configured) sweepPristine(); });
@@ -96,7 +124,8 @@
     {#if last}
       <button class="home-cont" onclick={() => openTrip(last.id, "Weiter planen")}>
         <span class="hc-l"><small>{t("home.continue")}</small><b>{last.cloud ? "☁ " : ""}{last.name || last.place || t("trip.untitled")}</b>
-          <small>{[range(last.from, last.to), last.s?.total ? eur(last.s.total) : ""].filter(Boolean).join(" · ")}</small></span>
+          <small>{[range(last.from, last.to), last.s?.total ? eur(last.s.total) : ""].filter(Boolean).join(" · ")}</small>
+          {#if lastCmp}<small class="hc-cmp">⇆ {t("home.variantOf", { x: last.label, title: lastCmp.title, n: lastCmp.list.length })}</small>{/if}</span>
         <span class="hc-go" aria-hidden="true">→</span>
       </button>
     {/if}
@@ -130,10 +159,51 @@
       </div>
     {/if}
 
+    <!-- Vergleich (#429): eine Kachel, je Variante eine Zeile (öffnet die Reise) -->
+    {#snippet cmpUnit(b: Bundle<Row>)}
+      {@const f = b.list[0]}
+      {@const low = cheapest(b)}
+      {@const same = sameDates(b)}
+      {@const pick = pickedOf(b.list)}
+      {@const rest = pick ? b.list.filter(v => v.id !== pick.id) : b.list}
+      <div class="ht-wrap home-cmp-wrap">
+        <div class="home-trip home-cmp" class:past={stateOf(b) === "past"} class:as-row={view === "list"} data-cmp={b.cmp}>
+          <span class="ht-top"><button class="hc-open" onclick={() => openCompare(b.cmp)}><b>{f.cloud ? "☁ " : ""}{b.title}</b></button><span class="hc-n">{tn("home.variants", b.list.length)}</span></span>
+          <span class="ht-facts">
+            {#if same && f.from}<span>📅 {range(f.from, f.to)}{f.s?.nights ? ` · ${tn("n.nights", f.s.nights)}` : ""}</span>{/if}
+            {#if f.people}<span>👥 {tn("n.persons", f.people)}</span>{/if}
+            {#if f.members?.length}<span class="ht-mem" title={f.members.join(", ")}>☁ {t("home.with", { names: f.members.length > 3 ? `${f.members.slice(0, 3).join(", ")} +${f.members.length - 3}` : f.members.join(", ") })}</span>{/if}
+          </span>
+          {#snippet varRow(v: Row)}
+            <button class="hc-var" class:past={rowState(v) === "past"} class:win={pick?.id === v.id} onclick={() => openTrip(v.id, "Vergleich")}>
+              <span class="hc-flag" aria-hidden="true">{flagFor(v)}</span>
+              <span class="hc-l"><span class="hr-top"><b>{pick?.id === v.id ? "✓ " : ""}{v.label}</b>{#if rowState(v) === "booked"}<span class="ht-tag">✓</span>{:else if v.s?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
+                <small>{[v.s?.where, !same && v.from ? range(v.from, v.to) : ""].filter(Boolean).join(" · ")}</small></span>
+              <span class="hc-p num">{#if v.s && v.s.total > 0}<b>{eur(v.s.total)}</b>{/if}
+                <small>{[(v.people || 0) > 1 && v.s && v.s.perPerson > 0 ? t("perPerson", { v: eur(v.s.perPerson) }) : "", v.id === low ? t("home.cheapest") : ""].filter(Boolean).join(" · ")}</small></span>
+            </button>
+          {/snippet}
+          <!-- gewählt (#430): oben, die übrigen eingeklappt -->
+          <div class="hc-vars">
+            {#if pick}{@render varRow(pick)}{/if}
+            {#if !pick}{#each rest as v (v.id)}{@render varRow(v)}{/each}{/if}
+          </div>
+          {#if pick && rest.length}
+            <details class="hc-rest"><summary>{tn("cmpv.showOthers", rest.length)}</summary><div class="hc-vars">{#each rest as v (v.id)}{@render varRow(v)}{/each}</div></details>
+          {/if}
+          <button class="linkbtn hc-cmp-go" onclick={() => openCompare(b.cmp)}>{t("home.compare")} →</button>
+        </div>
+      </div>
+    {/snippet}
+
     {#each groups as g (g.k)}
       {#snippet list()}
         <div class="home-trips" class:as-list={view === "list"}>
-          {#each g.list as m (m.id)}
+          {#each g.list as u (keyOf(u))}
+            {#if isBundle(u)}
+              {@render cmpUnit(u)}
+            {:else}
+            {@const m = u}
             {@const x = m.s}
             {@const nm = m.name || m.place || t("trip.untitled")}
             {@const leave = !!m.role && m.role !== "owner"}
@@ -173,6 +243,7 @@
             {/if}
             <button class="ht-del" title={leave ? t("home.leaveTrip", { name: nm }) : t("home.deleteTrip", { name: nm })} aria-label={leave ? t("home.leaveTrip", { name: nm }) : t("home.deleteTrip", { name: nm })} onclick={() => remove(m, nm, leave)}>{leave ? "⇥" : "🗑"}</button>
             </div>
+            {/if}
           {/each}
         </div>
       {/snippet}
@@ -195,3 +266,29 @@
 </section>
 
 {#if picking}<NewTripDialog onclose={() => (picking = false)} />{/if}
+
+<style>
+  .home-cmp-wrap { grid-column: 1 / -1; }
+  .home-cmp-wrap .home-cmp { cursor: default; padding-inline-end: 18px; }
+  .home-cmp:hover { transform: none; }
+  .hc-n { font-size: 11.5px; font-weight: 700; color: var(--a); background: var(--a-soft); border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
+  .hc-vars { display: grid; width: 100%; margin-top: 4px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .hc-var { display: flex; align-items: center; gap: 12px; width: 100%; text-align: start; padding: 10px 14px; background: transparent; border: 0; border-top: 1px solid var(--line); color: inherit; }
+  .hc-var:first-child { border-top: 0; }
+  .hc-var:hover, .hc-var:focus-visible { background: color-mix(in srgb, var(--a) 7%, transparent); }
+  .hc-var.past { opacity: .75; }
+  .hc-flag { flex: none; font-size: 22px; }
+  .hc-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+  .hc-l small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hc-p { display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+  .hc-p b { font-size: 15px; font-weight: 800; }
+  .hc-p small { font-size: 12px; }
+  .hc-cmp { color: var(--a); font-weight: 600; }
+  .hc-open { all: unset; cursor: pointer; }
+  .hc-open:focus-visible { outline: 2px solid var(--a); border-radius: 6px; }
+  .hc-var.win { background: color-mix(in srgb, var(--good) 9%, transparent); }
+  .hc-rest { width: 100%; font-size: 13px; }
+  .hc-rest summary { cursor: pointer; color: var(--ink-2); padding: 4px 0; }
+  .hc-cmp-go { align-self: flex-end; padding: 0; font-weight: 700; }
+  .home-cmp.as-row { padding: 12px 14px; border-radius: 14px; }
+</style>

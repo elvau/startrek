@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
-  import { cloud, loginEmail, loginGoogle, loginTest } from "../cloud/cloud.svelte";
+  import { cloud, loginEmail, loginGoogle, loginGuest, loginTest } from "../cloud/cloud.svelte";
+  import { cleanName } from "../claims";
   import { emulator } from "../cloud/config";
   import Modal from "./Modal.svelte";
   import { legalUrl } from "../legal";
@@ -28,15 +29,37 @@
     busy = false;
   }
   async function google() { if (needAgree()) return; busy = true; await loginGoogle(); busy = false; }
+  // Einladung ohne Konto (#435): als Gast mit Vornamen beitreten
+  let guestName = $state("");
+  async function guest(e: Event) {
+    e.preventDefault();
+    const n = cleanName(guestName);
+    if (!n) { err = t("login.guestName"); return; }
+    if (needAgree()) return;
+    busy = true; err = "";
+    await loginGuest(n);
+    busy = false;
+  }
+  // schon als Gast dabei: das Konto übernimmt den Gast-Zugang
+  const upgrade = $derived(!!cloud.user?.guest);
   let testName = $state("Anna");
   // Test-Anmeldung (nur Emulator): zählt als zugestimmt
   async function test() { markPending(); busy = true; await loginTest(`${testName.toLowerCase()}@test.de`, testName); busy = false; }
 </script>
 
-<Modal title={cloud.join ? t("login.invited") : t("acct.login")} onclose={() => (cloud.showLogin = false)}>
+<Modal title={upgrade ? t("login.upgrade") : cloud.join ? t("login.invited") : t("acct.login")} onclose={() => (cloud.showLogin = false)}>
   <div class="login">
-    {#if cloud.join}
+    {#if upgrade}
+      <p>{t("login.upgradeLead")}</p>
+    {:else if cloud.join}
       <p>{cloud.join.role === "viewer" ? t("login.joinView") : t("login.joinEdit")}</p>
+      <!-- was nach dem Link passiert (#435): was Split&Fly ist, beitreten, sich wählen, Konto oder Gast -->
+      <p class="login-what"><b>✈️ {t("brand")}</b> {t("login.what")}</p>
+      <ol class="login-how">
+        <li><span class="lh-ic" aria-hidden="true">👋</span><span>{t("login.how1")}</span></li>
+        <li><span class="lh-ic" aria-hidden="true">🦡</span><span>{t("login.how2")}<span class="lh-zoo" aria-hidden="true">🦊 🐻 🦡 🐰 🦉 🐧</span></span></li>
+        <li><span class="lh-ic" aria-hidden="true">☁️</span><span>{t("login.how3")}</span></li>
+      </ol>
     {:else}
       <p>{t("login.lead")}</p>
     {/if}
@@ -57,6 +80,14 @@
         <button class="btn" disabled={busy}>{t("login.send")}</button>
       </form>
     {/if}
+    {#if cloud.join && !cloud.user}
+      <div class="or"><span>{t("login.orGuest")}</span></div>
+      <form onsubmit={guest} class="ed-row login-guest">
+        <label class="f grow">{t("login.firstName")}<input bind:value={guestName} maxlength="40" autocomplete="given-name" placeholder={t("login.firstNamePh")} /></label>
+        <button class="btn" disabled={busy}>🐾 {t("login.asGuest")}</button>
+      </form>
+      <p class="muted small">{t("login.guestHint")} {t("login.guestDevice")}</p>
+    {/if}
     {#if err || cloud.error}<p class="err">{err || cloud.error}</p>{/if}
     {#if emulator}
       <div class="ed-row test"><label class="f">Test-Anmeldung (nur Emulator)<input bind:value={testName} /></label><button class="btn" onclick={test}>Als {testName} anmelden</button></div>
@@ -64,3 +95,11 @@
     <p class="muted small">{t("login.noAccount")}</p>
   </div>
 </Modal>
+
+<style>
+  .login-what { margin: 0; padding: 10px 12px; border-radius: 14px; background: var(--a-soft); color: var(--ink); font-size: 14px; }
+  .login-how { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 13.5px; color: var(--ink-2); }
+  .login-how li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; }
+  .lh-ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 18px; background: var(--paper-2); border: 1px solid var(--line); }
+  .lh-zoo { display: block; margin-top: 3px; letter-spacing: 3px; font-size: 15px; }
+</style>

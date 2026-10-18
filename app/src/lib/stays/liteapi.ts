@@ -93,7 +93,7 @@ export function fromLite(hotels: any[], rates: any[], q: StayQuery, link?: strin
       ...(h.address || h.city ? { place: [h.address, h.city].filter(Boolean).join(", ") } : {}),
       ...(num(h.latitude) != null && num(h.longitude) != null ? { lat: num(h.latitude), lon: num(h.longitude) } : {}),
       ...(typeof h.main_photo === "string" && /^https:\/\//.test(h.main_photo) ? { image: h.main_photo } : {}),
-      ...(facts.length ? { facts } : {}), ...(c.board ? { board: c.board } : {}), ...(c.fees.length ? { fees: c.fees } : {})
+      ...(facts.length ? { facts } : {}), ...(c.free ? { freeCancel: true } : {}), ...(c.board ? { board: c.board } : {}), ...(c.fees.length ? { fees: c.fees } : {})
     };
   }).filter((o): o is StayOffer => !!o);
 }

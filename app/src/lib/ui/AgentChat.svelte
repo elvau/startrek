@@ -13,7 +13,7 @@
    */
   import { tick } from "svelte";
   import { app, duplicateTrip, goHome, openTrip, startTrip } from "../store.svelte";
-  import { cloud } from "../cloud/cloud.svelte";
+  import { cloud, hasAccount } from "../cloud/cloud.svelte";
   import { eur } from "../calc";
   import { dayShort, nights, range, time, dateDE } from "../format";
   import { flyers } from "../flights/app";
@@ -32,7 +32,8 @@
   import { agentChat, openChat } from "../agent/open.svelte";
   import { upcomingSchool } from "../holidaysApp.svelte";
   import { bookingPrice, CONTEXTS, editCount, flightTotal, type AgentContext, type AgentEdit, type AgentTrip } from "../agent/types";
-  import type { Prefs, Trip } from "../model";
+  import { uid, type Prefs, type Trip } from "../model";
+  import { commonTitle } from "../variants";
   import AiMark from "./AiMark.svelte";
 
   /** Nachricht; bei einer Rückfrage der KI mit Antworten zum Antippen */
@@ -191,10 +192,10 @@
   /** Änderungen in einer Kopie der Reise: die eigene Planung bleibt, die KI-Vergleichsreise liegt daneben */
   function variant(m: Msg) {
     if (!m.edit || app.trip.id !== m.tripId) return;
-    const name = app.trip.name;
-    duplicateTrip();
-    app.trip.name = t("ai.variantName", { n: name });
+    // Variante im selben Vergleich (#428): Name bleibt, die Variante heißt nach ihrem Ort
+    duplicateTrip(true);
     app.trip.autoName = false;
+    app.trip.ai = { at: new Date().toISOString() };
     applyEdit(app.trip, m.edit);
     syncAuto();
     m.state = "variant";
@@ -214,9 +215,14 @@
   /** alle Vorschläge als eigene Reisen anlegen und auf der Startseite vergleichen */
   function takeAll(list: AgentTrip[]) {
     const b: Trip = JSON.parse(JSON.stringify(base())), fromTrip = !app.home;
+    // alle in einen Vergleich (#428), Titel aus dem gemeinsamen Anfang der Namen
+    const cmp = { id: uid(), title: commonTitle(list.map(a => a.title || "")) || t("cmpv.title") };
     for (const a of list) {
       startLike(b, fromTrip);
       takeAgentTrip(app.trip, a);
+      // Name der Variante: Name des Vorschlags ohne den gemeinsamen Anfang („JGA Malle“ → „Malle“)
+      const rest = (a.title || "").slice(cmp.title.length).replace(/^[\s·:–-]+/, "").trim();
+      app.trip.cmp = { ...cmp, label: a.title?.startsWith(cmp.title) && rest ? rest : a.title || app.trip.place };
       syncAuto();
     }
     goHome();
@@ -260,7 +266,7 @@
     </header>
 
     {#if onTrip}<p class="ai-trip muted" title={app.trip.name}>🧳 {t("ai.onTrip", { n: app.trip.name })}</p>{/if}
-    {#if cloud.user}
+    {#if hasAccount()}
       <div class="ai-ctx">
         <label class="ai-ctx-chip" class:fixed={!!focus}>
           <span aria-hidden="true">{CTX_ICON[ctx]}</span>
@@ -273,7 +279,7 @@
     {/if}
     <div class="ai-msgs" bind:this={list}>
       <p class="ai-msg">{onTrip ? t("ai.helloTrip") : t("ai.hello")}</p>
-      {#if !cloud.user}
+      {#if !hasAccount()}
         <p class="ai-msg ai-login">{t("ai.needLogin")} <button class="btn sm primary" onclick={() => (cloud.showLogin = true)}>{t("ai.login")}</button></p>
       {:else if !msgs.length}
         <div class="chips ai-ex">
@@ -369,7 +375,7 @@
         <br><small class="muted">{t("ai.bgHint")}</small> <button class="linkbtn ai-cancel" onclick={cancel}>{t("ai.cancel")}</button></p>{/if}
     </div>
 
-    {#if cloud.user}
+    {#if hasAccount()}
       <form class="ai-bar" onsubmit={e => { e.preventDefault(); if (!busy) void send(); }}>
         <textarea rows="2" maxlength="600" bind:value={input} onkeydown={key} placeholder={onTrip ? t("ai.phTrip") : t("ai.ph")} aria-label={t("ai.wish")}></textarea>
         <button class="btn primary" disabled={busy || !input.trim()}>{t("ai.send")}</button>

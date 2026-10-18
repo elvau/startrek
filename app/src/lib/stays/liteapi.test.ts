@@ -42,6 +42,7 @@ describe("liteAPI", () => {
     const l = fromLite(HOTELS, RATES, { ...q, must: ["breakfast", "freeCancel"] });
     expect(l.map(o => [o.name, o.total, o.board])).toEqual([["Hotel Sol", 1700, "breakfast"]]);
     expect(l[0].facts).toEqual(["Kostenlos stornierbar"]);
+    expect(l[0].freeCancel).toBe(true);
   });
   it("Link zur eigenen Buchungsseite, falls eingerichtet", () => {
     expect(fromLite(HOTELS, RATES, q, "https://buchen.example/")[0].url).toBe("https://buchen.example/hotels/lp1?checkin=2027-08-12&checkout=2027-08-19&adults=3&children=8,5");

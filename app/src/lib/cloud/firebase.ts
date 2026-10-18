@@ -4,9 +4,9 @@
  */
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import {
-  GoogleAuthProvider, connectAuthEmulator, getAuth, isSignInWithEmailLink, onAuthStateChanged, sendSignInLinkToEmail,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithEmailLink, signInWithPopup, signInWithRedirect, signOut,
-  updateProfile, type Auth, type User
+  EmailAuthProvider, GoogleAuthProvider, connectAuthEmulator, getAuth, isSignInWithEmailLink, onAuthStateChanged, sendSignInLinkToEmail,
+  signInAnonymously, signInWithCredential, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithEmailLink, signInWithPopup,
+  signInWithRedirect, signOut, linkWithCredential, linkWithPopup, linkWithRedirect, updateProfile, type Auth, type User
 } from "firebase/auth";
 import {
   arrayRemove, arrayUnion, clearIndexedDbPersistence, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDocFromServer, getDocsFromServer,
@@ -25,6 +25,8 @@ export interface TripDoc {
   members: Record<string, Role>;
   memberNames?: Record<string, string>;
   invite?: { key: string; role: "editor" | "viewer" } | null;
+  /** „Wer bist du?“ (#435): Konto → Reisende-Kennung und Vorname */
+  claims?: Record<string, { t: string; n: string }>;
   updatedAt?: unknown;
   updatedBy?: string;
 }
@@ -60,14 +62,29 @@ export function start(): { auth: Auth; db: Firestore } {
 
 export const onUser = (fn: (u: User | null) => void) => onAuthStateChanged(start().auth, fn);
 
+/** Gast (#435): mitplanen ohne Konto, als anonyme Anmeldung mit Vornamen; später zu einem Konto verknüpfbar */
+// Firebase meldet den Gast an, bevor der Name gesetzt ist: bis dahin gilt dieser (für Mitglieder und „Wer bist du?“)
+let guestName = "";
+export async function loginGuest(name: string) {
+  const { auth } = start();
+  guestName = name;
+  const c = await signInAnonymously(auth);
+  await updateProfile(c.user, { displayName: name });
+}
+
+const codeOf = (e: unknown) => (e as { code?: string }).code || "";
+
 export async function loginGoogle() {
   const { auth } = start();
   const p = new GoogleAuthProvider();
-  try { await signInWithPopup(auth, p); }
+  const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
+  try { await (guest ? linkWithPopup(guest, p) : signInWithPopup(auth, p)); }
   catch (e) {
-    const code = (e as { code?: string }).code || "";
+    const code = codeOf(e);
     // Popups sind in installierten Apps und manchen Handy-Browsern blockiert
-    if (code.includes("popup-blocked") || code.includes("operation-not-supported")) await signInWithRedirect(auth, p);
+    if (code.includes("popup-blocked") || code.includes("operation-not-supported")) await (guest ? linkWithRedirect(guest, p) : signInWithRedirect(auth, p));
+    // Gast, aber das Google-Konto gibt es schon: dort anmelden (die Gast-Teilnahme bleibt beim Gast)
+    else if (guest && code.includes("credential-already-in-use")) { const cr = GoogleAuthProvider.credentialFromError(e as never); if (cr) await signInWithCredential(auth, cr); else throw e; }
     else throw e;
   }
 }
@@ -88,7 +105,12 @@ export async function finishLoginLink(ask: () => string | null): Promise<boolean
   try { email = localStorage.getItem(EMAIL_KEY); } catch {}
   email ||= ask();
   if (!email) return false;
-  await signInWithEmailLink(auth, email, location.href);
+  // Gast: das Konto übernimmt die Gast-Kennung (Reisen, Zuordnung und Stimmen bleiben)
+  const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
+  if (guest) {
+    try { await linkWithCredential(guest, EmailAuthProvider.credentialWithLink(email, location.href)); }
+    catch (e) { if (codeOf(e).includes("already-in-use")) await signInWithEmailLink(auth, email, location.href); else throw e; }
+  } else await signInWithEmailLink(auth, email, location.href);
   try { localStorage.removeItem(EMAIL_KEY); } catch {}
   const u = new URL(location.href);
   ["apiKey", "oobCode", "mode", "lang", "continueUrl"].forEach(k => u.searchParams.delete(k));
@@ -99,6 +121,12 @@ export async function finishLoginLink(ask: () => string | null): Promise<boolean
 /** Nur im Emulator: Anmelden ohne Google, für Tests */
 export async function loginTest(email: string, name: string) {
   const { auth } = start();
+  // Gast: wie beim echten Konto die Gast-Kennung verknüpfen
+  const guest = auth.currentUser?.isAnonymous ? auth.currentUser : null;
+  if (guest) {
+    try { await linkWithCredential(guest, EmailAuthProvider.credential(email, "test-passwort")); await updateProfile(guest, { displayName: name }); return; }
+    catch (e) { if (!codeOf(e).includes("already-in-use")) throw e; }
+  }
   try { await signInWithEmailAndPassword(auth, email, "test-passwort"); }
   catch { const c = await createUserWithEmailAndPassword(auth, email, "test-passwort"); await updateProfile(c.user, { displayName: name }); }
 }
@@ -137,7 +165,26 @@ export function createTrip(id: string, name: string, data: string, u: User) {
 export const saveTrip = (id: string, name: string, data: string, uid: string) =>
   updateDoc(tripRef(id), { name, data, updatedAt: serverTimestamp(), updatedBy: uid });
 
-export const deleteTrip = (id: string) => deleteDoc(tripRef(id));
+/** Reise löschen, vorher die Stimmen darunter (Firestore löscht Unterdokumente nicht mit) */
+export async function deleteTrip(id: string) {
+  const vs = await getDocsFromServer(collection(start().db, "trips", id, "votes")).catch(() => null);
+  for (const d of vs?.docs || []) await deleteDoc(d.ref).catch(() => {});
+  await deleteDoc(tripRef(id));
+}
+
+/* ---------- Abstimmen (#432): je Mitglied ein Dokument trips/{id}/votes/{uid} ---------- */
+
+export type VoteMap = Record<string, Record<string, number>>;
+/** zu „Ohne mich“ (#439): je Abstimmung und Möglichkeit Grund (freiwillig) und „mit Familie“ */
+export type WhyMap = Record<string, Record<string, { r?: string; f?: boolean }>>;
+export interface VoteDoc { v: VoteMap; w?: WhyMap }
+export function watchVotes(id: string, fn: (byUid: Record<string, VoteDoc>) => void, err: (e: Error) => void): Unsubscribe {
+  return onSnapshot(collection(start().db, "trips", id, "votes"), s => fn(Object.fromEntries(s.docs.map(d => {
+    const x = d.data() as Partial<VoteDoc>;
+    return [d.id, { v: x.v || {}, ...(x.w ? { w: x.w } : {}) }];
+  }))), err);
+}
+export const saveVotes = (id: string, uid: string, v: VoteMap, w: WhyMap = {}) => setDoc(doc(start().db, "trips", id, "votes", uid), { v, w, at: serverTimestamp() });
 
 /** Inhalt der Reise frisch vom Server (nicht aus dem Zwischenspeicher); null, wenn es sie nicht gibt */
 export async function freshTripData(id: string): Promise<string | null> {
@@ -147,15 +194,23 @@ export async function freshTripData(id: string): Promise<string | null> {
 
 export const setInvite = (id: string, invite: TripDoc["invite"]) => updateDoc(tripRef(id), { invite });
 
+/** Variante (#428): Mitglieder, Namen und Zuordnungen wie in der Reise, aus der sie entstand (nur Besitzer) */
+export const setMembers = (id: string, members: Record<string, Role>, memberNames: Record<string, string>, claims: NonNullable<TripDoc["claims"]>) =>
+  updateDoc(tripRef(id), { memberIds: Object.keys(members), members, memberNames, claims });
+
 export const setRole = (id: string, uid: string, role: Role) => updateDoc(tripRef(id), { [`members.${uid}`]: role });
 
 export const removeMember = (id: string, uid: string) =>
-  updateDoc(tripRef(id), { memberIds: arrayRemove(uid), [`members.${uid}`]: deleteField(), [`memberNames.${uid}`]: deleteField() });
+  updateDoc(tripRef(id), { memberIds: arrayRemove(uid), [`members.${uid}`]: deleteField(), [`memberNames.${uid}`]: deleteField(), [`claims.${uid}`]: deleteField() });
+
+/** „Wer bist du?“: eigene Zuordnung setzen (t = Reisende-Kennung) oder lösen (null); Besitzer darf jede lösen */
+export const setClaim = (id: string, uid: string, c: { t: string; n: string } | null) =>
+  updateDoc(tripRef(id), { [`claims.${uid}`]: c ?? deleteField() });
 
 export const joinTrip = (id: string, key: string, role: Role, u: User) =>
   updateDoc(tripRef(id), { memberIds: arrayUnion(u.uid), [`members.${u.uid}`]: role, [`memberNames.${u.uid}`]: displayName(u), joinKey: key });
 
-export const displayName = (u: User) => u.displayName || (u.email ? u.email.split("@")[0] : "Mitreisende");
+export const displayName = (u: User) => u.displayName || (u.isAnonymous && guestName) || (u.email ? u.email.split("@")[0] : "Mitreisende");
 
 export function newKey(): string {
   const a = new Uint8Array(18);
@@ -241,6 +296,8 @@ export interface AccountData {
   /** Reisen, in denen man Mitglied ist (ohne den Schlüssel des Einladungslinks) */
   trips: (Omit<TripDoc, "invite" | "updatedAt"> & { id: string; invite?: { role: string } | null })[];
   campaigns: (CampaignDoc & { id: string })[];
+  /** eigene Stimmen je Reise (#432) */
+  votes?: Record<string, VoteDoc>;
 }
 
 /** liest alles direkt vom Server (nicht aus dem Zwischenspeicher), wie „Konto zurücksetzen“ es löschen würde */
@@ -264,7 +321,10 @@ export async function collectAccount(uid: string): Promise<AccountData> {
       const { invite, updatedAt: _u, ...rest } = d.data() as TripDoc;
       return { id: d.id, ...rest, ...(invite ? { invite: { role: invite.role } } : {}) };
     }),
-    campaigns: camps.docs.map(d => ({ id: d.id, ...(d.data() as CampaignDoc) }))
+    campaigns: camps.docs.map(d => ({ id: d.id, ...(d.data() as CampaignDoc) })),
+    // eigene Stimmen je Reise (#432)
+    votes: Object.fromEntries((await Promise.all(trips.docs.map(d => getDocFromServer(doc(db, "trips", d.id, "votes", uid))
+      .then(v => (v.exists() ? [d.id, { v: (v.data() as Partial<VoteDoc>).v || {}, w: (v.data() as Partial<VoteDoc>).w || {} } as VoteDoc] as const : null)).catch(() => null)))).filter((x): x is readonly [string, VoteDoc] => !!x))
   };
 }
 
@@ -281,8 +341,8 @@ export async function wipeAccount(uid: string): Promise<WipeResult> {
   const trips = await getDocsFromServer(query(collection(db, "trips"), where("memberIds", "array-contains", uid)));
   let deleted = 0, left = 0;
   for (const d of trips.docs) {
-    if ((d.data() as TripDoc).owner === uid) { await deleteDoc(d.ref); deleted++; }
-    else { await removeMember(d.id, uid); left++; }
+    if ((d.data() as TripDoc).owner === uid) { await deleteTrip(d.id); deleted++; }
+    else { await deleteDoc(doc(db, "trips", d.id, "votes", uid)).catch(() => {}); await removeMember(d.id, uid); left++; }
   }
   const camps = await getDocsFromServer(query(collection(db, "campaigns"), where("owner", "==", uid)));
   for (const d of camps.docs) await deleteDoc(d.ref);

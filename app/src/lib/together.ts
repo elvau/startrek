@@ -40,13 +40,26 @@ export interface PollOption {
   itemId?: string;
   optionId?: string;
 }
+/**
+ * Art der Abstimmung (#432): eine Stimme, mehrere Stimmen oder Meilen-Wahl (Meilen frei verteilen, auch alle auf eine
+ * Möglichkeit); fehlt: wie bisher 👍 / egal / 👎. In allen neuen Arten zählt -1 als „✕ Ohne mich“ (hartes Veto, #439).
+ */
+export type PollMode = "one" | "multi" | "miles";
+export interface VetoWhy { r?: string; f?: boolean }
 export interface Poll {
   id: string;
   q: string;
   kind: "dates" | "offers" | "free";
   options: PollOption[];
-  /** je Person (Reisende-Kennung): Stimme je Möglichkeit */
-  votes: Record<string, Record<string, Vote>>;
+  mode?: PollMode;
+  /** Meilen je Person (Meilen-Wahl), höchstens Möglichkeiten × 5 */
+  miles?: number;
+  /** Frist (JJJJ-MM-TT, einschließlich); danach wird nicht mehr abgestimmt */
+  due?: string;
+  /** je Person (Reisende-Kennung): Stimme je Möglichkeit (bisher 1/0/-1; Meilen-Wahl: Anzahl Meilen; -1: ohne mich) */
+  votes: Record<string, Record<string, number>>;
+  /** zu „Ohne mich“ (#439), je Person und Möglichkeit: Grund (freiwillig), mit der ganzen Familie */
+  why?: Record<string, Record<string, VetoWhy>>;
   /** abgeschlossen (ISO) und gewählte Möglichkeit */
   closed?: string;
   result?: string;
@@ -147,8 +160,8 @@ export function addPoll(trip: Trip, p: Poll) {
   trip.polls.push(p);
 }
 
-export function newPoll(q: string, kind: Poll["kind"], options: Omit<PollOption, "id">[]): Poll {
-  return { id: uid(), q: q.trim().slice(0, 200), kind, options: options.slice(0, 8).map(o => ({ ...o, id: uid(), label: o.label.trim().slice(0, 120) })), votes: {} };
+export function newPoll(q: string, kind: Poll["kind"], options: Omit<PollOption, "id">[], mode: PollMode = "one"): Poll {
+  return { id: uid(), q: q.trim().slice(0, 200), kind, mode, options: options.slice(0, 8).map(o => ({ ...o, id: uid(), label: o.label.trim().slice(0, 120) })), votes: {} };
 }
 
 export function vote(p: Poll, person: string, option: string, v: Vote | undefined) {
@@ -171,7 +184,10 @@ export function tally(p: Poll): Tally[] {
 }
 
 /** wer noch nicht abgestimmt hat */
-export const missing = (trip: Trip, p: Poll) => voters(trip).filter(x => !p.votes[x.id] || !Object.keys(p.votes[x.id]).length);
+export const missing = (trip: Trip, p: Poll, remote?: Record<string, Record<string, number>>) => {
+  const v = mergedVotes(p, remote);
+  return voters(trip).filter(x => !v[x.id] || !Object.keys(v[x.id]).length);
+};
 
 /** Ergebnis übernehmen: Termin als Reisedatum, Angebot als gewählt; die Abstimmung ist danach abgeschlossen */
 export function applyResult(trip: Trip, p: Poll, optionId: string) {
@@ -187,3 +203,63 @@ export function applyResult(trip: Trip, p: Poll, optionId: string) {
 }
 
 export const openPolls = (trip: Trip) => (trip.polls || []).filter(p => !p.closed);
+
+/* ---------- Arten der Abstimmung (#432) ---------- */
+
+export const VETO = -1;
+/** Meilen-Wahl: höchstens Möglichkeiten × 5 je Person, Vorgabe 10 */
+export const maxMiles = (p: Poll) => p.options.length * 5;
+export const milesOf = (p: Poll) => Math.max(1, Math.min(maxMiles(p), Math.round(p.miles ?? 10)));
+
+/** noch offen: nicht abgeschlossen und Frist (einschließlich) nicht vorbei */
+export const pollOpen = (p: Poll, today = new Date().toISOString().slice(0, 10)) => !p.closed && (!p.due || today <= p.due);
+/** Frist endet heute oder morgen */
+export const dueSoon = (p: Poll, today = new Date().toISOString().slice(0, 10)) => !!p.due && pollOpen(p, today) && p.due <= addDay(today, 1);
+
+/** Stimmen einer Person in einer neuen Art ändern; gibt die neue Stimme (je Möglichkeit) zurück, ohne zu speichern */
+export function nextVote(p: Poll, mine: Record<string, number> | undefined, option: string, act: "for" | "veto" | "more" | "less"): Record<string, number> {
+  const m = { ...(mine || {}) };
+  const pos = (k: string) => (m[k] || 0) > 0;
+  if (act === "veto") {
+    if (m[option] === VETO) delete m[option]; else m[option] = VETO;
+  } else if (act === "for") {
+    if (pos(option)) delete m[option];
+    else {
+      if (p.mode === "one") for (const k of Object.keys(m)) if (pos(k)) delete m[k];
+      m[option] = 1;
+    }
+  } else {
+    const used = Object.values(m).filter(v => v > 0).reduce((a, b) => a + b, 0);
+    const cur = Math.max(0, m[option] || 0);
+    if (act === "more" && used < milesOf(p)) m[option] = cur + 1;
+    if (act === "less" && cur > 0) { if (cur === 1) delete m[option]; else m[option] = cur - 1; }
+  }
+  return m;
+}
+
+/** übrige Meilen einer Person */
+export const milesLeft = (p: Poll, mine?: Record<string, number>) => milesOf(p) - Object.values(mine || {}).filter(v => v > 0).reduce((a, b) => a + b, 0);
+
+export interface ModeTally { id: string; label: string; score: number; people: number; veto: string[] }
+/**
+ * Auszählung der neuen Arten: Stimmen bzw. Meilen je Möglichkeit, wie viele Personen dafür sind, wer „ohne mich“ sagt.
+ * Meilen-Wahl: wer mehr verteilt hat als erlaubt (z. B. nachträglich gesenkt), zählt anteilig. Beste zuerst, bei
+ * Gleichstand weniger „ohne mich“, dann die Reihenfolge.
+ */
+export function tallyMode(p: Poll, votes: Record<string, Record<string, number>> = p.votes): ModeTally[] {
+  const rows = p.options.map(o => ({ id: o.id, label: o.label, score: 0, people: 0, veto: [] as string[] }));
+  for (const [who, m] of Object.entries(votes)) {
+    const sum = Object.values(m).filter(v => v > 0).reduce((a, b) => a + b, 0);
+    const f = p.mode === "miles" && sum > milesOf(p) ? milesOf(p) / sum : 1;
+    for (const r of rows) {
+      const v = m[r.id];
+      if (v === VETO) r.veto.push(who);
+      else if (v > 0) { r.score += p.mode === "miles" ? v * f : 1; r.people++; }
+    }
+  }
+  const order = (id: string) => p.options.findIndex(o => o.id === id);
+  return rows.sort((a, b) => b.score - a.score || a.veto.length - b.veto.length || order(a.id) - order(b.id));
+}
+
+/** Stimmen der Reise und aus dem Konto (geteilte Reise: je Person ein eigenes Dokument) zusammen; das Konto geht vor */
+export const mergedVotes = (p: Poll, remote?: Record<string, Record<string, number>>) => ({ ...p.votes, ...(remote || {}) });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { applyResult, bestPeriods, blockedDays, cycle, hitsBlocked, missing, newPoll, setAvail, tally, vote } from "./together";
+import { applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
 
 const trip = (): Trip => ({
   id: "t", name: "Reise", place: "", country: "", items: [], tiers: {}, settings: DEFAULT_SETTINGS,
@@ -69,5 +69,55 @@ describe("Abstimmen (#175)", () => {
     const o = newPoll("Welche?", "offers", [{ label: "Villa", itemId: "s", optionId: "o1" }, { label: "Hotel", itemId: "s", optionId: "o2" }]);
     applyResult(t, o, o.options[1].id);
     expect([t.items[0].chosen, t.items[0].status]).toEqual(["o2", "chosen"]);
+  });
+});
+
+describe("Arten der Abstimmung (#432)", () => {
+  const p3 = (mode: "one" | "multi" | "miles", miles?: number) => ({ ...newPoll("Welches Hotel?", "offers", [{ label: "A" }, { label: "B" }, { label: "C" }], mode), ...(miles ? { miles } : {}) });
+  it("eine Stimme: Dafür wechselt, „ohne mich“ daneben", () => {
+    const p = p3("one");
+    const [a, b] = p.options.map(o => o.id);
+    let m = nextVote(p, undefined, a, "for");
+    m = nextVote(p, m, b, "for");
+    expect(m).toEqual({ [b]: 1 });
+    m = nextVote(p, m, a, "veto");
+    expect(m).toEqual({ [b]: 1, [a]: VETO });
+    expect(nextVote(p, m, b, "for")).toEqual({ [a]: VETO });
+  });
+  it("mehrere Stimmen: jede Möglichkeit für sich", () => {
+    const p = p3("multi");
+    const [a, b] = p.options.map(o => o.id);
+    expect(nextVote(p, nextVote(p, undefined, a, "for"), b, "for")).toEqual({ [a]: 1, [b]: 1 });
+  });
+  it("Meilen-Wahl: höchstens Möglichkeiten × 5, frei verteilt, auch alle auf eine", () => {
+    expect(milesOf(p3("miles", 99))).toBe(15);
+    const p = p3("miles", 3);
+    const [a, b] = p.options.map(o => o.id);
+    let m: Record<string, number> = {};
+    for (let i = 0; i < 5; i++) m = nextVote(p, m, a, "more");
+    expect(m).toEqual({ [a]: 3 });
+    expect(milesLeft(p, m)).toBe(0);
+    m = nextVote(p, nextVote(p, m, a, "less"), b, "more");
+    expect(m).toEqual({ [a]: 2, [b]: 1 });
+  });
+  it("Auszählung: Meilen bzw. Stimmen, Personen, ohne mich; zu viele Meilen zählen anteilig", () => {
+    const p = p3("miles", 4);
+    const [a, b, c] = p.options.map(o => o.id);
+    const t = tallyMode(p, { x: { [a]: 4 }, y: { [b]: 2, [a]: 2 }, z: { [c]: VETO, [b]: 8 } });
+    expect(t.map(r => [r.label, r.score, r.people, r.veto])).toEqual([["A", 6, 2, []], ["B", 6, 2, []], ["C", 0, 0, ["z"]]]);
+    const o = p3("one");
+    expect(tallyMode(o, { x: { [o.options[1].id]: 1 }, y: { [o.options[1].id]: 1, [o.options[0].id]: VETO } })[0]).toMatchObject({ label: "B", score: 2, people: 2 });
+  });
+  it("Frist: offen bis einschließlich zum Tag, „endet bald“ ab dem Vortag", () => {
+    const p = { ...p3("one"), due: "2027-05-10" };
+    expect(pollOpen(p, "2027-05-10")).toBe(true);
+    expect(pollOpen(p, "2027-05-11")).toBe(false);
+    expect(dueSoon(p, "2027-05-08")).toBe(false);
+    expect(dueSoon(p, "2027-05-09")).toBe(true);
+  });
+  it("Stimmen aus dem Konto zählen mit, auch bei „noch nicht abgestimmt“", () => {
+    const t = trip();
+    const p = p3("one");
+    expect(missing(t, p, { [t.travelers[0].id]: { [p.options[0].id]: 1 } }).map(x => x.id)).not.toContain(t.travelers[0].id);
   });
 });

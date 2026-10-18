@@ -13,14 +13,15 @@ import type { Role, TripDoc } from "./firebase";
 import type { CampaignDoc } from "../campaign";
 
 export type { Role };
-export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** zuletzt im Konto gespeichert (ISO) */ updated?: string; /** von wem (Konto-ID) */ by?: string }
+export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** „Wer bist du?“ (#435): Konto → Reisende-Kennung, Vorname */ claims: NonNullable<TripDoc["claims"]>; /** zuletzt im Konto gespeichert (ISO) */ updated?: string; /** von wem (Konto-ID) */ by?: string }
 type FB = typeof import("./firebase");
 
 export const cloud = $state({
   configured,
   /** Firebase geladen und Anmeldestatus bekannt */
   ready: !configured,
-  user: null as { uid: string; name: string; email: string } | null,
+  /** guest: ohne Konto beigetreten (anonyme Anmeldung, #435) */
+  user: null as { uid: string; name: string; email: string; guest: boolean } | null,
   trips: [] as CloudTrip[],
   status: "local" as "local" | "saving" | "saved" | "offline" | "error",
   error: "",
@@ -46,6 +47,17 @@ let wanted = "", retries = 0;
 const creating = new Set<string>();
 /** zuletzt gespeicherter oder empfangener Stand je Reise, um Echos zu erkennen */
 const synced = new Map<string, string>();
+/**
+ * frühere eigene Stände je Reise (angelegt bzw. gespeichert): Der Server kann direkt nach dem Anlegen noch den ersten
+ * Stand melden, wenn auf dem Gerät schon weiter geändert und gespeichert wurde. Das ist kein fremder Stand (#416).
+ */
+const older = new Map<string, string[]>();
+/** neuen eigenen Stand merken; der bisherige zählt ab jetzt als älterer eigener */
+function sent(id: string, json: string) {
+  const prev = synced.get(id);
+  if (prev && prev !== json) older.set(id, [...(older.get(id) || []), prev].slice(-5));
+  synced.set(id, json);
+}
 let onRemote: (id: string, trip: Trip) => void = () => {};
 let onGone: (id: string) => void = () => {};
 
@@ -98,15 +110,15 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
   f.onUser(u => {
     fbUser = u;
     unTrips?.(); unTrips = null;
-    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
-    cloud.user = { uid: u.uid, name: f.displayName(u), email: u.email || "" };
+    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); older.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
+    setUser(u);
     cloud.showLogin = false;
     // Meldung eines abgebrochenen Versuchs soll nach erfolgreicher Anmeldung nicht stehen bleiben
     cloud.error = "";
     unTrips = f.watchMyTrips(u.uid, (list, fromCache) => {
       const next = list.map(d => ({
         id: d.id, name: d.name, role: d.members[u.uid], owner: d.owner, members: d.members,
-        memberNames: d.memberNames || {}, invite: d.invite ?? null, ...stamp(d.updatedAt), ...(d.updatedBy ? { by: d.updatedBy } : {})
+        memberNames: d.memberNames || {}, invite: d.invite ?? null, claims: d.claims || {}, ...stamp(d.updatedAt), ...(d.updatedBy ? { by: d.updatedBy } : {})
       })).sort((a, b) => a.name.localeCompare(b.name, "de"));
       // auch bei reinen Statusänderungen (Zwischenspeicher → Server) gemeldet: Liste nur bei echter Änderung ersetzen
       if (JSON.stringify(next) !== JSON.stringify($state.snapshot(cloud.trips))) cloud.trips = next;
@@ -120,6 +132,60 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
   addEventListener("online", () => { if (cloud.status === "offline") cloud.status = "saving"; });
   addEventListener("offline", () => { if (cloud.user) cloud.status = "offline"; });
 }
+
+function setUser(u: User) {
+  cloud.user = { uid: u.uid, name: fb!.displayName(u), email: u.email || "", guest: u.isAnonymous };
+}
+/** nach dem Verknüpfen eines Gasts mit einem Konto meldet Firebase keinen neuen Nutzer: Stand neu lesen */
+function refreshUser() {
+  if (fbUser) void fbUser.reload().catch(() => {}).then(() => { if (!fbUser) return; setUser(fbUser); if (!fbUser.isAnonymous) cloud.showLogin = false; });
+}
+
+/** angemeldet mit Konto (nicht als Gast): KI-Planer, Fehlermeldungen, eigene Reisen im Konto */
+export const hasAccount = () => !!cloud.user && !cloud.user.guest;
+
+/** als Gast ohne Konto beitreten (#435); der Vorname erscheint bei den Mitreisenden */
+export async function loginGuest(name: string) {
+  cloud.error = "";
+  try { await (await load()).loginGuest(name); refreshUser(); } catch (e) { cloud.error = message(e); }
+}
+
+/** „Wer bist du?“: eigene Zuordnung in einer Reise setzen oder lösen */
+export async function claimTraveler(tripId: string, c: { t: string; n: string } | null) {
+  if (!fbUser) return;
+  await (await load()).setClaim(tripId, fbUser.uid, c);
+}
+/* ---------- Stimmen (#432): je Mitglied ein Dokument unter der Reise ---------- */
+
+/** Stimmen der offenen Konto-Reise: Konto → Abstimmung → Möglichkeit → Wert */
+export const cloudVotes = $state({ trip: "", byUid: {} as Record<string, Record<string, Record<string, number>>>,
+  /** zu „Ohne mich“ (#439): Konto → Abstimmung → Möglichkeit → Grund, mit Familie */
+  whyByUid: {} as Record<string, Record<string, Record<string, { r?: string; f?: boolean }>>> });
+let unVotes: Unsubscribe | null = null;
+/** Stimmen der Reise beobachten (nur Konto-Reisen, nur Mitglieder); leer bzw. anderer Kennung: aufhören */
+export async function watchVotes(id: string) {
+  if (cloudVotes.trip === id && unVotes) return;
+  unVotes?.(); unVotes = null;
+  cloudVotes.trip = id; cloudVotes.byUid = {}; cloudVotes.whyByUid = {};
+  if (!id || !fbUser || !isCloud(id)) return;
+  const f = await load();
+  if (cloudVotes.trip !== id) return;
+  unVotes = f.watchVotes(id, by => {
+    if (cloudVotes.trip !== id) return;
+    cloudVotes.byUid = Object.fromEntries(Object.entries(by).map(([k, d]) => [k, d.v]));
+    cloudVotes.whyByUid = Object.fromEntries(Object.entries(by).map(([k, d]) => [k, d.w || {}]));
+  }, () => { unVotes = null; });
+}
+/** eigene Stimmen in einer Konto-Reise speichern (alle Abstimmungen der Reise auf einmal) */
+export async function saveMyVotes(id: string, v: Record<string, Record<string, number>>, w: Record<string, Record<string, { r?: string; f?: boolean }>> = {}) {
+  if (!fbUser) return;
+  cloudVotes.byUid = { ...cloudVotes.byUid, [fbUser.uid]: v };
+  cloudVotes.whyByUid = { ...cloudVotes.whyByUid, [fbUser.uid]: w };
+  await (await load()).saveVotes(id, fbUser.uid, v, w);
+}
+
+/** Besitzer: Zuordnung eines Mitglieds lösen */
+export async function dropClaim(tripId: string, uid: string) { await (await load()).setClaim(tripId, uid, null); }
 
 function readJoinLink() {
   const u = new URL(location.href);
@@ -161,7 +227,10 @@ export async function watch(id: string) {
     if (pending) return;
     cloud.loaded[id] = true;
     if (synced.get(id) === d.data) { cloud.status = navigator.onLine ? "saved" : "offline"; return; }
+    // eigener älterer Stand (z. B. vom Anlegen), der neuere ist schon unterwegs: nicht übernehmen
+    if (older.get(id)?.includes(d.data)) { dbg("älterer eigener Stand", id); return; }
     synced.set(id, d.data);
+    older.delete(id);
     try { onRemote(id, JSON.parse(d.data) as Trip); } catch (e) { cloud.error = message(e); }
     retries = 0;
   }, e => {
@@ -194,7 +263,7 @@ export async function push(trip: Trip, json: string) {
   // erst senden, wenn der aktuelle Stand empfangen wurde, sonst würde ein alter Stand ihn überschreiben
   if (!cloud.loaded[trip.id]) return;
   if (synced.get(trip.id) === json) return;
-  synced.set(trip.id, json);
+  sent(trip.id, json);
   cloud.status = navigator.onLine ? "saving" : "offline";
   const f = await load();
   try { await f.saveTrip(trip.id, trip.name || t("trip"), json, fbUser.uid); cloud.status = "saved"; }
@@ -206,7 +275,7 @@ export async function upload(trip: Trip) {
   if (!fbUser) return;
   const f = await load();
   const json = JSON.stringify(trip);
-  synced.set(trip.id, json);
+  sent(trip.id, json);
   cloud.loaded[trip.id] = true;
   creating.add(trip.id);
   try { await f.createTrip(trip.id, trip.name || t("trip"), json, fbUser); }
@@ -215,6 +284,15 @@ export async function upload(trip: Trip) {
 }
 
 /** Konto-Reise frisch vom Server lesen (z. B. vor dem Aufräumen: die Kopie auf dem Gerät kann veraltet sein) */
+/** Konto-Reise ändern, die gerade nicht offen ist (z. B. Variante in der Vergleichsansicht): frischer Stand, ändern, speichern */
+export async function patchTrip(id: string, fn: (t: Trip) => void) {
+  const r = roleOf(id);
+  if (!fbUser || !r || r === "viewer") return;
+  const tr = await freshCloudTrip(id);
+  if (!tr) return;
+  fn(tr);
+  await (await load()).saveTrip(id, tr.name || t("trip"), JSON.stringify(tr), fbUser.uid);
+}
 export async function freshCloudTrip(id: string): Promise<Trip | null> {
   const data = await (await load()).freshTripData(id);
   return data ? JSON.parse(data) as Trip : null;
@@ -237,6 +315,20 @@ export async function makeInvite(id: string, role: "editor" | "viewer"): Promise
 export const inviteLink = (id: string, key: string, role: string) =>
   `${location.origin}${location.pathname}?join=${id}.${key}.${role}`;
 export async function revokeInvite(id: string) { const f = await load(); await f.setInvite(id, null); }
+/**
+ * Variante einer geteilten Reise (#428): mit denselben Mitgliedern und Rollen teilen. Wer die Variante anlegt, ist ihr
+ * Besitzer; gehört die Reise jemand anderem, wird der zum Bearbeiter.
+ */
+export async function shareLike(from: string, to: string) {
+  const src = cloudTrip(from);
+  if (!src || !fbUser || Object.keys(src.members).length < 2) return;
+  const me = fbUser.uid;
+  const members: Record<string, Role> = { ...src.members, [me]: "owner" };
+  if (src.owner !== me) members[src.owner] = "editor";
+  const names = { ...src.memberNames };
+  if (!names[me]) names[me] = cloud.user?.name || "";
+  await (await load()).setMembers(to, members, names, src.claims || {});
+}
 export async function changeRole(id: string, uid: string, role: Role) { const f = await load(); await f.setRole(id, uid, role); }
 export async function kick(id: string, uid: string) { const f = await load(); await f.removeMember(id, uid); }
 
@@ -245,7 +337,7 @@ let signing = false;
 export async function loginGoogle() {
   if (signing) return;
   signing = true; cloud.error = "";
-  try { await (await load()).loginGoogle(); } catch (e) { cloud.error = message(e); } finally { signing = false; }
+  try { await (await load()).loginGoogle(); refreshUser(); } catch (e) { cloud.error = message(e); } finally { signing = false; }
 }
 export async function loginEmail(email: string) { cloud.error = ""; await (await load()).sendLoginLink(email); }
 /** Anmelde-Nachweis für den Such-Dienst (KI-Planer); ohne Anmeldung null */
@@ -266,7 +358,7 @@ export async function myAccountData() {
   if (!fbUser) throw new Error("not signed in");
   return (await load()).collectAccount(fbUser.uid);
 }
-export async function loginTest(email: string, name: string) { if (emulator) await (await load()).loginTest(email, name); }
+export async function loginTest(email: string, name: string) { if (emulator) { await (await load()).loginTest(email, name); refreshUser(); } }
 
 const message = errorMessage;
 

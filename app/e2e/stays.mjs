@@ -49,6 +49,7 @@ try {
   // Orts- und Flughafendaten des Artefakts (liegen auf der Seite eine Ebene über der App)
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
+  await p.route("**/coast/*.json", r => r.fulfill({ path: `../public/coast/${r.request().url().split("/").pop()}` }).catch(() => r.fulfill({ status: 404 })));
   // Tageskurse (EZB) für die Anzeige in anderer Währung
   await p.route("https://flights.test/rates", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ date: "2026-10-01", rates: { EUR: 1, USD: 1.1, PLN: 4.25, GBP: 0.8 } }) }));
   // Karte: leerer Kartenstil statt der echten Kacheln (OpenFreeMap)
@@ -245,13 +246,35 @@ try {
   const tiles = cards.locator(".st-cmp .cmp-t");
   if ((await tiles.count()) !== 2) fail("Vergleich: " + await tiles.count() + " Kacheln");
   if (!(await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).count())) fail("gewähltes Angebot nicht markiert");
+  // #438: Buchstaben wie auf der Karte, Entfernung zum Zentrum (nur mit Lage), ganze Reise je Angebot
+  const tRooms = cards.locator(".cmp-t", { hasText: "Rooms Šećer" }), tKlara = cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" });
+  if (!(await tiles.nth(0).locator(".cmp-l").innerText()).includes("A") || !(await tiles.nth(1).locator(".cmp-l").innerText()).includes("B")) fail("Buchstaben fehlen");
+  await until(async () => /Zentrum Split [\d,]+ k?m/.test(await tRooms.innerText()), "Entfernung zum Zentrum bei Rooms Šećer");
+  const tR = await tRooms.innerText(), tK = await tKlara.innerText();
+  if (!tK.includes("Lage unbekannt")) fail("Angebot ohne Lage: " + tK);
+  if (!tR.includes("Ganze Reise damit") || !tR.includes("aktuell gewählt")) fail("ganze Reise beim gewählten Angebot: " + tR);
+  if (!/\+[\d.]+ € gesamt/.test(tK)) fail("Abstand der ganzen Reise beim anderen Angebot: " + tK);
+  // #441: Entfernung zum Meer (Split liegt an der Küste), eigener Bezugspunkt über Koordinaten
+  await until(async () => /Meer (unter 1 km|[\d,]+ km)/.test(await tRooms.innerText()), "Entfernung zum Meer");
+  await cards.locator(".cmp-add").click();
+  await cards.locator(".cmp-form input").nth(0).fill("Partylocation");
+  await cards.locator(".cmp-form input").nth(1).fill("nirgendwo");
+  await cards.locator(".cmp-add-ok").click();
+  await cards.locator(".cmp-form .err").waitFor();
+  await cards.locator(".cmp-form input").nth(1).fill("https://www.google.com/maps/place/x/@43.5089,16.4392,17z");
+  await cards.locator(".cmp-add-ok").click();
+  await cards.locator(".cmp-own", { hasText: "Partylocation" }).waitFor();
+  await until(async () => /Partylocation [\d,]+ k?m/.test(await tRooms.innerText()), "Entfernung zum eigenen Punkt");
+  await until(() => p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").refs?.[0]?.name === "Partylocation"), "eigener Punkt in der Reise gespeichert");
+  await cards.locator(".cmp-own-x").click();
+  if (await cards.locator(".cmp-own").count()) fail("eigener Punkt nicht entfernt");
   await cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Ferienwohnung Klara" }).waitFor();
   // 783 € + Kurtaxe Split automatisch geschätzt (2 € × 1 Person × 7 Nächte)
   if (!(await cards.locator(".stay .price b").textContent()).includes("797")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
   await cards.locator(".cmp-t", { hasText: "Rooms Šećer" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).waitFor();
-  log("Vergleich nebeneinander: Klara gewählt (783 € + ca. 14 € Kurtaxe), zurück zu Rooms Šećer");
+  log("Vergleich nebeneinander: A/B, Entfernung zum Zentrum und zum Meer, eigener Punkt per Google-Maps-Link, ganze Reise je Angebot; Klara gewählt (783 € + ca. 14 € Kurtaxe), zurück zu Rooms Šećer");
 
   // wie im Artefakt: Anwesenheit aus dem Flug, Lücke im Plan → „Unterkunft suchen“ für genau diese Nächte und Personen
   const TRIP = {
@@ -548,6 +571,38 @@ try {
   await pm.waitFor({ state: "detached" });
   if (!(await pc.locator(".price .num").textContent()).includes("140")) fail("Privat mit Kosten: " + await pc.locator(".price .num").textContent());
   log("Privat in Lissabon: kostenlos und gewählt, Reiseziel für Flug- und Event-Suche, Kosten 20 € pro Nacht = 140 €");
+
+  // #441: Flüge und Erlebnisse vergleichen: Buchstaben, Hin- und Rückflug, Umstiege, Gepäck, ganze Reise p. P.; Erlebnisse mit Entfernung zum Hotel
+  {
+    const leg = (dir, dep, arr, stops = 0) => ({ dir, from: dir === "out" ? "DUS" : "SPU", to: dir === "out" ? "SPU" : "DUS", dep, arr, stops, minutes: 130 });
+    const fopt = (id, label, unit, back, bag, stops = 0) => ({ id, label, price: { mode: "unit", currency: "EUR", unit }, legs: [leg("out", "2027-07-18T06:10", "2027-07-18T08:20", stops), leg("back", back, back.replace(/T(\d\d)/, (m, h) => "T" + String(+h + 2).padStart(2, "0")))], baggage: bag });
+    const C = {
+      id: "c441", name: "Split Vergleich", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-22",
+      travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 38 }],
+      tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, detail: { flights: true, stay: true, attractions: true },
+      items: [
+        { id: "f", cat: "flights", name: "Flug", status: "idea", chosen: "fa", options: [fopt("fa", "Eurowings", 400, "2027-07-22T20:00", { personal: 2, cabin: 2, checked: 0 }), fopt("fb", "Croatia Airlines", 520, "2027-07-22T18:00", { personal: 2, cabin: 2, checked: 2 }, 1)] },
+        { id: "s", cat: "stay", name: "Unterkunft in Split", status: "chosen", from: "2027-07-18", to: "2027-07-22", options: [{ id: "so", label: "Hotel Mar", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 600 }, loc: { lat: 43.508, lon: 16.44 } }] },
+        { id: "e", cat: "attractions", name: "Bootstour", status: "idea", chosen: "ea", options: [
+          { id: "ea", label: "Blaue Grotte", price: { mode: "person", currency: "EUR", adult: 90 }, loc: { lat: 43.06, lon: 16.18 } },
+          { id: "eb", label: "Krka-Wasserfälle", price: { mode: "person", currency: "EUR", adult: 60 }, loc: { lat: 43.8, lon: 15.97 } }] }
+      ]
+    };
+    await reloadHome(p, { set: { "rk2-t:c441": C, "rk2-index": [{ id: "c441", name: C.name, place: C.place }], "rk2-current": "c441" } });
+    await p.locator(".start .home-trip", { hasText: "Split Vergleich" }).first().click();
+    const fc = p.locator("#flights .card", { hasText: "Eurowings" }).locator(".fl-cmp");
+    await fc.first().waitFor();
+    const fa = await fc.nth(0).innerText(), fb = await fc.nth(1).innerText();
+    if (!fa.includes("A") || !fa.includes("🛬") || !fa.includes("Direktflug") || !fa.includes("nur Handgepäck")) fail("Flug A: " + fa);
+    if (!fb.includes("1 Umstieg") || !fb.includes("mit Koffer") || !/Reise \+[\d.]+ € p\. P\./.test(fb)) fail("Flug B: " + fb);
+    const ec = p.locator("#attractions .card", { hasText: "Bootstour" }).locator(".oc-row");
+    await ec.first().waitFor();
+    await until(async () => /🛏 Hotel Mar [\d,]+ km/.test(await ec.nth(1).innerText()), "Erlebnis: Entfernung zum Hotel");
+    if (!/Reise −[\d.]+ € p\. P\./.test(await ec.nth(1).innerText())) fail("Erlebnis B ganze Reise: " + await ec.nth(1).innerText());
+    await ec.nth(1).click();
+    await p.locator("#attractions .oc-row.sel", { hasText: "Krka" }).waitFor();
+    log("Flüge und Erlebnisse vergleichen: A/B, Hin und Rück, Umstiege, Gepäck, ganze Reise p. P.; Erlebnis mit Entfernung zum Hotel, wählbar");
+  }
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nUnterkunftssuche: alles in Ordnung");

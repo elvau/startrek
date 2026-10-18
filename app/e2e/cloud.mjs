@@ -83,6 +83,48 @@ try {
   await until(async () => (await total(oma)) === before, `Oma sieht ${await total(oma)} statt ${before}`);
   log("Oma ist beigetreten und sieht dieselbe Summe");
 
+  // „Wer bist du?“ (#435): Oma wählt einen Platzhalter, er heißt danach „Oma“ (auch bei Anna)
+  const who = oma.locator(".modal", { hasText: "Wer bist du?" });
+  await who.waitFor();
+  await who.locator(".who-p").first().click();
+  await who.locator("input").fill("Oma");
+  await who.locator(".who-ok").click();
+  await who.waitFor({ state: "detached" });
+  const names = pg => pg.evaluate(() => (JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").travelers || []).map(x => x.name + (x.member ? "*" : "")));
+  await until(async () => (await names(anna)).includes("Oma*"), "Platzhalter heißt bei Anna „Oma“");
+  log("Wer bist du: Oma wählt einen Platzhalter, bei Anna heißt er danach Oma (verknüpft)");
+
+  // Gast ohne Konto (#435): AGB nötig, Vorname, dann „Wer bist du?“; Hinweis „Konto anlegen“ behält alles
+  const jonas = await person("Jonas");
+  await jonas.goto(link);
+  await jonas.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
+  await jonas.locator(".login-guest input").fill("Jonas");
+  await jonas.locator(".login-guest .btn").click();
+  await jonas.locator(".login .err", { hasText: "AGB" }).waitFor();
+  await jonas.locator(".login-terms input").check();
+  await jonas.locator(".login-guest .btn").click();
+  await until(async () => (await jonas.locator(".hero-in").textContent().catch(() => "")).includes("Mallorca"), "Gast sieht die Reise");
+  const gwho = jonas.locator(".modal", { hasText: "Wer bist du?" });
+  await gwho.waitFor();
+  if ((await gwho.locator("input").inputValue()) !== "Jonas") fail("Vorname nicht vorbelegt");
+  if (await gwho.locator(".who-p", { hasText: /^.*Oma$/ }).count()) fail("schon gewählte Person noch wählbar");
+  await gwho.locator(".who-p").first().click();
+  await gwho.locator(".who-ok").click();
+  await until(async () => (await names(anna)).includes("Jonas*"), "Gast heißt bei Anna „Jonas“");
+  await jonas.locator(".guest-note").waitFor();
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
+  await until(async () => (await anna.locator(".members").innerText()).includes("= Jonas"), "Anna sieht, wer Jonas ist");
+  await anna.keyboard.press("Escape");
+  const gastTrip = await jonas.evaluate(() => localStorage.getItem("rk2-current"));
+  await jonas.locator(".guest-up").click();
+  await jonas.locator(".modal h3", { hasText: "Konto anlegen" }).waitFor();
+  await login(jonas, "Jonas");
+  await until(async () => !(await jonas.locator(".guest-note").count()), "Gast-Hinweis weg nach Konto");
+  if ((await jonas.evaluate(() => localStorage.getItem("rk2-current"))) !== gastTrip) fail("nach Konto andere Reise offen");
+  await until(async () => (await jonas.locator(".top .tm-btn").first().textContent()).includes("☁"), "Reise bleibt nach Konto im Konto");
+  log("Gast: AGB nötig, beitreten ohne Konto, sich wählen; Anna sieht „= Jonas“; Konto anlegen behält Reise und Person");
+
   // Oma ändert den Mietwagen, Anna sieht es live
   await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).scrollIntoViewIfNeeded();
   await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
@@ -133,6 +175,71 @@ try {
   await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
   if (await oma.locator(".editor").count()) fail("Zuschauerin kann bearbeiten");
   log("Oma sieht nur noch zu und kann nichts bearbeiten");
+
+  // Abstimmen (#432): Anna legt eine Abstimmung an, wählt sich („Wer bist du?“) und stimmt; Oma stimmt als Zuschauerin
+  // mit dem eigenen Konto („✕ Ohne mich“), Anna sieht es live
+  await anna.keyboard.press("Escape");
+  await anna.locator(".modal").waitFor({ state: "detached" });
+  const atg = anna.locator("#together .tg");
+  await atg.scrollIntoViewIfNeeded();
+  await atg.locator(".poll-new").click();
+  await atg.locator(".poll-q").fill("Welcher Strand?");
+  await atg.locator(".poll-opts").fill("Es Trenc\nCala Agulla");
+  await atg.locator(".poll-add").click();
+  const apoll = atg.locator(".poll", { hasText: "Welcher Strand?" });
+  await apoll.locator(".pv-who .linkbtn").click();
+  const awho = anna.locator(".modal", { hasText: "Wer bist du?" });
+  await awho.locator(".who-p").first().click();
+  await awho.locator("input").fill("Anna");
+  await awho.locator(".who-ok").click();
+  await apoll.locator("li", { hasText: "Es Trenc" }).locator(".pv-for").click();
+  await until(async () => (await apoll.locator("li", { hasText: "Es Trenc" }).innerText()).includes("1 Stimme"), "Annas Stimme gezählt");
+  const otg = oma.locator("#together .tg");
+  await otg.scrollIntoViewIfNeeded();
+  const opoll = otg.locator(".poll", { hasText: "Welcher Strand?" });
+  await until(async () => (await opoll.locator("li", { hasText: "Es Trenc" }).innerText().catch(() => "")).includes("1 Stimme"), "Oma sieht Annas Stimme");
+  await opoll.locator("li", { hasText: "Es Trenc" }).locator(".pv-veto").click();
+  const ovd = oma.locator(".modal", { hasText: "Ohne mich bei" });
+  await ovd.locator(".veto-ok").click();
+  await ovd.waitFor({ state: "detached" });
+  await opoll.locator("li", { hasText: "Cala Agulla" }).locator(".pv-for").click();
+  await until(async () => (await apoll.locator("li", { hasText: "Es Trenc" }).innerText()).includes("✕ Oma"), "Anna sieht Omas „Ohne mich“")
+    .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); console.log("OMA:", (await opoll.innerText()).replace(/\s+/g, " ")); throw e; });
+  await until(async () => (await apoll.locator("li", { hasText: "Cala Agulla" }).innerText()).includes("1 Stimme"), "Omas Stimme bei Anna");
+  // Anna hat schon abgestimmt: Info mit neuem Preis (#439)
+  // Preise der Reiseidee sind pro Person: gleicher Preis p. P., die ganze Reise wird günstiger
+  await until(async () => (await apoll.locator(".pv-notes").innerText().catch(() => "")).includes("Oma wäre bei „Es Trenc“ nicht dabei.")
+    && /gleicher Preis p\. P\., ganze Reise .+ statt/.test(await apoll.locator("li", { hasText: "Es Trenc" }).innerText()), "Info an Anna, Folgen an der Möglichkeit")
+    .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); throw e; });
+  log("Abstimmen: Anna wählt sich und stimmt, Oma stimmt als Zuschauerin mit eigenem Konto („✕ Ohne mich“ mit Namen, Fenster), Anna sieht es live und bekommt die Info, Folgen an der Möglichkeit");
+
+  // Variante (#428): Anna kopiert die geteilte Reise als Variante; sie ist mit denselben Mitgliedern geteilt, die Startseite
+  // bündelt beide in einer Kachel
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-variant").click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) !== tripId, "Variante offen");
+  const varId = await anna.evaluate(() => localStorage.getItem("rk2-current"));
+  const doc = async id => (await (await fetch(`http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/${id}`, { headers: { Authorization: "Bearer owner" } })).json()).fields || {};
+  const ids = f => (f.memberIds?.arrayValue?.values || []).map(v => v.stringValue).sort().join();
+  await until(async () => { const a = await doc(tripId), b = await doc(varId); return !!b.memberIds && ids(a) === ids(b) && JSON.parse(b.data.stringValue).cmp?.id === JSON.parse(a.data.stringValue).cmp?.id; }, "Variante mit denselben Mitgliedern im selben Vergleich")
+    .catch(async e => { const a = await doc(tripId), b = await doc(varId); console.log("ORIG", ids(a), JSON.parse(a.data?.stringValue || "{}").cmp, "VAR", ids(b), JSON.parse(b.data?.stringValue || "{}").cmp); throw e; });
+  // in der Reise (#431): „Variante 2 von 2“, Wechsel zur anderen Variante und zurück
+  const vbar = anna.locator(".hero .vbar");
+  await until(async () => /Variante 2 von 2/.test(await vbar.innerText().catch(() => "")), "Hinweis „Variante 2 von 2“")
+    .catch(async e => { console.log("VBAR", await anna.locator(".hero").innerText().then(x => x.slice(0, 300).replace(/\n/g, " / ")), await anna.evaluate(() => JSON.stringify(Object.keys(localStorage).filter(k => k.startsWith("rk2-t:")).map(k => [k, JSON.parse(localStorage.getItem(k)).cmp])))); throw e; });
+  await vbar.locator(".chip", { hasNotText: "Variante 2" }).click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === tripId, "Wechsel zur ersten Variante");
+  await vbar.locator(".chip", { hasText: "Variante 2" }).click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === varId, "Wechsel zurück");
+  await anna.locator(".top .brand-btn").click();
+  const vt = anna.locator(".start .home-cmp");
+  await vt.waitFor();
+  if (!(await vt.innerText()).includes("2 Varianten") || !(await vt.innerText()).includes("Variante 2")) fail("Kachel: " + await vt.innerText());
+  await vt.locator(".hc-var", { hasNotText: "Variante 2" }).click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === tripId, "zurück in der ursprünglichen Reise");
+  log("Variante: geteilt mit denselben Mitgliedern, im selben Vergleich, Hinweis „Variante 2 von 2“ mit Wechsel, Startseite mit einer Kachel „2 Varianten“");
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
 
   // Anna zieht den Link zurück; Mallory kommt nicht mehr hinein
   await anna.locator(".linkbtn", { hasText: "Link zurückziehen" }).click();
@@ -287,7 +394,7 @@ try {
 
   // Startseite: geteilte Reise zeigt die anderen Mitglieder
   await anna.locator(".top .brand-btn").click();
-  await until(async () => (await anna.locator(".start").innerText()).includes("mit Oma"), "Mitglieder auf der Karte").catch(async e => { console.log("HOME:", (await anna.locator(".start").innerText()).replace(/\s+/g, " ").slice(0, 900)); throw e; });
+  await until(async () => /mit [^·]*Oma/.test(await anna.locator(".start").innerText()), "Mitglieder auf der Karte").catch(async e => { console.log("HOME:", (await anna.locator(".start").innerText()).replace(/\s+/g, " ").slice(0, 900)); throw e; });
   log("Startseite: geteilte Reise „☁ mit Oma“");
 
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));

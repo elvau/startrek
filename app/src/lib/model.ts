@@ -22,6 +22,8 @@ export interface Traveler {
   active?: boolean;
   /** gespeicherte Person, aus der dieser Reisende stammt */
   personId?: string;
+  /** Konto (auch Gast), das diese Person in einer geteilten Reise ist (#435, über „Wer bist du?“) */
+  member?: string;
   /** Altersklasse, wenn kein Alter bekannt ist (z. B. bei Platzhaltern) */
   kind?: "adult" | "child" | "infant";
   /** Platzhalter mit Tiernamen („Reh Kind 1“), nur in dieser Reise, nicht in Gruppen gespeichert */
@@ -209,7 +211,7 @@ export interface Option {
   /** test: aus einem Testzugang übernommen, Preis nicht echt */
   source?: { name: string; at?: string; url?: string; sponsored?: boolean; test?: boolean };
   legs?: FlightLeg[];
-  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string };
+  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string; freeCancel?: boolean };
   /** Foto vom Anbieter (nur https), z. B. einer Tour */
   image?: string;
   /** Lage (Unterkunft, Veranstaltungsort): Koordinaten vom Anbieter und Suchtext für Google Maps */
@@ -511,6 +513,8 @@ export interface Trip {
   /** „Zuhause während der Reise“ (#323) für diese Reise ein- bzw. ausgeschaltet; fehlt: aus den Vorlieben */
   homeCare?: boolean;
   event?: TripEvent;
+  /** eigene Bezugspunkte für Entfernungen (z. B. Partylocation, Stadion), #441 */
+  refs?: { id: string; name: string; lat: number; lon: number }[];
   travelers: Traveler[];
   households?: Record<string, Household>;
   /** Gruppenbus zum Flughafen für alle Familien mit Anreise „Gruppenbus“: Abfahrt beim Wohnort dieser Familie, Preis gesamt (leer = Richtwert) */
@@ -543,6 +547,12 @@ export interface Trip {
   watch?: TripWatch;
   /** vom KI-Assistenten vorgeschlagen (Kennzeichnung in der Übersicht) */
   ai?: { at: string };
+  /**
+   * Variante in einem Vergleich (#428): gleiche Kennung bündelt die Reisen (Startseite, Vergleichsansicht), Titel des
+   * Vergleichs und kurzer Name der Variante (fehlt: Ort bzw. Land). In der Reise selbst, damit Mitreisende es auch sehen.
+   * chosen: „Diese nehmen“ (ISO, #430); gewählt ist die Variante mit dem jüngsten Zeitpunkt, die anderen sind eingeklappt.
+   */
+  cmp?: { id: string; title: string; label?: string; chosen?: string };
   /** Wichtiges: erledigte Punkte (important.ts), bei Punkten für Personen je Person */
   done?: Record<string, { sig: string; ids?: string[] }>;
   /** Roadtrip: gewählte Fähre je Überfahrt („Von>Nach“ → Fähren-ID, „none“: keine Fähre) */

@@ -66,7 +66,7 @@
 <p>
   The app stores trips, saved people and groups, settings (e.g. language, currency, light or dark mode, sorting of the
   start page), the ECB daily exchange rates for conversion, when you last changed a trip (for “Last edited”) and
-  recently used search options in your browser’s storage (localStorage) so they are still there on your next visit.
+  recently used search options, and for polls which person you vote as and which “Count me out” you have already seen, in your browser’s storage (localStorage) so they are still there on your next visit.
   With an account, Firebase additionally stores your sign-in and a copy of your trips in the browser (IndexedDB) so the
   app also works offline; when signing in with an email link, the app remembers the email address until you open the
   link. So that the app starts without a connection and can be installed, a service worker stores the program files and
@@ -82,7 +82,13 @@
   The following is processed:
 </p>
 <ul>
-  <li>for signing in: email address or Google account (name, email, profile picture), time of sign-in, IP address;</li>
+  <li>for signing in: email address or Google account (name, email, profile picture), time of sign-in, IP address;
+    if you join a trip via an invite link as a guest without an account, Firebase gives you an anonymous ID and you only
+    enter a first name; if you create an account later, the ID is kept;</li>
+  <li>for shared trips under “Who are you?”: which member is which person of the trip, with the chosen first name
+    (visible to all members of the trip; you can unlink at any time or leave the trip);</li>
+  <li>for shared trips your votes in polls (including “Count me out”, with an optional reason and whether your family is included) per account, with time; visible with names to all
+    members of the trip, deleted with the trip or your account and included in your data export;</li>
   <li>for saved trips: the trip data you enter (e.g. names and ages of fellow travellers, on request their nationality
     for entry information, postcode and town of residence, amounts, in the kitty expenses during the trip and which family
     paid what, for shared trips also who submitted, confirmed or disputed an expense, with account name and reason; under “Find a

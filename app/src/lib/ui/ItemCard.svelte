@@ -5,6 +5,8 @@
   import FlightCard from "./FlightCard.svelte";
   import StayCard from "./StayCard.svelte";
   import ItemRow from "./ItemRow.svelte";
+  import OptionCompare from "./OptionCompare.svelte";
+  import PollHint from "./PollHint.svelte";
   import ItemEditor from "./ItemEditor.svelte";
   import WatchBadge from "./WatchBadge.svelte";
   import ExtrasBlock from "./ExtrasBlock.svelte";
@@ -49,7 +51,10 @@
     <StayCard {item} />
   {:else}
     <ItemRow {item} {icon} />
+    <!-- mehrere Angebote (Erlebnisse u. a.): Vergleich in der Karte, solange nicht gebucht (#441) -->
+    {#if item.options.length > 1 && !item.auto && item.status !== "booked" && item.status !== "paid" && item.status !== "dropped"}<OptionCompare {item} />{/if}
   {/if}
+  <PollHint {item} />
   <ExtrasBlock {item} />
   <ItemSplit {item} />
   <RentalCheck {item} />

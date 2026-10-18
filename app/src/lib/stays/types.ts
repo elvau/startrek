@@ -64,6 +64,8 @@ export interface StayOffer {
   image?: string;
   /** wenige Merkmale, z. B. Küche, Pool */
   facts?: string[];
+  /** kostenlos stornierbar laut Anbieter (bzw. gesucht mit diesem Filter); fehlt: nicht bekannt */
+  freeCancel?: boolean;
   /** Verpflegung, falls der Anbieter sie nennt */
   board?: "self" | "breakfast" | "half" | "full" | "all";
   /** Steuern und Gebühren laut Anbieter (im Preis enthalten oder vor Ort zu zahlen), in der Währung des Angebots */

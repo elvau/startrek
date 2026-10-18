@@ -250,10 +250,27 @@ try {
   const poll = tg.locator(".poll").first();
   await poll.waitFor({ timeout: 4000 }).catch(async () => fail("Abstimmung fehlt: " + (await tg.innerText()).slice(-900).replace(/\n/g, " / ") + " | " + errors.join(" | ")));
   await tg.locator(".tg-me select").selectOption({ label: "Anna" });
-  await poll.locator("li").nth(1).locator(".chip", { hasText: "👍" }).click();
+  await poll.locator("li").nth(1).locator(".pv-for").click();
   await tg.locator(".tg-me select").selectOption({ label: "Cleo" });
-  await poll.locator("li").nth(1).locator(".chip", { hasText: "👍" }).click();
-  await poll.locator("li").nth(0).locator(".chip", { hasText: "👎" }).click();
+  // eine Stimme (#432): zweite Wahl ersetzt die erste
+  await poll.locator("li").nth(0).locator(".pv-for").click();
+  await poll.locator("li").nth(1).locator(".pv-for").click();
+  if (await poll.locator("li").nth(0).locator(".pv-for.on").count()) fail("Eine Stimme: erste Wahl bleibt");
+  // „✕ Ohne mich“ (#439): erst das Fenster mit Erklärung, Begründung freiwillig; danach „Wäre doch dabei“
+  await poll.locator("li").nth(0).locator(".pv-veto").click();
+  const vd = gp.locator(".modal", { hasText: "Ohne mich bei" });
+  await vd.waitFor();
+  if (!(await vd.innerText()).includes("2 statt 3 Personen")) fail("Fenster ohne Folgen: " + await vd.innerText());
+  await vd.locator(".veto-why").fill("zu früh");
+  await vd.locator(".veto-ok").click();
+  await vd.waitFor({ state: "detached" });
+  if (!(await poll.locator("li").nth(0).innerText()).includes("✕ Cleo: „zu früh“")) fail("Ohne mich nicht mit Namen und Grund: " + await poll.locator("li").nth(0).innerText());
+  if (!(await poll.locator("li").nth(0).locator(".pv-veto").innerText()).includes("Wäre doch dabei")) fail("Knopf heißt nicht „Wäre doch dabei“");
+  // Anna hat vorher abgestimmt: bekommt die Info
+  await tg.locator(".tg-me select").selectOption({ label: "Anna" });
+  await poll.locator(".pv-notes", { hasText: "Cleo wäre bei" }).waitFor({ timeout: 4000 }).catch(async () => fail("Keine Info an Anna: " + (await poll.innerText()).replace(/\n/g, " / ")));
+  await poll.locator(".pv-seen").click();
+  if (await poll.locator(".pv-notes").count()) fail("Info nach „Gelesen“ noch da");
   if (!(await poll.innerText()).includes("Noch nicht abgestimmt: Ben")) fail("Wer fehlt: " + await poll.innerText());
   const second = (await poll.locator("li").nth(1).locator(".poll-l").innerText()).split(" – ")[0];
   await poll.locator(".poll-apply").click();
@@ -266,12 +283,33 @@ try {
   await tg.locator(".poll-opts").fill("Mallorca");
   if (await tg.locator(".poll-add").isEnabled()) fail("Abstimmung mit einer Möglichkeit startbar");
   await tg.locator(".poll-opts").fill("Mallorca\nKroatien");
+  // Meilen-Wahl (#432): 4 Meilen je Person, alle auf eine Möglichkeit
+  await tg.locator(".poll-mode").selectOption("miles");
+  await tg.locator(".poll-miles").fill("4");
   await tg.locator(".poll-add").click();
-  await tg.locator(".poll", { hasText: "Welches Ziel?" }).waitFor();
+  const mp = tg.locator(".poll", { hasText: "Welches Ziel?" });
+  await mp.waitFor();
+  if (!(await mp.locator(".pv-mode").innerText()).includes("Meilen-Wahl · 4 Meilen")) fail("Meilen-Wahl: " + await mp.locator(".pv-mode").innerText());
+  await tg.locator(".tg-me select").selectOption({ label: "Ben" });
+  const kro = mp.locator("li", { hasText: "Kroatien" });
+  for (let i = 0; i < 4; i++) await kro.locator(".pv-more").click();
+  if (await kro.locator(".pv-more").isEnabled()) fail("Mehr Meilen als erlaubt");
+  if (!(await mp.locator(".pv-left").innerText()).includes("Noch 0 von 4")) fail("Meilen übrig: " + await mp.locator(".pv-left").innerText());
+  if (!(await kro.innerText()).includes("4 Meilen")) fail("Meilen gezählt: " + await kro.innerText());
   // offene Abstimmung steht unter „Wichtiges“
   if (!(await gp.locator(".imp-btn").getAttribute("aria-label") || "").match(/Wichtig/)) fail("Wichtiges-Knopf fehlt");
+  // Anna sagt mit Familie (Ben) „Ohne mich“ zu Kroatien; Kroatien trotzdem nehmen stellt beide auf „nicht dabei“
+  await tg.locator(".tg-me select").selectOption({ label: "Anna" });
+  await kro.locator(".pv-veto").click();
+  await vd.waitFor();
+  await vd.locator(".veto-fam").check();
+  if (!(await vd.innerText()).includes("1 statt 3 Personen")) fail("Familie nicht mitgerechnet: " + await vd.innerText());
+  await vd.locator(".veto-ok").click();
+  await until(async () => (await kro.innerText()).includes("✕ Anna (mit Familie)"), "Ohne mich mit Familie");
+  await mp.locator(".poll-apply").click();
+  await until(async () => gp.evaluate(() => { const t = JSON.parse(localStorage.getItem("rk2-t:gp") || "{}"); return t.travelers?.filter(x => x.active === false).map(x => x.name).join() === "Anna,Ben"; }), "Anna und Ben nicht dabei");
   await gctx.close();
-  log("Abstimmen: über die Zeiträume (Anna und Cleo, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten");
+  log("Abstimmen: über die Zeiträume (eine Stimme, Cleo „ohne mich“, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten, Meilen-Wahl mit 4 Meilen; „Ohne mich“ mit Fenster, Grund, Info an Anna, mit Familie, trotzdem nehmen stellt beide auf „nicht dabei“");
 
   // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
   const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
@@ -639,6 +677,68 @@ try {
   if (pt.households?.Klein?.pets?.kinds?.join() !== "dog" || !pt.households?.Hase?.pets?.home || pt.households?.Hase?.care?.tasks?.join() !== "plants,mail" || !pt.homeCare) fail("Zuhause nicht gespeichert: " + JSON.stringify({ h: pt.households, on: pt.homeCare }));
   log("Zuhause während der Reise: erst eingeschaltet sichtbar; Klein mit Hund nach London (Einreise mit Haustier, Bandwurmbehandlung unter „Wichtiges“); Hase: Fische zuhause, Pflanzen und Briefkasten alle 2–3 Tage, Dankeschön 50 € und eine Kiste Bier (Anfrage, Posten nur für Hase: 50 € bzw. Sitter 30 €)");
   await pctx.close();
+
+  {
+  // Vergleich (#429, #430): drei Varianten einer Reise, Kachel, Vergleichsansicht, „Diese nehmen“, umbenennen, herausnehmen
+  const vtr = (id, label, place, country, stay, flight) => ({ id, name: "Chalet-Wochenende", place, country, from: "2027-05-05", to: "2027-05-09",
+    cmp: { id: "chalet", title: "Chalet-Wochenende", label },
+    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 42 }],
+    items: [
+      { id: "f", cat: "transport", name: "Anreise mit dem Auto", status: "idea", options: [{ id: "o", label: "Auto", price: { mode: "unit", currency: "EUR", unit: flight } }] },
+      { id: "s", cat: "stay", name: "Chalet", status: "idea", options: [{ id: "o", label: "Chalet", price: { mode: "unit", currency: "EUR", unit: stay, basis: "stay" } }] },
+      { id: "e", cat: "attractions", name: "Kanu", status: "idea", options: [{ id: "o", label: "Kanu", price: { mode: "person", currency: "EUR", adult: 40 } }] }
+    ], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {}, detail: { transport: true, stay: true, attractions: true } });
+  const VS = [vtr("v1", "Ardennen Frankreich", "Signy-l'Abbaye", "Frankreich", 1680, 214), vtr("v2", "Ardennen Belgien", "Durbuy", "Belgien", 2380, 196), vtr("v3", "Eifel", "Monschau", "Deutschland", 1890, 120)];
+  const vctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
+  await vctx.addInitScript(ts => { if (localStorage.getItem("rk2-index")) return; for (const t of ts) localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify(ts.map(t => ({ id: t.id, name: t.name, place: t.place })))); }, VS);
+  const cp = await vctx.newPage();
+  cp.on("pageerror", e => errors.push(e.message));
+  cp.on("dialog", d => d.type() === "prompt" ? d.accept("Eifel Monschau") : d.accept());
+  await cp.goto(URL);
+  const tile = cp.locator(".home-cmp", { hasText: "Chalet-Wochenende" });
+  await tile.waitFor();
+  if (!(await tile.innerText()).includes("3 Varianten") || (await tile.locator(".hc-var").count()) !== 3) fail("Kachel: " + await tile.innerText());
+  if (!(await tile.locator(".hc-var", { hasText: "Ardennen Frankreich" }).innerText()).includes("günstigste")) fail("günstigste nicht markiert");
+  await tile.locator(".hc-cmp-go").click();
+  const cv = cp.locator(".cmpv");
+  await cv.locator(".cv-table").waitFor();
+  const head = await cv.locator(".cv-head").innerText();
+  // Summen wie in der Reise: 214 + 1680 + 80 = 1974 €
+  if (!head.includes("1.974 €") || !head.includes("2.656 €") || !head.includes("2.090 €")) fail("Summen im Vergleich: " + head.replace(/\n/g, " / "));
+  if (!head.includes("Unterkunft +700") ) fail("Erklärung fehlt: " + head.replace(/\n/g, " / "));
+  // verschiedene Orte: alle Zeilen; „Nur Unterschiede“ blendet Erlebnisse (überall 80 €) aus
+  if (!(await cv.locator(".cv-table [data-row=attractions]").count())) fail("Erlebnisse fehlen bei „alle Zeilen“");
+  await cv.locator(".cv-mode .chip", { hasText: "Nur Unterschiede" }).click();
+  if (await cv.locator(".cv-table [data-row=attractions]").count()) fail("gleiche Zeile bei „nur Unterschiede“");
+  await cv.locator(".cv-var[data-var=v2] .cv-take").click();
+  await cv.locator(".cv-picked", { hasText: "Ardennen Belgien" }).waitFor();
+  if ((await cv.locator(".cv-head .cv-var").count()) !== 1) fail("andere Varianten nicht eingeklappt");
+  await cv.locator(".cv-others").click();
+  if ((await cv.locator(".cv-head .cv-var").count()) !== 3) fail("andere Varianten nicht aufklappbar");
+  // umbenennen und herausnehmen über „⋯“
+  await cv.locator(".cv-var[data-var=v3] .cv-menu").click();
+  await cv.locator(".cv-var[data-var=v3] .cv-rename").click();
+  await cv.locator(".cv-var[data-var=v3]", { hasText: "Eifel Monschau" }).waitFor();
+  await cv.locator(".cv-var[data-var=v3] .cv-menu").click();
+  await cv.locator(".cv-var[data-var=v3] .cv-remove").click();
+  await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 2, "Variante herausgenommen");
+  await cv.locator(".cv-back").click();
+  await tile.waitFor();
+  const tt = await tile.innerText();
+  if (!tt.includes("2 Varianten") || !(await tile.locator(".hc-vars").first().innerText()).includes("✓ Ardennen Belgien") || !(await tile.locator(".hc-rest summary").innerText()).includes("1 weitere Variante")) fail("Kachel nach Wahl: " + tt.replace(/\n/g, " / "));
+  if (!(await cp.locator(".home-trip:not(.home-cmp)", { hasText: "Monschau" }).count())) fail("herausgenommene Variante nicht als eigene Reise");
+  // in der Reise: „Gewählt · 1 weitere Variante“, von dort zum Vergleich
+  await tile.locator(".hc-var", { hasText: "Ardennen Belgien" }).click();
+  await cp.locator(".hero .vbar", { hasText: "Gewählt · 1 weitere Variante" }).waitFor();
+  await cp.locator(".hero .vb-cmp").click();
+  await cv.locator(".cv-table").waitFor();
+  // Handy: Kapitel untereinander mit Balken
+  await cp.setViewportSize({ width: 390, height: 844 });
+  await cv.locator(".cv-mob .cv-ch[data-row=stay]").waitFor();
+  if ((await cv.locator(".cv-mob .cv-ch[data-row=stay] .cv-bar").count()) !== 1) fail("Handy: eingeklappt sollte eine Variante zeigen");
+  await vctx.close();
+  log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Diese nehmen (andere eingeklappt), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln");
+  }
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Einfacher Modus ok");

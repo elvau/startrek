@@ -1,9 +1,9 @@
 <script lang="ts">
-  import ExtLink from "./ExtLink.svelte";
+  import StayCompare from "./StayCompare.svelte";
   import { autoName, t, tn, type Key } from "../i18n/index.svelte";
   import { BOARDS, type Board, type Item } from "../model";
   import { access, app, calc } from "../store.svelte";
-  import { calcOption, eur } from "../calc";
+  import { eur } from "../calc";
   import { dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
   import { cluster, groupLabel } from "../groups";
@@ -37,7 +37,6 @@
     item.options = item.options.filter(o => o.id !== id);
     if (item.chosen === id) item.chosen = undefined;
   }
-  let broken = $state<Record<string, boolean>>({});
   let imgFailed = $state(false);
   let shown = $state(false);
   $effect(() => { const tm = setTimeout(() => (shown = true), 300); return () => clearTimeout(tm); });
@@ -106,36 +105,5 @@
 </div>
 
 {#if cmp}
-  <div class="opts st-cmp">
-    <div class="opts-h"><span>{t("fl.compare")}</span><span>{tn("n.offers", item.options.length)}</span></div>
-    <div class="cmp-row">
-      {#each item.options as o, i (o.id)}
-        {@const c = calcOption(o, item, app.trip)}
-        {@const diff = c.net - (r?.net || 0)}
-        {@const sel = o.id === r?.option?.id}
-        <div class="cmp-t" class:sel>
-          {#if o.stay?.image && !broken[o.id]}<img src={o.stay.image} alt="" loading="lazy" referrerpolicy="no-referrer" onerror={() => (broken[o.id] = true)} />{:else}<div class="cmp-ph" aria-hidden="true">🏨</div>{/if}
-          <b class="cmp-n">{o.label || t("ie.offerN", { n: i + 1 })}{#if o.source?.test} <span class="pill-test">{t("test.badge")}</span>{/if}</b>
-          {#if o.source?.name}<small class="muted">{o.source.name}</small>{/if}
-          <div class="facts">
-            {#if o.stay?.stars}<span class="fact">{"★".repeat(o.stay.stars)}</span>{/if}
-            {#if o.stay?.rating}<span class="fact">{t("stay.rating", { p: o.stay.rating })}</span>{/if}
-            {#if o.stay?.board}<span class="fact">{t(`board.${o.stay.board}` as Key)}</span>{/if}
-            {#each (o.stay?.facts || []).slice(0, 3) as f (f)}<span class="fact">{f}</span>{/each}
-          </div>
-          <div class="cmp-p">
-            <b class="num">{eur(c.net)}</b>
-            {#if !sel && Math.round(diff)}<span class="d" class:down={diff < 0} class:up={diff > 0}>{diff > 0 ? "+" : "−"}{eur(Math.abs(diff))}</span>{/if}
-            {#if nn}<small class="muted">{t("perNight", { v: eur(c.net / nn) })}</small>{/if}
-          </div>
-          <div class="cmp-a">
-            {#if sel}<span class="pill-n">✓ {t("st.chosen")}</span>
-            {:else}<button class="btn sm primary cmp-pick" disabled={access.readonly} onclick={e => choose(o.id, e)}>{t("fs.pick")}</button>{/if}
-            {#if o.source?.url}<ExtLink cls="btn sm" href={o.source.url} sponsored={o.source.sponsored} inside track={[o.source.name, "stay"]} onclick={e => e.stopPropagation()}>↗</ExtLink>{/if}
-            {#if !access.readonly}<button class="btn sm cmp-x" title={t("ie.dropOffer")} aria-label={t("ie.dropOffer")} onclick={e => drop(o.id, e)}>×</button>{/if}
-          </div>
-        </div>
-      {/each}
-    </div>
-  </div>
+  <StayCompare {item} {r} nights={nn} onchoose={choose} ondrop={drop} />
 {/if}

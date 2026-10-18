@@ -7,7 +7,10 @@ import { totals } from "./calc";
 import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type SimpleLine, type Traveler, type Trip } from "./model";
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
-import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
+import { applyClaims } from "./claims";
+import { shareLike, watchVotes } from "./cloud/cloud.svelte";
+import { ensureCompare } from "./variants";
+import { cloud, cloudTrip, freshCloudTrip, patchTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 import { readView, saveView } from "./resume";
 import { haltDirectory } from "./directory.svelte";
@@ -135,6 +138,8 @@ export const app = $state({
   /** Karte im Fokusmodus */
   editing: null as string | null,
   saved: true,
+  /** Vergleichsansicht (#430) statt der Startseite: Kennung des Vergleichs */
+  compare: null as string | null,
   /** Startseite: bei jedem neuen Besuch (neuer Tab), außer Einladungslink oder Neuladen in einer offenen Reise */
   home: !resumed && (typeof location === "undefined" || !location.search.includes("join="))
 });
@@ -233,6 +238,15 @@ void initCloud({
 });
 
 $effect.root(() => {
+  // „Wer bist du?“ (#435): Zuordnungen aus dem Konto in die Reise übernehmen (nur wer bearbeiten darf, erst wenn der
+  // Stand aus dem Konto da ist, nicht mitten im Bearbeiten)
+  $effect(() => {
+    const id = app.trip.id, c = cloudTrip(id)?.claims;
+    if (!c || access.readonly || !cloud.loaded[id] || app.editing) return;
+    untrack(() => applyClaims(app.trip, c));
+  });
+  // Stimmen der Konto-Reise beobachten (#432), sobald ihr Stand da ist
+  $effect(() => { const id = app.trip.id; void watchVotes(isCloud(id) && cloud.loaded[id] && cloud.user ? id : ""); });
   // aktuelle Reise beobachten, sobald sie als Konto-Reise bekannt ist
   $effect(() => { const id = app.trip.id; void cloud.trips.length; void watch(id); });
   // zurückgehaltene Änderung anwenden, wenn nicht mehr bearbeitet wird
@@ -444,15 +458,36 @@ export function newTrip(opts: NewOpts = {}) {
   if (cloud.user) void moveToCloud(app.trip.id);
 }
 
-export function duplicateTrip() {
+/** Reise kopieren; als Variante (#428) im selben Vergleich, ohne Abstimmungen, geteilt wie das Original */
+export function duplicateTrip(variant = false) {
   flush();
+  // Original kommt in den Vergleich: gleich speichern (auch ins Konto), sonst fehlt die Kennung dort
+  if (variant && !app.trip.cmp) {
+    ensureCompare(app.trip);
+    const json = JSON.stringify(app.trip);
+    put(K_TRIP(app.trip.id), json);
+    if (isCloud(app.trip.id)) void push(app.trip, json);
+  }
+  const src = app.trip.id;
   const copy: Trip = JSON.parse(JSON.stringify(app.trip));
   copy.id = uid();
-  copy.name = `${copy.name} (${tr("store.copy")})`;
+  if (variant) { delete copy.polls; if (copy.cmp) delete copy.cmp.label; }
+  else { copy.name = `${copy.name} (${tr("store.copy")})`; delete copy.cmp; }
   const toCloud = !!cloud.user;
   open(copy, "Kopie");
   markEdited(copy.id);
-  if (toCloud) void moveToCloud(copy.id);
+  // geteilt wie das Original, sobald die Variante in der Liste des Kontos steht
+  if (toCloud) void moveToCloud(copy.id).then(async () => { if (variant && isCloud(src) && (await whenListed(copy.id))) await shareLike(src, copy.id); }).catch(e => console.warn(e));
+}
+
+/** Variante der offenen Reise (#428): gleicher Ort wie das Original, daher „Ort – Variante n“, bis man sie umbenennt */
+export function addVariant() {
+  const id = app.trip.cmp?.id, base = app.trip.place || app.trip.country || app.trip.name;
+  const n = id ? allTrips().filter(x => x.id !== app.trip.id && tripFor(x.id)?.cmp?.id === id).length + 2 : 2;
+  duplicateTrip(true);
+  if (app.trip.cmp) app.trip.cmp.label = tr("cmpv.variantN", { x: base, n });
+  app.home = false;
+  app.compare = null;
 }
 
 export async function deleteTrip(id: string) {
@@ -530,11 +565,36 @@ export function emptyTrips(): TripEntry[] {
  * hier nie geöffnet wurde oder die Kopie auf dem Gerät älter ist), sonst die Kopie auf dem Gerät.
  */
 const normalized = new WeakSet<Trip>();
+/** zählt hoch, wenn eine Reise auf dem Gerät geändert wurde, die nicht offen ist (editTrip) */
+const localRev = $state({ n: 0 });
 export function tripFor(id: string): Trip | null {
   if (id === app.trip.id) return app.trip;
   const r = isCloud(id) ? remoteTrip(id) : null;
   if (r) { if (!normalized.has(r)) { normalize(r); normalized.add(r); } return r; }
+  void localRev.n;
   return readTrip(id);
+}
+
+/** Reise ändern, ohne sie zu öffnen (Vergleichsansicht: wählen, umbenennen, herausnehmen); offene direkt */
+export async function editTrip(id: string, fn: (t: Trip) => void) {
+  if (id === app.trip.id) { fn(app.trip); return; }
+  if (isCloud(id)) { await patchTrip(id, fn); return; }
+  const tr = readTrip(id);
+  if (!tr) return;
+  fn(tr);
+  put(K_TRIP(id), JSON.stringify(tr));
+  markEdited(id);
+  localRev.n++;
+}
+
+/** Vergleichsansicht öffnen (#430) */
+export function openCompare(id: string) {
+  flush();
+  app.editing = null;
+  app.home = true;
+  app.compare = id;
+  noteNav("Vergleich");
+  scrollTo({ top: 0 });
 }
 const isPristine = (id: string) => { const t = tripFor(id); return !t || pristine(t); };
 
@@ -551,6 +611,7 @@ export function homeTrips(): TripEntry[] {
 export function openTrip(id: string, why = "Startseite") {
   switchTrip(id, why);
   app.home = false;
+  app.compare = null;
   scrollTo({ top: 0 });
 }
 
@@ -565,6 +626,7 @@ export function goHome() {
   flush();
   app.editing = null;
   app.home = true;
+  app.compare = null;
   noteNav("Startseite");
   scrollTo({ top: 0 });
 }
@@ -633,7 +695,7 @@ export function setDetailed(cat: CatKey, on: boolean, edit = false) {
 
 /** Gespeicherte Posten eines Bereichs verwerfen (der einfache Betrag bleibt) */
 export function discardDetails(cat: CatKey) {
-  app.trip.items = app.trip.items.filter(i => i.cat !== cat);
+  app.trip.items = app.trip.items.filter(i => i.cat !== cat || i.auto);
   if (app.editing && !app.trip.items.some(i => i.id === app.editing)) app.editing = null;
 }
 
