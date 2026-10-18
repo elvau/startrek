@@ -9,7 +9,7 @@ import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { applyClaims } from "./claims";
 import { shareLike, watchVotes } from "./cloud/cloud.svelte";
-import { ensureCompare, joinTarget } from "./variants";
+import { ensureCompare, joinTarget, leaveCompare } from "./variants";
 import { cloud, cloudTrip, freshCloudTrip, patchTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 import { readView, saveView } from "./resume";
@@ -600,6 +600,11 @@ export async function joinCompare(src: string, dst: string): Promise<string | nu
   if (!a.cmp) await editTrip(dst, put);
   await editTrip(src, put);
   return c.id;
+}
+
+/** Vergleich auflösen: alle bearbeitbaren Varianten wieder eigene Reisen (nichts wird gelöscht) */
+export async function splitCompare(id: string) {
+  for (const m of allTrips()) if (m.role !== "viewer" && tripFor(m.id)?.cmp?.id === id) await editTrip(m.id, leaveCompare);
 }
 
 /** Vergleichsansicht öffnen (#430) */

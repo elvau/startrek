@@ -4,7 +4,7 @@
    * Startseite bei jedem neuen Besuch (ein Neuladen im selben Tab bleibt in der Reise): Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { app, openCompare, joinCompare, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
+  import { app, openCompare, joinCompare, splitCompare, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { summarize, type TripState, type TripSummary } from "../overview";
   import { ensureAirports, geo } from "../geo/geo.svelte";
@@ -131,6 +131,9 @@
     const c = await joinCompare(id, isBundle(u) ? u.list[0].id : u.id).catch(e => { console.warn(e); return null; });
     if (c) openCompare(c);
   }
+  function split(b: Bundle<Row>) {
+    if (confirm(t("cmpv.splitQ", { title: b.title, n: b.list.length }))) void splitCompare(b.cmp).catch(e => console.warn(e));
+  }
   /** Reise direkt von der Startseite löschen (bzw. verlassen, wenn sie jemand anderem gehört) */
   function remove(m: TripEntry, name: string, leave: boolean) {
     const q = leave ? t("tm.leaveConfirm", { name })
@@ -219,7 +222,10 @@
           {#if pick && rest.length}
             <details class="hc-rest"><summary>{tn("cmpv.showOthers", rest.length)}</summary><div class="hc-vars">{#each rest as v (v.id)}{@render varRow(v)}{/each}</div></details>
           {/if}
-          <button class="linkbtn hc-cmp-go" onclick={() => openCompare(b.cmp)}>{t("home.compare")} →</button>
+          <span class="hc-foot">
+            {#if b.list.some(editable)}<button class="linkbtn hc-split" onclick={() => split(b)}>✂ {t("cmpv.split")}</button>{/if}
+            <button class="linkbtn hc-cmp-go" onclick={() => openCompare(b.cmp)}>{t("home.compare")} →</button>
+          </span>
         </div>
         {@render pickHere(b)}
       </div>
@@ -323,7 +329,9 @@
   .hc-var.win { background: color-mix(in srgb, var(--good) 9%, transparent); }
   .hc-rest { width: 100%; font-size: 13px; }
   .hc-rest summary { cursor: pointer; color: var(--ink-2); padding: 4px 0; }
-  .hc-cmp-go { align-self: flex-end; padding: 0; font-weight: 700; }
+  .hc-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; }
+  .hc-cmp-go { margin-inline-start: auto; padding: 0; font-weight: 700; }
+  .hc-split { padding: 0; font-size: 13px; color: var(--ink-2); }
   .home-cmp.as-row { padding: 12px 14px; border-radius: 14px; }
   /* Reise auf eine andere ziehen bzw. ⇆ und antippen */
   .ht-cmp { position: absolute; top: 50px; inset-inline-end: 10px; width: 36px; height: 36px; border-radius: 10px; border: 1px solid transparent; background: transparent; font-size: 16px; line-height: 1; opacity: .55; color: var(--a); }

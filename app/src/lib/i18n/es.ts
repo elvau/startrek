@@ -1721,6 +1721,8 @@ export const es: Dict = {
   "home.cheapest": "la más barata",
   "home.variantOf": "{x} · variante en «{title}» ({n})",
   "home.cmpGroup": "Comparaciones",
+  "cmpv.split": "Separar comparación",
+  "cmpv.splitQ": "¿Separar la comparación «{title}»? Las {n} variantes se conservan como viajes propios.",
   "home.dragHint": "Arrastra sobre otro viaje para compararlos",
   "home.cmpWith": "Comparar con otro viaje",
   "home.pickQ": "¿Con qué viaje quieres comparar «{x}»? Tócalo.",
