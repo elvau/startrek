@@ -225,7 +225,8 @@ try {
     .catch(async e => { const a = await doc(tripId), b = await doc(varId); console.log("ORIG", ids(a), JSON.parse(a.data?.stringValue || "{}").cmp, "VAR", ids(b), JSON.parse(b.data?.stringValue || "{}").cmp); throw e; });
   // in der Reise (#431): „Variante 2 von 2“, Wechsel zur anderen Variante und zurück
   const vbar = anna.locator(".hero .vbar");
-  await until(async () => (await vbar.innerText().catch(() => "")).includes("Variante 2 von 2"), "Hinweis „Variante 2 von 2“");
+  await until(async () => /Variante 2 von 2/.test(await vbar.innerText().catch(() => "")), "Hinweis „Variante 2 von 2“")
+    .catch(async e => { console.log("VBAR", await anna.locator(".hero").innerText().then(x => x.slice(0, 300).replace(/\n/g, " / ")), await anna.evaluate(() => JSON.stringify(Object.keys(localStorage).filter(k => k.startsWith("rk2-t:")).map(k => [k, JSON.parse(localStorage.getItem(k)).cmp])))); throw e; });
   await vbar.locator(".chip", { hasNotText: "Variante 2" }).click();
   await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === tripId, "Wechsel zur ersten Variante");
   await vbar.locator(".chip", { hasText: "Variante 2" }).click();

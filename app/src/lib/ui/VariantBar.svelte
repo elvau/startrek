@@ -1,13 +1,15 @@
 <script lang="ts">
   /* In der Reise (#431): gehört sie zu einem Vergleich, „Variante x von y“ und mit einem Tipp zu den anderen Varianten */
-  import { t } from "../i18n/index.svelte";
+  import { i18n, t } from "../i18n/index.svelte";
   import { allTrips, app, openTrip, tripFor } from "../store.svelte";
   import { variantLabel } from "../variants";
 
   const list = $derived.by(() => {
     const id = app.trip.cmp?.id;
     if (!id) return [];
-    return allTrips().map(m => ({ m, tr: m.id === app.trip.id ? app.trip : tripFor(m.id) })).filter(x => x.tr?.cmp?.id === id).map(x => ({ id: x.m.id, label: variantLabel(x.tr!) }));
+    return allTrips().map(m => ({ m, tr: m.id === app.trip.id ? app.trip : tripFor(m.id) })).filter(x => x.tr?.cmp?.id === id).map(x => ({ id: x.m.id, label: variantLabel(x.tr!) }))
+      // feste Reihenfolge wie in der Kachel auf der Startseite
+      .sort((a, b) => a.label.localeCompare(b.label, i18n.lang, { numeric: true }));
   });
   const i = $derived(list.findIndex(x => x.id === app.trip.id));
 </script>

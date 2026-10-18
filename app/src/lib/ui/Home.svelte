@@ -33,7 +33,8 @@
   }));
   /* Varianten eines Vergleichs als eine Kachel (#429); Werte des Bündels: frühestes Datum, günstigster Preis, zuletzt bearbeitet */
   type Unit = Row | Bundle<Row>;
-  const units = $derived<Unit[]>(bundle(rows));
+  // Varianten im Bündel nach Namen (wie in der Reise, „Variante x von y“)
+  const units = $derived<Unit[]>(bundle(rows).map(u => (isBundle(u) ? { ...u, list: [...u.list].sort((a, b) => a.label.localeCompare(b.label, i18n.lang, { numeric: true })) } : u)));
   const all = (u: Unit) => (isBundle(u) ? u.list : [u]);
   const rowState = (r: Row): TripState => r.s?.state ?? (r.to && r.to < today ? "past" : "planned");
   const stateOf = (u: Unit): TripState => {
