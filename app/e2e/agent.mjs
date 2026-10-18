@@ -49,6 +49,13 @@ try {
     if (body.current) {
       const fl = body.current.items.find(i => i.cat === "flights");
       const edit = { reply: "Ich ersetze den Flug durch die Anreise mit dem Auto.", estimates: [{ cat: "transport", name: "Anreise mit dem Auto", eur: 300, replaces: fl?.id }] };
+      // anderes Land (#416): Ziel und Unterkunft ersetzt
+      if (body.prompt.split("Jetzt: ").at(-1).includes("Belgien")) {
+        const st = body.current.items.find(i => i.cat === "stay");
+        Object.assign(edit, { reply: "In Belgien ist es günstiger.", trip: { place: "Brügge", country: "Belgien" },
+          stays: [{ offer: { id: "b:be", source: "booking", sourceName: "Booking.com", name: "Huis Brugge", total: 400, currency: "EUR", score: 8.8, place: "Brügge" },
+            q: { ...RESULT.trips[0].stayQuery, place: "Brügge", country: "Belgium" }, replaces: st?.id }] });
+      }
       return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], edit, remaining: 1 }) });
     }
     // Familien mit eigenen Zeiten (#230): Familie die ganze Woche, Oma ab dem 10.; je Familie ein Flug
@@ -333,18 +340,24 @@ try {
   if (await p.locator("#transport .card", { hasText: "Anreise mit dem Auto" }).count()) fail("Rückgängig hat nicht gewirkt");
   log("Offene Reise: Anfrage mit Reise ohne Namen, eine Rückfrage, Übernehmen ersetzt den Flug (markiert), Rückgängig");
 
-  // als KI-Vergleichsreise: eigene Reise daneben, die bisherige bleibt
-  await c4.locator(".ai-bar textarea").fill("Wir reisen selbst mit dem Auto an");
+  // als KI-Vergleichsreise in einem anderen Land: eigene Reise daneben, die bisherige bleibt (#416: Unterkunft nicht
+  // doppelt, der erste Stand aus dem Konto überschreibt die Änderung nicht)
+  await c4.locator(".ai-bar textarea").fill("Geht das mit dem Auto in Belgien günstiger?");
   await c4.locator(".ai-bar textarea").press("Enter");
   await until(() => c4.locator(".ai-variant").count().then(n => n === 1), "zweite Antwort zur Reise");
   await c4.locator(".ai-variant").click();
   await p.locator(".hero h1", { hasText: "(KI-Vergleich)" }).waitFor();
   if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Vergleichsreise mit Flug");
+  await p.locator(".hero .meta", { hasText: "Brügge, Belgien" }).waitFor();
+  await p.waitForTimeout(2500);
+  if (!(await p.locator(".hero .meta").innerText()).includes("Brügge")) fail("Vergleichsreise auf den ersten Stand zurückgesetzt");
+  if ((await p.locator("#stay .card", { hasText: "Huis Brugge" }).count()) !== 1 || await p.locator("#stay .card", { hasText: "Casa Palma" }).count()) fail("Unterkunft in der Vergleichsreise nicht genau einmal ersetzt");
   await c4.locator(".ai-head .x").click();
   await p.locator(".top .brand-btn").click();
   await p.locator(".start .home-trip", { hasText: "(KI-Vergleich)" }).first().waitFor();
   if (!(await p.locator(".start .home-trip", { hasText: tripName }).count())) fail("ursprüngliche Reise fehlt");
-  log("Als KI-Vergleichsreise angelegt, ursprüngliche Reise unverändert");
+  if (!(await p.locator(".start .home-trip", { hasText: tripName }).first().innerText()).includes("Palma")) fail("ursprüngliche Reise geändert");
+  log("Als KI-Vergleichsreise in Belgien angelegt (Unterkunft einmal, bleibt nach dem Hochladen), ursprüngliche Reise unverändert");
 
   // große Gruppe: 10 Personen, Flug in 5 Buchungen à 2 Plätze, jede ein eigener Posten
   await p.locator(".ai-fab").click();

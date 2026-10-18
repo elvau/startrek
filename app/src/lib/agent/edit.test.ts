@@ -147,6 +147,20 @@ describe("KI zur offenen Reise", () => {
     expect(t.items[1].participants).toEqual(["b"]);
     expect(t.items[1].ai?.kind).toBe("changed");
   });
+
+  it("Reise im Zustand (Proxy wie bei $state): neuer Posten nicht doppelt, ersetzt an derselben Stelle (#416)", () => {
+    const t = trip();
+    // wie Svelte: nach push liegt in der Liste ein Proxy statt desselben Objekts
+    const wrap = (items: Trip["items"]) => new Proxy(items, { get(a, k) { return k === "push" ? (...xs: object[]) => a.push(...xs.map(x => new Proxy(x, {})) as Trip["items"]) : Reflect.get(a, k); } });
+    t.items = wrap(t.items);
+    const q: StayQuery = { place: "Brügge", checkin: "2027-05-10", checkout: "2027-05-13", adults: 1, childAges: [8], rooms: 1, type: "all", currency: "EUR" };
+    applyEdit(t, { reply: "", trip: { place: "Brügge", country: "Belgien" }, stays: [{ offer: stay("s1", 600), q, replaces: "st" }],
+      flights: [{ offer: flight("f1", 100), seats: 1, travelers: 2, replaces: "fl" }] });
+    expect(t.place).toBe("Brügge");
+    expect(new Set(t.items.map(i => i.id)).size).toBe(t.items.length);
+    expect(t.items.map(i => i.cat)).toEqual(["flights", "flights", "stay", "transport", "flights"]);
+    expect(t.items[2]).toMatchObject({ name: expect.stringContaining("Brügge"), ai: { kind: "changed" } });
+  });
 });
 
 describe("Fehlermeldung der KI", () => {

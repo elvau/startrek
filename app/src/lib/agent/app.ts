@@ -264,9 +264,12 @@ export function applyEdit(trip: Trip, e: AgentEdit) {
     if (e.trip.to) trip.to = e.trip.to;
   }
   trip.detail ||= {};
-  /** neuen Posten markieren; ersetzt er einen alten, nimmt er dessen Platz ein (Mitflieger folgen ihm) */
+  /**
+   * neuen Posten markieren; ersetzt er einen alten, nimmt er dessen Platz ein (Mitflieger folgen ihm). Über die ID
+   * herausnehmen: in einer Reise im Zustand liegt nach push ein Proxy, nicht dasselbe Objekt (sonst doppelt, #416)
+   */
   const place = (it: Item, kind: AiMark["kind"], replaces?: string) => {
-    trip.items = trip.items.filter(x => x !== it);
+    trip.items = trip.items.filter(x => x.id !== it.id);
     const k = replaces && !fixed(replaces) ? trip.items.findIndex(x => x.id === replaces) : -1;
     it.ai = { at, kind: k < 0 ? kind : "changed" };
     if (k < 0) { trip.items.push(it); return; }
@@ -282,9 +285,9 @@ export function applyEdit(trip: Trip, e: AgentEdit) {
     // aufgeteilt: erste Buchung an die Stelle des ersetzten Postens, die weiteren direkt dahinter
     const items = takeBookings(trip, { offer: f.offer, seats: f.seats, travelers: f.travelers }, seat(f.travelers), { at, kind: "suggested" });
     place(items[0], "suggested", f.replaces);
-    let k = trip.items.indexOf(items[0]);
+    let k = trip.items.findIndex(x => x.id === items[0].id);
     for (const it of items.slice(1)) {
-      trip.items = trip.items.filter(x => x !== it);
+      trip.items = trip.items.filter(x => x.id !== it.id);
       it.ai = { at, kind: items[0].ai!.kind };
       trip.items.splice(++k, 0, it);
     }
