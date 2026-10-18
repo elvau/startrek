@@ -45,6 +45,7 @@ export interface PollOption {
  * Möglichkeit); fehlt: wie bisher 👍 / egal / 👎. In allen neuen Arten zählt -1 als „✕ Ohne mich“ (hartes Veto, #439).
  */
 export type PollMode = "one" | "multi" | "miles";
+export interface VetoWhy { r?: string; f?: boolean }
 export interface Poll {
   id: string;
   q: string;
@@ -57,6 +58,8 @@ export interface Poll {
   due?: string;
   /** je Person (Reisende-Kennung): Stimme je Möglichkeit (bisher 1/0/-1; Meilen-Wahl: Anzahl Meilen; -1: ohne mich) */
   votes: Record<string, Record<string, number>>;
+  /** zu „Ohne mich“ (#439), je Person und Möglichkeit: Grund (freiwillig), mit der ganzen Familie */
+  why?: Record<string, Record<string, VetoWhy>>;
   /** abgeschlossen (ISO) und gewählte Möglichkeit */
   closed?: string;
   result?: string;

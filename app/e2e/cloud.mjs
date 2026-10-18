@@ -199,11 +199,19 @@ try {
   const opoll = otg.locator(".poll", { hasText: "Welcher Strand?" });
   await until(async () => (await opoll.locator("li", { hasText: "Es Trenc" }).innerText().catch(() => "")).includes("1 Stimme"), "Oma sieht Annas Stimme");
   await opoll.locator("li", { hasText: "Es Trenc" }).locator(".pv-veto").click();
+  const ovd = oma.locator(".modal", { hasText: "Ohne mich bei" });
+  await ovd.locator(".veto-ok").click();
+  await ovd.waitFor({ state: "detached" });
   await opoll.locator("li", { hasText: "Cala Agulla" }).locator(".pv-for").click();
   await until(async () => (await apoll.locator("li", { hasText: "Es Trenc" }).innerText()).includes("✕ Oma"), "Anna sieht Omas „Ohne mich“")
     .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); console.log("OMA:", (await opoll.innerText()).replace(/\s+/g, " ")); throw e; });
   await until(async () => (await apoll.locator("li", { hasText: "Cala Agulla" }).innerText()).includes("1 Stimme"), "Omas Stimme bei Anna");
-  log("Abstimmen: Anna wählt sich und stimmt, Oma stimmt als Zuschauerin mit eigenem Konto („✕ Ohne mich“ mit Namen), Anna sieht es live");
+  // Anna hat schon abgestimmt: Info mit neuem Preis (#439)
+  // Preise der Reiseidee sind pro Person: gleicher Preis p. P., die ganze Reise wird günstiger
+  await until(async () => (await apoll.locator(".pv-notes").innerText().catch(() => "")).includes("Oma wäre bei „Es Trenc“ nicht dabei.")
+    && /gleicher Preis p\. P\., ganze Reise .+ statt/.test(await apoll.locator("li", { hasText: "Es Trenc" }).innerText()), "Info an Anna, Folgen an der Möglichkeit")
+    .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); throw e; });
+  log("Abstimmen: Anna wählt sich und stimmt, Oma stimmt als Zuschauerin mit eigenem Konto („✕ Ohne mich“ mit Namen, Fenster), Anna sieht es live und bekommt die Info, Folgen an der Möglichkeit");
   await anna.locator(".top .tm-btn").first().click();
   await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
 

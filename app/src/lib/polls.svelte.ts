@@ -5,7 +5,9 @@
 import { app } from "./store.svelte";
 import { cloud, cloudTrip, cloudVotes, isCloud, saveMyVotes } from "./cloud/cloud.svelte";
 import { travelerOf } from "./claims";
-import { nextVote, voters, type Poll } from "./together";
+import { mergedVotes, nextVote, VETO, voters, type Poll, type VetoWhy } from "./together";
+import { vetoedIds, vetoNotes, type VetoNote } from "./without";
+import { geo } from "./geo/geo.svelte";
 
 /** Person auf diesem Gerät für Reisen ohne Konto (je Reise gemerkt) */
 export const localMe = $state<Record<string, string>>({});
@@ -52,6 +54,20 @@ export function remoteAll(): Record<string, Record<string, Record<string, number
   return Object.fromEntries((app.trip.polls || []).map(p => [p.id, remoteVotes(p)]));
 }
 
+/** Grund und „mit Familie“ zu „Ohne mich“ (#439), je Person: aus der Reise und dem Konto */
+export function whyOf(p: Poll): Record<string, Record<string, VetoWhy>> {
+  const out: Record<string, Record<string, VetoWhy>> = { ...(p.why || {}) };
+  if (sharedVoting() && cloudVotes.trip === app.trip.id)
+    for (const [uid, w] of Object.entries(cloudVotes.whyByUid)) if (w[p.id] && Object.keys(w[p.id]).length) out[keyOfUid(uid)] = w[p.id];
+  return out;
+}
+/** mein Grund zu „Ohne mich“ bei einer Möglichkeit */
+export function myWhy(p: Poll, option: string): VetoWhy | undefined {
+  if (sharedVoting()) return cloudVotes.whyByUid[cloud.user!.uid]?.[p.id]?.[option];
+  const me = myVoter();
+  return me ? p.why?.[me]?.[option] : undefined;
+}
+
 /** meine Stimme in einer Abstimmung */
 export function myVote(p: Poll): Record<string, number> | undefined {
   if (sharedVoting()) return cloudVotes.byUid[cloud.user!.uid]?.[p.id];
@@ -60,20 +76,76 @@ export function myVote(p: Poll): Record<string, number> | undefined {
 }
 
 /** abstimmen (neue Arten): geteilte Reise ins eigene Dokument, sonst in die Reise */
-export async function cast(p: Poll, option: string, act: "for" | "veto" | "more" | "less") {
+export async function cast(p: Poll, option: string, act: "for" | "veto" | "more" | "less", why?: VetoWhy) {
   const next = nextVote(p, myVote(p), option, act);
+  // Grund nur, solange „Ohne mich“ gilt
+  const fix = (w: Record<string, VetoWhy> | undefined) => {
+    const m = Object.fromEntries(Object.entries(w || {}).filter(([k]) => next[k] === VETO));
+    if (next[option] === VETO && why) {
+      const r = why.r?.trim().slice(0, 200);
+      m[option] = { ...(r ? { r } : {}), ...(why.f ? { f: true } : {}) };
+    }
+    return m;
+  };
   if (sharedVoting()) {
     // nur Abstimmungen, die es noch gibt (gelöschte fallen beim nächsten Abstimmen weg)
     const ids = new Set((app.trip.polls || []).map(x => x.id));
-    const all = Object.fromEntries(Object.entries(cloudVotes.byUid[cloud.user!.uid] || {}).filter(([k]) => ids.has(k)));
+    const keep = <T>(m: Record<string, T> | undefined) => Object.fromEntries(Object.entries(m || {}).filter(([k]) => ids.has(k)));
+    const all = keep(cloudVotes.byUid[cloud.user!.uid]), whys = keep(cloudVotes.whyByUid[cloud.user!.uid]);
     if (Object.keys(next).length) all[p.id] = next; else delete all[p.id];
-    await saveMyVotes(app.trip.id, all);
+    const w = fix(whys[p.id]);
+    if (Object.keys(w).length) whys[p.id] = w; else delete whys[p.id];
+    ackNotes(p);
+    await saveMyVotes(app.trip.id, all, whys);
     return;
   }
   const me = myVoter();
   if (!me) return;
+  ackNotes(p);
   if (Object.keys(next).length) p.votes[me] = next; else delete p.votes[me];
+  const w = fix(p.why?.[me]);
+  if (Object.keys(w).length) (p.why ||= {})[me] = w;
+  else if (p.why) { delete p.why[me]; if (!Object.keys(p.why).length) delete p.why; }
 }
 
 /** „Wer bist du?“ von Hand öffnen (z. B. zum Abstimmen) */
 export const whoAsk = $state({ open: false });
+
+/* ---------- Info an alle, die schon abgestimmt haben (#439) ---------- */
+
+/** zuletzt gesehen, wer je Möglichkeit nicht dabei wäre (auf dem Gerät, je Reise und Abstimmung) */
+const SEEN = (trip: string) => `rk2-veto-seen:${trip}`;
+const seenCache: Record<string, Record<string, Record<string, string[]>>> = {};
+/** zählt beim Merken hoch (Lesen im $derived darf keinen Zustand schreiben, daher Ablage außerhalb) */
+const seenVer = $state({ n: 0 });
+function seenOf(trip: string): Record<string, Record<string, string[]>> {
+  void seenVer.n;
+  if (!seenCache[trip]) {
+    let v = {};
+    try { v = JSON.parse(localStorage.getItem(SEEN(trip)) || "{}"); } catch { /* egal */ }
+    seenCache[trip] = v;
+  }
+  return seenCache[trip];
+}
+/** wer je Möglichkeit gerade nicht dabei wäre */
+export function vetoesNow(p: Poll): Record<string, string[]> {
+  const v = mergedVotes(p, remoteVotes(p)), w = whyOf(p);
+  return Object.fromEntries(p.options.map(o => [o.id, vetoedIds(app.trip, v, o.id, w)]));
+}
+/** Änderungen für mich: nur wenn ich in der Abstimmung schon abgestimmt habe; eigene „Ohne mich“ zählen nicht */
+export function myNotes(p: Poll): VetoNote[] {
+  const mine = myVote(p), me = myVoter();
+  if (!mine || !Object.keys(mine).length) return [];
+  const now = vetoesNow(p), seen = seenOf(app.trip.id)[p.id] || {};
+  const not = (ids: string[]) => ids.filter(x => x !== me);
+  const n = Object.fromEntries(Object.entries(now).map(([k, v]) => [k, not(v)]));
+  const s = Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, not(v)]));
+  return vetoNotes(app.trip, p, n, s, geo);
+}
+/** gelesen bzw. beim Abstimmen: aktuellen Stand merken */
+export function ackNotes(p: Poll) {
+  const all = seenOf(app.trip.id);
+  all[p.id] = vetoesNow(p);
+  try { localStorage.setItem(SEEN(app.trip.id), JSON.stringify(all)); } catch { /* egal */ }
+  seenVer.n++;
+}

@@ -91,6 +91,8 @@ log("Wer bist du: jede Rolle nur die eigene Zuordnung, nur Kennung und Vorname; 
 const vote = (uid, who, v) => patch(uid, `/trips/regeltest/votes/${who}`, { v });
 await expect("Mallory (Zuschauer) stimmt ab", vote("mallory", "mallory", { p1: { o1: 3 } }), 200);
 await expect("Ben liest Mallorys Stimme", req("ben", "/trips/regeltest/votes/mallory"), 200);
+await expect("Mallory sagt „Ohne mich“ mit Grund (#439)", patch("mallory", "/trips/regeltest/votes/mallory", { v: { p1: { o1: -1 } }, w: { p1: { o1: { r: "zu teuer", f: true } } } }), 200);
+await expect("Mallory: Grund kein Verzeichnis", patch("mallory", "/trips/regeltest/votes/mallory", { v: { p1: { o1: -1 } }, w: "zu teuer" }), 403);
 await expect("Mallory stimmt für Ben", vote("mallory", "ben", { p1: { o1: 1 } }), 403);
 await expect("Mallory stimmt mit Zusatzfeld", patch("mallory", "/trips/regeltest/votes/mallory", { v: { p1: { o1: 1 } }, rolle: "owner" }), 403);
 await expect("Fremder liest Stimmen", req("fremd", "/trips/regeltest/votes/mallory"), 403);

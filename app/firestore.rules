@@ -139,8 +139,10 @@ service cloud.firestore {
         function tripDoc() { return get(/databases/$(database)/documents/trips/$(tripId)).data; }
         allow read: if isMember(tripDoc());
         allow create, update: if isMember(tripDoc()) && uid() == userId
-          && request.resource.data.keys().hasOnly(['v', 'at'])
-          && request.resource.data.v is map && request.resource.data.v.size() <= 40;
+          && request.resource.data.keys().hasOnly(['v', 'w', 'at'])
+          && request.resource.data.v is map && request.resource.data.v.size() <= 40
+          // zu „Ohne mich“ (#439): Grund und „mit Familie“ je Abstimmung
+          && (!('w' in request.resource.data) || (request.resource.data.w is map && request.resource.data.w.size() <= 40));
         allow delete: if signedIn() && (uid() == userId || isOwner(tripDoc()));
       }
     }

@@ -175,10 +175,16 @@ export async function deleteTrip(id: string) {
 /* ---------- Abstimmen (#432): je Mitglied ein Dokument trips/{id}/votes/{uid} ---------- */
 
 export type VoteMap = Record<string, Record<string, number>>;
-export function watchVotes(id: string, fn: (byUid: Record<string, VoteMap>) => void, err: (e: Error) => void): Unsubscribe {
-  return onSnapshot(collection(start().db, "trips", id, "votes"), s => fn(Object.fromEntries(s.docs.map(d => [d.id, ((d.data() as { v?: VoteMap }).v || {})]))), err);
+/** zu „Ohne mich“ (#439): je Abstimmung und Möglichkeit Grund (freiwillig) und „mit Familie“ */
+export type WhyMap = Record<string, Record<string, { r?: string; f?: boolean }>>;
+export interface VoteDoc { v: VoteMap; w?: WhyMap }
+export function watchVotes(id: string, fn: (byUid: Record<string, VoteDoc>) => void, err: (e: Error) => void): Unsubscribe {
+  return onSnapshot(collection(start().db, "trips", id, "votes"), s => fn(Object.fromEntries(s.docs.map(d => {
+    const x = d.data() as Partial<VoteDoc>;
+    return [d.id, { v: x.v || {}, ...(x.w ? { w: x.w } : {}) }];
+  }))), err);
 }
-export const saveVotes = (id: string, uid: string, v: VoteMap) => setDoc(doc(start().db, "trips", id, "votes", uid), { v, at: serverTimestamp() });
+export const saveVotes = (id: string, uid: string, v: VoteMap, w: WhyMap = {}) => setDoc(doc(start().db, "trips", id, "votes", uid), { v, w, at: serverTimestamp() });
 
 /** Inhalt der Reise frisch vom Server (nicht aus dem Zwischenspeicher); null, wenn es sie nicht gibt */
 export async function freshTripData(id: string): Promise<string | null> {
@@ -287,7 +293,7 @@ export interface AccountData {
   trips: (Omit<TripDoc, "invite" | "updatedAt"> & { id: string; invite?: { role: string } | null })[];
   campaigns: (CampaignDoc & { id: string })[];
   /** eigene Stimmen je Reise (#432) */
-  votes?: Record<string, VoteMap>;
+  votes?: Record<string, VoteDoc>;
 }
 
 /** liest alles direkt vom Server (nicht aus dem Zwischenspeicher), wie „Konto zurücksetzen“ es löschen würde */
@@ -314,7 +320,7 @@ export async function collectAccount(uid: string): Promise<AccountData> {
     campaigns: camps.docs.map(d => ({ id: d.id, ...(d.data() as CampaignDoc) })),
     // eigene Stimmen je Reise (#432)
     votes: Object.fromEntries((await Promise.all(trips.docs.map(d => getDocFromServer(doc(db, "trips", d.id, "votes", uid))
-      .then(v => (v.exists() ? [d.id, (v.data() as { v?: VoteMap }).v || {}] as const : null)).catch(() => null)))).filter((x): x is readonly [string, VoteMap] => !!x))
+      .then(v => (v.exists() ? [d.id, { v: (v.data() as Partial<VoteDoc>).v || {}, w: (v.data() as Partial<VoteDoc>).w || {} } as VoteDoc] as const : null)).catch(() => null)))).filter((x): x is readonly [string, VoteDoc] => !!x))
   };
 }
 

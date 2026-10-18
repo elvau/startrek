@@ -82,6 +82,7 @@
     if (p.kind === "book") return t("book.lead");
     if (p.kind === "deposit") return p.deposit!.how === "credit" ? t("imp.dep.credit") : t("imp.dep.other", { how: p.deposit!.how ? t(`dep.how.${p.deposit!.how}` as Key) : "–" });
     if (p.kind === "pass") return t("imp.pass.x", { d: date(p.pass!.expires), c: countryName(p.cc!), r: date(p.pass!.needed) });
+    if (p.kind === "poll" && p.poll!.notes) return t("imp.poll.notes", { x: p.poll!.notes.map(n => [n.gone.length ? tn("veto.noteGone", n.gone.length, { names: n.gone.join(", "), x: n.label }) : "", n.back.length ? tn("veto.noteBack", n.back.length, { names: n.back.join(", "), x: n.label }) : ""].filter(Boolean).join(" ")).join(" ") });
     if (p.kind === "poll") return (p.poll!.missing.length ? t("poll.missing", { names: p.poll!.missing.join(", ") }) : t("imp.poll.ready")) + (p.poll!.due ? ` ${t("imp.poll.due", { d: date(p.poll!.due) })}` : "");
     if (p.kind === "entry") {
       const forPs = p.persons!.filter(x => x.hint);
