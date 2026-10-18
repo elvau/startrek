@@ -550,8 +550,9 @@ export interface Trip {
   /**
    * Variante in einem Vergleich (#428): gleiche Kennung bündelt die Reisen (Startseite, Vergleichsansicht), Titel des
    * Vergleichs und kurzer Name der Variante (fehlt: Ort bzw. Land). In der Reise selbst, damit Mitreisende es auch sehen.
+   * chosen: „Diese nehmen“ (ISO, #430); gewählt ist die Variante mit dem jüngsten Zeitpunkt, die anderen sind eingeklappt.
    */
-  cmp?: { id: string; title: string; label?: string };
+  cmp?: { id: string; title: string; label?: string; chosen?: string };
   /** Wichtiges: erledigte Punkte (important.ts), bei Punkten für Personen je Person */
   done?: Record<string, { sig: string; ids?: string[] }>;
   /** Roadtrip: gewählte Fähre je Überfahrt („Von>Nach“ → Fähren-ID, „none“: keine Fähre) */

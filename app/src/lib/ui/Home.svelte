@@ -4,7 +4,7 @@
    * Startseite bei jedem neuen Besuch (ein Neuladen im selben Tab bleibt in der Reise): Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { app, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
+  import { app, openCompare, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { summarize, type TripState, type TripSummary } from "../overview";
   import { ensureAirports, geo } from "../geo/geo.svelte";
@@ -14,7 +14,7 @@
   import { cloud } from "../cloud/cloud.svelte";
   import { flagOf, range } from "../format";
   import { ccOf } from "../geo/places";
-  import { bundle, isBundle, variantLabel, type Bundle } from "../variants";
+  import { bundle, isBundle, pickedOf, variantLabel, type Bundle } from "../variants";
   import { openEventPlanner } from "../event/open.svelte";
   import { openChat } from "../agent/open.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
@@ -26,10 +26,12 @@
 
   let picking = $state(false);
   const today = new Date().toISOString().slice(0, 10);
-  type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null; cmp?: { id: string; title: string }; label: string };
+  type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null; cmp?: { id: string; title: string; chosen?: string }; label: string };
   const rows = $derived<Row[]>(homeTrips().map(m => {
     const tr = tripFor(m.id);
-    return { ...m, s: tr ? summarize(tr, today, geo, i18n.lang) : null, route: tr ? tripRoute(tr) : null, cmp: tr?.cmp, label: tr ? variantLabel(tr) : m.name };
+    // Zeitraum und Personen aus der Reise selbst (der Eintrag in der Liste kann älter sein)
+    const fresh = tr ? { from: tr.from, to: tr.to, people: tr.travelers.filter(x => x.active !== false).length } : {};
+    return { ...m, ...fresh, s: tr ? summarize(tr, today, geo, i18n.lang) : null, route: tr ? tripRoute(tr) : null, cmp: tr?.cmp, label: tr ? variantLabel(tr) : m.name };
   }));
   /* Varianten eines Vergleichs als eine Kachel (#429); Werte des Bündels: frühestes Datum, günstigster Preis, zuletzt bearbeitet */
   type Unit = Row | Bundle<Row>;
@@ -162,25 +164,34 @@
       {@const f = b.list[0]}
       {@const low = cheapest(b)}
       {@const same = sameDates(b)}
+      {@const pick = pickedOf(b.list)}
+      {@const rest = pick ? b.list.filter(v => v.id !== pick.id) : b.list}
       <div class="ht-wrap home-cmp-wrap">
         <div class="home-trip home-cmp" class:past={stateOf(b) === "past"} class:as-row={view === "list"} data-cmp={b.cmp}>
-          <span class="ht-top"><b>{f.cloud ? "☁ " : ""}{b.title}</b><span class="hc-n">{tn("home.variants", b.list.length)}</span></span>
+          <span class="ht-top"><button class="hc-open" onclick={() => openCompare(b.cmp)}><b>{f.cloud ? "☁ " : ""}{b.title}</b></button><span class="hc-n">{tn("home.variants", b.list.length)}</span></span>
           <span class="ht-facts">
             {#if same && f.from}<span>📅 {range(f.from, f.to)}{f.s?.nights ? ` · ${tn("n.nights", f.s.nights)}` : ""}</span>{/if}
             {#if f.people}<span>👥 {tn("n.persons", f.people)}</span>{/if}
             {#if f.members?.length}<span class="ht-mem" title={f.members.join(", ")}>☁ {t("home.with", { names: f.members.length > 3 ? `${f.members.slice(0, 3).join(", ")} +${f.members.length - 3}` : f.members.join(", ") })}</span>{/if}
           </span>
+          {#snippet varRow(v: Row)}
+            <button class="hc-var" class:past={rowState(v) === "past"} class:win={pick?.id === v.id} onclick={() => openTrip(v.id, "Vergleich")}>
+              <span class="hc-flag" aria-hidden="true">{flagFor(v)}</span>
+              <span class="hc-l"><span class="hr-top"><b>{pick?.id === v.id ? "✓ " : ""}{v.label}</b>{#if rowState(v) === "booked"}<span class="ht-tag">✓</span>{:else if v.s?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
+                <small>{[v.s?.where, !same && v.from ? range(v.from, v.to) : ""].filter(Boolean).join(" · ")}</small></span>
+              <span class="hc-p num">{#if v.s && v.s.total > 0}<b>{eur(v.s.total)}</b>{/if}
+                <small>{[(v.people || 0) > 1 && v.s && v.s.perPerson > 0 ? t("perPerson", { v: eur(v.s.perPerson) }) : "", v.id === low ? t("home.cheapest") : ""].filter(Boolean).join(" · ")}</small></span>
+            </button>
+          {/snippet}
+          <!-- gewählt (#430): oben, die übrigen eingeklappt -->
           <div class="hc-vars">
-            {#each b.list as v (v.id)}
-              <button class="hc-var" class:past={rowState(v) === "past"} onclick={() => openTrip(v.id, "Vergleich")}>
-                <span class="hc-flag" aria-hidden="true">{flagFor(v)}</span>
-                <span class="hc-l"><span class="hr-top"><b>{v.label}</b>{#if rowState(v) === "booked"}<span class="ht-tag">✓</span>{:else if v.s?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
-                  <small>{[v.s?.where, !same && v.from ? range(v.from, v.to) : ""].filter(Boolean).join(" · ")}</small></span>
-                <span class="hc-p num">{#if v.s && v.s.total > 0}<b>{eur(v.s.total)}</b>{/if}
-                  <small>{[(v.people || 0) > 1 && v.s && v.s.perPerson > 0 ? t("perPerson", { v: eur(v.s.perPerson) }) : "", v.id === low ? t("home.cheapest") : ""].filter(Boolean).join(" · ")}</small></span>
-              </button>
-            {/each}
+            {#if pick}{@render varRow(pick)}{/if}
+            {#if !pick}{#each rest as v (v.id)}{@render varRow(v)}{/each}{/if}
           </div>
+          {#if pick && rest.length}
+            <details class="hc-rest"><summary>{tn("cmpv.showOthers", rest.length)}</summary><div class="hc-vars">{#each rest as v (v.id)}{@render varRow(v)}{/each}</div></details>
+          {/if}
+          <button class="linkbtn hc-cmp-go" onclick={() => openCompare(b.cmp)}>{t("home.compare")} →</button>
         </div>
       </div>
     {/snippet}
@@ -273,5 +284,11 @@
   .hc-p b { font-size: 15px; font-weight: 800; }
   .hc-p small { font-size: 12px; }
   .hc-cmp { color: var(--a); font-weight: 600; }
+  .hc-open { all: unset; cursor: pointer; }
+  .hc-open:focus-visible { outline: 2px solid var(--a); border-radius: 6px; }
+  .hc-var.win { background: color-mix(in srgb, var(--good) 9%, transparent); }
+  .hc-rest { width: 100%; font-size: 13px; }
+  .hc-rest summary { cursor: pointer; color: var(--ink-2); padding: 4px 0; }
+  .hc-cmp-go { align-self: flex-end; padding: 0; font-weight: 700; }
   .home-cmp.as-row { padding: 12px 14px; border-radius: 14px; }
 </style>

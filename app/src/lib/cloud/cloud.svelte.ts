@@ -284,6 +284,15 @@ export async function upload(trip: Trip) {
 }
 
 /** Konto-Reise frisch vom Server lesen (z. B. vor dem Aufräumen: die Kopie auf dem Gerät kann veraltet sein) */
+/** Konto-Reise ändern, die gerade nicht offen ist (z. B. Variante in der Vergleichsansicht): frischer Stand, ändern, speichern */
+export async function patchTrip(id: string, fn: (t: Trip) => void) {
+  const r = roleOf(id);
+  if (!fbUser || !r || r === "viewer") return;
+  const tr = await freshCloudTrip(id);
+  if (!tr) return;
+  fn(tr);
+  await (await load()).saveTrip(id, tr.name || t("trip"), JSON.stringify(tr), fbUser.uid);
+}
 export async function freshCloudTrip(id: string): Promise<Trip | null> {
   const data = await (await load()).freshTripData(id);
   return data ? JSON.parse(data) as Trip : null;

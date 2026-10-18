@@ -2,7 +2,7 @@
   import { t, tn } from "../i18n/index.svelte";
   /* Oben links: „Reisen“ öffnet die Übersicht aller Reisen, „+“ legt eine neue an */
   import type { Key } from "../i18n/index.svelte";
-  import { access, allTrips, app, deleteTrip, duplicateTrip, moveToCloud, switchTrip, tripFor } from "../store.svelte";
+  import { access, addVariant, allTrips, app, deleteTrip, duplicateTrip, moveToCloud, switchTrip } from "../store.svelte";
   import { leaveCompare, variantLabel } from "../variants";
   import { cloud, cloudTrip } from "../cloud/cloud.svelte";
   import { monthYear, nights } from "../format";
@@ -30,13 +30,6 @@
   }
 
   function act(fn: () => unknown) { void fn(); open = false; }
-  /** Variante (#428): gleicher Ort wie das Original, daher „Ort – Variante n“, bis man sie umbenennt */
-  function variant() {
-    const id = app.trip.cmp?.id, base = app.trip.place || app.trip.country || app.trip.name;
-    const n = id ? allTrips().filter(x => x.id !== app.trip.id && tripFor(x.id)?.cmp?.id === id).length + 2 : 2;
-    duplicateTrip(true);
-    if (app.trip.cmp) app.trip.cmp.label = t("cmpv.variantN", { x: base, n });
-  }
   function renameVariant() {
     const v = prompt(t("tm.renameVarQ"), variantLabel(app.trip))?.trim();
     if (v && app.trip.cmp) app.trip.cmp.label = v.slice(0, 60);
@@ -72,7 +65,7 @@
       <button class="tm-act tm-report" onclick={() => { report = true; open = false; }}>📄 {t("rep.btn")}</button>
       <button class="tm-act" onclick={() => act(duplicateTrip)}>{t("tm.copy")}</button>
       <!-- Variante im selben Vergleich (#428); herausnehmen macht sie wieder zu einer normalen Reise -->
-      {#if !access.readonly}<button class="tm-act tm-variant" onclick={() => act(variant)}>⇆ {t("tm.variant")}</button>{/if}
+      {#if !access.readonly}<button class="tm-act tm-variant" onclick={() => act(addVariant)}>⇆ {t("tm.variant")}</button>{/if}
       {#if app.trip.cmp && !access.readonly}
         <button class="tm-act tm-rename-var" onclick={() => act(renameVariant)}>✎ {t("tm.renameVar", { x: variantLabel(app.trip) })}</button>
         <button class="tm-act tm-uncmp" onclick={() => act(() => leaveCompare(app.trip))}>{t("tm.leaveCmp", { title: app.trip.cmp.title })}</button>
