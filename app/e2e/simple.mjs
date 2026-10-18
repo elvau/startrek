@@ -256,8 +256,21 @@ try {
   await poll.locator("li").nth(0).locator(".pv-for").click();
   await poll.locator("li").nth(1).locator(".pv-for").click();
   if (await poll.locator("li").nth(0).locator(".pv-for.on").count()) fail("Eine Stimme: erste Wahl bleibt");
+  // „✕ Ohne mich“ (#439): erst das Fenster mit Erklärung, Begründung freiwillig; danach „Wäre doch dabei“
   await poll.locator("li").nth(0).locator(".pv-veto").click();
-  if (!(await poll.locator("li").nth(0).innerText()).includes("✕ Cleo")) fail("Ohne mich nicht mit Namen: " + await poll.locator("li").nth(0).innerText());
+  const vd = gp.locator(".modal", { hasText: "Ohne mich bei" });
+  await vd.waitFor();
+  if (!(await vd.innerText()).includes("2 statt 3 Personen")) fail("Fenster ohne Folgen: " + await vd.innerText());
+  await vd.locator(".veto-why").fill("zu früh");
+  await vd.locator(".veto-ok").click();
+  await vd.waitFor({ state: "detached" });
+  if (!(await poll.locator("li").nth(0).innerText()).includes("✕ Cleo: „zu früh“")) fail("Ohne mich nicht mit Namen und Grund: " + await poll.locator("li").nth(0).innerText());
+  if (!(await poll.locator("li").nth(0).locator(".pv-veto").innerText()).includes("Wäre doch dabei")) fail("Knopf heißt nicht „Wäre doch dabei“");
+  // Anna hat vorher abgestimmt: bekommt die Info
+  await tg.locator(".tg-me select").selectOption({ label: "Anna" });
+  await poll.locator(".pv-notes", { hasText: "Cleo wäre bei" }).waitFor({ timeout: 4000 }).catch(async () => fail("Keine Info an Anna: " + (await poll.innerText()).replace(/\n/g, " / ")));
+  await poll.locator(".pv-seen").click();
+  if (await poll.locator(".pv-notes").count()) fail("Info nach „Gelesen“ noch da");
   if (!(await poll.innerText()).includes("Noch nicht abgestimmt: Ben")) fail("Wer fehlt: " + await poll.innerText());
   const second = (await poll.locator("li").nth(1).locator(".poll-l").innerText()).split(" – ")[0];
   await poll.locator(".poll-apply").click();
@@ -285,8 +298,18 @@ try {
   if (!(await kro.innerText()).includes("4 Meilen")) fail("Meilen gezählt: " + await kro.innerText());
   // offene Abstimmung steht unter „Wichtiges“
   if (!(await gp.locator(".imp-btn").getAttribute("aria-label") || "").match(/Wichtig/)) fail("Wichtiges-Knopf fehlt");
+  // Anna sagt mit Familie (Ben) „Ohne mich“ zu Kroatien; Kroatien trotzdem nehmen stellt beide auf „nicht dabei“
+  await tg.locator(".tg-me select").selectOption({ label: "Anna" });
+  await kro.locator(".pv-veto").click();
+  await vd.waitFor();
+  await vd.locator(".veto-fam").check();
+  if (!(await vd.innerText()).includes("1 statt 3 Personen")) fail("Familie nicht mitgerechnet: " + await vd.innerText());
+  await vd.locator(".veto-ok").click();
+  await until(async () => (await kro.innerText()).includes("✕ Anna (mit Familie)"), "Ohne mich mit Familie");
+  await mp.locator(".poll-apply").click();
+  await until(async () => gp.evaluate(() => { const t = JSON.parse(localStorage.getItem("rk2-t:gp") || "{}"); return t.travelers?.filter(x => x.active === false).map(x => x.name).join() === "Anna,Ben"; }), "Anna und Ben nicht dabei");
   await gctx.close();
-  log("Abstimmen: über die Zeiträume (eine Stimme, Cleo „ohne mich“, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten, Meilen-Wahl mit 4 Meilen");
+  log("Abstimmen: über die Zeiträume (eine Stimme, Cleo „ohne mich“, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten, Meilen-Wahl mit 4 Meilen; „Ohne mich“ mit Fenster, Grund, Info an Anna, mit Familie, trotzdem nehmen stellt beide auf „nicht dabei“");
 
   // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
   const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
