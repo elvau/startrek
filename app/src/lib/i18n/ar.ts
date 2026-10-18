@@ -1882,6 +1882,7 @@ export const ar: Dict = {
   "home.cheapest": "الأرخص",
   "home.variantOf": "{x} · بديل في «{title}» ({n})",
   "home.cmpGroup": "مقارنات",
+  "home.inCmp": "ضمن المقارنة «{title}»",
   "cmpv.split": "فصل المقارنة",
   "cmpv.splitQ": "فصل المقارنة «{title}»؟ ستبقى جميع الخيارات ({n}) رحلات مستقلة.",
   "home.dragHint": "اسحبها إلى رحلة أخرى للمقارنة بينهما",

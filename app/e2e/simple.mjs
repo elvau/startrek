@@ -699,6 +699,8 @@ try {
   await tile.waitFor();
   if (!(await tile.innerText()).includes("3 Varianten") || (await tile.locator(".hc-var").count()) !== 3) fail("Kachel: " + await tile.innerText());
   if (!(await tile.locator(".hc-var", { hasText: "Ardennen Frankreich" }).innerText()).includes("günstigste")) fail("günstigste nicht markiert");
+  // Reisen bleiben zusätzlich einzeln sichtbar, mit Hinweis auf den Vergleich
+  if ((await cp.locator(".home-trip:not(.home-cmp) .ht-incmp", { hasText: "Chalet-Wochenende" }).count()) !== 3) fail("Varianten nicht als eigene Kacheln");
   await tile.locator(".hc-cmp-go").click();
   const cv = cp.locator(".cmpv");
   await cv.locator(".cv-table").waitFor();

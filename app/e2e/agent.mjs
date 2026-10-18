@@ -363,7 +363,8 @@ try {
   const vars = await cmpTile.locator(".hc-var").allInnerTexts();
   if (!(await cmpTile.innerText()).includes(`${vars.length} Varianten`) || vars.length !== 3) fail("Kachel: " + await cmpTile.innerText());
   if (!vars.some(v => v.includes("Brügge")) || !vars.some(v => v.includes("Sonne in Palma"))) fail("Varianten: " + vars.join(" | "));
-  if (await p.locator(".start .home-trip:not(.home-cmp)", { hasText: "Brügge" }).count()) fail("Variante zusätzlich als eigene Kachel");
+  // die Reisen bleiben zusätzlich als eigene Kacheln, mit Hinweis auf den Vergleich
+  if (!(await p.locator(".start .home-trip:not(.home-cmp)", { hasText: "Brügge" }).locator(".ht-incmp").count())) fail("Variante nicht als eigene Kachel mit Hinweis auf den Vergleich");
   await cmpTile.locator(".hc-var", { hasText: "Brügge" }).click();
   await p.locator(".hero .meta", { hasText: "Brügge" }).waitFor();
   await p.locator(".top .brand-btn").click();
@@ -407,14 +408,14 @@ try {
   // erst warten, bis die hochgeladene Mannschaftsfahrt in der Liste der Startseite steht (Kontoliste kennt sie kurz später)
   await until(() => p.locator(".home-trip", { hasText: "Mannschaftsfahrt" }).count().then(n => n > 0), "Mannschaftsfahrt in der Liste der Startseite");
   await p.locator(".home-sort .chip", { hasText: "Preis" }).click();
-  const prices = await p.locator(".home-trips").first().locator(".ht-total").allInnerTexts();
+  const prices = await p.locator(".home-trips:not(:has(.home-cmp))").first().locator(".ht-total").allInnerTexts();
   const num = s => Number(s.replace(/·[\s\S]*$/, "").replace(/[^\d,]/g, "").replace(",", "."));
   if (prices.length < 2 || prices.some((x, i) => i && num(x) < num(prices[i - 1]))) fail("nicht nach Preis sortiert: " + prices);
   await p.locator(".home-sort .chip", { hasText: "Zuletzt bearbeitet" }).click();
   await p.locator(".home-h", { hasText: "Zuletzt bearbeitet" }).waitFor();
-  const first = await p.locator(".home-trip").first().innerText();
+  const first = await p.locator(".home-trip:not(.home-cmp)").first().innerText();
   if (!first.includes("Mannschaftsfahrt")) {
-    console.log("Diagnose zuletzt bearbeitet:", await p.evaluate(() => localStorage.getItem("rk2-edited")), "idx", await p.evaluate(() => [...document.querySelectorAll(".home-trip")].map(x => x.innerText.split("\n")[0]).join(" | ")));
+    console.log("Diagnose zuletzt bearbeitet:", await p.evaluate(() => localStorage.getItem("rk2-edited")), "idx", await p.evaluate(() => [...document.querySelectorAll(".home-trip:not(.home-cmp)")].map(x => x.innerText.split("\n")[0]).join(" | ")));
     fail("zuletzt bearbeitete nicht oben: " + first);
   }
   await p.locator(".home-sort .chip", { hasText: "Land" }).click();

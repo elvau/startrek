@@ -33,10 +33,14 @@
     const fresh = tr ? { from: tr.from, to: tr.to, people: tr.travelers.filter(x => x.active !== false).length } : {};
     return { ...m, ...fresh, s: tr ? summarize(tr, today, geo, i18n.lang) : null, route: tr ? tripRoute(tr) : null, cmp: tr?.cmp, label: tr ? variantLabel(tr) : m.name };
   }));
-  /* Varianten eines Vergleichs als eine Kachel (#429); Werte des Bündels: frühestes Datum, günstigster Preis, zuletzt bearbeitet */
+  /*
+   * Varianten eines Vergleichs als eine Kachel (#429), oben unter „Vergleiche“; die Reisen selbst bleiben zusätzlich als
+   * eigene Kacheln in der Übersicht (mit Hinweis auf den Vergleich). Werte des Bündels: frühestes Datum, günstigster Preis.
+   */
   type Unit = Row | Bundle<Row>;
   // Varianten im Bündel nach Namen (wie in der Reise, „Variante x von y“)
-  const units = $derived<Unit[]>(bundle(rows).map(u => (isBundle(u) ? { ...u, list: [...u.list].sort((a, b) => a.label.localeCompare(b.label, i18n.lang, { numeric: true })) } : u)));
+  const bundles = $derived<Bundle<Row>[]>(bundle(rows).filter(isBundle).map(u => ({ ...u, list: [...u.list].sort((a, b) => a.label.localeCompare(b.label, i18n.lang, { numeric: true })) })));
+  const bundleOf = (r: Row) => (r.cmp ? bundles.find(b => b.cmp === r.cmp!.id) : undefined);
   const all = (u: Unit) => (isBundle(u) ? u.list : [u]);
   const rowState = (r: Row): TripState => r.s?.state ?? (r.to && r.to < today ? "past" : "planned");
   const stateOf = (u: Unit): TripState => {
@@ -59,30 +63,30 @@
   const price = (u: Unit) => Math.min(...all(u).map(r => r.s?.total || 0));
   /** Land der Reise; Rundreisen und Reisen ohne Land in eigenen Gruppen */
   const rowCountry = (r: Row) => (r.s?.round ? t("home.round") : r.s?.country || t("home.noCountry"));
-  /** Vergleich: alle Varianten im selben Land → dort, sonst unter „Vergleiche“ (#433) */
-  const countryOf = (u: Unit) => { const c = [...new Set(all(u).map(rowCountry))]; return c.length === 1 ? c[0] : t("home.cmpGroup"); };
+  const countryOf = (u: Unit) => rowCountry(all(u)[0]);
   const keyOf = (u: Unit) => (isBundle(u) ? `cmp:${u.cmp}` : u.id);
   const groups = $derived.by(() => {
     const byState = (cmp: (a: Unit, b: Unit) => number, pastCmp = cmp) => [
-      { k: "planned", title: t("home.planned"), list: units.filter(r => stateOf(r) === "planned").sort(cmp) },
-      { k: "booked", title: t("home.booked"), list: units.filter(r => stateOf(r) === "booked").sort(cmp) },
-      { k: "past", title: t("home.past"), list: units.filter(r => stateOf(r) === "past").sort(pastCmp) }
+      { k: "planned", title: t("home.planned"), list: rows.filter(r => stateOf(r) === "planned").sort(cmp) },
+      { k: "booked", title: t("home.booked"), list: rows.filter(r => stateOf(r) === "booked").sort(cmp) },
+      { k: "past", title: t("home.past"), list: rows.filter(r => stateOf(r) === "past").sort(pastCmp) }
     ];
     let out: { k: string; title: string; list: Unit[] }[];
-    if (sort === "recent") out = [{ k: "recent", title: t("home.recent"), list: [...units].sort((a, b) => editedOf(b).localeCompare(editedOf(a)) || byDate(1)(a, b)) }];
+    if (sort === "recent") out = [{ k: "recent", title: t("home.recent"), list: [...rows].sort((a, b) => editedOf(b).localeCompare(editedOf(a)) || byDate(1)(a, b)) }];
     else if (sort === "price") out = byState((a, b) => price(a) - price(b));
     else if (sort === "country") {
-      const names = [...new Set(units.map(countryOf))].sort((a, b) => a.localeCompare(b, i18n.lang));
-      out = names.map(n => ({ k: `c:${n}`, title: n, list: units.filter(r => countryOf(r) === n).sort((a, b) => Number(stateOf(a) === "past") - Number(stateOf(b) === "past") || byDate(1)(a, b)) }));
+      const names = [...new Set(rows.map(countryOf))].sort((a, b) => a.localeCompare(b, i18n.lang));
+      out = names.map(n => ({ k: `c:${n}`, title: n, list: rows.filter(r => countryOf(r) === n).sort((a, b) => Number(stateOf(a) === "past") - Number(stateOf(b) === "past") || byDate(1)(a, b)) }));
     } else out = byState(byDate(1), byDate(-1));
-    return out.filter(g => g.list.length);
+    const cmps: Unit[] = [...bundles].sort((a, b) => Number(stateOf(a) === "past") - Number(stateOf(b) === "past") || byDate(1)(a, b));
+    return [{ k: "cmp", title: t("home.cmpGroup"), list: cmps }, ...out].filter(g => g.list.length);
   });
   // erste Gruppe mit offener Überschrift (Vergangene sind zugeklappt): dort steht „aufräumen“
   const firstOpen = $derived(groups.find(g => !(g.k === "past" && sort !== "country"))?.k);
   // Länder für Rundreisen: Weltdaten nur laden, wenn es Flüge gibt
   $effect(() => { if (rows.some(r => r.s && tripFor(r.id)?.items.some(i => i.cat === "flights"))) { loadGeo(geo, []); void ensureAirports().catch(() => {}); } });
   // Flaggen der Varianten
-  $effect(() => { if (units.some(isBundle)) loadGeo(geo, []); });
+  $effect(() => { if (bundles.length) loadGeo(geo, []); });
   const flagFor = (r: Row) => { const cc = r.s?.country && geo.world.length ? ccOf(geo, r.s.country) : null; return cc ? flagOf(cc) : "📍"; };
   /** günstigste Variante (nur wenn mindestens zwei einen Preis haben) */
   const cheapest = (b: Bundle<Row>) => { const p = b.list.filter(r => (r.s?.total || 0) > 0); return p.length > 1 ? p.reduce((a, c) => (c.s!.total < a.s!.total ? c : a)).id : ""; };
@@ -96,7 +100,7 @@
   }
   // zuletzt geöffnete Reise (bleibt im Hintergrund offen): oben direkt weiterplanen
   const last = $derived(rows.find(r => r.id === app.trip.id));
-  const lastCmp = $derived(last?.cmp ? units.find(u => isBundle(u) && u.cmp === last.cmp!.id) as Bundle<Row> | undefined : undefined);
+  const lastCmp = $derived(last?.cmp ? bundleOf(last) : undefined);
   function event() { startTrip(); openEventPlanner(); }
   // unberührte Entwürfe beim Anzeigen der Startseite aufräumen; Reisen ohne Kosten nur nach Rückfrage
   $effect(() => { if (cloud.ready || !cloud.configured) sweepPristine(); });
@@ -246,16 +250,18 @@
             {@const nm = m.name || m.place || t("trip.untitled")}
             {@const leave = !!m.role && m.role !== "owner"}
             {@const isPast = stateOf(m) === "past"}
+            {@const inCmp = bundleOf(m)}
             <div class="ht-wrap" class:drop-ok={canTake(m, src)} class:drop-on={over === m.id} class:dragging={dragId === m.id || pairing === m.id} {...zone(m)}>
             {#if view === "list"}
             <button class="home-row" class:past={isPast} draggable={editable(m)} ondragstart={drag(m.id)} ondragend={endDrag} title={editable(m) ? t("home.dragHint") : undefined} onclick={() => openTrip(m.id, "Liste")}>
-              <span class="hr-name"><span class="hr-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if stateOf(m) === "booked"}<span class="ht-tag">✓</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
+              <span class="hr-name"><span class="hr-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if stateOf(m) === "booked"}<span class="ht-tag">✓</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}{#if inCmp}<span class="ht-incmp">⇆ {inCmp.title}</span>{/if}</span>
                 <small class="muted">{[x?.where, m.from ? range(m.from, m.to) : "", m.people ? tn("n.persons", m.people) : ""].filter(Boolean).join(" · ")}</small></span>
               <span class="hr-total num">{x && x.total > 0 ? eur(x.total) : ""}{#if x && (m.people || 0) > 1 && x.perPerson > 0}<small class="muted">{t("perPerson", { v: eur(x.perPerson) })}</small>{/if}</span>
             </button>
             {:else}
             <button class="home-trip" class:past={isPast} draggable={editable(m)} ondragstart={drag(m.id)} ondragend={endDrag} title={editable(m) ? t("home.dragHint") : undefined} onclick={() => openTrip(m.id, "Liste")}>
               {#if m.route && m.route.points.length > 2}<span class="ht-route" aria-hidden="true"><RouteMini route={m.route} w={280} h={96} /></span>{/if}
+              {#if inCmp}<span class="ht-incmp">⇆ {t("home.inCmp", { title: inCmp.title })}</span>{/if}
               <span class="ht-top"><b>{m.cloud ? "☁ " : ""}{nm}</b>{#if g.k === "booked"}<span class="ht-tag">✓ {t("home.bookedTag")}</span>{:else if x?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
               {#if x}
                 {#if x.where}<span class="ht-where">{x.round ? `🔁 ${t("home.round")}: ` : "📍 "}{x.where}</span>{/if}
@@ -280,7 +286,7 @@
             </button>
             {/if}
             <button class="ht-del" title={leave ? t("home.leaveTrip", { name: nm }) : t("home.deleteTrip", { name: nm })} aria-label={leave ? t("home.leaveTrip", { name: nm }) : t("home.deleteTrip", { name: nm })} onclick={() => remove(m, nm, leave)}>{leave ? "⇥" : "🗑"}</button>
-            {#if editable(m) && units.length > 1}<button class="ht-cmp" title={t("home.cmpWith")} aria-label={t("home.cmpWith")} onclick={() => (pairing = m.id)}>⇆</button>{/if}
+            {#if editable(m) && rows.length > 1}<button class="ht-cmp" title={t("home.cmpWith")} aria-label={t("home.cmpWith")} onclick={() => (pairing = m.id)}>⇆</button>{/if}
             {@render pickHere(m)}
             </div>
             {/if}
@@ -337,6 +343,7 @@
   .ht-cmp { position: absolute; top: 50px; inset-inline-end: 10px; width: 36px; height: 36px; border-radius: 10px; border: 1px solid transparent; background: transparent; font-size: 16px; line-height: 1; opacity: .55; color: var(--a); }
   .ht-cmp:hover, .ht-cmp:focus-visible { opacity: 1; background: var(--a-soft); }
   :global(.home-trips.as-list) .ht-cmp { top: 50%; transform: translateY(-50%); inset-inline-end: 50px; }
+  .ht-incmp { align-self: flex-start; font-size: 11.5px; font-weight: 700; color: var(--a); background: var(--a-soft); border-radius: 99px; padding: 2px 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   .ht-wrap:has(.ht-cmp) .home-row { padding-inline-end: 94px; }
   .ht-wrap.dragging { opacity: .55; }
   .ht-wrap.drop-ok { outline: 2px dashed color-mix(in srgb, var(--a) 45%, transparent); outline-offset: 3px; border-radius: 18px; }

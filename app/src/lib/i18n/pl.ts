@@ -1803,6 +1803,7 @@ export const pl: Dict = {
   "home.cheapest": "najtańszy",
   "home.variantOf": "{x} · wariant w „{title}” ({n})",
   "home.cmpGroup": "Porównania",
+  "home.inCmp": "w porównaniu „{title}”",
   "cmpv.split": "Rozdziel porównanie",
   "cmpv.splitQ": "Rozdzielić porównanie „{title}”? Wszystkie warianty ({n}) zostaną zachowane jako osobne podróże.",
   "home.dragHint": "Przeciągnij na inną podróż, aby je porównać",
