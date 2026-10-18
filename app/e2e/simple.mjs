@@ -755,8 +755,11 @@ try {
   await cv.locator(".cv-table").waitFor();
   await cv.locator(".cv-others").click();
   await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 3, "Reise per Antippen zum Vergleich");
+  // Vergleich trennen: alle wieder eigene Reisen
+  await cv.locator(".cv-split").click();
+  await until(async () => !(await cp.locator(".home-cmp").count()) && (await cp.locator(".home-trip:not(.home-cmp)").count()) === 3, "Vergleich getrennt");
   await vctx.close();
-  log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Diese nehmen (andere eingeklappt), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln, Reise auf den Vergleich ziehen bzw. per ⇆ antippen");
+  log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Diese nehmen (andere eingeklappt), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln, Reise auf den Vergleich ziehen bzw. per ⇆ antippen, Vergleich trennen");
   }
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
