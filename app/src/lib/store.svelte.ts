@@ -633,7 +633,7 @@ export function setDetailed(cat: CatKey, on: boolean, edit = false) {
 
 /** Gespeicherte Posten eines Bereichs verwerfen (der einfache Betrag bleibt) */
 export function discardDetails(cat: CatKey) {
-  app.trip.items = app.trip.items.filter(i => i.cat !== cat);
+  app.trip.items = app.trip.items.filter(i => i.cat !== cat || i.auto);
   if (app.editing && !app.trip.items.some(i => i.id === app.editing)) app.editing = null;
 }
 
