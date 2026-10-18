@@ -127,6 +127,20 @@ button:focus-visible{outline:2px solid var(--a);outline-offset:2px}
 .vb.x[aria-pressed="true"]{background:var(--bad);color:#fff}
 .veto{font-size:12px;background:var(--bad-soft);color:var(--ink-2);border-radius:10px;padding:6px 8px}
 .veto b{color:var(--bad)}
+.modal-bg{position:fixed;inset:0;background:rgba(10,18,30,.5);display:grid;place-items:center;padding:16px;z-index:20}
+.modal{width:min(460px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:var(--paper);border-radius:20px;box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:12px}
+.modal h3{font-size:19px}
+.modal p{margin:0;color:var(--ink-2);font-size:14px}
+.modal .cons{border-radius:12px;background:var(--paper-2);padding:10px 12px;font-size:13px;display:flex;flex-direction:column;gap:3px}
+.modal .cons b{font-family:var(--f-d);font-size:15px}
+.modal label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-2)}
+.modal textarea{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--paper);color:var(--ink);resize:vertical;min-height:60px}
+.modal .acts{justify-content:flex-end}
+.btn.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.vb.back{border-color:var(--good);color:var(--good)}
+.notify{border-radius:12px;border:1px solid var(--line);background:var(--paper);padding:8px 10px;font-size:12.5px;display:flex;flex-direction:column;gap:3px}
+.notify b{color:var(--ink)}
+.notify .to{color:var(--ink-3);font-size:11.5px}
 .soon{font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--idea)}
 .pollbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--idea-soft);border-radius:12px;padding:7px 10px;font-size:13px}
 .pollbar b{color:var(--idea)}
@@ -151,7 +165,7 @@ button:focus-visible{outline:2px solid var(--a);outline-offset:2px}
   <header class="doc-h">
     <span class="kick">Entwurf zu #438 · nur zur Entscheidung</span>
     <h1>Angebote eines Postens vergleichen</h1>
-    <p>Beispiel: JGA auf Mallorca, 8 Personen, 4 Nächte, drei Unterkünfte zur Auswahl. Aufbauend auf der heutigen Reihe „Angebote vergleichen“ in der Unterkunftskarte: Karte mit allen Angeboten, Entfernungen zu Zentrum, Strand und eigenem Punkt, Wirkung auf die ganze Reise. Die Abstimmungszeile unten ist eine Vorschau auf #432.</p>
+    <p>Beispiel: JGA auf Mallorca, 8 Personen, 4 Nächte, drei Unterkünfte zur Auswahl. Aufbauend auf der heutigen Reihe „Angebote vergleichen“ in der Unterkunftskarte: Karte mit allen Angeboten, Entfernungen zu Zentrum, Strand und eigenem Punkt, Wirkung auf die ganze Reise. Die Abstimmungszeile unten ist eine Vorschau auf #432; „✕ Ohne mich“ öffnet das Fenster zum Bestätigen (#439).</p>
   </header>
   <div class="q"><b>Zum Entscheiden:</b> Passt die Reihenfolge in der Angebotskachel (Entfernungen → Wirkung auf die Reise → Storno → Abstimmung)? Gemeinsame Karte bis ca. 15 km Abstand, sonst je Angebot eine kleine. Auf dem Handy eine Liste, die man je Angebot aufklappt.</div>
   <div class="ctl">Beispiel:
@@ -162,6 +176,7 @@ button:focus-visible{outline:2px solid var(--a);outline-offset:2px}
     <div><div class="lbl">Handy</div><div class="phone" id="mob"></div></div>
   </div>
 </div>
+<div id="modal"></div>
 
 <script>
 // Beispieldaten: Rest der Reise (Flüge, Vor Ort, Erlebnisse) fest, Verpflegung hängt an der Verpflegung der Unterkunft
@@ -186,6 +201,10 @@ const eur = v => Math.round(v).toLocaleString("de-DE") + " €";
 const km = v => v < 1 ? Math.round(v * 1000 / 10) * 10 + " m" : v.toLocaleString("de-DE", { maximumFractionDigits: 1 }) + " km";
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const tripTotal = o => REST + o.price + FOOD[o.board];
+/** ohne n Personen: Flüge, Erlebnisse und Verpflegung fallen für sie weg (pro Person), Unterkunft und Mietwagen bleiben (pro Einheit) */
+const PERSONAL = 2320;
+const without = (o, n) => tripTotal(o) - n * (PERSONAL + FOOD[o.board]) / PEOPLE;
+const ppWith = o => { const n = (S.veto?.[o.k] || []).length; return without(o, n) / (PEOPLE - n); };
 const set = () => SETS[S.lay];
 const sel = () => set().offers.find(o => o.k === S.chosen);
 
@@ -233,8 +252,8 @@ function vote(o) {
   const v = S.votes[o.k] || [], x = S.veto[o.k] || [], mine = v.includes(S.me), mx = x.includes(S.me);
   return `<div class="vote"><span class="soon">Abstimmung · kommt mit #432</span>
     <div class="who">${v.map(n => `<span>${n}</span>`).join("")}${x.map(n => `<span class="x">✕ ${n}</span>`).join("")}</div>
-    <div class="row"><button class="vb" aria-pressed="${mine}" data-vote="${o.k}">${mine ? "✓ Dafür" : "Dafür"}</button><button class="vb x" aria-pressed="${mx}" data-veto="${o.k}">✕ Ohne mich</button></div>
-    ${x.length ? `<div class="veto"><b>Ohne ${x.join(", ")}:</b> 7 statt 8 Personen · Unterkunft bleibt ${eur(o.price)} → für die anderen +${eur(o.price / 7 - o.price / 8)} p. P. (Folgen: #439)</div>` : ""}
+    <div class="row"><button class="vb" aria-pressed="${mine}" data-vote="${o.k}">${mine ? "✓ Dafür" : "Dafür"}</button>${mx ? `<button class="vb back" data-back="${o.k}">↩ Wäre doch dabei</button>` : `<button class="vb x" data-veto="${o.k}">✕ Ohne mich</button>`}</div>
+    ${x.length ? `<div class="veto"><b>Ohne ${x.join(", ")}:</b> ${PEOPLE - x.length} statt ${PEOPLE} Personen · ganze Reise ${eur(without(o, x.length))} · für die anderen ${eur(without(o, x.length) / (PEOPLE - x.length))} p. P. (+${eur(without(o, x.length) / (PEOPLE - x.length) - tripTotal(o) / PEOPLE)}) · Unterkunft bleibt ${eur(o.price)}</div>` : ""}
   </div>`;
 }
 function offer(o) {
@@ -264,11 +283,31 @@ function card() {
       <div class="pollbar"><span>🗳 <b>Welche Unterkunft?</b> ${voters} von 8 haben abgestimmt · bis Sonntag</span><span class="soon">#432</span></div>
       <div class="cmp-h"><b>Angebote vergleichen · 3 Angebote</b><span class="refs">Entfernung zu: ${refs}</span></div>
       ${maps()}
+      ${S.notice ? `<div class="notify"><span class="to">🔔 Info an alle, die schon abgestimmt haben (${esc(S.notice.to)}):</span><b>${esc(S.notice.text)}</b></div>` : ""}
       <div class="offers">${set().offers.map(offer).join("")}</div>
     </div>
   </div>`;
 }
+function modal() {
+  const o = set().offers.find(x => x.k === S.ask);
+  if (!o) return "";
+  const n = (S.veto[o.k] || []).length + 1, after = without(o, n), pp = after / (PEOPLE - n);
+  return `<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mh">
+    <h3 id="mh">Ohne dich bei ${esc(o.name)}?</h3>
+    <p>Hiermit wirst du aus der Reise ausgeschlossen, falls diese Unterkunft gewählt wird, und die Preise werden für alle angepasst, als ob sie ohne dich fahren würden. Solltest du es dir noch einmal anders überlegen, kannst du mit dem Knopf „Wäre doch dabei“ wieder einsteigen.</p>
+    <div class="cons"><span class="muted">Wenn ${esc(o.name)} gewählt wird</span>
+      <b class="num">${PEOPLE - n} statt ${PEOPLE} Personen · ${eur(pp)} p. P. für die anderen</b>
+      <span class="num">Ganze Reise ${eur(after)} statt ${eur(tripTotal(o))}</span>
+      <span>✓ Deine Flüge, Erlebnisse und Verpflegung fallen weg</span>
+      <span>⚠ Unterkunft bleibt ${eur(o.price)}, verteilt auf weniger Leute</span></div>
+    <label for="why">Begründung (freiwillig, für alle sichtbar)<textarea id="why" placeholder="z. B. zu weit vom Strand"></textarea></label>
+    <span class="muted" style="font-size:12.5px">Alle, die schon abgestimmt haben, bekommen einen Hinweis, dass sich der Preis geändert hat.</span>
+    <div class="acts"><button class="btn" data-cancel="1">Abbrechen</button><button class="btn bad" data-confirm="${o.k}">✕ Ohne mich</button></div>
+  </div></div>`;
+}
+const voted = () => [...new Set([...Object.values(S.votes).flat(), ...Object.values(S.veto).flat()])].filter(n => n !== S.me);
 function render() {
+  document.getElementById("modal").innerHTML = modal();
   document.getElementById("desk").innerHTML = card();
   const m = document.getElementById("mob");
   m.innerHTML = card();
@@ -284,10 +323,23 @@ document.addEventListener("click", e => {
   else if (d.ref) S.ref[+d.ref] = !S.ref[+d.ref];
   else if (d.open) S.open[d.open] = !S.open[d.open];
   else if (d.vote) { const l = S.votes[d.vote] ||= []; const i = l.indexOf(S.me); i < 0 ? l.push(S.me) : l.splice(i, 1); }
-  else if (d.veto) { const l = S.veto[d.veto] ||= []; const i = l.indexOf(S.me); i < 0 ? l.push(S.me) : l.splice(i, 1); }
+  else if (d.veto) S.ask = d.veto;
+  else if (d.cancel) S.ask = null;
+  else if (d.confirm) {
+    const o = set().offers.find(x => x.k === d.confirm), before = tripTotal(o) / PEOPLE;
+    (S.veto[o.k] ||= []).push(S.me); S.votes[o.k] = (S.votes[o.k] || []).filter(n => n !== S.me); S.ask = null;
+    const n = S.veto[o.k].length, now = without(o, n) / (PEOPLE - n);
+    S.notice = { to: voted().join(", "), text: `${S.me} wäre bei ${o.name} nicht dabei. Neuer Preis dort: ${eur(now)} p. P. statt ${eur(before)} (+${eur(now - before)}).` };
+  }
+  else if (d.back) {
+    const o = set().offers.find(x => x.k === d.back);
+    S.veto[o.k] = (S.veto[o.k] || []).filter(n => n !== S.me);
+    S.notice = { to: voted().join(", "), text: `${S.me} wäre bei ${o.name} doch dabei. Preis dort wieder ${eur(ppWith(o))} p. P.` };
+  }
   else return;
   render();
 });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S.ask) { S.ask = null; render(); } });
 render();
 </script>
 </html>
