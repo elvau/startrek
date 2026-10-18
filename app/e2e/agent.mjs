@@ -311,7 +311,7 @@ try {
 
   // offene Reise: die KI kennt sie (ohne Namen), alle Änderungen eines Auftrags mit einer Rückfrage übernehmen
   await c3.locator(".ai-head .x").click();
-  await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).first().click();
+  await p.locator(".start .home-trip:not(.home-cmp), .start .hc-var", { hasText: "Sonne in Palma" }).first().click();
   await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
   const tripName = (await p.locator(".hero h1").innerText()).trim();
   await p.locator(".ai-fab").click();
@@ -346,7 +346,9 @@ try {
   await c4.locator(".ai-bar textarea").press("Enter");
   await until(() => c4.locator(".ai-variant").count().then(n => n === 1), "zweite Antwort zur Reise");
   await c4.locator(".ai-variant").click();
-  await p.locator(".hero h1", { hasText: "(KI-Vergleich)" }).waitFor();
+  // Variante im selben Vergleich (#428): Name bleibt, neue Reise in Brügge
+  await p.locator(".hero .meta", { hasText: "Brügge" }).waitFor();
+  const variantCmp = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").cmp);
   if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Vergleichsreise mit Flug");
   await p.locator(".hero .meta", { hasText: "Brügge, Belgien" }).waitFor();
   await p.waitForTimeout(2500);
@@ -354,10 +356,19 @@ try {
   if ((await p.locator("#stay .card", { hasText: "Huis Brugge" }).count()) !== 1 || await p.locator("#stay .card", { hasText: "Casa Palma" }).count()) fail("Unterkunft in der Vergleichsreise nicht genau einmal ersetzt");
   await c4.locator(".ai-head .x").click();
   await p.locator(".top .brand-btn").click();
-  await p.locator(".start .home-trip", { hasText: "(KI-Vergleich)" }).first().waitFor();
-  if (!(await p.locator(".start .home-trip", { hasText: tripName }).count())) fail("ursprüngliche Reise fehlt");
-  if (!(await p.locator(".start .home-trip", { hasText: tripName }).first().innerText()).includes("Palma")) fail("ursprüngliche Reise geändert");
-  log("Als KI-Vergleichsreise in Belgien angelegt (Unterkunft einmal, bleibt nach dem Hochladen), ursprüngliche Reise unverändert");
+  // Startseite (#429): eine Kachel für den Vergleich, je Variante eine Zeile
+  const cmpTile = p.locator(".start .home-cmp", { hasText: "Brügge" });
+  await cmpTile.waitFor().catch(async () => fail("keine Vergleichskachel: " + JSON.stringify(variantCmp) + " | " + (await p.locator(".start").innerText()).slice(0, 900).replace(/\n/g, " / ")));
+  // „Sonne in Palma“ kam mit „Alle übernehmen“ schon in einen Vergleich: die KI-Variante kommt dazu (3 Varianten)
+  const vars = await cmpTile.locator(".hc-var").allInnerTexts();
+  if (!(await cmpTile.innerText()).includes(`${vars.length} Varianten`) || vars.length !== 3) fail("Kachel: " + await cmpTile.innerText());
+  if (!vars.some(v => v.includes("Brügge")) || !vars.some(v => v.includes("Sonne in Palma"))) fail("Varianten: " + vars.join(" | "));
+  if (await p.locator(".start .home-trip:not(.home-cmp)", { hasText: "Brügge" }).count()) fail("Variante zusätzlich als eigene Kachel");
+  await cmpTile.locator(".hc-var", { hasText: "Brügge" }).click();
+  await p.locator(".hero .meta", { hasText: "Brügge" }).waitFor();
+  await p.locator(".top .brand-btn").click();
+  await cmpTile.waitFor();
+  log("Als KI-Vergleichsreise in Belgien angelegt (Unterkunft einmal, bleibt nach dem Hochladen), ursprüngliche Reise unverändert; Startseite: eine Kachel mit den Varianten (aus „Alle übernehmen“ und der KI-Variante), Zeile öffnet die Reise");
 
   // große Gruppe: 10 Personen, Flug in 5 Buchungen à 2 Plätze, jede ein eigener Posten
   await p.locator(".ai-fab").click();
@@ -451,7 +462,8 @@ try {
   if (!ftxt.includes("Familie 07.05.–14.05.") || !ftxt.includes("Oma 10.05.–14.05.")) fail("Familien nicht auf der Karte: " + ftxt);
   const shown = await fcard.locator("footer .num").innerText();
   await c6.locator(".ai-all").last().click();
-  await p.locator(".home-trip, .home-row", { hasText: "Palma mit Oma" }).first().click();
+  // „Alle übernehmen“ (#428): ein Vergleich, Zeilen nach dem Namen des Vorschlags
+  await p.locator(".home-cmp .hc-var", { hasText: "Palma mit Oma" }).first().click();
   await p.locator(".hero h1", { hasText: "Palma mit Oma" }).waitFor();
   if (!(await p.locator(".hero .meta").innerText()).includes("4 Personen")) fail("nicht 4 Personen: " + await p.locator(".hero .meta").innerText());
   const ftl = p.locator(".tl-card");

@@ -194,6 +194,10 @@ export async function freshTripData(id: string): Promise<string | null> {
 
 export const setInvite = (id: string, invite: TripDoc["invite"]) => updateDoc(tripRef(id), { invite });
 
+/** Variante (#428): Mitglieder, Namen und Zuordnungen wie in der Reise, aus der sie entstand (nur Besitzer) */
+export const setMembers = (id: string, members: Record<string, Role>, memberNames: Record<string, string>, claims: NonNullable<TripDoc["claims"]>) =>
+  updateDoc(tripRef(id), { memberIds: Object.keys(members), members, memberNames, claims });
+
 export const setRole = (id: string, uid: string, role: Role) => updateDoc(tripRef(id), { [`members.${uid}`]: role });
 
 export const removeMember = (id: string, uid: string) =>

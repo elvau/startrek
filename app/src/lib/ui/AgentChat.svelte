@@ -32,7 +32,8 @@
   import { agentChat, openChat } from "../agent/open.svelte";
   import { upcomingSchool } from "../holidaysApp.svelte";
   import { bookingPrice, CONTEXTS, editCount, flightTotal, type AgentContext, type AgentEdit, type AgentTrip } from "../agent/types";
-  import type { Prefs, Trip } from "../model";
+  import { uid, type Prefs, type Trip } from "../model";
+  import { commonTitle } from "../variants";
   import AiMark from "./AiMark.svelte";
 
   /** Nachricht; bei einer Rückfrage der KI mit Antworten zum Antippen */
@@ -191,10 +192,10 @@
   /** Änderungen in einer Kopie der Reise: die eigene Planung bleibt, die KI-Vergleichsreise liegt daneben */
   function variant(m: Msg) {
     if (!m.edit || app.trip.id !== m.tripId) return;
-    const name = app.trip.name;
-    duplicateTrip();
-    app.trip.name = t("ai.variantName", { n: name });
+    // Variante im selben Vergleich (#428): Name bleibt, die Variante heißt nach ihrem Ort
+    duplicateTrip(true);
     app.trip.autoName = false;
+    app.trip.ai = { at: new Date().toISOString() };
     applyEdit(app.trip, m.edit);
     syncAuto();
     m.state = "variant";
@@ -214,9 +215,14 @@
   /** alle Vorschläge als eigene Reisen anlegen und auf der Startseite vergleichen */
   function takeAll(list: AgentTrip[]) {
     const b: Trip = JSON.parse(JSON.stringify(base())), fromTrip = !app.home;
+    // alle in einen Vergleich (#428), Titel aus dem gemeinsamen Anfang der Namen
+    const cmp = { id: uid(), title: commonTitle(list.map(a => a.title || "")) || t("cmpv.title") };
     for (const a of list) {
       startLike(b, fromTrip);
       takeAgentTrip(app.trip, a);
+      // Name der Variante: Name des Vorschlags ohne den gemeinsamen Anfang („JGA Malle“ → „Malle“)
+      const rest = (a.title || "").slice(cmp.title.length).replace(/^[\s·:–-]+/, "").trim();
+      app.trip.cmp = { ...cmp, label: a.title?.startsWith(cmp.title) && rest ? rest : a.title || app.trip.place };
       syncAuto();
     }
     goHome();
