@@ -53,6 +53,13 @@
       <p>{t("login.upgradeLead")}</p>
     {:else if cloud.join}
       <p>{cloud.join.role === "viewer" ? t("login.joinView") : t("login.joinEdit")}</p>
+      <!-- was nach dem Link passiert (#435): was Split&Fly ist, beitreten, sich wählen, Konto oder Gast -->
+      <p class="login-what"><b>✈️ {t("brand")}</b> {t("login.what")}</p>
+      <ol class="login-how">
+        <li><span class="lh-ic" aria-hidden="true">👋</span><span>{t("login.how1")}</span></li>
+        <li><span class="lh-ic" aria-hidden="true">🦡</span><span>{t("login.how2")}<span class="lh-zoo" aria-hidden="true">🦊 🐻 🦡 🐰 🦉 🐧</span></span></li>
+        <li><span class="lh-ic" aria-hidden="true">☁️</span><span>{t("login.how3")}</span></li>
+      </ol>
     {:else}
       <p>{t("login.lead")}</p>
     {/if}
@@ -77,9 +84,9 @@
       <div class="or"><span>{t("login.orGuest")}</span></div>
       <form onsubmit={guest} class="ed-row login-guest">
         <label class="f grow">{t("login.firstName")}<input bind:value={guestName} maxlength="40" autocomplete="given-name" placeholder={t("login.firstNamePh")} /></label>
-        <button class="btn" disabled={busy}>{t("login.asGuest")}</button>
+        <button class="btn" disabled={busy}>🐾 {t("login.asGuest")}</button>
       </form>
-      <p class="muted small">{t("login.guestHint")}</p>
+      <p class="muted small">{t("login.guestHint")} {t("login.guestDevice")}</p>
     {/if}
     {#if err || cloud.error}<p class="err">{err || cloud.error}</p>{/if}
     {#if emulator}
@@ -88,3 +95,11 @@
     <p class="muted small">{t("login.noAccount")}</p>
   </div>
 </Modal>
+
+<style>
+  .login-what { margin: 0; padding: 10px 12px; border-radius: 14px; background: var(--a-soft); color: var(--ink); font-size: 14px; }
+  .login-how { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 13.5px; color: var(--ink-2); }
+  .login-how li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; }
+  .lh-ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 18px; background: var(--paper-2); border: 1px solid var(--line); }
+  .lh-zoo { display: block; margin-top: 3px; letter-spacing: 3px; font-size: 15px; }
+</style>
