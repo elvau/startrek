@@ -82,6 +82,9 @@ die erste Version, **P2** bald danach, **P3** später.
 - **C2 [neu, P1]** Ein Posten im Status *Idee* kann mehrere Optionen haben. Ich vergleiche sie
   nebeneinander (Preis, Zeiten, Bewertung, Entfernung) und wähle eine aus. Die gewählte fließt
   in die Summe ein.
+  Umgesetzt für Unterkünfte (#438): Angebote mit Buchstaben A, B, C, Karte (nah beieinander gemeinsam, sonst je
+  Angebot ein Kartenbild), Entfernung zu Zentrum, Events/Erlebnissen mit Ort und Flughafen, Kosten der ganzen Reise je
+  Angebot (inkl. Verpflegung je nach Verpflegung der Unterkunft); Logik in `app/src/lib/stays/compare.ts`.
 - **C3 [neu, P1]** Die Übersicht trennt **fest** (gebucht und bezahlt) von **offen** (noch in
   Planung). Ich sehe sofort, wie viel schon sicher ist und wie viel sich noch ändern kann.
 - **C4 [neu, P2]** Bei *Gebucht* halte ich Buchungsnummer, Anbieter, Link und Stornobedingungen fest.
