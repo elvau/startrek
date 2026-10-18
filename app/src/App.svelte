@@ -34,6 +34,7 @@
   import TripTimeline from "./lib/ui/TripTimeline.svelte";
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
+  import CompareView from "./lib/ui/CompareView.svelte";
   import AppFooter from "./lib/ui/AppFooter.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
@@ -181,7 +182,9 @@
 <Sprite />
 <Ambience />
 <GuestNote />
-{#if app.home}
+{#if app.home && app.compare}
+<CompareView />
+{:else if app.home}
 <Home />
 {:else}
 <TopNav />
