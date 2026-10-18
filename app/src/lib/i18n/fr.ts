@@ -1351,6 +1351,7 @@ export const fr: Dict = {
   "ks.why": "Motif",
   "ks.whyPh": "Motif (facultatif), p. ex. « c'était privé »",
   "foot.ideas": "Idées de voyage (en allemand)",
+  "foot.guide": "Guide (en allemand)",
   "legal.imprint": "Mentions légales",
   "acct.myData": "Mes données (droit d’accès)",
   "data.title": "Mes données",

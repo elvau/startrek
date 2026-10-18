@@ -43,3 +43,7 @@ Worker- und R2-Zahlen liest der Dienst aus der GraphQL-API von Cloudflare.
 5. Optional **`GEMINI_RPD`:** Tagesgrenze des Modells laut Google AI Studio, dann bekommt Gemini einen Balken.
 
 Fehlt etwas, zeigt die Ansicht „Nicht verfügbar“ mit dem Grund.
+
+## Anleitung für Nutzer
+
+`/anleitung/…`: 10 Themen in der Reihenfolge der App, Texte in `app/src/lib/guide/pages.ts`, Szenen in `app/src/lib/guide/art.ts` (Zeichenstil: Skill `zeichenstil`). `scripts/anleitung.mjs` erzeugt die Seiten beim Zusammenstellen (`scripts/site.sh`) und trägt sie in die Sitemap ein; Footer-Link `foot.guide`. Pflege: Skill `anleitung`. Nur Deutsch.

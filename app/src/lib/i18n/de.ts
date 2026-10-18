@@ -1349,6 +1349,7 @@ export const de = {
   "ks.why": "Grund",
   "ks.whyPh": "Grund (optional), z. B. „war privat“",
   "foot.ideas": "Reiseideen",
+  "foot.guide": "Anleitung",
   "legal.imprint": "Impressum",
   "acct.myData": "Meine Daten (Auskunft)",
   "data.title": "Meine Daten",
