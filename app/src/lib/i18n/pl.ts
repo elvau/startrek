@@ -1395,6 +1395,7 @@ export const pl: Dict = {
   "ks.why": "Powód",
   "ks.whyPh": "Powód (opcjonalnie), np. „to było prywatne”",
   "foot.ideas": "Pomysły na podróż (po niemiecku)",
+  "foot.guide": "Instrukcja (po niemiecku)",
   "legal.imprint": "Impressum",
   "acct.myData": "Moje dane (dostęp)",
   "data.title": "Moje dane",

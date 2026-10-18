@@ -510,7 +510,7 @@ export const PAGES: Page[] = [
 
 /* ---------- Ausgabe ---------- */
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const eur = (n: number) => `${n.toLocaleString("de-DE")} €`;
 const range = (a: number, b: number) => (a === b ? eur(a) : `${a.toLocaleString("de-DE")}–${eur(b)}`);
 
@@ -529,7 +529,7 @@ export function planHref(p: Page): string {
   return `../../?${q}`;
 }
 
-const CSS = `:root{--ink:#0F1B2D;--mute:#4A5870;--line:#DCE3EE;--bg:#F6F8FC;--card:#fff;--a:#2F6FDB;--link:#2560C4}
+export const CSS = `:root{--ink:#0F1B2D;--mute:#4A5870;--line:#DCE3EE;--bg:#F6F8FC;--card:#fff;--a:#2F6FDB;--link:#2560C4}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .wrap{max-width:760px;margin:0 auto;padding:20px 16px 48px}header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
 header img{height:30px;display:block}a{color:var(--link)}.crumbs{font-size:14px;color:var(--mute);margin:0 0 6px}
