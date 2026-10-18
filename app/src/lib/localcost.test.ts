@@ -43,6 +43,16 @@ describe("Transport vor Ort (#420)", () => {
     expect(localPlan(trip([flight], { from: undefined, to: undefined }), [leg]).daily).toBeUndefined();
   });
 
+  it("einfacher Modus: eigener Betrag oder Eintrag für Transport ersetzt das Unterwegssein (#424)", () => {
+    const base = { detail: { flights: true, transport: false } };
+    expect(localPlan(trip([flight], base), [leg]).daily).toBeDefined();
+    expect(localPlan(trip([flight], { ...base, simple: { transport: 300 } }), [leg]).daily).toBeUndefined();
+    const line = { id: "l", cat: "transport" as const, label: "Mietwagen", amount: 400 };
+    expect(localPlan(trip([flight], { ...base, lines: [line] }), [leg]).daily).toBeUndefined();
+    // detailliert zählt der einfache Betrag nicht, die Schätzung bleibt
+    expect(localPlan(trip([flight], { detail: { transport: true }, simple: { transport: 300 } }), [leg]).daily).toBeDefined();
+  });
+
   it("legt zwei Posten an (zählen im einfachen Modus als versteckt), räumt beim Ausschalten auf", () => {
     const t = trip([flight], { local: { on: true } });
     const p = localPlan(t, [leg]);

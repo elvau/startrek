@@ -10,7 +10,7 @@
 import { t, tn } from "./i18n/index.svelte";
 import { ageClass } from "./calc";
 import { okDate, dayDiff } from "./calc/travel";
-import { isActive, uid, type Item, type Price, type Trip } from "./model";
+import { isActive, isDetailed, uid, type Item, type Price, type Trip } from "./model";
 import { isRental } from "./fees";
 import { ccOf, findCity, kmBetween, type GeoData } from "./geo/places";
 import { tripSpots } from "./geo/spots";
@@ -104,7 +104,9 @@ export function localPlan(trip: Trip, legs: TransferLegPlan[], pli = 1): LocalPl
   const days = daysOf(trip);
   // eigene Posten fürs Unterwegssein (Ticket, Pass, Schätzung der KI) ersetzen die Schätzung
   const own = trip.items.some(i => live(i) && i.cat === "transport" && !i.auto && !isTransfer(i) && !isRental(i) && i.hint !== "road:car" && !i.arrival && !i.hint?.startsWith("camp"));
-  if (days && !own) {
+  // einfacher Modus: eigener Betrag oder Eintrag für Transport vor Ort (Mietwagen, Taxi …) ersetzt sie ebenso
+  const simpleOwn = !isDetailed(trip, "transport") && ((trip.simple?.transport ?? 0) > 0 || !!trip.lines?.some(l => l.cat === "transport" && l.amount > 0));
+  if (days && !own && !simpleOwn) {
     if (car) {
       const perKm = car === "own" ? trip.settings.kmCost ?? 0.3 : FUEL_KM;
       out.daily = { mode: "car", own: car === "own", perKm, km: LOCAL_KM, days };
