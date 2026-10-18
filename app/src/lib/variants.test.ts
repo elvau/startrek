@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Trip } from "./model";
-import { asVariant, bundle, commonTitle, ensureCompare, isBundle, leaveCompare, siblings, variantLabel } from "./variants";
+import { asVariant, bundle, commonTitle, ensureCompare, isBundle, joinTarget, leaveCompare, siblings, variantLabel } from "./variants";
 
 const trip = (id: string, place: string, country = "Frankreich"): Trip => ({ id, name: "Chalet-Wochenende", place, country, travelers: [], items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } });
 
@@ -37,5 +37,20 @@ describe("Varianten als Vergleich (#428)", () => {
     expect(commonTitle(["JGA Malle", "JGA Hamburg", "JGA Las Vegas"])).toBe("JGA");
     expect(commonTitle(["Malle", "Hamburg"])).toBe("");
     expect(commonTitle(["Sommer – Kroatien", "Sommer – Italien"])).toBe("Sommer");
+  });
+});
+
+describe("Reise auf eine andere ziehen", () => {
+  it("zwei eigenständige Reisen: neuer Vergleich, Titel aus gemeinsamem Namensanfang, sonst beide Namen", () => {
+    const a = { ...trip("a", "Palma"), name: "JGA Malle" }, b = { ...trip("b", "Hamburg"), name: "JGA Hamburg" };
+    expect(joinTarget(a, b, "k")).toEqual({ id: "k", title: "JGA" });
+    expect(joinTarget({ ...a, name: "Mallorca" }, { ...b, name: "Kreta" }, "k")!.title).toBe("Mallorca · Kreta");
+    expect(joinTarget({ ...a, name: "Mallorca" }, { ...b, name: "Mallorca" }, "k")!.title).toBe("Mallorca");
+  });
+  it("auf einen Vergleich: dessen Kennung und Titel; schon drin → nichts zu tun", () => {
+    const a = trip("a", "A"), b = trip("b", "B"), x = trip("x", "X");
+    asVariant(a, b);
+    expect(joinTarget(a, x)).toEqual({ id: a.cmp!.id, title: "Chalet-Wochenende" });
+    expect(joinTarget(a, b)).toBeNull();
   });
 });

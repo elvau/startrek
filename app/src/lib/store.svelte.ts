@@ -9,7 +9,7 @@ import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { applyClaims } from "./claims";
 import { shareLike, watchVotes } from "./cloud/cloud.svelte";
-import { ensureCompare } from "./variants";
+import { ensureCompare, joinTarget } from "./variants";
 import { cloud, cloudTrip, freshCloudTrip, patchTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 import { readView, saveView } from "./resume";
@@ -585,6 +585,21 @@ export async function editTrip(id: string, fn: (t: Trip) => void) {
   put(K_TRIP(id), JSON.stringify(tr));
   markEdited(id);
   localRev.n++;
+}
+
+/**
+ * Reise auf eine andere bzw. einen Vergleich ziehen: beide im selben Vergleich, Name der Variante ist der Name der
+ * Reise (zwei eigenständige Reisen haben oft denselben Ort). Gibt die Kennung des Vergleichs zurück.
+ */
+export async function joinCompare(src: string, dst: string): Promise<string | null> {
+  const a = tripFor(dst), b = tripFor(src);
+  if (!a || !b || src === dst) return null;
+  const c = joinTarget(a, b);
+  if (!c) return a.cmp!.id;
+  const put = (x: Trip) => { const l = (x.name || "").slice(0, 60); x.cmp = l ? { ...c, label: l } : { ...c }; };
+  if (!a.cmp) await editTrip(dst, put);
+  await editTrip(src, put);
+  return c.id;
 }
 
 /** Vergleichsansicht öffnen (#430) */
