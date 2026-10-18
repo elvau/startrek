@@ -245,13 +245,21 @@ try {
   const tiles = cards.locator(".st-cmp .cmp-t");
   if ((await tiles.count()) !== 2) fail("Vergleich: " + await tiles.count() + " Kacheln");
   if (!(await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).count())) fail("gewähltes Angebot nicht markiert");
+  // #438: Buchstaben wie auf der Karte, Entfernung zum Zentrum (nur mit Lage), ganze Reise je Angebot
+  const tRooms = cards.locator(".cmp-t", { hasText: "Rooms Šećer" }), tKlara = cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" });
+  if (!(await tiles.nth(0).locator(".cmp-l").innerText()).includes("A") || !(await tiles.nth(1).locator(".cmp-l").innerText()).includes("B")) fail("Buchstaben fehlen");
+  await until(async () => /Zentrum Split [\d,]+ k?m/.test(await tRooms.innerText()), "Entfernung zum Zentrum bei Rooms Šećer");
+  const tR = await tRooms.innerText(), tK = await tKlara.innerText();
+  if (!tK.includes("Lage unbekannt")) fail("Angebot ohne Lage: " + tK);
+  if (!tR.includes("Ganze Reise damit") || !tR.includes("aktuell gewählt")) fail("ganze Reise beim gewählten Angebot: " + tR);
+  if (!/\+[\d.]+ € gesamt/.test(tK)) fail("Abstand der ganzen Reise beim anderen Angebot: " + tK);
   await cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Ferienwohnung Klara" }).waitFor();
   // 783 € + Kurtaxe Split automatisch geschätzt (2 € × 1 Person × 7 Nächte)
   if (!(await cards.locator(".stay .price b").textContent()).includes("797")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
   await cards.locator(".cmp-t", { hasText: "Rooms Šećer" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).waitFor();
-  log("Vergleich nebeneinander: Klara gewählt (783 € + ca. 14 € Kurtaxe), zurück zu Rooms Šećer");
+  log("Vergleich nebeneinander: A/B, Entfernung zum Zentrum, ganze Reise je Angebot; Klara gewählt (783 € + ca. 14 € Kurtaxe), zurück zu Rooms Šećer");
 
   // wie im Artefakt: Anwesenheit aus dem Flug, Lücke im Plan → „Unterkunft suchen“ für genau diese Nächte und Personen
   const TRIP = {
