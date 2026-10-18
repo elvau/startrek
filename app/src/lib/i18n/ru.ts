@@ -1803,6 +1803,7 @@ export const ru: Dict = {
   "home.cheapest": "самый дешёвый",
   "home.variantOf": "{x} · вариант в «{title}» ({n})",
   "home.cmpGroup": "Сравнения",
+  "home.inCmp": "в сравнении «{title}»",
   "cmpv.split": "Разделить сравнение",
   "cmpv.splitQ": "Разделить сравнение «{title}»? Все варианты ({n}) останутся отдельными поездками.",
   "home.dragHint": "Перетащите на другую поездку, чтобы сравнить их",

@@ -1719,6 +1719,7 @@ export const de = {
   "home.cheapest": "günstigste",
   "home.variantOf": "{x} · Variante in „{title}“ ({n})",
   "home.cmpGroup": "Vergleiche",
+  "home.inCmp": "im Vergleich „{title}“",
   "cmpv.split": "Vergleich trennen",
   "cmpv.splitQ": "Vergleich „{title}“ trennen? Alle {n} Varianten bleiben als eigene Reisen erhalten.",
   "home.dragHint": "Auf eine andere Reise ziehen, um beide zu vergleichen",
