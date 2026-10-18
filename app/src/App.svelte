@@ -9,6 +9,7 @@
   import { cloud } from "./lib/cloud/cloud.svelte";
   import LoginDialog from "./lib/ui/LoginDialog.svelte";
   import WhoAmI from "./lib/ui/WhoAmI.svelte";
+  import { whoAsk } from "./lib/polls.svelte";
   import GuestNote from "./lib/ui/GuestNote.svelte";
   import { cloudTrip } from "./lib/cloud/cloud.svelte";
   import { claimable } from "./lib/claims";
@@ -171,6 +172,8 @@
   const showWho = $derived(!app.home && !!cloud.user && !!whoCt && whoCt.owner !== cloud.user.uid && !!cloud.loaded[app.trip.id]
     && !whoCt.claims[cloud.user.uid] && !whoLater.includes(app.trip.id) && claimable(app.trip, whoCt.claims, cloud.user.uid).length > 0);
   function whoClose() {
+    // von Hand geöffnet (Abstimmung, #432): „Später“ nicht merken
+    if (whoAsk.open) { whoAsk.open = false; return; }
     if (whoCt && cloud.user && !whoCt.claims[cloud.user.uid]) { whoLater = [...whoLater, app.trip.id]; try { localStorage.setItem(WHO_KEY, JSON.stringify(whoLater)); } catch {} }
   }
 </script>
@@ -311,7 +314,7 @@
 {#if myData.open && cloud.user}<MyDataDialog />{/if}
 {#if cloud.showLogin && (!cloud.user || cloud.user.guest)}<LoginDialog />{/if}
 {#if setupWizard.open}<SetupWizard />{/if}
-{#if showWho}<WhoAmI onclose={whoClose} />{/if}
+{#if showWho || (whoAsk.open && !!cloud.user && !!whoCt)}<WhoAmI onclose={whoClose} />{/if}
 <!-- Flug- und Unterkunftssuche im eigenen Fenster (aus Kapitel, Posten und Plan); danach ist man wieder dort -->
 {#if flightSearch.open}{#key flightSearch.scope}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/key}{/if}
 {#if staySearch.open}{#key staySearch.scope}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}

@@ -9,7 +9,9 @@
   import { cloud } from "../cloud/cloud.svelte";
   import { dateDE, dayShort } from "../format";
   import Help from "./Help.svelte";
-  import { addDay, addPoll, applyResult, bestPeriods, cycle, missing, newPoll, planDays, setAvail, tally, vote, voters, type Avail, type Period, type Vote } from "../together";
+  import PollView from "./PollView.svelte";
+  import { getLocalMe, setLocalMe, sharedVoting } from "../polls.svelte";
+  import { addDay, addPoll, applyResult, bestPeriods, cycle, missing, newPoll, planDays, setAvail, tally, vote, voters, type Avail, type Period, type PollMode, type Vote } from "../together";
 
   const trip = $derived(app.trip);
   const people = $derived(voters(trip));
@@ -43,23 +45,26 @@
 
   /* ---------- Abstimmen ---------- */
   const polls = $derived(trip.polls || []);
-  const KEY = $derived(`rk2-me:${trip.id}`);
   let me = $state("");
   $effect(() => {
-    let v = "";
-    try { v = localStorage.getItem(KEY) || ""; } catch { /* egal */ }
+    const v = getLocalMe(trip.id);
     const guess = cloud.user?.name ? people.find(x => cloud.user!.name!.split(" ")[0] === x.name.split(" ")[0])?.id : undefined;
     me = people.some(x => x.id === v) ? v : guess || people[0]?.id || "";
   });
-  function setMe(v: string) { me = v; try { localStorage.setItem(KEY, v); } catch { /* egal */ } }
+  function setMe(v: string) { me = v; setLocalMe(trip.id, v); }
+  // „Ich bin“: auf dem Gerät; in geteilten Reisen stimmt jede Person mit dem eigenen Konto (nur alte 👍-Abstimmungen brauchen es noch)
+  const showMe = $derived(!access.readonly && (!sharedVoting() || polls.some(p => !p.mode && !p.closed)));
   const VOTES: { v: Vote; s: string; k: "poll.up" | "poll.meh" | "poll.down" }[] = [{ v: 1, s: "👍", k: "poll.up" }, { v: 0, s: "😐", k: "poll.meh" }, { v: -1, s: "👎", k: "poll.down" }];
 
-  let nq = $state(""), nopts = $state(""), adding = $state(false);
+  let nq = $state(""), nopts = $state(""), adding = $state(false), nmode = $state<PollMode>("one"), nmiles = $state(10), ndue = $state("");
   function addFreePoll() {
     const opts = nopts.split("\n").map(s => s.trim()).filter(Boolean);
     if (!nq.trim() || opts.length < 2) return;
-    addPoll(trip, newPoll(nq, "free", opts.map(label => ({ label }))));
-    nq = ""; nopts = ""; adding = false;
+    const p = newPoll(nq, "free", opts.map(label => ({ label })), nmode);
+    if (nmode === "miles") p.miles = Math.max(1, Math.min(p.options.length * 5, nmiles || 10));
+    if (ndue) p.due = ndue;
+    addPoll(trip, p);
+    nq = ""; nopts = ""; ndue = ""; nmode = "one"; adding = false;
   }
   function removePoll(id: string) {
     if (!confirm(t("poll.removeQ"))) return;
@@ -121,10 +126,13 @@
 
   <h3 class="tg-polls">🗳 {t("poll.title")} <Help k="polls" /></h3>
   {#if polls.length}
-    {#if !access.readonly}
+    {#if showMe}
       <label class="f tg-me">{t("poll.me")}<select value={me} onchange={e => setMe(e.currentTarget.value)}>{#each people as x (x.id)}<option value={x.id}>{x.name}</option>{/each}</select></label>
     {/if}
     {#each polls as p (p.id)}
+      {#if p.mode}
+        <PollView {p} onremove={() => removePoll(p.id)} />
+      {:else}
       {@const rows = tally(p)}
       {@const miss = missing(trip, p)}
       <article class="poll" class:closed={!!p.closed} data-poll={p.id}>
@@ -152,6 +160,7 @@
         {/if}
         {#if !access.readonly}<button class="linkbtn danger small" onclick={() => removePoll(p.id)}>{t("poll.remove")}</button>{/if}
       </article>
+      {/if}
     {/each}
   {/if}
   {#if !access.readonly}
@@ -159,6 +168,12 @@
       <div class="tg-add">
         <label class="f">{t("poll.q")}<input class="poll-q" bind:value={nq} maxlength="200" placeholder={t("poll.qPh")} /></label>
         <label class="f">{t("poll.opts")}<textarea class="poll-opts" rows="3" bind:value={nopts} placeholder={t("poll.optsPh")}></textarea></label>
+        <div class="ed-row small">
+          <label class="f">{t("poll.mode")}<select class="poll-mode" bind:value={nmode}>{#each ["one", "multi", "miles"] as const as m (m)}<option value={m}>{t(`poll.mode.${m}`)}</option>{/each}</select></label>
+          {#if nmode === "miles"}<label class="f">{t("poll.milesEach")}<input class="n sm poll-miles" type="number" min="1" max="40" bind:value={nmiles} /></label>{/if}
+          <label class="f">{t("poll.due")}<input class="poll-due" type="date" bind:value={ndue} /></label>
+        </div>
+        <p class="small muted">{t(`poll.modeHint.${nmode}`)}</p>
         <p class="fu-acts"><button class="btn sm primary poll-add" disabled={!nq.trim() || nopts.split("\n").filter(s => s.trim()).length < 2} onclick={addFreePoll}>{t("poll.start")}</button>
           <button class="btn sm" onclick={() => (adding = false)}>{t("cancel")}</button></p>
       </div>

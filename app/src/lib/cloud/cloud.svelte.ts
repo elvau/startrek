@@ -155,6 +155,28 @@ export async function claimTraveler(tripId: string, c: { t: string; n: string } 
   if (!fbUser) return;
   await (await load()).setClaim(tripId, fbUser.uid, c);
 }
+/* ---------- Stimmen (#432): je Mitglied ein Dokument unter der Reise ---------- */
+
+/** Stimmen der offenen Konto-Reise: Konto → Abstimmung → Möglichkeit → Wert */
+export const cloudVotes = $state({ trip: "", byUid: {} as Record<string, Record<string, Record<string, number>>> });
+let unVotes: Unsubscribe | null = null;
+/** Stimmen der Reise beobachten (nur Konto-Reisen, nur Mitglieder); leer bzw. anderer Kennung: aufhören */
+export async function watchVotes(id: string) {
+  if (cloudVotes.trip === id && unVotes) return;
+  unVotes?.(); unVotes = null;
+  cloudVotes.trip = id; cloudVotes.byUid = {};
+  if (!id || !fbUser || !isCloud(id)) return;
+  const f = await load();
+  if (cloudVotes.trip !== id) return;
+  unVotes = f.watchVotes(id, by => { if (cloudVotes.trip === id) cloudVotes.byUid = by; }, () => { unVotes = null; });
+}
+/** eigene Stimmen in einer Konto-Reise speichern (alle Abstimmungen der Reise auf einmal) */
+export async function saveMyVotes(id: string, v: Record<string, Record<string, number>>) {
+  if (!fbUser) return;
+  cloudVotes.byUid = { ...cloudVotes.byUid, [fbUser.uid]: v };
+  await (await load()).saveVotes(id, fbUser.uid, v);
+}
+
 /** Besitzer: Zuordnung eines Mitglieds lösen */
 export async function dropClaim(tripId: string, uid: string) { await (await load()).setClaim(tripId, uid, null); }
 

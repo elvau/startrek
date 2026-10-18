@@ -165,7 +165,20 @@ export function createTrip(id: string, name: string, data: string, u: User) {
 export const saveTrip = (id: string, name: string, data: string, uid: string) =>
   updateDoc(tripRef(id), { name, data, updatedAt: serverTimestamp(), updatedBy: uid });
 
-export const deleteTrip = (id: string) => deleteDoc(tripRef(id));
+/** Reise löschen, vorher die Stimmen darunter (Firestore löscht Unterdokumente nicht mit) */
+export async function deleteTrip(id: string) {
+  const vs = await getDocsFromServer(collection(start().db, "trips", id, "votes")).catch(() => null);
+  for (const d of vs?.docs || []) await deleteDoc(d.ref).catch(() => {});
+  await deleteDoc(tripRef(id));
+}
+
+/* ---------- Abstimmen (#432): je Mitglied ein Dokument trips/{id}/votes/{uid} ---------- */
+
+export type VoteMap = Record<string, Record<string, number>>;
+export function watchVotes(id: string, fn: (byUid: Record<string, VoteMap>) => void, err: (e: Error) => void): Unsubscribe {
+  return onSnapshot(collection(start().db, "trips", id, "votes"), s => fn(Object.fromEntries(s.docs.map(d => [d.id, ((d.data() as { v?: VoteMap }).v || {})]))), err);
+}
+export const saveVotes = (id: string, uid: string, v: VoteMap) => setDoc(doc(start().db, "trips", id, "votes", uid), { v, at: serverTimestamp() });
 
 /** Inhalt der Reise frisch vom Server (nicht aus dem Zwischenspeicher); null, wenn es sie nicht gibt */
 export async function freshTripData(id: string): Promise<string | null> {
@@ -273,6 +286,8 @@ export interface AccountData {
   /** Reisen, in denen man Mitglied ist (ohne den Schlüssel des Einladungslinks) */
   trips: (Omit<TripDoc, "invite" | "updatedAt"> & { id: string; invite?: { role: string } | null })[];
   campaigns: (CampaignDoc & { id: string })[];
+  /** eigene Stimmen je Reise (#432) */
+  votes?: Record<string, VoteMap>;
 }
 
 /** liest alles direkt vom Server (nicht aus dem Zwischenspeicher), wie „Konto zurücksetzen“ es löschen würde */
@@ -296,7 +311,10 @@ export async function collectAccount(uid: string): Promise<AccountData> {
       const { invite, updatedAt: _u, ...rest } = d.data() as TripDoc;
       return { id: d.id, ...rest, ...(invite ? { invite: { role: invite.role } } : {}) };
     }),
-    campaigns: camps.docs.map(d => ({ id: d.id, ...(d.data() as CampaignDoc) }))
+    campaigns: camps.docs.map(d => ({ id: d.id, ...(d.data() as CampaignDoc) })),
+    // eigene Stimmen je Reise (#432)
+    votes: Object.fromEntries((await Promise.all(trips.docs.map(d => getDocFromServer(doc(db, "trips", d.id, "votes", uid))
+      .then(v => (v.exists() ? [d.id, (v.data() as { v?: VoteMap }).v || {}] as const : null)).catch(() => null)))).filter((x): x is readonly [string, VoteMap] => !!x))
   };
 }
 
@@ -313,8 +331,8 @@ export async function wipeAccount(uid: string): Promise<WipeResult> {
   const trips = await getDocsFromServer(query(collection(db, "trips"), where("memberIds", "array-contains", uid)));
   let deleted = 0, left = 0;
   for (const d of trips.docs) {
-    if ((d.data() as TripDoc).owner === uid) { await deleteDoc(d.ref); deleted++; }
-    else { await removeMember(d.id, uid); left++; }
+    if ((d.data() as TripDoc).owner === uid) { await deleteTrip(d.id); deleted++; }
+    else { await deleteDoc(doc(db, "trips", d.id, "votes", uid)).catch(() => {}); await removeMember(d.id, uid); left++; }
   }
   const camps = await getDocsFromServer(query(collection(db, "campaigns"), where("owner", "==", uid)));
   for (const d of camps.docs) await deleteDoc(d.ref);

@@ -8,6 +8,7 @@ import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, ty
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { applyClaims } from "./claims";
+import { watchVotes } from "./cloud/cloud.svelte";
 import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 import { readView, saveView } from "./resume";
@@ -241,6 +242,8 @@ $effect.root(() => {
     if (!c || access.readonly || !cloud.loaded[id] || app.editing) return;
     untrack(() => applyClaims(app.trip, c));
   });
+  // Stimmen der Konto-Reise beobachten (#432), sobald ihr Stand da ist
+  $effect(() => { const id = app.trip.id; void watchVotes(isCloud(id) && cloud.loaded[id] && cloud.user ? id : ""); });
   // aktuelle Reise beobachten, sobald sie als Konto-Reise bekannt ist
   $effect(() => { const id = app.trip.id; void cloud.trips.length; void watch(id); });
   // zurückgehaltene Änderung anwenden, wenn nicht mehr bearbeitet wird
