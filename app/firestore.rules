@@ -13,6 +13,17 @@ service cloud.firestore {
     function canEdit(d) { return isMember(d) && roleIn(d) in ['owner', 'editor']; }
     function isOwner(d) { return isMember(d) && d.owner == uid(); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    // Gast ohne Konto (anonyme Anmeldung, #435): darf beitreten und mitplanen, aber nichts Eigenes anlegen
+    function guest() { return request.auth.token.firebase.sign_in_provider == 'anonymous'; }
+    // „Wer bist du?“ (#435): je Konto höchstens eine Zuordnung { t: Reisende-Kennung, n: Vorname }
+    function claimsOf(d) { return d.get('claims', {}); }
+    function ownClaimOnly() {
+      return claimsOf(request.resource.data).diff(claimsOf(resource.data)).affectedKeys().hasOnly([uid()])
+        && (!(uid() in claimsOf(request.resource.data))
+          || (claimsOf(request.resource.data)[uid()].keys().hasOnly(['t', 'n'])
+            && claimsOf(request.resource.data)[uid()].t is string && claimsOf(request.resource.data)[uid()].t.size() > 0 && claimsOf(request.resource.data)[uid()].t.size() < 64
+            && claimsOf(request.resource.data)[uid()].n is string && claimsOf(request.resource.data)[uid()].n.size() <= 40));
+    }
 
     // memberIds und members beschreiben dieselben Personen, genau ein Besitzer
     function consistent(d) {
@@ -67,7 +78,7 @@ service cloud.firestore {
       // PayPal-Namen auf einmal auslesen
       allow get: if true;
       allow list: if signedIn() && resource.data.owner == uid();
-      allow create: if signedIn() && validCampaign(request.resource.data);
+      allow create: if signedIn() && !guest() && validCampaign(request.resource.data);
       allow update: if signedIn() && resource.data.owner == uid() && validCampaign(request.resource.data);
       allow delete: if signedIn() && resource.data.owner == uid();
     }
@@ -77,7 +88,7 @@ service cloud.firestore {
       // nötig, damit das Anlegen prüfen kann, ob es die Reise schon gibt, statt sie zu überschreiben.
       allow read: if (signedIn() && resource == null) || isMember(resource.data);
 
-      allow create: if signedIn()
+      allow create: if signedIn() && !guest()
         && request.resource.data.owner == uid()
         && request.resource.data.memberIds == [uid()]
         && request.resource.data.members.keys().hasOnly([uid()])
@@ -88,7 +99,7 @@ service cloud.firestore {
       allow update: if
         // Inhalt bearbeiten: Mitglieder, Besitzer und Einladung bleiben unverändert
         (canEdit(resource.data)
-          && !changed().hasAny(['owner', 'memberIds', 'members', 'memberNames', 'invite', 'joinKey'])
+          && !changed().hasAny(['owner', 'memberIds', 'members', 'memberNames', 'invite', 'joinKey', 'claims'])
           && validContent(request.resource.data))
         // Besitzer verwaltet Mitglieder und Einladung
         || (isOwner(resource.data)
@@ -106,10 +117,15 @@ service cloud.firestore {
           && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([uid()])
           && request.resource.data.members[uid()] == resource.data.invite.role
           && request.resource.data.memberNames.diff(resource.data.get('memberNames', {})).affectedKeys().hasOnly([uid()]))
-        // Reise verlassen (nicht der Besitzer): nur sich selbst entfernen
+        // eigene Zuordnung setzen, ändern oder lösen (jede Rolle, auch „nur ansehen“ und Gäste)
+        || (isMember(resource.data)
+          && changed().hasOnly(['claims'])
+          && ownClaimOnly())
+        // Reise verlassen (nicht der Besitzer): nur sich selbst entfernen (samt eigener Zuordnung)
         || (isMember(resource.data)
           && resource.data.owner != uid()
-          && changed().hasOnly(['memberIds', 'members', 'memberNames'])
+          && changed().hasOnly(['memberIds', 'members', 'memberNames', 'claims'])
+          && claimsOf(request.resource.data).diff(claimsOf(resource.data)).affectedKeys().hasOnly([uid()])
           && request.resource.data.memberIds.toSet() == resource.data.memberIds.toSet().difference([uid()].toSet())
           && request.resource.data.members.keys().toSet() == resource.data.members.keys().toSet().difference([uid()].toSet())
           && request.resource.data.members.diff(resource.data.members).changedKeys().size() == 0

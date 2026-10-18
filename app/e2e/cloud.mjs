@@ -83,6 +83,48 @@ try {
   await until(async () => (await total(oma)) === before, `Oma sieht ${await total(oma)} statt ${before}`);
   log("Oma ist beigetreten und sieht dieselbe Summe");
 
+  // „Wer bist du?“ (#435): Oma wählt einen Platzhalter, er heißt danach „Oma“ (auch bei Anna)
+  const who = oma.locator(".modal", { hasText: "Wer bist du?" });
+  await who.waitFor();
+  await who.locator(".who-p").first().click();
+  await who.locator("input").fill("Oma");
+  await who.locator(".who-ok").click();
+  await who.waitFor({ state: "detached" });
+  const names = pg => pg.evaluate(() => (JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").travelers || []).map(x => x.name + (x.member ? "*" : "")));
+  await until(async () => (await names(anna)).includes("Oma*"), "Platzhalter heißt bei Anna „Oma“");
+  log("Wer bist du: Oma wählt einen Platzhalter, bei Anna heißt er danach Oma (verknüpft)");
+
+  // Gast ohne Konto (#435): AGB nötig, Vorname, dann „Wer bist du?“; Hinweis „Konto anlegen“ behält alles
+  const jonas = await person("Jonas");
+  await jonas.goto(link);
+  await jonas.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
+  await jonas.locator(".login-guest input").fill("Jonas");
+  await jonas.locator(".login-guest .btn").click();
+  await jonas.locator(".login .err", { hasText: "AGB" }).waitFor();
+  await jonas.locator(".login-terms input").check();
+  await jonas.locator(".login-guest .btn").click();
+  await until(async () => (await jonas.locator(".hero-in").textContent().catch(() => "")).includes("Mallorca"), "Gast sieht die Reise");
+  const gwho = jonas.locator(".modal", { hasText: "Wer bist du?" });
+  await gwho.waitFor();
+  if ((await gwho.locator("input").inputValue()) !== "Jonas") fail("Vorname nicht vorbelegt");
+  if (await gwho.locator(".who-p", { hasText: /^.*Oma$/ }).count()) fail("schon gewählte Person noch wählbar");
+  await gwho.locator(".who-p").first().click();
+  await gwho.locator(".who-ok").click();
+  await until(async () => (await names(anna)).includes("Jonas*"), "Gast heißt bei Anna „Jonas“");
+  await jonas.locator(".guest-note").waitFor();
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
+  await until(async () => (await anna.locator(".members").innerText()).includes("= Jonas"), "Anna sieht, wer Jonas ist");
+  await anna.keyboard.press("Escape");
+  const gastTrip = await jonas.evaluate(() => localStorage.getItem("rk2-current"));
+  await jonas.locator(".guest-up").click();
+  await jonas.locator(".modal h3", { hasText: "Konto anlegen" }).waitFor();
+  await login(jonas, "Jonas");
+  await until(async () => !(await jonas.locator(".guest-note").count()), "Gast-Hinweis weg nach Konto");
+  if ((await jonas.evaluate(() => localStorage.getItem("rk2-current"))) !== gastTrip) fail("nach Konto andere Reise offen");
+  await until(async () => (await jonas.locator(".top .tm-btn").first().textContent()).includes("☁"), "Reise bleibt nach Konto im Konto");
+  log("Gast: AGB nötig, beitreten ohne Konto, sich wählen; Anna sieht „= Jonas“; Konto anlegen behält Reise und Person");
+
   // Oma ändert den Mietwagen, Anna sieht es live
   await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).scrollIntoViewIfNeeded();
   await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
@@ -287,7 +329,7 @@ try {
 
   // Startseite: geteilte Reise zeigt die anderen Mitglieder
   await anna.locator(".top .brand-btn").click();
-  await until(async () => (await anna.locator(".start").innerText()).includes("mit Oma"), "Mitglieder auf der Karte").catch(async e => { console.log("HOME:", (await anna.locator(".start").innerText()).replace(/\s+/g, " ").slice(0, 900)); throw e; });
+  await until(async () => /mit [^·]*Oma/.test(await anna.locator(".start").innerText()), "Mitglieder auf der Karte").catch(async e => { console.log("HOME:", (await anna.locator(".start").innerText()).replace(/\s+/g, " ").slice(0, 900)); throw e; });
   log("Startseite: geteilte Reise „☁ mit Oma“");
 
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));

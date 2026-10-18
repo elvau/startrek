@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
-  import { cloud, loginEmail, loginGoogle, loginTest } from "../cloud/cloud.svelte";
+  import { cloud, loginEmail, loginGoogle, loginGuest, loginTest } from "../cloud/cloud.svelte";
+  import { cleanName } from "../claims";
   import { emulator } from "../cloud/config";
   import Modal from "./Modal.svelte";
   import { legalUrl } from "../legal";
@@ -28,14 +29,29 @@
     busy = false;
   }
   async function google() { if (needAgree()) return; busy = true; await loginGoogle(); busy = false; }
+  // Einladung ohne Konto (#435): als Gast mit Vornamen beitreten
+  let guestName = $state("");
+  async function guest(e: Event) {
+    e.preventDefault();
+    const n = cleanName(guestName);
+    if (!n) { err = t("login.guestName"); return; }
+    if (needAgree()) return;
+    busy = true; err = "";
+    await loginGuest(n);
+    busy = false;
+  }
+  // schon als Gast dabei: das Konto übernimmt den Gast-Zugang
+  const upgrade = $derived(!!cloud.user?.guest);
   let testName = $state("Anna");
   // Test-Anmeldung (nur Emulator): zählt als zugestimmt
   async function test() { markPending(); busy = true; await loginTest(`${testName.toLowerCase()}@test.de`, testName); busy = false; }
 </script>
 
-<Modal title={cloud.join ? t("login.invited") : t("acct.login")} onclose={() => (cloud.showLogin = false)}>
+<Modal title={upgrade ? t("login.upgrade") : cloud.join ? t("login.invited") : t("acct.login")} onclose={() => (cloud.showLogin = false)}>
   <div class="login">
-    {#if cloud.join}
+    {#if upgrade}
+      <p>{t("login.upgradeLead")}</p>
+    {:else if cloud.join}
       <p>{cloud.join.role === "viewer" ? t("login.joinView") : t("login.joinEdit")}</p>
     {:else}
       <p>{t("login.lead")}</p>
@@ -56,6 +72,14 @@
         <label class="f grow">{t("login.email")}<input type="email" bind:value={email} placeholder={t("login.emailPh")} autocomplete="email" /></label>
         <button class="btn" disabled={busy}>{t("login.send")}</button>
       </form>
+    {/if}
+    {#if cloud.join && !cloud.user}
+      <div class="or"><span>{t("login.orGuest")}</span></div>
+      <form onsubmit={guest} class="ed-row login-guest">
+        <label class="f grow">{t("login.firstName")}<input bind:value={guestName} maxlength="40" autocomplete="given-name" placeholder={t("login.firstNamePh")} /></label>
+        <button class="btn" disabled={busy}>{t("login.asGuest")}</button>
+      </form>
+      <p class="muted small">{t("login.guestHint")}</p>
     {/if}
     {#if err || cloud.error}<p class="err">{err || cloud.error}</p>{/if}
     {#if emulator}
