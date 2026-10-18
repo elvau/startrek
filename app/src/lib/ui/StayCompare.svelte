@@ -14,7 +14,10 @@
   import { ensureGeo, geo } from "../geo/geo.svelte";
   import { hasCoords } from "../geo/maps";
   import { kmText } from "../geo/spots";
-  import { distances, effectOf, letter, nearestTo, refPoints, spreadKm, NEAR_KM } from "../stays/compare";
+  import { distances, effectOf, letter, nearestTo, parseSpot, refPoints, spreadKm, townsOf, NEAR_KM } from "../stays/compare";
+  import { ccOf } from "../geo/places";
+  import { coastKm, loadCoast } from "../geo/coast";
+  import { uid } from "../model";
   import { cachedSnap, mapSnap } from "./mapSnap";
 
   let { item, r, nights, onchoose, ondrop }: {
@@ -28,10 +31,42 @@
   const near = $derived(nearestTo(dist, refs));
   const located = $derived(item.options.filter(o => hasCoords(o.loc)).length);
   const together = $derived(located >= 2 && spreadKm(item.options) <= NEAR_KM);
+  // Entfernung zum Meer (#441): nur an der Küste (mindestens ein Angebot höchstens 10 km vom Meer)
+  let coast = $state<Record<string, number | null>>({});
+  $effect(() => {
+    const ps = item.options.filter(o => hasCoords(o.loc)).map(o => ({ id: o.id, p: { lat: o.loc!.lat!, lon: o.loc!.lon! } }));
+    if (!ps.length) return;
+    let live = true;
+    void loadCoast(ps.map(x => x.p)).then(c => { if (live) coast = Object.fromEntries(ps.map(x => [x.id, coastKm(x.p, c)])); });
+    return () => { live = false; };
+  });
+  const seaVals = $derived(Object.values(coast).filter((v): v is number => v != null));
+  const coastal = $derived(seaVals.some(v => v <= 10));
+  // nächstes nur markieren, wenn es eindeutig ist (mehrere „unter 1 km“ sind gleich nah)
+  const seaBest = $derived(seaVals.length >= 2 && seaVals.filter(v => v < 1).length <= 1 ? Math.min(...seaVals) : null);
+  const seaText = (v: number) => (v < 1 ? t("stc.under1") : kmText(v));
+  // weit auseinander: Ortskern je Angebot statt Zentrum des Reiseorts
+  const towns = $derived.by(() => { void Object.keys(geo.places).length; return located >= 2 && !together ? townsOf(item.options, app.trip, geo) : {}; });
+  const shownRefs = $derived(located >= 2 && !together ? refs.filter(x => x.kind !== "center") : refs);
   // ganze Reise je Angebot; aktuell gewähltes als Bezug
   const eff = $derived.by(() => { void geo.world.length; return Object.fromEntries(item.options.map(o => [o.id, effectOf(app.trip, item.id, o.id, geo)])); });
   const cur = $derived(r?.option ? eff[r.option.id] : undefined);
-  const refIcon = (k: string) => (k === "center" ? "📍" : k === "airport" ? "✈" : "★");
+  const refIcon = (k: string) => (k === "center" ? "📍" : k === "airport" ? "✈" : k === "custom" ? "📌" : "★");
+
+  // eigener Bezugspunkt (#441): Name und Ort, Koordinaten oder Google-Maps-Link; liegt in der Reise
+  let adding = $state(false), spotName = $state(""), spotWhere = $state(""), spotErr = $state(false);
+  function addSpot() {
+    const p = parseSpot(spotWhere, geo, ccOf(geo, app.trip.country));
+    if (!p) { spotErr = true; return; }
+    const name = spotName.trim().slice(0, 60) || p.name || spotWhere.trim().slice(0, 40);
+    if (!app.trip.refs) app.trip.refs = [];
+    app.trip.refs.push({ id: uid(), name, lat: Math.round(p.lat * 1e5) / 1e5, lon: Math.round(p.lon * 1e5) / 1e5 });
+    adding = false; spotName = ""; spotWhere = ""; spotErr = false;
+  }
+  function dropSpot(id: string) {
+    app.trip.refs = (app.trip.refs || []).filter(x => x.id !== id);
+    if (!app.trip.refs.length) delete app.trip.refs;
+  }
   const refName = (x: (typeof refs)[number]) => (x.kind === "center" ? t("stc.center", { name: x.name }) : x.name.length > 26 ? x.name.slice(0, 25) + "…" : x.name);
 
   let open = $state<Record<string, boolean>>({});
@@ -72,6 +107,20 @@
 
 <div class="opts st-cmp" bind:this={box}>
   <div class="opts-h"><span>{t("fl.compare")}</span><span>{tn("n.offers", item.options.length)}</span></div>
+  <div class="cmp-refs small">
+    {#each app.trip.refs || [] as x (x.id)}<span class="chip sm cmp-own">📌 {x.name}{#if !access.readonly} <button type="button" class="cmp-own-x" aria-label={t("stc.dropSpot", { name: x.name })} title={t("stc.dropSpot", { name: x.name })} onclick={ev => { ev.stopPropagation(); dropSpot(x.id); }}>×</button>{/if}</span>{/each}
+    {#if !access.readonly && !adding}<button type="button" class="linkbtn cmp-add" onclick={ev => { ev.stopPropagation(); adding = true; }}>+ {t("stc.addSpot")}</button>{/if}
+  </div>
+  {#if adding}
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <div class="cmp-form" onclick={ev => ev.stopPropagation()}>
+      <label class="f">{t("stc.spotName")}<input bind:value={spotName} maxlength="60" placeholder={t("stc.spotNamePh")} /></label>
+      <label class="f">{t("stc.spotWhere")}<input bind:value={spotWhere} placeholder={t("stc.spotWherePh")} oninput={() => (spotErr = false)} onkeydown={ev => { if (ev.key === "Enter") addSpot(); }} /></label>
+      {#if spotErr}<p class="small err">{t("stc.spotErr")}</p>{/if}
+      <p class="fu-acts"><button type="button" class="btn sm primary cmp-add-ok" disabled={!spotWhere.trim()} onclick={addSpot}>{t("stc.spotAdd")}</button>
+        <button type="button" class="linkbtn" onclick={() => { adding = false; spotErr = false; }}>{t("cancel")}</button></p>
+    </div>
+  {/if}
   {#if together && seen}
     <div class="cmp-map"><MapView {points} selected={r?.option?.id ?? null} onselect={id => { if (!id.startsWith("ref:")) open[id] = true; }} /></div>
     <p class="muted small cmp-mapnote">{t("stc.mapNear", { km: kmText(spreadKm(item.options)) })}</p>
@@ -108,10 +157,12 @@
             {#if !sel && Math.round(diff)}<span class="d" class:down={diff < 0} class:up={diff > 0}>{diff > 0 ? "+" : "−"}{eur(Math.abs(diff))}</span>{/if}
             {#if nights}<small class="muted">{t("perNight", { v: eur(c.net / nights) })}</small>{/if}
           </div>
-          {#if refs.length}
+          {#if refs.length || towns[o.id] || coastal}
             {#if d}
               <ul class="cmp-dist">
-                {#each refs as x (x.id)}
+                {#if towns[o.id]}{@const w = towns[o.id]!}<li><span aria-hidden="true">📍</span> {t("stc.town", { name: w.name })} {kmText(w.km)}</li>{/if}
+                {#if coastal}{@const v = coast[o.id]}<li class:best={v != null && v === seaBest}><span aria-hidden="true">🌊</span> {t("stc.sea")} {v == null ? t("stc.far") : seaText(v)}{#if v != null && v === seaBest} · {t("stc.nearest")}{/if}</li>{/if}
+                {#each shownRefs as x (x.id)}
                   <li class:best={near[x.id] === o.id}><span aria-hidden="true">{refIcon(x.kind)}</span> {refName(x)} {kmText(d[x.id])}{#if near[x.id] === o.id} · {t("stc.nearest")}{/if}</li>
                 {/each}
               </ul>
@@ -133,6 +184,7 @@
               {/if}
             </div>
           {/if}
+          {#if o.stay?.freeCancel}<small class="cmp-free">✓ {t("st.m.freeCancel")}</small>{/if}
           <div class="cmp-a">
             {#if sel}<span class="pill-n">✓ {t("st.chosen")}</span>
             {:else}<button class="btn sm primary cmp-pick" disabled={access.readonly} onclick={ev => onchoose(o.id, ev)}>{t("fs.pick")}</button>{/if}
@@ -162,6 +214,13 @@
   .cmp-eff-t { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; flex-wrap: wrap; }
   .cmp-eff-t b { font-size: 16px; }
   .cmp-food { color: var(--ink-2); }
+  .cmp-free { color: var(--good); font-weight: 600; }
+  .cmp-refs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .cmp-own { display: inline-flex; gap: 4px; align-items: center; }
+  .cmp-own-x { border: 0; background: none; padding: 0 2px; color: var(--ink-3); cursor: pointer; font-size: 14px; line-height: 1; }
+  .cmp-add { padding: 0; font-size: 13px; }
+  .cmp-form { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
+  .cmp-form .err { color: #C4452E; margin: 0; }
   .cmp-lite, .cmp-tg { display: none; }
   @media (max-width: 600px) {
     .st-cmp :global(.cmp-row) { grid-auto-flow: row; grid-auto-columns: auto; overflow: visible; scroll-snap-type: none; }

@@ -49,6 +49,7 @@ try {
   // Orts- und Flughafendaten des Artefakts (liegen auf der Seite eine Ebene über der App)
   for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
+  await p.route("**/coast/*.json", r => r.fulfill({ path: `../public/coast/${r.request().url().split("/").pop()}` }).catch(() => r.fulfill({ status: 404 })));
   // Tageskurse (EZB) für die Anzeige in anderer Währung
   await p.route("https://flights.test/rates", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ date: "2026-10-01", rates: { EUR: 1, USD: 1.1, PLN: 4.25, GBP: 0.8 } }) }));
   // Karte: leerer Kartenstil statt der echten Kacheln (OpenFreeMap)
@@ -253,13 +254,27 @@ try {
   if (!tK.includes("Lage unbekannt")) fail("Angebot ohne Lage: " + tK);
   if (!tR.includes("Ganze Reise damit") || !tR.includes("aktuell gewählt")) fail("ganze Reise beim gewählten Angebot: " + tR);
   if (!/\+[\d.]+ € gesamt/.test(tK)) fail("Abstand der ganzen Reise beim anderen Angebot: " + tK);
+  // #441: Entfernung zum Meer (Split liegt an der Küste), eigener Bezugspunkt über Koordinaten
+  await until(async () => /Meer (unter 1 km|[\d,]+ km)/.test(await tRooms.innerText()), "Entfernung zum Meer");
+  await cards.locator(".cmp-add").click();
+  await cards.locator(".cmp-form input").nth(0).fill("Partylocation");
+  await cards.locator(".cmp-form input").nth(1).fill("nirgendwo");
+  await cards.locator(".cmp-add-ok").click();
+  await cards.locator(".cmp-form .err").waitFor();
+  await cards.locator(".cmp-form input").nth(1).fill("https://www.google.com/maps/place/x/@43.5089,16.4392,17z");
+  await cards.locator(".cmp-add-ok").click();
+  await cards.locator(".cmp-own", { hasText: "Partylocation" }).waitFor();
+  await until(async () => /Partylocation [\d,]+ k?m/.test(await tRooms.innerText()), "Entfernung zum eigenen Punkt");
+  await until(() => p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").refs?.[0]?.name === "Partylocation"), "eigener Punkt in der Reise gespeichert");
+  await cards.locator(".cmp-own-x").click();
+  if (await cards.locator(".cmp-own").count()) fail("eigener Punkt nicht entfernt");
   await cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Ferienwohnung Klara" }).waitFor();
   // 783 € + Kurtaxe Split automatisch geschätzt (2 € × 1 Person × 7 Nächte)
   if (!(await cards.locator(".stay .price b").textContent()).includes("797")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
   await cards.locator(".cmp-t", { hasText: "Rooms Šećer" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).waitFor();
-  log("Vergleich nebeneinander: A/B, Entfernung zum Zentrum, ganze Reise je Angebot; Klara gewählt (783 € + ca. 14 € Kurtaxe), zurück zu Rooms Šećer");
+  log("Vergleich nebeneinander: A/B, Entfernung zum Zentrum und zum Meer, eigener Punkt per Google-Maps-Link, ganze Reise je Angebot; Klara gewählt (783 € + ca. 14 € Kurtaxe), zurück zu Rooms Šećer");
 
   // wie im Artefakt: Anwesenheit aus dem Flug, Lücke im Plan → „Unterkunft suchen“ für genau diese Nächte und Personen
   const TRIP = {

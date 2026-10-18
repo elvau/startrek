@@ -85,6 +85,9 @@ die erste Version, **P2** bald danach, **P3** später.
   Umgesetzt für Unterkünfte (#438): Angebote mit Buchstaben A, B, C, Karte (nah beieinander gemeinsam, sonst je
   Angebot ein Kartenbild), Entfernung zu Zentrum, Events/Erlebnissen mit Ort und Flughafen, Kosten der ganzen Reise je
   Angebot (inkl. Verpflegung je nach Verpflegung der Unterkunft); Logik in `app/src/lib/stays/compare.ts`.
+  Dazu (#441): Entfernung zum Meer aus der Küstenlinie von Natural Earth (`public/coast/`, erzeugt mit
+  `scripts/coast.mjs`, Genauigkeit etwa 1 km), eigene Bezugspunkte je Reise (Ort, Koordinaten oder Google-Maps-Link),
+  bei weit auseinander liegenden Angeboten der Ortskern je Angebot, „kostenlos stornierbar“, wo die Suche es weiß.
 - **C3 [neu, P1]** Die Übersicht trennt **fest** (gebucht und bezahlt) von **offen** (noch in
   Planung). Ich sehe sofort, wie viel schon sicher ist und wie viel sich noch ändern kann.
 - **C4 [neu, P2]** Bei *Gebucht* halte ich Buchungsnummer, Anbieter, Link und Stornobedingungen fest.

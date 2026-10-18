@@ -61,7 +61,10 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
     const t0 = Date.now();
     try {
       const test = !!p.test?.(env);
-      const offers = inCurrency(await withTimeout(p.search(q.type === "hotel" ? q : { ...q, minStars: undefined }, env, f), timeoutMs), "total", q.currency || "EUR", env.FX).map(o => (test ? { ...o, test } : o));
+      // mit Filter „kostenlos stornierbar“ gesucht: gilt für alle Treffer (die Anbieter filtern selbst)
+      const free = !!q.must?.includes("freeCancel");
+      const offers = inCurrency(await withTimeout(p.search(q.type === "hotel" ? q : { ...q, minStars: undefined }, env, f), timeoutMs), "total", q.currency || "EUR", env.FX)
+        .map(o => ({ ...o, ...(test ? { test } : {}), ...(free ? { freeCancel: true } : {}) }));
       sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0, ...(test ? { test } : {}) });
       return offers;
     } catch (e) {
