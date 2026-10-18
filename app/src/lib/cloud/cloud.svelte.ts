@@ -306,6 +306,20 @@ export async function makeInvite(id: string, role: "editor" | "viewer"): Promise
 export const inviteLink = (id: string, key: string, role: string) =>
   `${location.origin}${location.pathname}?join=${id}.${key}.${role}`;
 export async function revokeInvite(id: string) { const f = await load(); await f.setInvite(id, null); }
+/**
+ * Variante einer geteilten Reise (#428): mit denselben Mitgliedern und Rollen teilen. Wer die Variante anlegt, ist ihr
+ * Besitzer; gehört die Reise jemand anderem, wird der zum Bearbeiter.
+ */
+export async function shareLike(from: string, to: string) {
+  const src = cloudTrip(from);
+  if (!src || !fbUser || Object.keys(src.members).length < 2) return;
+  const me = fbUser.uid;
+  const members: Record<string, Role> = { ...src.members, [me]: "owner" };
+  if (src.owner !== me) members[src.owner] = "editor";
+  const names = { ...src.memberNames };
+  if (!names[me]) names[me] = cloud.user?.name || "";
+  await (await load()).setMembers(to, members, names, src.claims || {});
+}
 export async function changeRole(id: string, uid: string, role: Role) { const f = await load(); await f.setRole(id, uid, role); }
 export async function kick(id: string, uid: string) { const f = await load(); await f.removeMember(id, uid); }
 

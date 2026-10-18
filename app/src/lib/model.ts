@@ -547,6 +547,11 @@ export interface Trip {
   watch?: TripWatch;
   /** vom KI-Assistenten vorgeschlagen (Kennzeichnung in der Übersicht) */
   ai?: { at: string };
+  /**
+   * Variante in einem Vergleich (#428): gleiche Kennung bündelt die Reisen (Startseite, Vergleichsansicht), Titel des
+   * Vergleichs und kurzer Name der Variante (fehlt: Ort bzw. Land). In der Reise selbst, damit Mitreisende es auch sehen.
+   */
+  cmp?: { id: string; title: string; label?: string };
   /** Wichtiges: erledigte Punkte (important.ts), bei Punkten für Personen je Person */
   done?: Record<string, { sig: string; ids?: string[] }>;
   /** Roadtrip: gewählte Fähre je Überfahrt („Von>Nach“ → Fähren-ID, „none“: keine Fähre) */

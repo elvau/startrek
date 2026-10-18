@@ -212,6 +212,31 @@ try {
     && /gleicher Preis p\. P\., ganze Reise .+ statt/.test(await apoll.locator("li", { hasText: "Es Trenc" }).innerText()), "Info an Anna, Folgen an der Möglichkeit")
     .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); throw e; });
   log("Abstimmen: Anna wählt sich und stimmt, Oma stimmt als Zuschauerin mit eigenem Konto („✕ Ohne mich“ mit Namen, Fenster), Anna sieht es live und bekommt die Info, Folgen an der Möglichkeit");
+
+  // Variante (#428): Anna kopiert die geteilte Reise als Variante; sie ist mit denselben Mitgliedern geteilt, die Startseite
+  // bündelt beide in einer Kachel
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-variant").click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) !== tripId, "Variante offen");
+  const varId = await anna.evaluate(() => localStorage.getItem("rk2-current"));
+  const doc = async id => (await (await fetch(`http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/${id}`, { headers: { Authorization: "Bearer owner" } })).json()).fields || {};
+  const ids = f => (f.memberIds?.arrayValue?.values || []).map(v => v.stringValue).sort().join();
+  await until(async () => { const a = await doc(tripId), b = await doc(varId); return !!b.memberIds && ids(a) === ids(b) && JSON.parse(b.data.stringValue).cmp?.id === JSON.parse(a.data.stringValue).cmp?.id; }, "Variante mit denselben Mitgliedern im selben Vergleich")
+    .catch(async e => { const a = await doc(tripId), b = await doc(varId); console.log("ORIG", ids(a), JSON.parse(a.data?.stringValue || "{}").cmp, "VAR", ids(b), JSON.parse(b.data?.stringValue || "{}").cmp); throw e; });
+  // in der Reise (#431): „Variante 2 von 2“, Wechsel zur anderen Variante und zurück
+  const vbar = anna.locator(".hero .vbar");
+  await until(async () => (await vbar.innerText().catch(() => "")).includes("Variante 2 von 2"), "Hinweis „Variante 2 von 2“");
+  await vbar.locator(".chip", { hasNotText: "Variante 2" }).click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === tripId, "Wechsel zur ersten Variante");
+  await vbar.locator(".chip", { hasText: "Variante 2" }).click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === varId, "Wechsel zurück");
+  await anna.locator(".top .brand-btn").click();
+  const vt = anna.locator(".start .home-cmp");
+  await vt.waitFor();
+  if (!(await vt.innerText()).includes("2 Varianten") || !(await vt.innerText()).includes("Variante 2")) fail("Kachel: " + await vt.innerText());
+  await vt.locator(".hc-var", { hasNotText: "Variante 2" }).click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === tripId, "zurück in der ursprünglichen Reise");
+  log("Variante: geteilt mit denselben Mitgliedern, im selben Vergleich, Hinweis „Variante 2 von 2“ mit Wechsel, Startseite mit einer Kachel „2 Varianten“");
   await anna.locator(".top .tm-btn").first().click();
   await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
 

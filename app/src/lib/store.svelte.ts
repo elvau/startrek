@@ -8,7 +8,8 @@ import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, ty
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { applyClaims } from "./claims";
-import { watchVotes } from "./cloud/cloud.svelte";
+import { shareLike, watchVotes } from "./cloud/cloud.svelte";
+import { ensureCompare } from "./variants";
 import { cloud, cloudTrip, freshCloudTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
 import { readView, saveView } from "./resume";
@@ -455,15 +456,26 @@ export function newTrip(opts: NewOpts = {}) {
   if (cloud.user) void moveToCloud(app.trip.id);
 }
 
-export function duplicateTrip() {
+/** Reise kopieren; als Variante (#428) im selben Vergleich, ohne Abstimmungen, geteilt wie das Original */
+export function duplicateTrip(variant = false) {
   flush();
+  // Original kommt in den Vergleich: gleich speichern (auch ins Konto), sonst fehlt die Kennung dort
+  if (variant && !app.trip.cmp) {
+    ensureCompare(app.trip);
+    const json = JSON.stringify(app.trip);
+    put(K_TRIP(app.trip.id), json);
+    if (isCloud(app.trip.id)) void push(app.trip, json);
+  }
+  const src = app.trip.id;
   const copy: Trip = JSON.parse(JSON.stringify(app.trip));
   copy.id = uid();
-  copy.name = `${copy.name} (${tr("store.copy")})`;
+  if (variant) { delete copy.polls; if (copy.cmp) delete copy.cmp.label; }
+  else { copy.name = `${copy.name} (${tr("store.copy")})`; delete copy.cmp; }
   const toCloud = !!cloud.user;
   open(copy, "Kopie");
   markEdited(copy.id);
-  if (toCloud) void moveToCloud(copy.id);
+  // geteilt wie das Original, sobald die Variante in der Liste des Kontos steht
+  if (toCloud) void moveToCloud(copy.id).then(async () => { if (variant && isCloud(src) && (await whenListed(copy.id))) await shareLike(src, copy.id); }).catch(e => console.warn(e));
 }
 
 export async function deleteTrip(id: string) {

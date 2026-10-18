@@ -9,6 +9,7 @@
   import { nights, range } from "../format";
   import TripEditor from "./TripEditor.svelte";
   import HeroTiles from "./HeroTiles.svelte";
+  import VariantBar from "./VariantBar.svelte";
   import CostParts from "./CostParts.svelte";
 
   import { heroEdit } from "./heroEdit.svelte";
@@ -62,6 +63,7 @@
     {#if heroEdit.open}
       <TripEditor onclose={() => (heroEdit.open = false)} />
     {:else}
+      <VariantBar />
       {#if trip.kicker}<span class="kick">☀️ {trip.kicker}</span>{/if}
       {#key `${rev}|${title}`}
         {#if access.readonly}
