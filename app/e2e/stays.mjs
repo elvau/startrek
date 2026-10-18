@@ -572,6 +572,38 @@ try {
   if (!(await pc.locator(".price .num").textContent()).includes("140")) fail("Privat mit Kosten: " + await pc.locator(".price .num").textContent());
   log("Privat in Lissabon: kostenlos und gewählt, Reiseziel für Flug- und Event-Suche, Kosten 20 € pro Nacht = 140 €");
 
+  // #441: Flüge und Erlebnisse vergleichen: Buchstaben, Hin- und Rückflug, Umstiege, Gepäck, ganze Reise p. P.; Erlebnisse mit Entfernung zum Hotel
+  {
+    const leg = (dir, dep, arr, stops = 0) => ({ dir, from: dir === "out" ? "DUS" : "SPU", to: dir === "out" ? "SPU" : "DUS", dep, arr, stops, minutes: 130 });
+    const fopt = (id, label, unit, back, bag, stops = 0) => ({ id, label, price: { mode: "unit", currency: "EUR", unit }, legs: [leg("out", "2027-07-18T06:10", "2027-07-18T08:20", stops), leg("back", back, back.replace(/T(\d\d)/, (m, h) => "T" + String(+h + 2).padStart(2, "0")))], baggage: bag });
+    const C = {
+      id: "c441", name: "Split Vergleich", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-22",
+      travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 38 }],
+      tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, detail: { flights: true, stay: true, attractions: true },
+      items: [
+        { id: "f", cat: "flights", name: "Flug", status: "idea", chosen: "fa", options: [fopt("fa", "Eurowings", 400, "2027-07-22T20:00", { personal: 2, cabin: 2, checked: 0 }), fopt("fb", "Croatia Airlines", 520, "2027-07-22T18:00", { personal: 2, cabin: 2, checked: 2 }, 1)] },
+        { id: "s", cat: "stay", name: "Unterkunft in Split", status: "chosen", from: "2027-07-18", to: "2027-07-22", options: [{ id: "so", label: "Hotel Mar", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 600 }, loc: { lat: 43.508, lon: 16.44 } }] },
+        { id: "e", cat: "attractions", name: "Bootstour", status: "idea", chosen: "ea", options: [
+          { id: "ea", label: "Blaue Grotte", price: { mode: "person", currency: "EUR", adult: 90 }, loc: { lat: 43.06, lon: 16.18 } },
+          { id: "eb", label: "Krka-Wasserfälle", price: { mode: "person", currency: "EUR", adult: 60 }, loc: { lat: 43.8, lon: 15.97 } }] }
+      ]
+    };
+    await reloadHome(p, { set: { "rk2-t:c441": C, "rk2-index": [{ id: "c441", name: C.name, place: C.place }], "rk2-current": "c441" } });
+    await p.locator(".start .home-trip", { hasText: "Split Vergleich" }).first().click();
+    const fc = p.locator("#flights .card", { hasText: "Eurowings" }).locator(".fl-cmp");
+    await fc.first().waitFor();
+    const fa = await fc.nth(0).innerText(), fb = await fc.nth(1).innerText();
+    if (!fa.includes("A") || !fa.includes("🛬") || !fa.includes("Direktflug") || !fa.includes("nur Handgepäck")) fail("Flug A: " + fa);
+    if (!fb.includes("1 Umstieg") || !fb.includes("mit Koffer") || !/Reise \+[\d.]+ € p\. P\./.test(fb)) fail("Flug B: " + fb);
+    const ec = p.locator("#attractions .card", { hasText: "Bootstour" }).locator(".oc-row");
+    await ec.first().waitFor();
+    await until(async () => /🛏 Hotel Mar [\d,]+ km/.test(await ec.nth(1).innerText()), "Erlebnis: Entfernung zum Hotel");
+    if (!/Reise −[\d.]+ € p\. P\./.test(await ec.nth(1).innerText())) fail("Erlebnis B ganze Reise: " + await ec.nth(1).innerText());
+    await ec.nth(1).click();
+    await p.locator("#attractions .oc-row.sel", { hasText: "Krka" }).waitFor();
+    log("Flüge und Erlebnisse vergleichen: A/B, Hin und Rück, Umstiege, Gepäck, ganze Reise p. P.; Erlebnis mit Entfernung zum Hotel, wählbar");
+  }
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\nUnterkunftssuche: alles in Ordnung");
 } finally {

@@ -7,6 +7,8 @@
   import StatusBadge from "./StatusBadge.svelte";
   import { focusHousehold } from "./hhFocus.svelte";
   import { tourHead } from "./flightHead";
+  import { effectOf, flightFacts, letter } from "../stays/compare";
+  import { geo } from "../geo/geo.svelte";
 
   let { item }: { item: Item } = $props();
   const r = $derived(calc.T.items[item.id]);
@@ -17,6 +19,10 @@
   // Rundreise: Kopf zeigt die ganze Route und alle Airlines, keine Städte aus dem Postennamen
   const tour = $derived(tourHead(opt?.legs));
   const pp = $derived(r && r.n ? r.net / r.n : 0);
+  // Vergleich (#441): ganze Reise je Angebot, pro Person
+  const cmpOn = $derived(item.options.length > 1 && item.status !== "booked" && item.status !== "paid");
+  const eff = $derived.by(() => { void geo.world.length; return cmpOn ? Object.fromEntries(item.options.map(o => [o.id, effectOf(app.trip, item.id, o.id, geo)])) : {}; });
+  const legLine = (l: { dep: string; arr: string; minutes?: number }) => `${dayShort(l.dep.slice(0, 10))} ${time(l.dep)} ${arrow()} ${time(l.arr)}${l.minutes ? ` · ${Math.floor(l.minutes / 60)}:${String(l.minutes % 60).padStart(2, "0")} h` : ""}`;
   // Städte nur aus Namen wie „Flug Düsseldorf – Split“
   const cities = $derived(item.name.match(/^\S+\s+(.+?)\s+[–-]\s+(.+)$/));
   // wer fliegt, wie im Artefakt: Familie(n) mit Personenzahl, bei mehreren Familien ohne Auswahl „Alle“
@@ -81,18 +87,33 @@
     <div class="price"><b class="num">{eur(r?.net || 0)}</b><span>{t("fl.for", { n: r?.n || 0 })}</span></div>
   </div>
 </div>
-{#if item.options.length > 1 && item.status !== "booked" && item.status !== "paid"}
+{#if cmpOn}
   <div class="opts">
     <div class="opts-h"><span>{t("fl.compare")}</span>{#if opt?.source?.at}<span>{t("fl.priceFrom", { d: dateDE(opt.source.at) })}</span>{/if}</div>
-    {#each item.options as o (o.id)}
+    {#each item.options as o, i (o.id)}
       {@const c = calcOption(o, item, app.trip)}
       {@const diff = c.net - (r?.net || 0)}
-      {@const lo = o.legs?.find(l => l.dir === "out")}
-      <button class="opt" class:sel={o.id === opt?.id} onclick={e => choose(o.id, e)}>
-        <i></i>
-        <span>{o.label}{#if o.source?.test} <span class="pill-test">{t("test.badge")}</span>{/if}<small>{lo ? `${time(lo.dep)} ${arrow()} ${time(lo.arr)} · ${legDuration(lo)}` : ""}{o.detail ? ` · ${o.detail}` : ""}{c.access?.cost ? ` · ${t("fl.inclAccess", { v: eur(c.access.cost) })}` : ""}</small></span>
-        <span class="num">{eur(c.net)} {#if o.id !== opt?.id && Math.round(diff)}<span class="d" class:down={diff < 0} class:up={diff > 0}>{diff > 0 ? "+" : "−"}{Math.abs(Math.round(diff))}</span>{/if}</span>
+      {@const f = flightFacts(o)}
+      {@const e = eff[o.id]}
+      {@const cur = opt ? eff[opt.id] : undefined}
+      {@const dd = e && cur ? e.total - cur.total : 0}
+      <button class="opt fl-cmp" class:sel={o.id === opt?.id} onclick={ev => choose(o.id, ev)}>
+        <span class="cmp-l" aria-hidden="true">{letter(i)}</span>
+        <span>{o.label}{#if o.source?.test} <span class="pill-test">{t("test.badge")}</span>{/if}
+          {#if f.out}<small>🛫 {legLine(f.out)}</small>{:else if o.legs?.[0]}<small>{time(o.legs[0].dep)} {arrow()} {time(o.legs[0].arr)} · {legDuration(o.legs[0])}</small>{/if}
+          {#if f.back}<small>🛬 {legLine(f.back)}</small>{/if}
+          <small>{f.stops ? tn("n.stops", f.stops) : t("fl.direct")}{f.bag ? ` · ${t(f.bag === "checked" ? "fl.bagChecked" : f.bag === "cabin" ? "fl.bagCabin" : "fl.bagPersonal")}` : ""}{o.detail ? ` · ${o.detail}` : ""}{c.access?.cost ? ` · ${t("fl.inclAccess", { v: eur(c.access.cost) })}` : ""}</small></span>
+        <span class="num fl-cmp-p">{eur(c.net)} {#if o.id !== opt?.id && Math.round(diff)}<span class="d" class:down={diff < 0} class:up={diff > 0}>{diff > 0 ? "+" : "−"}{Math.abs(Math.round(diff))}</span>{/if}
+          {#if e && e.people > 1 && o.id !== opt?.id && Math.round(dd)}<small class="d" class:down={dd < 0} class:up={dd > 0}>{t("fl.tripPP", { v: `${dd > 0 ? "+" : "−"}${eur(Math.abs(dd) / e.people)}` })}</small>{/if}</span>
       </button>
     {/each}
   </div>
 {/if}
+
+<style>
+  .fl-cmp { align-items: start; }
+  .fl-cmp > span:nth-child(2) { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .fl-cmp .cmp-l { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--a); }
+  .fl-cmp-p { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+  .fl-cmp:not(.sel) .cmp-l { background: var(--ink-3); }
+</style>

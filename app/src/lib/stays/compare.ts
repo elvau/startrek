@@ -3,8 +3,8 @@
  * Events und Erlebnisse mit Ort, Flughafen) und was die ganze Reise mit dem Angebot kostet (inkl. Verpflegung,
  * die von der Verpflegung der Unterkunft abhängt).
  */
-import type { Item, Option, Trip } from "../model";
-import { totals } from "../calc";
+import type { FlightLeg, Item, Option, Trip } from "../model";
+import { activeOption, totals } from "../calc";
 import { syncFood } from "../food";
 import { hasCoords } from "../geo/maps";
 import { ccOf, findCity, kmBetween, townNear, type GeoData, type Place } from "../geo/places";
@@ -13,10 +13,10 @@ import { tripSpots } from "../geo/spots";
 /** Angebote liegen höchstens so weit auseinander: eine gemeinsame Karte, sonst je Angebot ein Kartenbild */
 export const NEAR_KM = 15;
 
-export interface RefPoint { id: string; kind: "center" | "event" | "airport" | "custom"; name: string; lat: number; lon: number }
+export interface RefPoint { id: string; kind: "center" | "event" | "airport" | "custom" | "stay"; name: string; lat: number; lon: number }
 
 /** Bezugspunkte: Zentrum des Orts der Reise (sonst des Orts der Suche), Events und Erlebnisse mit Ort, Flughäfen der Ankunft */
-export function refPoints(trip: Trip, g: GeoData, item?: Item): RefPoint[] {
+export function refPoints(trip: Trip, g: GeoData, item?: Item, withStays = false): RefPoint[] {
   const out: RefPoint[] = [];
   // Ort der Reise; fehlt er (Unterkunft direkt gesucht), der Ort, für den die Angebote gesucht wurden
   const q = item?.options.find(o => o.query?.place)?.query;
@@ -25,8 +25,12 @@ export function refPoints(trip: Trip, g: GeoData, item?: Item): RefPoint[] {
   if (city) out.push({ id: "center", kind: "center", name: city.name, lat: city.lat, lon: city.lon });
   for (const r of trip.refs || []) out.push({ ...r, id: "own:" + r.id, kind: "custom" });
   for (const s of tripSpots(trip, g)) {
-    if (s.kind === "stay" || (item && s.itemId === item.id)) continue;
-    out.push({ id: s.id, kind: s.kind, name: s.name, lat: s.lat, lon: s.lon });
+    // Unterkünfte nur als Bezug für Erlebnisse (wie weit vom Hotel), nie für Unterkünfte selbst
+    if ((s.kind === "stay" && !withStays) || (item && s.itemId === item.id)) continue;
+    // Unterkunft unter dem Namen des gewählten Angebots („Hotel Mar“ statt „Unterkunft in Split“)
+    const it = s.kind === "stay" ? trip.items.find(i => i.id === s.itemId) : undefined;
+    const name = (it && activeOption(it, trip)?.label) || s.name;
+    out.push({ id: s.id, kind: s.kind, name, lat: s.lat, lon: s.lon });
   }
   return out;
 }
@@ -109,4 +113,17 @@ export function effectOf(trip: Trip, itemId: string, optionId: string, g: GeoDat
   const food = tr.items.filter(i => i.auto === "food").reduce((s, i) => s + (T.items[i.id]?.net || 0), 0);
   const people = Math.max(1, T.active);
   return { total: T.total, perPerson: T.total / people, people, food };
+}
+
+/* ---------- Flüge (#441) ---------- */
+
+export interface FlightFacts { out?: FlightLeg; back?: FlightLeg; stops: number; minutes: number; bag?: "checked" | "cabin" | "personal" }
+
+/** Hin- und Rückflug, meiste Umstiege, Flugzeit gesamt, Gepäck (größtes, das für alle dabei ist) */
+export function flightFacts(o: Option): FlightFacts {
+  const legs = o.legs || [];
+  const out = legs.find(l => l.dir === "out"), back = legs.find(l => l.dir === "back");
+  const b = o.baggage ?? legs.find(l => l.baggage)?.baggage;
+  const bag = b ? (b.checked > 0 ? "checked" : b.cabin > 0 ? "cabin" : b.personal > 0 ? "personal" : undefined) : undefined;
+  return { out, back, stops: Math.max(0, ...legs.map(l => l.stops || 0)), minutes: legs.reduce((s, l) => s + (l.minutes || 0), 0), ...(bag ? { bag } : {}) };
 }
