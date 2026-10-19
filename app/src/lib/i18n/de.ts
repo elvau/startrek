@@ -1224,6 +1224,7 @@ export const de = {
   "home.eventSub": "Spiel, Konzert, Festival: die Reise passend zum Termin",
   "home.foodHh": "je Familie",
   "home.lead": "Plane allein oder zusammen, finde Flüge und Unterkünfte und teile die Kosten fair.",
+  "home.heading": "Wohin geht's?",
   "home.leaveTrip": "„{name}“ verlassen",
   "home.new": "Neue Reise",
   "home.newSub": "Allein, zu zweit, mit Familie oder Freunden",

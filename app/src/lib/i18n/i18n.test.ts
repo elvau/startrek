@@ -22,6 +22,14 @@ describe("Übersetzungen", () => {
     expect(tn("n.nights", 3)).toBe("3 Nächte");
   });
 
+  it("Startseiten-Überschrift ist nicht die der Zuhause-Karte (#453)", () => {
+    for (const d of [de, en, es, fr, pl, ru, ar] as Record<string, string>[]) {
+      expect(d["home.heading"]).toBeTruthy();
+      expect(d["home.heading"]).not.toBe(d["home.title"]);
+    }
+    expect(t("home.heading")).toBe("Wohin geht's?");
+  });
+
   it("Alter in Jahren mit Mehrzahlformen", () => {
     expect([0, 1, 2, 12].map(n => tn("trav.ageYears", n))).toEqual(["0 Jahre", "1 Jahr", "2 Jahre", "12 Jahre"]);
     inLang("en", () => expect([1, 2].map(n => tn("trav.ageYears", n))).toEqual(["1 year", "2 years"]));
