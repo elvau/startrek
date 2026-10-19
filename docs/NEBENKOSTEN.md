@@ -115,7 +115,7 @@ Versicherungsberatung. Führerscheindauer und „Kreditkarte vorhanden“ kommen
 Angaben echter Mietwagen-Angebote mit [114] (#144).
 
 ## Fähren (43 Verbindungen, #202)
-Richtwerte je einfache Fahrt, Hauptsaison, grob und ohne Gewähr (Prüfung 10/2026; meist Durchschnitte je Buchung bei Direct
+Richtwerte je einfache Fahrt, Hauptsaison, grob und ohne Gewähr (Prüfung 10/2026; Jadrolinija-Linien nach offiziellen Preislisten 2026, Stand 10/2026; sonst meist Durchschnitte je Buchung bei Direct
 Ferries, wenige offizielle Tarife). Liste: `FERRIES` in `app/src/lib/road/ferries.ts`. Liegt bei einem Roadtrip eine Station
 auf einer Insel bzw. in Großbritannien oder Irland, kommt die Fähre automatisch dazwischen (wählbar). Am Auto-Posten:
 Fahrzeug je Überfahrt, Personen je Mitfahrer (Kinder bis 3 frei), Kabine nur auf Wunsch; „Paket“ heißt Pflichtkabine, Preis
@@ -153,10 +153,10 @@ mit Personen und Kabine.
 | Piräus → Mykonos | 5 h | 85 € | 43 € | – | Blue Star, SeaJets | Ferryhopper |
 | Piräus → Paros | 4 h | 130 € | 40 € | – | Blue Star, SeaJets | Ferryhopper |
 | Piräus → Naxos | 5 h | 83 € | 42 € | – | Blue Star, SeaJets | Ferryhopper |
-| Split → Stari Grad (Hvar) | 2 h | 47.6 € | 8.5 € | – | Jadrolinija | Jadrolinija |
-| Split → Supetar (Brač) | 0.83 h | 32 € | 5.2 € | – | Jadrolinija | Jadrolinija |
+| Split → Stari Grad (Hvar) | 2 h | 47.6 € | 8.4 € | – | Jadrolinija | Jadrolinija |
+| Split → Supetar (Brač) | 0.83 h | 26.1 € | 6.5 € | – | Jadrolinija | Jadrolinija |
 | Split → Vela Luka (Korčula) | 3 h | 73.7 € | 10.8 € | – | Jadrolinija | Jadrolinija |
-| Valbiska (Krk) → Merag (Cres) | 0.42 h | 19.89 € | 4.25 € | – | Jadrolinija | Jadrolinija |
+| Valbiska (Krk) → Merag (Cres) | 0.42 h | 20.7 € | 4.4 € | – | Jadrolinija | Jadrolinija |
 | Piombino → Portoferraio | 1 h | 85 € | 18 € | – | Moby, Toremar, Blu Navy | Ferryhopper |
 | Calais → Dover | 1.5 h | 205 € | – | – | P&O, DFDS, Irish Ferries | Direct Ferries |
 | Dünkirchen → Dover | 2 h | 145 € | – | – | DFDS | Direct Ferries |
