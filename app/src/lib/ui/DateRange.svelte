@@ -17,7 +17,7 @@
 
   let { from = $bindable(""), to = $bindable(""), label, fromLabel, toLabel, openEnd = false, openEndLabel = "", unit = "nights", min, cls = "", onchange }: {
     from?: string; to?: string; label: string; fromLabel: string; toLabel: string;
-    openEnd?: boolean; openEndLabel?: string; unit?: "nights" | "days"; min?: string; cls?: string;
+    openEnd?: boolean; openEndLabel?: string; unit?: "nights" | "days" | "rent"; min?: string; cls?: string;
     onchange?: (from: string, to: string) => void;
   } = $props();
 
@@ -36,7 +36,8 @@
   });
   const mf = $derived(new Intl.DateTimeFormat(locale(), { month: "long", year: "numeric", timeZone: "UTC" }));
   const wd = $derived(Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(locale(), { weekday: "narrow", timeZone: "UTC" }).format(new Date(Date.UTC(2026, 0, 5 + i)))));
-  const count = (a: string, b: string) => { const n = daysBetween(a, b); return unit === "days" ? tn("n.days", n + 1) : tn("n.nights", n); };
+  // rent: Miettage (Abholung bis Rückgabe, wie Nächte gezählt)
+  const count = (a: string, b: string) => { const n = daysBetween(a, b); return unit === "days" ? tn("n.days", n + 1) : unit === "rent" ? tn("n.days", Math.max(1, n)) : tn("n.nights", n); };
 
   async function show() {
     draft = { from, to }; picking = "from"; open = true;
