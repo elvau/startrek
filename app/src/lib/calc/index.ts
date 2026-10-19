@@ -9,7 +9,7 @@ import { fx, shown } from "../currency.svelte";
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
 import { calcExtras, type ExtrasCalc } from "./extras";
 import { autoDeposit, autoExtras } from "../fees";
-import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, type AgeClass, type CatKey, type Fund, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
+import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, noPrice, type AgeClass, type CatKey, type Fund, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number | null | undefined, s: Settings, kind?: AgeClass): AgeClass {
   // ohne Altersangabe: angegebene Klasse (Platzhalter), sonst erwachsen
@@ -47,7 +47,8 @@ export interface StayCalc {
   w: Record<string, number>;
   maxOcc: number;
   /** mehr Gäste als Plätze in mindestens einer Nacht */
-  over: boolean;
+  over: boolean;  /** laut Flügen oder eigenen Daten niemand im Zeitraum da, gerechnet mit allen Teilnehmenden */
+  nobody?: boolean;
 }
 
 export interface OptionCalc {
@@ -145,10 +146,11 @@ function calcStay(opt: Option, it: Item, trip: Trip): OptionCalc {
   const people = participantsOf(it, trip);
   const w: Record<string, number> = {}, occ: Record<string, number> = {}, here: Record<string, Traveler[]> = {};
   nights.forEach(x => (here[x] = []));
-  people.forEach(t => {
-    const ns = nights.filter(x => needs(pres[t.id], x));
-    if (ns.length) { w[t.id] = ns.length; ns.forEach(x => { occ[x] = (occ[x] || 0) + 1; here[x].push(t); }); }
-  });
+  const add = (t: Traveler, ns: string[]) => { if (ns.length) { w[t.id] = ns.length; ns.forEach(x => { occ[x] = (occ[x] || 0) + 1; here[x].push(t); }); } };
+  people.forEach(t => add(t, nights.filter(x => needs(pres[t.id], x))));
+  // laut Flügen niemand da (Zeitraum passt nicht dazu): nicht still mit 0 € rechnen, sondern mit allen Teilnehmenden für alle Nächte
+  const nobody = !!nights.length && !!people.length && !Object.keys(w).length;
+  if (nobody) people.forEach(t => add(t, nights));
   const guests = people.filter(t => w[t.id]);
   const n = guests.length, sumW = guests.reduce((a, t) => a + w[t.id], 0);
   const maxOcc = Math.max(0, ...Object.values(occ));
@@ -174,7 +176,7 @@ function calcStay(opt: Option, it: Item, trip: Trip): OptionCalc {
     });
   }
   const over = cap > 0 && !multi && maxOcc > cap;
-  return withExtras({ n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc, over } }, opt, it, guests, {
+  return withExtras({ n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc, over, ...(nobody ? { nobody } : {}) } }, opt, it, guests, {
     nights: nights.length, days: nights.length + 1, w, fx, trip });
 }
 
@@ -209,7 +211,9 @@ export function activeOption(it: Item, trip: Trip): Option | null {
   if (!it.options.length) return null;
   const chosen = it.chosen && it.options.find(o => o.id === it.chosen);
   if (chosen) return chosen;
-  return it.options.reduce((a, b) => (calcOption(b, it, trip).net < calcOption(a, it, trip).net ? b : a));
+  // ein Angebot ohne Preis ist nicht „das günstigste“, solange es eines mit Preis gibt
+  const priced = it.options.filter(o => !noPrice(o));
+  return (priced.length ? priced : it.options).reduce((a, b) => (calcOption(b, it, trip).net < calcOption(a, it, trip).net ? b : a));
 }
 
 export interface ItemCalc extends OptionCalc {

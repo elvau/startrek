@@ -109,7 +109,8 @@ const ANSWER = {
 /** Werkzeuge für diese Anfrage: Rückfrage nur einmal, Reisende als Parameter nur, wenn die App keine kennt */
 export function toolsFor(r: Pick<AgentRequest, "asked" | "travelersKnown" | "current">, o: { events?: boolean } = {}) {
   const party = r.travelersKnown === false ? PARTY : {};
-  const final = r.current ? [UPDATE] : [PROPOSE, ANSWER];
+  // auch im Vorschlag: nennt der Wunsch die Gruppe, nimmt die KI sie auch ohne passende Suche mit (#447)
+  const final = r.current ? [UPDATE] : [r.travelersKnown === false ? { ...PROPOSE, parameters: { ...PROPOSE.parameters, properties: { ...PARTY, ...PROPOSE.parameters.properties } } } : PROPOSE, ANSWER];
   return [{ functionDeclarations: [
     ...(r.asked ? [] : [ASK_USER]),
     {
@@ -315,14 +316,14 @@ export function systemPrompt(r: AgentRequest, events = true): string {
     "You are the trip planner of Split&Fly, an app where groups plan trips and share the costs.",
     `Today is ${r.today}. Only suggest dates in the future.`,
     r.travelersKnown === false
-      ? `Travelers are not entered in the app yet (default: ${r.adults} adult). Take the number of adults and the children's ages from the wish or the user's answer and pass them as adults/childAges in every search.`
+      ? `Travelers are not entered in the app yet (default: ${r.adults} adult). Take the number of adults and the children's ages from the wish or the user's answer (\"with 5 friends\" = 6 adults including the writer, \"the six of us\" = 6) and pass them as adults/childAges in every search and in propose_trips.`
       : `Travelers: ${r.adults} adult(s)${kids}${babies}.`,
     r.originsKnown === false
       ? `The home town is unknown (app default airports: ${r.origins.join(", ") || "none"}). If the wish or an answer names a departure city, use its airports (IATA) instead.`
       : r.origins.length ? `Home airports (nearest first): ${r.origins.join(", ")}.` : "Home airports are unknown; pick plausible airports from the request.",
     r.asked
       ? "You already asked a clarifying question; the user's answer is in the text. Do not ask again: search now, assuming sensible defaults for anything still open."
-      : `Before searching, check whether essential details are missing: the departure city (if the home town is unknown and the wish names none), the number and ages of children (if the wish mentions children but the ages are unknown), the travel period (month, holidays or dates) and the trip length or maximum number of nights. If any of these is missing, call ask_user once, in ${lang}, with one short question covering all missing points and 2-4 tappable answers. Do not ask about anything you can reasonably assume (budget, hotel type). If nothing essential is missing, search right away.`,
+      : `Before searching, check whether essential details are missing: the departure city (if the home town is unknown and the wish names none), the number of travelers (if the app has none and the wish names none), the number and ages of children (if the wish mentions children but the ages are unknown), the travel period (month, holidays or dates) and the trip length or maximum number of nights. If any of these is missing, call ask_user once, in ${lang}, with one short question covering all missing points and 2-4 tappable answers. Do not ask about anything you can reasonably assume (budget, hotel type). If nothing essential is missing, search right away.`,
     ...prefsLines(r),
     "Use search_flights and search_stays to find real offers. Never invent prices, flights or hotels.",
     "If the travelers say they arrive on their own (by car, train or bus, \"we drive\", \"no flight\", \"Anreise selbst\" …), do not search flights: propose destinations within reach, each with a real accommodation and ownArrival (how, rough round-trip cost for the group), no flightId.",
@@ -539,6 +540,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
   function finish(a: any): AgentResult {
     const list = Array.isArray(a?.trips) ? a.trips : [];
     const trips: AgentTrip[] = [];
+    takeParty(a);
     for (const t of list.slice(0, LIMITS.trips)) {
       const groups = groupsOf(t);
       const bookings = bookingsOf(t, groups);

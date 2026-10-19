@@ -50,6 +50,22 @@ describe("Nächte und Anwesenheit", () => {
 });
 
 describe("Unterkunft mit Zeitraum", () => {
+  it("niemand laut Flügen da (Zeitraum vorher): nicht 0 €, sondern alle Teilnehmenden alle Nächte (#449)", () => {
+    const t = trip();
+    // Übernachtung am Abreiseort vor dem Flug: Klein landet erst am 18., Groß kommt am 20.
+    const r = calcItem(stay({ from: "2027-07-15", to: "2027-07-17", options: [{ id: "v", label: "Hotel", price: { mode: "unit", currency: "EUR", unit: 300, basis: "stay" } }] }), t);
+    expect(r.net).toBe(300);
+    expect(r.n).toBe(4);
+    expect(r.stay!.nobody).toBe(true);
+    expect(r.per.a + r.per.b + r.per.c + r.per.d).toBeCloseTo(300);
+  });
+  it("ohne Teilnehmende bleibt es bei 0 und ohne Hinweis", () => {
+    const t = trip();
+    t.travelers = [];
+    const r = calcItem(stay({ options: [{ id: "v", label: "", price: { mode: "unit", currency: "EUR", unit: 100 } }] }), t);
+    expect(r.net).toBe(0);
+    expect(r.stay!.nobody).toBeUndefined();
+  });
   it("Pauschale pro Nacht wird je Nacht auf die Anwesenden verteilt", () => {
     const t = trip();
     // 7 Nächte à 140 €; Nächte 18. und 19. nur Klein (2 Pers.), ab 20. alle 4

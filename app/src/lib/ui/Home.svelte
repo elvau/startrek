@@ -150,7 +150,7 @@
 <TopNav home />
 <section class="start" class:has-trips={rows.length > 0} data-ch="hero">
   <div class="home-in">
-    <h1 class="home-title">{t("home.title")}</h1>
+    <h1 class="home-title">{t("home.heading")}</h1>
     <p class="home-lead">{t("home.lead")}</p>
 
     {#if last}

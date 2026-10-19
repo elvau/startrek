@@ -17,7 +17,7 @@
   import { distances, effectOf, letter, nearestTo, parseSpot, refPoints, spreadKm, townsOf, NEAR_KM } from "../stays/compare";
   import { ccOf } from "../geo/places";
   import { coastKm, loadCoast } from "../geo/coast";
-  import { uid } from "../model";
+  import { noPrice, uid } from "../model";
   import { cachedSnap, mapSnap } from "./mapSnap";
 
   let { item, r, nights, onchoose, ondrop }: {
@@ -153,7 +153,7 @@
             {#each (o.stay?.facts || []).slice(0, 3) as f (f)}<span class="fact">{f}</span>{/each}
           </div>
           <div class="cmp-p">
-            <b class="num">{eur(c.net)}</b>
+            {#if noPrice(o)}<b>{t("stay.noPrice")}</b>{:else}<b class="num">{eur(c.net)}</b>{/if}
             {#if !sel && Math.round(diff)}<span class="d" class:down={diff < 0} class:up={diff > 0}>{diff > 0 ? "+" : "−"}{eur(Math.abs(diff))}</span>{/if}
             {#if nights}<small class="muted">{t("perNight", { v: eur(c.net / nights) })}</small>{/if}
           </div>

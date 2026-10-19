@@ -11,6 +11,8 @@ cp -r public/. "$out/"
 cp -r app/dist/. "$out/"
 # Inhaltsseiten für Google (/reise/…) und ihre Einträge in der Sitemap
 node --experimental-strip-types --no-warnings scripts/seiten.mjs "$out"
+# Anleitung für Nutzer (/anleitung/…)
+node --experimental-strip-types --no-warnings scripts/anleitung.mjs "$out"
 if [ "$2" = "test" ]; then
   printf 'User-agent: *\nDisallow: /\n' > "$out/robots.txt"
   rm -f "$out/sitemap.xml"

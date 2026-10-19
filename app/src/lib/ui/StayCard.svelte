@@ -1,7 +1,7 @@
 <script lang="ts">
   import StayCompare from "./StayCompare.svelte";
   import { autoName, t, tn, type Key } from "../i18n/index.svelte";
-  import { BOARDS, type Board, type Item } from "../model";
+  import { BOARDS, noPrice, type Board, type Item } from "../model";
   import { access, app, calc } from "../store.svelte";
   import { eur } from "../calc";
   import { dateDE } from "../format";
@@ -17,6 +17,8 @@
   // Gäste, die nicht alle Nächte da sind
   const partial = $derived(sc ? cluster(Object.entries(sc.w).filter(([, w]) => w < sc.nights.length), (a, b) => a[1] === b[1])
     .map(g => `${groupLabel(g.map(([id]) => app.trip.travelers.find(x => x.id === id)?.name || "?"), -1)} ${tn("n.nights", g[0][1])}`) : []);
+  // Angebot ohne Preis: „Preis unbekannt“ statt 0 €
+  const unpriced = $derived(!item.private && !!r?.option && noPrice(r.option));
   const absent = $derived(sc ? sc.nights.filter(x => !sc.occ[x]).length : 0);
   const pct = $derived(r && r.net ? Math.min(100, (r.paid / r.net) * 100) : 0);
   /** Verpflegung am gewählten Angebot setzen (die Verpflegung unter „Sonstiges“ folgt automatisch) */
@@ -86,6 +88,7 @@
       <div class="nights-n" title={tn("n.nights", nn)}><b class="num">{nn}</b> × <svg width="14" height="14" aria-hidden="true"><use href="#i-moon" /></svg></div>
     {/if}
     {#if sc?.over}<div class="warnline">⚠ {t("stay.over", { g: sc.maxOcc, c: r?.option?.price.capacity ?? "?" })}</div>{/if}
+    {#if sc?.nobody}<div class="warnline">⚠ {t("stay.nobody")}</div>{/if}
     {#if absent}<div class="warnline">⚠ {t("stay.empty", { n: tn("n.nights", absent) })}</div>{/if}
     {#if partial.length}<div class="muted">{t("stay.partial", { list: partial.join(", ") })}</div>{/if}
     <div class="stay-foot">
@@ -96,9 +99,10 @@
         <div class="bar"><i style:width="{shown ? pct : 0}%"></i></div>
       </div>
       <div class="price r">
-        <b class="num">{eur(r?.net || 0)}</b>
+        {#if unpriced}<b>{t("stay.noPrice")}</b>
+        {:else}<b class="num">{eur(r?.net || 0)}</b>{/if}
         {#if item.private && !r?.net}<span class="priv-free">{t("priv.free")}</span>
-        {:else}<span>{nn ? t("perNight", { v: eur((r?.net || 0) / nn) }) : ""}{nn && r?.n ? ` · ${t("pp", { v: eur((r?.net || 0) / nn / r.n) })}` : ""}</span>{/if}
+        {:else if !unpriced}<span>{nn ? t("perNight", { v: eur((r?.net || 0) / nn) }) : ""}{nn && r?.n ? ` · ${t("pp", { v: eur((r?.net || 0) / nn / r.n) })}` : ""}</span>{/if}
       </div>
     </div>
   </div>
