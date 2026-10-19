@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calcItem, presences } from "./index";
-import { accessFor, nightsList, roadKm } from "./travel";
+import { accessFor, flightAccess, nightsList, PARK_DEFAULT, roadKm } from "./travel";
 import { DEFAULT_SETTINGS, type Item, type Trip } from "../model";
 import { DEFAULT_AIRPORTS } from "../airports";
 
@@ -162,6 +162,45 @@ describe("Anreise zum Flughafen", () => {
   it("lässt sich abschalten", () => {
     const t = trip(); t.items[0].access = false;
     expect(calcItem(t.items[0], t).net).toBe(200);
+  });
+});
+
+describe("Parken am Flughafen (#419)", () => {
+  it("Richtwert je Flughafen × Tage × Autos, als eigener Anteil", () => {
+    const a = accessFor("Klein", DUS, 2, 8, trip());
+    expect(a.park).toBe(8 * 12);
+    expect(a.parkBooked).toBe(false);
+  });
+  it("entfällt: kein Parken, Fahrt bleibt", () => {
+    const t = trip();
+    t.households!.Klein.parking = { off: true };
+    const km = roadKm(t.households!.Klein.geo, DUS)!;
+    const a = accessFor("Klein", DUS, 2, 8, t);
+    expect(a.park).toBeUndefined();
+    expect(a.cost).toBeCloseTo(2 * km * 0.3);
+    expect(a.info).toContain("ohne Parken");
+  });
+  it("gebucht: eigener Preis statt Richtwert", () => {
+    const t = trip();
+    t.households!.Klein.parking = { paid: 55 };
+    const a = accessFor("Klein", DUS, 2, 8, t);
+    expect(a.park).toBe(55);
+    expect(a.parkBooked).toBe(true);
+  });
+  it("Fahrgemeinschaft: einmal je Auto, nach Personen geteilt", () => {
+    const t = trip();
+    t.households!.Groß = { mode: "with", link: "Klein" };
+    expect(accessFor("Klein", DUS, 2, 8, t).park).toBeCloseTo(48);
+    expect(accessFor("Groß", DUS, 2, 8, t).park).toBeCloseTo(48);
+  });
+  it("unbekannter Abflughafen: allgemeiner Richtwert nur fürs Parken, Anreise bleibt offen", () => {
+    const t = trip();
+    const opt = { id: "o", label: "", price: { mode: "person" as const, currency: "EUR", adult: 100 },
+      legs: [{ dir: "out" as const, from: "XYZ", to: "SPU", dep: "2027-07-18T06:10", arr: "2027-07-18T08:25" }, { dir: "back" as const, from: "SPU", to: "XYZ", dep: "2027-07-25T09:15", arr: "2027-07-25T11:35" }] };
+    const r = flightAccess(opt, t.travelers.filter(x => x.household === "Klein"), t)!;
+    expect(r.missing).toBe("XYZ");
+    expect(r.cost).toBe(PARK_DEFAULT * 8);
+    expect(r.lines[0].a.info).toContain("geschätzt");
   });
 });
 

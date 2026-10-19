@@ -19,6 +19,7 @@ Kurtaxen bzw. City Tax, Vignetten, Maut, Durchfahrten, Trinkgeld und Einreisegeb
   Idee, einfache Beträge) und *versteckt*. Versteckt sind alle Nebenkosten vor Ort, Nebenkosten bei der Buchung solange
   der Posten nicht gebucht ist, die Anreise zum Flughafen (samt Parken) und automatische Posten (Verpflegung, Anreise mit
   dem eigenen Auto). Kautionen stehen nur als Hinweis darunter. Rechnung in `app/src/lib/calc/parts.ts`.
+- **Parken am Flughafen (#419):** eigene Zeile unter *versteckt* (je Flug), siehe unten.
 - **Souvenirs (#421):** automatischer Posten unter Sonstiges, Betrag pro Person aus den Vorlieben (Richtwert 30 €),
   je Reise änderbar. `app/src/lib/souvenir.ts`.
 - **Unterwegs vor Ort (#420):** solange kein eigener Transport-Posten da ist, schätzt die App den Flughafentransfer hin und
@@ -113,6 +114,29 @@ Dazu die Checkliste am Posten (Kaution, Selbstbeteiligung, Tank voll/voll, junge
 Schäden fotografieren) mit dem Hinweis, dass die Bedingungen des Vermieters maßgeblich sind. Allgemeine Hinweise, keine
 Versicherungsberatung. Führerscheindauer und „Kreditkarte vorhanden“ kommen mit dem Konto-Assistenten (#160) dazu,
 Angaben echter Mietwagen-Angebote mit [114] (#144).
+
+## Parken am Flughafen (#419)
+Für Familien, die mit dem eigenen Auto zum Abflughafen fahren: Richtwert pro Tag (`park` in
+[`app/src/lib/airports.ts`](../app/src/lib/airports.ts)) × Reisetage × Autos, bei Fahrgemeinschaften einmal je Auto und nach
+Personen geteilt. Abflughafen ohne Daten: allgemeiner Richtwert `PARK_DEFAULT` = 10 € pro Tag (`app/src/lib/calc/travel.ts`),
+als „geschätzt“; Fahrt und Bahn bleiben dann offen. Je Familie in „Wer fährt mit“ einstellbar: *geschätzt* (Richtwert),
+*gebucht* mit eigenem Gesamtpreis (zählt am Gesamtbetrag als gebucht) oder *entfällt* (z. B. kostenlos bei Bekannten).
+Am Flug-Posten Links zum Vergleichen (Partner-Kategorie `parking`, `docs/PARTNER.md`).
+
+Der Richtwert liegt bewusst zwischen früh online gebuchtem Parkplatz (Shuttle bzw. Economy) und Terminal-Parkhaus an der
+Schranke; er ist kein Bestpreis.
+
+| Flughafen | Richtwert/Tag | Spanne (1 Woche) | Quelle (Stand 10/2026) |
+|---|---|---|---|
+| Frankfurt (FRA) | 13 € | online ab ca. 55–64 €, Terminal 258 € an der Schranke | [parkfibel.de](https://parkfibel.de/artikel/parken-flughafen-frankfurt-kosten/), [parkport-frankfurt.de](https://www.parkport-frankfurt.de/blog/parken-flughafen-frankfurt-kosten-vergleich) |
+| München (MUC) | 11 € | Economy 107 €, online ab 59,99 €, terminalnah 250 € (Tarif ab 01.04.2026) | [parkesicher.de](https://www.parkesicher.de/blog/parken-muenchen-flughafen-vergleich) |
+| Düsseldorf (DUS) | 12 € | günstigster ca. 26–75 €, terminalnah bis 336 € | [allright.de](https://www.allright.de/verkehrsrecht/parkgebuehren-flughafen-vergleich), [parkinglist.de](https://www.parkinglist.de/flughafen-parken/parken-flughafen-duesseldorf) |
+| Köln/Bonn (CGN) | 8 € | online ca. 66 €, spontan um 100 € | [infranken.de](https://www.infranken.de/ratgeber/urlaub-reisen/parken-am-flughafen-so-sparst-du-bis-zu-74-prozent-art-6357133) |
+| Stuttgart (STR) | 12 € | ab 29 € (günstigster Anbieter) | [infranken.de](https://www.infranken.de/ratgeber/urlaub-reisen/parken-am-flughafen-so-sparst-du-bis-zu-74-prozent-art-6357133) |
+| Hamburg (HAM) | 12 € | ab ca. 45 € für 8 Tage | [airparks.de](https://www.airparks.de/flughafen-parken.html) |
+| Berlin (BER) | 12 € | ab ca. 43 € für 8 Tage, kurzfristig um 115 € | [airparks.de](https://www.airparks.de/flughafen-parken.html), [parkvia.com](https://www.parkvia.com/de-DE/blog/beste-zeiten-flughafenparkplaetze-buchen) |
+
+Übrige Flughäfen in `airports.ts` (5–20 € pro Tag) noch ohne eigene Quelle; beim nächsten Daten-Durchgang prüfen.
 
 ## Fähren (43 Verbindungen, #202)
 Richtwerte je einfache Fahrt, Hauptsaison, grob und ohne Gewähr (Prüfung 10/2026; Jadrolinija-Linien nach offiziellen Preislisten 2026, Stand 10/2026; sonst meist Durchschnitte je Buchung bei Direct

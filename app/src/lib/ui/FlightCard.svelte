@@ -5,6 +5,8 @@
   import { calcOption, eur } from "../calc";
   import { dayShort, legDuration, time, dateDE } from "../format";
   import StatusBadge from "./StatusBadge.svelte";
+  import PartnerLinks from "./PartnerLinks.svelte";
+  import { partnersOf } from "../partners";
   import { focusHousehold } from "./hhFocus.svelte";
   import { tourHead } from "./flightHead";
   import { effectOf, flightFacts, letter } from "../stays/compare";
@@ -70,6 +72,8 @@
             {#if access.readonly}<span>🚗 {l.hh}: {l.a.info} · <b class="num">{eur(l.a.cost)}</b></span>
             {:else}<button class="bp-acc-l" title={t("fl.accessEdit")} onclick={e => toAccess(l.hh, e)}>🚗 {l.hh}: {l.a.info} · <b class="num">{eur(l.a.cost)}</b> <i aria-hidden="true">›</i></button>{/if}
           {/each}{/if}
+          <!-- Parken nur geschätzt: Anbieter zum Vergleichen und Buchen (#419) -->
+          {#if !access.readonly && r.access.lines.some(l => l.a.park && !l.a.parkBooked)}<span class="bp-park">{t("fl.parkCompare")} <PartnerLinks ids={partnersOf("parking")} /></span>{/if}
         </div>
       {/if}
       <div class="bp-legs">

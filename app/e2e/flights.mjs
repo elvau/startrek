@@ -362,6 +362,17 @@ try {
   await hhHase.waitFor();
   if (!(await hhHase.locator("select").first().count())) fail("Anfahrt Hase nicht bearbeitbar");
   if (await p.locator(".card.edit[data-item]").count()) fail("Antippen der Anfahrt öffnet auch den Flug-Posten");
+  // Parken am Flughafen (#419): geschätzt mit Links zum Vergleichen, „entfällt“ nimmt es raus, „gebucht“ mit eigenem Preis
+  if (!(await along.locator(".bp-park", { hasText: "Parkos" }).count())) fail("Parken vergleichen fehlt am Flug");
+  await hhHase.locator(".hh-park").selectOption("off");
+  await along.locator(".bp-acc-l", { hasText: "ohne Parken" }).waitFor();
+  await hhHase.locator(".hh-park").selectOption("booked");
+  await hhHase.locator(".hh-parkpaid").fill("70"); await hhHase.locator(".hh-parkpaid").blur();
+  await along.locator(".bp-acc-l", { hasText: "Parken gebucht" }).waitFor();
+  if (await along.locator(".bp-park").count()) fail("Parken vergleichen trotz gebuchtem Parken");
+  await hhHase.locator(".hh-park").selectOption("");
+  await along.locator(".bp-park").waitFor();
+  log("Parken am Flughafen: Vergleichs-Links, „entfällt“ und „gebucht“ (70 €) je Familie");
   await hhHase.locator(".hh-sum").click();
   log("Anfahrt am Flug antippen: Familie Hase in den Einstellungen aufgeklappt");
 
