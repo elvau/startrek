@@ -46,7 +46,7 @@ stehen in `TP_PARTNER`; `p` (Programm) und `campaign_id` liest man aus einem lan
 ## Einen Partner hinzufügen
 
 1. Eintrag in `PARTNERS` (`app/src/lib/partners/index.ts`) in der passenden Kategorie:
-   - `name`, `cat` (flight, stay, activity, food, car, transfer, insurance), `net` (direct, travelpayouts, awin, amazon),
+   - `name`, `cat` (flight, stay, activity, food, car, transfer, insurance, ferry, camper, camping, parking), `net` (direct, travelpayouts, awin, amazon),
    - `link`: Link mit vorausgefüllten Angaben (Ort, Datum, Personen); `null`, wenn die Angaben nicht reichen,
    - `tag`: Partnerkennung anhängen (erst nach Freischaltung).
    Neue Kategorie: in `PartnerCat` ergänzen und an der Stelle in der Oberfläche `<PartnerLinks ids={partnersOf("…")} q={…} />` einsetzen.
@@ -74,12 +74,15 @@ stehen in `TP_PARTNER`; `p` (Programm) und `campaign_id` liest man aus einem lan
 | Booking.com Taxi | Transfer | – | – |
 | Direct Ferries, Ferryhopper | Fähren | direkt (noch nicht beantragt) | – |
 | PaulCamper | Mietcamper | Travelpayouts (20 %, noch nicht beantragt) | – |
-| Roadsurfer | Mietcamper | Awin (noch nicht beantragt) | – |
+| Roadsurfer | Mietcamper | Awin (beworben 10/2026) | – |
 | Indie Campers, Yescapa | Mietcamper | eigenes Programm bzw. TradeTracker | – |
 | PiNCAMP, ACSI (Eurocampings), park4night | Camping- und Stellplätze | PiNCAMP über TradeTracker (3 %) | – |
+| Parkos | Parken am Flughafen | – (kein Programm bei Awin) | – |
+| Airparks | Parken am Flughafen | Awin (beworben 10/2026) | – |
+| Parken und Fliegen, Holiday Extras | Parken am Flughafen (noch nicht in der App) | Awin (beworben 10/2026) | – |
 | CHECK24, Allianz Travel | Versicherung (nur Tipp) | – | – |
 | Yesim, Airalo | eSIM (noch kein Platz in der App, #297) | Travelpayouts | freigeschaltet: Yesim `p=5998`/`campaign_id=224`, Airalo `p=8310`/`campaign_id=541` |
-| ERGO, HanseMerkur | Versicherung (nur Tipp) | Awin | – |
+| ERGO, HanseMerkur | Versicherung (nur Tipp) | Awin (HanseMerkur beworben 10/2026, ERGO nicht gefunden) | – |
 
 Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Dienst (Secret `TRAVELPAYOUTS_MARKER`), nicht hier.
 
@@ -87,3 +90,11 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
 
 - **Viator:** Suche nur auf splitandfly.com, nicht über den KI-Konnektor (siehe `docs/KONNEKTOR.md`).
 - **Reiseversicherung:** nur als Tipp verlinken, keine Beratung und kein Tarifvergleich (sonst Erlaubnis nach § 34d GewO nötig).
+
+## Awin
+
+Publisher-Konto für splitandfly.com (Publisher-ID `3121582`, öffentlich, steht in jedem Awin-Link). Beworben 10/2026,
+Stand „offen“: TUI Cars, Sunny Cars, Sixt, Europcar (Mietwagen), TUI Camper, Roadsurfer (Camper), Airparks, Holiday Extras,
+Parken und Fliegen (Parken), Tui.com, ab-in-den-urlaub (Pauschalreisen), TUI Cruises/Mein Schiff (Kreuzfahrten),
+HanseMerkur (Versicherung). Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen; Link-Format
+`https://www.awin1.com/cread.php?awinmid=…&awinaffid=3121582&ued=<Ziel>`.

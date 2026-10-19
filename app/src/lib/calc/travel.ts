@@ -90,7 +90,21 @@ export function roadKm(g: { lat: number; lon: number } | undefined, ap: Airport)
 export const trainPP = (km: number) => Math.round((2 * Math.min(80, Math.max(5, 0.15 * km))) / 5) * 5;
 
 /** cost: Anteil dieses Haushalts; total: ganze Fahrt (Auto, Bus) vor dem Teilen */
-export interface Access { cost: number; total?: number; hours: number; km: number | null; info: string }
+export interface Access {
+  cost: number; total?: number; hours: number; km: number | null; info: string;
+  /** Parken am Flughafen (#419): Anteil dieses Haushalts, ganze Summe aller Autos, gebucht (fester Preis) statt geschätzt */
+  park?: number; parkTotal?: number; parkBooked?: boolean;
+}
+
+/** Parken pro Tag, wenn der Abflughafen keinen Richtwert hat */
+export const PARK_DEFAULT = 10;
+
+/** Parken für die Autos eines Haushalts: entfällt, gebucht (eigener Preis) oder Richtwert × Tage × Autos */
+export function parkOf(h: Household, perDay: number, days: number, cars: number): { v: number; booked: boolean } {
+  if (h.parking?.off) return { v: 0, booked: false };
+  if (h.parking?.paid != null) return { v: h.parking.paid, booked: true };
+  return { v: perDay * days * cars, booked: false };
+}
 
 /** Plätze je Auto (mit Gepäck zum Flughafen) */
 const SEATS = 5;
@@ -123,7 +137,8 @@ export function accessFor(name: string, ap: Airport, persons: number, days: numb
     const group = sizeOf(trip, h.link) + ridersOf(trip, h.link).reduce((a, k) => a + sizeOf(trip, k), 0);
     const total = main.total ?? main.cost;
     const mine = sizeOf(trip, name);
-    return { cost: (total * mine) / group, total, hours: main.hours, km: main.km, info: t("acc.pool", { name: h.link, a: mine, b: group }) };
+    const park = main.parkTotal ? { park: (main.parkTotal * mine) / group, parkTotal: main.parkTotal, parkBooked: main.parkBooked } : {};
+    return { cost: (total * mine) / group, total, hours: main.hours, km: main.km, info: t("acc.pool", { name: h.link, a: mine, b: group }), ...park };
   }
   if (h.mode === "bus") {
     const bus = busOf(trip);
@@ -144,10 +159,12 @@ export function accessFor(name: string, ap: Airport, persons: number, days: numb
   // Auto, bringen lassen, Fahrdienst: für den Haushalt und alle, die mitfahren
   const riders = ridersOf(trip, name);
   const group = sizeOf(trip, name) + riders.reduce((a, k) => a + sizeOf(trip, k), 0);
-  const share = (total: number, info: string): Access => {
-    if (!riders.length) return { cost: total, total, hours: driveH, km, info };
+  const share = (total: number, info: string, pk?: { v: number; booked: boolean }): Access => {
+    const f = riders.length ? sizeOf(trip, name) / group : 1;
+    const park = pk?.v ? { park: pk.v * f, parkTotal: pk.v, parkBooked: pk.booked } : {};
+    if (!riders.length) return { cost: total, total, hours: driveH, km, info, ...park };
     const mine = sizeOf(trip, name);
-    return { cost: (total * mine) / group, total, hours: driveH, km, info: `${info} · ${t("acc.share", { a: mine, b: group })}` };
+    return { cost: total * f, total, hours: driveH, km, info: `${info} · ${t("acc.share", { a: mine, b: group })}`, ...park };
   };
   if (h.mode === "taxi") {
     const est = ridePrice(group, km);
@@ -157,7 +174,9 @@ export function accessFor(name: string, ap: Airport, persons: number, days: numb
   const cars = Math.max(1, h.cars || 1, Math.ceil(group / SEATS));
   const carsTxt = cars > 1 ? ` ${t("acc.withCars", { n: cars })}` : "";
   if (h.mode === "drop") return share(4 * km * kc * cars, t("acc.drop", { km: Math.round(km), cars: carsTxt }));
-  return share(2 * km * kc * cars + ap.park * days * cars, t("acc.car", { km: Math.round(km), cars: carsTxt, days: tn("n.days", days) }));
+  const pk = parkOf(h, ap.park, days, cars);
+  const a = { km: Math.round(km), cars: carsTxt, days: tn("n.days", days) };
+  return share(2 * km * kc * cars + pk.v, t(h.parking?.off ? "acc.carNoPark" : pk.booked ? "acc.carParkBooked" : "acc.car", a), pk);
 }
 
 export interface AccessCalc { cost: number; per: Record<string, number>; lines: { hh: string; ap: string; a: Access }[]; missing?: string }
@@ -167,8 +186,8 @@ export function flightAccess(opt: Option, people: Traveler[], trip: Trip): Acces
   const out = opt.legs?.find(l => l.dir === "out"), back = opt.legs?.find(l => l.dir === "back");
   if (!out) return null;
   const ap = airportsOf(trip).find(a => a.code === out.from.toUpperCase());
-  if (!ap) return { cost: 0, per: {}, lines: [], missing: out.from };
   const days = back && okDate(back.dep) && okDate(out.dep) ? dayDiff(out.dep, back.dep) + 1 : 1;
+  if (!ap) return parkOnly(out.from.toUpperCase(), people, days, trip);
   const groups: Record<string, Traveler[]> = {};
   people.forEach(t => (groups[hhKey(t)] ||= []).push(t));
   const res: AccessCalc = { cost: 0, per: {}, lines: [] };
@@ -177,6 +196,28 @@ export function flightAccess(opt: Option, people: Traveler[], trip: Trip): Acces
     res.cost += a.cost;
     ts.forEach(t => (res.per[t.id] = a.cost / ts.length));
     res.lines.push({ hh, ap: ap.code, a });
+  }
+  return res;
+}
+
+/**
+ * Abflughafen ohne Daten: Fahrt und Bahn bleiben offen (missing), Parken für Familien, die selbst fahren, mit
+ * allgemeinem Richtwert (PARK_DEFAULT pro Tag und Auto), damit es nicht still fehlt (#419).
+ */
+function parkOnly(code: string, people: Traveler[], days: number, trip: Trip): AccessCalc {
+  const res: AccessCalc = { cost: 0, per: {}, lines: [], missing: code };
+  const groups: Record<string, Traveler[]> = {};
+  people.forEach(t => (groups[hhKey(t)] ||= []).push(t));
+  for (const [hh, ts] of Object.entries(groups)) {
+    const h: Household = trip.households?.[hh] || {};
+    if (h.mode && h.mode !== "car") continue;
+    if (!h.geo) continue;
+    const cars = Math.max(1, h.cars || 1, Math.ceil(ts.length / SEATS));
+    const pk = parkOf(h, PARK_DEFAULT, days, cars);
+    if (!pk.v) continue;
+    res.cost += pk.v;
+    ts.forEach(t => (res.per[t.id] = pk.v / ts.length));
+    res.lines.push({ hh, ap: code, a: { cost: pk.v, total: pk.v, hours: 0, km: null, info: t("acc.parkOnly", { ap: code, v: PARK_DEFAULT, days: tn("n.days", days) }), park: pk.v, parkTotal: pk.v, parkBooked: pk.booked } });
   }
   return res;
 }

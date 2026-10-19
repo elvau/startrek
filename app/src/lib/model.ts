@@ -381,6 +381,8 @@ export interface Household {
   link?: string;
   /** Fahrdienst/Taxi: Preis je Fahrt für alle Fahrzeuge (leer = Richtwert) */
   ride?: number;
+  /** Parken am Abflughafen (#419): entfällt (z. B. kostenlos bei Bekannten) oder gebucht zum Preis für alle Autos; fehlt: Richtwert */
+  parking?: { off?: boolean; paid?: number };
   /** Kasse: gemeinsam (eine Kasse für die Familie) oder jeder Erwachsene zahlt selbst; fehlt: bis 2 Erwachsene gemeinsam */
   kasse?: "joint" | "each";
   /** eigene Anwesenheit statt aus dem Flug: erste Nacht, Abreisetag */
