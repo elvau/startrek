@@ -58,6 +58,23 @@ export function workdayHolidays(list: Holiday[], from: string, to: string, regio
   return holidaysIn(list, from, to, region).filter(h => { const d = new Date(`${h.from}T12:00:00Z`).getUTCDay(); return d >= 1 && d <= 5; });
 }
 
+/** Markierung je Tag im Kalender (#377): Feiertag bzw. Schulferien mit Namen */
+export interface DayMark { pub?: string; school?: string }
+
+/**
+ * Tage mit Feiertagen und Schulferien für die Terminauswahl. Ohne Region nur landesweite Feiertage
+ * (regionale und Schulferien wären sonst falsch); Schulferien nur mit Region.
+ */
+export function calendarMarks(d: HolidayData, region: string | undefined, lang: string): Record<string, DayMark> {
+  const out: Record<string, DayMark> = {};
+  const each = (h: Holiday, f: (day: string) => void) => {
+    for (let t = Date.parse(h.from + "T12:00:00Z"), end = Date.parse(h.to + "T12:00:00Z"), n = 0; t <= end && n < 120; t += 86400000, n++) f(new Date(t).toISOString().slice(0, 10));
+  };
+  for (const h of d.public) if (region ? inRegion(h, region) : h.nationwide) each(h, x => ((out[x] ||= {}).pub = holidayName(h, lang)));
+  if (region) for (const h of d.school) if (inRegion(h, region)) each(h, x => ((out[x] ||= {}).school ??= holidayName(h, lang)));
+  return out;
+}
+
 /** Regionen je Land (public/regions.json) */
 export interface Regions { asOf?: string; countries: Record<string, { code: string; n: Record<string, string> }[]> }
 export const regionName = (rs: Regions | null, code: string, lang: string) => {

@@ -85,6 +85,9 @@ try {
   const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
   p.on("pageerror", e => errors.push(e.message));
   const asked = [];
+  // Feiertage zuhause im Kalender (#377): Deutschland, landesweit
+  await p.route("https://flights.test/holidays?**", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" },
+    body: JSON.stringify({ school: [], public: r.request().url().includes("cc=DE") ? [{ from: "2027-07-20", to: "2027-07-20", n: { de: "Testfeiertag", en: "Test holiday" }, nationwide: true }] : [] }) }));
   await p.route("https://flights.test/flights/search", async r => {
     const body = JSON.parse(r.request().postData());
     asked.push(body);
@@ -380,6 +383,14 @@ try {
   if (!(await p.locator(".editor .chip.on", { hasText: "Wie Flug Klein" }).count())) fail("Editor zeigt Mitfliegen nicht");
   await p.locator(".editor .fs-item", { hasText: "Eigenen Flug suchen" }).click();
   if (!(await m.locator("p", { hasText: "Bisher: mitfliegen wie „Flug Klein“" }).count())) fail("Vergleich zum Mitfliegen fehlt");
+  // Feiertage im Kalender (#377): Wohnort der Familien in Deutschland → landesweiter Feiertag markiert, mit Legende
+  await m.locator(".fs-form .dr-btn").focus(); await p.keyboard.press("Enter");
+  const hol = p.locator(".dr-sheet [data-m='2027-07'] .dr-d.hol");
+  await hol.first().waitFor();
+  if ((await hol.count()) !== 1 || (await hol.getAttribute("title")) !== "Testfeiertag") fail("Feiertag im Kalender: " + (await hol.count()));
+  if (!(await p.locator(".dr-legend", { hasText: "Feiertage" }).count())) fail("Legende Feiertage fehlt");
+  await p.keyboard.press("Escape");
+  log("Terminauswahl: Feiertag zuhause markiert (Punkt, Name beim Darüberfahren), Legende darunter");
   await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-07-18", "2027-07-29");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();

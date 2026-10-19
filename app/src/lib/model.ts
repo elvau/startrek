@@ -122,6 +122,8 @@ export interface Prefs {
   note?: string;
   /** Reisezeiten: Bundesland für Schulferien, bevorzugte Monate (1–12), übliche Nächte */
   holidays?: string;
+  /** Feiertage und Schulferien in der Terminauswahl markieren (#377); fehlt: ja */
+  calHolidays?: boolean;
   months?: number[];
   nightsMin?: number;
   nightsMax?: number;
