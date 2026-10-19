@@ -2322,6 +2322,8 @@ export const fr: Dict = {
   "stay.freeCancel": "annulation gratuite jusqu’au {d}",
   "stay.new": "Nouvel hébergement",
   "stay.over": "Certaines nuits, plus de voyageurs ({g}) que de places ({c}).",
+  "stay.nobody": "D’après les vols et les dates, personne n’est sur place pendant cette période. Le prix est compté pour tous les participants, vérifiez les dates.",
+  "stay.noPrice": "Prix inconnu",
   "stay.partial": "Pas là toutes les nuits : {list}",
   "stay.rating": "{p} % d’avis positifs",
   "stay.upTo.one": "jusqu’à {n} voyageur",

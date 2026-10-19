@@ -2320,6 +2320,8 @@ export const de = {
   "stay.freeCancel": "storniert gratis bis {d}",
   "stay.new": "Neue Unterkunft",
   "stay.over": "In manchen Nächten mehr Gäste ({g}) als Plätze ({c}).",
+  "stay.nobody": "Laut Flügen und Daten ist in diesem Zeitraum niemand vor Ort. Gerechnet wird mit allen Teilnehmenden, bitte Zeitraum prüfen.",
+  "stay.noPrice": "Preis unbekannt",
   "stay.partial": "Nicht alle Nächte da: {list}",
   "stay.rating": "{p} % Bewertung",
   "stay.upTo.one": "bis zu {n} Gast",

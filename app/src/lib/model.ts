@@ -609,6 +609,8 @@ export const isActive = (t: Traveler) => t.active !== false;
 
 /** Wird dieser Bereich mit einzelnen Posten gerechnet? */
 /** leer angelegtes Angebot (ohne Namen, Preis und Herkunft), z. B. von „+ Unterkunft“ */
+/** Angebot ohne verwertbaren Preis (weder Pauschale noch Personenpreis) */
+export const noPrice = (o: Option) => (o.price.mode === "unit" ? !o.price.unit : !o.price.adult && !o.price.child && !o.price.infant);
 export const blankOption = (o: Option) => !o.label && !o.price.unit && !o.price.adult && !o.price.child && !o.legs?.length && !o.source;
 
 /** Angebot aus einer Suche dazu; leere Angebote fliegen dabei raus (tauchten sonst als „Angebot 2“ im Vergleich auf) */
