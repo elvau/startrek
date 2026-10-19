@@ -1226,6 +1226,7 @@ export const es: Dict = {
   "home.eventSub": "Partido, concierto, festival: el viaje a la medida de la fecha",
   "home.foodHh": "por familia",
   "home.lead": "Planifica solo o en grupo, encuentra vuelos y alojamientos y reparte los gastos de forma justa.",
+  "home.heading": "¿Adónde vamos?",
   "home.leaveTrip": "Salir de «{name}»",
   "home.new": "Nuevo viaje",
   "home.newSub": "Solo, en pareja, en familia o con amigos",
