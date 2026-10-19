@@ -349,6 +349,8 @@ export interface Item {
   private?: { place: string; country?: string };
   /** aus einem Hinweis (Einreise & Tipps) übernommen, z. B. „galapagos“; „rental“ = Mietwagen, „road:car“ = eigenes Auto */
   hint?: string;
+  /** Mietwagen (#391): Klasse und Mietzeitraum (JJJJ-MM-TT, days = per Schnellwahl); base = Richtwert Kompakt pro Tag, oneWay = Einwegmiete */
+  rental?: Rental;
 }
 
 /** eigener Eintrag im Tagesplan („Abendessen“, „Ruhetag“, „Zug nach Dubrovnik“) */
@@ -624,3 +626,5 @@ export function addOffer(item: Item, opt: Option) {
 }
 
 export const isDetailed = (trip: Trip, cat: CatKey) => trip.detail?.[cat] ?? trip.items.some(i => i.cat === cat);
+
+export interface Rental { cls?: "small" | "compact" | "mid" | "van" | "premium"; from?: string; to?: string; days?: number; base?: number; oneWay?: boolean }

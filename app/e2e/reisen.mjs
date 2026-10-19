@@ -249,6 +249,20 @@ try {
   await cover.locator(".xc-tg").click();
   await until(async () => (await carCard.locator(".xc summary").innerText()).includes("Vollschutz"), "Vollschutz eingerechnet");
   log("Mietwagen-Checkliste: Kaution ca. 1.600 € (2 Autos) nur Kreditkarte, Selbstbeteiligung, Tank, Hinweis auf die Bedingungen; Vollschutz auf Wunsch eingerechnet");
+  // Klasse und Mietzeitraum (#391): Van mit 9 Sitzen reicht für 7 Personen (1 Auto), 3 Tage per Schnellwahl, zurück zur ganzen Reise
+  const rp = carCard.locator(".rp");
+  if (!(await rp.locator(".rp-cls.on", { hasText: "Kompakt" }).count())) fail("Kompakt nicht vorgewählt");
+  if (!(await rp.locator(".chip.on", { hasText: "ganze Reise" }).count())) fail("ganze Reise nicht vorgewählt");
+  await rp.locator(".rp-cls", { hasText: "Van/Kleinbus" }).click();
+  await until(async () => !(await carCard.innerText()).includes("2 Autos") && (await carCard.innerText()).includes("Kaution ca. 800 €"), "Van: 1 Auto für 7 Personen");
+  if (!(await rp.locator(".rp-how").innerText()).includes("9 Sitze")) fail("Sitze fehlen: " + await rp.locator(".rp-how").innerText());
+  await rp.locator(".chip", { hasText: /^3 Tage$/ }).click();
+  await until(async () => (await rp.locator(".rp-how").innerText()).includes("× 3 Tage"), "3 Miettage");
+  if (!(await rp.locator(".rp-links a", { hasText: "KAYAK" }).count())) fail("Vergleich mit Zeitraum fehlt");
+  await rp.locator(".chip", { hasText: "ganze Reise" }).click();
+  await rp.locator(".rp-cls", { hasText: "Kompakt" }).click();
+  await until(async () => (await carCard.innerText()).includes("2 Autos"), "zurück auf Kompakt: 2 Autos");
+  log("Mietwagen: Klasse Van/Kleinbus (9 Sitze, 1 Auto für 7 Personen), 3 Tage per Schnellwahl, zurück auf ganze Reise und Kompakt");
   await p.locator("#flights .fs-open").click();
   const cm = p.locator(".modal-bg .modal");
   await cm.locator(".fs-kind .chip", { hasText: "Nur Hinflug" }).click();

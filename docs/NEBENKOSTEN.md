@@ -110,6 +110,18 @@ dazu“ (`hint: "rental"`) und ältere Posten mit Auto-Symbol und Namen wie „M
 | Vollschutz ohne Selbstbeteiligung | 20 € pro Tag | nur auf Wunsch eingerechnet |
 | Zusatzfahrer | 8 € pro Tag | nur auf Wunsch eingerechnet |
 
+**Klasse und Mietzeitraum (#391):** am Posten Schnellwahl „ganze Reise · 1 · 3 · 5 Tage“ und Kalender (Abholung bis
+Rückgabe), dazu die Fahrzeugklasse als Faktor auf den Richtwert pro Tag (Kompakt, nach Preisniveau des Ziellandes) mit
+Sitzen je Auto (`app/src/lib/carclass.ts`). Ändert nur den geschätzten Preis; eingetragene Angebote behalten ihren.
+
+| Klasse | Faktor | Sitze |
+|---|---|---|
+| Klein | × 0,8 | 4 |
+| Kompakt | × 1,0 | 5 |
+| Mittel/Kombi | × 1,3 | 5 |
+| Van/Kleinbus | × 1,8 | 9 |
+| Premium | × 2,2 | 5 |
+
 Dazu die Checkliste am Posten (Kaution, Selbstbeteiligung, Tank voll/voll, junge Fahrer, Zusatzfahrer und Auslandsfahrten,
 Schäden fotografieren) mit dem Hinweis, dass die Bedingungen des Vermieters maßgeblich sind. Allgemeine Hinweise, keine
 Versicherungsberatung. Führerscheindauer und „Kreditkarte vorhanden“ kommen mit dem Konto-Assistenten (#160) dazu,
