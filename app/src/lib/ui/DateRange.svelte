@@ -9,6 +9,11 @@
   import { addMonth, daysBetween, monthGrid, pickDay } from "../daterange";
   import { portal } from "./portal";
   import { tick } from "svelte";
+  import { calendarMarks, holidayPlace, HOLIDAY_SOURCE, type DayMark } from "../holidays";
+  import { holidayText, loadHolidays } from "../holidaysApp.svelte";
+  import { dir } from "../directory.svelte";
+  import { app } from "../store.svelte";
+  import { i18n } from "../i18n/index.svelte";
 
   let { from = $bindable(""), to = $bindable(""), label, fromLabel, toLabel, openEnd = false, openEndLabel = "", unit = "nights", min, cls = "", onchange }: {
     from?: string; to?: string; label: string; fromLabel: string; toLabel: string;
@@ -58,6 +63,18 @@
     if (r.done) setTimeout(() => commit(r.from, r.to), 220);
   }
   function keys(e: KeyboardEvent) { if (e.key === "Escape") { e.stopPropagation(); close(); } }
+  // Feiertage und Schulferien zuhause laut Vorlieben (#377), erst beim Öffnen geladen; abschaltbar in den Vorlieben
+  // Land ohne Region: aus den Vorlieben, sonst vom ersten Wohnort der Reise (nur landesweite Feiertage)
+  const homeCc = $derived(dir.prefs?.plzCc || Object.values(app.trip?.households || {}).find(h => h.geo)?.cc || (Object.values(app.trip?.households || {}).some(h => h.geo) ? "DE" : undefined));
+  const hp = $derived(dir.prefs?.calHolidays === false ? undefined : holidayPlace(dir.prefs?.holidays) ?? (homeCc ? { cc: homeCc } : undefined));
+  let marks = $state<Record<string, DayMark>>({});
+  $effect(() => {
+    const p = hp, lang = i18n.lang;
+    if (!open || !p) return;
+    void loadHolidays(p.cc).then(d => { marks = d ? calendarMarks(d, p.region, lang) : {}; });
+  });
+  const anyMark = $derived(Object.keys(marks).length > 0);
+  const markTitle = (m?: DayMark) => [m?.pub, m?.school].filter(Boolean).join(" · ");
   const inSpan = (d: string) => !!draft.from && !!draft.to && d > draft.from && d < draft.to;
 </script>
 
@@ -98,15 +115,19 @@
                 {#if !d}<span></span>
                 {:else}
                   {@const isEnd = d === draft.from || d === draft.to}
+                  {@const mk = marks[d]}
                   <button type="button" class="dr-d" class:on={isEnd} class:mid={inSpan(d)} class:a={d === draft.from && !!draft.to} class:b={d === draft.to}
-                    class:today={d === today} disabled={d < lo}
-                    aria-pressed={isEnd} aria-label={dayShort(d)} onclick={() => tap(d)}>{+d.slice(8, 10)}</button>
+                    class:today={d === today} class:hol={!!mk?.pub} class:sch={!!mk?.school} disabled={d < lo} title={markTitle(mk) || undefined}
+                    aria-pressed={isEnd} aria-label={mk ? `${dayShort(d)}, ${markTitle(mk)}` : dayShort(d)} onclick={() => tap(d)}>{+d.slice(8, 10)}</button>
                 {/if}
               {/each}
             </div>
           </section>
         {/each}
       </div>
+      {#if anyMark && hp}
+        <p class="dr-legend muted small"><i class="dr-lg hol" aria-hidden="true"></i>{t("dr.holidays")}{#if hp.region}<i class="dr-lg sch" aria-hidden="true"></i>{t("dr.school")}{/if} · {hp.region ? holidayText(dir.prefs?.holidays, undefined, i18n.lang) : hp.cc} <span title={HOLIDAY_SOURCE}>ⓘ</span></p>
+      {/if}
       <div class="dr-foot">
         <button type="button" class="linkbtn" disabled={!draft.from} onclick={() => { draft = { from: "", to: "" }; picking = "from"; }}>{t("dr.clear")}</button>
         <span class="muted small">{picking === "to" ? t("dr.hintTo") : t("dr.hintFrom")}</span>

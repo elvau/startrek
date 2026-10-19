@@ -233,6 +233,7 @@
     {#snippet times()}
       {@render lbl(t("prefs.holidays"), "holidays", base?.holidays ? holidayText(base.holidays, regions, i18n.lang) : null)}
       <HolidayPicker value={p.holidays} empty={group ? t("prefs.likeMine") : t("prefs.unset")} onchange={v => set("holidays", v)} />
+      {#if !group}<div class="pv-seg">{@render chip("📅 " + t("prefs.calHolidays"), p.calHolidays === false ? "" : "on", () => set("calHolidays", p.calHolidays === false ? undefined : false))}</div>{/if}
       {@render lbl(t("prefs.months"), "months", base?.months?.length ? monthsText(base.months) : null)}
       <div class="pv-seg pv-months">
         {#each Array.from({ length: 12 }, (_, i) => i + 1) as m}{@render chip(monthName(m), listSt("months", m), () => toggleIn("months", m))}{/each}
