@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { activeOption, ageClass, bestTier, calcItem, parseNum, totals } from "./index";
-import { DEFAULT_SETTINGS, type Item, type Trip } from "../model";
+import { DEFAULT_SETTINGS, noPrice, type Item, type Trip } from "../model";
 
 const family = (): Trip => ({
   id: "t", name: "Test", place: "Makarska", country: "HR",
@@ -95,6 +95,24 @@ describe("Pauschale pro Einheit", () => {
 });
 
 describe("Optionen und Status", () => {
+  it("Angebot ohne Preis ist nicht das günstigste, solange eines einen Preis hat (#449)", () => {
+    const t = family();
+    const it_ = item({ chosen: undefined, options: [
+      { id: "leer", label: "Trivago-Link", price: { mode: "unit", currency: "EUR", unit: 0 }, source: { name: "Trivago", url: "https://www.trivago.de/" } },
+      { id: "p", label: "Hotel", price: { mode: "unit", currency: "EUR", unit: 480 } }
+    ] });
+    expect(activeOption(it_, t)?.id).toBe("p");
+    expect(calcItem(it_, t).net).toBe(480);
+    // nur Angebote ohne Preis: bleibt beim ersten
+    it_.options = [it_.options[0]];
+    expect(activeOption(it_, t)?.id).toBe("leer");
+  });
+  it("erkennt Angebote ohne verwertbaren Preis", () => {
+    expect(noPrice({ id: "a", label: "", price: { mode: "unit", currency: "EUR", unit: 0 } })).toBe(true);
+    expect(noPrice({ id: "a", label: "", price: { mode: "unit", currency: "EUR", unit: 120 } })).toBe(false);
+    expect(noPrice({ id: "a", label: "", price: { mode: "person", currency: "EUR" } })).toBe(true);
+    expect(noPrice({ id: "a", label: "", price: { mode: "person", currency: "EUR", child: 20 } })).toBe(false);
+  });
   const opts = [
     { id: "ew", label: "Eurowings", price: { mode: "person" as const, currency: "EUR", adult: 389 } },
     { id: "fr", label: "Ryanair", price: { mode: "person" as const, currency: "EUR", adult: 274 } }
