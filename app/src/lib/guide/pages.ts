@@ -23,7 +23,17 @@ export interface GuidePage {
   faq: GuideFaq[];
   /** Beschriftung der App-Stelle, wo es losgeht (Kapitel oder Knopf) */
   where: string;
+  /** Emoji wie in der App (Überschrift, Navigation) */
+  emoji: string;
+  /** Echte Bilder aus der App (shots/<img>.jpg, Lage der Markierungen in shots/spots.json) */
+  shots?: GuideShot[];
+  /** Mini-Demo zum Ausprobieren */
+  demo?: "status" | "split";
 }
+/** Screenshot mit nummerierten Markierungen; pins: Schlüssel aus spots.json → Erklärung (Reihenfolge = Nummer) */
+export interface GuideShot { img: string; alt: string; caption: string; pins: Record<string, string> }
+/** Lage der Markierungen je Bild in Prozent (von app/e2e/anleitung-shots.mjs erzeugt) */
+export type GuideSpots = Record<string, { w: number; h: number; spots: { key: string; x: number; y: number }[] }>;
 
 export const GUIDE_STAND = "Oktober 2026";
 
@@ -39,7 +49,7 @@ export const GUIDE: GuidePage[] = [
       "Die Reise ist in Kapitel gegliedert, die du von oben nach unten durchgehst: Wer fährt mit, Abheben, Ankommen, Unterwegs, Erleben, Alles andere, Tag für Tag und Wer zahlt was."
     ],
     steps: [
-      "Auf der Startseite „Neue Reise“ antippen. Das geht allein, zu zweit, mit Familie oder Freunden.",
+      "Auf der Startseite „🧳 Neue Reise“ antippen. Das geht allein, zu zweit, mit Familie oder Freunden.",
       "Beim ersten Start fragt dich ein kurzer Assistent nach deinen Vorlieben (Wohnort, Auto, Essen, Führerschein). Das ist freiwillig und lässt sich später in den Vorlieben ändern. Mit „Später“ überspringst du es.",
       "Gib der Reise einen Namen. Ziel und Reisedaten kannst du auch erst später eintragen, eine Reise darf zunächst „noch ohne Ziel und Daten“ sein.",
       "Trag im Kapitel „Wer fährt mit“ ein, wer dabei ist (siehe Seite „Reisende und Familien“).",
@@ -57,7 +67,12 @@ export const GUIDE: GuidePage[] = [
       { q: "Kostet Split&Fly etwas?", a: "Nein, Split&Fly ist kostenlos. Die Suche nach Flügen und Unterkünften dient als Hilfe für realistische Preise, gebucht wird beim Anbieter." },
       { q: "Muss ich schon alles wissen?", a: "Nein. Eine Reise kann ohne Ziel und Daten beginnen. Trag zuerst grobe Beträge ein und ersetze sie später durch echte Preise." }
     ],
-    where: "Startseite → Neue Reise"
+    where: "Startseite → Neue Reise",
+    emoji: "🧳",
+    shots: [{ img: "home", alt: "Startseite von Split&Fly mit den Karten Neue Reise, Zu einem Event, Mit KI planen und Reiseideen und der Reise Kroatien mit Freunden", caption: "Die Startseite: von hier aus startest du, setzt eine Reise fort oder holst dir Ideen.", pins: {
+      neu: "🧳 Neue Reise: hier geht es los. Allein, zu zweit, mit Familie oder Freunden.",
+      reise: "Deine Reisen auf einen Blick: Ziel, Zeitraum, wer mitfährt, was gebucht ist und die Kosten gesamt und pro Person. Antippen öffnet die Reise.",
+      fuss: "✨ Neues & Ausblick: was neu ist und was als Nächstes kommt." } }]
   },
   {
     slug: "reisende",
@@ -86,7 +101,12 @@ export const GUIDE: GuidePage[] = [
       { q: "Sieht jede Familie alle Kosten?", a: "In der Abrechnung siehst du je Familie die Summe und tippst für die Einzelheiten auf die Zeile. Wer die Reise teilt, legt über die Rolle fest, was die anderen dürfen." },
       { q: "Was ist, wenn jemand erst später dazukommt?", a: "Gib dieser Person eigene Daten für An- und Abreise. Unterkunft, Verpflegung und Anteile richten sich dann nach den Nächten, die sie wirklich da ist." }
     ],
-    where: "Kapitel „Wer fährt mit“"
+    where: "Kapitel „Wer fährt mit“",
+    emoji: "👥",
+    shots: [{ img: "trav", alt: "Kapitel Wer fährt mit mit zwei Familien, Anreise und Anwesenheit, Termin finden und Abstimmungen", caption: "Das Kapitel „Wer fährt mit“ mit zwei Familien. Die Reise im Beispiel hat sieben Personen.", pins: {
+      familien: "Je Familie: Wohnort für die Anreise, Auto oder Bahn und An- und Abreise. „aus dem Flug“ heißt: Es gelten die Zeiten des Flugs.",
+      termin: "📅 Termin finden: Von, Bis und Nächte angeben, „Loslegen“ sucht passende Zeiten.",
+      abst: "🗳 Abstimmungen: wenn ihr euch nicht einig seid, stimmt ihr hier ab." } }]
   },
   {
     slug: "fluege",
@@ -98,7 +118,7 @@ export const GUIDE: GuidePage[] = [
       "Im Kapitel „Abheben“ sammelst du Flüge und Anreise. Du kannst Flüge von Hand eintragen oder über die Suche Preise holen. Gebucht wird nicht in Split&Fly, sondern beim Anbieter; die App hilft dir, realistische Preise zu sehen und zu vergleichen."
     ],
     steps: [
-      "Im Kapitel „Abheben“ einen Flug hinzufügen oder die Suche öffnen.",
+      "Im Kapitel „Abheben“ einen Flug hinzufügen oder „✈ Flüge suchen“ öffnen.",
       "Strecke, Datum, Zeiten und Preis eintragen, bei Bedarf getrennt für Erwachsene und Kinder, dazu das Gepäck. Split&Fly rechnet auf alle Mitfliegenden hoch.",
       "Mit der Suche findest du echte Angebote: Abflughafen, Ziel und Zeitraum wählen, Treffer ansehen, passenden Flug übernehmen.",
       "Mehrere Angebote für denselben Flug bekommen die Buchstaben A, B, C. Im Vergleich siehst du Hin- und Rückflug, Umstiege, Gepäck und die Kosten der ganzen Reise pro Person nebeneinander.",
@@ -115,7 +135,12 @@ export const GUIDE: GuidePage[] = [
       { q: "Warum weicht der Preis beim Anbieter ab?", a: "Flugpreise ändern sich laufend. Der gezeigte Preis ist der Stand der Suche, nicht garantiert." },
       { q: "Geht das auch ohne Suche?", a: "Ja. Du kannst jeden Flug von Hand eintragen und die Preise später ersetzen." }
     ],
-    where: "Kapitel „Abheben“"
+    where: "Kapitel „Abheben“",
+    emoji: "✈️",
+    shots: [{ img: "flights", alt: "Kapitel Abheben mit gewähltem Flug und zwei Angeboten A und B im Vergleich", caption: "„Abheben“: der gewählte Flug oben, darunter die Angebote A und B im Vergleich.", pins: {
+      modus: "Einfach oder Detailliert: ein Betrag für alle Flüge oder einzelne Flüge mit Zeiten und Angeboten.",
+      suche: "✈ Flüge suchen: holt echte Angebote und zeigt Preise mit dem Datum der Abfrage.",
+      vergleich: "Angebote vergleichen: Buchstaben A, B, C mit Zeiten, Umstiegen, Anreise zum Flughafen und den Mehrkosten der ganzen Reise pro Person." } }]
   },
   {
     slug: "unterkunft",
@@ -127,7 +152,7 @@ export const GUIDE: GuidePage[] = [
       "Das Kapitel „Ankommen“ ist für Hotels, Ferienwohnungen und Häuser. Du trägst den Zeitraum ein, Split&Fly prüft, ob die Belegung passt, und zeigt dir pro Person und Nacht, was es kostet. Bei einer Rundreise legst du mehrere Stationen an."
     ],
     steps: [
-      "Im Kapitel „Ankommen“ eine Unterkunft hinzufügen oder „Unterkunft suchen“ wählen.",
+      "Im Kapitel „Ankommen“ eine Unterkunft hinzufügen oder „🛏 Unterkunft suchen“ wählen.",
       "Ort, Art der Unterkunft (ganze Unterkunft, Hotel …), Zeitraum, Gäste und Zimmer angeben. Bei einer Rundreise wählst du die Station.",
       "Treffer ansehen, filtern (zum Beispiel nach Ausstattung) und passende Angebote übernehmen.",
       "Der Preis lässt sich als Preis pro Nacht, pro Person und Nacht oder als Gesamtpreis eintragen.",
@@ -136,14 +161,19 @@ export const GUIDE: GuidePage[] = [
     ],
     tips: [
       "Der Tagesplan warnt, wenn Nächte ohne Unterkunft sind oder doppelt gebucht wurden.",
-      "Nach der Landung ohne Anschluss kannst du direkt „Unterkunft am Flughafen suchen“.",
+      "Nach der Landung ohne Anschluss kannst du direkt „Unterkunft am Flughafen suchen“. Für eine Unterkunft, die du schon hast, gibt es „🏠 Privat“.",
       "Wo die Suche es weiß, siehst du „kostenlos stornierbar“. Für die Buchung gehst du zum Anbieter."
     ],
     faq: [
       { q: "Was ist, wenn die Gruppe nicht in ein Zimmer passt?", a: "Die Belegung berücksichtigt die maximale Gästezahl und die Zimmer. Passt es nicht, teile die Gruppe auf mehrere Unterkünfte auf." },
       { q: "Kann ich auch eine private Unterkunft eintragen?", a: "Ja. Du kannst jede Unterkunft von Hand eintragen, auch eine, die du nicht über die Suche findest, zum Beispiel ein Haus von Bekannten." }
     ],
-    where: "Kapitel „Ankommen“"
+    where: "Kapitel „Ankommen“",
+    emoji: "🛏",
+    shots: [{ img: "stay", alt: "Kapitel Ankommen mit dem Plan Wer ist wann wo und einer gebuchten Unterkunft", caption: "„Ankommen“: oben der Plan, wer wann wo schläft, darunter die gebuchte Unterkunft.", pins: {
+      suche: "🛏 Unterkunft suchen. Daneben: 🏠 Privat für eine Unterkunft, die du schon hast, und 🗺 Karte.",
+      status: "Der Status der Unterkunft. Gebuchte Posten zählen als fest.",
+      aufteilung: "Die Aufteilung: Was jede Familie für die Nächte zahlt, die sie wirklich da ist." } }]
   },
   {
     slug: "kosten",
@@ -172,7 +202,17 @@ export const GUIDE: GuidePage[] = [
       { q: "Zählt eine Idee schon in der Summe?", a: "Ja, mit dem gewählten oder dem günstigsten Angebot. Verworfene Posten zählen nicht." },
       { q: "Kann ich zwischen Einfach und Detailliert wechseln?", a: "Jederzeit. Ein Betrag wird beim Umschalten zum ersten Posten, die Summe der Posten wird zum Betrag. Ausgeblendete Posten bleiben gespeichert." }
     ],
-    where: "Kapitel „Unterwegs“, „Erleben“ und „Alles andere“"
+    where: "Kapitel „Unterwegs“, „Erleben“ und „Alles andere“",
+    emoji: "🎟",
+    demo: "status",
+    shots: [
+      { img: "transport", alt: "Kapitel Unterwegs mit dem Posten Mietwagen im Status Idee", caption: "„Unterwegs“: ein Mietwagen als Idee, Preis pro Einheit.", pins: {
+        status: "Der Status: hier noch „Idee“. Antippen und ändern, sobald du dich entscheidest.",
+        posten: "+ Posten: fügt weitere Kosten hinzu." } },
+      { img: "attractions", alt: "Kapitel Erleben mit zwei Ausflügen, Bootstour gewählt und Krka-Wasserfälle als Idee", caption: "„Erleben“: Ausflüge mit Preisen für Erwachsene, Kinder und Kleinkinder und der Aufteilung auf die Familien.", pins: {
+        tabs: "🎡 Touren & Tickets suchen, 🎟 Events vor Ort, Events zum Reisetermin und die Karte.",
+        status: "Gewählt: der Favorit steht fest, du vergleichst nicht mehr.",
+        aufteilung: "Nur wer dabei ist, zahlt mit: Hase hat zwei von drei Personen beim Ausflug." } }]
   },
   {
     slug: "tagesplan",
@@ -198,7 +238,12 @@ export const GUIDE: GuidePage[] = [
       { q: "Warum bleibt der Plan leer?", a: "Er füllt sich, sobald Daten da sind: Reisedaten, Flugzeiten oder Unterkünfte mit Zeitraum. Ohne sie weiß die App nicht, wer wann wo ist." },
       { q: "Kann ich den Plan ausdrucken?", a: "Die Reiseübersicht lässt sich als PDF erstellen oder drucken. Du findest sie in der Reise unter „Reiseübersicht“." }
     ],
-    where: "Kapitel „Tag für Tag“"
+    where: "Kapitel „Tag für Tag“",
+    emoji: "📅",
+    shots: [{ img: "plan", alt: "Kapitel Tag für Tag mit Flügen, Check-in und Ausflügen an den einzelnen Tagen", caption: "„Tag für Tag“: Flüge, Check-in und Ausflüge sortieren sich von selbst in die Tage.", pins: {
+      kalender: "📅 Tagesplan in den Kalender: Flüge, Check-in und -out, Events und Einträge als .ics-Datei.",
+      tag: "Jeder Tag zeigt, was passiert. Flüge, Unterkünfte und Erlebnisse kommen automatisch dazu.",
+      eintrag: "+ Eintrag: eigene Einträge wie „Abendessen“ oder „Ruhetag“." } }]
   },
   {
     slug: "abrechnung",
@@ -225,7 +270,13 @@ export const GUIDE: GuidePage[] = [
       { q: "Wer hat was ausgelegt?", a: "Split&Fly zeigt, was jede Familie insgesamt tragen soll. Das Verrechnen von Auslagen untereinander übernimmst du außerhalb der App." },
       { q: "Kann ich die Abrechnung weitergeben?", a: "Ja, als PDF oder gedruckt aus der Reiseübersicht. Wer die Reise teilt, sieht sie ohnehin live in der App." }
     ],
-    where: "Kapitel „Wer zahlt was“"
+    where: "Kapitel „Wer zahlt was“",
+    emoji: "🧾",
+    demo: "split",
+    shots: [{ img: "split", alt: "Kapitel Wer zahlt was mit der Familie Klein: Summe, fest und offen, Anteil je Person und die Posten", caption: "„Wer zahlt was“: je Familie die Summe, der Anteil an der Reise, fest und offen und die einzelnen Posten.", pins: {
+      familie: "Die Familie mit Summe, Anteil an der Reise und dem Betrag pro Person.",
+      fest: "Fest und offen: grün ist gebucht oder bezahlt, lila ist noch in Planung.",
+      zeile: "Die Posten je Kapitel. Antippen zeigt die Einzelheiten." } }]
   },
   {
     slug: "gemeinsam",
@@ -254,7 +305,11 @@ export const GUIDE: GuidePage[] = [
       { q: "Kann ich eine geteilte Reise verlassen?", a: "Ja, im Reisemenü unter „Reise verlassen“. Du siehst die Reise danach nicht mehr. Besitzer können Mitglieder verwalten." },
       { q: "Brauchen die anderen ein Konto?", a: "Zum Mitplanen ja. Das Anmelden geht in wenigen Sekunden mit Google oder per Link in der E-Mail." }
     ],
-    where: "Reise → Teilen und Abstimmungen"
+    where: "Reise → Teilen und Abstimmungen",
+    emoji: "🗳",
+    shots: [{ img: "trav", alt: "Kapitel Wer fährt mit mit dem Bereich Termin finden und den Abstimmungen", caption: "Abstimmungen und Terminfindung stehen unten im Kapitel „Wer fährt mit“.", pins: {
+      termin: "📅 Termin finden: wann passt es allen?",
+      abst: "🗳 Abstimmung starten: Frage, Möglichkeiten, Art und optional eine Frist." } }]
   },
   {
     slug: "ideen-und-ki",
@@ -266,9 +321,9 @@ export const GUIDE: GuidePage[] = [
       "Nicht jede Reise beginnt bei null. Auf der Startseite findest du drei Abkürzungen: Reiseideen, den KI-Planer und Reisen zu einem Event."
     ],
     steps: [
-      "Reiseideen: Auf der Startseite „Reiseideen“ öffnen und eine fertig gerechnete Gruppenreise übernehmen. Ziel, Gruppe und Kosten sind schon eingetragen, die echten Preise suchst du danach.",
+      "Reiseideen: Auf der Startseite „🧭 Reiseideen“ öffnen und eine fertig gerechnete Gruppenreise übernehmen. Ziel, Gruppe und Kosten sind schon eingetragen, die echten Preise suchst du danach.",
       "Mit KI planen (Beta): Beschreibe deine Wunschreise in ein paar Sätzen. Die KI schlägt Ziele und Varianten vor, die du prüfst und übernimmst.",
-      "Zu einem Event: Bei Spiel, Konzert oder Festival planst du die Reise passend zum Termin.",
+      "Zu einem Event (🎟): Bei Spiel, Konzert oder Festival planst du die Reise passend zum Termin.",
       "Die Vorschläge landen als Reise bei dir. Von da an bearbeitest du alles wie gewohnt."
     ],
     tips: [
@@ -281,7 +336,12 @@ export const GUIDE: GuidePage[] = [
       { q: "Ist die KI-Planung kostenlos?", a: "Ja, sie ist als Beta enthalten. Pro Tag gibt es eine begrenzte Zahl an Anfragen." },
       { q: "Sind die Reiseideen Angebote?", a: "Nein. Es sind Richtwerte mit Spannen pro Person. Echte Preise ermittelst du danach in deiner eigenen Reise." }
     ],
-    where: "Startseite → Reiseideen, Mit KI planen, Zu einem Event"
+    where: "Startseite → Reiseideen, Mit KI planen, Zu einem Event",
+    emoji: "✨",
+    shots: [{ img: "home", alt: "Startseite mit den Abkürzungen Zu einem Event, Mit KI planen und Reiseideen", caption: "Drei Abkürzungen auf der Startseite.", pins: {
+      event: "🎟 Zu einem Event: Spiel, Konzert oder Festival, die Reise passend zum Termin.",
+      ki: "Mit KI planen (Beta): beschreibe deine Wunschreise, die KI macht Vorschläge.",
+      ideen: "🧭 Reiseideen: fertig gerechnete Gruppenreisen übernehmen." } }]
   },
   {
     slug: "app-und-konto",
@@ -293,7 +353,7 @@ export const GUIDE: GuidePage[] = [
       "Split&Fly läuft im Browser und lässt sich wie eine App installieren. Sie funktioniert auch ohne Netz und gleicht beim nächsten Mal ab."
     ],
     steps: [
-      "App installieren: Unten auf der Startseite „App installieren“ wählen (wo der Browser es anbietet). Am iPhone: Teilen → „Zum Home-Bildschirm“.",
+      "App installieren: Unten auf der Startseite „📲 App installieren“ wählen (wo der Browser es anbietet). Am iPhone: Teilen → „Zum Home-Bildschirm“.",
       "Anmelden: Mit Google oder per E-Mail-Link. Danach liegen deine Reisen in der Cloud und sind auf allen Geräten da.",
       "Sprache und Währung wechselst du im Menü „Mehr“. Split&Fly gibt es auf Deutsch, Englisch, Spanisch, Französisch, Polnisch, Russisch und Arabisch (von rechts nach links).",
       "Hell oder dunkel stellst du ebenfalls im Menü ein, sonst folgt die App deinem Gerät.",
@@ -309,31 +369,132 @@ export const GUIDE: GuidePage[] = [
       { q: "Gehen meine Reisen verloren, wenn ich mich nicht anmelde?", a: "Ohne Konto liegen sie nur in diesem Browser. Löschst du die Browserdaten, sind sie weg. Mit Konto sind sie gesichert." },
       { q: "Wo sehe ich, was gespeichert wird?", a: "Im Konto unter „Meine Daten“. Dort bekommst du die Auskunft zum Ausdrucken oder als vollständige Datei." }
     ],
-    where: "Startseite → Fußzeile, Menü „Mehr“"
+    where: "Startseite → Fußzeile, Menü „Mehr“",
+    emoji: "📲",
+    shots: [{ img: "home", alt: "Startseite mit Fußzeile: Neues und Ausblick, Anmelden, Anleitung, Reiseideen und Rechtliches", caption: "Die Fußzeile der Startseite.", pins: {
+      fuss: "✨ Neues & Ausblick. Daneben, wo es der Browser anbietet: 📲 App installieren, und „Anmelden oder Konto anlegen“." } }]
   }
 ];
 
 const LEARN = [
-  ["Reise", "Ein Vorhaben mit Reisenden, Zeitraum und Posten."],
-  ["Haushalt", "Wer gemeinsam zahlt, zum Beispiel eine Familie."],
-  ["Posten", "Eine Kostenstelle: Flug, Unterkunft, Transport, Erlebnis oder Sonstiges."],
-  ["Angebot", "Ein konkreter Vorschlag für einen Posten, mit Buchstaben A, B, C zum Vergleichen."],
-  ["Status", "Idee, Gewählt, Gebucht, Bezahlt oder Verworfen."],
-  ["Fest und offen", "Fest ist gebucht und bezahlt, offen ist noch in Planung."]
+  ["🧳", "Reise", "Ein Vorhaben mit Reisenden, Zeitraum und Posten."],
+  ["👥", "Haushalt", "Wer gemeinsam zahlt, zum Beispiel eine Familie."],
+  ["🧾", "Posten", "Eine Kostenstelle: Flug, Unterkunft, Transport, Erlebnis oder Sonstiges."],
+  ["🔤", "Angebot", "Ein konkreter Vorschlag für einen Posten, mit Buchstaben A, B, C zum Vergleichen."],
+  ["🚦", "Status", "Idee, Gewählt, Gebucht, Bezahlt oder Verworfen."],
+  ["🔒", "Fest und offen", "Fest ist gebucht und bezahlt, offen ist noch in Planung."]
 ];
 
 export type GuideArt = (slug: string, cls?: string) => string;
 const noArt: GuideArt = () => "";
 
 const EXTRA_CSS = `
-.steps{counter-reset:s;list-style:none;padding:0;margin:0}.steps li{counter-increment:s;position:relative;padding:4px 0 4px 44px;margin:10px 0;min-height:34px}
-.steps li::before{content:counter(s);position:absolute;left:0;top:2px;width:30px;height:30px;border-radius:50%;background:var(--a);color:#fff;font-weight:700;display:grid;place-items:center;font-size:15px}
+.wrap{max-width:820px}
+.topics{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;margin:0 -16px 8px;padding-inline:16px;scrollbar-width:thin}
+.topics a{flex:none;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600;white-space:nowrap}
+.topics a[aria-current]{background:var(--a);border-color:var(--a);color:#fff}
+.topics a .ck{margin-left:4px;color:#2E7D4F}.topics a[aria-current] .ck{color:#fff}
+h1 .em{margin-right:8px}
+.steps{list-style:none;padding:0;margin:0}.steps li{margin:8px 0}
+.steps label{display:flex;gap:12px;align-items:flex-start;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;transition:background .2s,border-color .2s}
+.steps label:hover{border-color:var(--a)}
+.steps input{position:absolute;opacity:0;pointer-events:none}
+.steps .n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--a);color:#fff;font-weight:700;display:grid;place-items:center;font-size:15px;transition:background .2s}
+.steps input:checked+.n{background:#2E7D4F}.steps input:checked+.n::after{content:"✓"}.steps input:checked+.n b{display:none}
+.steps input:checked~.t{color:var(--mute);text-decoration:line-through;text-decoration-color:#9fb0c8}
+.steps input:focus-visible+.n{outline:3px solid #9CC8F5;outline-offset:2px}
+.prog{display:flex;align-items:center;gap:12px;margin:8px 0 4px;font-size:14px;color:var(--mute)}
+.prog .bar{flex:1;height:8px;border-radius:99px;background:#DCE3EE;overflow:hidden}.prog .bar i{display:block;height:100%;width:0;background:#2E7D4F;border-radius:99px;transition:width .35s}
+.prog button{border:0;background:none;color:var(--link);font:inherit;cursor:pointer;padding:0}
+.hooray{display:none;background:#E2F2E8;color:#1F5C38;border-radius:14px;padding:12px 16px;margin:10px 0;font-weight:600}.hooray.on{display:block}
 .where{display:inline-block;background:#E4EDFB;color:#1B4FA3;border-radius:999px;font-size:14px;font-weight:600;padding:3px 12px;margin:0 0 14px}
-.tipbox{background:#EEF5FE;border:1px solid var(--line);border-radius:14px;padding:6px 18px;margin:16px 0}
+.shot{margin:18px 0 22px}.shot .frame{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:#fff;box-shadow:0 10px 30px -14px rgba(15,27,45,.35)}
+.shot img{display:block;width:100%;height:auto}
+.shot figcaption{font-size:14px;color:var(--mute);margin:8px 2px 0}
+.pin{position:absolute;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:50%;border:3px solid #fff;background:#E5484D;color:#fff;font:700 14px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.35);padding:0;transition:transform .15s}
+.pin:hover,.pin.on{transform:translate(-50%,-50%) scale(1.18);background:#C43338}
+.pin::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid #E5484D;opacity:0;animation:ping 2.4s ease-out infinite}
+.pin:nth-of-type(2)::after{animation-delay:.4s}.pin:nth-of-type(3)::after{animation-delay:.8s}.pin:nth-of-type(4)::after{animation-delay:1.2s}
+@keyframes ping{0%{opacity:.7;transform:scale(.7)}70%,100%{opacity:0;transform:scale(1.5)}}
+@media (prefers-reduced-motion:reduce){.pin::after{animation:none}}
+.legend{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:6px}
+.legend li{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:8px 10px;margin:0;cursor:pointer;border:1px solid transparent;transition:background .15s}
+.legend li b{flex:none;width:24px;height:24px;border-radius:50%;background:#E5484D;color:#fff;display:grid;place-items:center;font-size:13px}
+.legend li.on{background:#FDECEC;border-color:#F3B9BB}
+.tipbox{background:#EEF5FE;border:1px solid var(--line);border-radius:14px;padding:6px 18px 10px;margin:18px 0}
+.tipbox ul{list-style:none;padding:0}.tipbox li{padding-left:28px;position:relative}.tipbox li::before{content:"💡";position:absolute;left:0}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px;margin:8px 0}
+details[open]{border-color:var(--a)}summary{cursor:pointer;font-weight:600;padding:12px 0;list-style:none;display:flex;gap:10px;align-items:center}
+summary::-webkit-details-marker{display:none}summary::before{content:"❓"}details[open] summary::before{content:"💬"}
+details p{margin:0 0 12px;color:var(--ink)}
+.demo{background:linear-gradient(180deg,#FFF6E3,#FFFBF2);border:1px solid #F0DDB4;border-radius:16px;padding:16px 18px;margin:22px 0}
+.demo h2{margin-top:0}.demo small{display:block;margin-top:10px}
+.demo .row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:10px 0}
+.demo button.pillb{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;font:600 14px system-ui,sans-serif;cursor:pointer;color:var(--ink)}
+.demo button.pillb[data-s="idea"]{background:#ECE9FB;color:#6B5BD2}.demo button.pillb[data-s="chosen"]{background:#FBEFD9;color:#A0660B}
+.demo button.pillb[data-s="booked"]{background:#E2F2E8;color:#2E7D4F}.demo button.pillb[data-s="paid"]{background:#2E7D4F;color:#fff}
+.demo .line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #EFE3C4}.demo .line:first-of-type{border-top:0}
+.demo .sums{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.demo .sums span{flex:1;min-width:130px;border-radius:12px;padding:8px 12px;background:#fff;border:1px solid var(--line)}
+.demo .sums b{display:block;font-size:22px}
+.demo .fest b{color:#2E7D4F}.demo .open b{color:#6B5BD2}
+.demo input[type=number]{width:74px;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:10px}
+.demo input[type=range]{width:160px;accent-color:#2F6FDB}
+.demo .fam{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.demo .fam .who{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:14px}
+.demo .fam .who label{display:flex;gap:6px;align-items:center}.demo .fam .who input{width:56px}
+.demo .fam .amt{font-size:20px;font-weight:700;margin-top:4px}
 .pn{display:flex;justify-content:space-between;gap:12px;margin:34px 0 0}.pn a{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-decoration:none;color:var(--ink);font-weight:600}
 .pn a span{display:block;font-weight:400;font-size:14px;color:var(--mute)}.pn a+a{text-align:right}
-.toc a{counter-increment:t}.toc a b{color:var(--a)}
-dl.words dt{margin-top:8px}`;
+.hello{background:linear-gradient(135deg,#E4EDFB,#FDF0E4);border-radius:16px;padding:16px 18px;margin:0 0 18px}.hello p{margin:4px 0}
+.list .em{font-size:22px;font-style:normal;margin-right:2px}.list .st{margin-left:auto;flex:none;font-size:13px;font-weight:600;color:#2E7D4F}
+.list a.done{border-color:#B7DEC5}
+dl.words dt{margin-top:10px}`;
+
+const JS = `(function(){
+var K="sf-guide",d=document;
+function load(){try{return JSON.parse(localStorage.getItem(K)||"{}")}catch(e){return{}}}
+function save(o){try{localStorage.setItem(K,JSON.stringify(o))}catch(e){}}
+var st=load();
+function count(slug){var a=st[slug]||[];return a.filter(Boolean).length}
+// Navigation und Übersicht: erledigte Themen
+d.querySelectorAll("[data-slug]").forEach(function(el){var n=+el.getAttribute("data-n"),c=count(el.getAttribute("data-slug"));
+  if(el.classList.contains("st")){if(c)el.textContent=c>=n?"✓ fertig":c+" von "+n}
+  else if(c>=n&&n){var s=d.createElement("span");s.className="ck";s.textContent="✓";el.appendChild(s)}
+  if(c>=n&&n&&el.parentNode&&el.parentNode.classList)el.parentNode.classList.add("done")});
+// Schritte abhaken
+var steps=d.querySelector(".steps");
+if(steps){var slug=steps.getAttribute("data-slug"),boxes=[].slice.call(steps.querySelectorAll("input")),bar=d.querySelector(".prog .bar i"),cnt=d.querySelector(".prog .cnt"),hoo=d.querySelector(".hooray");
+  var saved=st[slug]||[];boxes.forEach(function(b,i){b.checked=!!saved[i]});
+  function upd(){var c=boxes.filter(function(b){return b.checked}).length;bar.style.width=(c/boxes.length*100)+"%";cnt.textContent=c+" von "+boxes.length+" erledigt";hoo.classList.toggle("on",c===boxes.length)}
+  boxes.forEach(function(b,i){b.addEventListener("change",function(){st=load();st[slug]=boxes.map(function(x){return x.checked});save(st);upd()})});
+  var rs=d.querySelector(".prog button");if(rs)rs.addEventListener("click",function(){boxes.forEach(function(b){b.checked=false});st=load();st[slug]=[];save(st);upd()});
+  upd()}
+// Markierungen auf Screenshots
+d.querySelectorAll(".shot").forEach(function(fig){
+  var pins=[].slice.call(fig.querySelectorAll(".pin")),lis=[].slice.call(fig.querySelectorAll(".legend li"));
+  function on(i,v){pins[i]&&pins[i].classList.toggle("on",v);lis[i]&&lis[i].classList.toggle("on",v)}
+  pins.forEach(function(p,i){["mouseenter","focus"].forEach(function(e){p.addEventListener(e,function(){on(i,true)})});["mouseleave","blur"].forEach(function(e){p.addEventListener(e,function(){on(i,false)})});
+    p.addEventListener("click",function(){lis[i]&&lis[i].scrollIntoView({block:"nearest",behavior:"smooth"});lis.forEach(function(l,j){on(j,j===i)})})});
+  lis.forEach(function(l,i){l.addEventListener("mouseenter",function(){on(i,true)});l.addEventListener("mouseleave",function(){on(i,false)});l.addEventListener("click",function(){pins.forEach(function(_,j){on(j,j===i)})})})});
+// Demo Status
+var ds=d.querySelector("[data-demo=status]");
+if(ds){var ORDER=["idea","chosen","booked","paid"],NAME={idea:"Idee",chosen:"Gewählt",booked:"Gebucht",paid:"Bezahlt"};
+  var lines=[].slice.call(ds.querySelectorAll(".line"));
+  function eur(n){return n.toLocaleString("de-DE")+" €"}
+  function sum(){var f=0,o=0;lines.forEach(function(l){var s=l.querySelector("button").getAttribute("data-s"),v=+l.getAttribute("data-v");if(s==="booked"||s==="paid")f+=v;else o+=v});
+    ds.querySelector(".fest b").textContent=eur(f);ds.querySelector(".open b").textContent=eur(o)}
+  lines.forEach(function(l){var b=l.querySelector("button");b.addEventListener("click",function(){var s=ORDER[(ORDER.indexOf(b.getAttribute("data-s"))+1)%4];b.setAttribute("data-s",s);b.textContent=NAME[s];sum()})});
+  sum()}
+// Demo Abrechnung
+var dp=d.querySelector("[data-demo=split]");
+if(dp){var tot=dp.querySelector("[name=tot]"),kid=dp.querySelector("[name=kid]"),kv=dp.querySelector(".kv");
+  var fams=[].slice.call(dp.querySelectorAll(".fam"));
+  function calc(){var t=+tot.value||0,k=kid.value/100;kv.textContent=kid.value+" %";
+    var w=fams.map(function(f){var a=+f.querySelector("[name=a]").value||0,c=+f.querySelector("[name=c]").value||0;return a+c*k}),sw=w.reduce(function(x,y){return x+y},0);
+    fams.forEach(function(f,i){var v=sw?t*w[i]/sw:0,n=(+f.querySelector("[name=a]").value||0)+(+f.querySelector("[name=c]").value||0);
+      f.querySelector(".amt").textContent=Math.round(v).toLocaleString("de-DE")+" €";f.querySelector(".pp").textContent=n?" · "+Math.round(v/n).toLocaleString("de-DE")+" € pro Person":""})}
+  dp.addEventListener("input",calc);calc()}
+})();`;
 
 function shell(o: { title: string; description: string; path: string; body: string; ld: object[]; root: string }): string {
   const url = `${SITE}/${o.path}`;
@@ -361,26 +522,63 @@ ${o.ld.map(x => `<script type="application/ld+json">${JSON.stringify(x)}</script
 <div class="wrap">
 <header><a href="${o.root}"><img src="${o.root}brand/wordmark.svg" alt="Split&amp;Fly" width="140" height="35"></a><a class="cta cta-top" href="${o.root}">Zur App</a></header>
 ${o.body}
-<footer><p>Split&amp;Fly – Gruppenreisen planen und Kosten fair aufteilen. Kostenlos, in 7 Sprachen. Diese Anleitung ist auf Deutsch, Stand ${GUIDE_STAND}.</p>
+<footer><p>Split&amp;Fly – Gruppenreisen planen und Kosten fair aufteilen. Kostenlos, in 7 Sprachen. Diese Anleitung ist auf Deutsch, Stand ${GUIDE_STAND}. Die Bilder zeigen eine Beispielreise.</p>
 <p><a href="${o.root}anleitung/">Alle Themen der Anleitung</a> · <a href="${o.root}reise/">Reiseideen</a> · <a href="${o.root}impressum.html">Impressum</a> · <a href="${o.root}datenschutz.html">Datenschutz</a></p></footer>
 </div>
+<script>${JS}</script>
 </body>
 </html>
 `;
 }
 
-export function renderGuidePage(p: GuidePage, all: GuidePage[] = GUIDE, art: GuideArt = noArt): string {
+/** Navigation mit allen Themen; sub: Pfad zu den Themen von der Seite aus */
+function topics(all: GuidePage[], cur: string, sub: string): string {
+  return `<nav class="topics" aria-label="Themen">${all.map(p => `<a href="${sub}${p.slug}/" data-slug="${p.slug}" data-n="${p.steps.length}"${p.slug === cur ? ' aria-current="page"' : ""}>${p.emoji} ${esc(p.nav)}</a>`).join("")}</nav>`;
+}
+
+function renderShot(sh: GuideShot, spots: GuideSpots): string {
+  const sp = spots[sh.img];
+  const pins = sp ? Object.keys(sh.pins).map(k => ({ k, at: sp.spots.find(s => s.key === k) })).filter((x): x is { k: string; at: { key: string; x: number; y: number } } => !!x.at) : [];
+  return `<figure class="shot"><div class="frame"><img src="../img/${sh.img}.jpg" alt="${esc(sh.alt)}" width="${sp?.w ?? 700}" height="${sp?.h ?? 600}" loading="lazy">
+${pins.map((p, i) => `<button type="button" class="pin" style="left:${p.at.x}%;top:${p.at.y}%" aria-label="Markierung ${i + 1}: ${esc(sh.pins[p.k])}">${i + 1}</button>`).join("\n")}</div>
+<figcaption>${esc(sh.caption)}</figcaption>
+${pins.length ? `<ol class="legend">${pins.map((p, i) => `<li><b>${i + 1}</b><span>${esc(sh.pins[p.k])}</span></li>`).join("")}</ol>` : ""}</figure>`;
+}
+
+const DEMO_STATUS = `<section class="demo" data-demo="status"><h2>🚦 Probier’s aus: fest und offen</h2>
+<p>Tipp auf den Status, er springt weiter: Idee → Gewählt → Gebucht → Bezahlt. Gebucht und bezahlt zählt als fest, alles andere ist noch offen.</p>
+<div class="line" data-v="1008"><span>🛏 Ferienhaus mit Pool<br><small>1.008 €</small></span><button type="button" class="pillb" data-s="booked">Gebucht</button></div>
+<div class="line" data-v="550"><span>✈️ Flug Köln – Split<br><small>550 €</small></span><button type="button" class="pillb" data-s="chosen">Gewählt</button></div>
+<div class="line" data-v="240"><span>🚗 Mietwagen (Van)<br><small>240 €</small></span><button type="button" class="pillb" data-s="idea">Idee</button></div>
+<div class="sums"><span class="fest">🔒 Fest<b>0 €</b></span><span class="open">🕓 Offen<b>0 €</b></span></div>
+<small>Nur zum Ausprobieren, die Beträge sind aus der Beispielreise der Bilder (Familie Klein).</small></section>`;
+
+const DEMO_SPLIT = `<section class="demo" data-demo="split"><h2>🧾 Probier’s aus: fair teilen</h2>
+<p>Ändere den Gesamtbetrag, die Zahl der Personen oder den Kinderpreis und sieh, wie sich der Anteil der Familien verschiebt.</p>
+<div class="row"><label>Gesamtbetrag <input type="number" name="tot" value="3600" min="0" step="50"> €</label>
+<label>Kinder zahlen <input type="range" name="kid" min="0" max="100" value="60" step="5"> <b class="kv">60 %</b></label></div>
+<div class="fam"><div class="who"><b>Familie Klein</b><label>Erwachsene <input type="number" name="a" value="2" min="0" max="9"></label><label>Kinder <input type="number" name="c" value="2" min="0" max="9"></label></div><div class="amt">–</div><span class="pp"></span></div>
+<div class="fam"><div class="who"><b>Familie Hase</b><label>Erwachsene <input type="number" name="a" value="2" min="0" max="9"></label><label>Kinder <input type="number" name="c" value="1" min="0" max="9"></label></div><div class="amt">–</div><span class="pp"></span></div>
+<small>Vereinfachte Spielwiese. In der App rechnet Split&amp;Fly jeden Posten einzeln, mit echten Kinderpreisen und den Nächten, die jede Person da ist.</small></section>`;
+
+export function renderGuidePage(p: GuidePage, all: GuidePage[] = GUIDE, art: GuideArt = noArt, spots: GuideSpots = {}): string {
   const i = all.findIndex(x => x.slug === p.slug);
   const prev = all[i - 1], next = all[i + 1];
-  const body = `<p class="crumbs"><a href="../">Anleitung</a> › ${esc(p.nav)}</p>
-<h1>${esc(p.h1)}</h1>
+  const body = `${topics(all, p.slug, "../")}
+<p class="crumbs"><a href="../">Anleitung</a> › ${esc(p.nav)}</p>
+<h1><span class="em" aria-hidden="true">${p.emoji}</span>${esc(p.h1)}</h1>
 ${art(p.slug)}
-<p class="where">Hier: ${esc(p.where)}</p>
+<p class="where">📍 Hier: ${esc(p.where)}</p>
 ${p.intro.map(x => `<p>${esc(x)}</p>`).join("\n")}
+${(p.shots ?? []).map(sh => renderShot(sh, spots)).join("\n")}
 <h2>So geht’s</h2>
-<ol class="steps">
-${p.steps.map(x => `<li>${esc(x)}</li>`).join("\n")}
+<p class="crumbs">Hake ab, was du erledigt hast. Wir merken es uns auf diesem Gerät.</p>
+<div class="prog"><div class="bar"><i></i></div><span class="cnt">0 von ${p.steps.length} erledigt</span><button type="button">Zurücksetzen</button></div>
+<ol class="steps" data-slug="${p.slug}">
+${p.steps.map((x, n) => `<li><label><input type="checkbox"><span class="n"><b>${n + 1}</b></span><span class="t">${esc(x)}</span></label></li>`).join("\n")}
 </ol>
+<p class="hooray">🎉 Geschafft! Weiter geht’s mit dem nächsten Thema.</p>
+${p.demo === "status" ? DEMO_STATUS : ""}${p.demo === "split" ? DEMO_SPLIT : ""}
 <div class="tipbox">
 <h2 style="margin-top:12px">Gut zu wissen</h2>
 <ul>
@@ -388,11 +586,9 @@ ${p.tips.map(x => `<li>${esc(x)}</li>`).join("\n")}
 </ul>
 </div>
 <h2>Häufige Fragen</h2>
-<dl>
-${p.faq.map(f => `<dt>${esc(f.q)}</dt><dd>${esc(f.a)}</dd>`).join("\n")}
-</dl>
+${p.faq.map(f => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join("\n")}
 <p><a class="cta" href="../../">Split&amp;Fly öffnen</a></p>
-<nav class="pn" aria-label="Weiter in der Anleitung">${prev ? `<a href="../${prev.slug}/"><span>Zurück</span>${esc(prev.nav)}</a>` : "<span></span>"}${next ? `<a href="../${next.slug}/"><span>Weiter</span>${esc(next.nav)}</a>` : ""}</nav>`;
+<nav class="pn" aria-label="Weiter in der Anleitung">${prev ? `<a href="../${prev.slug}/"><span>← Zurück</span>${prev.emoji} ${esc(prev.nav)}</a>` : "<span></span>"}${next ? `<a href="../${next.slug}/"><span>Weiter →</span>${next.emoji} ${esc(next.nav)}</a>` : ""}</nav>`;
   const ld = [
     { "@context": "https://schema.org", "@type": "HowTo", name: p.h1, description: p.description, inLanguage: "de",
       step: p.steps.map((s, n) => ({ "@type": "HowToStep", position: n + 1, text: s })) },
@@ -405,15 +601,16 @@ ${p.faq.map(f => `<dt>${esc(f.q)}</dt><dd>${esc(f.a)}</dd>`).join("\n")}
 }
 
 export function renderGuideIndex(all: GuidePage[] = GUIDE, art: GuideArt = noArt): string {
-  const item = (p: GuidePage, n: number) => `<a href="${p.slug}/">${art(p.slug, "thumb")}<div>${n}. ${esc(p.h1)}<span>${esc(p.where)}</span></div></a>`;
+  const item = (p: GuidePage, n: number) => `<a href="${p.slug}/">${art(p.slug, "thumb")}<div><i class="em" aria-hidden="true">${p.emoji}</i> ${n}. ${esc(p.h1)}<span>${esc(p.where)}</span></div><span class="st" data-slug="${p.slug}" data-n="${p.steps.length}"></span></a>`;
   const body = `<h1>Anleitung: Split&amp;Fly Schritt für Schritt</h1>
-<p>So planst du eine Gruppenreise und teilst die Kosten fair auf. Die Themen folgen der Reihenfolge in der App: von der ersten Reise bis zur Abrechnung. Stand ${GUIDE_STAND}.</p>
+<div class="hello"><p><b>Hallo und willkommen! 👋</b></p><p>Hier planst du Schritt für Schritt eine Gruppenreise und teilst die Kosten fair auf. Die Themen folgen der Reihenfolge in der App, von der ersten Reise bis zur Abrechnung. Alle Bilder stammen aus der echten App, die roten Zahlen darauf kannst du antippen.</p>
+<p><a class="cta" href="${all[0].slug}/">Los geht’s: ${all[0].emoji} ${esc(all[0].nav)}</a></p></div>
 <div class="list">
 ${all.map((p, n) => item(p, n + 1)).join("\n")}
 </div>
 <h2>Die wichtigsten Begriffe</h2>
 <dl class="words">
-${LEARN.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("\n")}
+${LEARN.map(([e, a, b]) => `<dt>${e} ${esc(a)}</dt><dd>${esc(b)}</dd>`).join("\n")}
 </dl>
 <p><a class="cta" href="../">Split&amp;Fly öffnen</a></p>`;
   const ld = [{ "@context": "https://schema.org", "@type": "CollectionPage", name: "Anleitung Split&Fly", url: `${SITE}/anleitung/`, inLanguage: "de",

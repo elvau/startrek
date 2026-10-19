@@ -14,6 +14,13 @@ beim Zusammenstellen (`scripts/site.sh`) statische Seiten unter `/anleitung/`. F
 - Neue Funktion: passende Seite ergänzen oder neue Seite in `GUIDE` und `GUIDE_ART` (Szene und Alt-Text) anlegen, `GUIDE_STAND` anheben.
 - Die Anleitung ist nur Deutsch (wie `/reise/`); der Footer-Link nennt das in den anderen Sprachen.
 
+## Bilder und Interaktives
+- Echte Screenshots aus der App: `app/src/lib/guide/shots/*.jpg`, Lage der roten Markierungen in `shots/spots.json`. Neu erzeugen, wenn sich die Oberfläche ändert:
+  `cd app && npm run build:emu && CHROMIUM=/opt/pw-browsers/chromium node e2e/anleitung-shots.mjs /tmp/shots`, dann `*.jpg` und `spots.json` nach `shots/` kopieren (`misc.jpg` und den Eintrag `misc` weglassen). Das Skript legt eine Demo-Reise (Kroatien, zwei Familien) an; Texte zum Suchen der Markierungen stehen in `SPOTS` darin und müssen zur Oberfläche passen.
+- Je Seite `shots: [{ img, alt, caption, pins }]`; `pins` nennt Schlüssel aus `spots.json` und ihre Erklärung (Reihenfolge = Nummer). Test `guide.test.ts` prüft, dass jede Markierung existiert.
+- `emoji` je Seite wie in der App verwenden. Schritte sind abhakbar (Fortschritt in `localStorage`, Schlüssel `sf-guide`), FAQ als `<details>`; `demo: "status" | "split"` blendet eine Mini-Demo ein.
+- Bilder zeigen nie echte Daten, nur die Demo-Reise.
+
 ## Prüfen
 ```bash
 cd app && npx vitest run src/lib/guide && npx svelte-check --threshold warning
