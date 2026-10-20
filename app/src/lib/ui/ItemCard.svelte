@@ -14,6 +14,7 @@
   import RentalPanel from "./RentalPanel.svelte";
   import ItemSplit from "./ItemSplit.svelte";
   import AiMark from "./AiMark.svelte";
+  import PkgBand from "./PkgBand.svelte";
   import { arrow, autoName, t, type Key } from "../i18n/index.svelte";
   import { reveal } from "./reveal";
   import { itemLoc, mapsUrl } from "../geo/maps";
@@ -69,6 +70,7 @@
       {#if gmap}<a class="gmap" href={gmap} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
     </p>
   {/if}
+  <PkgBand {item} />
   <WatchBadge {item} />
   {#if item.ai}<div class="aif"><AiMark /> {t(`ai.mark.${item.ai.kind}` as Key)}
     {#if item.check}<span class="aif-check">⚠ {t("imp.check")}</span>{#if !access.readonly}<button class="linkbtn aif-ok" onclick={() => (item.check = undefined)}>{t("imp.checked")}</button>{/if}{/if}</div>{/if}

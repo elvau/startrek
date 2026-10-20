@@ -1,8 +1,8 @@
 /*
  * Reise per KI importieren (#457): Angebotsdaten → Posten der Reise. Flug und Unterkunft werden eingetragen wie von
  * Hand: Preis laut Angebot, Anbieter, Datum, Link zum Original; gekennzeichnet als importiert (nicht live prüfbar).
- * Pauschalreise vorerst so: der Paketpreis steht an der Unterkunft, der Flug mit 0 € „im Paketpreis enthalten“
- * (eigene Postenart mit Paket aufbrechen: #188, #460). Nebenkosten hängen an Flug bzw. Unterkunft.
+ * Pauschalreise (#188): Flug, Unterkunft und enthaltener Transfer bekommen dieselbe Paket-Kennung, der Paketpreis
+ * steht an der Unterkunft, die anderen Teile kosten 0 € (Paket aufbrechen: #460). Nebenkosten hängen an Flug bzw. Unterkunft.
  */
 import { t } from "../i18n/index.svelte";
 import { uid, type Extra, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
@@ -52,20 +52,23 @@ function extra(x: NonNullable<ImportedOffer["extras"]>[number], o: ImportedOffer
 }
 
 /** Angebot in die (neue) Reise übernehmen: Ziel, Daten, Reisende, Posten */
-export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISOString()) {
+export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISOString(), keep = false) {
   importParty(trip, o);
   const legs = o.flights?.legs || [];
-  if (o.place || o.stay?.place) trip.place = o.place || o.stay!.place!;
-  if (o.country) trip.country = o.country;
-  trip.from = o.from || legs.find(l => l.dir === "out")?.dep?.slice(0, 10) || trip.from;
-  trip.to = o.to || (trip.from && o.nights ? addDays(trip.from, o.nights) : undefined) || legs.filter(l => l.dir === "back").at(-1)?.dep?.slice(0, 10) || trip.to;
-  if (o.title) { trip.name = o.title; trip.autoName = false; }
+  // keep: in eine bestehende Reise (Paket-Dialog, #188): Ziel, Daten und Name nur, wenn noch leer
+  if ((o.place || o.stay?.place) && !(keep && trip.place)) trip.place = o.place || o.stay!.place!;
+  if (o.country && !(keep && trip.country)) trip.country = o.country;
+  if (!(keep && trip.from)) trip.from = o.from || legs.find(l => l.dir === "out")?.dep?.slice(0, 10) || trip.from;
+  if (!(keep && trip.to)) trip.to = o.to || (trip.from && o.nights ? addDays(trip.from, o.nights) : undefined) || legs.filter(l => l.dir === "back").at(-1)?.dep?.slice(0, 10) || trip.to;
+  if (o.title && !(keep && trip.autoName === false)) { trip.name = o.title; trip.autoName = false; }
   trip.detail ||= {};
   const mark = { at, kind: "imported" as const };
   const cur = o.price?.currency || "EUR";
   const people = Math.max(1, trip.travelers.filter(p => p.active !== false).length);
   const total = o.price?.total ?? (o.price?.perPerson ? Math.round(o.price.perPerson * people * 100) / 100 : undefined);
   const pkg = !!(legs.length && o.stay && !o.flights?.price && !o.stay.price && total && (o.kind === "package" || o.kind === "other"));
+  // Pauschalreise (#188): gemeinsame Paket-Kennung, Preis an der Unterkunft
+  const pkgId = pkg ? uid() : "";
   const unit = (v: number | undefined) => ({ mode: "unit" as const, currency: cur, unit: v ?? 0 });
   const items: Item[] = [];
   let flight: Option | undefined, stay: Option | undefined;
@@ -76,7 +79,7 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
     const b = o.flights!.baggage;
     flight = {
       id: uid(), label: [out.carrier, out.flightNo].filter(Boolean).join(" ") || t("imp.flight"),
-      ...(pkg ? { detail: t("imp.inPackage") } : {}),
+      ...(pkg ? { pkg: { id: pkgId } } : {}),
       price: unit(price), source: sourceOf(o, at), legs: legs.map(l => leg(l, trip)),
       ...(b ? { baggage: { personal: people, cabin: (b.cabin ?? 0) * people, checked: (b.checked ?? 0) * people } } : {})
     };
@@ -88,7 +91,7 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
     const price = pkg ? total : s.price ?? (o.kind === "stay" ? total : undefined);
     stay = {
       id: uid(), label: s.name || t("imp.stay"),
-      ...(pkg ? { detail: t("imp.packagePrice") } : s.place ? { detail: s.place } : {}),
+      ...(s.place ? { detail: s.place } : {}), ...(pkg ? { pkg: { id: pkgId, main: true } } : {}),
       price: { ...unit(price), basis: "stay", capacity: people },
       source: sourceOf(o, at),
       stay: { ...(s.stars ? { stars: s.stars } : {}), ...(s.board ? { board: s.board } : {}), ...(s.boards ? { boards: s.boards.map(x => ({ ...x })) } : {}), ...(s.freeCancel ? { freeCancel: true } : {}) },
@@ -100,7 +103,7 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
   // Transfer: enthalten → Posten zu 0 €, damit die Schätzung für den Transfer am Ziel entfällt (#420)
   if (o.transfer?.included || o.transfer?.price) {
     items.push({ id: uid(), cat: "transport", name: t("imp.transfer"), hint: "transfer", status: "idea", ai: mark,
-      options: [{ id: uid(), label: t("imp.transfer"), ...(o.transfer.included ? { detail: t("imp.inPackage") } : {}), price: unit(o.transfer.included ? 0 : o.transfer.price), source: sourceOf(o, at) }] });
+      options: [{ id: uid(), label: t("imp.transfer"), ...(o.transfer.included ? (pkg ? { pkg: { id: pkgId } } : { detail: t("imp.inPackage") }) : {}), price: unit(o.transfer.included ? 0 : o.transfer.price), source: sourceOf(o, at) }] });
     trip.detail.transport = true;
   }
   if (o.rental || o.kind === "rental") {
@@ -122,7 +125,7 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
   const unsure = checks(o);
   for (const it of items) if ((it.cat === "flights" && unsure.flights) || (it.cat === "stay" && unsure.stay) || (it.hint === "transfer" && unsure.transfer)) it.check = true;
   trip.items.push(...items);
-  trip.offer = {
+  if (!(keep && trip.offer)) trip.offer = {
     at, kind: o.kind, items: items.map(i => i.id),
     ...(o.provider ? { provider: o.provider } : {}), ...(o.url ? { url: o.url } : {}), ...(o.price ? { price: { ...o.price } } : {}), ...(o.validUntil ? { validUntil: o.validUntil } : {})
   };

@@ -234,6 +234,8 @@ export interface Option {
   autoOn?: string[];
   /** Flug aus der Suche: im Preis enthaltenes Gepäck (gesamt für alle); fehlt: nicht angegeben */
   baggage?: { personal: number; cabin: number; checked: number };
+  /** Pauschalreise (#188): Kennung des Pakets; main = dieses Angebot trägt den Paketpreis, die anderen Teile kosten 0 € */
+  pkg?: { id: string; main?: boolean };
   /** Hinweise am Flug: früh einchecken (Familie), Kartenaufschlag möglich (Abflug außerhalb EU/EWR) */
   hints?: ("checkin" | "payfee")[];
 }

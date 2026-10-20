@@ -182,6 +182,28 @@ try {
   await p.locator("text=Barcelona im März").first().waitFor();
   log("Realitätscheck ohne Reise: Bericht mit Spanne, Koffer-Annahme festgelegt, erst „Als Reise übernehmen“ legt an");
 
+  // 8. Pauschalreise von Hand (#188): im Kapitel Unterkunft „📦 Paket“, Preis an der Unterkunft, Flug „im Paket“, Status gemeinsam
+  await p.locator("#stay .pkg-open").click();
+  const pd = p.locator(".modal", { hasText: "Pauschalreise" });
+  await pd.locator(".pkg-mode .chip", { hasText: "Von Hand" }).click();
+  await pd.locator(".pkg-hand input").first().fill("Reisebüro Sonne");
+  await pd.locator('.pkg-hand input[type="number"]').fill("1200");
+  await pd.locator(".pkg-part", { hasText: "Transfer" }).click();
+  await pd.locator(".pkg-create").click();
+  await until(async () => !(await pd.count()), "Paket-Dialog zu");
+  const mainCard = p.locator("article.card:has(.pkgb)", { hasText: "Unterkunft (Pauschalreise)" }).first();
+  await mainCard.locator(".pkgb-incl", { hasText: "✈ Flug" }).waitFor();
+  const partCard = p.locator("article.card:has(.pkgb)", { hasText: "Flug (Pauschalreise)" }).first();
+  await partCard.locator(".pkgb-go", { hasText: "1.200" }).waitFor();
+  await mainCard.click();
+  await mainCard.locator('[data-s="booked"]').click();
+  await until(async () => {
+    const tr = await p.evaluate(() => JSON.parse(localStorage.getItem(`rk2-t:${localStorage.getItem("rk2-current")}`) || "null"));
+    const pk = tr?.items.filter(i => i.options.some(o => o.pkg));
+    return pk?.length === 2 && pk.every(i => i.status === "booked");
+  }, "Status gilt für Flug und Unterkunft des Pakets");
+  log("Pauschalreise von Hand: Paketpreis an der Unterkunft, Flug „im Paket“, Status gemeinsam");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Import ok");
 } finally { await browser.close(); server.kill(); }

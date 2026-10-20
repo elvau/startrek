@@ -4,7 +4,7 @@
    * Reise per KI importieren (#457): Dateien (auch per Ziehen, Einfügen oder Teilen-Menü), Text oder Link einwerfen,
    * auslesen lassen, daraus eine Reise anlegen. Über „Neue Reise“ entsteht immer eine Reise. Nur mit Anmeldung.
    * Realitätscheck (#461, check): dieselben Schritte, danach nur der Bericht an einem Entwurf; „Als Reise übernehmen“
-   * legt die Reise erst dann an.
+   * legt die Reise erst dann an. Paket (#188, into): in die offene Reise, ohne eine neue anzulegen.
    */
   import { app, draftTrip, startTrip } from "../store.svelte";
   import RealityReport from "./RealityReport.svelte";
@@ -23,7 +23,7 @@
   import { openExplore } from "../activities/open.svelte";
   import type { Traveler, Trip } from "../model";
 
-  let { onclose, travelers, peopleKnown = false, check = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
+  let { onclose, travelers, peopleKnown = false, check = false, into = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
   // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
   let found = $state<ImportedOffer | null>(null);
   // danach (#459): was fehlt noch? Auswahl je fehlendem Baustein
@@ -97,7 +97,7 @@
       found = offer;
       choices = defaultChoices(offer);
       // alles sicher erkannt: Übersicht überspringen
-      if (reviewOf(offer, new Set(), peopleKnown).direct) next();
+      if (reviewOf(offer, new Set(), peopleKnown || into).direct) next();
       else stage = "review";
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
@@ -109,6 +109,8 @@
   function next() {
     if (!found) return;
     if (check) { const d = draftTrip(); importToTrip(d, found); draft = d; stage = "report"; return; }
+    // Paket in die offene Reise (#188): Ziel, Daten, Name bleiben, kein „Was fehlt noch?“
+    if (into) { importToTrip(app.trip, found, undefined, true); onclose(); return; }
     if (hasMissing(found)) stage = "parts"; else create();
   }
   function create() {
@@ -137,7 +139,7 @@
   {:else if found && stage === "parts"}
     <ImportParts offer={found} bind:choices oncreate={create} onback={() => (stage = "review")} />
   {:else if found}
-    <ImportReview bind:offer={found} {peopleKnown} oncreate={next} onback={() => (found = null)} />
+    <ImportReview bind:offer={found} peopleKnown={peopleKnown || into} oncreate={next} onback={() => (found = null)} />
   {:else}
     <p class="imp-lead">{t(check ? "real.lead" : "imp.lead")}</p>
     <div class="chips imp-src">
