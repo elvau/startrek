@@ -1,5 +1,5 @@
 /*
- * Claude (Anthropic Messages API) als KI-Anbieter für Planer und Kontoeinrichtung. Planer und Einrichtung bauen ihre
+ * Claude (Anthropic Messages API) als KI-Anbieter für Planer, Kontoeinrichtung und Import. Planer und Einrichtung bauen ihre
  * Anfragen im Format von Gemini (systemInstruction, contents, functionDeclarations); hier wird das in eine Anfrage an
  * /v1/messages übersetzt und die Antwort zurück ins Gemini-Format. So bleibt der Ablauf des Planers für beide gleich.
  * Bewusst ohne SDK: Cloudflare baut den Dienst ohne Installationsschritt (wie bei Gemini, nur fetch).
@@ -64,8 +64,13 @@ export function toClaude(body: any, model: string, effort?: string): any {
     // Ergebnisse zuerst (Claude verlangt sie am Anfang der Nachricht), dann Text
     const results = parts.filter(p => p.functionResponse).flatMap((p, i) => (pending[i] ? [{ type: "tool_result", tool_use_id: pending[i], content: JSON.stringify(p.functionResponse.response ?? {}) }] : []));
     const texts = parts.filter(p => typeof p.text === "string" && p.text).map(p => ({ type: "text", text: p.text }));
+    // Bilder und PDF (Reise importieren, #457) vor dem Text, wie es Anthropic empfiehlt
+    const media = parts.filter(p => p.inlineData?.data).map(p => ({
+      type: p.inlineData.mimeType === "application/pdf" ? "document" : "image",
+      source: { type: "base64", media_type: p.inlineData.mimeType, data: p.inlineData.data }
+    }));
     pending = [];
-    if (results.length || texts.length) messages.push({ role: "user", content: [...results, ...texts] });
+    if (results.length || media.length || texts.length) messages.push({ role: "user", content: [...results, ...media, ...texts] });
   }
   // nur ein erlaubtes Werkzeug (letzte Runde, Kontoeinrichtung): genau dieses aufrufen; sonst frei, damit Claude vorher denkt
   const only: string[] = body?.toolConfig?.functionCallingConfig?.allowedFunctionNames || [];

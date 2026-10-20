@@ -126,3 +126,24 @@ Kosten mit Haiku: grob unter 1 Cent je Planung (0,10 $ / 0,50 $ je Mio. Token Ei
 - `worker/src/claude.test.ts`: Übersetzung für Claude, Denkblöcke im Verlauf, Wiederholung, Anbieterwechsel
 - `app/src/lib/agent/*.test.ts`: Ablauf mit nachgestelltem Gemini, Grenzen, Anmeldeprüfung mit eigenen Schlüsseln
 - `app/e2e/agent.mjs`: Anmeldung, Anfrage, Vorschlag übernehmen, offene Reise ändern, Rückgängig, KI-Vergleichsreise (Such-Dienst nachgestellt)
+
+## Reise per KI importieren (#457)
+
+„Neue Reise → Importieren“ (`app/src/lib/ui/ImportPanel.svelte`): Angebot, Buchung oder Teilnehmerliste als Datei, Text, Link
+oder aus der Zwischenablage; am Handy auch über das Teilen-Menü (Share-Target im Manifest, `public/sw.js` legt die Dateien
+kurz im Speicher `saf-share` ab, `app/src/lib/import/share.svelte.ts` holt sie ab). Nur mit Anmeldung.
+
+1. App (`import/files.ts`): Bilder verkleinert als JPEG, PDF unverändert; Word, Excel, CSV liest die App selbst als Text
+   (kleiner ZIP-Leser, keine Bibliothek). Höchstens 6 Dateien, je etwa 4 MB.
+2. `POST /import` mit `{ files, text, url, lang }` (`import/ai.ts`, `parseImportRequest`), eigenes Tageskontingent
+   `IMPORT_DAILY` (Standard 10). Ein Link wird über `worker/src/page.ts` abgerufen (nur öffentliche Adressen, 1,5 MB, 8 s);
+   lässt er sich nicht lesen, antwortet der Dienst sofort 422 `needScreenshot` (kostet keinen Import).
+3. KI (Claude, ersatzweise Gemini; Bilder als `image`, PDF als `document`) muss genau `fill_trip` aufrufen; geprüft mit
+   `parseImportAi`. Keine Ausweis-, Pass-, Geburts- oder Kontaktdaten im Schema; Namen nur aus Teilnehmerlisten.
+4. App (`import/apply.ts`, `importToTrip`): Reisende (aus der Liste bzw. Anzahl, sonst bleiben gewählte), Ziel, Daten,
+   Flug und Unterkunft wie von Hand eingetragen (`source.imported`, Preis laut Angebot), Nebenkosten am passenden Teil,
+   Transfer im Paket als Posten zu 0 € (ersetzt die Schätzung). Pauschalreise vorerst: Paketpreis an der Unterkunft, Flug
+   „im Paketpreis enthalten“ (eigene Postenart: #188, #460). Markierung `ai.kind = "imported"`.
+
+Dateien werden nirgends gespeichert. Weiter im Epic #456: Sicherheit je Angabe und Rückfragen (#458), fehlende Bausteine
+(#459), Vergleich mit der Suche (#460), Realitätscheck (#461), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.

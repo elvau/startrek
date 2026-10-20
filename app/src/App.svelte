@@ -2,7 +2,7 @@
   import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
   import { loadRates } from "./lib/currency.svelte";
-  import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed, goHome } from "./lib/store.svelte";
   import { saveView } from "./lib/resume";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
@@ -34,6 +34,7 @@
   import TripTimeline from "./lib/ui/TripTimeline.svelte";
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
+  import { takeShared } from "./lib/import/share.svelte";
   import CompareView from "./lib/ui/CompareView.svelte";
   import AppFooter from "./lib/ui/AppFooter.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
@@ -107,6 +108,8 @@
   onMount(() => { void applyPlanLink(); });
   // …/?info öffnet „Neues & Ausblick“
   onMount(applyInfoLink);
+  // Teilen-Menü (?share=1, #457): Startseite mit „Neue Reise → Importieren“
+  onMount(() => { void takeShared().then(ok => { if (ok) goHome(); }); });
   onMount(() => {
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
     applyDocument();
