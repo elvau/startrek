@@ -872,6 +872,7 @@ export const es: Dict = {
   "imp.linkHint": "Algunas páginas no se pueden leer. En ese caso te pediremos una captura o el texto.",
   "imp.linkLabel": "Enlace a la oferta",
   "imp.login": "Inicia sesión para importar.",
+  "imp.retry": "Reintentar",
   "imp.needShot": "Esta página no se puede leer. Haz una captura de la oferta o pega su texto.",
   "imp.noTransfer": "No hace falta traslado",
   "imp.offer": "Oferta",
