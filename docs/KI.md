@@ -142,8 +142,10 @@ kurz im Speicher `saf-share` ab, `app/src/lib/import/share.svelte.ts` holt sie a
    `parseImportAi`. Keine Ausweis-, Pass-, Geburts- oder Kontaktdaten im Schema; Namen nur aus Teilnehmerlisten.
 4. App (`import/apply.ts`, `importToTrip`): Reisende (aus der Liste bzw. Anzahl, sonst bleiben gewählte), Ziel, Daten,
    Flug und Unterkunft wie von Hand eingetragen (`source.imported`, Preis laut Angebot), Nebenkosten am passenden Teil,
-   Transfer im Paket als Posten zu 0 € (ersetzt die Schätzung). Pauschalreise vorerst: Paketpreis an der Unterkunft, Flug
-   „im Paketpreis enthalten“ (eigene Postenart: #188, #460). Markierung `ai.kind = "imported"`.
+   Transfer im Paket als Posten zu 0 € (ersetzt die Schätzung). Pauschalreise (#188, `app/src/lib/package.ts`): Flug,
+   Unterkunft und enthaltener Transfer tragen dieselbe Paket-Kennung (`Option.pkg`), der Paketpreis steht an der
+   Unterkunft (`main`), die anderen Teile kosten 0 €; der Status gilt für alle Teile. Markierung `ai.kind = "imported"`.
+   Von Hand oder per Import in die offene Reise über „📦 Paket“ in den Kapiteln Flug und Unterkunft (`ui/PackageDialog.svelte`).
 
 Sicherheit je Angabe und Rückfragen (#458, `import/review.ts`, `ui/ImportReview.svelte`): Die KI nennt je Angabe 0–1;
 hoch ab 0,85, mittel ab 0,6 (ohne Angabe der KI: mittel), sonst niedrig. Niedrig oder fehlend bei Gepäck, Transfer (Paket),
