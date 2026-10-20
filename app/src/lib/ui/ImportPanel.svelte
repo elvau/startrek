@@ -39,7 +39,7 @@
   let prepared = $state<Prepared[]>([]);
   let text = $state(""), url = $state("");
   let notes = $state<string[]>([]);
-  let busy = $state(false), err = $state(""), over = $state(false);
+  let busy = $state(false), err = $state(""), retryable = $state(false), over = $state(false);
   let ctrl: AbortController | undefined;
   const ready = $derived(prepared.length > 0 || text.trim().length >= 3 || /^https?:\/\/\S+\.\S+/i.test(url.trim()));
 
@@ -91,7 +91,7 @@
 
   async function go() {
     if (!ready || busy) return;
-    busy = true; err = "";
+    busy = true; err = ""; retryable = false;
     ctrl = new AbortController();
     try {
       const res = await askImport({ prepared, text, url }, ctrl.signal);
@@ -106,6 +106,7 @@
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       err = (e as Error).message;
+      retryable = e instanceof ImportError && e.overloaded;
       if (e instanceof ImportError && e.needScreenshot) src = "file";
     } finally { busy = false; }
   }
@@ -168,7 +169,7 @@
     {/if}
     {#each notes as n (n)}<p class="small imp-note" role="status">{n}</p>{/each}
     <p class="small imp-priv">🔒 {t("imp.privacy")}</p>
-    {#if err}<p class="err small" role="alert">{err}</p>{/if}
+    {#if err}<p class="err small" role="alert">{err}{#if retryable} <button type="button" class="btn small imp-retry" disabled={busy} onclick={go}>{t("imp.retry")}</button>{/if}</p>{/if}
     <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
   {/if}
 </div>

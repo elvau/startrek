@@ -17,7 +17,7 @@ export function importBody(i: ImportInput, lang = i18n.lang) {
 }
 
 /** Fehler mit Hinweis, ob ein Screenshot weiterhilft */
-export class ImportError extends Error { constructor(msg: string, readonly needScreenshot = false) { super(msg); } }
+export class ImportError extends Error { constructor(msg: string, readonly needScreenshot = false, readonly overloaded = false) { super(msg); } }
 
 /** until: aus dem Angebotsspeicher (#462), gültig bis */
 export async function askImport(i: ImportInput, signal?: AbortSignal): Promise<{ offer: ImportedOffer; until?: string }> {
@@ -33,5 +33,6 @@ export async function askImport(i: ImportInput, signal?: AbortSignal): Promise<{
   if (res.status === 422) throw new ImportError(t(data.needScreenshot && !data.unreadable ? "imp.needShot" : "imp.unreadable"), !!data.needScreenshot);
   // Eingabe passt nicht (Format, Größe): Meldung des Dienstes auf Deutsch, sonst allgemein
   if (res.status === 400 || res.status === 413) throw new ImportError(i18n.lang === "de" && data.error ? data.error : t("imp.unreadable"));
-  throw new ImportError(agentError(res.status, data.error, data.overloaded === true));
+  const overloaded = res.status === 503 && data.overloaded === true;
+  throw new ImportError(agentError(res.status, data.error, data.overloaded === true), false, overloaded);
 }

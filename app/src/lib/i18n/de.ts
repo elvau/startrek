@@ -870,6 +870,7 @@ export const de = {
   "imp.linkHint": "Manche Seiten lassen sich nicht auslesen. Dann bitten wir um einen Screenshot oder den Text.",
   "imp.linkLabel": "Link zum Angebot",
   "imp.login": "Zum Importieren bitte anmelden.",
+  "imp.retry": "Erneut versuchen",
   "imp.needShot": "Diese Seite lässt sich nicht auslesen. Bitte mach einen Screenshot vom Angebot oder kopiere den Text hinein.",
   "imp.noTransfer": "Kein Transfer nötig",
   "imp.offer": "Angebot",

@@ -898,6 +898,7 @@ export const pl: Dict = {
   "imp.linkHint": "Niektórych stron nie da się odczytać. Wtedy poprosimy o zrzut ekranu lub tekst.",
   "imp.linkLabel": "Link do oferty",
   "imp.login": "Zaloguj się, aby importować.",
+  "imp.retry": "Spróbuj ponownie",
   "imp.needShot": "Tej strony nie da się odczytać. Zrób zrzut ekranu oferty albo wklej jej tekst.",
   "imp.noTransfer": "Transfer niepotrzebny",
   "imp.offer": "Oferta",
