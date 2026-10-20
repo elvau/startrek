@@ -74,6 +74,13 @@ try {
     await card.screenshot({ path: `${process.env.SHOTS}/sl-m.png` });
     await p.setViewportSize({ width: 1280, height: 900 });
   }
+  // Kopfleiste am Handy (#473): bei schmalen Breiten liegen alle Symbole in der Leiste, die Reise-Auswahl gibt Platz ab
+  for (const w of [320, 406]) {
+    await p.setViewportSize({ width: w, height: 800 }); await p.waitForTimeout(400);
+    const out = await p.evaluate(() => { const r = document.querySelector(".top-in").getBoundingClientRect(); return [...document.querySelectorAll(".top-in *")].filter(e => { const b = e.getBoundingClientRect(); return b.width && getComputedStyle(e).display !== "contents" && (b.right > r.right || b.left < r.left); }).map(e => e.className); });
+    if (out.length) fail(`Kopfleiste läuft bei ${w} px über: ${out.join(", ")}`);
+  }
+  await p.setViewportSize({ width: 1280, height: 900 });
   log("Einträge: Stadionführung 50 € (Daniel, Henning), Abendessen 200 € (alle), Technikmuseum 40 € (Sarah, Daniel), zusammen 290 €");
 
   // Abrechnung: Klein trägt 25+25 + 50+50 + 20 = 170, Hase 50+50 + 20 = 120
