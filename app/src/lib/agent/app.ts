@@ -5,7 +5,7 @@ import { ageClass, presences, totals } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, offerToOption, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
-import { hhKey, isActive, uid, type AiMark, type Item, type Prefs, type Traveler, type Trip } from "../model";
+import { AGE, hhKey, isActive, uid, type AiMark, type Item, type Prefs, type Traveler, type Trip } from "../model";
 import { syncFood } from "../food";
 import { syncSouvenir } from "../souvenir";
 import type { GeoData } from "../geo/places";
@@ -24,7 +24,7 @@ export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: 
   const pax = passengers(trip);
   // Kinder mit Alter (ohne Babys auf dem Schoß); ohne Alter: 8
   const childAges = flyers(trip)
-    .filter(p => ageClass(p.age, trip.settings, p.kind) !== "adult" && !(p.age != null && (p.age as unknown) !== "" && p.age < 2))
+    .filter(p => ageClass(p.age, trip.settings, p.kind) !== "adult" && !(p.age != null && (p.age as unknown) !== "" && p.age < AGE.child))
     .map(p => (p.age != null && (p.age as unknown) !== "" ? Math.min(17, Math.max(2, Math.round(Number(p.age)))) : 8))
     .slice(0, pax.children);
   const known = { place: trip.place || undefined, from: trip.from || undefined, to: trip.to || undefined };
@@ -50,7 +50,7 @@ export function groupsIn(trip: Trip): AgentGroupIn[] {
   const pres = presences(trip);
   return [...groupKeys(trip)].map(([key, hh]) => {
     const ms = trip.travelers.filter(p => isActive(p) && hhKey(p) === hh);
-    const cls = (p: Traveler) => (p.kind === "infant" || (p.age != null && (p.age as unknown) !== "" && p.age < 2) ? "infant" : ageClass(p.age, trip.settings, p.kind));
+    const cls = (p: Traveler) => (p.kind === "infant" || (p.age != null && (p.age as unknown) !== "" && p.age < AGE.child) ? "infant" : ageClass(p.age, trip.settings, p.kind));
     const childAges = ms.filter(p => cls(p) === "child").map(p => (p.age != null && (p.age as unknown) !== "" ? Math.min(17, Math.max(2, Math.round(Number(p.age)))) : 8));
     const h = trip.households?.[hh];
     const own = h?.arrive && h?.depart ? { from: h.arrive, to: h.depart } : (() => {
@@ -222,7 +222,7 @@ function familiesOf(trip: Trip, a: AgentTrip): Map<string, NonNullable<AgentTrip
 
 /** Reisende mit eigenem Sitz der Reihe nach verteilen (Babys fliegen bei einem Erwachsenen mit und zählen nicht); hh: nur diese Familie */
 function seatQueue(trip: Trip, hh?: string) {
-  const ids = flyers(trip).filter(p => (!hh || hhKey(p) === hh) && !(p.age != null && (p.age as unknown) !== "" && p.age < 2) && p.kind !== "infant").map(p => p.id);
+  const ids = flyers(trip).filter(p => (!hh || hhKey(p) === hh) && !(p.age != null && (p.age as unknown) !== "" && p.age < AGE.child) && p.kind !== "infant").map(p => p.id);
   let k = 0;
   return (n: number) => { const part = ids.slice(k, k + n); k += n; return part; };
 }

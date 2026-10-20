@@ -620,7 +620,14 @@ export interface FoodCfg { on?: boolean; style?: FoodStyle; hh?: Record<string, 
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
-export const DEFAULT_SETTINGS: Settings = { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 };
+/** Altersklassen überall nach Flug-Regel (#483): Kleinkind unter 2, Kind 2–11, Erwachsen ab 12 */
+export const AGE = { child: 2, adult: 12 } as const;
+/** bis 10/2026 Standard für „ab hier Kind“ (Kleinkind unter 6); gespeicherte Reisen damit ziehen auf AGE.child mit */
+export const OLD_CHILD_AGE = 6;
+/** Mindestalter Fahrer (Führerschein), unabhängig von den Preisstufen */
+export const DRIVER_AGE = 18;
+
+export const DEFAULT_SETTINGS: Settings = { adultAge: AGE.adult, childAge: AGE.child, rates: { EUR: 1 }, kmCost: 0.3 };
 
 export const hhKey = (t: Traveler) => t.household.trim() || "Ohne Haushalt";
 

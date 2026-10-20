@@ -138,7 +138,7 @@ Call fill_trip exactly once. Only fill what the material states or clearly impli
 - stay.board: board included in the price (self, breakfast, half, full, all). stay.boards: board options the offer lets you choose, with extra = surcharge per person and night in the offer's currency (0 for the included one).
 - transfer.included: true/false only if the offer says so.
 - extras: fees the offer names (city tax, resort fee, cleaning, baggage, seats …) with amount, basis and pay (included, onsite = paid locally, extra = paid at booking on top).
-- adults: number of adults travelling; childAges: the age of every child and infant travelling (0 for a baby). Count children from the booking (e.g. "2 adults, 2 children (5, 8)") and never leave them out; if only their number is stated, give it as children (without childAges).
+- adults: number of adults travelling; childAges: the age of every child and infant travelling (0 for a baby; the app counts under 2 as infant, 2–11 as child, 12 and older as adult price). Count children from the booking (e.g. "2 adults, 2 children (5, 8)") and never leave them out; if only their number is stated, give it as children (without childAges).
 - travelers: only from participant lists; first name, family name as household, age if given. Never copy ID card, passport, birth date, address, phone, e-mail or booking numbers.
 - country: ISO-2 of the destination. Dates as YYYY-MM-DD. validUntil: until when the offer is valid, if stated.
 - url: the offer's own web address if visible.

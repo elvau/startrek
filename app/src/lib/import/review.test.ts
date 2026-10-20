@@ -58,4 +58,7 @@ describe("Personen in der Übersicht (#474)", () => {
     const none = setParty(o, { adults: 0, kids: 0, infants: 0 });
     expect(partyOf(none)).toEqual({ adults: 1, kids: 0, infants: 0 });
   });
+  it("Flug-Regel (#483): unter 2 Kleinkind, 2–11 Kind, ab 12 zählt als erwachsen", () => {
+    expect(partyOf({ kind: "stay", adults: 2, childAges: [1, 2, 11, 12, 15] })).toEqual({ adults: 4, kids: 2, infants: 1 });
+  });
 });

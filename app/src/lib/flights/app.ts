@@ -1,7 +1,7 @@
 /* Flugsuche in der App: Anfrage aus der Reise, Ergebnis als Angebot in einen Flug-Posten */
 import { noteError } from "../bugs/log";
 import { t, tn } from "../i18n/index.svelte";
-import { addOffer, hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
+import { AGE, addOffer, hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
 import { dayShort, nights } from "../format";
 import { accessFor, airportsOf, roadKm } from "../calc/travel";
 import { activeOption } from "../calc";
@@ -25,8 +25,8 @@ export function passengers(trip: Trip, ids?: string[]): Pick<FlightQuery, "adult
   let adults = 0, children = 0, infants = 0;
   for (const t of flyers(trip, ids)) {
     const age = t.age != null && (t.age as unknown) !== "" && isFinite(Number(t.age)) ? Number(t.age) : null;
-    if (age == null ? (t.kind || "adult") === "adult" : age >= 12) adults++;
-    else if (age != null && age < 2) infants++;
+    if (age == null ? (t.kind || "adult") === "adult" : age >= AGE.adult) adults++;
+    else if (age != null && age < AGE.child) infants++;
     else children++;
   }
   adults = Math.max(1, adults);
@@ -110,7 +110,7 @@ export function withoutTravel(trip: Trip): Traveler[] {
   const planned = trip.items.some(i => (i.cat === "flights" || i.arrival) && i.status !== "dropped");
   if (!planned) return [];
   const cov = covered(trip);
-  return trip.travelers.filter(t => isActive(t) && !cov.has(t.id) && !(t.age != null && (t.age as unknown) !== "" && t.age < 2));
+  return trip.travelers.filter(t => isActive(t) && !cov.has(t.id) && !(t.age != null && (t.age as unknown) !== "" && t.age < AGE.child));
 }
 
 /**
