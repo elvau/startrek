@@ -13,11 +13,19 @@
   import { reviewOf } from "../import/review";
   import type { ImportedOffer } from "../import/ai";
   import ImportReview from "./ImportReview.svelte";
+  import ImportParts from "./ImportParts.svelte";
+  import { applyParts, defaultChoices, hasMissing, type Choice, type PartId } from "../import/parts";
+  import { openFlightSearch } from "../flights/open.svelte";
+  import { openStaySearch } from "../stays/open.svelte";
+  import { openExplore } from "../activities/open.svelte";
   import type { Traveler } from "../model";
 
   let { onclose, travelers, peopleKnown = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
   // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
   let found = $state<ImportedOffer | null>(null);
+  // danach (#459): was fehlt noch? Auswahl je fehlendem Baustein
+  let stage = $state<"review" | "parts">("review");
+  let choices = $state<Partial<Record<PartId, Choice>>>({});
   type Src = "file" | "text" | "link" | "paste";
   const SRCS: Src[] = ["file", "text", "link", "paste"];
   let src = $state<Src>("file");
@@ -81,18 +89,32 @@
     try {
       const offer = await askImport({ prepared, text, url }, ctrl.signal);
       // alles sicher erkannt: gleich anlegen, sonst erst die Übersicht
-      if (reviewOf(offer, new Set(), peopleKnown).direct) create(offer);
-      else found = offer;
+      found = offer;
+      choices = defaultChoices(offer);
+      // alles sicher erkannt: Übersicht überspringen
+      if (reviewOf(offer, new Set(), peopleKnown).direct) next();
+      else stage = "review";
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       err = (e as Error).message;
       if (e instanceof ImportError && e.needScreenshot) src = "file";
     } finally { busy = false; }
   }
-  function create(offer: ImportedOffer) {
+  /** nach der Übersicht: fehlt etwas, erst „Was fehlt noch?“, sonst anlegen */
+  function next() { if (found && hasMissing(found)) stage = "parts"; else create(); }
+  function create() {
+    if (!found) return;
     startTrip(travelers?.());
-    importToTrip(app.trip, offer);
+    importToTrip(app.trip, found);
+    const open = applyParts(app.trip, choices);
     onclose();
+    // erste gewählte Suche öffnen, vorbelegt aus der Reise (Ziel, Daten, Personen); erst nach dem Wechsel der Reise,
+    // der offene Suchen zuklappt
+    setTimeout(() => {
+      if (open[0] === "flight") openFlightSearch();
+      else if (open[0] === "stay") openStaySearch();
+      else if (open[0] === "fun") openExplore("tours");
+    });
   }
   $effect(() => () => ctrl?.abort());
 </script>
@@ -101,8 +123,10 @@
   {#if !cloud.user}
     <p class="muted">{t("imp.login")}</p>
     <div class="ed-foot"><span></span><button type="button" class="btn primary" onclick={() => (cloud.showLogin = true)}>{t("acct.login")}</button></div>
+  {:else if found && stage === "parts"}
+    <ImportParts offer={found} bind:choices oncreate={create} onback={() => (stage = "review")} />
   {:else if found}
-    <ImportReview bind:offer={found} {peopleKnown} oncreate={() => create(found!)} onback={() => (found = null)} />
+    <ImportReview bind:offer={found} {peopleKnown} oncreate={next} onback={() => (found = null)} />
   {:else}
     <p class="imp-lead">{t("imp.lead")}</p>
     <div class="chips imp-src">

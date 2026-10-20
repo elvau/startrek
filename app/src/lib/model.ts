@@ -564,6 +564,11 @@ export interface Trip {
    * chosen: „Diese nehmen“ (ISO, #430); gewählt ist die Variante mit dem jüngsten Zeitpunkt, die anderen sind eingeklappt.
    */
   cmp?: { id: string; title: string; label?: string; chosen?: string };
+  /**
+   * per KI importiertes Angebot (#457, #459): Art, Anbieter, Link, beworbener Preis, gültig bis und die Posten, die zum
+   * Angebot gehören. Alles andere (ergänzt, geschätzt) zählt im Realitätscheck zur ganzen Reise (#461).
+   */
+  offer?: { at: string; kind: string; provider?: string; url?: string; price?: { total?: number; perPerson?: number; currency?: string }; validUntil?: string; items: string[] };
   /** Wichtiges: erledigte Punkte (important.ts), bei Punkten für Personen je Person */
   done?: Record<string, { sig: string; ids?: string[] }>;
   /** Roadtrip: gewählte Fähre je Überfahrt („Von>Nach“ → Fähren-ID, „none“: keine Fähre) */

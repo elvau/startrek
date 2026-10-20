@@ -334,7 +334,8 @@ export const GUIDE: GuidePage[] = [
       "Prüfe KI-Vorschläge wie jede Schätzung: Preise sind Richtwerte, keine Angebote.",
       "Am Handy kannst du ein Angebot auch über das Teilen-Menü an Split&Fly senden, wenn die App installiert ist.",
       "Lässt sich ein Link nicht auslesen, mach einen Screenshot vom Angebot oder kopiere den Text hinein.",
-      "Beim Import zeigt die App, wie sicher jede Angabe erkannt ist, und fragt bei Unsicherem kurz nach. Was nur abgeleitet ist, steht in der Reise mit „bitte prüfen“, bis du „Geprüft“ antippst."
+      "Beim Import zeigt die App, wie sicher jede Angabe erkannt ist, und fragt bei Unsicherem kurz nach. Was nur abgeleitet ist, steht in der Reise mit „bitte prüfen“, bis du „Geprüft“ antippst.",
+      "Fehlt im Angebot etwas (Unterkunft, Transfer, Mietwagen, Ausflüge), fragt „Was fehlt noch?“ nach: Suchen, Schätzen oder Brauchen wir nicht."
     ],
     faq: [
       { q: "Ist die KI-Planung kostenlos?", a: "Ja, sie ist als Beta enthalten. Pro Tag gibt es eine begrenzte Zahl an Anfragen." },
