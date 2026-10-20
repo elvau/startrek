@@ -860,6 +860,7 @@ export const pl: Dict = {
   "imp.c.later": "Później",
   "imp.c.none": "Niepotrzebne",
   "imp.c.search": "Szukaj",
+  "imp.cached": "Już sprawdzona, z pamięci (ważna do {d})",
   "imp.check": "do sprawdzenia",
   "imp.checkPass": "Sprawdź ważność paszportów",
   "imp.checkPassNote": "(na podstawie danych z konta, tylko tutaj w przeglądarce)",

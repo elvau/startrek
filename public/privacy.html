@@ -261,7 +261,10 @@
   provider, link), which are then kept in the trip. From participant lists the app takes first names, family names and ages as travellers of the new
   trip, which is stored like any trip. The AI does not take ID card or passport details, dates of birth, addresses,
   phone numbers, email addresses or booking numbers; still, please do not upload such documents or black them out first.
-  An import counts towards its own daily quota (10 per account and day by default).
+  An import counts towards its own daily quota (10 per account and day by default). So that the same offer does not have
+  to be read again, my search service stores the extracted offer data (no files, no names, not linked to your account)
+  together with a hash of the input (from which link, file or text cannot be recovered) in Google Firebase, at most until
+  the offer expires or for 14 days; it is deleted afterwards. Participant lists are never stored there.
 </p>
 <p>Legal basis: Art. 6(1)(b) GDPR (you trigger the request). Use is voluntary.</p>
 

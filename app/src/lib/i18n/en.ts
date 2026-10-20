@@ -834,6 +834,7 @@ export const en: Dict = {
   "imp.c.later": "Later",
   "imp.c.none": "Not needed",
   "imp.c.search": "Search",
+  "imp.cached": "Already checked, from storage (valid until {d})",
   "imp.check": "please check",
   "imp.checkPass": "Check passport validity",
   "imp.checkPassNote": "(using the details in your account, only here in the browser)",

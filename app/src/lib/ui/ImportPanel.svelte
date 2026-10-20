@@ -26,6 +26,8 @@
   let { onclose, travelers, peopleKnown = false, check = false, into = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
   // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
   let found = $state<ImportedOffer | null>(null);
+  // schon geprüft (Angebotsspeicher, #462): gültig bis
+  let cachedUntil = $state("");
   // danach (#459): was fehlt noch? Auswahl je fehlendem Baustein
   let stage = $state<"review" | "parts" | "report">("review");
   // Realitätscheck: Entwurf der Reise, nicht gespeichert
@@ -92,7 +94,9 @@
     busy = true; err = "";
     ctrl = new AbortController();
     try {
-      const offer = await askImport({ prepared, text, url }, ctrl.signal);
+      const res = await askImport({ prepared, text, url }, ctrl.signal);
+      const offer = res.offer;
+      cachedUntil = res.until || "";
       // alles sicher erkannt: gleich anlegen, sonst erst die Übersicht
       found = offer;
       choices = defaultChoices(offer);
@@ -139,7 +143,7 @@
   {:else if found && stage === "parts"}
     <ImportParts offer={found} bind:choices oncreate={create} onback={() => (stage = "review")} />
   {:else if found}
-    <ImportReview bind:offer={found} peopleKnown={peopleKnown || into} oncreate={next} onback={() => (found = null)} />
+    <ImportReview bind:offer={found} {cachedUntil} peopleKnown={peopleKnown || into} oncreate={next} onback={() => (found = null)} />
   {:else}
     <p class="imp-lead">{t(check ? "real.lead" : "imp.lead")}</p>
     <div class="chips imp-src">

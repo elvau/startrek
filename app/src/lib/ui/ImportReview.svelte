@@ -6,11 +6,11 @@
    * zum Korrigieren. Flug und Unterkunft ändert man danach in der Reise; Unsicheres ist dort als „bitte prüfen“ markiert.
    */
   import { money } from "../calc";
-  import { range } from "../format";
+  import { dateDE, range } from "../format";
   import type { ConfKey, ImportedOffer } from "../import/ai";
   import { ANSWERS, DUNNO, answer, reviewOf, type Level, type QuestionId } from "../import/review";
 
-  let { offer = $bindable(), peopleKnown = false, oncreate, onback }: { offer: ImportedOffer; peopleKnown?: boolean; oncreate: () => void; onback: () => void } = $props();
+  let { offer = $bindable(), peopleKnown = false, cachedUntil = "", oncreate, onback }: { offer: ImportedOffer; peopleKnown?: boolean; cachedUntil?: string; oncreate: () => void; onback: () => void } = $props();
   let answered = $state<QuestionId[]>([]);
   let editing = $state<ConfKey | null>(null);
   const r = $derived(reviewOf(offer, new Set(answered), peopleKnown));
@@ -49,6 +49,7 @@
     </div>
   </div>
 
+  {#if cachedUntil}<p class="rev-cached small" role="status">♻ {t("imp.cached", { d: dateDE(cachedUntil) })}</p>{/if}
   {#if r.questions.length}
     <h4 class="rev-h">{t("imp.rev.asked")}</h4>
     {#each r.questions as q (q)}
@@ -93,6 +94,7 @@
   .rev-ring { --p: 0; flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--a) calc(var(--p) * 1%), var(--line) 0); }
   .rev-ring span { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--paper); font-weight: 800; font-size: 14px; }
   .rev-h { margin: 6px 0 0; font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .rev-cached { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--good-soft); color: var(--good); font-weight: 600; }
   .rev-q { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--warn-soft); }
   .rev-list { list-style: none; margin: 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
   .rev-list li { border-top: 1px solid var(--line); padding: 8px 0; }

@@ -79,7 +79,8 @@ async function accessToken(sa: { client_email: string; private_key: string }, f:
 }
 
 /** Firestore-Zugang; null, wenn kein Dienstkonto eingerichtet ist */
-export function tripStore(env: StoreEnv, f: typeof fetch = fetch): TripStore | null {
+/** Zugang zu Firestore über REST (Dienstkonto bzw. Emulator); null ohne Dienstkonto */
+export function fsClient(env: StoreEnv, f: typeof fetch = fetch): { root: string; base: string; call: (url: string, init?: RequestInit) => Promise<Record<string, unknown>> } | null {
   const emu = env.FIRESTORE_EMULATOR?.replace(/\/$/, "");
   let sa: { client_email: string; private_key: string; project_id?: string } | null = null;
   if (!emu) {
@@ -100,6 +101,13 @@ export function tripStore(env: StoreEnv, f: typeof fetch = fetch): TripStore | n
     }
     return data;
   }
+  return { root, base, call };
+}
+
+export function tripStore(env: StoreEnv, f: typeof fetch = fetch): TripStore | null {
+  const c = fsClient(env, f);
+  if (!c) return null;
+  const { root, base, call } = c;
   const docName = (id: string) => `${root}/trips/${id}`;
   return {
     async list(uid) {
