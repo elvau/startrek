@@ -58,6 +58,17 @@ describe("Angebot → Reise (#457)", () => {
     importToTrip(known, { kind: "flight", adults: 5 }, AT);
     expect(known.travelers.map(p => p.name)).toEqual(["Alex"]);
   });
+  it("Kinder aus dem Angebot (#474): Alter oder nur Anzahl, auch neben einer Namensliste", () => {
+    const a = blank();
+    importToTrip(a, { kind: "stay", adults: 2, childAges: [5, 8] }, AT);
+    expect(a.travelers.map(p => p.age ?? p.kind)).toEqual(["adult", "adult", 5, 8]);
+    const b = blank();
+    importToTrip(b, { kind: "stay", adults: 2, children: 3 }, AT);
+    expect(b.travelers.map(p => p.kind)).toEqual(["adult", "adult", "child", "child", "child"]);
+    const c = blank();
+    importToTrip(c, { kind: "stay", adults: 2, childAges: [4], travelers: [{ name: "Anna", household: "Berg" }, { name: "Ben", household: "Berg" }] }, AT);
+    expect(c.travelers.map(p => [p.household, p.age ?? p.kind])).toEqual([["Berg", "adult"], ["Berg", "adult"], ["Berg", 4]]);
+  });
   it("Hotel einzeln: Preis an der Unterkunft, Nächte ergeben die Abreise; Event ohne Flug und Hotel als Erlebnis", () => {
     const trip = blank();
     const [st] = importToTrip(trip, { kind: "stay", from: "2027-06-01", nights: 5, price: { total: 640, currency: "CHF" }, stay: { name: "Chalet" } }, AT);
