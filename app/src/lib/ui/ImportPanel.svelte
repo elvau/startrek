@@ -5,6 +5,7 @@
    * auslesen lassen, daraus eine Reise anlegen. Über „Neue Reise“ entsteht immer eine Reise. Nur mit Anmeldung.
    * Realitätscheck (#461, check): dieselben Schritte, danach nur der Bericht an einem Entwurf; „Als Reise übernehmen“
    * legt die Reise erst dann an. Paket (#188, into): in die offene Reise, ohne eine neue anzulegen.
+   * Ohne Flug (#475): Anreise als Posten, sobald Wohnort und Ziel (Ortsdaten) bekannt sind.
    */
   import { app, draftTrip, startTrip } from "../store.svelte";
   import RealityReport from "./RealityReport.svelte";
@@ -12,12 +13,18 @@
   import { IMPORT_FILES_MAX } from "../import/ai";
   import { ACCEPT, prepare, type Prepared } from "../import/files";
   import { askImport, ImportError } from "../import/app";
-  import { importToTrip } from "../import/apply";
+  import { importParty, importToTrip } from "../import/apply";
   import { reviewOf } from "../import/review";
   import type { ImportedOffer } from "../import/ai";
   import ImportReview from "./ImportReview.svelte";
   import ImportParts from "./ImportParts.svelte";
-  import { applyParts, defaultChoices, hasMissing, type Choice, type PartId } from "../import/parts";
+  import { applyArrival, applyParts, arrivalOf, defaultChoices, hasMissing, type Choices } from "../import/parts";
+  import { homeOf, type Spot } from "../ground";
+  import { ensureGeo, geo } from "../geo/geo.svelte";
+  import { ccOf, findCity } from "../geo/places";
+  import { withHome } from "../plz";
+  import type { Home } from "../home";
+  import { hhKey, isActive } from "../model";
   import { openFlightSearch } from "../flights/open.svelte";
   import { openStaySearch } from "../stays/open.svelte";
   import { openExplore } from "../activities/open.svelte";
@@ -32,7 +39,15 @@
   let stage = $state<"review" | "parts" | "report">("review");
   // Realitätscheck: Entwurf der Reise, nicht gespeichert
   let draft = $state<Trip | null>(null);
-  let choices = $state<Partial<Record<PartId, Choice>>>({});
+  let choices = $state<Choices>({});
+  // Wohnort für die Anreise ohne Flug, wenn die neue Reise keinen kennt
+  let home = $state<Home | null>(null);
+  const askHome = $derived.by(() => {
+    if (!found || !arrivalOf(choices)) return false;
+    const d = draftTrip(travelers?.());
+    importParty(d, found);
+    return !homeOf(d);
+  });
   type Src = "file" | "text" | "link" | "paste";
   const SRCS: Src[] = ["file", "text", "link", "paste"];
   let src = $state<Src>("file");
@@ -123,6 +138,7 @@
     startTrip(travelers?.());
     importToTrip(app.trip, found);
     const open = check ? [] : applyParts(app.trip, choices);
+    if (!check && arrivalOf(choices)) void addArrival(app.trip, choices, home);
     onclose();
     // erste gewählte Suche öffnen, vorbelegt aus der Reise (Ziel, Daten, Personen); erst nach dem Wechsel der Reise,
     // der offene Suchen zuklappt
@@ -131,6 +147,15 @@
       else if (open[0] === "stay") openStaySearch();
       else if (open[0] === "fun") openExplore("tours");
     });
+  }
+  /** Anreise ohne Flug: Ortsdaten laden, dann als Posten (nur, wenn die Reise noch offen ist) */
+  async function addArrival(trip: Trip, c: Choices, h: Home | null) {
+    if (h) trip.households = withHome(trip.households, trip.travelers.filter(isActive).map(hhKey), h);
+    try { await ensureGeo(trip); } catch { return; }
+    if (app.trip.id !== trip.id) return;
+    const city = trip.place ? findCity(geo, trip.place, ccOf(geo, trip.country)) || findCity(geo, trip.place) : null;
+    const dest: Spot | null = city ? { name: trip.place, lat: city.lat, lon: city.lon, cc: city.cc } : null;
+    applyArrival(app.trip, c, homeOf(app.trip), dest);
   }
   $effect(() => () => ctrl?.abort());
 </script>
@@ -142,7 +167,7 @@
   {:else if draft && stage === "report"}
     <RealityReport trip={draft} preview ontake={create} />
   {:else if found && stage === "parts"}
-    <ImportParts offer={found} bind:choices oncreate={create} onback={() => (stage = "review")} />
+    <ImportParts offer={found} bind:choices bind:home {askHome} oncreate={create} onback={() => (stage = "review")} />
   {:else if found}
     <ImportReview bind:offer={found} {cachedUntil} peopleKnown={peopleKnown || into} oncreate={next} onback={() => (found = null)} />
   {:else}
