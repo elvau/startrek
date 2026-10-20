@@ -366,7 +366,7 @@ try {
   if (!(await hhHase.locator("select").first().count())) fail("Anfahrt Hase nicht bearbeitbar");
   if (await p.locator(".card.edit[data-item]").count()) fail("Antippen der Anfahrt öffnet auch den Flug-Posten");
   // Parken am Flughafen (#419): geschätzt mit Links zum Vergleichen, „entfällt“ nimmt es raus, „gebucht“ mit eigenem Preis
-  if (!(await along.locator(".bp-park", { hasText: "Parkos" }).count())) fail("Parken vergleichen fehlt am Flug");
+  if (!(await along.locator(".bp-park", { hasText: "Parken und Fliegen" }).count()) || !(await along.locator(".bp-park", { hasText: "Parkos" }).count())) fail("Parken vergleichen fehlt am Flug");
   await hhHase.locator(".hh-park").selectOption("off");
   await along.locator(".bp-acc-l", { hasText: "ohne Parken" }).waitFor();
   await hhHase.locator(".hh-park").selectOption("booked");

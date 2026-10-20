@@ -54,6 +54,11 @@ export const TP_PARTNER = { marker: "783080", trs: "584426" };
 /** Travelpayouts: Ziel-Link über tp.media weiterleiten; p = Programm, campaign = Kampagne (aus „Generate links“) */
 export const tp = (p: number, campaign: number) => (url: string) =>
   `https://tp.media/r?${new URLSearchParams({ campaign_id: String(campaign), marker: TP_PARTNER.marker, p: String(p), trs: TP_PARTNER.trs, u: url })}`;
+/** Awin (öffentlich, steht in jedem Partner-Link): Publisher-ID des Kontos */
+export const AWIN_PUBLISHER = "3121582";
+/** Awin: Ziel-Link über awin1.com weiterleiten; mid = Programm (Advertiser-ID), ued = Zielseite */
+export const awin = (mid: number) => (url: string) =>
+  `https://www.awin1.com/cread.php?${new URLSearchParams({ awinmid: String(mid), awinaffid: AWIN_PUBLISHER, ued: url })}`;
 
 export const PARTNERS = {
   /* Flüge */
@@ -90,7 +95,8 @@ export const PARTNERS = {
   pincamp: p<void>({ name: "PiNCAMP", cat: "camping", link: home("https://www.pincamp.de/") }),
   acsi: p<void>({ name: "ACSI", cat: "camping", link: home("https://www.eurocampings.de/") }),
   park4night: p<void>({ name: "park4night", cat: "camping", link: home("https://park4night.com/de") }),
-  /* Parken am Abflughafen (#419); Parken und Fliegen, Holiday Extras (Awin) kommen mit der Freischaltung dazu */
+  /* Parken am Abflughafen (#419); Airparks, Holiday Extras (Awin) bekommen die Kennung mit der Freischaltung */
+  parkenUndFliegen: p<void>({ name: "Parken und Fliegen", cat: "parking", net: "awin", link: home("https://www.parken-und-fliegen.de/"), tag: awin(14793) }),
   parkos: p<void>({ name: "Parkos", cat: "parking", link: home("https://parkos.de/") }),
   airparks: p<void>({ name: "Airparks", cat: "parking", net: "awin", link: home("https://www.airparks.de/") }),
   /* Reiseversicherung: nur als Tipp, keine Beratung (§ 34d GewO) */
