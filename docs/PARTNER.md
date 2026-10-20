@@ -43,6 +43,13 @@ Partner über Travelpayouts bekommen als Kennung `tag: tp(p, campaign)`: Der Zie
 `https://tp.media/r?campaign_id=…&marker=…&p=…&trs=…&u=<Ziel>` geleitet. `marker` (Konto) und `trs` (Projekt splitandfly.com)
 stehen in `TP_PARTNER`; `p` (Programm) und `campaign_id` liest man aus einem langen Link aus „Generate links“ (Kurzlink aus).
 
+## Awin-Links
+
+Partner über Awin bekommen `tag: awin(mid)`: Der Ziel-Link wird über
+`https://www.awin1.com/cread.php?awinmid=<Programm>&awinaffid=<Publisher>&ued=<Ziel>` geleitet. Die Publisher-ID des
+Kontos steht in `AWIN_PUBLISHER`, `awinmid` (Advertiser-ID) im Link aus den Programm-Unterlagen. Parken und Fliegen:
+keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Branding wie parken-und-fliegen.de.
+
 ## Einen Partner hinzufügen
 
 1. Eintrag in `PARTNERS` (`app/src/lib/partners/index.ts`) in der passenden Kategorie:
@@ -79,7 +86,8 @@ stehen in `TP_PARTNER`; `p` (Programm) und `campaign_id` liest man aus einem lan
 | PiNCAMP, ACSI (Eurocampings), park4night | Camping- und Stellplätze | PiNCAMP über TradeTracker (3 %) | – |
 | Parkos | Parken am Flughafen | – (kein Programm bei Awin) | – |
 | Airparks | Parken am Flughafen | Awin (beworben 10/2026) | – |
-| Parken und Fliegen, Holiday Extras | Parken am Flughafen (noch nicht in der App) | Awin (beworben 10/2026) | – |
+| Parken und Fliegen | Parken am Flughafen | Awin | ja (`awinmid=14793`) |
+| Holiday Extras | Parken am Flughafen (noch nicht in der App) | Awin (beworben 10/2026) | – |
 | CHECK24, Allianz Travel | Versicherung (nur Tipp) | – | – |
 | Yesim, Airalo | eSIM (noch kein Platz in der App, #297) | Travelpayouts | freigeschaltet: Yesim `p=5998`/`campaign_id=224`, Airalo `p=8310`/`campaign_id=541` |
 | ERGO, HanseMerkur | Versicherung (nur Tipp) | Awin (HanseMerkur beworben 10/2026, ERGO nicht gefunden) | – |
@@ -95,6 +103,6 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
 
 Publisher-Konto für splitandfly.com (Publisher-ID `3121582`, öffentlich, steht in jedem Awin-Link). Beworben 10/2026,
 Stand „offen“: TUI Cars, Sunny Cars, Sixt, Europcar (Mietwagen), TUI Camper, Roadsurfer (Camper), Airparks, Holiday Extras,
-Parken und Fliegen (Parken), Tui.com, ab-in-den-urlaub (Pauschalreisen), TUI Cruises/Mein Schiff (Kreuzfahrten),
+Tui.com, ab-in-den-urlaub (Pauschalreisen), TUI Cruises/Mein Schiff (Kreuzfahrten),
 HanseMerkur (Versicherung). Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen; Link-Format
 `https://www.awin1.com/cread.php?awinmid=…&awinaffid=3121582&ued=<Ziel>`.

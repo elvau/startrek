@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PARTNERS, partnerLink, partnersOf, sponsoredAny, type PartnerId } from ".";
+import { AWIN_PUBLISHER, PARTNERS, partnerLink, partnersOf, sponsoredAny, type PartnerId } from ".";
 
 const stay = { place: "Trogir", country: "Croatia", checkin: "2027-07-18", checkout: "2027-07-25", adults: 2, childAges: [8], rooms: 1 };
 const fl = { from: "DUS", to: "SPU", depart: "2027-07-18", ret: "2027-07-29", adults: 2, children: 0, infants: 0 };
@@ -77,5 +77,16 @@ describe("Partner-Verzeichnis", () => {
     // Skyscanner nur mit Flughafencodes
     expect(partnerLink("skyscanner", { ...fl, to: "Split" }, false)).toBeNull();
     expect(partnerLink("booking", stay, false)!.url).toContain("ss=Trogir%2C+Croatia");
+  });
+  it("Parken und Fliegen über Awin: Zielseite als ued, Programm 14793, nur mit Partner-Links an", () => {
+    const on = partnerLink("parkenUndFliegen", undefined, true)!;
+    const u = new URL(on.url);
+    expect(u.origin + u.pathname).toBe("https://www.awin1.com/cread.php");
+    expect(u.searchParams.get("awinmid")).toBe("14793");
+    expect(u.searchParams.get("awinaffid")).toBe(AWIN_PUBLISHER);
+    expect(u.searchParams.get("ued")).toBe("https://www.parken-und-fliegen.de/");
+    expect(on.sponsored).toBe(true);
+    expect(partnerLink("parkenUndFliegen", undefined, false)).toMatchObject({ url: "https://www.parken-und-fliegen.de/", sponsored: false });
+    expect(partnersOf("parking")[0]).toBe("parkenUndFliegen");
   });
 });
