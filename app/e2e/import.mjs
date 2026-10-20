@@ -45,7 +45,8 @@ try {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
     const body = JSON.parse(r.request().postData());
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
-    if (body.text?.includes("Flugdeal")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: DEAL, remaining: 7 }) });
+    // aus dem Angebotsspeicher (#462): schon geprüft, gültig bis
+    if (body.text?.includes("Flugdeal")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: DEAL, cached: true, until: "2026-11-03", remaining: 7 }) });
     if (body.url && !body.files.length) return r.fulfill({ status: 422, contentType: "application/json", headers: cors, body: JSON.stringify({ error: "Seite lässt sich nicht lesen", needScreenshot: true, remaining: 10 }) });
     return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: OFFER, remaining: 8 }) });
   });
@@ -162,6 +163,7 @@ try {
   await cd.locator(".imp-src .chip", { hasText: "Text" }).click();
   await cd.locator("textarea").fill("Flugdeal Barcelona 99 € hin und zurück");
   await cd.locator(".imp-go", { hasText: "Auslesen und prüfen" }).click();
+  await cd.locator(".rev-cached", { hasText: "Schon geprüft" }).waitFor();
   // Gepäck nennt das Angebot nicht: Rückfrage, „Weiß nicht“ lässt die Spanne offen
   await cd.locator(".rev-q .chip", { hasText: "Weiß nicht" }).click();
   await cd.locator(".imp-create").click();

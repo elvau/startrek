@@ -16,6 +16,7 @@ import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseSetupRequest, setupFromGemini, setupPayload } from "../../app/src/lib/setup/ai";
 import { importFromAi, importPayload, offerUsable, parseImportRequest } from "../../app/src/lib/import/ai";
 import { fetchPage } from "./page";
+import { offerStore } from "./offers";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
 import { blockedResult, parseActivityQuery, searchActivities, viatorBlock } from "../../app/src/lib/activities/search";
@@ -429,6 +430,10 @@ async function importTrip(req: Request, env: Env, h: Record<string, string>): Pr
   if (typeof r === "string") return json({ error: r }, 400, h);
   const limit = Number(env.IMPORT_DAILY) || 10;
   const quota = await countToday(env, uid, "import");
+  // Angebotsspeicher (#462): gleiche Eingabe schon ausgelesen und noch gültig → ohne KI, zählt nicht
+  const store = offerStore(env, meter(env));
+  const hit = store ? await store.find(r).catch(e => { console.log(JSON.stringify({ at: "offers.find", error: (e as Error).message })); return null; }) : null;
+  if (hit) return json({ offer: hit.offer, cached: true, until: hit.until, remaining: Math.max(0, limit - quota.used) }, 200, h);
   if (quota.used >= limit) return json({ error: `Tageslimit erreicht (${limit} Importe). Morgen geht es weiter.`, remaining: 0 }, 429, h);
   const page = r.url ? await fetchPage(r.url, meter(env)) : null;
   if (r.url && !page && !r.text && !r.files.length) return json({ error: "Seite lässt sich nicht lesen", needScreenshot: true, remaining: limit - quota.used }, 422, h);
@@ -438,6 +443,7 @@ async function importTrip(req: Request, env: Env, h: Record<string, string>): Pr
     const offer = importFromAi(await kiCaller(env, { f: meter(env) })(importPayload(r, page || undefined)));
     const remaining = Math.max(0, limit - quota.used - 1);
     if (!offerUsable(offer)) return json({ error: "Kein Angebot erkannt", unreadable: true, needScreenshot: !!r.url && !r.files.length, remaining }, 422, h);
+    if (store) await store.save(r, offer).catch(e => console.log(JSON.stringify({ at: "offers.save", error: (e as Error).message })));
     return json({ offer, remaining }, 200, h);
   } catch (e) {
     console.log(JSON.stringify({ at: "import", model, files: r.files.length, error: (e as Error).message }));

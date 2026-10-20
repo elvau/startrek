@@ -832,6 +832,7 @@ export const de = {
   "imp.c.later": "Später",
   "imp.c.none": "Brauchen wir nicht",
   "imp.c.search": "Suchen",
+  "imp.cached": "Schon geprüft, aus dem Speicher (gültig bis {d})",
   "imp.check": "bitte prüfen",
   "imp.checkPass": "Reisepässe auf Gültigkeit prüfen",
   "imp.checkPassNote": "(mit den Angaben in deinem Konto, nur hier im Browser)",

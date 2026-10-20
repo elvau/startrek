@@ -177,4 +177,11 @@ Unterkunft) und Transfer (bei Pauschalreise) = „Angebot realistisch“; alles 
 Angebot Flug und Unterkunft abdeckt oder etwas ergänzt wurde). Verpflegung umschaltbar nur auf Stufen laut Angebot
 (`stay.boards`, Aufpreis als Nebenkosten), „Essen einrechnen“ an/aus. Beträge pro Kopf, auf 10 € gerundet.
 
+Angebotsspeicher (#462, `import/cache.ts`, `worker/src/offers.ts`): nach erfolgreichem Auslesen speichert der Such-Dienst
+das Angebot in Firestore (`offers/{Angebots-Schlüssel}`, dazu `offerInputs/{Eingabe-Schlüssel}`), nur über das
+Dienstkonto (`FIREBASE_SERVICE_ACCOUNT`), Regeln sperren beides für die App. Eingabe-Schlüssel: SHA-256 aus Link (ohne
+Werbe-Parameter), Dateien und Text; gleiche Eingabe → Treffer ohne KI und ohne Kontingent, die App zeigt „♻ Schon
+geprüft“. Angebots-Schlüssel aus den Angebotsdaten. Gültig bis `validUntil`, sonst bis Reisedatum, höchstens 14 Tage
+(`expiresAt`, Löschen per TTL-Richtlinie in Firestore). Teilnehmerlisten (mit Namen) werden nie gespeichert.
+
 Dateien werden nirgends gespeichert. Weiter im Epic #456: Vergleich mit der Suche (#460), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.

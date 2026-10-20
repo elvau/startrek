@@ -19,7 +19,8 @@ export function importBody(i: ImportInput, lang = i18n.lang) {
 /** Fehler mit Hinweis, ob ein Screenshot weiterhilft */
 export class ImportError extends Error { constructor(msg: string, readonly needScreenshot = false) { super(msg); } }
 
-export async function askImport(i: ImportInput, signal?: AbortSignal): Promise<ImportedOffer> {
+/** until: aus dem Angebotsspeicher (#462), gültig bis */
+export async function askImport(i: ImportInput, signal?: AbortSignal): Promise<{ offer: ImportedOffer; until?: string }> {
   if (!FLIGHTS_URL) throw new ImportError(t("search.notReady"));
   const token = await idToken();
   if (!token) throw new ImportError(t("imp.login"));
@@ -27,7 +28,7 @@ export async function askImport(i: ImportInput, signal?: AbortSignal): Promise<I
     method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(importBody(i)), signal
   });
   const data = await res.json().catch(() => ({}));
-  if (res.ok && data.offer) return data.offer as ImportedOffer;
+  if (res.ok && data.offer) return { offer: data.offer as ImportedOffer, ...(data.cached && data.until ? { until: String(data.until) } : {}) };
   noteError(`Import ${res.status}: ${data.error || "ohne Meldung"}`);
   if (res.status === 422) throw new ImportError(t(data.needScreenshot && !data.unreadable ? "imp.needShot" : "imp.unreadable"), !!data.needScreenshot);
   // Eingabe passt nicht (Format, Größe): Meldung des Dienstes auf Deutsch, sonst allgemein

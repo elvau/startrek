@@ -885,6 +885,7 @@ export const ar: Dict = {
   "imp.c.later": "لاحقًا",
   "imp.c.none": "لا نحتاجه",
   "imp.c.search": "بحث",
+  "imp.cached": "تم فحصه سابقًا، من الذاكرة (صالح حتى {d})",
   "imp.check": "يرجى التحقق",
   "imp.checkPass": "التحقق من صلاحية جوازات السفر",
   "imp.checkPassNote": "(باستخدام بيانات حسابك، هنا في المتصفح فقط)",
