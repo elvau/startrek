@@ -122,6 +122,10 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
   const unsure = checks(o);
   for (const it of items) if ((it.cat === "flights" && unsure.flights) || (it.cat === "stay" && unsure.stay) || (it.hint === "transfer" && unsure.transfer)) it.check = true;
   trip.items.push(...items);
+  trip.offer = {
+    at, kind: o.kind, items: items.map(i => i.id),
+    ...(o.provider ? { provider: o.provider } : {}), ...(o.url ? { url: o.url } : {}), ...(o.price ? { price: { ...o.price } } : {}), ...(o.validUntil ? { validUntil: o.validUntil } : {})
+  };
   trip.ai = { at };
   trip.food = { ...(trip.food || {}), on: true };
   return items;

@@ -151,5 +151,11 @@ Verpflegung und Personen → Rückfrage zum Antippen vor dem Anlegen („Weiß n
 Personen und Preis lassen sich korrigieren (danach sicher). Alles hoch und nichts offen → direkt anlegen. Posten mit
 abgeleiteten Angaben bekommen `Item.check` („bitte prüfen“ unter der KI-Markierung, weg mit „Geprüft“).
 
-Dateien werden nirgends gespeichert. Weiter im Epic #456: fehlende Bausteine
-(#459), Vergleich mit der Suche (#460), Realitätscheck (#461), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.
+Was fehlt noch? (#459, `import/parts.ts`, `ui/ImportParts.svelte`): danach je Baustein im Angebot (bzw. im Paket), von
+der App gerechnet (Anreise zum Flughafen) oder fehlend; fehlende mit Suchen (Flug, Unterkunft, Erlebnisse: die erste
+gewählte Suche öffnet sich nach dem Anlegen, vorbelegt aus der Reise), Schätzen (Mietwagen als Richtwert-Posten,
+Transfer wie bisher von der App) oder Brauchen wir nicht (kein Transfer: Posten zu 0 € ersetzt die Schätzung). Kein
+fehlender Baustein → Schritt entfällt. `Trip.offer` merkt Art, Anbieter, Link, beworbenen Preis, Gültigkeit und die
+Posten des Angebots; Ergänztes zählt im Realitätscheck (#461) zur ganzen Reise.
+
+Dateien werden nirgends gespeichert. Weiter im Epic #456: Vergleich mit der Suche (#460), Realitätscheck (#461), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.

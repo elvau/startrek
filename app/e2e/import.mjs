@@ -92,6 +92,18 @@ try {
   await dlg.locator(".rev-list li", { hasText: "El Arenal" }).locator(".rev-lvl.high").waitFor();
   await dlg.locator(".imp-create").click();
   log("Übersicht: Stufen je Angabe, Rückfrage zum Gepäck beantwortet, Ziel korrigiert (danach sicher)");
+
+  // 5. Was fehlt noch? (#459): Flug, Unterkunft, Transfer im Paket, Anreise rechnet die App; Mietwagen schätzen, Ausflüge suchen
+  await dlg.locator(".parts").waitFor();
+  const marks = await dlg.locator(".parts-list li").evaluateAll(ls => ls.map(l => (l.classList.contains("missing") ? "?" : "✓") + l.querySelector("b").textContent));
+  if (marks.join("|") !== "✓Flug|✓Unterkunft|✓Anreise zum Flughafen|✓Transfer Flughafen – Unterkunft|?Mietwagen|?Ausflüge und Events") fail("Bausteine: " + marks.join("|"));
+  await dlg.locator(".parts-list li", { hasText: "Mietwagen" }).locator(".chip", { hasText: "Schätzen" }).click();
+  await dlg.locator(".parts-list li", { hasText: "Ausflüge" }).locator(".chip", { hasText: "Suchen" }).click();
+  await dlg.locator(".parts", { hasText: "Danach öffnet sich die Suche: Ausflüge und Events." }).waitFor();
+  await dlg.locator(".imp-parts-go").click();
+  await p.locator(".modal", { hasText: "Erlebnisse finden" }).waitFor();
+  await p.locator(".modal", { hasText: "Erlebnisse finden" }).locator(".x").first().click();
+  log("Was fehlt noch: Paket und App-Teile abgehakt, Mietwagen geschätzt, Suche nach Erlebnissen geöffnet");
   await until(async () => !(await dlg.count()), "Fenster geschlossen");
   await p.locator("text=Mallorca im Mai").first().waitFor();
   await p.locator(".aif", { hasText: "Per KI aus einem Angebot importiert" }).first().waitFor();
@@ -103,9 +115,11 @@ try {
   }, "Reise gespeichert");
   {
     if (trip.travelers.map(x => x.name).join() !== "Anna,Ben,Cem,Dana") fail("Reisende aus der Liste fehlen: " + trip.travelers.map(x => x.name));
-    // ohne die automatischen Posten (Verpflegung, Souvenirs, unterwegs vor Ort)
+    // ohne die automatischen Posten (Verpflegung, Souvenirs, unterwegs vor Ort); Mietwagen ergänzt, nicht Teil des Angebots
     const own = trip.items.filter(i => !i.auto);
-    if (own.map(i => i.cat).join() !== "flights,stay,transport") fail("Posten: " + own.map(i => i.cat));
+    if (own.map(i => i.cat).join() !== "flights,stay,transport,transport") fail("Posten: " + own.map(i => i.cat));
+    const car = own.find(i => i.hint === "rental");
+    if (!car || trip.offer?.items.includes(car.id) || trip.offer?.items.length !== 3) fail("Mietwagen fehlt oder zählt zum Angebot");
     if (trip.items.some(i => i.auto === "local" && i.hh === "transfer")) fail("Transfer geschätzt, obwohl im Paket");
     if (trip.place !== "El Arenal") fail("korrigiertes Ziel fehlt: " + trip.place);
     const fl = trip.items.find(i => i.cat === "flights");
