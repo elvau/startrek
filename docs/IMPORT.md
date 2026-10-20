@@ -35,6 +35,12 @@ intern eine Reise aus dem Angebot und zeigt nur die Bericht-Ansicht:
     höchstens 14 Tage.
   - *Bericht* (pro Nutzer): entsteht aus der angelegten Reise, weil Wohnort/PLZ, Personen und Abflughafen das Ergebnis
     verändern.
+- **Einstieg Realitätscheck:** eigene Karte auf dem Hauptbildschirm (Name noch offen, Arbeitstitel „Realitätscheck“).
+- **Teilnehmer aus Listen** (CSV/Excel) werden übernommen. Hinweis dazu: Persönliche Daten werden nicht gespeichert;
+  trotzdem empfohlen, sie nicht weiterzugeben, auch nicht im Freitext an die KI.
+- **Keine E-Mail-Weiterleitung** (verworfen, vorerst).
+- **Link-Import so weit er kommt:** Seite über den Such-Dienst abrufen; klappt das nicht (gesperrt, Preise per
+  JavaScript), sofort Rückmeldung mit Bitte um Screenshot oder Texteingabe des Angebots.
 - **Verpflegung** umschaltbar (Ohne, Frühstück, Halbpension, All inclusive) und Schalter „Essen einrechnen“ an/aus.
   Sichtbar, was im Angebot enthalten ist. Umschaltbar nur auf Stufen, die der Anbieter tatsächlich anbietet (siehe unten).
 
@@ -117,9 +123,8 @@ meist nicht zum selben Preis. Daher:
 | PDF | Angebote, Buchungsbestätigungen |
 | DOCX | |
 | CSV, Excel | z. B. Vereinslisten mit Teilnehmern und Kosten |
-| Link | viele Seiten sperren Abrufe oder laden Preise per JavaScript; dann Screenshot erbitten |
+| Link | so weit der Abruf kommt; sonst sofort Bitte um Screenshot oder Texteingabe |
 | Teilen-Menü (Handy) | „An Split&Fly senden“ aus Browser, Mail, Galerie |
-| später: E-Mail weiterleiten | Import-Adresse für Buchungsbestätigungen |
 | später: Kalender (.ics) | aus Airline- und Bahn-Mails |
 
 ## Import: Confidence und Rückfragen
@@ -140,13 +145,14 @@ meist nicht zum selben Preis. Daher:
 
 ## Offene Fragen
 
-1. Teilnehmernamen aus CSV/Excel übernehmen oder nur die Anzahl?
-2. E-Mail-Weiterleitung gleich mit ins Epic oder später?
-3. Link-Import: fremde Seiten über den Such-Dienst abrufen (rechtliche und technische Grauzone) oder vorerst nur
-   Screenshot, Text und Dateien?
-4. Wo genau sitzt der eigene Einstieg „Realitätscheck“ (Startseite, Menü, Teilen-Menü)?
-5. Wie stehen „Angebot realistisch“ und „Ganze Reise“ in der Oberfläche nebeneinander?
-6. Geteilte Berichte: öffentlich per Link (für Deal-Communities), mit Ablauf?
+1. Name der Funktion (Karte auf dem Hauptbildschirm); muss in allen 7 Sprachen tragen.
+2. Wie stehen „Angebot realistisch“ und „Ganze Reise“ in der Oberfläche nebeneinander?
+3. **Angebotskatalog** (Idee von Dani): geprüfte Angebote gesammelt und auf die Realität gerechnet, öffentlich
+   durchsuchbar. Rechtliches Risiko, bevor es öffentlich wird, prüfen lassen:
+   - Herabsetzung bzw. Anschwärzung von Anbietern (UWG): nur nachprüfbare Fakten, keine Wertungen wie „Abzocke“.
+   - Schätzungen klar als Schätzung, Annahmen und Quellen sichtbar; Korrektur- und Löschweg für Anbieter.
+   - Keine Bilder oder Texte aus den Angeboten übernehmen (Urheberrecht), Markennamen nur zur Benennung.
+   - Vorschlag: zuerst nur intern (Speicher, Dubletten), öffentlich ggf. ohne Anbieternamen oder erst nach Rechtsberatung.
 
 ## Entwurf
 
