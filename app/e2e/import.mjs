@@ -247,11 +247,16 @@ try {
   await nd.locator("textarea").fill("Ferienpark Hamburg, 5 Nächte");
   await nd.locator(".imp-go").click();
   await until(async () => (await nd.locator(".parts").count()) || (await nd.locator(".imp-create").count()), "Übersicht oder Was fehlt noch");
-  if (!(await nd.locator(".parts").count())) {
-    // Rückfragen (z. B. Verpflegung) mit der ersten Antwort beantworten
-    while (await nd.locator(".rev-q").count()) await nd.locator(".rev-q").first().locator(".chip").first().click();
-    await nd.locator(".imp-create").click();
-  }
+  // Personen: ein Kind und ein Kleinkind dazu (#474); dafür von „Was fehlt noch?“ zurück zur Übersicht, falls übersprungen
+  if (await nd.locator(".parts").count()) await nd.locator(".parts .btn", { hasText: "Zurück" }).click();
+  // Rückfragen (z. B. Verpflegung) mit der ersten Antwort beantworten
+  while (await nd.locator(".rev-q").count()) await nd.locator(".rev-q").first().locator(".chip").first().click();
+  await nd.locator('.rev-list li[data-k="people"] .linkbtn').click();
+  await nd.locator(".rev-cnt", { hasText: "Kinder (3–17)" }).locator("button", { hasText: "+" }).click();
+  await nd.locator(".rev-cnt", { hasText: "Kleinkinder (0–2)" }).locator("button", { hasText: "+" }).click();
+  await nd.locator('.rev-list li[data-k="people"]', { hasText: "4 Personen" }).waitFor();
+  await shot(nd, "5-personen");
+  await nd.locator(".imp-create").click();
   const flightRow = nd.locator(".parts-list li", { hasText: "Flug" }).first();
   await flightRow.locator(".chip", { hasText: "Brauchen wir nicht" }).click();
   const arr = nd.locator(".parts-list li", { hasText: "Anreise ohne Flug" });
@@ -271,8 +276,9 @@ try {
     const a = park.items.find(i => i.arrival);
     if (a.name !== "Anreise mit der Bahn" || !a.options[0].estimate || !(a.options[0].price.adult > 0)) fail("Anreise-Posten: " + JSON.stringify(a));
     if (park.items.some(i => i.cat === "flights")) fail("Flug angelegt, obwohl nicht gebraucht");
+    if (park.travelers.map(x => x.kind).join() !== "adult,adult,child,infant") fail("Personen: " + park.travelers.map(x => x.kind));
   }
-  log("Nur Unterkunft: Flug nicht nötig, Anreise mit der Bahn aus dem Wohnort geschätzt");
+  log("Nur Unterkunft: Kind und Kleinkind ergänzt, Flug nicht nötig, Anreise mit der Bahn aus dem Wohnort geschätzt");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Import ok");

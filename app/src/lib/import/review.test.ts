@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answer, checks, levelOf, reviewOf } from "./review";
+import { answer, checks, levelOf, partyOf, reviewOf, setParty } from "./review";
 import type { ImportedOffer } from "./ai";
 
 const pkg: ImportedOffer = {
@@ -45,5 +45,17 @@ describe("Sicherheit je Angabe (#458)", () => {
   it("bitte prüfen: Flug sicher, Unterkunft und Paketpreis abgeleitet", () => {
     expect(checks(answer(answer(pkg, "baggage", "checked"), "transfer", "yes"))).toEqual({ flights: false, stay: true, transfer: false });
     expect(checks({ ...pkg, confidence: { ...pkg.confidence, price: 0.5, stay: 1, board: 1 } }).stay).toBe(true);
+  });
+});
+
+describe("Personen in der Übersicht (#474)", () => {
+  it("Erwachsene, Kinder, Kleinkinder bis 2 Jahre aus Alter, Anzahl oder Eingabe", () => {
+    expect(partyOf({ kind: "stay", adults: 2, childAges: [1, 5, 8] })).toEqual({ adults: 2, kids: 2, infants: 1 });
+    expect(partyOf({ kind: "stay", adults: 2, children: 3 })).toEqual({ adults: 2, kids: 3, infants: 0 });
+    const o = setParty({ kind: "stay", adults: 2, childAges: [1, 5, 8] }, { adults: 3, kids: 1, infants: 2 });
+    expect(o).toMatchObject({ adults: 3, childAges: [5, 1], children: 3, infants: 2, confidence: { people: 1 } });
+    expect(partyOf(o)).toEqual({ adults: 3, kids: 1, infants: 2 });
+    const none = setParty(o, { adults: 0, kids: 0, infants: 0 });
+    expect(partyOf(none)).toEqual({ adults: 1, kids: 0, infants: 0 });
   });
 });

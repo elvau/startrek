@@ -951,6 +951,8 @@ export const ru: Dict = {
   "imp.rental": "Арендованный автомобиль",
   "imp.reopen": "открыть снова",
   "imp.rev.adults": "Взрослые",
+  "imp.rev.infants": "Малыши (0–2)",
+  "imp.rev.kids": "Дети (3–17)",
   "imp.rev.ask": "Некоторые данные неточны. Ответьте коротко, и станет точнее.",
   "imp.rev.asked": "Короткие вопросы",
   "imp.rev.back": "Назад",

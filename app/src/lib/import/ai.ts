@@ -41,6 +41,8 @@ export interface ImportedOffer {
   childAges?: number[];
   /** Anzahl Kinder, wenn das Alter nicht dasteht */
   children?: number;
+  /** davon Kleinkinder bis einschließlich 2 Jahre (in der Übersicht eingetragen) */
+  infants?: number;
   /** nur aus Listen: Vorname (ggf. Familie) und Alter */
   travelers?: { name: string; household?: string; age?: number }[];
   /** Preis laut Angebot für alle bzw. pro Person */

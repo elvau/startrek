@@ -923,6 +923,8 @@ export const fr: Dict = {
   "imp.rental": "Voiture de location",
   "imp.reopen": "rouvrir",
   "imp.rev.adults": "Adultes",
+  "imp.rev.infants": "Bébés (0–2)",
+  "imp.rev.kids": "Enfants (3–17)",
   "imp.rev.ask": "Certaines informations sont incertaines. Répondez brièvement pour plus de précision.",
   "imp.rev.asked": "Questions rapides",
   "imp.rev.back": "Retour",

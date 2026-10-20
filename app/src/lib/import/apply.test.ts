@@ -85,3 +85,12 @@ describe("Angebot → Reise (#457)", () => {
     expect(importToTrip(blank(), sure, AT).map(i => !!i.check)).toEqual([false, false, false]);
   });
 });
+
+describe("Kleinkinder aus der Übersicht (#474)", () => {
+  it("eingetragene Kleinkinder werden Kleinkind-Platzhalter, bekannte Alter bleiben", () => {
+    const a = blank();
+    importToTrip(a, { kind: "stay", adults: 2, children: 3, infants: 1, childAges: [7, 1] }, AT);
+    expect(a.travelers.map(p => p.age ?? p.kind)).toEqual(["adult", "adult", 7, "child", 1]);
+    expect(a.travelers.map(p => p.kind)).toEqual(["adult", "adult", "child", "child", "infant"]);
+  });
+});

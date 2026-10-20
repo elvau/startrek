@@ -8,7 +8,7 @@ import { t } from "../i18n/index.svelte";
 import { uid, type Extra, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
 import { animalName, nextAnimal, placeholderTravelers } from "../placeholders";
 import type { ImportedOffer, ImportLeg } from "./ai";
-import { checks } from "./review";
+import { checks, INFANT_MAX, partyOf } from "./review";
 
 const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"];
 const addDays = (d: string, n: number) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
@@ -38,12 +38,16 @@ export function importParty(trip: Trip, o: ImportedOffer) {
     }
     return;
   }
-  const kids = Math.max(o.childAges?.length || 0, o.children || 0);
-  if (!o.adults && !kids) return;
+  const party = partyOf(o);
+  if (!party.adults && !party.kids && !party.infants) return;
   const animal = nextAnimal();
-  const list = placeholderTravelers([{ animal, adults: o.adults || 1, kids }]);
-  let k = 0;
-  for (const p of list) if (p.kind === "child") { const age = o.childAges?.[k++]; if (age != null) p.age = age; }
+  const list = placeholderTravelers([{ animal, adults: party.adults || 1, kids: party.kids, infants: party.infants }]);
+  // bekannte Alter: Kinder über 2 an die Kinder, bis 2 an die Kleinkinder
+  const older = (o.childAges || []).filter(a => a > INFANT_MAX), young = (o.childAges || []).filter(a => a <= INFANT_MAX);
+  for (const p of list) {
+    const age = p.kind === "child" ? older.shift() : p.kind === "infant" ? young.shift() : undefined;
+    if (age != null) p.age = age;
+  }
   trip.travelers = list;
 }
 
