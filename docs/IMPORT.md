@@ -1,7 +1,7 @@
 # KI-Import und Realitätscheck (Konzept, in Arbeit)
 
-Stand: Besprechung mit Dani, 20.10.2026. Noch nicht eingeplant, kein Epic. Dieses Dokument wird erweitert, bis die
-offenen Punkte geklärt sind; danach wird daraus ein Epic mit Features (`docs/ABLAUF.md`).
+Stand: Besprechung mit Dani, 20.10.2026. Eingeplant als Epic #456 (Features #457–#462, Entscheidung #463); hängt mit
+#188 (Pauschalreisen) und #417 (versteckte Kosten) zusammen.
 
 Idee: Aus einem beliebigen Angebot (Screenshot, PDF, Text …) entsteht per KI eine echte Split&Fly-Reise. Darauf aufbauend
 zeigt der **Realitätscheck**, was das Angebot wirklich kostet. Passt zu Deal-Communities (z. B. Mydealz): versteckte
@@ -22,7 +22,10 @@ intern eine Reise aus dem Angebot und zeigt nur die Bericht-Ansicht:
 
 ## Entschieden
 
-- Name: **Realitätscheck**.
+- Name: **Realitätscheck**, Untertitel „Was kostet das Angebot wirklich?“.
+- Kein Angebot schlechtreden: ergänzen (Touren, Mietwagen, Transfer) und nicht genannte Kosten sichtbar machen, keine
+  Wertungen. Ist einzeln günstiger, immer angeben, was gegenüber der Pauschalreise verloren geht (Pauschalreiserecht,
+  Insolvenzschutz, ein Ansprechpartner, Transfer, Umbuchung bei Flugänderung).
 - Ergebnis als **Spanne von–bis pro Kopf**, jede Annahme einzeln aufgeschlüsselt und anpassbar (Antippen verengt die Spanne).
   Hinweis: „Schätzungen basieren auf Annahmen und können niedriger oder höher ausfallen.“ Keine Begriffe wie „Prüfservice“
   oder „Echtpreis“, die nach Garantie klingen.
@@ -35,7 +38,7 @@ intern eine Reise aus dem Angebot und zeigt nur die Bericht-Ansicht:
     höchstens 14 Tage.
   - *Bericht* (pro Nutzer): entsteht aus der angelegten Reise, weil Wohnort/PLZ, Personen und Abflughafen das Ergebnis
     verändern.
-- **Einstieg Realitätscheck:** eigene Karte auf dem Hauptbildschirm (Name noch offen, Arbeitstitel „Realitätscheck“).
+- **Einstieg Realitätscheck:** eigene Karte auf dem Hauptbildschirm.
 - **Teilnehmer aus Listen** (CSV/Excel) werden übernommen. Hinweis dazu: Persönliche Daten werden nicht gespeichert;
   trotzdem empfohlen, sie nicht weiterzugeben, auch nicht im Freitext an die KI.
 - **Keine E-Mail-Weiterleitung** (verworfen, vorerst).
@@ -145,9 +148,8 @@ meist nicht zum selben Preis. Daher:
 
 ## Offene Fragen
 
-1. Name der Funktion (Karte auf dem Hauptbildschirm); muss in allen 7 Sprachen tragen.
-2. Wie stehen „Angebot realistisch“ und „Ganze Reise“ in der Oberfläche nebeneinander?
-3. **Angebotskatalog** (Idee von Dani): geprüfte Angebote gesammelt und auf die Realität gerechnet, öffentlich
+1. Wie stehen „Angebot realistisch“ und „Ganze Reise“ in der Oberfläche nebeneinander?
+2. **Angebotskatalog** (Idee von Dani, Entscheidung #463): geprüfte Angebote gesammelt und auf die Realität gerechnet, öffentlich
    durchsuchbar. Rechtliches Risiko, bevor es öffentlich wird, prüfen lassen:
    - Herabsetzung bzw. Anschwärzung von Anbietern (UWG): nur nachprüfbare Fakten, keine Wertungen wie „Abzocke“.
    - Schätzungen klar als Schätzung, Annahmen und Quellen sichtbar; Korrektur- und Löschweg für Anbieter.
