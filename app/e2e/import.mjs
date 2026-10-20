@@ -204,6 +204,23 @@ try {
   }, "Status gilt für Flug und Unterkunft des Pakets");
   log("Pauschalreise von Hand: Paketpreis an der Unterkunft, Flug „im Paket“, Status gemeinsam");
 
+  // 9. Paket teilweise ersetzt, aufbrechen, wiederherstellen (#460): am Flug ein eigenes Angebot eintragen
+  await p.keyboard.press("Escape");
+  await partCard.click();
+  // Karte klappt auf und scrollt: kurz warten, bis sie ruhig steht
+  await p.waitForTimeout(1000);
+  const ed = partCard.locator('details[data-sec="price"]');
+  if ((await ed.getAttribute("open")) === null) { await ed.locator("summary").click(); await p.waitForTimeout(500); }
+  await ed.locator(".linkbtn", { hasText: "Angebot zum Vergleichen" }).click();
+  await ed.locator("label", { hasText: "Preis" }).locator("input").first().fill("640");
+  await partCard.locator(".pkgb.warn .pkgb-break").waitFor();
+  await partCard.locator(".pkgb-break").click();
+  await mainCard.locator(".pkgb-pill", { hasText: "Paket aufgelöst" }).waitFor();
+  await mainCard.locator(".pkgb-restore").click();
+  await mainCard.locator(".pkgb-pill", { hasText: "Pauschalreise" }).waitFor();
+  await partCard.locator(".pkgb-pill", { hasText: "im Paket" }).waitFor();
+  log("Paket: eigenes Angebot am Flug → teilweise ersetzt, aufgebrochen, wiederhergestellt");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Import ok");
 } finally { await browser.close(); server.kill(); }

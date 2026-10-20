@@ -32,6 +32,13 @@ describe("Reisebeobachtung", () => {
     expect(watchable(trip()).map(i => i.id)).toEqual(["fl", "st"]);
   });
 
+  it("Preis laut importiertem Angebot oder Paketpreis: nicht beobachtet (#460)", () => {
+    const tr = trip();
+    tr.items.find(i => i.id === "fl")!.options[0].source!.imported = true;
+    tr.items.find(i => i.id === "st")!.options[0].pkg = { id: "p", main: true };
+    expect(watchable(tr)).toEqual([]);
+  });
+
   it("sucht genau denselben Flug: Flughäfen, Daten, Personen", () => {
     const tr = trip();
     const q = flightQueryFor(tr, tr.items[0], tr.items[0].options[0])!;
