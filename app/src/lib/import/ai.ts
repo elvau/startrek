@@ -39,6 +39,8 @@ export interface ImportedOffer {
   nights?: number;
   adults?: number;
   childAges?: number[];
+  /** Anzahl Kinder, wenn das Alter nicht dasteht */
+  children?: number;
   /** nur aus Listen: Vorname (ggf. Familie) und Alter */
   travelers?: { name: string; household?: string; age?: number }[];
   /** Preis laut Angebot für alle bzw. pro Person */
@@ -85,6 +87,7 @@ export function parseImportAi(raw: unknown): ImportedOffer {
     to: day(a.to),
     nights: int(a.nights, 1, 120),
     adults: int(a.adults, 1, 60),
+    children: int(a.children, 1, 30),
     childAges: Array.isArray(a.childAges) ? a.childAges.map(x => int(x, 0, 17)).filter((x): x is number => x !== undefined).slice(0, 30) : undefined,
     travelers: Array.isArray(a.travelers)
       ? a.travelers.map(obj).map(p => prune({ name: str(p.name, 40)!, household: str(p.household, 40), age: int(p.age, 0, 110) })).filter((p): p is NonNullable<typeof p> => !!p?.name).slice(0, 60)
@@ -133,6 +136,7 @@ Call fill_trip exactly once. Only fill what the material states or clearly impli
 - stay.board: board included in the price (self, breakfast, half, full, all). stay.boards: board options the offer lets you choose, with extra = surcharge per person and night in the offer's currency (0 for the included one).
 - transfer.included: true/false only if the offer says so.
 - extras: fees the offer names (city tax, resort fee, cleaning, baggage, seats …) with amount, basis and pay (included, onsite = paid locally, extra = paid at booking on top).
+- adults: number of adults travelling; childAges: the age of every child and infant travelling (0 for a baby). Count children from the booking (e.g. "2 adults, 2 children (5, 8)") and never leave them out; if only their number is stated, give it as children (without childAges).
 - travelers: only from participant lists; first name, family name as household, age if given. Never copy ID card, passport, birth date, address, phone, e-mail or booking numbers.
 - country: ISO-2 of the destination. Dates as YYYY-MM-DD. validUntil: until when the offer is valid, if stated.
 - url: the offer's own web address if visible.
@@ -147,7 +151,7 @@ const DECL = {
     properties: {
       kind: S("STRING", { enum: [...IMPORT_KINDS] }), title: S("STRING"), provider: S("STRING"), url: S("STRING"),
       place: S("STRING"), country: S("STRING"), from: S("STRING"), to: S("STRING"), nights: S("INTEGER"),
-      adults: S("INTEGER"), childAges: S("ARRAY", { items: S("INTEGER") }),
+      adults: S("INTEGER"), childAges: S("ARRAY", { items: S("INTEGER") }), children: S("INTEGER"),
       travelers: S("ARRAY", { items: S("OBJECT", { properties: { name: S("STRING"), household: S("STRING"), age: S("INTEGER") } }) }),
       price: S("OBJECT", { properties: { total: S("NUMBER"), perPerson: S("NUMBER"), currency: S("STRING") } }),
       validUntil: S("STRING"),

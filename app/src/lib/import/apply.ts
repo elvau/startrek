@@ -28,13 +28,22 @@ export function importParty(trip: Trip, o: ImportedOffer) {
       const kind = p.age == null ? "adult" : p.age < 2 ? "infant" : p.age < 18 ? "child" : "adult";
       return { id: uid(), name: p.name, household: hh, color: fam.get(hh), ...(p.age != null ? { age: p.age } : { kind }) };
     });
+    // Kinder, die nur als Alter im Angebot stehen (nicht in der Namensliste), nicht verlieren (#474)
+    const minors = trip.travelers.filter(p => p.age != null ? p.age < 18 : p.kind !== "adult").length;
+    const rest: (number | undefined)[] = (o.childAges || []).slice(minors);
+    while (rest.length + minors < (o.children || 0)) rest.push(undefined);
+    if (rest.length) {
+      const first = trip.travelers[0];
+      rest.forEach((age, k) => trip.travelers.push({ id: uid(), name: t("ph.child", { a: first.household, k: minors + k + 1 }), household: first.household, color: first.color, ...(age != null ? { age } : { kind: "child" as const }), placeholder: true }));
+    }
     return;
   }
-  if (!o.adults && !o.childAges?.length) return;
+  const kids = Math.max(o.childAges?.length || 0, o.children || 0);
+  if (!o.adults && !kids) return;
   const animal = nextAnimal();
-  const list = placeholderTravelers([{ animal, adults: o.adults || 1, kids: o.childAges?.length || 0 }]);
+  const list = placeholderTravelers([{ animal, adults: o.adults || 1, kids }]);
   let k = 0;
-  for (const p of list) if (p.kind === "child") p.age = o.childAges![k++];
+  for (const p of list) if (p.kind === "child") { const age = o.childAges?.[k++]; if (age != null) p.age = age; }
   trip.travelers = list;
 }
 
