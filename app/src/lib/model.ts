@@ -211,9 +211,11 @@ export interface Option {
   /** Herkunft und Stand des Preises */
   /** sponsored: Link mit Partnerkennung (in der App als Partner-Link gekennzeichnet) */
   /** test: aus einem Testzugang übernommen, Preis nicht echt */
-  source?: { name: string; at?: string; url?: string; sponsored?: boolean; test?: boolean };
+  /** imported: per KI aus einem Angebot übernommen (#457), Preis laut Angebot, nicht live prüfbar */
+  source?: { name: string; at?: string; url?: string; sponsored?: boolean; test?: boolean; imported?: boolean };
   legs?: FlightLeg[];
-  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string; freeCancel?: boolean };
+  /** boards: wählbare Verpflegung laut Angebot mit Aufpreis pro Person und Nacht (Import, #457) */
+  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; boards?: { board: Board; extra?: number }[]; image?: string; freeCancel?: boolean };
   /** Foto vom Anbieter (nur https), z. B. einer Tour */
   image?: string;
   /** Lage (Unterkunft, Veranstaltungsort): Koordinaten vom Anbieter und Suchtext für Google Maps */
@@ -366,7 +368,8 @@ export interface DayNote {
 }
 export interface DayPlan { title?: string; notes?: DayNote[] }
 
-export interface AiMark { at: string; kind: "suggested" | "created" | "changed" }
+/** imported: per KI aus einem Angebot, einer Buchung oder Liste übernommen (#457) */
+export interface AiMark { at: string; kind: "suggested" | "created" | "changed" | "imported" }
 
 export type AccessMode = "car" | "drop" | "taxi" | "train" | "bus" | "with";
 export const ACCESS_MODES: AccessMode[] = ["car", "drop", "taxi", "train", "bus", "with"];

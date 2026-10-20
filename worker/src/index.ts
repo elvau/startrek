@@ -14,6 +14,8 @@ import { requireVerified, verifyAnyIdToken, verifyIdToken } from "../../app/src/
 import { whereFrom } from "./where";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseSetupRequest, setupFromGemini, setupPayload } from "../../app/src/lib/setup/ai";
+import { importFromAi, importPayload, offerUsable, parseImportRequest } from "../../app/src/lib/import/ai";
+import { fetchPage } from "./page";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
 import { blockedResult, parseActivityQuery, searchActivities, viatorBlock } from "../../app/src/lib/activities/search";
@@ -46,6 +48,8 @@ interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEn
   GEMINI_RPD?: string;
   /** Anfragen pro Nutzer und Tag (Standard 5) */
   AGENT_DAILY?: string;
+  /** Reise importieren (#457): Auslesen pro Nutzer und Tag (Standard 10) */
+  IMPORT_DAILY?: string;
   FIREBASE_PROJECT_ID?: string;
   /** Firebase-Projekt der Testumgebung (elvau.github.io/startrek/); Konten daraus heißen „test:…“ */
   FIREBASE_TEST_PROJECT_ID?: string;
@@ -276,6 +280,14 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
       return (await overLimit("agent", req, env, h)) || setup(req, env, h);
     }
 
+    if (url.pathname === "/import" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      noteRoute(env, "import");
+      // Dateien höchstens etwa 8 MB (Base64): größere Anfragen gar nicht erst einlesen
+      if (Number(req.headers.get("content-length") || 0) > 12_000_000) return json({ error: "Anfrage zu groß" }, 413, h);
+      return (await overLimit("agent", req, env, h)) || importTrip(req, env, h);
+    }
+
     if (url.pathname === "/bug" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
       noteRoute(env, "bug");
@@ -395,6 +407,40 @@ async function setup(req: Request, env: Env, h: Record<string, string>): Promise
     return json({ fields: setupFromGemini(res), remaining: Math.max(0, limit - quota.used - 1) }, 200, h);
   } catch (e) {
     console.log(JSON.stringify({ at: "setup", model, error: (e as Error).message }));
+    await quota.refund().catch(() => {});
+    const msg = (e as Error).message;
+    if (isOverloaded(msg)) return json({ error: msg, overloaded: true, remaining: Math.max(0, limit - quota.used) }, 503, h);
+    return json({ error: msg, remaining: Math.max(0, limit - quota.used) }, 502, h);
+  }
+}
+
+/*
+ * Reise importieren (#457): Dateien, Text oder Link → Angebotsdaten. Dateien werden nur an die KI weitergereicht und
+ * nirgends gespeichert. Ein Link, der sich nicht lesen lässt, kostet keine Anfrage: sofort needScreenshot.
+ */
+async function importTrip(req: Request, env: Env, h: Record<string, string>): Promise<Response> {
+  if (!kiReady(env)) return json({ error: "Der KI-Planer ist noch nicht eingerichtet" }, 503, h);
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return json({ error: "Bitte anmelden, um den Import zu nutzen" }, 401, h);
+  let uid: string;
+  try { uid = await verifyAnyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7", env.FIREBASE_TEST_PROJECT_ID); requireVerified(token); }
+  catch (e) { return json({ error: (e as Error).message }, 401, h); }
+  const r = parseImportRequest(await req.json().catch(() => null));
+  if (typeof r === "string") return json({ error: r }, 400, h);
+  const limit = Number(env.IMPORT_DAILY) || 10;
+  const quota = await countToday(env, uid, "import");
+  if (quota.used >= limit) return json({ error: `Tageslimit erreicht (${limit} Importe). Morgen geht es weiter.`, remaining: 0 }, 429, h);
+  const page = r.url ? await fetchPage(r.url, meter(env)) : null;
+  if (r.url && !page && !r.text && !r.files.length) return json({ error: "Seite lässt sich nicht lesen", needScreenshot: true, remaining: limit - quota.used }, 422, h);
+  await quota.bump();
+  const model = kiModels(env).join(" → ");
+  try {
+    const offer = importFromAi(await kiCaller(env, { f: meter(env) })(importPayload(r, page || undefined)));
+    const remaining = Math.max(0, limit - quota.used - 1);
+    if (!offerUsable(offer)) return json({ error: "Kein Angebot erkannt", unreadable: true, needScreenshot: !!r.url && !r.files.length, remaining }, 422, h);
+    return json({ offer, remaining }, 200, h);
+  } catch (e) {
+    console.log(JSON.stringify({ at: "import", model, files: r.files.length, error: (e as Error).message }));
     await quota.refund().catch(() => {});
     const msg = (e as Error).message;
     if (isOverloaded(msg)) return json({ error: msg, overloaded: true, remaining: Math.max(0, limit - quota.used) }, 503, h);
