@@ -43,7 +43,7 @@
       </div>
     {/if}
     {#if mode === "import" && cloud.configured}
-      <ImportPanel {onclose} {shared} {sharedText} {sharedUrl} travelers={() => (picked && !missing ? whoTravelers(who) : undefined)} />
+      <ImportPanel {onclose} {shared} {sharedText} {sharedUrl} travelers={() => (picked && !missing ? whoTravelers(who) : undefined)} peopleKnown={picked && !missing} />
     {:else}
     <form class="newtrip" onsubmit={create}>
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->

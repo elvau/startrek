@@ -1,7 +1,8 @@
 /*
  * Reise per KI importieren (#457): „Neue Reise → Importieren“ ohne Anmeldung nur der Hinweis; angemeldet ein Link, den
  * der Such-Dienst nicht lesen kann (Bitte um Screenshot), dann Screenshot und CSV-Liste auslesen (Such-Dienst
- * nachgestellt), Reise mit Flug, Unterkunft und Transfer angelegt.
+ * nachgestellt), Übersicht mit Sicherheit je Angabe und Rückfrage (#458), Reise mit Flug, Unterkunft und Transfer
+ * angelegt, Unsicheres als „bitte prüfen“ markiert.
  * Start: npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/import.mjs"
  */
 import { chromium } from "playwright";
@@ -77,6 +78,20 @@ try {
   if (b.files.length !== 1 || !b.files[0].mime.startsWith("image/")) fail("Bild nicht als Datei geschickt: " + JSON.stringify(b.files.map(f => f.mime)));
   if (!b.text?.includes("liste.csv:\nName;Alter")) fail("CSV nicht als Text geschickt: " + b.text);
   if (b.url !== "https://example.com/deal") fail("Link fehlt in der zweiten Anfrage");
+  // 4. Übersicht (#458): Sicherheit je Angabe, Rückfrage zum Gepäck, Ziel korrigieren, erst nach der Antwort anlegen
+  await dlg.locator(".rev").waitFor();
+  if (await dlg.locator(".rev-lvl.mid").count() < 2) fail("abgeleitete Angaben nicht als mittel markiert");
+  const qs = await dlg.locator(".rev-q b").allTextContents();
+  if (qs.join() !== "Ist Aufgabegepäck im Preis?") fail("Rückfragen: " + qs);
+  if (!(await dlg.locator(".imp-create").isDisabled())) fail("Anlegen trotz offener Rückfrage möglich");
+  await dlg.locator(".rev-q .chip", { hasText: "Nein, nur Handgepäck" }).click();
+  if (await dlg.locator(".rev-q").count()) fail("Rückfrage nach der Antwort noch da");
+  await dlg.locator(".rev-list li", { hasText: "Ziel" }).locator(".linkbtn").click();
+  await dlg.locator(".rev-edit input").fill("El Arenal");
+  await dlg.locator(".rev-edit input").press("Tab");
+  await dlg.locator(".rev-list li", { hasText: "El Arenal" }).locator(".rev-lvl.high").waitFor();
+  await dlg.locator(".imp-create").click();
+  log("Übersicht: Stufen je Angabe, Rückfrage zum Gepäck beantwortet, Ziel korrigiert (danach sicher)");
   await until(async () => !(await dlg.count()), "Fenster geschlossen");
   await p.locator("text=Mallorca im Mai").first().waitFor();
   await p.locator(".aif", { hasText: "Per KI aus einem Angebot importiert" }).first().waitFor();
@@ -92,9 +107,18 @@ try {
     const own = trip.items.filter(i => !i.auto);
     if (own.map(i => i.cat).join() !== "flights,stay,transport") fail("Posten: " + own.map(i => i.cat));
     if (trip.items.some(i => i.auto === "local" && i.hh === "transfer")) fail("Transfer geschätzt, obwohl im Paket");
+    if (trip.place !== "El Arenal") fail("korrigiertes Ziel fehlt: " + trip.place);
+    const fl = trip.items.find(i => i.cat === "flights");
+    if (fl.options[0].baggage?.checked !== 0 || fl.options[0].baggage?.cabin !== 4) fail("Antwort zum Gepäck nicht übernommen");
     const st = trip.items.find(i => i.cat === "stay");
+    if (!st.check) fail("Unterkunft (abgeleitet) nicht als „bitte prüfen“ markiert");
     if (st.options[0].price.unit !== 796 || !st.options[0].source.imported) fail("Paketpreis an der Unterkunft fehlt");
   }
+  // „bitte prüfen“ an der Unterkunft, mit „Geprüft“ weg
+  const card = p.locator("article.card:has(.aif)", { hasText: "Hotel Sol" }).first();
+  await card.locator(".aif-check", { hasText: "bitte prüfen" }).waitFor();
+  await card.locator(".aif-ok").click();
+  await until(async () => !(await card.locator(".aif-check").count()), "„bitte prüfen“ nach „Geprüft“ weg");
   log("Screenshot und CSV ausgelesen, Reise mit Reisenden aus der Liste, Flug, Unterkunft (Paketpreis) und Transfer");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
