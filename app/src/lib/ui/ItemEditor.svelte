@@ -24,7 +24,7 @@
 
   function addOption() {
     const base = opt ? JSON.parse(JSON.stringify(opt)) : { price: { mode: "person", currency: entryCurrency() } };
-    const o = { ...base, id: uid(), label: "", legs: undefined, source: undefined };
+    const o = { ...base, id: uid(), label: "", legs: undefined, source: undefined, pkg: undefined };
     item.options.push(o);
     item.chosen = o.id;
   }

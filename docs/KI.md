@@ -146,6 +146,12 @@ kurz im Speicher `saf-share` ab, `app/src/lib/import/share.svelte.ts` holt sie a
    Unterkunft und enthaltener Transfer tragen dieselbe Paket-Kennung (`Option.pkg`), der Paketpreis steht an der
    Unterkunft (`main`), die anderen Teile kosten 0 €; der Status gilt für alle Teile. Markierung `ai.kind = "imported"`.
    Von Hand oder per Import in die offene Reise über „📦 Paket“ in den Kapiteln Flug und Unterkunft (`ui/PackageDialog.svelte`).
+   Vergleich und Aufbrechen (#460, `ui/PkgBand.svelte`): je Teil „⇆ einzeln suchen“ (Treffer kommen als weitere Angebote an
+   denselben Posten); das Paket gilt, bis man ein anderes Angebot wählt (`activeOption`). Haben Flug und Unterkunft eigene
+   Angebote: „📦 Paket gegen ✈ + 🛏 einzeln“ mit Differenz und was einzeln entfällt. Anderes Angebot in einem Teil gewählt →
+   „⚠ Paket teilweise ersetzt“ mit Aufbrechen (alle Teile einzeln, ohne eigenes Angebot „Preis fehlt“) oder Paket behalten;
+   aufgebrochen bleibt das Paket verworfen (`pkg.off`) und lässt sich wiederherstellen. Importierte Preise und Paketpreise
+   prüft die Reisebeobachtung nicht nach („📥 laut Angebot vom …“).
 
 Sicherheit je Angabe und Rückfragen (#458, `import/review.ts`, `ui/ImportReview.svelte`): Die KI nennt je Angabe 0–1;
 hoch ab 0,85, mittel ab 0,6 (ohne Angabe der KI: mittel), sonst niedrig. Niedrig oder fehlend bei Gepäck, Transfer (Paket),

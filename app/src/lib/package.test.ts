@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 import { totals } from "./calc";
-import { createPackage, pkgInfo, pkgOf, setStatus } from "./package";
+import { breakPkg, createPackage, pkgCompare, pkgInfo, pkgOf, pkgState, restorePkg, setStatus } from "./package";
+import { activeOption } from "./calc";
+import { uid, type Item } from "./model";
 import { importToTrip } from "./import/apply";
 
 const trip = (): Trip => ({ id: "t", name: "Mallorca", autoName: false, place: "Palma", country: "ES", from: "2027-05-10", to: "2027-05-17",
@@ -14,7 +16,7 @@ describe("Pauschalreise als Posten (#188)", () => {
     expect([st.cat, fl.cat, tf.cat]).toEqual(["stay", "flights", "transport"]);
     expect(st).toMatchObject({ from: "2027-05-10", to: "2027-05-17" });
     expect(tf.hint).toBe("transfer");
-    expect(pkgOf(st)).toEqual({ id: expect.any(String), main: true });
+    expect(pkgOf(st)).toEqual({ id: expect.any(String), main: true, off: false, active: true });
     expect(pkgOf(fl)?.id).toBe(pkgOf(st)?.id);
     const info = pkgInfo(tr, pkgOf(st)!.id)!;
     expect(info.main).toBe(st);
@@ -43,5 +45,35 @@ describe("Pauschalreise als Posten (#188)", () => {
     const ids = tr.items.map(i => pkgOf(i)?.id);
     expect(new Set(ids).size).toBe(1);
     expect(tr.items.filter(i => pkgOf(i)?.main).map(i => i.cat)).toEqual(["stay"]);
+  });
+});
+
+describe("Paket gegen einzeln, aufbrechen (#460)", () => {
+  const alt = (it: Item, label: string, unit: number) => { const o = { id: uid(), label, price: { ...it.options[0].price, unit } }; delete (o as { pkg?: unknown }).pkg; it.options.push(o); return o; };
+  it("eigene Angebote ändern nichts, bis man wählt; Vergleich erst mit Flug und Unterkunft einzeln", () => {
+    const tr = trip();
+    const [st, fl, tf] = createPackage(tr, { price: 800, parts: ["stay", "flights", "transport"] });
+    const info = () => pkgInfo(tr, pkgOf(st)!.id)!;
+    alt(st, "Hotel einzeln", 420);
+    expect(activeOption(st, tr)?.pkg).toBeTruthy();
+    expect(pkgCompare(tr, info())).toBeNull();
+    alt(fl, "Flug einzeln", 500);
+    const c = pkgCompare(tr, info())!;
+    expect(c.single - c.pkg).toBeCloseTo(120);
+    expect(c.missing).toEqual(["transport"]);
+    expect(pkgState(info())).toBe("whole");
+    fl.chosen = fl.options[1].id;
+    expect(pkgState(info())).toBe("mixed");
+    breakPkg(tr, info().id);
+    expect(pkgState(info())).toBe("off");
+    expect(activeOption(st, tr)?.label).toBe("Hotel einzeln");
+    expect(activeOption(fl, tr)?.label).toBe("Flug einzeln");
+    // Transfer ohne eigenes Angebot: leeres Angebot, „Preis fehlt“
+    expect(activeOption(tf, tr)).toMatchObject({ label: "", price: { mode: "unit" } });
+    restorePkg(tr, info().id);
+    expect(pkgState(info())).toBe("whole");
+    expect(tf.options.length).toBe(1);
+    expect(activeOption(st, tr)?.pkg?.main).toBe(true);
+    expect(st.options.length).toBe(2);
   });
 });
