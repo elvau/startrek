@@ -13,6 +13,13 @@ Kosten aufdecken, „Prüfservice“ für Deals.
 2. **Realitätscheck** – Ansicht auf eine Reise: Spanne pro Kopf, Annahmen einzeln aufgeschlüsselt. Geht auch für von Hand
    angelegte Reisen.
 
+Die versteckten Kosten rechnet die App ohnehin bei jeder Reise (`docs/NEBENKOSTEN.md`). Der Realitätscheck baut deshalb
+intern eine Reise aus dem Angebot und zeigt nur die Bericht-Ansicht:
+
+- **Realitätscheck** (eigener Einstieg): legt **keine** Reise an; die Reise existiert nur für die Ansicht. Danach
+  „Als Reise übernehmen“ legt sie im Konto an.
+- **Neue Reise → Per KI importieren**: legt **immer** eine Reise an.
+
 ## Entschieden
 
 - Name: **Realitätscheck**.
@@ -78,6 +85,29 @@ Nutzt die bestehende Suche (Flüge, Unterkünfte, Events, Transport). Mit jedem 
 - Weniger wählen als enthalten: ohne Abzug rechnen (Hotels erstatten selten).
 - Essen vor Ort je Tag nach Stufe aus den vorhandenen Richtwerten (Preisniveau des Ziels), nicht aus festen Beträgen.
 
+## Importierte Preise, Links und Pakete
+
+Angebotspreise sind oft rabattiert oder nur beim Anbieter zu haben; dieselben Flüge bzw. Unterkünfte findet unsere Suche
+meist nicht zum selben Preis. Daher:
+
+- Der Import trägt Flug und Unterkunft **wie von Hand eingetragen** ein: als Angebot (`Option`) am Posten mit Preis laut
+  Angebot, Quelle (Anbieter, Datum, Link falls bekannt; bei Screenshot ohne Link „Link hinzufügen“). Kennzeichen
+  „importiert“, Preis „laut Angebot vom …, nicht live prüfbar“. Die Reisebeobachtung prüft solche Preise nicht nach.
+- **Vergleich mit unserer Suche** über die vorhandene Mechanik: Suchergebnisse kommen als weitere Angebote an denselben
+  Posten (mit Partner-Link nach `docs/PARTNER.md`); man wählt, welches zählt. Keine Bevorzugung von Partner-Links.
+- Der Link am importierten Angebot zeigt auf das Original-Angebot (ohne Partnerkennung), nicht auf unsere Suche.
+
+### Pakete (Pauschalreise)
+
+- Ein Paket ist ein Preis für mehrere Posten (Flug + Unterkunft, ggf. Transfer). Neu im Modell: Kennung des Pakets an den
+  beteiligten Angeboten, Gesamtpreis einmal (z. B. an einem Teil, die anderen „im Paket“).
+- In der Reise als zusammengehörige Karte mit beiden Teilen, Gesamtpreis und p. P.; darunter „Mit unserer Suche
+  vergleichen“: Paket wie im Angebot gegen einzeln aus der Suche (Summe, Differenz).
+- **Paket aufbrechen:** Wer einen Teil ändert, bekommt eine Rückfrage („Der Preis gilt nur zusammen“). Danach werden
+  alle Teile einzeln gerechnet; Teile ohne eigenen Preis zeigen „Preis fehlt“ mit „Einzeln suchen“ bzw. „Selbst
+  eintragen“. Das Paket bleibt als verworfenes Angebot zum Vergleich und lässt sich wiederherstellen.
+- Nebenkosten (Gepäck, Kurtaxe, Transfer) hängen weiter an den einzelnen Teilen, auch im Paket.
+
 ## Import: Eingaben
 
 | Quelle | Hinweis |
@@ -114,15 +144,17 @@ Nutzt die bestehende Suche (Flüge, Unterkünfte, Events, Transport). Mit jedem 
 2. E-Mail-Weiterleitung gleich mit ins Epic oder später?
 3. Link-Import: fremde Seiten über den Such-Dienst abrufen (rechtliche und technische Grauzone) oder vorerst nur
    Screenshot, Text und Dateien?
-4. Einstieg in der App: „Neue Reise → Per KI importieren“; zusätzlich eigener Knopf „Realitätscheck“ auf der Startseite?
+4. Wo genau sitzt der eigene Einstieg „Realitätscheck“ (Startseite, Menü, Teilen-Menü)?
 5. Wie stehen „Angebot realistisch“ und „Ganze Reise“ in der Oberfläche nebeneinander?
 6. Geteilte Berichte: öffentlich per Link (für Deal-Communities), mit Ablauf?
 
 ## Entwurf
 
-Oberflächen-Entwurf (Canvas, 3 Handy-Bildschirme: Screenshot einwerfen, Erkannt und ergänzen, Bericht mit
-Verpflegungs-Umschalter) liegt bei Dani. Noch anzupassen: Import mit allen Eingaben, Confidence je Feld, Rückfragen,
-Vergleichsrahmen mit zwei Zahlen und Wizard.
+Zwei Canvas-Entwürfe liegen bei Dani:
+- *Realitätscheck* (3 Bildschirme): Screenshot einwerfen, Erkannt und ergänzen, Bericht mit Verpflegungs-Umschalter.
+- *Reise importieren* (5 Bildschirme, 20.10.): Neue Reise → Importieren (Datei, Text, Link, Einfügen); Erkannt mit
+  Sicherheit je Angabe und Rückfragen; Was fehlt noch (Suchen, Schätzen, Brauchen wir nicht); in der Reise: Paket und
+  Vergleich mit unserer Suche samt „Paket aufbrechen“; Realitätscheck ohne Reise am Beispiel „nur Flug“.
 
 ## Umfeld (aus derselben Besprechung)
 
