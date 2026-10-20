@@ -182,6 +182,7 @@ das Angebot in Firestore (`offers/{Angebots-Schlüssel}`, dazu `offerInputs/{Ein
 Dienstkonto (`FIREBASE_SERVICE_ACCOUNT`), Regeln sperren beides für die App. Eingabe-Schlüssel: SHA-256 aus Link (ohne
 Werbe-Parameter), Dateien und Text; gleiche Eingabe → Treffer ohne KI und ohne Kontingent, die App zeigt „♻ Schon
 geprüft“. Angebots-Schlüssel aus den Angebotsdaten. Gültig bis `validUntil`, sonst bis Reisedatum, höchstens 14 Tage
-(`expiresAt`, Löschen per TTL-Richtlinie in Firestore). Teilnehmerlisten (mit Namen) werden nie gespeichert.
+(`expiresAt`). Gelöscht wird täglich um 03:17 UTC per Zeitplan des Such-Dienstes (`[triggers] crons` in `wrangler.toml`,
+`scheduled` → `sweep`); eine TTL-Richtlinie bräuchte Abrechnung in Google Cloud. Teilnehmerlisten (mit Namen) werden nie gespeichert.
 
 Dateien werden nirgends gespeichert. Weiter im Epic #456: Vergleich mit der Suche (#460), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.

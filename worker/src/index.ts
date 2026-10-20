@@ -76,6 +76,11 @@ const json = (body: unknown, status: number, headers: Record<string, string>) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", ...headers } });
 
 export default {
+  // täglich (Zeitplan in wrangler.toml): abgelaufene Einträge des Angebotsspeichers löschen (#462)
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    const store = offerStore(env);
+    if (store) ctx.waitUntil(store.sweep().then(n => console.log(JSON.stringify({ at: "offers.sweep", deleted: n }))).catch(e => console.log(JSON.stringify({ at: "offers.sweep", error: (e as Error).message }))));
+  },
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     // was unerwartet abbricht, kommt trotzdem mit CORS zurück (sonst sieht die App nur „Failed to fetch“)
     try { return await handle(req, env, ctx); }

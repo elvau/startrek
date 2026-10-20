@@ -1,4 +1,5 @@
 /* Läuft mit den Tests der App (cd app && npx vitest run) */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from "vitest";
 import { offerStore } from "./offers";
 import type { ImportedOffer } from "../../app/src/lib/import/ai";
@@ -9,8 +10,14 @@ function fakeFs() {
   const f = (async (url: string, init?: RequestInit) => {
     const path = decodeURIComponent(new URL(url).pathname).replace(/^\/v1\//, "");
     if (path.endsWith(":commit")) {
-      for (const w of JSON.parse(String(init?.body)).writes) docs.set(w.update.name, w.update);
+      for (const w of JSON.parse(String(init?.body)).writes) { if (w.delete) docs.delete(w.delete); else docs.set(w.update.name, w.update); }
       return new Response("{}");
+    }
+    if (path.endsWith(":runQuery")) {
+      const q = JSON.parse(String(init?.body)).structuredQuery;
+      const col = q.from[0].collectionId, before = q.where.fieldFilter.value.timestampValue;
+      const hits = [...docs.values()].filter((d: any) => d.name.split("/").at(-2) === col && d.fields.expiresAt.timestampValue < before);
+      return new Response(JSON.stringify(hits.map(document => ({ document }))));
     }
     const d = docs.get(path);
     return d ? new Response(JSON.stringify(d)) : new Response(JSON.stringify({ error: { message: "nf" } }), { status: 404 });
@@ -40,5 +47,15 @@ describe("Angebotsspeicher im Such-Dienst (#462)", () => {
     await s.save(req, { ...o, validUntil: "2026-10-01" }, "2026-10-20");
     expect(docs.size).toBe(0);
     expect(offerStore({})).toBeNull();
+  });
+  it("täglich aufräumen: nur Abgelaufenes in beiden Sammlungen löschen", async () => {
+    const { f, docs } = fakeFs();
+    const s = offerStore(env, f)!;
+    await s.save(req, o, "2026-10-20");
+    await s.save({ ...req, url: "https://example.com/paris" }, { ...o, place: "Paris", validUntil: "2026-10-21" }, "2026-10-20");
+    expect(docs.size).toBe(4);
+    expect(await s.sweep(new Date("2026-10-25T00:00:00Z"))).toBe(2);
+    expect(docs.size).toBe(2);
+    expect(await s.find(req, "2026-10-25")).not.toBeNull();
   });
 });
