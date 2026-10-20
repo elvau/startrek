@@ -13,6 +13,8 @@ import { reloadHome } from "./nav.mjs";
 const URL = "http://127.0.0.1:4186/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+// SHOTS=<Ordner>: Bildschirmfotos der Schritte zum Durchsehen
+const shot = async (loc, name) => { if (process.env.SHOTS) await loc.screenshot({ path: `${process.env.SHOTS}/${name}.png` }); };
 const until = async (fn, what, ms = 10000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
 const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" };
 // 1×1-Pixel-PNG
@@ -72,6 +74,7 @@ try {
   await p.locator(".login .test button").click();
   await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
   await dlg.locator(".imp-go").waitFor();
+  await shot(dlg, "0-eingabe");
   log("ohne Anmeldung nur Hinweis, nach der Anmeldung Import im selben Fenster");
 
   // 2. Link, den der Such-Dienst nicht lesen kann: Bitte um Screenshot, Ansicht springt auf Datei
@@ -104,12 +107,13 @@ try {
   const qs = await dlg.locator(".rev-q b").allTextContents();
   if (qs.join() !== "Ist Aufgabegepäck im Preis?") fail("Rückfragen: " + qs);
   if (!(await dlg.locator(".imp-create").isDisabled())) fail("Anlegen trotz offener Rückfrage möglich");
-  await dlg.locator(".rev-q .chip", { hasText: "Nein, nur Handgepäck" }).click();
+  await dlg.locator(".rev-q .chip", { hasText: "Nur Handgepäck" }).click();
   if (await dlg.locator(".rev-q").count()) fail("Rückfrage nach der Antwort noch da");
-  await dlg.locator(".rev-list li", { hasText: "Ziel" }).locator(".linkbtn").click();
+  await dlg.locator('.rev-list li[data-k="place"]').locator(".linkbtn").click();
   await dlg.locator(".rev-edit input").fill("El Arenal");
   await dlg.locator(".rev-edit input").press("Tab");
   await dlg.locator(".rev-list li", { hasText: "El Arenal" }).locator(".rev-lvl.high").waitFor();
+  await shot(dlg, "1-uebersicht");
   await dlg.locator(".imp-create").click();
   log("Übersicht: Stufen je Angabe, Rückfrage zum Gepäck beantwortet, Ziel korrigiert (danach sicher)");
 
@@ -120,6 +124,7 @@ try {
   await dlg.locator(".parts-list li", { hasText: "Mietwagen" }).locator(".chip", { hasText: "Schätzen" }).click();
   await dlg.locator(".parts-list li", { hasText: "Ausflüge" }).locator(".chip", { hasText: "Suchen" }).click();
   await dlg.locator(".parts", { hasText: "Danach öffnet sich die Suche: Ausflüge und Events." }).waitFor();
+  await shot(dlg, "2-was-fehlt");
   await dlg.locator(".imp-parts-go").click();
   await p.locator(".modal", { hasText: "Erlebnisse finden" }).waitFor();
   await p.locator(".modal", { hasText: "Erlebnisse finden" }).locator(".x").first().click();
@@ -183,10 +188,11 @@ try {
   if (!(await bagRow.textContent()).includes("80")) fail("Koffer-Spanne (2 × 40 €) fehlt: " + await bagRow.textContent());
   const wide = await cd.locator(".real-main b").textContent();
   await bagRow.locator(".real-pin").click();
-  await until(async () => (await bagRow.locator(".real-pin").textContent()).includes("günstig"), "Annahme auf günstig");
+  await until(async () => (await bagRow.locator(".real-pin").getAttribute("aria-label")).includes("günstig"), "Annahme auf günstig");
   if ((await cd.locator(".real-main b").textContent()) === wide) fail("Spanne nach dem Festlegen unverändert");
   if (await cd.locator(".real-board").count()) fail("Verpflegung bei reinem Flug angezeigt");
   await cd.locator(".real-hint").waitFor();
+  await shot(cd, "3-realitaetscheck");
   if (await p.evaluate(() => Object.keys(localStorage).some(k => k.startsWith("rk2-t:") && (localStorage.getItem(k) || "").includes("Barcelona im März")))) fail("Realitätscheck hat eine Reise angelegt");
   await cd.locator(".real-take").click();
   await until(async () => !(await cd.count()), "Fenster nach dem Übernehmen zu");
@@ -253,6 +259,7 @@ try {
   await arr.locator(".imp-home .home-plz").fill("50667");
   await until(async () => (await arr.locator(".imp-home .home-plz").inputValue()).includes("Köln"), "Wohnort Köln");
   await arr.locator(".chip", { hasText: "Bahn" }).click();
+  await shot(nd, "4-anreise");
   await nd.locator(".imp-parts-go").click();
   await until(async () => !(await nd.count()), "Fenster geschlossen");
   let park = null;

@@ -29,6 +29,7 @@
   import { openStaySearch } from "../stays/open.svelte";
   import { openExplore } from "../activities/open.svelte";
   import type { Traveler, Trip } from "../model";
+  import { SRC_ICON } from "../import/icons";
 
   let { onclose, travelers, peopleKnown = false, check = false, into = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
   // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
@@ -173,13 +174,13 @@
   {:else}
     <p class="imp-lead">{t(check ? "real.lead" : "imp.lead")}</p>
     <div class="chips imp-src">
-      {#each SRCS as s (s)}<button type="button" class="chip" class:on={src === s} aria-pressed={src === s} onclick={() => (s === "paste" ? void paste() : (src = s))}>{t(`imp.src.${s}` as Key)}</button>{/each}
+      {#each SRCS as s (s)}<button type="button" class="chip" class:on={src === s} aria-pressed={src === s} onclick={() => (s === "paste" ? void paste() : (src = s))}><span aria-hidden="true">{SRC_ICON[s]}</span> {t(`imp.src.${s}` as Key)}</button>{/each}
     </div>
     {#if src === "file" || src === "paste"}
-      <label class="imp-drop" class:over ondragover={e => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={e => { e.preventDefault(); over = false; if (e.dataTransfer?.files.length) void add(e.dataTransfer.files); }}>
+      <label class="imp-drop" title={t("imp.pickHint")} class:over ondragover={e => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={e => { e.preventDefault(); over = false; if (e.dataTransfer?.files.length) void add(e.dataTransfer.files); }}>
+        <span class="imp-ics" aria-hidden="true">📸 📄 🔗</span>
         <b>{t("imp.pick")}</b>
-        <span class="muted small">{t("imp.pickHint")}</span>
-        <input type="file" multiple accept={ACCEPT} onchange={e => { const f = e.currentTarget.files; if (f) void add(f); e.currentTarget.value = ""; }} />
+        <input type="file" multiple accept={ACCEPT} aria-label={`${t("imp.pick")}: ${t("imp.pickHint")}`} onchange={e => { const f = e.currentTarget.files; if (f) void add(f); e.currentTarget.value = ""; }} />
       </label>
     {:else if src === "text"}
       <label class="f">{t("imp.textLabel")}<textarea rows="7" bind:value={text} placeholder={t("imp.textPh")}></textarea></label>
@@ -193,7 +194,7 @@
       </ul>
     {/if}
     {#each notes as n (n)}<p class="small imp-note" role="status">{n}</p>{/each}
-    <p class="small imp-priv">🔒 {t("imp.privacy")}</p>
+    <details class="small imp-priv"><summary><span aria-hidden="true">🔒</span> {t("imp.privacyT")}</summary><p>{t("imp.privacy")}</p></details>
     {#if err}<p class="err small" role="alert">{err}{#if retryable} <button type="button" class="btn small imp-retry" disabled={busy} onclick={go}>{t("imp.retry")}</button>{/if}</p>{/if}
     <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
   {/if}
@@ -211,5 +212,8 @@
   .imp-files span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .imp-files .x { width: 32px; height: 32px; border: 0; background: transparent; font-size: 18px; color: var(--ink-2); }
   .imp-note { margin: 0; color: var(--warn); }
-  .imp-priv { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--paper-2); color: var(--ink-2); }
+  .imp-ics { font-size: 26px; letter-spacing: 4px; }
+  .imp-priv { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--paper-2); color: var(--ink-2); }
+  .imp-priv summary { cursor: pointer; font-weight: 600; min-height: 28px; display: flex; align-items: center; gap: 6px; }
+  .imp-priv p { margin: 6px 0 0; }
 </style>
