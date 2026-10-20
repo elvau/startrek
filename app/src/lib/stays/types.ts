@@ -35,6 +35,10 @@ export interface StayQuery {
   /** mindestens diese Gästebewertung (0–10, z. B. 8) */
   minScore?: number;
   currency?: string;
+  /** Land der suchenden Person (ISO-2) für Preise und Inhalte der Anbieter; fehlt: DE (#464) */
+  market?: string;
+  /** Sprache der App (de, en …) für Texte der Anbieter; fehlt: de */
+  lang?: string;
 }
 
 export interface StayOffer {

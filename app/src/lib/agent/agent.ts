@@ -503,7 +503,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     const rooms = Number.isInteger(a.rooms) && a.rooms >= 1 ? Math.min(10, party.adults, a.rooms) : Math.min(10, Math.max(1, Math.ceil(party.adults / 2)));
     const q = parseStayQuery({
       place: a.place, country: a.country, checkin: a.checkin, checkout: a.checkout,
-      ...guests(), rooms, type: r.prefs?.stayType ?? "all", currency: "EUR"
+      ...guests(), rooms, type: r.prefs?.stayType ?? "all", currency: "EUR", market: r.market, lang: r.lang
     });
     if (typeof q === "string") return { error: q };
     const res = await deps.stays(q);

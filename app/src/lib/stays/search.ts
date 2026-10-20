@@ -6,6 +6,7 @@ import { inCurrency, type Rates } from "../fx";
 import { keepStays } from "./sort";
 import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StaySearchResult } from "./types";
 import { errorText } from "../netcheck";
+import { parseLang, parseMarket } from "./market";
 
 /** Adressen der MCP-Server (Cloudflare-Variablen); Booking.com erst mit eingetragener Adresse */
 export interface StayEnv {
@@ -113,7 +114,10 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   }
   if (o.minStars != null && !int(o.minStars, 1, 5)) return "Sterne: 1 bis 5";
   if (o.minScore != null && !(typeof o.minScore === "number" && o.minScore >= 0 && o.minScore <= 10)) return "Bewertung: 0 bis 10";
+  // Markt und Sprache: Ungültiges fällt weg, die Anbieter nehmen dann Deutschland
+  const market = parseMarket(o.market), lang = parseLang(o.lang);
   return {
+    ...(market ? { market } : {}), ...(lang ? { lang } : {}),
     place, ...(country ? { country } : {}), ...(cc ? { cc } : {}), ...geo, checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type,
     ...(sources ? { sources } : {}), currency, ...(must ? { must } : {}),
     ...(o.minStars != null ? { minStars: o.minStars as number } : {}), ...(o.minScore ? { minScore: o.minScore as number } : {})
