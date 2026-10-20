@@ -514,7 +514,7 @@ export const de = {
   "ev.more": "Mehr Zeit drumherum?",
   "ev.moreHint": "Gib an, wann ihr frühestens los- und spätestens zurückkönnt. Wir suchen darin die günstigste Reise, die das ganze Event abdeckt.",
   "ev.nearest": "Am nächsten am Event",
-  "ev.v.eventOnly": "Nur das Event",
+  "ev.v.eventOnly": "Alle Event-Tage",
   "ev.v.window": "Günstigste im Zeitraum",
   "ev.wFrom": "Frühestens los",
   "ev.wTo": "Spätestens zurück",

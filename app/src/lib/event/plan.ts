@@ -42,6 +42,8 @@ export const eventDay = (ev: TripEvent) => ev.start.slice(0, 10);
 export const eventLast = (ev: TripEvent) => (ev.end && ev.end > eventDay(ev) ? ev.end : eventDay(ev));
 /** Ende am letzten Tag: gleiche Beginnzeit wie am ersten, dazu die Dauer */
 export const eventEnd = (ev: TripEvent) => tMin(`${eventLast(ev)}T${ev.start.slice(11, 16) || "00:00"}`) + Math.round((ev.hours || DEFAULT_H) * 60);
+/** letzter Tag beim Übernehmen eines Such-Treffers: dessen Ende, sonst der schon eingetragene, wenn er nach dem Event-Tag liegt */
+export const keepEnd = (h: { end?: string }, day: string, cur: string) => (h.end && h.end > day ? h.end : cur > day ? cur : "");
 /** alle Event-Tage (für Zeitleiste und Tagesplan) */
 export function eventDays(ev: TripEvent): string[] {
   const out: string[] = [];

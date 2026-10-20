@@ -30,7 +30,7 @@
   import { resizeTravelers, rowsAfterResize } from "../placeholders";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
-  import { DEFAULT_H, fits, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, variants, type Variant } from "../event/plan";
+  import { DEFAULT_H, fits, keepEnd, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, variants, type Variant } from "../event/plan";
   import { cityFromAddress, evWhen, searchEventsRemote, sportTag, SPORT_ICON } from "../events/app";
   import { uniqueById } from "../events/search";
   import { noteError } from "../bugs/log";
@@ -103,7 +103,8 @@
     picked = h; hits = null;
     name = h.name;
     date = h.start.slice(0, 10);
-    endDate = h.end && h.end > date ? h.end : "";
+    // Ende des Treffers, sonst ein schon eingetragener letzter Tag, solange er nach dem Event-Tag liegt (#450)
+    endDate = keepEnd(h, date, endDate);
     if (h.start.length > 10) clock = h.start.slice(11, 16);
     venue = h.venue || "";
     loc = null;
