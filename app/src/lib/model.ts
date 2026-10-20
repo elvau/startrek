@@ -345,6 +345,8 @@ export interface Item {
   arrival?: boolean;
   /** von der KI: vorgeschlagen (echtes Angebot), erstellt (Schätzung) oder angepasst (ersetzt einen Posten) */
   ai?: AiMark;
+  /** Import (#458): Angaben nur abgeleitet oder geraten, „bitte prüfen“ bis jemand „Geprüft“ antippt */
+  check?: boolean;
   /** Tagesplan: an diesem Tag (JJJJ-MM-TT, optional mit Uhrzeit JJJJ-MM-TTTHH:MM) */
   day?: string;
   /** Unterkunft privat bzw. schon vorhanden (#233): Ort, ohne Suche und Beobachtung; Kosten optional */

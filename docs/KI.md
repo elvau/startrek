@@ -145,5 +145,11 @@ kurz im Speicher `saf-share` ab, `app/src/lib/import/share.svelte.ts` holt sie a
    Transfer im Paket als Posten zu 0 € (ersetzt die Schätzung). Pauschalreise vorerst: Paketpreis an der Unterkunft, Flug
    „im Paketpreis enthalten“ (eigene Postenart: #188, #460). Markierung `ai.kind = "imported"`.
 
-Dateien werden nirgends gespeichert. Weiter im Epic #456: Sicherheit je Angabe und Rückfragen (#458), fehlende Bausteine
+Sicherheit je Angabe und Rückfragen (#458, `import/review.ts`, `ui/ImportReview.svelte`): Die KI nennt je Angabe 0–1;
+hoch ab 0,85, mittel ab 0,6 (ohne Angabe der KI: mittel), sonst niedrig. Niedrig oder fehlend bei Gepäck, Transfer (Paket),
+Verpflegung und Personen → Rückfrage zum Antippen vor dem Anlegen („Weiß nicht“ erlaubt, bleibt unsicher); Ziel, Zeitraum,
+Personen und Preis lassen sich korrigieren (danach sicher). Alles hoch und nichts offen → direkt anlegen. Posten mit
+abgeleiteten Angaben bekommen `Item.check` („bitte prüfen“ unter der KI-Markierung, weg mit „Geprüft“).
+
+Dateien werden nirgends gespeichert. Weiter im Epic #456: fehlende Bausteine
 (#459), Vergleich mit der Suche (#460), Realitätscheck (#461), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.

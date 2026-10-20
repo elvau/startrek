@@ -10,9 +10,14 @@
   import { ACCEPT, prepare, type Prepared } from "../import/files";
   import { askImport, ImportError } from "../import/app";
   import { importToTrip } from "../import/apply";
+  import { reviewOf } from "../import/review";
+  import type { ImportedOffer } from "../import/ai";
+  import ImportReview from "./ImportReview.svelte";
   import type { Traveler } from "../model";
 
-  let { onclose, travelers, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
+  let { onclose, travelers, peopleKnown = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
+  // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
+  let found = $state<ImportedOffer | null>(null);
   type Src = "file" | "text" | "link" | "paste";
   const SRCS: Src[] = ["file", "text", "link", "paste"];
   let src = $state<Src>("file");
@@ -75,14 +80,19 @@
     ctrl = new AbortController();
     try {
       const offer = await askImport({ prepared, text, url }, ctrl.signal);
-      startTrip(travelers?.());
-      importToTrip(app.trip, offer);
-      onclose();
+      // alles sicher erkannt: gleich anlegen, sonst erst die Übersicht
+      if (reviewOf(offer, new Set(), peopleKnown).direct) create(offer);
+      else found = offer;
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       err = (e as Error).message;
       if (e instanceof ImportError && e.needScreenshot) src = "file";
     } finally { busy = false; }
+  }
+  function create(offer: ImportedOffer) {
+    startTrip(travelers?.());
+    importToTrip(app.trip, offer);
+    onclose();
   }
   $effect(() => () => ctrl?.abort());
 </script>
@@ -91,6 +101,8 @@
   {#if !cloud.user}
     <p class="muted">{t("imp.login")}</p>
     <div class="ed-foot"><span></span><button type="button" class="btn primary" onclick={() => (cloud.showLogin = true)}>{t("acct.login")}</button></div>
+  {:else if found}
+    <ImportReview bind:offer={found} {peopleKnown} oncreate={() => create(found!)} onback={() => (found = null)} />
   {:else}
     <p class="imp-lead">{t("imp.lead")}</p>
     <div class="chips imp-src">

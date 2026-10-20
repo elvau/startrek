@@ -67,4 +67,10 @@ describe("Angebot → Reise (#457)", () => {
     const [it] = importToTrip(ev, { kind: "other", title: "Konzert", price: { total: 120 } }, AT);
     expect(it).toMatchObject({ cat: "attractions", name: "Konzert" });
   });
+  it("bitte prüfen (#458): ohne Sicherheit alle Teile markiert, sicher erkannt keiner", () => {
+    const a = blank();
+    expect(importToTrip(a, pkg, AT).map(i => !!i.check)).toEqual([true, true, true]);
+    const sure = { ...pkg, confidence: { place: 1, dates: 1, people: 1, price: 1, flights: 1, stay: 1, board: 1, baggage: 1, transfer: 1 } };
+    expect(importToTrip(blank(), sure, AT).map(i => !!i.check)).toEqual([false, false, false]);
+  });
 });

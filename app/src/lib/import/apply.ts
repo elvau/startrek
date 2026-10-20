@@ -8,6 +8,7 @@ import { t } from "../i18n/index.svelte";
 import { uid, type Extra, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
 import { animalName, nextAnimal, placeholderTravelers } from "../placeholders";
 import type { ImportedOffer, ImportLeg } from "./ai";
+import { checks } from "./review";
 
 const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"];
 const addDays = (d: string, n: number) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
@@ -117,6 +118,9 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
     const to = (x.kind === "bag" || x.kind === "seat" ? flight || stay : stay || flight);
     if (to) (to.extras ||= []).push(extra(x, o));
   }
+  // unsichere Angaben (#458): Posten als „bitte prüfen“ markieren
+  const unsure = checks(o);
+  for (const it of items) if ((it.cat === "flights" && unsure.flights) || (it.cat === "stay" && unsure.stay) || (it.hint === "transfer" && unsure.transfer)) it.check = true;
   trip.items.push(...items);
   trip.ai = { at };
   trip.food = { ...(trip.food || {}), on: true };
