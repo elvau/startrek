@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, planTotal, followEventName, takePlan, variants } from "./plan";
+import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, planTotal, followEventName, takePlan, variants, keepEnd } from "./plan";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import type { StayOffer } from "../stays/types";
@@ -116,5 +116,17 @@ describe("Reisename folgt dem Anlass (#379)", () => {
     t.name = "Unser Ausflug";
     followEventName(t, "Konzert B", "Spiel C");
     expect(t.name).toBe("Unser Ausflug");
+  });
+});
+
+describe("Event mit letztem Tag (#450)", () => {
+  it("Vorschläge decken alle Event-Tage ab: Anreise am ersten, Rückreise am Tag nach dem letzten", () => {
+    const v = variants({ name: "Turnier", start: "2027-06-04T10:00", end: "2027-06-06" });
+    expect(v.map(x => [x.kind, x.out, x.back, x.nights])).toEqual([["short", "2027-06-04", "2027-06-07", 3], ["relaxed", "2027-06-03", "2027-06-07", 4]]);
+  });
+  it("Treffer aus der Suche ohne Ende behält den eingetragenen letzten Tag", () => {
+    expect(keepEnd({}, "2027-06-04", "2027-06-06")).toBe("2027-06-06");
+    expect(keepEnd({ end: "2027-06-05" }, "2027-06-04", "2027-06-06")).toBe("2027-06-05");
+    expect(keepEnd({}, "2027-06-08", "2027-06-06")).toBe("");
   });
 });

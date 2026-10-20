@@ -516,7 +516,7 @@ export const en: Dict = {
   "ev.more": "More time around it?",
   "ev.moreHint": "Enter the earliest you can leave and the latest you can be back. We look for the cheapest trip in that window that covers the whole event.",
   "ev.nearest": "Closest to the event",
-  "ev.v.eventOnly": "Just the event",
+  "ev.v.eventOnly": "All event days",
   "ev.v.window": "Cheapest in your window",
   "ev.wFrom": "Leave from",
   "ev.wTo": "Back by",

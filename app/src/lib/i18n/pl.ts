@@ -532,7 +532,7 @@ export const pl: Dict = {
   "ev.more": "Więcej czasu wokół?",
   "ev.moreHint": "Podaj, kiedy najwcześniej możecie wyjechać i najpóźniej wrócić. Szukamy w tym okresie najtańszej podróży obejmującej całe wydarzenie.",
   "ev.nearest": "Najbliżej wydarzenia",
-  "ev.v.eventOnly": "Tylko wydarzenie",
+  "ev.v.eventOnly": "Wszystkie dni wydarzenia",
   "ev.v.window": "Najtańsza w twoim okresie",
   "ev.wFrom": "Wyjazd od",
   "ev.wTo": "Powrót najpóźniej",

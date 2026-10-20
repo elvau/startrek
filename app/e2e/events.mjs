@@ -261,13 +261,13 @@ try {
   await m3.locator(".ev-form .btn.primary").click();
   await m3.locator(".ev-card").first().waitFor();
   const kinds = (await m3.locator(".ev-card header b").allInnerTexts()).join(" | ");
-  if (!kinds.includes("Nur das Event") || !kinds.includes("Günstigste im Zeitraum") || kinds.includes("Tagesausflug")) fail("Vorschläge mehrtägig: " + kinds);
+  if (!kinds.includes("Alle Event-Tage") || !kinds.includes("Günstigste im Zeitraum") || kinds.includes("Tagesausflug")) fail("Vorschläge mehrtägig: " + kinds);
   const flex = asked.slice(nAsk3).find(q => q.latest);
   if (!flex || flex.depart !== "2032-07-15" || flex.latest !== "2032-08-15" || flex.nightsMin !== 17) fail("Suche im Zeitraum: " + JSON.stringify(flex));
   const win = m3.locator(".ev-card", { hasText: "Günstigste im Zeitraum" });
   if (!(await win.innerText()).includes("16. Juli") || !(await win.locator(".ev-tag", { hasText: "Günstigste" }).count())) fail("Zeitraum-Vorschlag: " + JSON.stringify(await win.innerText()) + " / " + (await m3.locator(".ev-list").innerText()).slice(0, 900));
   await p.keyboard.press("Escape");
-  log("Mehrtägiges Event (16 Tage): „Nur das Event“ und „Günstigste im Zeitraum“ aus einer flexiblen Suche, als günstigste markiert");
+  log("Mehrtägiges Event (16 Tage): „Alle Event-Tage“ und „Günstigste im Zeitraum“ aus einer flexiblen Suche, als günstigste markiert");
 
   // gar kein Flug (auch nicht mit zwei Umstiegen): keine Karten mit Gesamtpreis, sondern die Meldung mit nächsten Schritten
   await p.unroute("https://flights.test/flights/search");
