@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parkQuery } from "./park";
 import { AWIN_PUBLISHER, PARTNERS, partnerLink, partnersOf, sponsoredAny, type PartnerId } from ".";
 
 const stay = { place: "Trogir", country: "Croatia", checkin: "2027-07-18", checkout: "2027-07-25", adults: 2, childAges: [8], rooms: 1 };
@@ -88,5 +89,17 @@ describe("Partner-Verzeichnis", () => {
     expect(on.sponsored).toBe(true);
     expect(partnerLink("parkenUndFliegen", undefined, false)).toMatchObject({ url: "https://www.parken-und-fliegen.de/", sponsored: false });
     expect(partnersOf("parking")[0]).toBe("parkenUndFliegen");
+  });
+  it("Parken und Fliegen vorausgefüllt: Flughafen, 3 h vor Abflug bis 1 h nach Landung, Personen nach Flug-Regel", () => {
+    const trip = { travelers: [{ id: "a", name: "A", kind: "adult" }, { id: "b", name: "B", age: 40 }, { id: "c", name: "C", age: 7 }, { id: "d", name: "D", age: 1 }] } as never;
+    const item = { id: "f", cat: "flights", name: "", status: "idea", options: [] } as never;
+    const q = parkQuery(trip, item, { dir: "out", from: "dus", to: "PMI", dep: "2027-05-10T06:10", arr: "2027-05-10T08:30" }, { dir: "back", from: "PMI", to: "DUS", dep: "2027-05-17T21:40", arr: "2027-05-17T23:55" })!;
+    expect(q).toEqual({ ap: "DUS", from: "2027-05-10T03:10", to: "2027-05-18T00:55", adults: 2, children: 1, infants: 1 });
+    const h = new URLSearchParams(partnerLink("parkenUndFliegen", q, false)!.url.split("#/categories?")[1]);
+    expect([h.get("depart"), h.get("out"), h.get("in"), h.get("park_from"), h.get("park_to"), h.get("adults"), h.get("children"), h.get("infants")])
+      .toEqual(["DUS", "2027-05-10", "2027-05-18", "03:10", "00:55", "2", "1", "1"]);
+    const tagged = new URL(partnerLink("parkenUndFliegen", q, true)!.url);
+    expect(tagged.searchParams.get("ued")).toContain("#/categories?");
+    expect(parkQuery(trip, item, undefined, undefined)).toBeUndefined();
   });
 });

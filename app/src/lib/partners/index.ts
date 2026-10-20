@@ -34,6 +34,20 @@ export interface Partner<Q> {
 /** Flüge: Google braucht Namen statt Codes, wenn eine Stadt mit mehreren Flughäfen gewählt ist */
 export type FlightPartnerQuery = FlightLinkQuery & { fromName?: string; toName?: string };
 export interface CarLinkQuery { w: CarWindow | null; place: string }
+/** Parken am Abflughafen: Flughafen (IATA), Abgabe und Abholung (JJJJ-MM-TTTHH:MM), Personen */
+export interface ParkLinkQuery { ap: string; from: string; to: string; adults: number; children: number; infants: number }
+
+/** Parken und Fliegen: Suche mit Flughafen, Zeitraum und Personen (Aufbau aus deren Suchmaske, 10/2026) */
+export function parkenUndFliegenLink(q?: ParkLinkQuery): string {
+  const ok = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s);
+  if (!q || !/^[A-Z]{3}$/.test(q.ap) || !ok(q.from) || !ok(q.to)) return "https://www.parken-und-fliegen.de/";
+  const h = new URLSearchParams({
+    agent: "PBALL", lang: "de", adults: String(Math.max(1, q.adults)), children: String(q.children), infants: String(q.infants),
+    depart: q.ap, out: q.from.slice(0, 10), in: q.to.slice(0, 10), park_from: q.from.slice(11, 16), park_to: q.to.slice(11, 16),
+    redirectReferal: "carpark", from_categories: "true"
+  });
+  return `https://v2.parken-und-fliegen.de/static/?selectProduct=cp&#/categories?${h}`;
+}
 
 const p = <Q>(e: Partner<Q>) => e;
 /** Startseite des Anbieters, ohne vorausgefüllte Angaben */
@@ -96,7 +110,7 @@ export const PARTNERS = {
   acsi: p<void>({ name: "ACSI", cat: "camping", link: home("https://www.eurocampings.de/") }),
   park4night: p<void>({ name: "park4night", cat: "camping", link: home("https://park4night.com/de") }),
   /* Parken am Abflughafen (#419); Airparks, Holiday Extras (Awin) bekommen die Kennung mit der Freischaltung */
-  parkenUndFliegen: p<void>({ name: "Parken und Fliegen", cat: "parking", net: "awin", link: home("https://www.parken-und-fliegen.de/"), tag: awin(14793) }),
+  parkenUndFliegen: p<ParkLinkQuery | undefined>({ name: "Parken und Fliegen", cat: "parking", net: "awin", link: parkenUndFliegenLink, tag: awin(14793) }),
   parkos: p<void>({ name: "Parkos", cat: "parking", link: home("https://parkos.de/") }),
   airparks: p<void>({ name: "Airparks", cat: "parking", net: "awin", link: home("https://www.airparks.de/") }),
   /* Reiseversicherung: nur als Tipp, keine Beratung (§ 34d GewO) */
