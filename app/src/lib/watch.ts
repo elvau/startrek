@@ -22,6 +22,8 @@ export function watchOption(it: Item, trip: Trip): Option | null {
   if (it.cat !== "flights" && it.cat !== "stay") return null;
   const o = activeOption(it, trip);
   if (!o?.source || o.price.mode !== "unit" || !(o.price.unit! > 0)) return null;
+  // Preis laut importiertem Angebot bzw. Paketpreis (#460): nicht live prüfbar, die Suche fände ihn so nicht
+  if (o.source.imported || o.pkg) return null;
   if (it.cat === "flights") return o.legs?.length && !o.legs.some(l => l.dir === "via") ? o : null;
   return o.price.basis === "stay" && (o.query || (it.from && it.to)) ? o : null;
 }

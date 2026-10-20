@@ -136,6 +136,10 @@ log("Aktionsseiten: nur im eigenen Namen, ohne IBAN, nur Links bekannter Anbiete
 await expect("unbekannte Sammlung schreiben", patch("mallory", "/sonstiges/x", { a: "b" }), 403);
 await expect("unbekannte Sammlung lesen", req("mallory", "/users/anna"), 403);
 log("Unbekannte Sammlungen: kein Lesen und Schreiben");
+await expect("Angebotsspeicher lesen", req("anna", "/offers/x"), 403);
+await expect("Angebotsspeicher schreiben", patch("anna", "/offers/x", { data: "{}" }), 403);
+await expect("Eingaben des Angebotsspeichers lesen", req("anna", "/offerInputs/x"), 403);
+log("Angebotsspeicher (#462): App kann weder lesen noch schreiben");
 
 await req("admin", "/trips/regeltest", { method: "DELETE" });
 await req("admin", "/profiles/anna", { method: "DELETE" });

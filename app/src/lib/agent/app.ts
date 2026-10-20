@@ -15,6 +15,9 @@ import { noteError } from "../bugs/log";
 import { campItem, campItems, rentItem } from "../road/stations";
 import { tripDays } from "../ground";
 import { eventItem } from "../activities/app";
+import { searchMarket } from "../stays/market";
+import { dir } from "../directory.svelte";
+import { myHome } from "../prefs";
 
 /** Wunsch plus Reisende, Abflughäfen und was über die Reise schon feststeht */
 export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: Prefs, withTrip = false): AgentRequest {
@@ -26,7 +29,7 @@ export function agentRequest(trip: Trip, prompt: string, asked = false, prefs?: 
     .slice(0, pax.children);
   const known = { place: trip.place || undefined, from: trip.from || undefined, to: trip.to || undefined };
   return {
-    prompt: prompt.trim(), lang: i18n.lang, today: new Date().toISOString().slice(0, 10),
+    prompt: prompt.trim(), lang: i18n.lang, market: searchMarket(myHome(dir), typeof navigator !== "undefined" ? navigator.language : undefined), today: new Date().toISOString().slice(0, 10),
     origins: nearestAirports(trip, 3), adults: pax.adults, childAges, infants: pax.infants,
     ...(known.place || known.from || known.to ? { trip: known } : {}),
     originsKnown: flyers(trip).some(p => !!trip.households?.[hhKey(p)]?.geo),

@@ -47,8 +47,19 @@ export function bookingArgs(q: StayQuery) {
     ...(q.childAges.length ? { children_ages: q.childAges } : {}),
     ...(q.type === "whole" ? { accommodation_types: ["HOLIDAY_HOME", "APARTMENT", "VILLA"] } : q.type === "hotel" ? { accommodation_types: ["HOTEL", "GUEST_HOUSE"] } : {}),
     ...bookingFilters(q),
-    user_country_code: "de", user_locale: "de", currency: q.currency || "EUR"
+    ...bookingMarket(q), currency: q.currency || "EUR"
   };
+}
+
+/** Booking.com kennt einige Länder nicht (Sanktionen): dort wie bisher Deutschland */
+const BOOKING_NO = ["IR", "RU", "BY", "CU", "KP", "SY"];
+/**
+ * Land = Markt der Person; Texte nur deutsch oder englisch, weil Ausstattung und Verpflegung aus dem Text gelesen werden
+ * (FACTS, boardOf). Englisch nach Land (en-gb, en-us).
+ */
+export function bookingMarket(q: Pick<StayQuery, "market" | "lang">) {
+  const cc = q.market && !BOOKING_NO.includes(q.market) ? q.market : "DE";
+  return { user_country_code: cc.toLowerCase(), user_locale: (q.lang || "de") === "de" ? "de" : cc === "US" ? "en-us" : "en-gb" };
 }
 
 const BOOKING_FAC: Partial<Record<StayMust, string>> = { pool: "SWIMMING_POOL", parking: "PARKING", aircon: "AIR_CONDITIONING" };
@@ -88,9 +99,24 @@ export function trivagoArgs(q: StayQuery) {
   return {
     query: q.place, arrival: q.checkin, departure: q.checkout,
     adults: q.adults, children: q.childAges.length, ...(q.childAges.length ? { children_ages: q.childAges.join("-") } : {}),
-    rooms: Math.min(q.rooms, q.adults), country: "DE", currency: q.currency || "EUR", language: "DE_DE",
+    rooms: Math.min(q.rooms, q.adults), ...trivagoMarket(q), currency: q.currency || "EUR",
     ...trivagoFilters(q)
   };
+}
+
+/** Märkte, die Trivago kennt (Liste der Schnittstelle); anderes: Deutschland wie bisher */
+const TRIVAGO_CC = "AE AR AT AU BE BR CA CH CL CO CZ DE DK EG ES FI FR GB GR HK HU ID IE IL IN IT JP KR MX MY NL NO NZ PE PH PL PT RO RU SA SE SG TH TR TW UA US VN ZA".split(" ");
+/** Sprachfassungen mit Zahlen wie „2.575“ bzw. „2,575“ (nicht DE_CH „2’575“, EN_IN „2,57,500“) */
+const TRIVAGO_LANG = new Set(["DE_AT", "DE_DE", "EN_GB", "EN_IE", "EN_US"]);
+
+/**
+ * Land = Markt der Person; Sprache nur deutsch oder englisch: Ausstattung, Verpflegung und Preise („2.575€“) werden
+ * aus dem Text gelesen, andere Sprachen schreiben z. B. „2 575 zł“
+ */
+export function trivagoMarket(q: Pick<StayQuery, "market" | "lang">) {
+  const country = q.market && TRIVAGO_CC.includes(q.market) ? q.market : "DE";
+  const de = (q.lang || "de") === "de", own = `${de ? "DE" : "EN"}_${country}`;
+  return { country, language: TRIVAGO_LANG.has(own) ? own : de ? "DE_DE" : "EN_GB" };
 }
 
 const TRIVAGO_FILTER: Record<StayMust, string> = {

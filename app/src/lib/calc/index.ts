@@ -211,6 +211,9 @@ export function activeOption(it: Item, trip: Trip): Option | null {
   if (!it.options.length) return null;
   const chosen = it.chosen && it.options.find(o => o.id === it.chosen);
   if (chosen) return chosen;
+  // Pauschalreise (#188, #460): das Paket gilt, bis man ein anderes Angebot wählt oder es aufbricht
+  const pk = it.options.find(o => o.pkg && !o.pkg.off);
+  if (pk) return pk;
   // ein Angebot ohne Preis ist nicht „das günstigste“, solange es eines mit Preis gibt
   const priced = it.options.filter(o => !noPrice(o));
   return (priced.length ? priced : it.options).reduce((a, b) => (calcOption(b, it, trip).net < calcOption(a, it, trip).net ? b : a));

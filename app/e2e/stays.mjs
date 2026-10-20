@@ -115,7 +115,9 @@ try {
   // alle Quellen an: keine Liste (ein älterer Such-Dienst kennt neue Quellen nicht); Land als Code für liteAPI
   // liteAPI ist nicht angebunden (/health): ausgegraut, nur die angebundenen Quellen gehen mit
   if (q.sources?.join() !== "booking,trivago" || q.cc !== "HR" || !(Math.abs(q.lat - 43.51) < 0.1 && Math.abs(q.lon - 16.44) < 0.1)) fail("Quellen/Land/Lage falsch: " + JSON.stringify(q));
-  log("Anfrage an den Such-Dienst stimmt");
+  // Markt der Person (#464): ohne Wohnort aus der Browser-Region (de-DE), Sprache der App
+  if (q.market !== "DE" || q.lang !== "de") fail("Markt/Sprache falsch: " + JSON.stringify(q));
+  log("Anfrage an den Such-Dienst stimmt (Markt DE, Sprache de)");
   const bkChip = m.locator(".fs-more .chip", { hasText: "liteAPI" });
   if (!(await bkChip.isDisabled()) || !(await bkChip.textContent()).includes("noch nicht angebunden")) fail("liteAPI nicht ausgegraut");
   log("Nicht angebundene Quelle ausgegraut, nicht in der Anfrage");

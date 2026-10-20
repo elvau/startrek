@@ -27,7 +27,7 @@
   <li>For flight and accommodation searches, only <strong>places, dates and the number of people</strong> are sent to the
     providers, no names and no email addresses.</li>
   <li>Booking details (ID card, passport) are optional, are stored only in your account and go nowhere else.</li>
-  <li>The AI planner (beta) is only available with an account; your travel request is sent to Anthropic (Claude) for it, or to Google Gemini as a fallback.</li>
+  <li>The AI planner (beta) is only available with an account; your travel request is sent to Anthropic (Claude) for it, or to Google Gemini as a fallback. The same applies to files, texts and links you drop in to import a trip; the files are not stored.</li>
   <li>The maps (accommodation search, “Trip map”) load map images from OpenFreeMap only when you open them; the small route images (start page, day plan) load a map section as soon as a trip has a route.</li>
   <li>Bug reports (beta) are stored in a non-public project on GitHub; images are deleted after 30 days.</li>
   <li>There are no advertising trackers and no cookies from me. I count visitors without cookies or profiles using Cloudflare Web Analytics. Fonts are served from this site.</li>
@@ -170,7 +170,7 @@
   IP address; this counter is kept only in Cloudflare’s cache and expires after one day at the latest (Art. 6(1)(f)
   GDPR, legitimate interest in protecting the service). Only the following is sent to the providers: departure and
   destination places, travel dates, number of adults/children/infants (for accommodation the children’s ages) and
-  search options (e.g. stops, luggage). Providers do not receive names, email addresses or your IP address.
+  search options (e.g. stops, luggage); for accommodation also your home country as a country code (e.g. “PL”, without your place of residence) and the app language, so providers show prices for your market. Providers do not receive names, email addresses or your IP address.
 </p>
 <p>
   If you have not yet entered a place of residence (postcode), the flight search asks the search service for your
@@ -249,6 +249,22 @@
   quota); only fixed fields come back (e.g. travel style, airports, number and ages of fellow travellers), which you
   check page by page before anything is saved. Names, gender, nationality and date of birth are asked for directly in
   the app, never via the AI; please do not write them into the text either.
+</p>
+<p>
+  <strong>Importing a trip with AI and reality check:</strong> Under “New trip → Import” or with the “Reality check” on
+  the start page (no trip is created until you take it over) you can drop in an offer, a booking or a
+  participant list (screenshot, photo, PDF, Word, Excel, CSV, text or link; on phones also via the share menu). Images
+  and PDFs are sent by the app via my search service to the AI (Anthropic Claude, Google Gemini as a fallback); Word,
+  Excel and CSV files are read by the app itself and only their text is sent. For a link, the search service fetches the
+  page and passes on its text. Files and texts are stored neither in the search service nor in the trip; only fixed
+  fields come back (destination, dates, number and ages of travellers, flights, accommodation, board, prices, fees,
+  provider, link), which are then kept in the trip. From participant lists the app takes first names, family names and ages as travellers of the new
+  trip, which is stored like any trip. The AI does not take ID card or passport details, dates of birth, addresses,
+  phone numbers, email addresses or booking numbers; still, please do not upload such documents or black them out first.
+  An import counts towards its own daily quota (10 per account and day by default). So that the same offer does not have
+  to be read again, my search service stores the extracted offer data (no files, no names, not linked to your account)
+  together with a hash of the input (from which link, file or text cannot be recovered) in Google Firebase, at most until
+  the offer expires or for 14 days; it is deleted afterwards. Participant lists are never stored there.
 </p>
 <p>Legal basis: Art. 6(1)(b) GDPR (you trigger the request). Use is voluntary.</p>
 

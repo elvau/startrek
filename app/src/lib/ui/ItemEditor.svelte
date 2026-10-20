@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import { setStatus } from "../package";
   import { addPoll, newPoll, voters } from "../together";
   import Help from "./Help.svelte";
   import { entryCurrency, fromShown, toShown } from "../currency.svelte";
@@ -23,7 +24,7 @@
 
   function addOption() {
     const base = opt ? JSON.parse(JSON.stringify(opt)) : { price: { mode: "person", currency: entryCurrency() } };
-    const o = { ...base, id: uid(), label: "", legs: undefined, source: undefined };
+    const o = { ...base, id: uid(), label: "", legs: undefined, source: undefined, pkg: undefined };
     item.options.push(o);
     item.chosen = o.id;
   }
@@ -82,7 +83,7 @@
     const by = payBy || hhList[0];
     if (!(x > 0) || !by) return;
     item.payments = [...(item.payments || []), { amount: Math.round(fromShown(x) * 100) / 100, by, at: new Date().toISOString().slice(0, 10) }];
-    if (paidSum + fromShown(x) >= net - 0.5 && item.status !== "dropped") item.status = "paid";
+    if (paidSum + fromShown(x) >= net - 0.5 && item.status !== "dropped") setStatus(app.trip, item, "paid");
     payAmt = "";
   }
   function dropPay(i: number) {
@@ -149,7 +150,7 @@
   </div>
   <div class="seg" role="radiogroup" aria-label={t("ie.status")}>
     {#each STATUS as k}
-      <button role="radio" aria-checked={item.status === k} class:on={item.status === k} data-s={k} onclick={() => (item.status = k)}>{t(`status.${k}` as Key)}</button>
+      <button role="radio" aria-checked={item.status === k} class:on={item.status === k} data-s={k} onclick={() => setStatus(app.trip, item, k)}>{t(`status.${k}` as Key)}</button>
     {/each}
     <Help k="status" />
   </div>

@@ -10,12 +10,14 @@
   import ShareDialog from "./ShareDialog.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
   import ReportDialog from "./ReportDialog.svelte";
+  import RealityDialog from "./RealityDialog.svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
   let open = $state(false);
   let share = $state(false);
   let creating = $state(false);
   let report = $state(false);
+  let reality = $state(false);
 
   const trips = $derived(allTrips());
   const cur = $derived(cloudTrip(app.trip.id));
@@ -63,6 +65,7 @@
     <div class="tm-h">{t("tm.current")}</div>
     <div class="tm-acts">
       <button class="tm-act tm-report" onclick={() => { report = true; open = false; }}>📄 {t("rep.btn")}</button>
+      <button class="tm-act tm-reality" onclick={() => { reality = true; open = false; }}>🔍 {t("real.title")}</button>
       <button class="tm-act" onclick={() => act(duplicateTrip)}>{t("tm.copy")}</button>
       <!-- Variante im selben Vergleich (#428); herausnehmen macht sie wieder zu einer normalen Reise -->
       {#if !access.readonly}<button class="tm-act tm-variant" onclick={() => act(addVariant)}>⇆ {t("tm.variant")}</button>{/if}
@@ -87,3 +90,4 @@
 {#if share}<ShareDialog id={app.trip.id} onclose={() => (share = false)} />{/if}
 {#if creating}<NewTripDialog onclose={() => (creating = false)} />{/if}
 {#if report}<ReportDialog onclose={() => (report = false)} />{/if}
+{#if reality}<RealityDialog trip={app.trip} onclose={() => (reality = false)} />{/if}

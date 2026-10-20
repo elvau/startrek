@@ -14,6 +14,7 @@
   import RentalPanel from "./RentalPanel.svelte";
   import ItemSplit from "./ItemSplit.svelte";
   import AiMark from "./AiMark.svelte";
+  import PkgBand from "./PkgBand.svelte";
   import { arrow, autoName, t, type Key } from "../i18n/index.svelte";
   import { reveal } from "./reveal";
   import { itemLoc, mapsUrl } from "../geo/maps";
@@ -61,15 +62,18 @@
   <RentalPanel {item} />
   <RentalCheck {item} />
   {#if item.hint === "road:car" && !access.readonly}<p class="road-jump"><button class="linkbtn" onclick={toRoad}>🗺 {t("road.editRoute")} ›</button></p>{/if}
-  {#if src?.url || gmap || src?.test}
+  {#if src?.url || gmap || src?.test || src?.imported}
     <p class="src-link">
       {#if src?.test}<span class="pill-test" title={t("test.title")}>{t("test.price")}</span> {/if}
+      {#if src?.imported}<span class="muted" title={t("pkg.importedHint")}>📥 {t("pkg.imported", { d: src.at ? src.at.split("-").reverse().join(".") : "" })}</span> {/if}
       {#if src?.url}<ExtLink href={src.url} sponsored={src.sponsored} track={[src.name, item.cat]}>{t("search.atProvider")}{src.name ? ` · ${src.name}` : ""} ↗</ExtLink>{/if}
       {#if src?.url && gmap} · {/if}
       {#if gmap}<a class="gmap" href={gmap} target="_blank" rel="noopener noreferrer" title={t("map.googleTitle")}>📍 Google Maps ↗</a>{/if}
     </p>
   {/if}
+  <PkgBand {item} />
   <WatchBadge {item} />
-  {#if item.ai}<div class="aif"><AiMark /> {t(`ai.mark.${item.ai.kind}` as Key)}</div>{/if}
+  {#if item.ai}<div class="aif"><AiMark /> {t(`ai.mark.${item.ai.kind}` as Key)}
+    {#if item.check}<span class="aif-check">⚠ {t("imp.check")}</span>{#if !access.readonly}<button class="linkbtn aif-ok" onclick={() => (item.check = undefined)}>{t("imp.checked")}</button>{/if}{/if}</div>{/if}
   {#if editing}<ItemEditor {item} />{/if}
 </article>

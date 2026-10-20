@@ -18,6 +18,8 @@
   import { openEventPlanner } from "../event/open.svelte";
   import { openChat } from "../agent/open.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
+  import RealityDialog from "./RealityDialog.svelte";
+  import { shareIn, type Shared } from "../import/share.svelte";
   import AiMark from "./AiMark.svelte";
   import TopNav from "./TopNav.svelte";
   import AppFooter from "./AppFooter.svelte";
@@ -25,6 +27,10 @@
   const BASE = (import.meta.env.BASE_URL as string) || "/";
 
   let picking = $state(false);
+  let checking = $state(false);
+  // aus dem Teilen-Menü (#457): gleich „Neue Reise → Importieren“ mit den geteilten Dateien
+  let shared = $state<Shared | null>(null);
+  $effect(() => { if (shareIn.v) { shared = shareIn.v; shareIn.v = null; picking = true; } });
   const today = new Date().toISOString().slice(0, 10);
   type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null; cmp?: { id: string; title: string; chosen?: string }; label: string };
   const rows = $derived<Row[]>(homeTrips().map(m => {
@@ -173,6 +179,12 @@
           <span class="home-ico" aria-hidden="true"><AiMark /></span><b>{t("home.ai")}</b><small>{t("home.aiSub")}</small>
         </button>
       {/if}
+      {#if cloud.configured}
+        <!-- Realitätscheck (#461): Angebot einwerfen, ohne eine Reise anzulegen -->
+        <button class="home-act home-check" onclick={() => (checking = true)}>
+          <span class="home-ico" aria-hidden="true">🔍</span><b>{t("home.check")}</b><small>{t("home.checkSub")}</small>
+        </button>
+      {/if}
       <!-- Reiseideen (Inhaltsseiten /reise/): öffnen eine fertig gerechnete Reise, ersetzen die Beispielreise (#402) -->
       <a class="home-act home-ideas" href="{BASE}reise/">
         <span class="home-ico" aria-hidden="true">🧭</span><b>{t("home.ideas")}</b><small>{t("home.ideasSub")}</small>
@@ -311,7 +323,8 @@
   </div>
 </section>
 
-{#if picking}<NewTripDialog onclose={() => (picking = false)} />{/if}
+{#if checking}<RealityDialog onclose={() => (checking = false)} />{/if}
+{#if picking}<NewTripDialog onclose={() => { picking = false; shared = null; }} mode={shared ? "import" : "blank"} shared={shared?.files} sharedText={shared?.text} sharedUrl={shared?.url} />{/if}
 
 <style>
   .home-cmp-wrap { grid-column: 1 / -1; }

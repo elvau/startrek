@@ -1,10 +1,13 @@
 /* Unterkunftssuche in der App: Anfrage aus der Reise, Treffer als Angebot in einen Unterkunft-Posten */
-import { t } from "../i18n/index.svelte";
+import { i18n, t } from "../i18n/index.svelte";
 import { feeToExtra } from "./fees";
 import { addOffer, isActive, uid, type Item, type Option, type Traveler, type Trip } from "../model";
 import { FLIGHTS_URL } from "../flights/app";
 import type { StayOffer, StayQuery, StaySearchResult, StayType } from "./types";
 import { locOf } from "../geo/maps";
+import { dir } from "../directory.svelte";
+import { myHome } from "../prefs";
+import { searchMarket } from "./market";
 
 /** Gäste: Erwachsene und Alter der Kinder (Hotels rechnen bis 17 als Kind); ohne Alter: Kind 8, Baby 1 */
 export function guests(people: Traveler[]): Pick<StayQuery, "adults" | "childAges"> {
@@ -113,7 +116,9 @@ export const sourceNotWired = (sources: { configured: boolean }[]) => sources.so
 
 export async function searchStaysRemote(q: StayQuery, signal?: AbortSignal): Promise<StaySearchResult> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
-  const res = await fetch(`${FLIGHTS_URL}/stays/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });
+  // Markt und Sprache der suchenden Person (#464): nur der Ländercode, kein Wohnort
+  const body = { ...q, market: q.market || searchMarket(myHome(dir), typeof navigator !== "undefined" ? navigator.language : undefined), lang: q.lang || i18n.lang };
+  const res = await fetch(`${FLIGHTS_URL}/stays/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(res.status === 429 ? t("search.tooMany") : data.error || t("search.status", { s: res.status }));
   return data as StaySearchResult;

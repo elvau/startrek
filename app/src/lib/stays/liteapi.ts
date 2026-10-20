@@ -114,7 +114,7 @@ export async function searchLite(q: StayQuery, key: string, f: typeof fetch = fe
     if (!ids.length) return [];
     const rates = await call(f, key, "/hotels/rates", {
       method: "POST",
-      body: JSON.stringify({ hotelIds: ids, checkin: q.checkin, checkout: q.checkout, currency: q.currency || "EUR", guestNationality: "DE", occupancies: occupancies(q), timeout: 12 })
+      body: JSON.stringify({ hotelIds: ids, checkin: q.checkin, checkout: q.checkout, currency: q.currency || "EUR", guestNationality: q.market || "DE", occupancies: occupancies(q), timeout: 12 })
     });
     return fromLite(hotels.filter(h => ids.includes(h.id)), rates.data || [], q, link);
   };

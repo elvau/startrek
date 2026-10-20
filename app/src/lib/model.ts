@@ -211,9 +211,11 @@ export interface Option {
   /** Herkunft und Stand des Preises */
   /** sponsored: Link mit Partnerkennung (in der App als Partner-Link gekennzeichnet) */
   /** test: aus einem Testzugang übernommen, Preis nicht echt */
-  source?: { name: string; at?: string; url?: string; sponsored?: boolean; test?: boolean };
+  /** imported: per KI aus einem Angebot übernommen (#457), Preis laut Angebot, nicht live prüfbar */
+  source?: { name: string; at?: string; url?: string; sponsored?: boolean; test?: boolean; imported?: boolean };
   legs?: FlightLeg[];
-  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; image?: string; freeCancel?: boolean };
+  /** boards: wählbare Verpflegung laut Angebot mit Aufpreis pro Person und Nacht (Import, #457) */
+  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; boards?: { board: Board; extra?: number }[]; image?: string; freeCancel?: boolean };
   /** Foto vom Anbieter (nur https), z. B. einer Tour */
   image?: string;
   /** Lage (Unterkunft, Veranstaltungsort): Koordinaten vom Anbieter und Suchtext für Google Maps */
@@ -232,6 +234,9 @@ export interface Option {
   autoOn?: string[];
   /** Flug aus der Suche: im Preis enthaltenes Gepäck (gesamt für alle); fehlt: nicht angegeben */
   baggage?: { personal: number; cabin: number; checked: number };
+  /** Pauschalreise (#188): Kennung des Pakets; main = dieses Angebot trägt den Paketpreis, die anderen Teile kosten 0 € */
+  /** off: Paket aufgebrochen (#460), bleibt als verworfenes Angebot zum Wiederherstellen */
+  pkg?: { id: string; main?: boolean; off?: boolean };
   /** Hinweise am Flug: früh einchecken (Familie), Kartenaufschlag möglich (Abflug außerhalb EU/EWR) */
   hints?: ("checkin" | "payfee")[];
 }
@@ -343,6 +348,8 @@ export interface Item {
   arrival?: boolean;
   /** von der KI: vorgeschlagen (echtes Angebot), erstellt (Schätzung) oder angepasst (ersetzt einen Posten) */
   ai?: AiMark;
+  /** Import (#458): Angaben nur abgeleitet oder geraten, „bitte prüfen“ bis jemand „Geprüft“ antippt */
+  check?: boolean;
   /** Tagesplan: an diesem Tag (JJJJ-MM-TT, optional mit Uhrzeit JJJJ-MM-TTTHH:MM) */
   day?: string;
   /** Unterkunft privat bzw. schon vorhanden (#233): Ort, ohne Suche und Beobachtung; Kosten optional */
@@ -366,7 +373,8 @@ export interface DayNote {
 }
 export interface DayPlan { title?: string; notes?: DayNote[] }
 
-export interface AiMark { at: string; kind: "suggested" | "created" | "changed" }
+/** imported: per KI aus einem Angebot, einer Buchung oder Liste übernommen (#457) */
+export interface AiMark { at: string; kind: "suggested" | "created" | "changed" | "imported" }
 
 export type AccessMode = "car" | "drop" | "taxi" | "train" | "bus" | "with";
 export const ACCESS_MODES: AccessMode[] = ["car", "drop", "taxi", "train", "bus", "with"];
@@ -559,6 +567,11 @@ export interface Trip {
    * chosen: „Diese nehmen“ (ISO, #430); gewählt ist die Variante mit dem jüngsten Zeitpunkt, die anderen sind eingeklappt.
    */
   cmp?: { id: string; title: string; label?: string; chosen?: string };
+  /**
+   * per KI importiertes Angebot (#457, #459): Art, Anbieter, Link, beworbener Preis, gültig bis und die Posten, die zum
+   * Angebot gehören. Alles andere (ergänzt, geschätzt) zählt im Realitätscheck zur ganzen Reise (#461).
+   */
+  offer?: { at: string; kind: string; provider?: string; url?: string; price?: { total?: number; perPerson?: number; currency?: string }; validUntil?: string; items: string[] };
   /** Wichtiges: erledigte Punkte (important.ts), bei Punkten für Personen je Person */
   done?: Record<string, { sig: string; ids?: string[] }>;
   /** Roadtrip: gewählte Fähre je Überfahrt („Von>Nach“ → Fähren-ID, „none“: keine Fähre) */

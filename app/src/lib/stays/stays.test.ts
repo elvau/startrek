@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import trivago from "./trivago.fixture.json";
 import booking from "./booking.fixture.json";
-import { boardOf, bookingArgs, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs } from "./providers";
+import { boardOf, bookingArgs, bookingMarket, trivagoMarket, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs } from "./providers";
 import { configuredStays, mergeStays, parseStayQuery, searchStays, STAY_PROVIDERS } from "./search";
 import { centerKm, keepStays, sortStays } from "./sort";
 import { activeMins, defaultStayQuery, effectiveSources, sourceNotWired, guests, staysHidden, stayToOption, takeStay } from "./app";
@@ -53,6 +53,23 @@ describe("Unterkunftssuche: Anbieter", () => {
     expect(bookingArgs({ ...q, type: "whole" })).toMatchObject({ destination: "Split, Kroatien", checkin_date: "2027-07-18", number_of_adults: 2, children_ages: [8], number_of_rooms: 1, accommodation_types: ["HOLIDAY_HOME", "APARTMENT", "VILLA"], currency: "EUR" });
     expect(bookingArgs({ ...q, childAges: [] })).not.toHaveProperty("children_ages");
     expect(trivagoArgs({ ...q, childAges: [8, 3], rooms: 3 })).toMatchObject({ query: "Split", arrival: "2027-07-18", departure: "2027-07-25", adults: 2, children: 2, children_ages: "8-3", rooms: 2, currency: "EUR" });
+  });
+  it("Markt der Person (#464): Land je Anbieter, Texte deutsch oder englisch, sonst Deutschland wie bisher", () => {
+    expect(bookingArgs(q)).toMatchObject({ user_country_code: "de", user_locale: "de" });
+    expect(trivagoArgs(q)).toMatchObject({ country: "DE", language: "DE_DE" });
+    expect(bookingMarket({ market: "GB", lang: "en" })).toEqual({ user_country_code: "gb", user_locale: "en-gb" });
+    expect(bookingMarket({ market: "US", lang: "en" })).toEqual({ user_country_code: "us", user_locale: "en-us" });
+    // Polnisch: Land Polen, Texte englisch (Ausstattung wird aus dem Text gelesen)
+    expect(bookingMarket({ market: "PL", lang: "pl" })).toEqual({ user_country_code: "pl", user_locale: "en-gb" });
+    expect(bookingMarket({ market: "RU", lang: "ru" })).toEqual({ user_country_code: "de", user_locale: "en-gb" });
+    expect(bookingMarket({ market: "AT", lang: "de" })).toEqual({ user_country_code: "at", user_locale: "de" });
+    expect(trivagoMarket({ market: "GB", lang: "en" })).toEqual({ country: "GB", language: "EN_GB" });
+    expect(trivagoMarket({ market: "PL", lang: "pl" })).toEqual({ country: "PL", language: "EN_GB" });
+    expect(trivagoMarket({ market: "AT", lang: "de" })).toEqual({ country: "AT", language: "DE_AT" });
+    expect(trivagoMarket({ market: "CH", lang: "de" })).toEqual({ country: "CH", language: "DE_DE" });
+    expect(trivagoMarket({ market: "US", lang: "en" })).toEqual({ country: "US", language: "EN_US" });
+    // Land, das Trivago nicht kennt
+    expect(trivagoMarket({ market: "HR", lang: "en" })).toEqual({ country: "DE", language: "EN_GB" });
   });
   it("fragt Trivago über MCP (initialize, initialized, tools/call)", async () => {
     const calls: { method: string; tool?: string }[] = [];
@@ -110,6 +127,9 @@ describe("Unterkunftssuche: zusammenführen", () => {
 describe("Unterkunftssuche: Anfrage prüfen", () => {
   it("nimmt eine gültige Anfrage an", () => {
     expect(parseStayQuery({ ...q, sources: ["trivago"] })).toEqual({ ...q, sources: ["trivago"] });
+    // Markt und Sprache (#464): gültig übernommen, Ungültiges fällt weg
+    expect(parseStayQuery({ ...q, market: "pl", lang: "pl" })).toEqual({ ...q, market: "PL", lang: "pl" });
+    expect(parseStayQuery({ ...q, market: "POL", lang: "xx" })).toEqual(q);
     expect(parseStayQuery({ place: "Split", checkin: "2027-07-18", checkout: "2027-07-20" })).toMatchObject({ adults: 1, childAges: [], rooms: 1, type: "all", currency: "EUR" });
   });
   it("lehnt Unsinn ab", () => {

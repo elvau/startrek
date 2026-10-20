@@ -1,0 +1,82 @@
+/*
+ * Import (#458): Sicherheit je Angabe und Rückfragen. Die KI nennt je Angabe, wie sicher sie ist (1 = so gelesen,
+ * 0.6 = abgeleitet, 0.3 = geraten). Niedrig → kurze Rückfrage vor dem Anlegen (Antworten zum Antippen, „Weiß nicht“
+ * erlaubt), mittel → anlegen und Posten als „bitte prüfen“ markieren, alles hoch → direkt anlegen.
+ */
+import type { Board } from "../model";
+import type { ConfKey, ImportedOffer } from "./ai";
+
+export type Level = "high" | "mid" | "low";
+/** ohne Angabe der KI zählt eine erkannte Angabe als abgeleitet */
+export const levelOf = (c: number | undefined): Level => (c == null ? "mid" : c >= 0.85 ? "high" : c >= 0.6 ? "mid" : "low");
+
+export type QuestionId = "baggage" | "transfer" | "board" | "people";
+export const DUNNO = "dunno";
+/** Antworten je Frage (Kennungen; Texte in der App) */
+export const ANSWERS: Record<QuestionId, string[]> = {
+  baggage: ["checked", "cabin", DUNNO],
+  transfer: ["yes", "no", DUNNO],
+  board: ["self", "breakfast", "half", "all", DUNNO],
+  people: ["1", "2", "3", "4", "5", "6", "8", "10"]
+};
+
+export interface ReviewField { key: ConfKey; level: Level }
+export interface Review { fields: ReviewField[]; questions: QuestionId[]; overall: number; direct: boolean }
+
+const has = (o: ImportedOffer, k: ConfKey): boolean => ({
+  place: !!o.place,
+  dates: !!(o.from || o.to),
+  people: !!(o.adults || o.travelers?.length),
+  price: !!o.price,
+  flights: !!o.flights,
+  stay: !!o.stay,
+  board: !!o.stay?.board,
+  baggage: !!o.flights?.baggage,
+  transfer: o.transfer?.included != null || !!o.transfer?.price
+})[k];
+
+/** Felder in der Reihenfolge der Anzeige */
+const ORDER: ConfKey[] = ["place", "dates", "people", "price", "flights", "stay", "board", "baggage", "transfer"];
+
+/** Übersicht: erkannte Angaben mit Stufe, offene Rückfragen, Gesamtwert (0–100), ob direkt angelegt werden kann */
+export function reviewOf(o: ImportedOffer, answered: ReadonlySet<QuestionId> = new Set(), peopleKnown = false): Review {
+  const c = o.confidence || {};
+  const fields = ORDER.filter(k => has(o, k)).map(key => ({ key, level: levelOf(c[key]) }));
+  const low = (k: ConfKey) => !has(o, k) || levelOf(c[k]) === "low";
+  const pkg = !!(o.flights && o.stay);
+  const q: QuestionId[] = [];
+  if (!peopleKnown && !has(o, "people")) q.push("people");
+  if (o.flights && low("baggage")) q.push("baggage");
+  if (pkg && low("transfer")) q.push("transfer");
+  if (o.stay && low("board")) q.push("board");
+  const questions = q.filter(id => !answered.has(id));
+  // Gesamtwert: Mittel der gezeigten Angaben (ohne Angabe der KI 0,6)
+  const vals = fields.map(f => c[f.key] ?? 0.6);
+  const overall = vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) : 0;
+  const direct = !questions.length && answered.size === 0 && q.length === 0 && fields.every(f => f.level === "high");
+  return { fields, questions, overall, direct };
+}
+
+/** Antwort einarbeiten: Angabe gilt danach als sicher; „Weiß nicht“ bleibt offen (Realitätscheck rechnet eine Spanne) */
+export function answer(o: ImportedOffer, id: QuestionId, value: string): ImportedOffer {
+  const out: ImportedOffer = JSON.parse(JSON.stringify(o));
+  out.confidence ||= {};
+  if (value === DUNNO) { if (id !== "people") out.confidence[id] = Math.min(out.confidence[id] ?? 0.3, 0.3); return out; }
+  if (id === "people") { out.adults = Number(value); out.confidence.people = 1; }
+  if (id === "baggage" && out.flights) { out.flights.baggage = { cabin: 1, checked: value === "checked" ? 1 : 0 }; out.confidence.baggage = 1; }
+  if (id === "transfer") { out.transfer = { ...(out.transfer || {}), included: value === "yes" }; out.confidence.transfer = 1; }
+  if (id === "board" && out.stay) { out.stay.board = value as Board; out.confidence.board = 1; }
+  return out;
+}
+
+/** Posten, die als „bitte prüfen“ markiert werden: zugehörige Angaben nur abgeleitet oder geraten */
+export function checks(o: ImportedOffer): { flights: boolean; stay: boolean; transfer: boolean } {
+  const c = o.confidence || {};
+  const unsure = (...ks: ConfKey[]) => ks.some(k => has(o, k) && levelOf(c[k]) !== "high");
+  const pkg = !!(o.flights && o.stay && !o.flights.price && !o.stay.price);
+  return {
+    flights: unsure("flights", "baggage", "dates") || (!pkg && unsure("price") && !o.stay),
+    stay: unsure("stay", "board", "dates") || ((pkg || !o.flights) && unsure("price")),
+    transfer: unsure("transfer")
+  };
+}

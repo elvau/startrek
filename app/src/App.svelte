@@ -2,7 +2,7 @@
   import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
   import { loadRates } from "./lib/currency.svelte";
-  import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed, goHome } from "./lib/store.svelte";
   import { saveView } from "./lib/resume";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
@@ -34,6 +34,8 @@
   import TripTimeline from "./lib/ui/TripTimeline.svelte";
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
+  import PackageDialog from "./lib/ui/PackageDialog.svelte";
+  import { takeShared } from "./lib/import/share.svelte";
   import CompareView from "./lib/ui/CompareView.svelte";
   import AppFooter from "./lib/ui/AppFooter.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
@@ -100,6 +102,8 @@
   });
   // Karte der Reise, aufgeklappt im Kapitel Unterkunft oder Erlebnisse
   let mapOpen = $state<"stay" | "attractions" | null>(null);
+  // Pauschalreise eintragen (#188), aus den Kapiteln Flug und Unterkunft
+  let pkgOpen = $state(false);
 
   // Tageskurse für die Anzeige in anderer Währung und für Preise in Fremdwährung (einmal am Tag)
   onMount(() => { void loadRates(); });
@@ -107,6 +111,8 @@
   onMount(() => { void applyPlanLink(); });
   // …/?info öffnet „Neues & Ausblick“
   onMount(applyInfoLink);
+  // Teilen-Menü (?share=1, #457): Startseite mit „Neue Reise → Importieren“
+  onMount(() => { void takeShared().then(ok => { if (ok) goHome(); }); });
   onMount(() => {
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
     applyDocument();
@@ -207,7 +213,8 @@
         onreset={items.length ? () => { if (confirm(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
-          <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button></div>
+          <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button>
+            <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button></div>
           {@const miss = withoutTravel(app.trip)}
           {#if miss.length}
             <p class="search-row miss-travel">⚠ {t("fl.missing", { who: miss.slice(0, 6).map(x => x.name).join(", ") + (miss.length > 6 ? ` +${miss.length - 6}` : "") })}
@@ -261,6 +268,7 @@
         {:else if ch.k === "stay" && !access.readonly}
           {#if app.trip.camper}<p class="search-row small st-camper">⛺ {t("camp.stayHint", { ch: t("ch.transport.label") })} <button class="linkbtn" onclick={toCamper}>{t("camp.toStations")}</button></p>{/if}
           <div class="search-row"><button class="btn st-open" class:primary={!app.trip.camper} onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
+            <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button>
             <button class="btn priv-open" title={t("priv.searchHint")} onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
           {#if mapOpen === "stay"}<TripMap onclose={() => (mapOpen = null)} />{/if}
@@ -319,6 +327,7 @@
 {#if setupWizard.open}<SetupWizard />{/if}
 {#if showWho || (whoAsk.open && !!cloud.user && !!whoCt)}<WhoAmI onclose={whoClose} />{/if}
 <!-- Flug- und Unterkunftssuche im eigenen Fenster (aus Kapitel, Posten und Plan); danach ist man wieder dort -->
+{#if pkgOpen}<PackageDialog onclose={() => (pkgOpen = false)} />{/if}
 {#if flightSearch.open}{#key flightSearch.scope}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/key}{/if}
 {#if staySearch.open}{#key staySearch.scope}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}
 {#if privStay.open}{#key privStay.itemId}<PrivateStay itemId={privStay.itemId} onclose={() => (privStay.open = false)} />{/key}{/if}

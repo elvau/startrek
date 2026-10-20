@@ -822,6 +822,8 @@ a.home-act{text-decoration:none}
 .src-link small{color:var(--ink-3)}
 .aif{display:flex;align-items:center;gap:8px;padding:8px 22px 10px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted)}
 .aif .aim{font-size:13px;background:var(--idea-soft);border-radius:99px;padding:3px 8px}
+.aif-check{font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:99px;padding:3px 9px}
+.aif-ok{margin-inline-start:auto;padding:6px 4px}
 .ai-edit{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .ai-edit small{flex-basis:100%}
 .ai-ctx{padding:6px 16px;flex-shrink:0;border-bottom:1px solid var(--line)}

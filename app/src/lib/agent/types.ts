@@ -4,6 +4,7 @@ import type { StayOffer, StayQuery } from "../stays/types";
 import type { CampStop } from "../road/camper";
 import type { EventHit } from "../events/types";
 import { BOARDS, CAT_KEYS, STYLES, type CatKey, type Prefs, type Status } from "../model";
+import { parseMarket } from "../stays/market";
 
 /** Was die App schickt: Wunsch in eigenen Worten und was über die Reisenden bekannt ist */
 export interface AgentRequest {
@@ -37,6 +38,8 @@ export interface AgentRequest {
   schoolHolidays?: { from: string; to: string; name: string }[];
   /** im Chat gewählter Kontext; fehlt: die KI erkennt ihn aus der Nachricht */
   focus?: AgentContext;
+  /** Land der Person (ISO-2) für Preise der Unterkunftssuche (#464) */
+  market?: string;
 }
 
 /** Kontext des KI-Assistenten: neue Reise, Reise zu einem Event, Änderungen an der offenen Reise, Vorlieben */
@@ -190,7 +193,9 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   const blocked = Array.isArray(o.blocked) ? o.blocked.filter((d): d is string => typeof d === "string" && DATE.test(d)).slice(0, 120) : [];
   const schoolHolidays = (Array.isArray(o.schoolHolidays) ? o.schoolHolidays : []).flatMap((x: any) =>
     x && DATE.test(x.from) && DATE.test(x.to) && x.to >= x.from ? [{ from: x.from as string, to: x.to as string, name: String(x.name || "").slice(0, 40) }] : []).slice(0, 12);
+  const market = parseMarket(o.market);
   return {
+    ...(market ? { market } : {}),
     ...(blocked.length ? { blocked } : {}),
     ...(schoolHolidays.length ? { schoolHolidays } : {}),
     ...(prefs ? { prefs } : {}),

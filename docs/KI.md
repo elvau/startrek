@@ -126,3 +126,63 @@ Kosten mit Haiku: grob unter 1 Cent je Planung (0,10 $ / 0,50 $ je Mio. Token Ei
 - `worker/src/claude.test.ts`: Übersetzung für Claude, Denkblöcke im Verlauf, Wiederholung, Anbieterwechsel
 - `app/src/lib/agent/*.test.ts`: Ablauf mit nachgestelltem Gemini, Grenzen, Anmeldeprüfung mit eigenen Schlüsseln
 - `app/e2e/agent.mjs`: Anmeldung, Anfrage, Vorschlag übernehmen, offene Reise ändern, Rückgängig, KI-Vergleichsreise (Such-Dienst nachgestellt)
+
+## Reise per KI importieren (#457)
+
+„Neue Reise → Importieren“ (`app/src/lib/ui/ImportPanel.svelte`): Angebot, Buchung oder Teilnehmerliste als Datei, Text, Link
+oder aus der Zwischenablage; am Handy auch über das Teilen-Menü (Share-Target im Manifest, `public/sw.js` legt die Dateien
+kurz im Speicher `saf-share` ab, `app/src/lib/import/share.svelte.ts` holt sie ab). Nur mit Anmeldung.
+
+1. App (`import/files.ts`): Bilder verkleinert als JPEG, PDF unverändert; Word, Excel, CSV liest die App selbst als Text
+   (kleiner ZIP-Leser, keine Bibliothek). Höchstens 6 Dateien, je etwa 4 MB.
+2. `POST /import` mit `{ files, text, url, lang }` (`import/ai.ts`, `parseImportRequest`), eigenes Tageskontingent
+   `IMPORT_DAILY` (Standard 10). Ein Link wird über `worker/src/page.ts` abgerufen (nur öffentliche Adressen, 1,5 MB, 8 s);
+   lässt er sich nicht lesen, antwortet der Dienst sofort 422 `needScreenshot` (kostet keinen Import).
+3. KI (Claude, ersatzweise Gemini; Bilder als `image`, PDF als `document`) muss genau `fill_trip` aufrufen; geprüft mit
+   `parseImportAi`. Keine Ausweis-, Pass-, Geburts- oder Kontaktdaten im Schema; Namen nur aus Teilnehmerlisten.
+4. App (`import/apply.ts`, `importToTrip`): Reisende (aus der Liste bzw. Anzahl, sonst bleiben gewählte), Ziel, Daten,
+   Flug und Unterkunft wie von Hand eingetragen (`source.imported`, Preis laut Angebot), Nebenkosten am passenden Teil,
+   Transfer im Paket als Posten zu 0 € (ersetzt die Schätzung). Pauschalreise (#188, `app/src/lib/package.ts`): Flug,
+   Unterkunft und enthaltener Transfer tragen dieselbe Paket-Kennung (`Option.pkg`), der Paketpreis steht an der
+   Unterkunft (`main`), die anderen Teile kosten 0 €; der Status gilt für alle Teile. Markierung `ai.kind = "imported"`.
+   Von Hand oder per Import in die offene Reise über „📦 Paket“ in den Kapiteln Flug und Unterkunft (`ui/PackageDialog.svelte`).
+   Vergleich und Aufbrechen (#460, `ui/PkgBand.svelte`): je Teil „⇆ einzeln suchen“ (Treffer kommen als weitere Angebote an
+   denselben Posten); das Paket gilt, bis man ein anderes Angebot wählt (`activeOption`). Haben Flug und Unterkunft eigene
+   Angebote: „📦 Paket gegen ✈ + 🛏 einzeln“ mit Differenz und was einzeln entfällt. Anderes Angebot in einem Teil gewählt →
+   „⚠ Paket teilweise ersetzt“ mit Aufbrechen (alle Teile einzeln, ohne eigenes Angebot „Preis fehlt“) oder Paket behalten;
+   aufgebrochen bleibt das Paket verworfen (`pkg.off`) und lässt sich wiederherstellen. Importierte Preise und Paketpreise
+   prüft die Reisebeobachtung nicht nach („📥 laut Angebot vom …“).
+
+Sicherheit je Angabe und Rückfragen (#458, `import/review.ts`, `ui/ImportReview.svelte`): Die KI nennt je Angabe 0–1;
+hoch ab 0,85, mittel ab 0,6 (ohne Angabe der KI: mittel), sonst niedrig. Niedrig oder fehlend bei Gepäck, Transfer (Paket),
+Verpflegung und Personen → Rückfrage zum Antippen vor dem Anlegen („Weiß nicht“ erlaubt, bleibt unsicher); Ziel, Zeitraum,
+Personen und Preis lassen sich korrigieren (danach sicher). Alles hoch und nichts offen → direkt anlegen. Posten mit
+abgeleiteten Angaben bekommen `Item.check` („bitte prüfen“ unter der KI-Markierung, weg mit „Geprüft“).
+
+Was fehlt noch? (#459, `import/parts.ts`, `ui/ImportParts.svelte`): danach je Baustein im Angebot (bzw. im Paket), von
+der App gerechnet (Anreise zum Flughafen) oder fehlend; fehlende mit Suchen (Flug, Unterkunft, Erlebnisse: die erste
+gewählte Suche öffnet sich nach dem Anlegen, vorbelegt aus der Reise), Schätzen (Mietwagen als Richtwert-Posten,
+Transfer wie bisher von der App) oder Brauchen wir nicht (kein Transfer: Posten zu 0 € ersetzt die Schätzung). Kein
+fehlender Baustein → Schritt entfällt. `Trip.offer` merkt Art, Anbieter, Link, beworbenen Preis, Gültigkeit und die
+Posten des Angebots; Ergänztes zählt im Realitätscheck (#461) zur ganzen Reise.
+
+Realitätscheck (#461, `import/reality.ts`, `ui/RealityReport.svelte`, `ui/RealityDialog.svelte`): Karte „Realitätscheck – Was
+kostet das Angebot wirklich?“ auf der Startseite (dieselben Schritte wie der Import, danach nur der Bericht an einem
+Entwurf, `draftTrip`; erst „Als Reise übernehmen“ legt an) und „🔍 Realitätscheck“ im Reise-Menü für die offene Reise.
+Gerechnet wird mit der normalen Kostenrechnung (`costParts`) an zwei Varianten: günstig (Essen „gemischt“, kein Koffer
+dazu) und teuer (Essen „überwiegend auswärts“, ein Koffer je Person und Strecke, wo der Flug nichts zum Gepäck sagt;
+Richtwert je Billigflieger aus `flights/addons.ts`). Antippen einer Annahme legt sie fest. Zuordnung: Angebotsposten
+(`Trip.offer.items`, ohne Import alle eigenen Posten) = Angebot; ihre Nebenkosten, Anreise zum Flughafen, Essen (bei
+Unterkunft) und Transfer (bei Pauschalreise) = „Angebot realistisch“; alles andere nur „ganze Reise“ (gezeigt, wenn das
+Angebot Flug und Unterkunft abdeckt oder etwas ergänzt wurde). Verpflegung umschaltbar nur auf Stufen laut Angebot
+(`stay.boards`, Aufpreis als Nebenkosten), „Essen einrechnen“ an/aus. Beträge pro Kopf, auf 10 € gerundet.
+
+Angebotsspeicher (#462, `import/cache.ts`, `worker/src/offers.ts`): nach erfolgreichem Auslesen speichert der Such-Dienst
+das Angebot in Firestore (`offers/{Angebots-Schlüssel}`, dazu `offerInputs/{Eingabe-Schlüssel}`), nur über das
+Dienstkonto (`FIREBASE_SERVICE_ACCOUNT`), Regeln sperren beides für die App. Eingabe-Schlüssel: SHA-256 aus Link (ohne
+Werbe-Parameter), Dateien und Text; gleiche Eingabe → Treffer ohne KI und ohne Kontingent, die App zeigt „♻ Schon
+geprüft“. Angebots-Schlüssel aus den Angebotsdaten. Gültig bis `validUntil`, sonst bis Reisedatum, höchstens 14 Tage
+(`expiresAt`). Gelöscht wird täglich um 03:17 UTC per Zeitplan des Such-Dienstes (`[triggers] crons` in `wrangler.toml`,
+`scheduled` → `sweep`); eine TTL-Richtlinie bräuchte Abrechnung in Google Cloud. Teilnehmerlisten (mit Namen) werden nie gespeichert.
+
+Dateien werden nirgends gespeichert. Weiter im Epic #456: Vergleich mit der Suche (#460), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.
