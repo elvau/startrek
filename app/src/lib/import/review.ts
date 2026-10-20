@@ -80,3 +80,25 @@ export function checks(o: ImportedOffer): { flights: boolean; stay: boolean; tra
     transfer: unsure("transfer")
   };
 }
+
+/** Kleinkind: bis einschließlich 2 Jahre */
+export const INFANT_MAX = 2;
+export interface Party { adults: number; kids: number; infants: number }
+
+/** Erwachsene, Kinder und Kleinkinder laut Angebot (Alter, nur Anzahl oder in der Übersicht eingetragen) */
+export function partyOf(o: ImportedOffer): Party {
+  const ages = o.childAges || [];
+  const infants = Math.max(o.infants || 0, ages.filter(a => a <= INFANT_MAX).length);
+  const minors = Math.max(ages.length, o.children || 0, infants + ages.filter(a => a > INFANT_MAX).length);
+  return { adults: o.adults || (minors ? 1 : 0), kids: minors - infants, infants };
+}
+
+/** Anzahl in der Übersicht ändern (#474): bekannte Alter bleiben, soweit sie noch passen; gilt dann als sicher */
+export function setParty(o: ImportedOffer, p: Party): ImportedOffer {
+  const ages = o.childAges || [];
+  const childAges = [...ages.filter(a => a > INFANT_MAX).slice(0, p.kids), ...ages.filter(a => a <= INFANT_MAX).slice(0, p.infants)];
+  const out: ImportedOffer = { ...o, adults: Math.max(1, p.adults), children: p.kids + p.infants, infants: p.infants, confidence: { ...(o.confidence || {}), people: 1 } };
+  if (childAges.length) out.childAges = childAges; else delete out.childAges;
+  if (!p.kids && !p.infants) { delete out.children; delete out.infants; }
+  return out;
+}

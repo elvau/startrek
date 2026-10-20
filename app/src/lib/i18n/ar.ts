@@ -978,6 +978,8 @@ export const ar: Dict = {
   "imp.rental": "سيارة مستأجرة",
   "imp.reopen": "إعادة الفتح",
   "imp.rev.adults": "البالغون",
+  "imp.rev.infants": "الرضّع (0–2)",
+  "imp.rev.kids": "الأطفال (3–17)",
   "imp.rev.ask": "بعض البيانات غير مؤكدة. أجب باختصار لتصبح أدق.",
   "imp.rev.asked": "أسئلة سريعة",
   "imp.rev.back": "رجوع",

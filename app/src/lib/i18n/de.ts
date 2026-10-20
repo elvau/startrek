@@ -921,6 +921,8 @@ export const de = {
   "imp.rental": "Mietwagen",
   "imp.reopen": "wieder öffnen",
   "imp.rev.adults": "Erwachsene",
+  "imp.rev.infants": "Kleinkinder (0–2)",
+  "imp.rev.kids": "Kinder (3–17)",
   "imp.rev.ask": "Ein paar Angaben sind unsicher. Kurz beantworten, dann wird es genauer.",
   "imp.rev.asked": "Kurz nachgefragt",
   "imp.rev.back": "Zurück",

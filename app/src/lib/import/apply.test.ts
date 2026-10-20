@@ -58,6 +58,17 @@ describe("Angebot → Reise (#457)", () => {
     importToTrip(known, { kind: "flight", adults: 5 }, AT);
     expect(known.travelers.map(p => p.name)).toEqual(["Alex"]);
   });
+  it("Kinder aus dem Angebot (#474): Alter oder nur Anzahl, auch neben einer Namensliste", () => {
+    const a = blank();
+    importToTrip(a, { kind: "stay", adults: 2, childAges: [5, 8] }, AT);
+    expect(a.travelers.map(p => p.age ?? p.kind)).toEqual(["adult", "adult", 5, 8]);
+    const b = blank();
+    importToTrip(b, { kind: "stay", adults: 2, children: 3 }, AT);
+    expect(b.travelers.map(p => p.kind)).toEqual(["adult", "adult", "child", "child", "child"]);
+    const c = blank();
+    importToTrip(c, { kind: "stay", adults: 2, childAges: [4], travelers: [{ name: "Anna", household: "Berg" }, { name: "Ben", household: "Berg" }] }, AT);
+    expect(c.travelers.map(p => [p.household, p.age ?? p.kind])).toEqual([["Berg", "adult"], ["Berg", "adult"], ["Berg", 4]]);
+  });
   it("Hotel einzeln: Preis an der Unterkunft, Nächte ergeben die Abreise; Event ohne Flug und Hotel als Erlebnis", () => {
     const trip = blank();
     const [st] = importToTrip(trip, { kind: "stay", from: "2027-06-01", nights: 5, price: { total: 640, currency: "CHF" }, stay: { name: "Chalet" } }, AT);
@@ -72,5 +83,14 @@ describe("Angebot → Reise (#457)", () => {
     expect(importToTrip(a, pkg, AT).map(i => !!i.check)).toEqual([true, true, true]);
     const sure = { ...pkg, confidence: { place: 1, dates: 1, people: 1, price: 1, flights: 1, stay: 1, board: 1, baggage: 1, transfer: 1 } };
     expect(importToTrip(blank(), sure, AT).map(i => !!i.check)).toEqual([false, false, false]);
+  });
+});
+
+describe("Kleinkinder aus der Übersicht (#474)", () => {
+  it("eingetragene Kleinkinder werden Kleinkind-Platzhalter, bekannte Alter bleiben", () => {
+    const a = blank();
+    importToTrip(a, { kind: "stay", adults: 2, children: 3, infants: 1, childAges: [7, 1] }, AT);
+    expect(a.travelers.map(p => p.age ?? p.kind)).toEqual(["adult", "adult", 7, "child", 1]);
+    expect(a.travelers.map(p => p.kind)).toEqual(["adult", "adult", "child", "child", "infant"]);
   });
 });
