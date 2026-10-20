@@ -18,6 +18,7 @@
   import { openEventPlanner } from "../event/open.svelte";
   import { openChat } from "../agent/open.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
+  import RealityDialog from "./RealityDialog.svelte";
   import { shareIn, type Shared } from "../import/share.svelte";
   import AiMark from "./AiMark.svelte";
   import TopNav from "./TopNav.svelte";
@@ -26,6 +27,7 @@
   const BASE = (import.meta.env.BASE_URL as string) || "/";
 
   let picking = $state(false);
+  let checking = $state(false);
   // aus dem Teilen-Menü (#457): gleich „Neue Reise → Importieren“ mit den geteilten Dateien
   let shared = $state<Shared | null>(null);
   $effect(() => { if (shareIn.v) { shared = shareIn.v; shareIn.v = null; picking = true; } });
@@ -177,6 +179,12 @@
           <span class="home-ico" aria-hidden="true"><AiMark /></span><b>{t("home.ai")}</b><small>{t("home.aiSub")}</small>
         </button>
       {/if}
+      {#if cloud.configured}
+        <!-- Realitätscheck (#461): Angebot einwerfen, ohne eine Reise anzulegen -->
+        <button class="home-act home-check" onclick={() => (checking = true)}>
+          <span class="home-ico" aria-hidden="true">🔍</span><b>{t("home.check")}</b><small>{t("home.checkSub")}</small>
+        </button>
+      {/if}
       <!-- Reiseideen (Inhaltsseiten /reise/): öffnen eine fertig gerechnete Reise, ersetzen die Beispielreise (#402) -->
       <a class="home-act home-ideas" href="{BASE}reise/">
         <span class="home-ico" aria-hidden="true">🧭</span><b>{t("home.ideas")}</b><small>{t("home.ideasSub")}</small>
@@ -315,6 +323,7 @@
   </div>
 </section>
 
+{#if checking}<RealityDialog onclose={() => (checking = false)} />{/if}
 {#if picking}<NewTripDialog onclose={() => { picking = false; shared = null; }} mode={shared ? "import" : "blank"} shared={shared?.files} sharedText={shared?.text} sharedUrl={shared?.url} />{/if}
 
 <style>

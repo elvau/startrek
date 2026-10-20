@@ -3,8 +3,11 @@
   /*
    * Reise per KI importieren (#457): Dateien (auch per Ziehen, Einfügen oder Teilen-Menü), Text oder Link einwerfen,
    * auslesen lassen, daraus eine Reise anlegen. Über „Neue Reise“ entsteht immer eine Reise. Nur mit Anmeldung.
+   * Realitätscheck (#461, check): dieselben Schritte, danach nur der Bericht an einem Entwurf; „Als Reise übernehmen“
+   * legt die Reise erst dann an.
    */
-  import { app, startTrip } from "../store.svelte";
+  import { app, draftTrip, startTrip } from "../store.svelte";
+  import RealityReport from "./RealityReport.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { IMPORT_FILES_MAX } from "../import/ai";
   import { ACCEPT, prepare, type Prepared } from "../import/files";
@@ -18,13 +21,15 @@
   import { openFlightSearch } from "../flights/open.svelte";
   import { openStaySearch } from "../stays/open.svelte";
   import { openExplore } from "../activities/open.svelte";
-  import type { Traveler } from "../model";
+  import type { Traveler, Trip } from "../model";
 
-  let { onclose, travelers, peopleKnown = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
+  let { onclose, travelers, peopleKnown = false, check = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
   // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
   let found = $state<ImportedOffer | null>(null);
   // danach (#459): was fehlt noch? Auswahl je fehlendem Baustein
-  let stage = $state<"review" | "parts">("review");
+  let stage = $state<"review" | "parts" | "report">("review");
+  // Realitätscheck: Entwurf der Reise, nicht gespeichert
+  let draft = $state<Trip | null>(null);
   let choices = $state<Partial<Record<PartId, Choice>>>({});
   type Src = "file" | "text" | "link" | "paste";
   const SRCS: Src[] = ["file", "text", "link", "paste"];
@@ -101,12 +106,16 @@
     } finally { busy = false; }
   }
   /** nach der Übersicht: fehlt etwas, erst „Was fehlt noch?“, sonst anlegen */
-  function next() { if (found && hasMissing(found)) stage = "parts"; else create(); }
+  function next() {
+    if (!found) return;
+    if (check) { const d = draftTrip(); importToTrip(d, found); draft = d; stage = "report"; return; }
+    if (hasMissing(found)) stage = "parts"; else create();
+  }
   function create() {
     if (!found) return;
     startTrip(travelers?.());
     importToTrip(app.trip, found);
-    const open = applyParts(app.trip, choices);
+    const open = check ? [] : applyParts(app.trip, choices);
     onclose();
     // erste gewählte Suche öffnen, vorbelegt aus der Reise (Ziel, Daten, Personen); erst nach dem Wechsel der Reise,
     // der offene Suchen zuklappt
@@ -123,12 +132,14 @@
   {#if !cloud.user}
     <p class="muted">{t("imp.login")}</p>
     <div class="ed-foot"><span></span><button type="button" class="btn primary" onclick={() => (cloud.showLogin = true)}>{t("acct.login")}</button></div>
+  {:else if draft && stage === "report"}
+    <RealityReport trip={draft} preview ontake={create} />
   {:else if found && stage === "parts"}
     <ImportParts offer={found} bind:choices oncreate={create} onback={() => (stage = "review")} />
   {:else if found}
     <ImportReview bind:offer={found} {peopleKnown} oncreate={next} onback={() => (found = null)} />
   {:else}
-    <p class="imp-lead">{t("imp.lead")}</p>
+    <p class="imp-lead">{t(check ? "real.lead" : "imp.lead")}</p>
     <div class="chips imp-src">
       {#each SRCS as s (s)}<button type="button" class="chip" class:on={src === s} aria-pressed={src === s} onclick={() => (s === "paste" ? void paste() : (src = s))}>{t(`imp.src.${s}` as Key)}</button>{/each}
     </div>
@@ -152,7 +163,7 @@
     {#each notes as n (n)}<p class="small imp-note" role="status">{n}</p>{/each}
     <p class="small imp-priv">🔒 {t("imp.privacy")}</p>
     {#if err}<p class="err small" role="alert">{err}</p>{/if}
-    <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t("imp.go")}</button></div>
+    <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
   {/if}
 </div>
 

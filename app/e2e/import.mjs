@@ -7,6 +7,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { reloadHome } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4186/";
 const log = (...a) => console.log("•", ...a);
@@ -23,6 +24,14 @@ const OFFER = {
   stay: { name: "Hotel Sol", stars: 3, board: "breakfast" }, transfer: { included: true }
 };
 
+// Realitätscheck (#461): Flugdeal, sicher erkannt bis aufs Gepäck (nicht genannt)
+const DEAL = {
+  kind: "flight", title: "Barcelona im März", provider: "Dealseite", url: "https://example.com/deal-bcn", place: "Barcelona", country: "ES", from: "2027-03-01", to: "2027-03-05",
+  adults: 2, price: { perPerson: 99, currency: "EUR" },
+  flights: { legs: [{ dir: "out", from: "DUS", to: "BCN", dep: "2027-03-01T07:00", carrier: "Ryanair" }, { dir: "back", from: "BCN", to: "DUS", dep: "2027-03-05T20:00", carrier: "Ryanair" }] },
+  confidence: { place: 1, dates: 1, people: 1, price: 1, flights: 1 }
+};
+
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4186", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
 await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
@@ -36,6 +45,7 @@ try {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
     const body = JSON.parse(r.request().postData());
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
+    if (body.text?.includes("Flugdeal")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: DEAL, remaining: 7 }) });
     if (body.url && !body.files.length) return r.fulfill({ status: 422, contentType: "application/json", headers: cors, body: JSON.stringify({ error: "Seite lässt sich nicht lesen", needScreenshot: true, remaining: 10 }) });
     return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: OFFER, remaining: 8 }) });
   });
@@ -134,6 +144,43 @@ try {
   await card.locator(".aif-ok").click();
   await until(async () => !(await card.locator(".aif-check").count()), "„bitte prüfen“ nach „Geprüft“ weg");
   log("Screenshot und CSV ausgelesen, Reise mit Reisenden aus der Liste, Flug, Unterkunft (Paketpreis) und Transfer");
+
+  // 6. Realitätscheck aus dem Reise-Menü: Bericht der importierten Reise (Paketpreis 199 € pro Kopf)
+  await p.locator(".tm-btn").first().click();
+  await p.locator(".tm-reality").click();
+  const rd = p.locator(".modal", { hasText: "Angebot realistisch pro Kopf" });
+  await rd.waitFor();
+  if (!(await rd.locator(".real-adv").textContent()).includes("199")) fail("beworbener Preis fehlt im Bericht");
+  if (await rd.locator(".real-prev").count()) fail("Bericht einer gespeicherten Reise als Vorschau markiert");
+  await rd.locator(".x").first().click();
+  log("Realitätscheck der Reise aus dem Reise-Menü");
+
+  // 7. Realitätscheck von der Startseite: Flugdeal, direkt zum Bericht, keine Reise angelegt; Koffer-Annahme festlegen; übernehmen
+  await reloadHome(p);
+  await p.locator(".home-check").click();
+  const cd = p.locator(".modal", { hasText: "Realitätscheck" });
+  await cd.locator(".imp-src .chip", { hasText: "Text" }).click();
+  await cd.locator("textarea").fill("Flugdeal Barcelona 99 € hin und zurück");
+  await cd.locator(".imp-go", { hasText: "Auslesen und prüfen" }).click();
+  // Gepäck nennt das Angebot nicht: Rückfrage, „Weiß nicht“ lässt die Spanne offen
+  await cd.locator(".rev-q .chip", { hasText: "Weiß nicht" }).click();
+  await cd.locator(".imp-create").click();
+  await cd.locator(".real-prev", { hasText: "Es wurde keine Reise angelegt" }).waitFor();
+  if (!(await cd.locator(".real-adv").textContent()).includes("99")) fail("beworbener Preis 99 € fehlt");
+  const bagRow = cd.locator(".real-rows li", { hasText: "Koffer dazu" });
+  await bagRow.waitFor();
+  if (!(await bagRow.textContent()).includes("80")) fail("Koffer-Spanne (2 × 40 €) fehlt: " + await bagRow.textContent());
+  const wide = await cd.locator(".real-main b").textContent();
+  await bagRow.locator(".real-pin").click();
+  await until(async () => (await bagRow.locator(".real-pin").textContent()).includes("günstig"), "Annahme auf günstig");
+  if ((await cd.locator(".real-main b").textContent()) === wide) fail("Spanne nach dem Festlegen unverändert");
+  if (await cd.locator(".real-board").count()) fail("Verpflegung bei reinem Flug angezeigt");
+  await cd.locator(".real-hint").waitFor();
+  if (await p.evaluate(() => Object.keys(localStorage).some(k => k.startsWith("rk2-t:") && (localStorage.getItem(k) || "").includes("Barcelona im März")))) fail("Realitätscheck hat eine Reise angelegt");
+  await cd.locator(".real-take").click();
+  await until(async () => !(await cd.count()), "Fenster nach dem Übernehmen zu");
+  await p.locator("text=Barcelona im März").first().waitFor();
+  log("Realitätscheck ohne Reise: Bericht mit Spanne, Koffer-Annahme festgelegt, erst „Als Reise übernehmen“ legt an");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Import ok");

@@ -1,6 +1,6 @@
 # KI-Import und Realitätscheck (Konzept, in Arbeit)
 
-Stand: Besprechung mit Dani, 20.10.2026; Umsetzung läuft (#457 Import gebaut, Technik in `docs/KI.md`). Eingeplant als Epic #456 (Features #457–#462, Entscheidung #463); hängt mit
+Stand: Besprechung mit Dani, 20.10.2026; Umsetzung läuft (#457, #458, #459, #461 gebaut, Technik in `docs/KI.md`). Eingeplant als Epic #456 (Features #457–#462, Entscheidung #463); hängt mit
 #188 (Pauschalreisen) und #417 (versteckte Kosten) zusammen.
 
 Idee: Aus einem beliebigen Angebot (Screenshot, PDF, Text …) entsteht per KI eine echte Split&Fly-Reise. Darauf aufbauend

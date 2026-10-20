@@ -325,6 +325,7 @@ export const GUIDE: GuidePage[] = [
       "Mit KI planen (Beta): Beschreibe deine Wunschreise in ein paar Sätzen. Die KI schlägt Ziele und Varianten vor, die du prüfst und übernimmst.",
       "Zu einem Event (🎟): Bei Spiel, Konzert oder Festival planst du die Reise passend zum Termin.",
       "Angebot importieren (mit Konto): Unter „Neue Reise“ auf „Importieren“ tippen und ein Angebot, eine Buchung oder eine Teilnehmerliste einwerfen, als Datei (Screenshot, Foto, PDF, Word, CSV oder Excel), als Text oder als Link. Mit „Auslesen und Reise anlegen“ entsteht daraus eine Reise mit Flug, Unterkunft und Reisenden.",
+      "Realitätscheck (mit Konto): Auf der Startseite „🔍 Realitätscheck“ öffnen und ein Angebot einwerfen. Du siehst, was es pro Kopf wirklich kostet, als Spanne mit allen Annahmen. Es wird keine Reise angelegt, bis du „Als Reise übernehmen“ antippst. Für eine offene Reise findest du den Realitätscheck im Reise-Menü.",
       "Die Vorschläge landen als Reise bei dir. Von da an bearbeitest du alles wie gewohnt."
     ],
     tips: [

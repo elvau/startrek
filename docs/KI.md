@@ -158,4 +158,15 @@ Transfer wie bisher von der App) oder Brauchen wir nicht (kein Transfer: Posten 
 fehlender Baustein → Schritt entfällt. `Trip.offer` merkt Art, Anbieter, Link, beworbenen Preis, Gültigkeit und die
 Posten des Angebots; Ergänztes zählt im Realitätscheck (#461) zur ganzen Reise.
 
-Dateien werden nirgends gespeichert. Weiter im Epic #456: Vergleich mit der Suche (#460), Realitätscheck (#461), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.
+Realitätscheck (#461, `import/reality.ts`, `ui/RealityReport.svelte`, `ui/RealityDialog.svelte`): Karte „Realitätscheck – Was
+kostet das Angebot wirklich?“ auf der Startseite (dieselben Schritte wie der Import, danach nur der Bericht an einem
+Entwurf, `draftTrip`; erst „Als Reise übernehmen“ legt an) und „🔍 Realitätscheck“ im Reise-Menü für die offene Reise.
+Gerechnet wird mit der normalen Kostenrechnung (`costParts`) an zwei Varianten: günstig (Essen „gemischt“, kein Koffer
+dazu) und teuer (Essen „überwiegend auswärts“, ein Koffer je Person und Strecke, wo der Flug nichts zum Gepäck sagt;
+Richtwert je Billigflieger aus `flights/addons.ts`). Antippen einer Annahme legt sie fest. Zuordnung: Angebotsposten
+(`Trip.offer.items`, ohne Import alle eigenen Posten) = Angebot; ihre Nebenkosten, Anreise zum Flughafen, Essen (bei
+Unterkunft) und Transfer (bei Pauschalreise) = „Angebot realistisch“; alles andere nur „ganze Reise“ (gezeigt, wenn das
+Angebot Flug und Unterkunft abdeckt oder etwas ergänzt wurde). Verpflegung umschaltbar nur auf Stufen laut Angebot
+(`stay.boards`, Aufpreis als Nebenkosten), „Essen einrechnen“ an/aus. Beträge pro Kopf, auf 10 € gerundet.
+
+Dateien werden nirgends gespeichert. Weiter im Epic #456: Vergleich mit der Suche (#460), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.
