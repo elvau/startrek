@@ -39,7 +39,7 @@
   let prepared = $state<Prepared[]>([]);
   let text = $state(""), url = $state("");
   let notes = $state<string[]>([]);
-  let busy = $state(false), err = $state(""), over = $state(false);
+  let busy = $state(false), err = $state(""), slow = $state(false), over = $state(false);
   let ctrl: AbortController | undefined;
   const ready = $derived(prepared.length > 0 || text.trim().length >= 3 || /^https?:\/\/\S+\.\S+/i.test(url.trim()));
 
@@ -91,8 +91,9 @@
 
   async function go() {
     if (!ready || busy) return;
-    busy = true; err = "";
+    busy = true; err = ""; slow = false;
     ctrl = new AbortController();
+    const later = setTimeout(() => (slow = true), 12000);
     try {
       const res = await askImport({ prepared, text, url }, ctrl.signal);
       const offer = res.offer;
@@ -107,7 +108,7 @@
       if ((e as Error).name === "AbortError") return;
       err = (e as Error).message;
       if (e instanceof ImportError && e.needScreenshot) src = "file";
-    } finally { busy = false; }
+    } finally { busy = false; slow = false; clearTimeout(later); }
   }
   /** nach der Übersicht: fehlt etwas, erst „Was fehlt noch?“, sonst anlegen */
   function next() {
@@ -168,8 +169,9 @@
     {/if}
     {#each notes as n (n)}<p class="small imp-note" role="status">{n}</p>{/each}
     <p class="small imp-priv">🔒 {t("imp.privacy")}</p>
+    {#if busy}<p class="small imp-wait ai-busy" role="status">⏳ {t("imp.wait")}{#if slow} {t("imp.waitLong")}{/if}</p>{/if}
     {#if err}<p class="err small" role="alert">{err}</p>{/if}
-    <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
+    <div class="ed-foot"><span></span><button type="button" class="btn primary imp-go" disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
   {/if}
 </div>
 

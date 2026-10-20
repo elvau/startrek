@@ -855,6 +855,8 @@ export const pl: Dict = {
   "imp.border.t": "Strefa Schengen: wjazd z EES",
   "imp.border.x": "Osoby bez paszportu UE, EOG lub Szwajcarii są przy pierwszym wjeździe do strefy Schengen rejestrowane w systemie wjazdu/wyjazdu (EES): odciski palców i zdjęcie, kontrola może trwać dłużej. Później ma dojść zezwolenie ETIAS; sprawdź przed podróżą.",
   "imp.busy": "AI czyta ofertę…",
+  "imp.wait": "Zostaw to okno otwarte. Zamknięcie przerywa odczyt.",
+  "imp.waitLong": "To trwa trochę dłużej, przy kilku stronach to normalne. Jeszcze chwilę.",
   "imp.byMe": "załatwione przeze mnie",
   "imp.c.estimate": "Szacuj",
   "imp.c.later": "Później",
