@@ -22,6 +22,8 @@ export interface PartRow {
   v: number;
   est?: boolean;
   itemId?: string;
+  /** Nebenkosten: Art (für das Emoji im Realitätscheck) */
+  xk?: string;
 }
 
 export interface Parts {
@@ -99,7 +101,7 @@ export function costParts(trip: Trip, T: Totals): Parts {
       const k: PartKey = booked && l.x.pay === "extra" ? "booked" : "hidden";
       add(k, {
         key: `${it.id}:x${i}`, itemId: it.id, name: extraName(l), how: `${it.name} · ${t(l.x.pay === "onsite" ? "parts.onsite" : "parts.atBooking")}`,
-        calc: [extraHow(l, cur), l.x.source].filter(Boolean).join(" · "), v: l.amount, est: !!l.x.est
+        calc: [extraHow(l, cur), l.x.source].filter(Boolean).join(" · "), v: l.amount, est: !!l.x.est, xk: l.x.kind
       });
     }
   }
