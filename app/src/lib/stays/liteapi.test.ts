@@ -58,6 +58,9 @@ describe("liteAPI", () => {
     expect(calls[1].body).toMatchObject({ hotelIds: ["lp1"], checkin: "2027-08-12", currency: "EUR", guestNationality: "DE" });
     expect(calls.every(c => c.key === "k")).toBe(true);
     expect(l.map(o => o.name)).toEqual(["Hotel Sol"]);
+    // Markt der Person (#464): Gäste aus Polen
+    await searchLite({ ...q, market: "PL" }, "k", f);
+    expect(calls.at(-1)!.body).toMatchObject({ guestNationality: "PL" });
     await expect(searchLite({ ...q, cc: undefined }, "k", f)).rejects.toThrow(/Land/);
     // Ort unter dem Namen unbekannt („Palma“ statt „Palma de Mallorca“): Umkreis um die Koordinaten
     const seen: string[] = [];

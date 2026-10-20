@@ -44,3 +44,8 @@ Schlüssel mit Endungen nach [Intl.PluralRules](https://developer.mozilla.org/do
   `holidays` als Region („DE-NW“, „AT-WI“) bzw. ganzes Land („BE-“); alte Angaben ohne Land sind Bundesländer.
   Genutzt: echte Ferientermine für den KI-Planer, Feiertage im Reiseland im Tagesplan, Feiertage im Wohnland
   (Werktage) als Hinweis „ein Urlaubstag weniger“. Logik: `app/src/lib/holidays.ts`, `holidaysApp.svelte.ts`.
+- **Markt der Unterkunftssuche (#464):** Die Suche schickt das Wohnland (`cc` am Wohnort der Person „Ich“, ohne Wohnort
+  die Region des Browsers, sonst DE) und die App-Sprache mit (`app/src/lib/stays/market.ts`). Booking.com und Trivago
+  bekommen das Land als Markt, liteAPI als `guestNationality` (die echte Staatsangehörigkeit ist Buchungsdaten und geht
+  nie an den Such-Dienst). Texte der Anbieter nur deutsch oder englisch, weil Ausstattung, Verpflegung und Preise aus
+  dem Text gelesen werden. Länder, die ein Anbieter nicht kennt: DE.
