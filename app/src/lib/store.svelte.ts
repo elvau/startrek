@@ -443,6 +443,11 @@ export function switchTrip(id: string, why = "gewechselt") {
   dropIfPristine(prev);
 }
 
+/** Entwurf wie eine neue Reise, ohne sie zu öffnen oder zu speichern (Realitätscheck ohne Reise, #461) */
+export function draftTrip(travelers?: Traveler[]): Trip {
+  return { ...emptyTrip(travelers ? { travelers } : {}), households: JSON.parse(JSON.stringify(app.trip.households || {})) };
+}
+
 /** Neue Reise, standardmäßig im einfachen Modus; Reisende z. B. aus gespeicherten Gruppen */
 export function newTrip(opts: NewOpts = {}) {
   flush();
