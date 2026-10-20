@@ -122,6 +122,17 @@
               </label>
             {:else if H.mode === "car" || H.mode === "drop" || !H.mode}
               <label class="f">{t("hh.cars")}<input class="n" type="number" min="1" max="9" bind:value={H.cars} /></label>
+              {#if H.mode !== "drop"}
+                <!-- Parken am Abflughafen (#419): Richtwert, gebucht mit Preis oder entfällt -->
+                <label class="f">{t("hh.park")}
+                  <select class="hh-park" value={H.parking?.off ? "off" : H.parking?.paid != null ? "booked" : ""}
+                    onchange={e => { const v = e.currentTarget.value; if (v === "off") H.parking = { off: true }; else if (v === "booked") H.parking = { paid: H.parking?.paid ?? 0 }; else delete H.parking; }}>
+                    <option value="">{t("hh.park.est")}</option><option value="booked">{t("hh.park.booked")}</option><option value="off">{t("hh.park.off")}</option>
+                  </select>
+                </label>
+                {#if H.parking?.paid != null}<label class="f">{t("hh.parkPaid")}<input class="n hh-parkpaid" type="number" min="0" step="5" value={H.parking.paid || ""}
+                  onchange={e => (H.parking = { paid: Math.max(0, +e.currentTarget.value || 0) })} /></label>{/if}
+              {/if}
             {:else if H.mode === "taxi"}
               <label class="f">{t("hh.ride")}<input class="n hh-ride" type="number" min="0" step="5" value={H.ride ?? ""} placeholder={taxiHint(name)}
                 onchange={e => { const v = +e.currentTarget.value; if (v > 0) H.ride = v; else delete H.ride; }} /></label>

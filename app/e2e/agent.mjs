@@ -10,6 +10,13 @@ const URL = "http://127.0.0.1:4178/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
 const until = async (fn, what, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
+/** ins Bild scrollen; rendert die Liste dabei neu („not attached“/„not stable“, #452), Locator neu auflösen und nochmal */
+const into = async (loc, tries = 5) => {
+  for (let i = 1; ; i++) {
+    try { await loc.scrollIntoViewIfNeeded({ timeout: 3000 }); return; }
+    catch (e) { if (i >= tries) throw e; await new Promise(r => setTimeout(r, 300)); }
+  }
+};
 const leg = (from, to, dep, arr) => ({ from, to, fromCity: from, toCity: to, dep, arr, minutes: 150, stops: 0, route: [from, to], carriers: ["Sun Air"], flights: ["SA1"] });
 const RESULT = {
   remaining: 4,
@@ -192,7 +199,7 @@ try {
   await until(async () => (await p.locator("#misc .ch-sum b").innerText()) !== before, "Verpflegung günstiger bei All-inclusive");
   if (process.env.SHOTS) {
     for (const [sel, name] of [["#stay .card:has-text('Casa Palma')", "board-stay"], ["#misc .plan-card", "board-food"]]) {
-      await p.locator(sel).first().scrollIntoViewIfNeeded(); await p.waitForTimeout(1200);
+      await into(p.locator(sel).first()); await p.waitForTimeout(1200);
       await p.locator(sel).first().screenshot({ path: `${process.env.SHOTS}/${name}.png` });
     }
   }
@@ -238,12 +245,12 @@ try {
   const card = p.locator(".ai-card", { hasText: "Sonne in Palma" }).last();
   const ct = await card.innerText();
   for (const x of ["Halbpension", "Mietwagen 3 Tage", "Bootstour", "Verpflegung", "ca."]) if (!ct.includes(x)) fail(`Karte ohne „${x}“: ${ct}`);
-  await card.scrollIntoViewIfNeeded(); await shot("ai-card");
+  await into(card); await shot("ai-card");
   await p.locator(".ai-all").last().click();
   await p.locator(".start .home-title").waitFor();
   await until(() => p.locator(".start .home-trip .ht-ai").count().then(n => n >= 3), "KI-Reisen gekennzeichnet");
   if (!(await p.locator(".start .home-trip", { hasText: "Lissabon" }).count())) fail("Lissabon nicht angelegt");
-  await p.locator(".start .home-h").first().scrollIntoViewIfNeeded(); await shot("ai-home");
+  await into(p.locator(".start .home-h").first()); await shot("ai-home");
   log("Karte als ganze Reise (Halbpension, Mietwagen, Bootstour, Verpflegung, Gesamtpreis); alle angelegt und mit &✈KI gekennzeichnet");
 
   // Vorlieben: „Ich“ mit Wohnort, gesperrtes Land, Umstiege, Reisestil → gehen ohne Namen an den KI-Planer
@@ -332,7 +339,7 @@ try {
   await shot("ai-applied");
   if (process.env.SHOTS) {
     const fc = p.locator("#transport .card", { hasText: "Anreise mit dem Auto" });
-    await fc.scrollIntoViewIfNeeded(); await p.waitForTimeout(1200);
+    await into(fc); await p.waitForTimeout(1200);
     await fc.screenshot({ path: `${process.env.SHOTS}/ai-flag.png` });
   }
   await c4.locator(".ai-undo").click();

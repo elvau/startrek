@@ -11,6 +11,7 @@
   import WatchBadge from "./WatchBadge.svelte";
   import ExtrasBlock from "./ExtrasBlock.svelte";
   import RentalCheck from "./RentalCheck.svelte";
+  import RentalPanel from "./RentalPanel.svelte";
   import ItemSplit from "./ItemSplit.svelte";
   import AiMark from "./AiMark.svelte";
   import { arrow, autoName, t, type Key } from "../i18n/index.svelte";
@@ -57,6 +58,7 @@
   <PollHint {item} />
   <ExtrasBlock {item} />
   <ItemSplit {item} />
+  <RentalPanel {item} />
   <RentalCheck {item} />
   {#if item.hint === "road:car" && !access.readonly}<p class="road-jump"><button class="linkbtn" onclick={toRoad}>🗺 {t("road.editRoute")} ›</button></p>{/if}
   {#if src?.url || gmap || src?.test}

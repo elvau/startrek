@@ -19,6 +19,7 @@ Kurtaxen bzw. City Tax, Vignetten, Maut, Durchfahrten, Trinkgeld und Einreisegeb
   Idee, einfache Beträge) und *versteckt*. Versteckt sind alle Nebenkosten vor Ort, Nebenkosten bei der Buchung solange
   der Posten nicht gebucht ist, die Anreise zum Flughafen (samt Parken) und automatische Posten (Verpflegung, Anreise mit
   dem eigenen Auto). Kautionen stehen nur als Hinweis darunter. Rechnung in `app/src/lib/calc/parts.ts`.
+- **Parken am Flughafen (#419):** eigene Zeile unter *versteckt* (je Flug), siehe unten.
 - **Souvenirs (#421):** automatischer Posten unter Sonstiges, Betrag pro Person aus den Vorlieben (Richtwert 30 €),
   je Reise änderbar. `app/src/lib/souvenir.ts`.
 - **Unterwegs vor Ort (#420):** solange kein eigener Transport-Posten da ist, schätzt die App den Flughafentransfer hin und
@@ -109,13 +110,48 @@ dazu“ (`hint: "rental"`) und ältere Posten mit Auto-Symbol und Namen wie „M
 | Vollschutz ohne Selbstbeteiligung | 20 € pro Tag | nur auf Wunsch eingerechnet |
 | Zusatzfahrer | 8 € pro Tag | nur auf Wunsch eingerechnet |
 
+**Klasse und Mietzeitraum (#391):** am Posten Schnellwahl „ganze Reise · 1 · 3 · 5 Tage“ und Kalender (Abholung bis
+Rückgabe), dazu die Fahrzeugklasse als Faktor auf den Richtwert pro Tag (Kompakt, nach Preisniveau des Ziellandes) mit
+Sitzen je Auto (`app/src/lib/carclass.ts`). Ändert nur den geschätzten Preis; eingetragene Angebote behalten ihren.
+
+| Klasse | Faktor | Sitze |
+|---|---|---|
+| Klein | × 0,8 | 4 |
+| Kompakt | × 1,0 | 5 |
+| Mittel/Kombi | × 1,3 | 5 |
+| Van/Kleinbus | × 1,8 | 9 |
+| Premium | × 2,2 | 5 |
+
 Dazu die Checkliste am Posten (Kaution, Selbstbeteiligung, Tank voll/voll, junge Fahrer, Zusatzfahrer und Auslandsfahrten,
 Schäden fotografieren) mit dem Hinweis, dass die Bedingungen des Vermieters maßgeblich sind. Allgemeine Hinweise, keine
 Versicherungsberatung. Führerscheindauer und „Kreditkarte vorhanden“ kommen mit dem Konto-Assistenten (#160) dazu,
 Angaben echter Mietwagen-Angebote mit [114] (#144).
 
+## Parken am Flughafen (#419)
+Für Familien, die mit dem eigenen Auto zum Abflughafen fahren: Richtwert pro Tag (`park` in
+[`app/src/lib/airports.ts`](../app/src/lib/airports.ts)) × Reisetage × Autos, bei Fahrgemeinschaften einmal je Auto und nach
+Personen geteilt. Abflughafen ohne Daten: allgemeiner Richtwert `PARK_DEFAULT` = 10 € pro Tag (`app/src/lib/calc/travel.ts`),
+als „geschätzt“; Fahrt und Bahn bleiben dann offen. Je Familie in „Wer fährt mit“ einstellbar: *geschätzt* (Richtwert),
+*gebucht* mit eigenem Gesamtpreis (zählt am Gesamtbetrag als gebucht) oder *entfällt* (z. B. kostenlos bei Bekannten).
+Am Flug-Posten Links zum Vergleichen (Partner-Kategorie `parking`, `docs/PARTNER.md`).
+
+Der Richtwert liegt bewusst zwischen früh online gebuchtem Parkplatz (Shuttle bzw. Economy) und Terminal-Parkhaus an der
+Schranke; er ist kein Bestpreis.
+
+| Flughafen | Richtwert/Tag | Spanne (1 Woche) | Quelle (Stand 10/2026) |
+|---|---|---|---|
+| Frankfurt (FRA) | 13 € | online ab ca. 55–64 €, Terminal 258 € an der Schranke | [parkfibel.de](https://parkfibel.de/artikel/parken-flughafen-frankfurt-kosten/), [parkport-frankfurt.de](https://www.parkport-frankfurt.de/blog/parken-flughafen-frankfurt-kosten-vergleich) |
+| München (MUC) | 11 € | Economy 107 €, online ab 59,99 €, terminalnah 250 € (Tarif ab 01.04.2026) | [parkesicher.de](https://www.parkesicher.de/blog/parken-muenchen-flughafen-vergleich) |
+| Düsseldorf (DUS) | 12 € | günstigster ca. 26–75 €, terminalnah bis 336 € | [allright.de](https://www.allright.de/verkehrsrecht/parkgebuehren-flughafen-vergleich), [parkinglist.de](https://www.parkinglist.de/flughafen-parken/parken-flughafen-duesseldorf) |
+| Köln/Bonn (CGN) | 8 € | online ca. 66 €, spontan um 100 € | [infranken.de](https://www.infranken.de/ratgeber/urlaub-reisen/parken-am-flughafen-so-sparst-du-bis-zu-74-prozent-art-6357133) |
+| Stuttgart (STR) | 12 € | ab 29 € (günstigster Anbieter) | [infranken.de](https://www.infranken.de/ratgeber/urlaub-reisen/parken-am-flughafen-so-sparst-du-bis-zu-74-prozent-art-6357133) |
+| Hamburg (HAM) | 12 € | ab ca. 45 € für 8 Tage | [airparks.de](https://www.airparks.de/flughafen-parken.html) |
+| Berlin (BER) | 12 € | ab ca. 43 € für 8 Tage, kurzfristig um 115 € | [airparks.de](https://www.airparks.de/flughafen-parken.html), [parkvia.com](https://www.parkvia.com/de-DE/blog/beste-zeiten-flughafenparkplaetze-buchen) |
+
+Übrige Flughäfen in `airports.ts` (5–20 € pro Tag) noch ohne eigene Quelle; beim nächsten Daten-Durchgang prüfen.
+
 ## Fähren (43 Verbindungen, #202)
-Richtwerte je einfache Fahrt, Hauptsaison, grob und ohne Gewähr (Prüfung 10/2026; meist Durchschnitte je Buchung bei Direct
+Richtwerte je einfache Fahrt, Hauptsaison, grob und ohne Gewähr (Prüfung 10/2026; Jadrolinija-Linien nach offiziellen Preislisten 2026, Stand 10/2026; sonst meist Durchschnitte je Buchung bei Direct
 Ferries, wenige offizielle Tarife). Liste: `FERRIES` in `app/src/lib/road/ferries.ts`. Liegt bei einem Roadtrip eine Station
 auf einer Insel bzw. in Großbritannien oder Irland, kommt die Fähre automatisch dazwischen (wählbar). Am Auto-Posten:
 Fahrzeug je Überfahrt, Personen je Mitfahrer (Kinder bis 3 frei), Kabine nur auf Wunsch; „Paket“ heißt Pflichtkabine, Preis
@@ -153,10 +189,10 @@ mit Personen und Kabine.
 | Piräus → Mykonos | 5 h | 85 € | 43 € | – | Blue Star, SeaJets | Ferryhopper |
 | Piräus → Paros | 4 h | 130 € | 40 € | – | Blue Star, SeaJets | Ferryhopper |
 | Piräus → Naxos | 5 h | 83 € | 42 € | – | Blue Star, SeaJets | Ferryhopper |
-| Split → Stari Grad (Hvar) | 2 h | 47.6 € | 8.5 € | – | Jadrolinija | Jadrolinija |
-| Split → Supetar (Brač) | 0.83 h | 32 € | 5.2 € | – | Jadrolinija | Jadrolinija |
+| Split → Stari Grad (Hvar) | 2 h | 47.6 € | 8.4 € | – | Jadrolinija | Jadrolinija |
+| Split → Supetar (Brač) | 0.83 h | 26.1 € | 6.5 € | – | Jadrolinija | Jadrolinija |
 | Split → Vela Luka (Korčula) | 3 h | 73.7 € | 10.8 € | – | Jadrolinija | Jadrolinija |
-| Valbiska (Krk) → Merag (Cres) | 0.42 h | 19.89 € | 4.25 € | – | Jadrolinija | Jadrolinija |
+| Valbiska (Krk) → Merag (Cres) | 0.42 h | 20.7 € | 4.4 € | – | Jadrolinija | Jadrolinija |
 | Piombino → Portoferraio | 1 h | 85 € | 18 € | – | Moby, Toremar, Blu Navy | Ferryhopper |
 | Calais → Dover | 1.5 h | 205 € | – | – | P&O, DFDS, Irish Ferries | Direct Ferries |
 | Dünkirchen → Dover | 2 h | 145 € | – | – | DFDS | Direct Ferries |

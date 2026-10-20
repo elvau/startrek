@@ -254,3 +254,6 @@ export function artSvg(slug: string, cls = "art"): string {
   if (!a) return "";
   return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${a.alt.replace(/"/g, "&quot;")}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><title>${a.alt}</title>${a.draw()}</svg>`;
 }
+
+/** Bausteine für weitere Szenen (Anleitung, app/src/lib/guide/art.ts): gleicher Zeichenstil, gleiche Farben */
+export { W, H, C, sky, sun, cloud, water, hills, house, boat, palm, pine, star, confetti };

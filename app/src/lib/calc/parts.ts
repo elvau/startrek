@@ -81,10 +81,17 @@ export function costParts(trip: Trip, T: Totals): Parts {
     }
     // Angebotspreis ohne Nebenkosten und Anreise
     add(booked ? "booked" : "planned", { key: it.id, itemId: it.id, name: it.name, how: status, v: r.net - (ex?.added || 0) - acc });
+    // Parken am Flughafen eigene Zeile (#419): geschätzt versteckt, gebucht bei gebucht
+    const lines = r.access?.lines || [];
+    const parkEst = lines.reduce((a, l) => a + (l.a.parkBooked ? 0 : l.a.park || 0), 0);
+    const parkBooked = lines.reduce((a, l) => a + (l.a.parkBooked ? l.a.park || 0 : 0), 0);
     if (acc) add("hidden", {
-      key: it.id + ":access", itemId: it.id, name: t("parts.access"), how: it.name, est: true, v: acc,
-      calc: r.access!.lines.map(l => `${l.hh}: ${l.a.info}`).join(" · ")
+      key: it.id + ":access", itemId: it.id, name: t("parts.access"), how: it.name, est: true, v: acc - parkEst - parkBooked,
+      calc: lines.map(l => `${l.hh}: ${l.a.info}`).join(" · ")
     });
+    const parkCalc = (b: boolean) => lines.filter(l => l.a.park && !!l.a.parkBooked === b).map(l => `${l.hh}: ${moneyExact(l.a.park!, "EUR")}`).join(" · ");
+    if (parkEst) add("hidden", { key: it.id + ":park", itemId: it.id, name: t("parts.park", { ap: lines[0].ap }), how: it.name, est: true, v: parkEst, calc: parkCalc(false) });
+    if (parkBooked) add("booked", { key: it.id + ":parkB", itemId: it.id, name: t("parts.park", { ap: lines[0].ap }), how: t("status.booked"), v: parkBooked, calc: parkCalc(true) });
     const cur = r.option?.price.currency || "EUR";
     for (const [i, l] of (ex?.lines || []).entries()) {
       if (l.x.off || l.x.pay === "included") continue;

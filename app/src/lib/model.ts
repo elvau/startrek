@@ -122,6 +122,8 @@ export interface Prefs {
   note?: string;
   /** Reisezeiten: Bundesland für Schulferien, bevorzugte Monate (1–12), übliche Nächte */
   holidays?: string;
+  /** Feiertage und Schulferien in der Terminauswahl markieren (#377); fehlt: ja */
+  calHolidays?: boolean;
   months?: number[];
   nightsMin?: number;
   nightsMax?: number;
@@ -347,6 +349,8 @@ export interface Item {
   private?: { place: string; country?: string };
   /** aus einem Hinweis (Einreise & Tipps) übernommen, z. B. „galapagos“; „rental“ = Mietwagen, „road:car“ = eigenes Auto */
   hint?: string;
+  /** Mietwagen (#391): Klasse und Mietzeitraum (JJJJ-MM-TT, days = per Schnellwahl); base = Richtwert Kompakt pro Tag, oneWay = Einwegmiete */
+  rental?: Rental;
 }
 
 /** eigener Eintrag im Tagesplan („Abendessen“, „Ruhetag“, „Zug nach Dubrovnik“) */
@@ -381,6 +385,8 @@ export interface Household {
   link?: string;
   /** Fahrdienst/Taxi: Preis je Fahrt für alle Fahrzeuge (leer = Richtwert) */
   ride?: number;
+  /** Parken am Abflughafen (#419): entfällt (z. B. kostenlos bei Bekannten) oder gebucht zum Preis für alle Autos; fehlt: Richtwert */
+  parking?: { off?: boolean; paid?: number };
   /** Kasse: gemeinsam (eine Kasse für die Familie) oder jeder Erwachsene zahlt selbst; fehlt: bis 2 Erwachsene gemeinsam */
   kasse?: "joint" | "each";
   /** eigene Anwesenheit statt aus dem Flug: erste Nacht, Abreisetag */
@@ -609,6 +615,8 @@ export const isActive = (t: Traveler) => t.active !== false;
 
 /** Wird dieser Bereich mit einzelnen Posten gerechnet? */
 /** leer angelegtes Angebot (ohne Namen, Preis und Herkunft), z. B. von „+ Unterkunft“ */
+/** Angebot ohne verwertbaren Preis (weder Pauschale noch Personenpreis) */
+export const noPrice = (o: Option) => (o.price.mode === "unit" ? !o.price.unit : !o.price.adult && !o.price.child && !o.price.infant);
 export const blankOption = (o: Option) => !o.label && !o.price.unit && !o.price.adult && !o.price.child && !o.legs?.length && !o.source;
 
 /** Angebot aus einer Suche dazu; leere Angebote fliegen dabei raus (tauchten sonst als „Angebot 2“ im Vergleich auf) */
@@ -618,3 +626,5 @@ export function addOffer(item: Item, opt: Option) {
 }
 
 export const isDetailed = (trip: Trip, cat: CatKey) => trip.detail?.[cat] ?? trip.items.some(i => i.cat === cat);
+
+export interface Rental { cls?: "small" | "compact" | "mid" | "van" | "premium"; from?: string; to?: string; days?: number; base?: number; oneWay?: boolean }

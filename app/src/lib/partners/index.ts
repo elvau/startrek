@@ -12,7 +12,7 @@ import {
   type ActivityLinkQuery, type FlightLinkQuery, type StayLinkQuery
 } from "../links";
 
-export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance" | "ferry" | "camper" | "camping";
+export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance" | "ferry" | "camper" | "camping" | "parking";
 /** Netzwerk, über das die Provision läuft; direkt: eigenes Partnerprogramm des Anbieters */
 export type PartnerNet = "direct" | "travelpayouts" | "awin" | "amazon";
 
@@ -90,6 +90,9 @@ export const PARTNERS = {
   pincamp: p<void>({ name: "PiNCAMP", cat: "camping", link: home("https://www.pincamp.de/") }),
   acsi: p<void>({ name: "ACSI", cat: "camping", link: home("https://www.eurocampings.de/") }),
   park4night: p<void>({ name: "park4night", cat: "camping", link: home("https://park4night.com/de") }),
+  /* Parken am Abflughafen (#419); Parken und Fliegen, Holiday Extras (Awin) kommen mit der Freischaltung dazu */
+  parkos: p<void>({ name: "Parkos", cat: "parking", link: home("https://parkos.de/") }),
+  airparks: p<void>({ name: "Airparks", cat: "parking", net: "awin", link: home("https://www.airparks.de/") }),
   /* Reiseversicherung: nur als Tipp, keine Beratung (§ 34d GewO) */
   check24Insurance: p<void>({ name: "CHECK24", cat: "insurance", link: home("https://www.check24.de/reiseversicherung/") }),
   ergo: p<void>({ name: "ERGO Reiseversicherung", cat: "insurance", net: "awin", link: home("https://www.reiseversicherung.de/") }),

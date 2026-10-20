@@ -48,4 +48,22 @@ describe("Zusammensetzung des Gesamtbetrags (#418)", () => {
     food.status = "booked";
     expect(parts(t).sum.booked).toBe(560);
   });
+
+  it("Parken am Flughafen als eigene Zeile: geschätzt versteckt, gebucht bei gebucht (#419)", () => {
+    const legs = [{ dir: "out" as const, from: "DUS", to: "PMI", dep: "2027-05-07T06:10", arr: "2027-05-07T08:25" }, { dir: "back" as const, from: "PMI", to: "DUS", dep: "2027-05-14T09:15", arr: "2027-05-14T11:35" }];
+    const hh = { Klein: { plz: "40210", geo: { lat: 51.2217, lon: 6.7762, ort: "Düsseldorf" }, mode: "car" as const, cars: 1 } };
+    const t = trip([{ id: "f", cat: "flights", name: "Flug", status: "booked", options: [{ id: "o", label: "", price: unit(600), legs }] }] as Item[], { households: hh });
+    const p = parts(t);
+    const park = p.rows.hidden.find(r => r.key === "f:park")!;
+    expect(park.v).toBe(8 * 12);
+    expect(park.est).toBe(true);
+    const access = p.rows.hidden.find(r => r.key === "f:access")!;
+    expect(access.v).toBeGreaterThan(0);
+    expect(p.sum.booked + p.sum.planned + p.sum.hidden).toBeCloseTo(totals(t).total);
+    t.households!.Klein.parking = { paid: 59 };
+    const q = parts(t);
+    expect(q.rows.hidden.some(r => r.key === "f:park")).toBe(false);
+    expect(q.rows.booked.find(r => r.key === "f:parkB")!.v).toBe(59);
+    expect(q.sum.booked + q.sum.planned + q.sum.hidden).toBeCloseTo(totals(t).total);
+  });
 });

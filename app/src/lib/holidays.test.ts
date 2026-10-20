@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { holidayName, holidayPlace, holidayRange, holidaysIn, parseOH, regionName, workdayHolidays } from "./holidays";
+import { calendarMarks, holidayName, holidayPlace, holidayRange, holidaysIn, parseOH, regionName, workdayHolidays } from "./holidays";
 
 // Aufbau wie die Antworten der OpenHolidays API (scripts/regions.mjs --probe)
 const school = parseOH([
@@ -42,5 +42,23 @@ describe("Schulferien und Feiertage (#163)", () => {
     expect(regionName(rs, "AT-WI", "en")).toBe("Vienna");
     expect(regionName(rs, "AT-WI", "ru")).toBe("Vienna");
     expect(regionName(rs, "AT-XX", "de")).toBe("AT-XX");
+  });
+});
+
+describe("Markierungen im Kalender (#377)", () => {
+  const data = { school, public: pub };
+  it("mit Region: Feiertage und Schulferien dieser Region, jeder Tag eines Zeitraums", () => {
+    const m = calendarMarks(data, "AT-WI", "de");
+    expect(m["2027-10-26"].pub).toBe("Nationalfeiertag");
+    expect(m["2027-02-01"].school).toBe("Semesterferien");
+    expect(m["2027-02-06"].school).toBe("Semesterferien");
+    expect(m["2027-02-08"]).toBeUndefined();
+    expect(m["2026-12-31"].school).toBe("Weihnachtsferien");
+  });
+  it("ohne Region: nur landesweite Feiertage, keine Schulferien", () => {
+    const m = calendarMarks(data, undefined, "en");
+    expect(m["2027-10-26"].pub).toBeTruthy();
+    expect(Object.values(m).some(x => x.school)).toBe(false);
+    expect(Object.values(m).every(x => x.pub)).toBe(true);
   });
 });
