@@ -3,13 +3,18 @@
   /*
    * Import (#459): „Was fehlt noch?“ Bausteine im Angebot, von der App gerechnet oder fehlend; je fehlendem Baustein
    * Suchen, Schätzen, Später bzw. Brauchen wir nicht. Ergänztes zählt zur ganzen Reise, nicht zum Angebot.
+   * Ohne Flug (#475): Anreise mit Auto, Bahn oder Fernbus, ohne bekannten Wohnort mit Frage danach.
    */
   import type { ImportedOffer } from "../import/ai";
-  import { partsOf, type Choice, type PartId } from "../import/parts";
+  import { arrivalOf, partsOf, pick, type Choices } from "../import/parts";
+  import type { Home } from "../home";
+  import HomeInput from "./HomeInput.svelte";
 
-  let { offer, choices = $bindable(), oncreate, onback }: { offer: ImportedOffer; choices: Partial<Record<PartId, Choice>>; oncreate: () => void; onback: () => void } = $props();
-  const parts = $derived(partsOf(offer));
+  let { offer, choices = $bindable(), askHome = false, home = $bindable(null), oncreate, onback }: { offer: ImportedOffer; choices: Choices; askHome?: boolean; home?: Home | null; oncreate: () => void; onback: () => void } = $props();
+  const parts = $derived(partsOf(offer, choices));
   const STATE: Record<string, Key> = { offer: "imp.parts.inOffer", package: "imp.parts.inPackage", app: "imp.parts.app", missing: "imp.parts.missing" };
+  const ICON: Record<string, string> = { car: "🚗 ", train: "🚆 ", bus: "🚌 " };
+  const sub = (id: string, state: string): Key => id === "transfer" && state === "missing" ? "imp.parts.transferEst" : id === "arrival" ? "imp.parts.arrivalEst" : STATE[state];
   const searchFirst = $derived((["flight", "stay", "fun"] as const).find(k => choices[k] === "search"));
 </script>
 
@@ -21,12 +26,15 @@
       <li class:missing={p.state === "missing"}>
         <div class="parts-row">
           <span class="parts-mark" aria-hidden="true">{p.state === "missing" ? "?" : "✓"}</span>
-          <span class="parts-l"><b>{t(`imp.part.${p.id}` as Key)}</b><small>{t(p.id === "transfer" && p.state === "missing" ? "imp.parts.transferEst" : STATE[p.state])}</small></span>
+          <span class="parts-l"><b>{t(`imp.part.${p.id}` as Key)}</b><small>{t(sub(p.id, p.state))}</small></span>
         </div>
         {#if p.choices.length}
           <div class="chips" role="group" aria-label={t(`imp.part.${p.id}` as Key)}>
-            {#each p.choices as c (c)}<button type="button" class="chip" class:on={choices[p.id] === c} aria-pressed={choices[p.id] === c} onclick={() => (choices = { ...choices, [p.id]: c })}>{t(`imp.c.${c}` as Key)}</button>{/each}
+            {#each p.choices as c (c)}<button type="button" class="chip" class:on={choices[p.id] === c} aria-pressed={choices[p.id] === c} onclick={() => (choices = pick(choices, p.id, c))}>{ICON[c] || ""}{t(`imp.c.${c}` as Key)}</button>{/each}
           </div>
+        {/if}
+        {#if p.id === "arrival" && askHome && arrivalOf(choices)}
+          <HomeInput cls="imp-home" label={t("imp.parts.home")} value={home} onpick={h => (home = h)} onclear={() => (home = null)} />
         {/if}
       </li>
     {/each}
