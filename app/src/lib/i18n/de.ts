@@ -845,6 +845,8 @@ export const de = {
   "imp.border.t": "Schengen-Raum: Einreise mit EES",
   "imp.border.x": "Wer keinen Pass aus EU, EWR oder der Schweiz hat, wird bei der ersten Einreise in den Schengen-Raum im Ein- und Ausreisesystem (EES) erfasst: Fingerabdrücke und Foto, an der Grenze kann es länger dauern. Die Reisegenehmigung ETIAS soll später dazukommen; vor der Reise prüfen.",
   "imp.busy": "Die KI liest das Angebot…",
+  "imp.wait": "Bitte den Dialog offen lassen. Schließen bricht das Auslesen ab.",
+  "imp.waitLong": "Das dauert etwas länger, bei mehreren Seiten ist das normal. Noch einen Moment.",
   "imp.byMe": "von mir erledigt",
   "imp.c.estimate": "Schätzen",
   "imp.c.later": "Später",

@@ -70,4 +70,37 @@ describe("Realitätscheck (#461)", () => {
     expect(r.whole!.lo).toBeGreaterThan(r.real.lo);
     expect(round10({ lo: 103.4, hi: 181 })).toEqual({ lo: 100, hi: 190 });
   });
+  it("Flugdeal ohne Unterkunft: automatische Posten mit neuen IDs je Variante bleiben eine Zeile (#482)", () => {
+    const trip = blank();
+    importToTrip(trip, { kind: "flight", adults: 2, price: { perPerson: 99 }, flights: { legs: [{ dir: "out", from: "DUS", to: "BCN" }], baggage: { cabin: 1, checked: 0 } } }, AT);
+    applyParts(trip, { rental: "estimate" });
+    // wie syncAuto: jeder Lauf legt den Posten mit neuer ID an
+    const fresh = (t: Trip) => { food(t); for (const i of t.items) if (i.auto === "food") i.id = uid(); };
+    const r = reality(trip, { food: true }, fresh);
+    const f = r.rows.filter(x => x.assumption === "food");
+    expect(f).toHaveLength(1);
+    expect([f[0].lo, f[0].hi]).toEqual([105, 210]);
+    for (const x of r.rows) expect(x.lo).toBeLessThanOrEqual(x.hi);
+    expect(r.whole!.hi).toBeCloseTo(r.rows.reduce((a, x) => a + x.hi, 0));
+  });
+});
+
+describe("Realitätscheck: Pauschalreise ohne Flugdaten und automatische Posten (#482)", () => {
+  it("Paketpreis ohne Flug-Legs steht an der Unterkunft; automatische Posten bleiben eine Zeile mit lo ≤ hi", () => {
+    const trip = blank();
+    importToTrip(trip, { kind: "package", from: "2026-11-27", to: "2026-12-05", adults: 2, price: { total: 3119.56, perPerson: 1559.78 }, stay: { name: "JAZ Elite Aurora", board: "all" } }, AT);
+    const st = trip.items.find(i => i.cat === "stay")!;
+    expect(st.options[0].price.unit).toBe(3119.56);
+    // automatische Posten mit neuer ID je Variante (wie syncAuto)
+    const sync = (t: Trip) => {
+      t.items = t.items.filter(i => i.auto !== "souvenir");
+      t.items.push({ id: uid(), cat: "misc", name: "Souvenirs", auto: "souvenir", status: "idea", options: [{ id: uid(), label: "", estimate: true, price: { mode: "person", currency: "EUR", adult: 30 } }] });
+    };
+    const r = reality(trip, { food: false }, sync);
+    expect(r.offer.lo).toBeCloseTo(1559.78);
+    const souv = r.rows.filter(x => x.name === "Souvenirs");
+    expect(souv).toHaveLength(1);
+    expect([souv[0].lo, souv[0].hi]).toEqual([30, 30]);
+    for (const x of r.rows) expect(x.lo).toBeLessThanOrEqual(x.hi + 0.001);
+  });
 });

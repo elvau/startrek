@@ -102,7 +102,9 @@ function rowsOf(trip: Trip) {
     else if (it?.auto === "food" && has.stay) part = "real";
     else if (it?.auto === "local" && it.hh === "transfer" && has.flight && has.stay) part = "real";
     const assumption: Assumption | undefined = it?.auto === "food" ? "food" : r.name === t("real.bag") ? "bag" : undefined;
-    out.set(r.key, { name: r.name, how: r.how, v: r.v, part, est: r.est, assumption, icon: assumption === "bag" ? "🧳" : rowIcon(r.key, it, part, r.xk) });
+    // automatische Posten bekommen je Variante neue IDs: über Art und Haushalt zuordnen, sonst fehlt eine Seite (zählt als 0)
+    const key = it?.auto && r.key.startsWith(it.id) ? `auto:${it.auto}:${it.hh ?? ""}${r.key.slice(it.id.length)}` : r.key;
+    out.set(key, { name: r.name, how: r.how, v: r.v, part, est: r.est, assumption, icon: assumption === "bag" ? "🧳" : rowIcon(r.key, it, part, r.xk) });
   }
   return { out, has };
 }

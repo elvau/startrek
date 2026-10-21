@@ -847,6 +847,8 @@ export const en: Dict = {
   "imp.border.t": "Schengen area: entry with EES",
   "imp.border.x": "Anyone without an EU, EEA or Swiss passport is registered in the Entry/Exit System (EES) on their first entry into the Schengen area: fingerprints and photo, so border checks can take longer. The ETIAS travel authorisation is due to follow later; check before you travel.",
   "imp.busy": "The AI is reading the offer…",
+  "imp.wait": "Please keep this dialog open. Closing it cancels the reading.",
+  "imp.waitLong": "This takes a little longer, which is normal with several pages. Just a moment.",
   "imp.byMe": "done by me",
   "imp.c.estimate": "Estimate",
   "imp.c.later": "Later",

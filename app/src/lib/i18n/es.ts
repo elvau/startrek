@@ -847,6 +847,8 @@ export const es: Dict = {
   "imp.border.t": "Espacio Schengen: entrada con EES",
   "imp.border.x": "Quien no tenga pasaporte de la UE, el EEE o Suiza queda registrado en el Sistema de Entradas y Salidas (EES) en su primera entrada al espacio Schengen: huellas dactilares y foto; en la frontera puede tardar más. Más adelante se añadirá la autorización ETIAS; compruébalo antes del viaje.",
   "imp.busy": "La IA está leyendo la oferta…",
+  "imp.wait": "Mantén abierto este cuadro. Si lo cierras, se cancela la lectura.",
+  "imp.waitLong": "Tarda un poco más, es normal con varias páginas. Un momento más.",
   "imp.byMe": "hecho por mí",
   "imp.c.estimate": "Estimar",
   "imp.c.later": "Más tarde",

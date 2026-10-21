@@ -715,6 +715,9 @@ try {
   // Summen wie in der Reise: 214 + 1680 + 80 = 1974 €
   if (!head.includes("1.974 €") || !head.includes("2.656 €") || !head.includes("2.090 €")) fail("Summen im Vergleich: " + head.replace(/\n/g, " / "));
   if (!head.includes("Unterkunft +700") ) fail("Erklärung fehlt: " + head.replace(/\n/g, " / "));
+  // Schaltflächen aller Spalten auf gleicher Höhe, auch in der günstigsten ohne Zusatzzeile (Desktop)
+  const actsY = await cv.locator(".cv-head .cv-acts").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));
+  if (actsY.length < 2 || new Set(actsY).size !== 1) fail("Schaltflächen im Vergleich nicht auf gleicher Höhe: " + actsY.join(","));
   // verschiedene Orte: alle Zeilen; „Nur Unterschiede“ blendet Erlebnisse (überall 80 €) aus
   if (!(await cv.locator(".cv-table [data-row=attractions]").count())) fail("Erlebnisse fehlen bei „alle Zeilen“");
   await cv.locator(".cv-mode .chip", { hasText: "Nur Unterschiede" }).click();

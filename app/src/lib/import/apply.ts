@@ -102,7 +102,9 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
   }
   if (o.stay) {
     const s = o.stay;
-    const price = pkg ? total : s.price ?? (o.kind === "stay" ? total : undefined);
+    // Pauschalreise ohne Flugdaten (nur „mit Flug“): Paketpreis an der Unterkunft, sonst stünde sie mit 0 € da
+    const flightless = o.kind === "package" && !legs.length;
+    const price = pkg ? total : s.price ?? (o.kind === "stay" || flightless ? total : undefined);
     stay = {
       id: uid(), label: s.name || t("imp.stay"),
       ...(s.place ? { detail: s.place } : {}), ...(pkg ? { pkg: { id: pkgId, main: true } } : {}),
@@ -111,7 +113,8 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
       stay: { ...(s.stars ? { stars: s.stars } : {}), ...(s.board ? { board: s.board } : {}), ...(s.boards ? { boards: s.boards.map(x => ({ ...x })) } : {}), ...(s.freeCancel ? { freeCancel: true } : {}) },
       ...(s.name ? { loc: { q: [s.name, s.place || o.place].filter(Boolean).join(", ") } } : {})
     };
-    items.push({ id: uid(), cat: "stay", name: s.name || t("st.itemName", { place: trip.place || s.place || "" }), status: "idea", options: [stay], ai: mark, ...(trip.from && trip.to ? { from: trip.from, to: trip.to } : {}) });
+    items.push({ id: uid(), cat: "stay", name: s.name || t("st.itemName", { place: trip.place || s.place || "" }), status: "idea", options: [stay], ai: mark,
+      ...(flightless && !s.price ? { note: t("imp.packagePrice") } : {}), ...(trip.from && trip.to ? { from: trip.from, to: trip.to } : {}) });
     trip.detail.stay = true;
   }
   // Transfer: enthalten → Posten zu 0 €, damit die Schätzung für den Transfer am Ziel entfällt (#420)
