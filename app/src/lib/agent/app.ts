@@ -171,7 +171,19 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
     const seatOf = new Map([...fam].map(([hh, g]) => [g.key, seatQueue(trip, hh)]));
     for (const b of a.bookings) takeBookings(trip, b, (b.group && seatOf.get(b.group)?.(b.travelers)) || seat(b.travelers), { at, kind: "suggested" });
   } else if (a.flight) { trip.detail.flights = true; takeOffer(trip, a.flight).ai = { at, kind: "suggested" }; }
-  if (a.stay && a.stayQuery) {
+  // mehrere Unterkünfte (#494): je Unterkunft ein Posten mit ihren Reisenden, der Reihe nach verteilt
+  if (a.stays?.length) {
+    trip.detail.stay = true;
+    const ids = trip.travelers.filter(isActive).map(p => p.id);
+    let k = 0;
+    a.stays.forEach((s, i) => {
+      const part = ids.slice(k, k + s.travelers);
+      k += s.travelers;
+      const it = takeStay(trip, s.offer, s.q, undefined, part.length ? part : undefined);
+      if (a.stays!.length > 1) it.name = `${it.name} (${i + 1}/${a.stays!.length})`;
+      it.ai = { at, kind: "suggested" };
+    });
+  } else if (a.stay && a.stayQuery) {
     trip.detail.stay = true;
     const it = takeStay(trip, a.stay, a.stayQuery);
     it.ai = { at, kind: "suggested" };

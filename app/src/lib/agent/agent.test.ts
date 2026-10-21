@@ -277,3 +277,42 @@ describe("KI-Reiseplaner", () => {
   });
 });
 
+describe("große Gruppe auf mehrere Unterkünfte (#494)", () => {
+  const team: AgentRequest = { ...req, prompt: "Mannschaftsfahrt 20 Männer Cala Rajada Pfingsten", adults: 20 };
+  const empty = (f: ReturnType<typeof fake>) => ({ ...f.deps, stays: async (q: StayQuery) => { f.asked.stays.push(q); return { offers: [], sources: [] }; } });
+  it("keine Unterkunft für alle: Rückfrage nach der Aufteilung statt Antwort der KI", async () => {
+    const f = fake([
+      call("search_stays", { place: "Cala Rajada", checkin: "2027-05-14", checkout: "2027-05-17" }),
+      call("answer", { reply: "Leider keine Unterkunft gefunden." })
+    ]);
+    const res = await runAgent(team, empty(f));
+    expect(res).toMatchObject({ trips: [], split: true });
+    expect(f.asked.stays[0]).toMatchObject({ adults: 20, rooms: 10 });
+  });
+  it("kleine Gruppe ohne Treffer: keine Rückfrage", async () => {
+    const f = fake([call("search_stays", { place: "Rom", checkin: "2027-05-14", checkout: "2027-05-17" }), call("answer", { reply: "Nichts gefunden." })]);
+    const res = await runAgent({ ...team, adults: 2 }, empty(f));
+    expect(res.split).toBeUndefined();
+    expect(res.reply).toBe("Nichts gefunden.");
+  });
+  it("aufgeteilt: Suche je Teilgruppe, Vorschlag mit mehreren Unterkünften für alle", async () => {
+    const f = fake([
+      call("search_stays", { place: "Cala Rajada", checkin: "2027-05-14", checkout: "2027-05-17", groupSize: 6 }),
+      call("propose_trips", { trips: [{ title: "Cala Rajada", summary: "Günstig", place: "Cala Rajada", from: "2027-05-14", to: "2027-05-17", ownArrival: { label: "Auto", eur: 1 }, stays: [{ stayId: "s1", travelers: 6 }, { stayId: "s1", travelers: 6 }, { stayId: "s1", travelers: 6 }] }] })
+    ]);
+    const res = await runAgent({ ...team, stayMode: "same" }, f.deps);
+    expect(f.asked.stays[0]).toMatchObject({ adults: 6, rooms: 3, childAges: [] });
+    const t = res.trips[0];
+    // fehlende Reisende kommen zur letzten Unterkunft
+    expect(t.stays?.map(s => [s.offer.id, s.travelers])).toEqual([["s1", 6], ["s1", 6], ["s1", 8]]);
+    expect(t.stay).toBeUndefined();
+    expect(t.total).toBe(3 * 600);
+    const tools = f.asked.bodies[0].tools[0].functionDeclarations;
+    expect(tools.find((d: any) => d.name === "search_stays").parameters.properties.groupSize).toBeDefined();
+    expect(systemPrompt({ ...team, stayMode: "mix" })).toContain("several accommodations close to each other");
+  });
+  it("Anfrage: Aufteilung nur mit bekanntem Wert", () => {
+    expect((parseAgentRequest({ ...team, stayMode: "mix" }) as AgentRequest).stayMode).toBe("mix");
+    expect((parseAgentRequest({ ...team, stayMode: "x" }) as AgentRequest).stayMode).toBeUndefined();
+  });
+});

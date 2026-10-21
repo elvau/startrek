@@ -139,6 +139,18 @@ describe("KI zur offenen Reise", () => {
     expect(fl.every(i => i.ai?.kind === "suggested")).toBe(true);
   });
 
+  it("mehrere Unterkünfte (#494): je Unterkunft ein Posten mit ihren Reisenden", () => {
+    const t: Trip = { ...trip(), items: [], travelers: Array.from({ length: 10 }, (_, k) => ({ id: `p${k}`, name: `P${k}`, household: `T${k}` })) };
+    const q: StayQuery = { place: "Cala Rajada", checkin: "2027-05-10", checkout: "2027-05-13", adults: 6, childAges: [], rooms: 3, type: "all", currency: "EUR" };
+    takeAgentTrip(t, { title: "Cala Rajada", summary: "", place: "Cala Rajada", from: "2027-05-10", to: "2027-05-13", total: 0,
+      stays: [{ offer: stay("s1", 600), q, travelers: 6 }, { offer: stay("s2", 500), q, travelers: 4 }] });
+    const st = t.items.filter(i => i.cat === "stay");
+    expect(st.map(i => i.participants)).toEqual([["p0", "p1", "p2", "p3", "p4", "p5"], ["p6", "p7", "p8", "p9"]]);
+    expect(st.map(i => i.options[0].label)).toEqual(["Hotel s1", "Hotel s2"]);
+    expect(st[1].name).toMatch(/\(2\/2\)$/);
+    expect(st.every(i => i.ai?.kind === "suggested")).toBe(true);
+  });
+
   it("Änderung mit aufgeteiltem Flug: erste Buchung ersetzt den alten Flug, die weiteren direkt dahinter", () => {
     const t = trip();
     applyEdit(t, { reply: "", flights: [{ offer: flight("f1", 100), seats: 1, travelers: 2, replaces: "fl" }] });
