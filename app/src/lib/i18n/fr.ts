@@ -836,6 +836,7 @@ export const fr: Dict = {
   "imp.a.baggage.cabin": "Bagage cabine seulement",
   "imp.a.baggage.checked": "Oui, une valise",
   "imp.a.dunno": "Je ne sais pas",
+  "imp.a.ok": "C’est bon",
   "imp.a.transfer.no": "Non",
   "imp.a.transfer.yes": "Oui",
   "imp.aaChanged": "Dernière modification le {d}.",

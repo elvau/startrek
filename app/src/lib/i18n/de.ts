@@ -834,6 +834,7 @@ export const de = {
   "imp.a.baggage.cabin": "Nur Handgepäck",
   "imp.a.baggage.checked": "Ja, ein Koffer",
   "imp.a.dunno": "Weiß nicht",
+  "imp.a.ok": "Passt",
   "imp.a.transfer.no": "Nein",
   "imp.a.transfer.yes": "Ja",
   "imp.aaChanged": "Zuletzt geändert am {d}.",
