@@ -44,6 +44,12 @@ je Flug). Beim Übernehmen wird jede Buchung ein eigener Flugposten mit ihren Re
 Preis pro Platz mal Personen. Zimmer wählt die KI nach Wunsch (`rooms`). Gruppen bis 20 Erwachsene.
 Der KI-Konnektor kann das ebenso (`add_flight` mit `travelers`).
 
+Unterkünfte für große Gruppen (#494): Zuerst sucht die KI eine Unterkunft für alle. Findet sie ab 5 Personen keine
+und schlägt auch sonst keine vor, fragt die App, wie aufgeteilt werden soll (`split` im Ergebnis, Text in der App): „Dieselbe
+Unterkunft mehrfach“ (`stayMode: same`) oder „Mehrere in der Nähe“ (`mix`, die günstigste Lösung). Danach sucht die KI je
+Teilgruppe (`search_stays` mit `groupSize`) und schlägt `stays` mit `travelers` je Unterkunft vor. Beim Übernehmen wird
+jede Unterkunft ein eigener Posten mit ihren Reisenden („Unterkunft in Cala Rajada (1/3)“).
+
 ## Familien mit eigenen Zeiten (#230)
 
 Kommen und gehen Familien zu unterschiedlichen Zeiten („wir drei Wochen, die anderen ab Woche 2, Oma zehn Tage“), plant

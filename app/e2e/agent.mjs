@@ -77,10 +77,13 @@ try {
         stay: { ...t.stay, total: 1400 }, stayQuery: { ...t.stayQuery, checkout: "2027-05-14", adults: 3, childAges: [8] }, total: 3050 });
       return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [mk("Palma mit Oma", "Palma"), mk("Alcúdia mit Oma", "Alcúdia")], remaining: 1 }) });
     }
-    // Mannschaftsfahrt: 10 Personen, Flüge in Buchungen zu 2 Plätzen
+    // Mannschaftsfahrt: 10 Personen, Flüge in Buchungen zu 2 Plätzen; keine Unterkunft für alle → Rückfrage, dann zweimal dieselbe (#494)
     if (body.prompt.includes("Mannschaftsfahrt")) {
+      if (!body.stayMode) return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], question: "", options: [], split: true, remaining: 2 }) });
       const t = RESULT.trips[0];
-      const trip = { ...t, title: "Mannschaftsfahrt Cala Rajada", party: { adults: 10, childAges: [], infants: 0 }, bookings: [{ offer: t.flight, seats: 2, travelers: 10 }], total: 2400 + 600 };
+      const half = { offer: t.stay, q: { ...t.stayQuery, adults: 5, rooms: 3 }, travelers: 5 };
+      const { stay: _s, stayQuery: _q, ...rest } = t;
+      const trip = { ...rest, title: "Mannschaftsfahrt Cala Rajada", party: { adults: 10, childAges: [], infants: 0 }, bookings: [{ offer: t.flight, seats: 2, travelers: 10 }], stays: [half, half], total: 2400 + 1200 };
       return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [trip], remaining: 1 }) });
     }
     const beach = body.prompt.includes("Strandurlaub");
@@ -393,14 +396,21 @@ try {
   const c5 = p.locator(".ai-chat");
   await c5.locator(".ai-bar textarea").fill("Mannschaftsfahrt mit 10 Männern nach Mallorca");
   await c5.locator(".ai-bar textarea").press("Enter");
+  // keine Unterkunft für alle: Rückfrage zur Aufteilung, Antwort schickt die Wahl mit
+  await c5.locator(".ai-msg.ai-q", { hasText: "Soll ich die Gruppe aufteilen?" }).waitFor();
+  await c5.locator(".ai-opts .chip", { hasText: "Dieselbe Unterkunft mehrfach" }).click();
+  await until(async () => asked.at(-1).body.stayMode === "same", "Aufteilung nicht mitgeschickt");
   const gcard = c5.locator(".ai-card", { hasText: "Mannschaftsfahrt Cala Rajada" });
   await gcard.waitFor();
   if (!(await gcard.innerText()).includes("10 Pers. in 5 Buchungen à 2 Plätze")) fail("Buchungen nicht auf der Karte: " + await gcard.innerText());
+  if (await gcard.locator("li", { hasText: "Casa Palma" }).filter({ hasText: "5 Personen" }).count() !== 2) fail("zwei Unterkünfte für je 5 nicht auf der Karte: " + await gcard.innerText());
   await gcard.locator(".btn", { hasText: "Übernehmen" }).click();
   await p.locator(".hero h1", { hasText: "Mannschaftsfahrt" }).waitFor();
   if (!(await p.locator(".hero .meta").innerText()).includes("10 Personen")) fail("nicht 10 Personen");
   await until(() => p.locator("#flights .card").count().then(n => n === 5), "5 Flugposten");
   if (!(await p.locator("#flights .card", { hasText: "(5/5)" }).count())) fail("Buchungen nicht nummeriert");
+  await until(() => p.locator("#stay .card", { hasText: "Casa Palma" }).count().then(n => n === 2), "2 Unterkunftsposten");
+  if (!(await p.locator("#stay .card", { hasText: "(2/2)" }).count())) fail("Unterkünfte nicht nummeriert");
   // der übernommene Vorschlag liegt auch im Konto (nicht nur die leere Reise vom Anlegen)
   const mfId = await p.evaluate(() => localStorage.getItem("rk2-current"));
   const inDb = async () => {
@@ -417,7 +427,7 @@ try {
     return ((await r.json()).documents || []).filter(d => d.fields?.owner?.stringValue === uid).map(d => d.fields?.name?.stringValue);
   };
   await until(async () => !(await names()).includes("Reise"), "alle KI-Reisen im Konto gespeichert, nicht leer");
-  log("Mannschaftsfahrt: 10 Personen, Flug in 5 Buchungen à 2 Plätze als eigene Posten");
+  log("Mannschaftsfahrt: Rückfrage zur Aufteilung, 10 Personen, Flug in 5 Buchungen à 2 Plätze und 2 Unterkünfte als eigene Posten");
 
 
   // Startseite: sortieren (Preis, zuletzt bearbeitet, Land), Liste statt Kacheln, Wahl bleibt nach dem Neuladen

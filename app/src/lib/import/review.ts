@@ -17,7 +17,8 @@ export const ANSWERS: Record<QuestionId, string[]> = {
   baggage: ["checked", "cabin", DUNNO],
   transfer: ["yes", "no", DUNNO],
   board: ["self", "breakfast", "half", "all", DUNNO],
-  people: ["1", "2", "3", "4", "5", "6", "8", "10"]
+  // Personen: Zähler für Erwachsene, Kinder, Kleinkinder statt fester Antworten (suggestParty, setParty)
+  people: []
 };
 
 export interface ReviewField { key: ConfKey; level: Level }
@@ -45,7 +46,8 @@ export function reviewOf(o: ImportedOffer, answered: ReadonlySet<QuestionId> = n
   const low = (k: ConfKey) => !has(o, k) || levelOf(c[k]) === "low";
   const pkg = !!(o.flights && o.stay);
   const q: QuestionId[] = [];
-  if (!peopleKnown && !has(o, "people")) q.push("people");
+  // auch bei nur geratener Anzahl nachfragen, vorbelegt mit dem Vorschlag der KI
+  if (!peopleKnown && low("people")) q.push("people");
   if (o.flights && low("baggage")) q.push("baggage");
   if (pkg && low("transfer")) q.push("transfer");
   if (o.stay && low("board")) q.push("board");
@@ -92,6 +94,15 @@ export function partyOf(o: ImportedOffer): Party {
   const infants = Math.max(o.infants || 0, ages.filter(isInfant).length);
   const minors = Math.max(ages.length - teens, (o.children || 0) - teens, infants + ages.filter(isKid).length);
   return { adults: (o.adults || (minors || teens ? 1 : 0)) + teens, kids: minors - infants, infants };
+}
+
+/** Vorbelegung der Rückfrage: was die KI gelesen hat, sonst 2 Erwachsene (häufigster Fall bei Angeboten) */
+export function suggestParty(o: ImportedOffer): Party {
+  const p = partyOf(o);
+  if (o.adults) return p;
+  // ohne Erwachsene: 2 statt der 1 aus partyOf, Jugendliche ab 12 zählen weiter dazu
+  const teens = (o.childAges || []).filter(a => a >= AGE.adult).length;
+  return { ...p, adults: 2 + teens };
 }
 
 /** Anzahl in der Übersicht ändern (#474): bekannte Alter bleiben, soweit sie noch passen; gilt dann als sicher */
