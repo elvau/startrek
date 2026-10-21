@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t, type Key } from "../i18n/index.svelte";
+  import { arrow, t, type Key } from "../i18n/index.svelte";
   /*
    * Pauschalreise (#188, #460) an der Karte: Paketkarte „📦 Pauschalreise · inkl. ✈ Flug · 🚌 Transfer“, Teile „📦 im Paket“
    * mit Sprung zum Paketpreis; je Teil „einzeln suchen“, Vergleich Paket gegen einzeln, Paket aufbrechen bzw. wiederherstellen.
@@ -41,7 +41,7 @@
     {:else}
       <span class="pkgb-pill">📦 {t("pkg.inPkg")}</span>
       {#if canSearch}<button type="button" class="linkbtn pkgb-alone" onclick={stop(search)}>⇆ {t("pkg.searchAlone")}</button>{/if}
-      <button type="button" class="linkbtn pkgb-act pkgb-go" onclick={stop(() => showItem(info.main.id))}>{t("pkg.priceAt", { v: eur(price), ch: `${PART_ICON[info.main.cat]} ${t(`ch.${info.main.cat}.label` as Key)}` })} ›</button>
+      <button type="button" class="linkbtn pkgb-act pkgb-go" onclick={stop(() => showItem(info.main.id))}>{t("pkg.priceAt", { v: eur(price), ch: `${PART_ICON[info.main.cat]} ${t(`ch.${info.main.cat}.label` as Key)}` })} {arrow() === "←" ? "‹" : "›"}</button>
     {/if}
     {#if cmp}
       <div class="pkgb-cmp">

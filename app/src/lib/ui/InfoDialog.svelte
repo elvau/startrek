@@ -99,6 +99,7 @@
   .inf-e summary { cursor: pointer; list-style: none; }
   .inf-e summary::-webkit-details-marker { display: none; }
   .inf-e summary b::after { content: " ›"; color: var(--ink-2); font-weight: 400; }
+  :global([dir="rtl"]) .inf-e summary b::after { content: " ‹"; }
   .inf-e details[open] summary b::after { content: " ⌄"; }
   .inf-row b, .inf-e summary b { flex: 1; min-width: 0; font-weight: 600; }
   .inf-e p { margin: 0; padding: 0 12px 12px; color: var(--ink-2); font-size: 14px; }

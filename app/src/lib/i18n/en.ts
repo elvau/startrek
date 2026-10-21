@@ -681,7 +681,7 @@ export const en: Dict = {
   "help.fsFlex": "We look for the cheapest outbound and return day in the period. Returns that would get you home too late after landing, baggage and the trip home are left out.",
   "help.fsOneway": "We look for the cheapest day in the window, one way only. Search the onward or return flight separately later.",
   "help.fsRound": "Each leg is searched separately and combined to match the nights. The flights are separate tickets.",
-  "help.fsWho": "Search per family, so each family's own airports and trip to the airport apply.",
+  "help.fsWho": "Search per family, so each family's own airports and trip to the airport apply. Prices are for all selected together.",
   "help.fund": "Money coming in from outside (club fund, sponsor, grandparents). It lowers the share of the families it is meant for.",
   "help.groups": "Create the people and groups you often travel with once, then add them to any new trip with one tap.",
   "help.hh": "A family (household) travels and pays together. This holds the home town and how they get to the airport (car, taxi, train, carpool) and, if needed, their own arrival and departure days.",
