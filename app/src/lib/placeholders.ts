@@ -1,6 +1,7 @@
 /* Platzhalter mit Tiernamen („Familie Fuchs“) für schnelles Planen; nur in der Reise, nicht in Gruppen gespeichert */
 import { t, type Key } from "./i18n/index.svelte";
 import { uid, type Traveler } from "./model";
+import type { PartyKind } from "./agent/types";
 
 export const ANIMALS: [name: string, emoji: string][] = [
   ["Reh", "🦌"], ["Bär", "🐻"], ["Fuchs", "🦊"], ["Igel", "🦔"], ["Eule", "🦉"], ["Hase", "🐰"],
@@ -49,19 +50,28 @@ export function soloTraveler(animal = nextAnimal()): Traveler {
   return { id: uid(), name: a, household: a, kind: "adult", color: COLORS[0], placeholder: true };
 }
 
-/** Gruppe (Mannschaft, Verein): jede Person rechnet für sich, jede als eigenes Tier */
-export function groupTravelers(adults: number, kids = 0, rnd = Math.random): Traveler[] {
+/** Gruppe (Mannschaft, Verein): jede Person rechnet für sich, jede als eigenes Tier; first = Tier der ersten Person */
+export function groupTravelers(adults: number, kids = 0, rnd = Math.random, infants = 0, first?: string): Traveler[] {
   const out: Traveler[] = [];
   const used: string[] = [];
   const count: Record<string, number> = {};
-  for (let i = 0; i < adults + kids; i++) {
-    const id = nextAnimal(used, rnd), a = animalName(id);
+  for (let i = 0; i < adults + kids + infants; i++) {
+    const id = i === 0 && first ? first : nextAnimal(used, rnd), a = animalName(id);
     used.push(id);
     count[a] = (count[a] || 0) + 1;
     const name = count[a] > 1 ? `${a} ${count[a]}` : a;
-    out.push({ id: uid(), name, household: name, kind: i < adults ? "adult" : "child", color: COLORS[i % COLORS.length], placeholder: true });
+    out.push({ id: uid(), name, household: name, kind: i < adults ? "adult" : i < adults + kids ? "child" : "infant", color: COLORS[i % COLORS.length], placeholder: true });
   }
   return out;
+}
+
+/**
+ * Reisende ohne Namen (KI-Planer, Import): Familie oder Paar teilen sich ein Tier („Fuchs Erw. 1“, „Fuchs Kind 1“),
+ * eine Gruppe bekommt je Person ein eigenes. Ohne Angabe: mit Kindern oder allein eine Familie, sonst eine Gruppe.
+ */
+export function partyTravelers(p: { adults: number; kids: number; infants?: number; kind?: PartyKind }, animal = nextAnimal(), rnd = Math.random): Traveler[] {
+  const kind = p.kind ?? (p.kids || p.infants || p.adults <= 1 ? "family" : "group");
+  return kind === "group" ? groupTravelers(p.adults, p.kids, rnd, p.infants || 0, animal) : placeholderTravelers([{ animal, adults: p.adults, kids: p.kids, infants: p.infants }]);
 }
 
 /**

@@ -6,7 +6,7 @@
  */
 import { t } from "../i18n/index.svelte";
 import { AGE, uid, type Extra, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
-import { animalName, nextAnimal, placeholderTravelers } from "../placeholders";
+import { animalName, nextAnimal, partyTravelers } from "../placeholders";
 import type { ImportedOffer, ImportLeg } from "./ai";
 import { checks, partyOf } from "./review";
 
@@ -41,7 +41,7 @@ export function importParty(trip: Trip, o: ImportedOffer) {
   const party = partyOf(o);
   if (!party.adults && !party.kids && !party.infants) return;
   const animal = nextAnimal();
-  const list = placeholderTravelers([{ animal, adults: party.adults || 1, kids: party.kids, infants: party.infants }]);
+  const list = partyTravelers({ adults: party.adults || 1, kids: party.kids, infants: party.infants, kind: o.partyKind }, animal);
   // bekannte Alter: 2–11 an die Kinder, unter 2 an die Kleinkinder (ab 12 zählen sie zu den Erwachsenen)
   const ages = o.childAges || [];
   const older = ages.filter(a => a >= AGE.child && a < AGE.adult), young = ages.filter(a => a < AGE.child);
