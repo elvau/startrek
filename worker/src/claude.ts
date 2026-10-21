@@ -28,6 +28,8 @@ export const CLAUDE_MODEL = "claude-haiku-5-5";
 const API = "https://api.anthropic.com/v1/messages";
 /** überlastet (529), Anfragelimit (429), Serverfehler: kurz warten und noch einmal */
 const RETRY = new Set([429, 500, 502, 503, 529]);
+/** Meldungen von Anthropic bei leerem Guthaben oder erreichtem Ausgabenlimit */
+const BILLING = /credit balance|usage limit|spend(ing)? limit/i;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -119,7 +121,9 @@ export function claudeCaller(o: ClaudeOpts) {
         return fromClaude(data);
       }
       // 529 heißt bei Anthropic „überlastet“ wie 503 bei Google: gleiche Meldung, damit die App ihre eigene zeigt
-      const status = res.status === 529 ? 503 : res.status;
+      // Guthaben leer oder Ausgabenlimit erreicht: Anthropic meldet 400 (oder 402), als 402 weiter, damit Gemini einspringt
+      const billing = res.status === 402 || (res.status === 400 && BILLING.test(data?.error?.message || ""));
+      const status = res.status === 529 ? 503 : billing ? 402 : res.status;
       error = `KI-Fehler ${status} (${model})${data?.error?.message ? `: ${data.error.message}` : ""}`;
       if (!RETRY.has(res.status)) throw new Error(error);
     }

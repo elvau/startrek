@@ -115,7 +115,11 @@ export const flightTotal = (a: Pick<AgentTrip, "flight" | "bookings">) =>
   a.bookings?.length ? a.bookings.reduce((s, b) => s + bookingPrice(b), 0) : a.flight?.price || 0;
 
 /** Reisende, mit denen gesucht wurde (wenn die KI sie aus dem Wunsch oder der Antwort genommen hat) */
-export interface AgentParty { adults: number; childAges: number[]; infants: number }
+/** Wer zusammen reist: Familie (ein Haushalt), Paar oder Gruppe (Freunde, Mannschaft, Kollegen) */
+export const PARTY_KINDS = ["family", "couple", "group"] as const;
+export type PartyKind = (typeof PARTY_KINDS)[number];
+
+export interface AgentParty { adults: number; childAges: number[]; infants: number; kind?: PartyKind }
 
 /** ein fertiger Vorschlag; Flug und Unterkunft stammen immer aus echten Suchergebnissen */
 export interface AgentTrip {

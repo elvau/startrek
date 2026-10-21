@@ -151,6 +151,18 @@ describe("Anbieterwahl", () => {
     expect(res.candidates[0].content.parts[0].text).toBe("claude");
     expect(n.hosts).toEqual(["api.anthropic.com"]);
   });
+  it("Guthaben leer oder Ausgabenlimit erreicht: Gemini springt ein", async () => {
+    for (const [status, message] of [[400, "Your credit balance is too low to access the Anthropic API."], [400, "You have reached your specified API usage limits."], [402, "billing"]] as const) {
+      const hosts: string[] = [];
+      const f = (async (url: string, init?: RequestInit) => {
+        const host = new URL(url).host;
+        hosts.push(host);
+        return host === "api.anthropic.com" ? new Response(JSON.stringify({ error: { message } }), { status }) : gem(200)(url, init);
+      }) as typeof fetch;
+      expect(await kiCaller(env, { f, sleep: noWait })({})).toEqual({ from: "gemini" });
+      expect(hosts).toEqual(["api.anthropic.com", "generativelanguage.googleapis.com"]);
+    }
+  });
   it("Anfrage ungültig (400): kein Wechsel", async () => {
     const n = both(400, 200);
     await expect(kiCaller(env, { f: n.f })({})).rejects.toThrow("KI-Fehler 400");

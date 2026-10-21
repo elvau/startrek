@@ -17,7 +17,7 @@ import { parseSetupAi } from "../setup/ai";
 import { onSiteFees } from "../stays/fees";
 import { BOARDS as BOARD_KEYS, CAT_KEYS, STYLES, type CatKey, type Prefs } from "../model";
 import { campTotal, type CampStop } from "../road/camper";
-import { bookingPrice, editCount, type AgentContext, type AgentEdit, type AgentGroup, type AgentParty, type AgentRequest, type AgentResult, type AgentTrip, type FlightBooking } from "./types";
+import { bookingPrice, editCount, type AgentContext, type AgentEdit, type AgentGroup, type AgentParty, type PartyKind, PARTY_KINDS, type AgentRequest, type AgentResult, type AgentTrip, type FlightBooking } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface AgentDeps {
@@ -43,7 +43,8 @@ const codes = (description: string) => ({ type: "ARRAY", items: { type: "STRING"
 /** Reisende als Such-Parameter, nur wenn die App keine kennt (sonst gelten die eingetragenen) */
 const PARTY = {
   adults: { type: "INTEGER", description: "Number of adults (18+, up to 20), from the wish or the answer" },
-  childAges: { type: "ARRAY", items: { type: "INTEGER" }, description: "Ages of the children (0-17), one entry per child" }
+  childAges: { type: "ARRAY", items: { type: "INTEGER" }, description: "Ages of the children (0-17), one entry per child" },
+  partyKind: { type: "STRING", enum: [...PARTY_KINDS], description: "family = one household (parents with their children); couple = two partners; group = friends, team, club or colleagues, each person on their own. family or couple only if the wish says so" }
 };
 
 const ASK_USER = {
@@ -454,11 +455,13 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
   const knownGroups = new Map((r.groups || []).map(g => [g.key, g]));
   function takeParty(a: any) {
     if (r.travelersKnown !== false) return;
+    const kind = PARTY_KINDS.includes(a.partyKind) ? a.partyKind as PartyKind : party.kind;
+    if (kind) party = { ...party, kind };
     const adults = Number.isInteger(a.adults) ? Math.max(1, Math.min(20, a.adults)) : party.adults;
     const ages = Array.isArray(a.childAges) ? a.childAges.filter((x: unknown) => Number.isInteger(x) && (x as number) >= 0 && (x as number) <= 17).slice(0, 10) as number[] : null;
     if (!Number.isInteger(a.adults) && !ages) return;
     const all = ages ?? [...party.childAges, ...Array(party.infants).fill(1)];
-    party = { adults, childAges: all.filter(x => x >= 2), infants: Math.min(4, all.filter(x => x < 2).length) };
+    party = { adults, childAges: all.filter(x => x >= 2), infants: Math.min(4, all.filter(x => x < 2).length), ...(kind ? { kind } : {}) };
     partyFromAi = true;
   }
   /** Gruppengröße mit eigenem Sitz (Babys fliegen auf dem Schoß mit) */
