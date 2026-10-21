@@ -32,14 +32,14 @@
   import { agentPrefs, myHome, prefsFor } from "../prefs";
   import { agentChat, openChat } from "../agent/open.svelte";
   import { upcomingSchool } from "../holidaysApp.svelte";
-  import { bookingPrice, CONTEXTS, editCount, flightTotal, type AgentContext, type AgentEdit, type AgentTrip } from "../agent/types";
+  import { bookingPrice, CONTEXTS, editCount, flightTotal, type AgentContext, type AgentEdit, type AgentTrip, type StayMode } from "../agent/types";
   import { uid, type Prefs, type Trip } from "../model";
   import { commonTitle } from "../variants";
   import AiMark from "./AiMark.svelte";
 
   /** Nachricht; bei einer Rückfrage der KI mit Antworten zum Antippen */
   interface Msg {
-    me: boolean; text: string; retry?: string; trips?: AgentTrip[]; question?: boolean; options?: string[];
+    me: boolean; text: string; retry?: string; trips?: AgentTrip[]; question?: boolean; options?: string[]; split?: boolean;
     /** Änderungen an der offenen Reise: offen, übernommen, als Variante angelegt, rückgängig gemacht */
     edit?: AgentEdit; tripId?: string; state?: "open" | "applied" | "variant" | "undone"; snap?: string;
     /** Vorschläge von der Startseite aus angefragt: Übernehmen legt eine neue Reise an, auch wenn inzwischen eine offen ist */
@@ -52,6 +52,8 @@
   /** KI berät zur offenen Reise (statt neue Reisen zu planen) */
   const onTrip = $derived(!app.home && hasPlan(app.trip));
   let msgs = $state<Msg[]>([]);
+  /** Aufteilung auf mehrere Unterkünfte, nach der Rückfrage gewählt (#494); gilt für den Rest des Gesprächs */
+  let stayMode = $state<StayMode | undefined>();
   /** im Chip festgelegter Kontext ("" = die KI erkennt ihn) und der Kontext der letzten Antwort */
   let focus = $state<AgentContext | "">("");
   let lastCtx = $state<AgentContext | "">("");
@@ -126,16 +128,17 @@
       const pf = agentPrefs(prefsFor(app.home ? null : b, dir));
       // Schulferien laut Vorlieben als echte Termine (#163); ohne Such-Dienst bzw. Daten bleibt es bei der Region
       const school = pf?.holidays ? await upcomingSchool(pf.holidays, new Date().toISOString().slice(0, 10), i18n.lang) : [];
-      const res = await askAgent({ ...agentRequest(b, prompt, asked, pf, withTrip), ...(school.length ? { schoolHolidays: school } : {}), ...(focus ? { focus } : {}) }, ctrl.signal);
+      const res = await askAgent({ ...agentRequest(b, prompt, asked, pf, withTrip), ...(school.length ? { schoolHolidays: school } : {}), ...(focus ? { focus } : {}), ...(stayMode ? { stayMode } : {}) }, ctrl.signal);
       remaining = res.remaining ?? remaining;
       if (res.context) lastCtx = res.context;
-      const m: Msg = res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
+      const m: Msg = res.split ? { me: false, text: t("ai.stays.q"), question: true, options: [t("ai.stays.same"), t("ai.stays.mix")], split: true }
+        : res.question ? { me: false, text: res.question, question: true, options: res.options || [] }
         : res.edit ? { me: false, text: res.edit.reply, ...(editCount(res.edit) ? { edit: res.edit, tripId, state: "open" as const } : {}) }
         : res.trips.length ? { me: false, text: t("ai.here"), trips: res.trips, home }
         : res.reply || res.prefs ? { me: false, text: res.reply || t("ai.prefs.found") } : { me: false, text: t("ai.none") };
       if (res.prefs) { m.prefs = res.prefs; m.pstate = "open"; }
       msgs.push(m);
-      done(res.question ? "question" : res.edit || res.trips.length || res.reply || res.prefs ? "done" : "none");
+      done(res.question || res.split ? "question" : res.edit || res.trips.length || res.reply || res.prefs ? "done" : "none");
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       const r = (err as { remaining?: number }).remaining;
@@ -296,7 +299,7 @@
           {/if}
           {#if m.question && m.options?.length && i === msgs.length - 1 && !busy}
             <div class="chips ai-opts">
-              {#each m.options as o (o)}<button class="chip" onclick={() => send(o)}>{o}</button>{/each}
+              {#each m.options as o, k (o)}<button class="chip" onclick={() => { if (m.split) stayMode = k ? "mix" : "same"; void send(o); }}>{o}</button>{/each}
             </div>
           {/if}
           {#if m.prefs}
@@ -354,7 +357,11 @@
                   {#if pv.access > 0.5}<li>🚆 {t("ai.access")}<b>≈ {eur(pv.access)}</b></li>{/if}
                   {#if a.camper}<li class="ai-camp">⛺ {a.camper.stops.map(s => `${s.place} (${s.nights})`).join(" · ")}<b>≈ {eur(pv.camp)}</b></li>
                     {#if pv.rent > 0.5}<li>🚐 {t("camp.rent")}<b>≈ {eur(pv.rent)}</b></li>{/if}{/if}
-                  {#if a.stay}<li>🛏 {#if a.stay.url}<ExtLink href={a.stay.url} gate name={a.stay.sourceName}>{a.stay.name} ↗</ExtLink>{:else}{a.stay.name}{/if}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{(a.stay.board || a.board) ? ` · ${t(`board.${a.stay.board || a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
+                  {#if a.stays?.length}
+                    {#each a.stays as s, k (k)}
+                      <li>🛏 {#if s.offer.url}<ExtLink href={s.offer.url} gate name={s.offer.sourceName}>{s.offer.name} ↗</ExtLink>{:else}{s.offer.name}{/if} · {tn("n.persons", s.travelers)}<b>{eur(Math.round(s.offer.total))}</b></li>
+                    {/each}
+                  {:else if a.stay}<li>🛏 {#if a.stay.url}<ExtLink href={a.stay.url} gate name={a.stay.sourceName}>{a.stay.name} ↗</ExtLink>{:else}{a.stay.name}{/if}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{(a.stay.board || a.board) ? ` · ${t(`board.${a.stay.board || a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
                   {#if a.transport}<li>🚗 {a.transport.label}<b>≈ {eur(a.transport.eur)}</b></li>{/if}
                   {#if a.events?.length}<li class="ai-events">🎫 {a.events.map(e => `${e.name} · ${dayShort(e.start.slice(0, 10))}${e.start.length > 10 ? ` ${e.start.slice(11, 16)}` : ""}`).join(", ")}</li>{/if}
                   {#if a.extras?.length}<li>🎟 {a.extras.map(x => x.name).join(", ")}<b>≈ {eur(a.extras.reduce((s, x) => s + x.eur, 0))}</b></li>{/if}

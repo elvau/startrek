@@ -38,6 +38,8 @@ export interface AgentRequest {
   schoolHolidays?: { from: string; to: string; name: string }[];
   /** im Chat gewählter Kontext; fehlt: die KI erkennt ihn aus der Nachricht */
   focus?: AgentContext;
+  /** große Gruppe ohne Unterkunft für alle (#494): dieselbe Unterkunft mehrfach oder mehrere in der Nähe */
+  stayMode?: StayMode;
   /** Land der Person (ISO-2) für Preise der Unterkunftssuche (#464) */
   market?: string;
 }
@@ -119,6 +121,12 @@ export const flightTotal = (a: Pick<AgentTrip, "flight" | "bookings">) =>
 export const PARTY_KINDS = ["family", "couple", "group"] as const;
 export type PartyKind = (typeof PARTY_KINDS)[number];
 
+/** Aufteilung auf mehrere Unterkünfte (#494) */
+export const STAY_MODES = ["same", "mix"] as const;
+export type StayMode = (typeof STAY_MODES)[number];
+/** eine von mehreren Unterkünften: Angebot (gesucht für eine Teilgruppe) und wie viele Reisende dort schlafen */
+export interface StayBooking { offer: StayOffer; q: StayQuery; travelers: number }
+
 export interface AgentParty { adults: number; childAges: number[]; infants: number; kind?: PartyKind }
 
 /** ein fertiger Vorschlag; Flug und Unterkunft stammen immer aus echten Suchergebnissen */
@@ -135,6 +143,8 @@ export interface AgentTrip {
   stay?: StayOffer;
   /** Anfrage, mit der die Unterkunft gefunden wurde (für „Übernehmen“) */
   stayQuery?: StayQuery;
+  /** statt stay: mehrere Unterkünfte für Teilgruppen (#494), zusammen alle Reisenden */
+  stays?: StayBooking[];
   /** Flug + Unterkunft für alle, ohne Anreise zum Flughafen */
   total: number;
   /** mit diesen Reisenden gesucht (nur, wenn die App keine kannte) */
@@ -160,6 +170,8 @@ export interface AgentResult {
   /** Rückfrage der KI statt Vorschlägen, mit Antworten zum Antippen */
   question?: string;
   options?: string[];
+  /** Rückfrage nach der Aufteilung auf mehrere Unterkünfte (#494); Text und Antworten setzt die App */
+  split?: boolean;
   /** Antwort zur offenen Reise (statt Vorschlägen) */
   edit?: AgentEdit;
   /** kurze Antwort ohne Vorschläge (Frage beantwortet, Vorlieben bestätigt) */
@@ -208,7 +220,8 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
     prompt, lang, today, origins, adults: adults as number, childAges: childAges as number[], infants: infants as number,
     ...(trip.place || trip.from || trip.to ? { trip } : {}),
     originsKnown: o.originsKnown !== false, travelersKnown: o.travelersKnown !== false, asked: o.asked === true,
-    ...((CONTEXTS as readonly unknown[]).includes(o.focus) ? { focus: o.focus as AgentContext } : {})
+    ...((CONTEXTS as readonly unknown[]).includes(o.focus) ? { focus: o.focus as AgentContext } : {}),
+    ...((STAY_MODES as readonly unknown[]).includes(o.stayMode) ? { stayMode: o.stayMode as StayMode } : {})
   };
 }
 
