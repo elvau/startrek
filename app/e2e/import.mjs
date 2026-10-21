@@ -2,7 +2,8 @@
  * Reise per KI importieren (#457): „Neue Reise → Importieren“ ohne Anmeldung nur der Hinweis; angemeldet ein Link, den
  * der Such-Dienst nicht lesen kann (Bitte um Screenshot), dann Screenshot und CSV-Liste auslesen (Such-Dienst
  * nachgestellt), Übersicht mit Sicherheit je Angabe und Rückfrage (#458), Reise mit Flug, Unterkunft und Transfer
- * angelegt, Unsicheres als „bitte prüfen“ markiert.
+ * angelegt, Unsicheres als „bitte prüfen“ markiert. Nur Unterkunft, Flug „Brauchen wir nicht“: Anreise mit der Bahn
+ * aus dem Wohnort geschätzt (#475).
  * Start: npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/import.mjs"
  */
 import { chromium } from "playwright";
@@ -12,6 +13,8 @@ import { reloadHome } from "./nav.mjs";
 const URL = "http://127.0.0.1:4186/";
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
+// SHOTS=<Ordner>: Bildschirmfotos der Schritte zum Durchsehen
+const shot = async (loc, name) => { if (process.env.SHOTS) await loc.screenshot({ path: `${process.env.SHOTS}/${name}.png` }); };
 const until = async (fn, what, ms = 10000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
 const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" };
 // 1×1-Pixel-PNG
@@ -32,6 +35,13 @@ const DEAL = {
   confidence: { place: 1, dates: 1, people: 1, price: 1, flights: 1 }
 };
 
+// nur Unterkunft, kein Flug (#475)
+const PARK = {
+  kind: "stay", title: "Ferienpark an der Elbe", provider: "Ferienparks", place: "Hamburg", country: "DE", from: "2027-05-05", to: "2027-05-10",
+  adults: 2, price: { total: 500, currency: "EUR" }, stay: { name: "Ferienpark Elbe", price: 500 },
+  confidence: { place: 1, dates: 1, people: 1, price: 1, stay: 1 }
+};
+
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4186", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
 await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
@@ -46,6 +56,7 @@ try {
     const body = JSON.parse(r.request().postData());
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
     // aus dem Angebotsspeicher (#462): schon geprüft, gültig bis
+    if (body.text?.includes("Ferienpark")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: PARK, remaining: 6 }) });
     if (body.text?.includes("Flugdeal")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: DEAL, cached: true, until: "2026-11-03", remaining: 7 }) });
     if (body.url && !body.files.length) return r.fulfill({ status: 422, contentType: "application/json", headers: cors, body: JSON.stringify({ error: "Seite lässt sich nicht lesen", needScreenshot: true, remaining: 10 }) });
     return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: OFFER, remaining: 8 }) });
@@ -63,6 +74,7 @@ try {
   await p.locator(".login .test button").click();
   await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
   await dlg.locator(".imp-go").waitFor();
+  await shot(dlg, "0-eingabe");
   log("ohne Anmeldung nur Hinweis, nach der Anmeldung Import im selben Fenster");
 
   // 2. Link, den der Such-Dienst nicht lesen kann: Bitte um Screenshot, Ansicht springt auf Datei
@@ -95,12 +107,13 @@ try {
   const qs = await dlg.locator(".rev-q b").allTextContents();
   if (qs.join() !== "Ist Aufgabegepäck im Preis?") fail("Rückfragen: " + qs);
   if (!(await dlg.locator(".imp-create").isDisabled())) fail("Anlegen trotz offener Rückfrage möglich");
-  await dlg.locator(".rev-q .chip", { hasText: "Nein, nur Handgepäck" }).click();
+  await dlg.locator(".rev-q .chip", { hasText: "Nur Handgepäck" }).click();
   if (await dlg.locator(".rev-q").count()) fail("Rückfrage nach der Antwort noch da");
-  await dlg.locator(".rev-list li", { hasText: "Ziel" }).locator(".linkbtn").click();
+  await dlg.locator('.rev-list li[data-k="place"]').locator(".linkbtn").click();
   await dlg.locator(".rev-edit input").fill("El Arenal");
   await dlg.locator(".rev-edit input").press("Tab");
   await dlg.locator(".rev-list li", { hasText: "El Arenal" }).locator(".rev-lvl.high").waitFor();
+  await shot(dlg, "1-uebersicht");
   await dlg.locator(".imp-create").click();
   log("Übersicht: Stufen je Angabe, Rückfrage zum Gepäck beantwortet, Ziel korrigiert (danach sicher)");
 
@@ -111,6 +124,7 @@ try {
   await dlg.locator(".parts-list li", { hasText: "Mietwagen" }).locator(".chip", { hasText: "Schätzen" }).click();
   await dlg.locator(".parts-list li", { hasText: "Ausflüge" }).locator(".chip", { hasText: "Suchen" }).click();
   await dlg.locator(".parts", { hasText: "Danach öffnet sich die Suche: Ausflüge und Events." }).waitFor();
+  await shot(dlg, "2-was-fehlt");
   await dlg.locator(".imp-parts-go").click();
   await p.locator(".modal", { hasText: "Erlebnisse finden" }).waitFor();
   await p.locator(".modal", { hasText: "Erlebnisse finden" }).locator(".x").first().click();
@@ -174,10 +188,11 @@ try {
   if (!(await bagRow.textContent()).includes("80")) fail("Koffer-Spanne (2 × 40 €) fehlt: " + await bagRow.textContent());
   const wide = await cd.locator(".real-main b").textContent();
   await bagRow.locator(".real-pin").click();
-  await until(async () => (await bagRow.locator(".real-pin").textContent()).includes("günstig"), "Annahme auf günstig");
+  await until(async () => (await bagRow.locator(".real-pin").getAttribute("aria-label")).includes("günstig"), "Annahme auf günstig");
   if ((await cd.locator(".real-main b").textContent()) === wide) fail("Spanne nach dem Festlegen unverändert");
   if (await cd.locator(".real-board").count()) fail("Verpflegung bei reinem Flug angezeigt");
   await cd.locator(".real-hint").waitFor();
+  await shot(cd, "3-realitaetscheck");
   if (await p.evaluate(() => Object.keys(localStorage).some(k => k.startsWith("rk2-t:") && (localStorage.getItem(k) || "").includes("Barcelona im März")))) fail("Realitätscheck hat eine Reise angelegt");
   await cd.locator(".real-take").click();
   await until(async () => !(await cd.count()), "Fenster nach dem Übernehmen zu");
@@ -222,6 +237,48 @@ try {
   await mainCard.locator(".pkgb-pill", { hasText: "Pauschalreise" }).waitFor();
   await partCard.locator(".pkgb-pill", { hasText: "im Paket" }).waitFor();
   log("Paket: eigenes Angebot am Flug → teilweise ersetzt, aufgebrochen, wiederhergestellt");
+
+  // 10. nur Unterkunft (#475): Flug „Brauchen wir nicht“ fragt nach der Anreise (Auto vorgewählt), Wohnort, Bahn → Posten
+  await reloadHome(p);
+  await p.locator(".home-new").click();
+  const nd = p.locator(".modal", { hasText: "Neue Reise" });
+  await nd.locator(".nt-mode .chip", { hasText: "Importieren" }).click();
+  await nd.locator(".imp-src .chip", { hasText: "Text" }).click();
+  await nd.locator("textarea").fill("Ferienpark Hamburg, 5 Nächte");
+  await nd.locator(".imp-go").click();
+  await until(async () => (await nd.locator(".parts").count()) || (await nd.locator(".imp-create").count()), "Übersicht oder Was fehlt noch");
+  // Personen: ein Kind und ein Kleinkind dazu (#474); dafür von „Was fehlt noch?“ zurück zur Übersicht, falls übersprungen
+  if (await nd.locator(".parts").count()) await nd.locator(".parts .btn", { hasText: "Zurück" }).click();
+  // Rückfragen (z. B. Verpflegung) mit der ersten Antwort beantworten
+  while (await nd.locator(".rev-q").count()) await nd.locator(".rev-q").first().locator(".chip").first().click();
+  await nd.locator('.rev-list li[data-k="people"] .linkbtn').click();
+  await nd.locator(".rev-cnt", { hasText: "Kinder (2–11)" }).locator("button", { hasText: "+" }).click();
+  await nd.locator(".rev-cnt", { hasText: "Kleinkinder (unter 2)" }).locator("button", { hasText: "+" }).click();
+  await nd.locator('.rev-list li[data-k="people"]', { hasText: "4 Personen" }).waitFor();
+  await shot(nd, "5-personen");
+  await nd.locator(".imp-create").click();
+  const flightRow = nd.locator(".parts-list li", { hasText: "Flug" }).first();
+  await flightRow.locator(".chip", { hasText: "Brauchen wir nicht" }).click();
+  const arr = nd.locator(".parts-list li", { hasText: "Anreise ohne Flug" });
+  await arr.locator(".chip.on", { hasText: "Auto" }).waitFor();
+  await arr.locator(".imp-home .home-plz").fill("50667");
+  await until(async () => (await arr.locator(".imp-home .home-plz").inputValue()).includes("Köln"), "Wohnort Köln");
+  await arr.locator(".chip", { hasText: "Bahn" }).click();
+  await shot(nd, "4-anreise");
+  await nd.locator(".imp-parts-go").click();
+  await until(async () => !(await nd.count()), "Fenster geschlossen");
+  let park = null;
+  await until(async () => {
+    park = await p.evaluate(() => JSON.parse(localStorage.getItem(`rk2-t:${localStorage.getItem("rk2-current")}`) || "null"));
+    return park?.items?.some(i => i.arrival);
+  }, "Anreise-Posten gespeichert");
+  {
+    const a = park.items.find(i => i.arrival);
+    if (a.name !== "Anreise mit der Bahn" || !a.options[0].estimate || !(a.options[0].price.adult > 0)) fail("Anreise-Posten: " + JSON.stringify(a));
+    if (park.items.some(i => i.cat === "flights")) fail("Flug angelegt, obwohl nicht gebraucht");
+    if (park.travelers.map(x => x.kind).join() !== "adult,adult,child,infant") fail("Personen: " + park.travelers.map(x => x.kind));
+  }
+  log("Nur Unterkunft: Kind und Kleinkind ergänzt, Flug nicht nötig, Anreise mit der Bahn aus dem Wohnort geschätzt");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Import ok");

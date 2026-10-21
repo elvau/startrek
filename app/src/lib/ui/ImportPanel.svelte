@@ -5,6 +5,7 @@
    * auslesen lassen, daraus eine Reise anlegen. Über „Neue Reise“ entsteht immer eine Reise. Nur mit Anmeldung.
    * Realitätscheck (#461, check): dieselben Schritte, danach nur der Bericht an einem Entwurf; „Als Reise übernehmen“
    * legt die Reise erst dann an. Paket (#188, into): in die offene Reise, ohne eine neue anzulegen.
+   * Ohne Flug (#475): Anreise als Posten, sobald Wohnort und Ziel (Ortsdaten) bekannt sind.
    */
   import { app, draftTrip, startTrip } from "../store.svelte";
   import RealityReport from "./RealityReport.svelte";
@@ -12,16 +13,23 @@
   import { IMPORT_FILES_MAX } from "../import/ai";
   import { ACCEPT, prepare, type Prepared } from "../import/files";
   import { askImport, ImportError } from "../import/app";
-  import { importToTrip } from "../import/apply";
+  import { importParty, importToTrip } from "../import/apply";
   import { reviewOf } from "../import/review";
   import type { ImportedOffer } from "../import/ai";
   import ImportReview from "./ImportReview.svelte";
   import ImportParts from "./ImportParts.svelte";
-  import { applyParts, defaultChoices, hasMissing, type Choice, type PartId } from "../import/parts";
+  import { applyArrival, applyParts, arrivalOf, defaultChoices, hasMissing, type Choices } from "../import/parts";
+  import { homeOf, type Spot } from "../ground";
+  import { ensureGeo, geo } from "../geo/geo.svelte";
+  import { ccOf, findCity } from "../geo/places";
+  import { withHome } from "../plz";
+  import type { Home } from "../home";
+  import { hhKey, isActive } from "../model";
   import { openFlightSearch } from "../flights/open.svelte";
   import { openStaySearch } from "../stays/open.svelte";
   import { openExplore } from "../activities/open.svelte";
   import type { Traveler, Trip } from "../model";
+  import { SRC_ICON } from "../import/icons";
 
   let { onclose, travelers, peopleKnown = false, check = false, into = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
   // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
@@ -32,14 +40,22 @@
   let stage = $state<"review" | "parts" | "report">("review");
   // Realitätscheck: Entwurf der Reise, nicht gespeichert
   let draft = $state<Trip | null>(null);
-  let choices = $state<Partial<Record<PartId, Choice>>>({});
+  let choices = $state<Choices>({});
+  // Wohnort für die Anreise ohne Flug, wenn die neue Reise keinen kennt
+  let home = $state<Home | null>(null);
+  const askHome = $derived.by(() => {
+    if (!found || !arrivalOf(choices)) return false;
+    const d = draftTrip(travelers?.());
+    importParty(d, found);
+    return !homeOf(d);
+  });
   type Src = "file" | "text" | "link" | "paste";
   const SRCS: Src[] = ["file", "text", "link", "paste"];
   let src = $state<Src>("file");
   let prepared = $state<Prepared[]>([]);
   let text = $state(""), url = $state("");
   let notes = $state<string[]>([]);
-  let busy = $state(false), err = $state(""), over = $state(false);
+  let busy = $state(false), err = $state(""), retryable = $state(false), over = $state(false);
   let ctrl: AbortController | undefined;
   const ready = $derived(prepared.length > 0 || text.trim().length >= 3 || /^https?:\/\/\S+\.\S+/i.test(url.trim()));
 
@@ -91,7 +107,7 @@
 
   async function go() {
     if (!ready || busy) return;
-    busy = true; err = "";
+    busy = true; err = ""; retryable = false;
     ctrl = new AbortController();
     try {
       const res = await askImport({ prepared, text, url }, ctrl.signal);
@@ -106,6 +122,7 @@
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       err = (e as Error).message;
+      retryable = e instanceof ImportError && e.overloaded;
       if (e instanceof ImportError && e.needScreenshot) src = "file";
     } finally { busy = false; }
   }
@@ -122,6 +139,7 @@
     startTrip(travelers?.());
     importToTrip(app.trip, found);
     const open = check ? [] : applyParts(app.trip, choices);
+    if (!check && arrivalOf(choices)) void addArrival(app.trip, choices, home);
     onclose();
     // erste gewählte Suche öffnen, vorbelegt aus der Reise (Ziel, Daten, Personen); erst nach dem Wechsel der Reise,
     // der offene Suchen zuklappt
@@ -130,6 +148,15 @@
       else if (open[0] === "stay") openStaySearch();
       else if (open[0] === "fun") openExplore("tours");
     });
+  }
+  /** Anreise ohne Flug: Ortsdaten laden, dann als Posten (nur, wenn die Reise noch offen ist) */
+  async function addArrival(trip: Trip, c: Choices, h: Home | null) {
+    if (h) trip.households = withHome(trip.households, trip.travelers.filter(isActive).map(hhKey), h);
+    try { await ensureGeo(trip); } catch { return; }
+    if (app.trip.id !== trip.id) return;
+    const city = trip.place ? findCity(geo, trip.place, ccOf(geo, trip.country)) || findCity(geo, trip.place) : null;
+    const dest: Spot | null = city ? { name: trip.place, lat: city.lat, lon: city.lon, cc: city.cc } : null;
+    applyArrival(app.trip, c, homeOf(app.trip), dest);
   }
   $effect(() => () => ctrl?.abort());
 </script>
@@ -141,19 +168,19 @@
   {:else if draft && stage === "report"}
     <RealityReport trip={draft} preview ontake={create} />
   {:else if found && stage === "parts"}
-    <ImportParts offer={found} bind:choices oncreate={create} onback={() => (stage = "review")} />
+    <ImportParts offer={found} bind:choices bind:home {askHome} oncreate={create} onback={() => (stage = "review")} />
   {:else if found}
     <ImportReview bind:offer={found} {cachedUntil} peopleKnown={peopleKnown || into} oncreate={next} onback={() => (found = null)} />
   {:else}
     <p class="imp-lead">{t(check ? "real.lead" : "imp.lead")}</p>
     <div class="chips imp-src">
-      {#each SRCS as s (s)}<button type="button" class="chip" class:on={src === s} aria-pressed={src === s} onclick={() => (s === "paste" ? void paste() : (src = s))}>{t(`imp.src.${s}` as Key)}</button>{/each}
+      {#each SRCS as s (s)}<button type="button" class="chip" class:on={src === s} aria-pressed={src === s} onclick={() => (s === "paste" ? void paste() : (src = s))}><span aria-hidden="true">{SRC_ICON[s]}</span> {t(`imp.src.${s}` as Key)}</button>{/each}
     </div>
     {#if src === "file" || src === "paste"}
-      <label class="imp-drop" class:over ondragover={e => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={e => { e.preventDefault(); over = false; if (e.dataTransfer?.files.length) void add(e.dataTransfer.files); }}>
+      <label class="imp-drop" title={t("imp.pickHint")} class:over ondragover={e => { e.preventDefault(); over = true; }} ondragleave={() => (over = false)} ondrop={e => { e.preventDefault(); over = false; if (e.dataTransfer?.files.length) void add(e.dataTransfer.files); }}>
+        <span class="imp-ics" aria-hidden="true">📸 📄 🔗</span>
         <b>{t("imp.pick")}</b>
-        <span class="muted small">{t("imp.pickHint")}</span>
-        <input type="file" multiple accept={ACCEPT} onchange={e => { const f = e.currentTarget.files; if (f) void add(f); e.currentTarget.value = ""; }} />
+        <input type="file" multiple accept={ACCEPT} aria-label={`${t("imp.pick")}: ${t("imp.pickHint")}`} onchange={e => { const f = e.currentTarget.files; if (f) void add(f); e.currentTarget.value = ""; }} />
       </label>
     {:else if src === "text"}
       <label class="f">{t("imp.textLabel")}<textarea rows="7" bind:value={text} placeholder={t("imp.textPh")}></textarea></label>
@@ -167,8 +194,8 @@
       </ul>
     {/if}
     {#each notes as n (n)}<p class="small imp-note" role="status">{n}</p>{/each}
-    <p class="small imp-priv">🔒 {t("imp.privacy")}</p>
-    {#if err}<p class="err small" role="alert">{err}</p>{/if}
+    <details class="small imp-priv"><summary><span aria-hidden="true">🔒</span> {t("imp.privacyT")}</summary><p>{t("imp.privacy")}</p></details>
+    {#if err}<p class="err small" role="alert">{err}{#if retryable} <button type="button" class="btn small imp-retry" disabled={busy} onclick={go}>{t("imp.retry")}</button>{/if}</p>{/if}
     <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
   {/if}
 </div>
@@ -185,5 +212,8 @@
   .imp-files span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .imp-files .x { width: 32px; height: 32px; border: 0; background: transparent; font-size: 18px; color: var(--ink-2); }
   .imp-note { margin: 0; color: var(--warn); }
-  .imp-priv { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--paper-2); color: var(--ink-2); }
+  .imp-ics { font-size: 26px; letter-spacing: 4px; }
+  .imp-priv { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--paper-2); color: var(--ink-2); }
+  .imp-priv summary { cursor: pointer; font-weight: 600; min-height: 28px; display: flex; align-items: center; gap: 6px; }
+  .imp-priv p { margin: 6px 0 0; }
 </style>

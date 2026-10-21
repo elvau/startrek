@@ -1,8 +1,9 @@
 /* Admin-Ansicht in der App: wer Admin ist, entscheidet der Such-Dienst (ADMIN_UIDS); einmal je Anmeldung gefragt */
-import { i18n, t } from "../i18n/index.svelte";
+import { t } from "../i18n/index.svelte";
 import { FLIGHTS_URL } from "../flights/app";
 import { idToken } from "../cloud/cloud.svelte";
 import type { UsageReport } from "./usage";
+import { serverError } from "../neterror";
 
 export const admin = $state<{ uid: string; is: boolean; open: boolean }>({ uid: "", is: false, open: false });
 
@@ -12,7 +13,7 @@ export async function fetchUsage(): Promise<{ status: number; report?: UsageRepo
   if (!token) return { status: 401 };
   const res = await fetch(`${FLIGHTS_URL}/admin/usage`, { headers: { authorization: `Bearer ${token}` } });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) return { status: res.status, error: i18n.lang === "de" && data.error ? data.error : t("search.status", { s: res.status }) };
+  if (!res.ok) return { status: res.status, error: serverError(data, res.status) };
   return { status: res.status, report: data as UsageReport };
 }
 

@@ -3,7 +3,7 @@
  * 0.6 = abgeleitet, 0.3 = geraten). Niedrig → kurze Rückfrage vor dem Anlegen (Antworten zum Antippen, „Weiß nicht“
  * erlaubt), mittel → anlegen und Posten als „bitte prüfen“ markieren, alles hoch → direkt anlegen.
  */
-import type { Board } from "../model";
+import { AGE, type Board } from "../model";
 import type { ConfKey, ImportedOffer } from "./ai";
 
 export type Level = "high" | "mid" | "low";
@@ -79,4 +79,27 @@ export function checks(o: ImportedOffer): { flights: boolean; stay: boolean; tra
     stay: unsure("stay", "board", "dates") || ((pkg || !o.flights) && unsure("price")),
     transfer: unsure("transfer")
   };
+}
+
+export interface Party { adults: number; kids: number; infants: number }
+/** Flug-Regel (#483): Kleinkind unter 2, Kind 2–11, ab 12 zählt man als Erwachsener */
+const isInfant = (a: number) => a < AGE.child, isKid = (a: number) => a >= AGE.child && a < AGE.adult;
+
+/** Erwachsene, Kinder und Kleinkinder laut Angebot (Alter, nur Anzahl oder in der Übersicht eingetragen) */
+export function partyOf(o: ImportedOffer): Party {
+  const ages = o.childAges || [];
+  const teens = ages.filter(a => a >= AGE.adult).length;
+  const infants = Math.max(o.infants || 0, ages.filter(isInfant).length);
+  const minors = Math.max(ages.length - teens, (o.children || 0) - teens, infants + ages.filter(isKid).length);
+  return { adults: (o.adults || (minors || teens ? 1 : 0)) + teens, kids: minors - infants, infants };
+}
+
+/** Anzahl in der Übersicht ändern (#474): bekannte Alter bleiben, soweit sie noch passen; gilt dann als sicher */
+export function setParty(o: ImportedOffer, p: Party): ImportedOffer {
+  const ages = o.childAges || [];
+  const childAges = [...ages.filter(isKid).slice(0, p.kids), ...ages.filter(isInfant).slice(0, p.infants)];
+  const out: ImportedOffer = { ...o, adults: Math.max(1, p.adults), children: p.kids + p.infants, infants: p.infants, confidence: { ...(o.confidence || {}), people: 1 } };
+  if (childAges.length) out.childAges = childAges; else delete out.childAges;
+  if (!p.kids && !p.infants) { delete out.children; delete out.infants; }
+  return out;
 }

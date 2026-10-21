@@ -390,7 +390,7 @@ html:has(.modal-bg){overflow:hidden}
   .top-more{display:block}
   .top-in .nav{display:none}
   .top-in .tmenu.compact .tm-btn{max-width:none}
-  .top-in .tmenu{flex:1}
+  .top-in .tmenu,.top-in .tmenu.compact{flex:1 1 0}
 }
 :root[data-theme="dark"] .who-art{filter:brightness(.85)}
 /* Flugsuche */

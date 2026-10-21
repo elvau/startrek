@@ -7,6 +7,7 @@
   import StatusBadge from "./StatusBadge.svelte";
   import PartnerLinks from "./PartnerLinks.svelte";
   import { partnersOf } from "../partners";
+  import { parkQuery } from "../partners/park";
   import { focusHousehold } from "./hhFocus.svelte";
   import { tourHead } from "./flightHead";
   import { effectOf, flightFacts, letter } from "../stays/compare";
@@ -73,7 +74,7 @@
             {:else}<button class="bp-acc-l" title={t("fl.accessEdit")} onclick={e => toAccess(l.hh, e)}>🚗 {l.hh}: {l.a.info} · <b class="num">{eur(l.a.cost)}</b> <i aria-hidden="true">›</i></button>{/if}
           {/each}{/if}
           <!-- Parken nur geschätzt: Anbieter zum Vergleichen und Buchen (#419) -->
-          {#if !access.readonly && r.access.lines.some(l => l.a.park && !l.a.parkBooked)}<span class="bp-park">{t("fl.parkCompare")} <PartnerLinks ids={partnersOf("parking")} /></span>{/if}
+          {#if !access.readonly && r.access.lines.some(l => l.a.park && !l.a.parkBooked)}<span class="bp-park">{t("fl.parkCompare")} <PartnerLinks ids={partnersOf("parking")} q={parkQuery(app.trip, item, out, back)} /></span>{/if}
         </div>
       {/if}
       <div class="bp-legs">

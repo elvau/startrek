@@ -2,7 +2,7 @@
  * Konto einrichten (#160): Führerschein als Stufe ↔ ungefähres Jahr, Hinweise für den Mietwagen aus Führerschein und
  * Kreditkarte, Entwurf des Assistenten aus dem Konto lesen und wieder hineinschreiben. Ohne Svelte-Zustand, gut testbar.
  */
-import type { Directory, Item, Person, Prefs, TravelDoc, Traveler, Trip } from "../model";
+import { DRIVER_AGE, type Directory, type Item, type Person, type Prefs, type TravelDoc, type Traveler, type Trip } from "../model";
 import { isActive, uid } from "../model";
 import { personAge } from "../people";
 import type { LicenseBucket, SetupAi } from "./ai";
@@ -32,7 +32,7 @@ export const LICENSE_MIN_YEARS = 1;
  */
 export function rentalPeople(it: Item, trip: Trip, people: Person[], now = new Date()): { none: Traveler[]; fresh: Traveler[]; noCard: boolean } {
   const ids = it.participants?.length ? new Set(it.participants) : null;
-  const adult = trip.settings?.adultAge ?? 18;
+  const adult = DRIVER_AGE;
   const rows = trip.travelers.filter(t => isActive(t) && (!ids || ids.has(t.id)) && t.personId && (t.age == null || Number(t.age) >= adult))
     .map(t => ({ t, p: people.find(p => p.id === t.personId) })).filter((r): r is { t: Traveler; p: Person } => !!r.p);
   const none = rows.filter(r => licenseBucket(r.p.license, now) === "none").map(r => r.t);

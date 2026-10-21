@@ -4,11 +4,16 @@
    * Import (#458): was die KI erkannt hat, mit Sicherheit je Angabe (hoch, mittel, niedrig; nicht nur über die Farbe),
    * kurze Rückfragen zu Unsicherem (Antworten zum Antippen, „Weiß nicht“ erlaubt) und Ziel, Zeitraum, Personen und Preis
    * zum Korrigieren. Flug und Unterkunft ändert man danach in der Reise; Unsicheres ist dort als „bitte prüfen“ markiert.
+   * Kompakt (#468): Angaben mit Emoji (Bezeichnung als aria-label), Legende hinter „?“, Antworten mit Emoji.
    */
+  import Help from "./Help.svelte";
+  import { ANSWER_ICON, BOARD_ICON, FIELD_ICON } from "../import/icons";
+  import type { Board } from "../model";
   import { money } from "../calc";
   import { dateDE, range } from "../format";
   import type { ConfKey, ImportedOffer } from "../import/ai";
-  import { ANSWERS, DUNNO, answer, reviewOf, type Level, type QuestionId } from "../import/review";
+  import { ANSWERS, DUNNO, answer, partyOf, reviewOf, setParty, type Level, type Party, type QuestionId } from "../import/review";
+  import { clampCount } from "../count";
 
   let { offer = $bindable(), peopleKnown = false, cachedUntil = "", oncreate, onback }: { offer: ImportedOffer; peopleKnown?: boolean; cachedUntil?: string; oncreate: () => void; onback: () => void } = $props();
   let answered = $state<QuestionId[]>([]);
@@ -19,6 +24,8 @@
   function pick(id: QuestionId, v: string) { offer = answer(offer, id, v); answered = [...answered, id]; }
   const ansLabel = (id: QuestionId, v: string) =>
     v === DUNNO ? t("imp.a.dunno") : id === "people" ? v : id === "board" ? t(`board.${v}` as Key) : t(`imp.a.${id}.${v}` as Key);
+  const ansIcon = (id: QuestionId, v: string) =>
+    v === DUNNO ? ANSWER_ICON.dunno : id === "people" ? "👥" : id === "board" ? BOARD_ICON[v as Board] : ANSWER_ICON[`${id}.${v}`] || "";
 
   const cur = $derived(offer.price?.currency || "EUR");
   function value(k: ConfKey): string {
@@ -26,7 +33,11 @@
     switch (k) {
       case "place": return [o.place, o.country].filter(Boolean).join(", ");
       case "dates": return o.from && o.to ? range(o.from, o.to) : o.from || o.to || "";
-      case "people": return o.travelers?.length ? `${tn("n.persons", o.travelers.length)} · ${t("imp.rev.fromList")}` : tn("n.persons", (o.adults || 0) + (o.childAges?.length || 0));
+      case "people": {
+        if (o.travelers?.length) return `${tn("n.persons", o.travelers.length)} · ${t("imp.rev.fromList")}`;
+        const p = partyOf(o);
+        return [tn("n.persons", p.adults + p.kids + p.infants), p.kids || p.infants ? [`${p.adults} ${t("age.adultShort")}`, p.kids && tn("n.kids", p.kids), p.infants && `${p.infants} ${t("age.infantShort")}`].filter(Boolean).join(", ") : ""].filter(Boolean).join(" · ");
+      }
       case "price": return [o.price?.total ? t("imp.rev.total", { v: money(o.price.total, cur) }) : "", o.price?.perPerson ? t("imp.rev.pp", { v: money(o.price.perPerson, cur) }) : ""].filter(Boolean).join(" · ");
       case "flights": { const l = o.flights!.legs; return [l.map(x => `${x.from} → ${x.to}`).join(", "), l[0].carrier].filter(Boolean).join(" · "); }
       case "stay": return [o.stay!.name, o.stay!.stars ? "★".repeat(o.stay!.stars) : ""].filter(Boolean).join(" ");
@@ -36,6 +47,10 @@
     }
   }
   const editable = (k: ConfKey) => k === "place" || k === "dates" || k === "people" || k === "price";
+  // Personen (#474): Erwachsene, Kinder, Kleinkinder bis 2 Jahre, je − Zahl +
+  const party = $derived(partyOf(offer));
+  const COUNTS: { k: keyof Party; l: Key; min: number }[] = [{ k: "adults", l: "imp.rev.adults", min: 1 }, { k: "kids", l: "imp.rev.kids", min: 0 }, { k: "infants", l: "imp.rev.infants", min: 0 }];
+  const setCount = (k: keyof Party, v: number) => { offer = setParty(offer, { ...party, [k]: Math.max(k === "adults" ? 1 : 0, Math.min(k === "adults" ? 60 : 30, v)) }); };
   // korrigiert gilt als sicher
   function sure(k: ConfKey) { offer.confidence = { ...(offer.confidence || {}), [k]: 1 }; }
 </script>
@@ -55,17 +70,18 @@
     {#each r.questions as q (q)}
       <div class="rev-q" role="group" aria-label={t(`imp.q.${q}` as Key)}>
         <b>{t(`imp.q.${q}` as Key)}</b>
-        <div class="chips">{#each ANSWERS[q] as v (v)}<button type="button" class="chip" onclick={() => pick(q, v)}>{ansLabel(q, v)}</button>{/each}</div>
+        <div class="chips">{#each ANSWERS[q] as v (v)}<button type="button" class="chip" onclick={() => pick(q, v)}><span aria-hidden="true">{ansIcon(q, v)}</span> {ansLabel(q, v)}</button>{/each}</div>
       </div>
     {/each}
   {/if}
 
-  <h4 class="rev-h">{t("imp.rev.fields")}</h4>
+  <h4 class="rev-h">{t("imp.rev.fields")} <Help k="impLvl" /></h4>
   <ul class="rev-list">
     {#each r.fields as f (f.key)}
-      <li>
+      <li data-k={f.key}>
         <div class="rev-row">
-          <span class="rev-l"><small>{t(`imp.f.${f.key}` as Key)}</small><span>{value(f.key)}</span></span>
+          <span class="rev-ic" role="img" aria-label={t(`imp.f.${f.key}` as Key)} title={t(`imp.f.${f.key}` as Key)}>{FIELD_ICON[f.key]}</span>
+          <span class="rev-l">{value(f.key)}</span>
           <span class="rev-lvl {f.level}"><i aria-hidden="true"></i>{t(LVL[f.level])}</span>
           {#if editable(f.key)}<button type="button" class="linkbtn" aria-expanded={editing === f.key} onclick={() => (editing = editing === f.key ? null : f.key)}>{t("imp.rev.edit")}</button>{/if}
         </div>
@@ -75,7 +91,17 @@
             {:else if f.key === "dates"}
               <label class="f">{t("imp.rev.from")}<input type="date" value={offer.from || ""} onchange={e => { offer.from = e.currentTarget.value || undefined; sure("dates"); }} /></label>
               <label class="f">{t("imp.rev.to")}<input type="date" value={offer.to || ""} onchange={e => { offer.to = e.currentTarget.value || undefined; sure("dates"); }} /></label>
-            {:else if f.key === "people"}<label class="f">{t("imp.rev.adults")}<input type="number" min="1" max="60" value={offer.adults || offer.travelers?.length || 1} disabled={!!offer.travelers?.length} onchange={e => { offer.adults = Math.max(1, Math.min(60, Math.round(Number(e.currentTarget.value) || 1))); sure("people"); }} /></label>
+            {:else if f.key === "people"}
+              {#each COUNTS as c (c.k)}
+                <div class="f rev-cnt">{t(c.l)}
+                  <span class="qf-step" role="group" aria-label={t(c.l)}>
+                    <button type="button" disabled={!!offer.travelers?.length || party[c.k] <= c.min} onclick={() => setCount(c.k, party[c.k] - 1)} aria-label={t("step.less", { what: t(c.l) })}>−</button>
+                    <input class="qf-n" type="number" inputmode="numeric" min={c.min} max="60" value={party[c.k]} disabled={!!offer.travelers?.length} aria-label={t(c.l)}
+                      onchange={e => { setCount(c.k, clampCount(e.currentTarget.value, c.min, 60, party[c.k])); e.currentTarget.value = String(party[c.k]); }} />
+                    <button type="button" disabled={!!offer.travelers?.length} onclick={() => setCount(c.k, party[c.k] + 1)} aria-label={t("step.more", { what: t(c.l) })}>+</button>
+                  </span>
+                </div>
+              {/each}
             {:else if f.key === "price"}<label class="f">{t("imp.rev.totalLabel", { c: cur })}<input type="number" min="0" step="1" value={offer.price?.total ?? ""} onchange={e => { const v = Number(e.currentTarget.value); offer.price = { ...(offer.price || {}), total: v > 0 ? v : undefined }; sure("price"); }} /></label>
             {/if}
           </div>
@@ -83,7 +109,7 @@
       </li>
     {/each}
   </ul>
-  <p class="muted small">{t("imp.rev.legend")} {t("imp.rev.later")}</p>
+  <p class="muted small">{t("imp.rev.later")}</p>
   <div class="ed-foot"><button type="button" class="btn" onclick={onback}>{t("imp.rev.back")}</button><button type="button" class="btn primary imp-create" disabled={r.questions.length > 0} onclick={oncreate}>{t("imp.rev.create")}</button></div>
 </div>
 
@@ -100,9 +126,8 @@
   .rev-list li { border-top: 1px solid var(--line); padding: 8px 0; }
   .rev-list li:first-child { border-top: 0; }
   .rev-row { display: flex; align-items: center; gap: 10px; }
-  .rev-l { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-  .rev-l small { color: var(--ink-2); font-size: 12px; }
-  .rev-l span { font-weight: 600; overflow-wrap: anywhere; }
+  .rev-ic { flex: none; width: 28px; text-align: center; font-size: 18px; }
+  .rev-l { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
   .rev-lvl { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
   .rev-lvl i { width: 8px; height: 8px; border-radius: 50%; border: 2px solid currentColor; box-sizing: border-box; }
   .rev-lvl.high { background: var(--good-soft); color: var(--good); }
@@ -111,4 +136,5 @@
   .rev-lvl.mid i { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
   .rev-lvl.low { background: var(--warn-soft); color: var(--warn); }
   .rev-edit { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 8px; }
+  .rev-cnt .qf-step { width: 104px; grid-template-rows: auto; }
 </style>
