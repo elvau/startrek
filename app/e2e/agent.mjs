@@ -168,8 +168,8 @@ try {
   if (!a.body.prompt.includes("Wochenende") || a.body.lang !== "de" || a.body.adults !== 1 || !a.body.origins.length || !/^\d{4}-\d{2}-\d{2}$/.test(a.body.today)) fail("Anfrage falsch: " + JSON.stringify(a.body));
   if ((await c.locator(".ai-card").count()) !== 2) fail("nicht zwei Vorschläge");
   if (!(await c.locator(".ai-foot", { hasText: "noch 4 Anfragen heute" }).count())) fail("verbleibende Anfragen fehlen");
-  const card = c.locator(".ai-card", { hasText: "Sonne in Palma" }).first();
-  if (await card.locator('a[href="https://booking.com/h/1"]', { hasText: "Casa Palma" }).count() !== 1 || await card.locator('a[href="https://kiwi.com/u/x1"]').count() !== 1) fail("Links zu Unterkunft und Flug fehlen im Vorschlag");
+  const palma = c.locator(".ai-card", { hasText: "Sonne in Palma" }).first();
+  if (await palma.locator('a[href="https://booking.com/h/1"]', { hasText: "Casa Palma" }).count() !== 1 || await palma.locator('a[href="https://kiwi.com/u/x1"]').count() !== 1) fail("Links zu Unterkunft und Flug fehlen im Vorschlag");
   log("Wunsch per Beispiel, Anfrage mit Anmeldung und Reisenden, zwei Vorschläge mit Links, 4 Anfragen übrig");
 
   // nachschärfen: der frühere Wunsch geht als Zusammenhang mit
