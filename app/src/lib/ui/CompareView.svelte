@@ -202,7 +202,7 @@
   .cv-var.win { background: color-mix(in srgb, var(--good) 8%, transparent); }
   .cv-name { display: flex; align-items: center; gap: 6px; font-size: 15px; }
   .cv-total { font-size: 22px; font-weight: 800; margin-top: 4px; }
-  .cv-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .cv-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
   .cv-more-wrap { position: relative; }
   .cv-pop { position: absolute; z-index: 5; top: 100%; inset-inline-start: 0; display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 10px 30px -12px rgba(14, 36, 56, .4); white-space: nowrap; }
   .cv-pop .linkbtn { padding: 0; text-align: start; }
