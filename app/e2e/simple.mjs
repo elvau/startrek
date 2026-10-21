@@ -74,6 +74,13 @@ try {
     await card.screenshot({ path: `${process.env.SHOTS}/sl-m.png` });
     await p.setViewportSize({ width: 1280, height: 900 });
   }
+  // Kopfleiste am Handy (#473): bei schmalen Breiten liegen alle Symbole in der Leiste, die Reise-Auswahl gibt Platz ab
+  for (const w of [320, 406]) {
+    await p.setViewportSize({ width: w, height: 800 }); await p.waitForTimeout(400);
+    const out = await p.evaluate(() => { const r = document.querySelector(".top-in").getBoundingClientRect(); return [...document.querySelectorAll(".top-in *")].filter(e => { const b = e.getBoundingClientRect(); return b.width && getComputedStyle(e).display !== "contents" && (b.right > r.right || b.left < r.left); }).map(e => e.className); });
+    if (out.length) fail(`Kopfleiste läuft bei ${w} px über: ${out.join(", ")}`);
+  }
+  await p.setViewportSize({ width: 1280, height: 900 });
   log("Einträge: Stadionführung 50 € (Daniel, Henning), Abendessen 200 € (alle), Technikmuseum 40 € (Sarah, Daniel), zusammen 290 €");
 
   // Abrechnung: Klein trägt 25+25 + 50+50 + 20 = 170, Hase 50+50 + 20 = 120
@@ -708,6 +715,9 @@ try {
   // Summen wie in der Reise: 214 + 1680 + 80 = 1974 €
   if (!head.includes("1.974 €") || !head.includes("2.656 €") || !head.includes("2.090 €")) fail("Summen im Vergleich: " + head.replace(/\n/g, " / "));
   if (!head.includes("Unterkunft +700") ) fail("Erklärung fehlt: " + head.replace(/\n/g, " / "));
+  // Schaltflächen aller Spalten auf gleicher Höhe, auch in der günstigsten ohne Zusatzzeile (Desktop)
+  const actsY = await cv.locator(".cv-head .cv-acts").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));
+  if (actsY.length < 2 || new Set(actsY).size !== 1) fail("Schaltflächen im Vergleich nicht auf gleicher Höhe: " + actsY.join(","));
   // verschiedene Orte: alle Zeilen; „Nur Unterschiede“ blendet Erlebnisse (überall 80 €) aus
   if (!(await cv.locator(".cv-table [data-row=attractions]").count())) fail("Erlebnisse fehlen bei „alle Zeilen“");
   await cv.locator(".cv-mode .chip", { hasText: "Nur Unterschiede" }).click();

@@ -256,7 +256,7 @@
         <p class="small">{t("who.groupAs")} <b>{t("who.nameGroup", { a: `${animalEmoji(who.mascot)} ${animalName(who.mascot)}` })}</b>. <button type="button" class="linkbtn" onclick={() => (who.mascot = other(who.mascot))}>{t("who.otherAnimal")}</button></p>
         <p class="muted small">{t("who.groupHint")}</p>
         <div class="qf-counts grp-counts">
-          {#each [["adults", t("age.adultShort"), t("age.adults")], ["kids", t("age.kids"), t("age.kids")]] as [k, l, full] (k)}
+          {#each [["adults", t("age.adultShort"), t("age.adultsRange")], ["kids", t("age.kids"), t("age.kidsRange")]] as [k, l, full] (k)}
             <span class="qf-step" role="group" aria-label={full}>
               <button type="button" onclick={() => step(k as "adults", -1)} aria-label={t("step.less", { what: full })}>−</button>
               <input class="qf-n" type="number" inputmode="numeric" min={k === "adults" ? 1 : 0} max="40" value={who.group[k as "adults"]} aria-label={full} onchange={e => typeGroup(k as "adults", e)} /><small>{l}</small>

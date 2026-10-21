@@ -4,12 +4,12 @@
  * Vorname), weil auch „nur ansehen“ sie setzen darf; wer bearbeiten darf, trägt sie in die Reise ein
  * (Reisende.member, Platzhalter bekommt den Vornamen).
  */
-import { isActive, type Trip, type Traveler } from "./model";
+import { AGE, isActive, type Trip, type Traveler } from "./model";
 
 export interface Claim { t: string; n: string }
 export type Claims = Record<string, Claim>;
 
-const adult = (trip: Trip, x: Traveler) => (x.age != null ? x.age >= (trip.settings.adultAge ?? 12) : x.kind !== "child" && x.kind !== "infant");
+const adult = (trip: Trip, x: Traveler) => (x.age != null ? x.age >= (trip.settings.adultAge ?? AGE.adult) : x.kind !== "child" && x.kind !== "infant");
 
 /** wählbar: aktive Erwachsene, die noch niemandem gehören (weder in der Reise noch in den Zuordnungen) */
 export function claimable(trip: Trip, claims: Claims = {}, me?: string): Traveler[] {

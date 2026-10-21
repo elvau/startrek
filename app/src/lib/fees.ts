@@ -3,7 +3,7 @@
  * Durchfahrten mit dem Auto, Trinkgeld. Richtwerte ohne Gewähr („ca.“), Stand und Quellen in docs/NEBENKOSTEN.md.
  * Ein neuer Ort bzw. ein neues Land ist eine Zeile.
  */
-import { isActive, type Deposit, type Extra, type Item, type Option, type Traveler, type Trip } from "./model";
+import { DRIVER_AGE, isActive, type Deposit, type Extra, type Item, type Option, type Traveler, type Trip } from "./model";
 
 export const FEES_AS_OF = "2026";
 
@@ -187,7 +187,7 @@ export const AUTO_OPTIONAL = new Set(["auto:cover", "auto:driver2"]);
 /** wer im Mietwagen sitzt und als junger Fahrer gilt: Erwachsene mit bekanntem Alter unter 25 */
 export function youngDrivers(it: Item, trip: Trip): Traveler[] {
   const ids = it.participants?.length ? new Set(it.participants) : null;
-  const adult = trip.settings?.adultAge ?? 18;
+  const adult = DRIVER_AGE;
   return trip.travelers.filter(t => isActive(t) && (!ids || ids.has(t.id)) && t.age != null && (t.age as unknown) !== ""
     && isFinite(Number(t.age)) && Number(t.age) >= Math.max(17, adult) && Number(t.age) < RENTAL.youngUnder);
 }

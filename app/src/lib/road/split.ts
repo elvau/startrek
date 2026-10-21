@@ -3,7 +3,7 @@
  * Die Ankunft an der nächsten Station verschiebt sich um die Zahl der Stopps; geht es nach Hause, endet die Reise später.
  */
 import { t } from "../i18n/index.svelte";
-import { isActive, uid, type Item, type Trip } from "../model";
+import { AGE, isActive, uid, type Item, type Trip } from "../model";
 import { addDays } from "../calc/travel";
 import { stayPlace } from "../itinerary";
 import { km, type LL } from "./ors";
@@ -28,7 +28,7 @@ export function along(path: LL[], f: number): LL {
 export function splitLeg(trip: Trip, e: Etappe, n: number, near: (p: LL) => { name: string } | null): Item[] {
   if (!e.date || n < 2) return [];
   const persons = trip.travelers.filter(isActive).length || 1;
-  const adults = trip.travelers.filter(x => isActive(x) && (x.age == null || Number(x.age) >= (trip.settings?.adultAge ?? 12))).length || 1;
+  const adults = trip.travelers.filter(x => isActive(x) && (x.age == null || Number(x.age) >= (trip.settings?.adultAge ?? AGE.adult))).length || 1;
   const out: Item[] = [];
   for (let k = 1; k < n; k++) {
     const place = near(along(e.path, k / n))?.name || `${e.from.name} – ${e.to.name}`;

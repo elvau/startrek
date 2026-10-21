@@ -34,6 +34,20 @@ export interface Partner<Q> {
 /** Flüge: Google braucht Namen statt Codes, wenn eine Stadt mit mehreren Flughäfen gewählt ist */
 export type FlightPartnerQuery = FlightLinkQuery & { fromName?: string; toName?: string };
 export interface CarLinkQuery { w: CarWindow | null; place: string }
+/** Parken am Abflughafen: Flughafen (IATA), Abgabe und Abholung (JJJJ-MM-TTTHH:MM), Personen */
+export interface ParkLinkQuery { ap: string; from: string; to: string; adults: number; children: number; infants: number }
+
+/** Parken und Fliegen: Suche mit Flughafen, Zeitraum und Personen (Aufbau aus deren Suchmaske, 10/2026) */
+export function parkenUndFliegenLink(q?: ParkLinkQuery): string {
+  const ok = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s);
+  if (!q || !/^[A-Z]{3}$/.test(q.ap) || !ok(q.from) || !ok(q.to)) return "https://www.parken-und-fliegen.de/";
+  const h = new URLSearchParams({
+    agent: "PBALL", lang: "de", adults: String(Math.max(1, q.adults)), children: String(q.children), infants: String(q.infants),
+    depart: q.ap, out: q.from.slice(0, 10), in: q.to.slice(0, 10), park_from: q.from.slice(11, 16), park_to: q.to.slice(11, 16),
+    redirectReferal: "carpark", from_categories: "true"
+  });
+  return `https://v2.parken-und-fliegen.de/static/?selectProduct=cp&#/categories?${h}`;
+}
 
 const p = <Q>(e: Partner<Q>) => e;
 /** Startseite des Anbieters, ohne vorausgefüllte Angaben */
@@ -54,6 +68,11 @@ export const TP_PARTNER = { marker: "783080", trs: "584426" };
 /** Travelpayouts: Ziel-Link über tp.media weiterleiten; p = Programm, campaign = Kampagne (aus „Generate links“) */
 export const tp = (p: number, campaign: number) => (url: string) =>
   `https://tp.media/r?${new URLSearchParams({ campaign_id: String(campaign), marker: TP_PARTNER.marker, p: String(p), trs: TP_PARTNER.trs, u: url })}`;
+/** Awin (öffentlich, steht in jedem Partner-Link): Publisher-ID des Kontos */
+export const AWIN_PUBLISHER = "3121582";
+/** Awin: Ziel-Link über awin1.com weiterleiten; mid = Programm (Advertiser-ID), ued = Zielseite */
+export const awin = (mid: number) => (url: string) =>
+  `https://www.awin1.com/cread.php?${new URLSearchParams({ awinmid: String(mid), awinaffid: AWIN_PUBLISHER, ued: url })}`;
 
 export const PARTNERS = {
   /* Flüge */
@@ -90,7 +109,8 @@ export const PARTNERS = {
   pincamp: p<void>({ name: "PiNCAMP", cat: "camping", link: home("https://www.pincamp.de/") }),
   acsi: p<void>({ name: "ACSI", cat: "camping", link: home("https://www.eurocampings.de/") }),
   park4night: p<void>({ name: "park4night", cat: "camping", link: home("https://park4night.com/de") }),
-  /* Parken am Abflughafen (#419); Parken und Fliegen, Holiday Extras (Awin) kommen mit der Freischaltung dazu */
+  /* Parken am Abflughafen (#419); Airparks, Holiday Extras (Awin) bekommen die Kennung mit der Freischaltung */
+  parkenUndFliegen: p<ParkLinkQuery | undefined>({ name: "Parken und Fliegen", cat: "parking", net: "awin", link: parkenUndFliegenLink, tag: awin(14793) }),
   parkos: p<void>({ name: "Parkos", cat: "parking", link: home("https://parkos.de/") }),
   airparks: p<void>({ name: "Airparks", cat: "parking", net: "awin", link: home("https://www.airparks.de/") }),
   /* Reiseversicherung: nur als Tipp, keine Beratung (§ 34d GewO) */

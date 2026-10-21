@@ -8,18 +8,19 @@ const family = (): Trip => ({
     { id: "a", name: "Anna", age: 41, household: "Klein" },
     { id: "j", name: "Jonas", age: 43, household: "Klein" },
     { id: "m", name: "Mia", age: 11, household: "Klein" },
-    { id: "b", name: "Ben", age: 4, household: "Klein" }
+    { id: "b", name: "Ben", age: 1, household: "Klein" }
   ],
   items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS, rates: { EUR: 1, JPY: 170 } }
 });
 const item = (x: Partial<Item>): Item => ({ id: "i", cat: "attractions", name: "X", status: "chosen", options: [], ...x });
 
 describe("Altersklassen", () => {
-  it("ab 12 Erwachsener, ab 6 Kind, darunter Kleinkind", () => {
+  it("Flug-Regel (#483): ab 12 Erwachsener, ab 2 Kind, darunter Kleinkind", () => {
     expect(ageClass(12, DEFAULT_SETTINGS)).toBe("adult");
     expect(ageClass(11, DEFAULT_SETTINGS)).toBe("child");
-    expect(ageClass(6, DEFAULT_SETTINGS)).toBe("child");
-    expect(ageClass(5, DEFAULT_SETTINGS)).toBe("infant");
+    expect(ageClass(2, DEFAULT_SETTINGS)).toBe("child");
+    expect(ageClass(1, DEFAULT_SETTINGS)).toBe("infant");
+    expect(ageClass(undefined, DEFAULT_SETTINGS, "infant")).toBe("infant");
     expect(ageClass(undefined, DEFAULT_SETTINGS)).toBe("adult");
     expect(ageClass(null, DEFAULT_SETTINGS)).toBe("adult");
   });

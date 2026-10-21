@@ -4,7 +4,7 @@ import { noteNav } from "./bugs/log";
 import { untrack } from "svelte";
 import { t as tr, type Key } from "./i18n/index.svelte";
 import { totals } from "./calc";
-import { CAT_KEYS, DEFAULT_SETTINGS, isDetailed, uid, type CatKey, type Item, type Price, type SimpleLine, type Traveler, type Trip } from "./model";
+import { CAT_KEYS, AGE, DEFAULT_SETTINGS, OLD_CHILD_AGE, isDetailed, uid, type CatKey, type Item, type Price, type SimpleLine, type Traveler, type Trip } from "./model";
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { applyClaims } from "./claims";
@@ -52,6 +52,8 @@ function readTrip(id: string): Trip | null {
 /** Ältere Stände ergänzen, damit neue Felder immer da sind */
 function normalize(t: Trip): Trip {
   t.settings = { ...DEFAULT_SETTINGS, ...t.settings };
+  // alter Standard (Kleinkind unter 6) → Flug-Regel (#483); einstellen ließ er sich nicht
+  if (t.settings.childAge === OLD_CHILD_AGE) t.settings.childAge = AGE.child;
   t.households ||= {};
   t.tiers ||= {};
   return t;

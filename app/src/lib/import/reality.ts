@@ -13,12 +13,13 @@ import type { Board, Extra, Item, Option, Trip } from "../model";
 import { activeOption, totals } from "../calc";
 import { costParts } from "../calc/parts";
 import { LINE_BAG, LOW_COST } from "../flights/addons";
+import { rowIcon } from "./icons";
 
 export type Assumption = "food" | "bag";
 export type Pin = Partial<Record<Assumption, "lo" | "hi">>;
 export interface RealityOpts { food: boolean; board?: Board; pin?: Pin }
 export type RowPart = "offer" | "real" | "whole";
-export interface RealRow { key: string; name: string; how?: string; lo: number; hi: number; part: RowPart; est?: boolean; assumption?: Assumption }
+export interface RealRow { key: string; name: string; how?: string; lo: number; hi: number; part: RowPart; est?: boolean; assumption?: Assumption; icon: string }
 export interface Range { lo: number; hi: number }
 export interface Reality {
   persons: number;
@@ -93,7 +94,7 @@ function rowsOf(trip: Trip) {
   const P = costParts(trip, T);
   const byId = new Map(trip.items.map(i => [i.id, i]));
   const has = { flight: trip.items.some(i => i.cat === "flights" && ids.has(i.id)), stay: trip.items.some(i => i.cat === "stay" && ids.has(i.id)) };
-  const out = new Map<string, { name: string; how?: string; v: number; part: RowPart; est?: boolean; assumption?: Assumption }>();
+  const out = new Map<string, { name: string; how?: string; v: number; part: RowPart; est?: boolean; assumption?: Assumption; icon: string }>();
   for (const r of [...P.rows.booked, ...P.rows.planned, ...P.rows.hidden]) {
     const it = r.itemId ? byId.get(r.itemId) : undefined;
     let part: RowPart = "whole";
@@ -101,7 +102,9 @@ function rowsOf(trip: Trip) {
     else if (it?.auto === "food" && has.stay) part = "real";
     else if (it?.auto === "local" && it.hh === "transfer" && has.flight && has.stay) part = "real";
     const assumption: Assumption | undefined = it?.auto === "food" ? "food" : r.name === t("real.bag") ? "bag" : undefined;
-    out.set(r.key, { name: r.name, how: r.how, v: r.v, part, est: r.est, assumption });
+    // automatische Posten bekommen je Variante neue IDs: über Art und Haushalt zuordnen, sonst fehlt eine Seite (zählt als 0)
+    const key = it?.auto && r.key.startsWith(it.id) ? `auto:${it.auto}:${it.hh ?? ""}${r.key.slice(it.id.length)}` : r.key;
+    out.set(key, { name: r.name, how: r.how, v: r.v, part, est: r.est, assumption, icon: assumption === "bag" ? "🧳" : rowIcon(r.key, it, part, r.xk) });
   }
   return { out, has };
 }
@@ -115,10 +118,10 @@ export function reality(trip: Trip, o: RealityOpts, sync: (t: Trip) => void = ()
   const keys = [...new Set([...lo.out.keys(), ...hi.out.keys()])];
   const rows: RealRow[] = keys.map(k => {
     const a = lo.out.get(k), b = hi.out.get(k), r = (a || b)!;
-    return { key: k, name: r.name, how: r.how, lo: (a?.v || 0) / n, hi: (b?.v || 0) / n, part: r.part, est: a?.est || b?.est, assumption: b?.assumption || a?.assumption };
+    return { key: k, name: r.name, how: r.how, lo: (a?.v || 0) / n, hi: (b?.v || 0) / n, part: r.part, est: a?.est || b?.est, assumption: b?.assumption || a?.assumption, icon: r.icon };
   }).filter(r => r.assumption || Math.abs(r.lo) >= 0.005 || Math.abs(r.hi) >= 0.005);
   // Koffer auf „günstig“ festgelegt: Zeile bleibt (mit 0 €), damit sich die Annahme wieder lösen lässt
-  if (o.pin?.bag && !rows.some(x => x.assumption === "bag") && bagless(trip, offerIds(trip)).length) rows.push({ key: "real:bag", name: t("real.bag"), lo: 0, hi: 0, part: "real", est: true, assumption: "bag" });
+  if (o.pin?.bag && !rows.some(x => x.assumption === "bag") && bagless(trip, offerIds(trip)).length) rows.push({ key: "real:bag", name: t("real.bag"), lo: 0, hi: 0, part: "real", est: true, assumption: "bag", icon: "🧳" });
   const order: RowPart[] = ["offer", "real", "whole"];
   rows.sort((x, y) => order.indexOf(x.part) - order.indexOf(y.part));
   const ids = offerIds(trip);
