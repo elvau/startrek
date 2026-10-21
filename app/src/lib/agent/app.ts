@@ -9,7 +9,7 @@ import { AGE, hhKey, isActive, uid, type AiMark, type Item, type Prefs, type Tra
 import { syncFood } from "../food";
 import { syncSouvenir } from "../souvenir";
 import type { GeoData } from "../geo/places";
-import { ANIMALS, animalName, nextAnimal, placeholderTravelers } from "../placeholders";
+import { ANIMALS, animalName, nextAnimal, partyTravelers, placeholderTravelers } from "../placeholders";
 import type { AgentEdit, AgentGroupIn, AgentRequest, AgentResult, AgentTrip, FlightBooking, TripBrief } from "./types";
 import { noteError } from "../bugs/log";
 import { campItem, campItems, rentItem } from "../road/stations";
@@ -113,7 +113,8 @@ export function takeParty(trip: Trip, a: AgentTrip) {
   }
   if (!a.party || travelersKnown(trip)) return;
   const animal = trip.travelers[0]?.household ? ANIMALS.find(([n]) => animalName(n) === trip.travelers[0].household)?.[0] : undefined;
-  const list = placeholderTravelers([{ animal: animal || nextAnimal(), adults: a.party.adults, kids: a.party.childAges.length, infants: a.party.infants }]);
+  // Familie oder Paar ein Tier, Freunde und Mannschaften je Person ein eigenes
+  const list = partyTravelers({ adults: a.party.adults, kids: a.party.childAges.length, infants: a.party.infants, kind: a.party.kind }, animal || nextAnimal());
   let k = 0;
   for (const p of list) if (p.kind === "child") p.age = a.party.childAges[k++];
   trip.travelers = list;

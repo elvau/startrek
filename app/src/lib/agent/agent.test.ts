@@ -173,6 +173,17 @@ describe("KI-Reiseplaner", () => {
     expect(res.trips[0].party).toEqual({ adults: 6, childAges: [], infants: 0 });
   });
 
+  it("Familie, Paar oder Gruppe aus dem Wunsch kommt mit der Gruppengröße", async () => {
+    const r: AgentRequest = { ...req, adults: 1, travelersKnown: false, asked: true };
+    const f = fake([
+      call("search_flights", { from: ["CGN"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 6, partyKind: "group" }),
+      call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13" }),
+      call("propose_trips", { trips: [{ title: "Mallorca", summary: "Strand", place: "Palma", from: "2027-05-10", to: "2027-05-13", flightId: "f1", stayId: "s1" }] })
+    ]);
+    const res = await runAgent(r, f.deps);
+    expect(res.trips[0].party).toEqual({ adults: 6, childAges: [], infants: 0, kind: "group" });
+  });
+
   it("eingetragene Reisende bleiben: Angaben der KI zählen dann nicht", async () => {
     const f = fake([
       call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 9 }),

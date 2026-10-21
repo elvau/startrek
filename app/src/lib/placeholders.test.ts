@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANIMALS, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler, resizeTravelers, rowsAfterResize } from "./placeholders";
+import { ANIMALS, groupTravelers, nextAnimal, partyTravelers, placeholderTravelers, soloTraveler, resizeTravelers, rowsAfterResize } from "./placeholders";
 import { ageClass, totals } from "./calc";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 
@@ -49,6 +49,28 @@ describe("Platzhalter-Familien", () => {
     expect(new Set(g.map(t => t.household)).size).toBe(28);
     expect(g.filter(t => t.kind === "child")).toHaveLength(3);
     expect(g.some(t => / 2$/.test(t.name))).toBe(true);
+  });
+});
+
+describe("Reisende ohne Namen (KI-Planer, Import)", () => {
+  const households = (ts: { household: string }[]) => new Set(ts.map(t => t.household)).size;
+  it("Gruppe: jede Person ein eigenes Tier, das erste wie vorgegeben", () => {
+    const g = partyTravelers({ adults: 6, kids: 0, kind: "group" }, "Tiger");
+    expect(g).toHaveLength(6);
+    expect(households(g)).toBe(6);
+    expect(g[0].name).toBe("Tiger");
+  });
+  it("Familie und Paar teilen sich ein Tier, Kinder mit dem Tier der Eltern", () => {
+    expect(partyTravelers({ adults: 2, kids: 2, infants: 1, kind: "family" }, "Reh").map(t => t.name)).toEqual(["Reh Erw. 1", "Reh Erw. 2", "Reh Kind 1", "Reh Kind 2", "Reh Kleinkind 1"]);
+    expect(households(partyTravelers({ adults: 2, kids: 0, kind: "couple" }, "Reh"))).toBe(1);
+  });
+  it("ohne Angabe: mit Kindern Familie, nur Erwachsene Gruppe", () => {
+    expect(households(partyTravelers({ adults: 2, kids: 1 }))).toBe(1);
+    expect(households(partyTravelers({ adults: 6, kids: 0 }))).toBe(6);
+    expect(households(partyTravelers({ adults: 1, kids: 0 }))).toBe(1);
+  });
+  it("Gruppe mit Kindern und Kleinkindern behält die Altersklassen", () => {
+    expect(partyTravelers({ adults: 2, kids: 1, infants: 1, kind: "group" }).map(t => t.kind)).toEqual(["adult", "adult", "child", "infant"]);
   });
 });
 

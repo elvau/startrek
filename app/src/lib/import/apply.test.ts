@@ -17,6 +17,15 @@ const pkg: ImportedOffer = {
 };
 
 describe("Angebot → Reise (#457)", () => {
+  it("Gruppe ohne Namensliste: jede Person ein eigenes Tier, Familie teilt eins", () => {
+    const g = blank();
+    importToTrip(g, { ...pkg, adults: 6, partyKind: "group" }, AT);
+    expect(new Set(g.travelers.map(p => p.household)).size).toBe(6);
+    const f = blank();
+    importToTrip(f, { ...pkg, adults: 2, childAges: [5], partyKind: "family" }, AT);
+    expect(new Set(f.travelers.map(p => p.household)).size).toBe(1);
+  });
+
   it("Pauschalreise: Paketpreis an der Unterkunft, Flug im Paket, Transfer zu 0 €, Nebenkosten am passenden Teil", () => {
     const trip = blank();
     const items = importToTrip(trip, pkg, AT);
