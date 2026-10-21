@@ -24,7 +24,7 @@ const RESULT = {
     { title: "Sonne in Palma", summary: "Kurzer Flug, Altstadt und Strand.", place: "Palma", country: "Spanien", from: "2027-05-07", to: "2027-05-10", total: 1080,
       flight: { id: "kiwi:x1", source: "kiwi", sourceName: "Kiwi.com", price: 480, currency: "EUR", url: "https://kiwi.com/u/x1",
         out: leg("DUS", "PMI", "2027-05-07T08:00:00", "2027-05-07T10:30:00"), back: leg("PMI", "DUS", "2027-05-10T18:00:00", "2027-05-10T20:30:00") },
-      stay: { id: "b:1", source: "booking", sourceName: "Booking.com", name: "Casa Palma", total: 600, currency: "EUR", score: 8.7, place: "Altstadt" },
+      stay: { id: "b:1", source: "booking", sourceName: "Booking.com", name: "Casa Palma", url: "https://booking.com/h/1", total: 600, currency: "EUR", score: 8.7, place: "Altstadt" },
       stayQuery: { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 1, childAges: [], rooms: 1, type: "all", currency: "EUR" },
       board: "half", transport: { label: "Mietwagen 3 Tage", eur: 120 }, extras: [{ name: "Bootstour", eur: 80 }] },
     { title: "Lissabon", summary: "Stadt am Meer.", place: "Lissabon", from: "2027-05-14", to: "2027-05-17", total: 350,
@@ -168,7 +168,9 @@ try {
   if (!a.body.prompt.includes("Wochenende") || a.body.lang !== "de" || a.body.adults !== 1 || !a.body.origins.length || !/^\d{4}-\d{2}-\d{2}$/.test(a.body.today)) fail("Anfrage falsch: " + JSON.stringify(a.body));
   if ((await c.locator(".ai-card").count()) !== 2) fail("nicht zwei Vorschläge");
   if (!(await c.locator(".ai-foot", { hasText: "noch 4 Anfragen heute" }).count())) fail("verbleibende Anfragen fehlen");
-  log("Wunsch per Beispiel, Anfrage mit Anmeldung und Reisenden, zwei Vorschläge, 4 Anfragen übrig");
+  const card = c.locator(".ai-card", { hasText: "Sonne in Palma" }).first();
+  if (await card.locator('a[href="https://booking.com/h/1"]', { hasText: "Casa Palma" }).count() !== 1 || await card.locator('a[href="https://kiwi.com/u/x1"]').count() !== 1) fail("Links zu Unterkunft und Flug fehlen im Vorschlag");
+  log("Wunsch per Beispiel, Anfrage mit Anmeldung und Reisenden, zwei Vorschläge mit Links, 4 Anfragen übrig");
 
   // nachschärfen: der frühere Wunsch geht als Zusammenhang mit
   await c.locator(".ai-bar textarea").fill("lieber günstiger bitte");
@@ -233,6 +235,14 @@ try {
   if (await c2.locator(".ai-opts").count()) fail("Antworten nach dem Antippen noch sichtbar");
   if (!(await c2.locator(".ai-card").last().innerText()).includes("pro Person")) fail("pro Person für die Familie fehlt");
   log("Rückfrage mit Antworten zum Antippen, Antwort mit Zusammenhang, danach keine zweite Rückfrage");
+  // kurze Antwort im Gespräch („Auto“) geht raus, nur der erste Wunsch braucht ein paar Worte
+  const nAsked = asked.length;
+  await c2.locator(".ai-bar textarea").fill("Auto");
+  await c2.locator(".ai-bar textarea").press("Enter");
+  await until(async () => asked.length > nAsked, "kurze Antwort nicht gesendet");
+  if (await c2.getByText("Bitte beschreib die Reise in ein paar Worten").count()) fail("kurze Antwort abgelehnt");
+  await until(() => c2.locator(".ai-card").count().then(n => n === cardsBefore + 4), "Vorschläge nach der kurzen Antwort");
+  log("Kurze Antwort im Gespräch („Auto“) wird gesendet");
   await c2.locator(".ai-card", { hasText: "Sonne in Palma" }).last().locator(".btn", { hasText: "Übernehmen" }).click();
   await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
   const who = await p.locator(".hero .meta").innerText();
