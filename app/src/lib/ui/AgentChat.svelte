@@ -108,7 +108,8 @@
 
   async function send(text = input) {
     const w = text.trim();
-    if (w.length < 5) { msgs.push({ me: false, text: t("ai.tooShort") }); void scrollDown(); return; }
+    // Mindestlänge nur für den ersten Wunsch; Antworten im Gespräch („Auto“, „ja“) kommen mit dem Verlauf an
+    if (!w || (w.length < 5 && !msgs.some(m => m.me))) { msgs.push({ me: false, text: t("ai.tooShort") }); void scrollDown(); return; }
     const prompt = withContext(w);
     const asked = askedBefore();
     msgs.push({ me: true, text: w });
