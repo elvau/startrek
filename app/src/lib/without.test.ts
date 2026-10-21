@@ -55,4 +55,13 @@ describe("„Ohne mich“ durchrechnen (#439)", () => {
     expect(vetoNotes(trip(), p, {}, { [fi.id]: ["c"] })).toEqual([{ option: fi.id, label: "Finca", gone: [], back: ["Cleo"], before: 600, after: 500 }]);
     expect(vetoNotes(trip(), p, { [fi.id]: ["c"] }, { [fi.id]: ["c"] })).toEqual([]);
   });
+
+  it("Varianten (#432): Info an der jeweiligen Variante gerechnet", () => {
+    const p = newPoll("Welche?", "variants", [{ label: "Malle", tripId: "t" }, { label: "Hamburg", tripId: "t2" }]);
+    const [, hh] = p.options;
+    // Hamburg: nur die Bootstour pro Person (200 €), ohne Ferienhaus
+    const hamburg: Trip = { ...trip(), id: "t2", items: [trip().items[0]] };
+    expect(vetoNotes(trip(), p, { [hh.id]: ["c"] }, {}, undefined, o => (o === hh.id ? hamburg : trip()))).toEqual([{ option: hh.id, label: "Hamburg", gone: ["Cleo"], back: [], before: 200, after: 200 }]);
+  });
 });
+

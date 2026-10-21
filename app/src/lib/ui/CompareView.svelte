@@ -13,7 +13,8 @@
   import { cheapestId, column, explain, rowMin, rowSpread, sameTrip, shownRows, type Col, type RowKey } from "../compareView";
   import { isArchived, leaveCompare, pickedOf, variantLabel } from "../variants";
   import { addPoll, mergedVotes, newPoll, variantPoll, variantStand } from "../together";
-  import { remoteVotes } from "../polls.svelte";
+  import { remoteVotes, vetoesNow } from "../polls.svelte";
+  import { without } from "../without";
   import PollView from "./PollView.svelte";
   import TopNav from "./TopNav.svelte";
   import AiMark from "./AiMark.svelte";
@@ -76,6 +77,19 @@
   $effect(() => { if (host && app.trip.id !== host.id) switchTrip(host.id, "Vergleich: Abstimmung"); });
   const vpoll = $derived(host && app.trip.id === host.id ? variantPoll(app.trip) : undefined);
   const stand = $derived(vpoll ? variantStand(vpoll, mergedVotes(vpoll, remoteVotes(vpoll))) : undefined);
+  /** „Ohne mich“ je Variante (#439): wer, und was es für die anderen an dieser Variante bedeutet */
+  const vetoFx = $derived.by(() => {
+    const out: Record<string, { names: string; after: number; before: number }> = {};
+    if (!vpoll) return out;
+    const now = vetoesNow(vpoll);
+    for (const o of vpoll.options) {
+      const v = all.find(x => x.id === o.tripId), ids = now[o.id] || [];
+      if (!v || !ids.length) continue;
+      const w = without(v.tr, ids, undefined, geo);
+      out[v.id] = { names: ids.map(x => v.tr.travelers.find(y => y.id === x)?.name || "?").join(", "), after: w.after.perPerson, before: w.before.perPerson };
+    }
+    return out;
+  });
   const canPoll = $derived(all.some(v => v.edit) && all.filter(v => !archivedOf(v)).length > 1);
   function startPoll() {
     // in der geteilten Variante mit den meisten Mitgliedern (dort stimmen alle ab), sonst in der ersten bearbeitbaren
@@ -141,6 +155,7 @@
             <small>{t("perPerson", { v: eur(v.col.perPerson) })}{#if v.id === low} · <span class="cv-low">{t("home.cheapest")}</span>{:else if ref} · <span class="cv-more">{signed(v.col.total - ref.total)}</span>{/if}</small>
             {#if why(v)}<small class="cv-why">{why(v)}</small>{/if}
             {#if stand?.byTrip[v.id]}<small class="cv-votes">🗳 {tn("poll.forN", stand.byTrip[v.id].for)}{stand.byTrip[v.id].veto ? ` · ✕ ${stand.byTrip[v.id].veto}` : ""}</small>{/if}
+            {#if vetoFx[v.id]}{@const f = vetoFx[v.id]}<small class="cv-veto">✕ {t("cmpv.vetoFx", { names: f.names, after: eur(f.after), before: eur(f.before) })}</small>{/if}
             <span class="cv-acts">
               {#if v.edit}
                 {#if picked?.id === v.id}<button class="btn sm cv-untake" onclick={() => untake(v)}>✓ {t("cmpv.taken")}</button>
@@ -226,6 +241,7 @@
   .cv-mode { margin-bottom: 10px; }
   .cv-picked { margin: 0 0 10px; font-weight: 600; color: var(--good); }
   .cv-votes { color: var(--idea); font-weight: 700; }
+  .cv-veto { color: #C4452E; }
   .cv-poll { margin: 16px 0; text-align: start; }
   .cv-poll-start { margin: 16px 0; text-align: start; }
   .cv-table, .cv-mob, .cv-picked, .cv-mode { text-align: start; }

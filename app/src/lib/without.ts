@@ -89,7 +89,7 @@ export interface VetoNote { option: string; label: string; gone: string[]; back:
  * Änderungen gegenüber dem zuletzt Gesehenen je Möglichkeit: Preis pro Person vorher (ohne die zuletzt gesehenen)
  * und jetzt (ohne die aktuellen); nur, wenn sich jemand geändert hat
  */
-export function vetoNotes(trip: Trip, p: Poll, now: Record<string, string[]>, seen: Record<string, string[]>, g?: GeoData): VetoNote[] {
+export function vetoNotes(trip: Trip, p: Poll, now: Record<string, string[]>, seen: Record<string, string[]>, g?: GeoData, tripOf: (option: string) => Trip = () => trip): VetoNote[] {
   const out: VetoNote[] = [];
   const nm = (id: string) => trip.travelers.find(x => x.id === id)?.name || "?";
   for (const o of p.options) {
@@ -97,7 +97,9 @@ export function vetoNotes(trip: Trip, p: Poll, now: Record<string, string[]>, se
     const gone = cur.filter(x => !old.includes(x)), back = old.filter(x => !cur.includes(x));
     if (!gone.length && !back.length) continue;
     const prep = (tr: Trip) => applyOption(tr, p, o.id);
-    const before = without(trip, old, prep, g).after.perPerson, after = without(trip, cur, prep, g).after.perPerson;
+    // Varianten (#432): an der jeweiligen Variante rechnen
+    const base = tripOf(o.id);
+    const before = without(base, old, prep, g).after.perPerson, after = without(base, cur, prep, g).after.perPerson;
     out.push({ option: o.id, label: o.label, gone: gone.map(nm), back: back.map(nm), before, after });
   }
   return out;

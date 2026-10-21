@@ -4,11 +4,13 @@
    * „✕ Ohne mich“, Frist. Planerin stellt Art, Meilen und Frist ein und übernimmt das Ergebnis.
    */
   import { t, tn, type Key } from "../i18n/index.svelte";
-  import { access, app, takeVariant } from "../store.svelte";
+  import { access, app, editTrip, takeVariant } from "../store.svelte";
   import { cloudTrip } from "../cloud/cloud.svelte";
   import { dateDE } from "../format";
   import { applyResult, dueSoon, maxMiles, mergedVotes, milesLeft, milesOf, missing, pollOpen, tallyMode, VETO, type Poll, type PollMode } from "../together";
-  import { ackNotes, cast, myNotes, myVote, myVoter, remoteVotes, sharedVoting, vetoesNow, whoAsk, whyOf } from "../polls.svelte";
+  import { ackNotes, cast, myNotes, myVote, myVoter, remoteVotes, sharedVoting, tripForOption, vetoesNow, whoAsk, whyOf } from "../polls.svelte";
+  import { dir } from "../directory.svelte";
+  import { ccOf } from "../geo/places";
   import { applyOption, without } from "../without";
   import { eur } from "../calc";
   import { geo } from "../geo/geo.svelte";
@@ -42,20 +44,33 @@
   const out = $derived(vetoesNow(p));
   const signed = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${eur(Math.abs(v))}`;
   /** Folgen je Möglichkeit, wenn alle mit „Ohne mich“ (ggf. mit Familie) wegfallen */
-  const effects = $derived(p.kind === "variants" ? {} : Object.fromEntries(p.options.filter(o => out[o.id]?.length).map(o => [o.id, without(trip, out[o.id], tr => applyOption(tr, p, o.id), geo)])));
+  // bei Varianten an der jeweiligen Variante gerechnet (#432)
+  const effects = $derived(Object.fromEntries(p.options.filter(o => out[o.id]?.length).map(o => [o.id, without(tripForOption(p, o.id), out[o.id], tr => applyOption(tr, p, o.id), geo)])));
+  /** Vorschlag aus den Vorlieben: Variante in einem Land, das ich ausgeschlossen habe → „Ohne mich“ anbieten (bestätigt die Person) */
+  const avoided = (o: { id: string; tripId?: string }) => {
+    if (p.kind !== "variants" || !o.tripId || !dir.prefs?.avoid?.length || !geo.world.length) return "";
+    const c = tripForOption(p, o.id).country, cc = c ? ccOf(geo, c) : null;
+    return cc && dir.prefs.avoid.includes(cc) ? c! : "";
+  };
   const vetoName = (k: string, o: string) => `${nameOf(k)}${why[k]?.[o]?.f ? ` (${t("veto.withFamily")})` : ""}${why[k]?.[o]?.r ? `: „${why[k][o].r}“` : ""}`;
   function veto(o: string, v: number) {
     // zurücknehmen ohne Rückfrage, sonst erst das Fenster
     if (v === VETO) void act(o, "veto"); else vetoFor = o;
   }
-  const notes = $derived(open && p.kind !== "variants" ? myNotes(p) : []);
+  const notes = $derived(open ? myNotes(p) : []);
   /** Ergebnis übernehmen: wer bei der Möglichkeit nicht dabei wäre, wird nach Rückfrage auf „nicht dabei“ gestellt */
   function take(id: string, label: string) {
     // über Varianten (#432): Abstimmung schließen und die Variante nehmen, die anderen archivieren
     if (p.kind === "variants") {
-      applyResult(trip, p, id);
       const tid = p.options.find(o => o.id === id)?.tripId;
-      if (tid) void takeVariant(tid);
+      const ids = out[id] || [];
+      // trotz „Ohne mich“: nachfragen, dann in der Variante wirklich auf „nicht dabei“ (#439)
+      if (ids.length && !confirm(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
+      applyResult(trip, p, id);
+      if (tid) void (async () => {
+        if (ids.length) await editTrip(tid, tr => { for (const x of tr.travelers) if (ids.includes(x.id)) x.active = false; });
+        await takeVariant(tid);
+      })();
       return;
     }
     const ids = out[id] || [];
@@ -108,6 +123,9 @@
           <span class="pv-eff small">{Math.round(e.after.perPerson) === Math.round(e.before.perPerson)
             ? t("veto.lineSame", { n: tn("n.persons", e.ids.length), after: eur(e.after.total), before: eur(e.before.total) })
             : t("veto.line", { n: tn("n.persons", e.ids.length), after: eur(e.after.perPerson), before: eur(e.before.perPerson), diff: signed(e.after.perPerson - e.before.perPerson) })}{e.stays.length ? ` · ⚠ ${t("veto.staysShort", { names: e.stays.map(s => s.name).join(", ") })}` : ""}</span>
+        {/if}
+        {#if canVote && v !== VETO && avoided(o)}
+          <button class="linkbtn small pv-avoid" onclick={() => veto(o.id, v)}>🚫 {t("veto.avoidHint", { x: avoided(o) })}</button>
         {/if}
         {#if canVote}
           <span class="poll-v">
@@ -163,4 +181,5 @@
   .pv-notes { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 12%, var(--paper)); font-size: 13.5px; }
   .pv-seen { justify-self: start; padding: 0; }
   .pv-who { color: var(--ink-2); }
+  .pv-avoid { grid-column: 1 / -1; justify-self: start; padding: 0; color: #C4452E; text-align: start; }
 </style>
