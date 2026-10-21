@@ -60,6 +60,7 @@ export const GUIDE: GuidePage[] = [
       "Die Leiste am Rand (am Handy unten) springt zwischen den Kapiteln. Das Kapitel in der Mitte ist scharf, der Rest tritt zurück.",
       "Auf der Startseite siehst du deine Reisen als Liste oder als Kacheln und kannst sie sortieren, zum Beispiel nach „Als Nächstes“, Preis oder Land.",
       "Zwei Reisen vergleichen: eine Reise auf eine andere ziehen oder „Vergleichen“ wählen. So stellst du Varianten wie „Kroatien“ und „Portugal“ nebeneinander.",
+      "Im Vergleich kannst du mit „Abstimmen lassen“ alle Mitreisenden über die Varianten abstimmen lassen, mit „Was wäre wenn …“ eine Variante mit anderem Zeitraum oder Abflughafen anlegen (Preise werden neu gesucht) und mit „Diese nehmen“ entscheiden. Die anderen Varianten werden archiviert und lassen sich wiederherstellen.",
       "An schwierigen Stellen zeigt ein kleines „?“ eine kurze Erklärung. Antippen, noch einmal antippen schließt sie."
     ],
     faq: [

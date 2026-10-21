@@ -59,10 +59,10 @@ export function sameFlight(o: Option, offers: FlightOffer[]): FlightOffer | unde
 }
 
 /** ein Treffer der Nachsuche: Preis, ob er zu einem Angebot passt, als Angebot */
-interface Found { price: number; same: (o: Option) => boolean; opt: () => Option }
+export interface Found { price: number; same: (o: Option) => boolean; opt: () => Option }
 
 /** genau die Suche, mit der das gewählte Angebot gefunden wurde, noch einmal */
-async function lookup(trip: Trip, it: Item, o: Option, s: Searchers): Promise<Found[] | null> {
+export async function lookup(trip: Trip, it: Item, o: Option, s: Searchers): Promise<Found[] | null> {
   const cur = o.price.currency || "EUR";
   if (it.cat === "flights") {
     const q = flightQueryFor(trip, it, o);

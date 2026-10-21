@@ -788,11 +788,17 @@ try {
   // archivierte Variante wiederherstellen
   await cv.locator(".cv-head .cv-restore").first().click();
   await until(async () => !(await cv.locator(".cv-head .cv-restore").count()), "Variante wiederhergestellt");
+  // „Was wäre wenn …“ (#430): von der gewählten Variante aus eine Nacht mehr, als neue Variante im Vergleich
+  await cv.locator(".cv-whatif").click();
+  await cv.locator(".cv-wi .qf-step button", { hasText: "+" }).click();
+  await cv.locator(".wi-go").click();
+  await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 4, "Variante aus „Was wäre wenn“");
+  if (!(await cv.locator(".cv-head .cv-var", { hasText: "Ardennen Belgien ·" }).count())) fail("Was-wäre-wenn-Variante ohne Namen: " + await cv.locator(".cv-head").innerText());
   // Vergleich trennen: alle wieder eigene Reisen
   await cv.locator(".cv-split").click();
-  await until(async () => !(await cp.locator(".home-cmp").count()) && (await cp.locator(".home-trip:not(.home-cmp)").count()) === 3, "Vergleich getrennt");
+  await until(async () => !(await cp.locator(".home-cmp").count()) && (await cp.locator(".home-trip:not(.home-cmp)").count()) === 4, "Vergleich getrennt");
   await vctx.close();
-  log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Abstimmung über die Varianten (Ohne mich mit Folgen an der Variante, Stand in Spalte und Kachel, Ergebnis nehmen), Diese nehmen (andere archiviert, wiederherstellbar), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln, Reise auf den Vergleich ziehen bzw. per ⇆ antippen, Vergleich trennen");
+  log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Abstimmung über die Varianten (Ohne mich mit Folgen an der Variante, Stand in Spalte und Kachel, Ergebnis nehmen), Diese nehmen (andere archiviert, wiederherstellbar), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln, Reise auf den Vergleich ziehen bzw. per ⇆ antippen, „Was wäre wenn“ (eine Nacht mehr), Vergleich trennen");
   }
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));

@@ -478,7 +478,7 @@ export function duplicateTrip(variant = false) {
   const src = app.trip.id;
   const copy: Trip = JSON.parse(JSON.stringify(app.trip));
   copy.id = uid();
-  if (variant) { delete copy.polls; if (copy.cmp) delete copy.cmp.label; }
+  if (variant) { delete copy.polls; if (copy.cmp) { delete copy.cmp.label; delete copy.cmp.chosen; delete copy.cmp.archived; } }
   else { copy.name = `${copy.name} (${tr("store.copy")})`; delete copy.cmp; }
   const toCloud = !!cloud.user;
   open(copy, "Kopie");
