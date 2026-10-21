@@ -7,7 +7,7 @@
   import { app } from "../store.svelte";
   import { eur } from "../calc";
   import { geo } from "../geo/geo.svelte";
-  import { cast, myVoter, vetoesNow } from "../polls.svelte";
+  import { cast, myVoter, tripForOption, vetoesNow } from "../polls.svelte";
   import { applyOption, familyOf, without } from "../without";
   import type { Poll } from "../together";
   import Modal from "./Modal.svelte";
@@ -21,7 +21,8 @@
   // wer schon nicht dabei wäre, ist vorher schon draußen; gerechnet wird, was ich (mit Familie) zusätzlich ändere
   const others = $derived((vetoesNow(p)[option] || []).filter(x => x !== me && !(withFam && fam.some(f => f.id === x))));
   const ids = $derived([me, ...(withFam ? fam.map(f => f.id) : [])]);
-  const w = $derived(without(trip, ids, tr => {
+  // bei Varianten (#432) an der Variante selbst gerechnet
+  const w = $derived(without(tripForOption(p, option), ids, tr => {
     applyOption(tr, p, option);
     for (const x of tr.travelers) if (others.includes(x.id)) x.active = false;
   }, geo));

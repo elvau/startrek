@@ -2,7 +2,8 @@
  * Abstimmen in der App (#432): wer man ist und wo die Stimme liegt. Geteilte Reise: je Konto ein eigenes Dokument
  * (cloudVotes), Person aus „Wer bist du?“ (#435); Reise nur auf dem Gerät: in der Reise, Person über „Ich bin …“.
  */
-import { app } from "./store.svelte";
+import { app, tripFor } from "./store.svelte";
+import type { Trip } from "./model";
 import { cloud, cloudTrip, cloudVotes, isCloud, saveMyVotes } from "./cloud/cloud.svelte";
 import { travelerOf } from "./claims";
 import { mergedVotes, nextVote, VETO, voters, type Poll, type VetoWhy } from "./together";
@@ -30,6 +31,12 @@ export const sharedVoting = () => isCloud(app.trip.id) && !!cloud.user;
 function keyOfUid(uid: string): string {
   const ct = cloudTrip(app.trip.id);
   return travelerOf(app.trip, uid, ct?.claims)?.id ?? `u:${uid}`;
+}
+
+/** Reise, an der eine Möglichkeit durchgerechnet wird: bei Varianten (#432) die Variante selbst, sonst die offene Reise */
+export function tripForOption(p: Poll, option: string): Trip {
+  const id = p.kind === "variants" ? p.options.find(o => o.id === option)?.tripId : undefined;
+  return (id && id !== app.trip.id && tripFor(id)) || app.trip;
 }
 
 /** wer ich beim Abstimmen bin (Reisende-Kennung); geteilte Reise ohne Zuordnung: null */
@@ -140,7 +147,7 @@ export function myNotes(p: Poll): VetoNote[] {
   const not = (ids: string[]) => ids.filter(x => x !== me);
   const n = Object.fromEntries(Object.entries(now).map(([k, v]) => [k, not(v)]));
   const s = Object.fromEntries(Object.entries(seen).map(([k, v]) => [k, not(v)]));
-  return vetoNotes(app.trip, p, n, s, geo);
+  return vetoNotes(app.trip, p, n, s, geo, o => tripForOption(p, o));
 }
 /** gelesen bzw. beim Abstimmen: aktuellen Stand merken */
 export function ackNotes(p: Poll) {
