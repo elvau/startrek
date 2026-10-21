@@ -5,10 +5,10 @@
  * steht an der Unterkunft, die anderen Teile kosten 0 € (Paket aufbrechen: #460). Nebenkosten hängen an Flug bzw. Unterkunft.
  */
 import { t } from "../i18n/index.svelte";
-import { uid, type Extra, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
+import { AGE, uid, type Extra, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
 import { animalName, nextAnimal, placeholderTravelers } from "../placeholders";
 import type { ImportedOffer, ImportLeg } from "./ai";
-import { checks, INFANT_MAX, partyOf } from "./review";
+import { checks, partyOf } from "./review";
 
 const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"];
 const addDays = (d: string, n: number) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
@@ -25,7 +25,7 @@ export function importParty(trip: Trip, o: ImportedOffer) {
       // ohne Familienname: alle ohne Angabe in eine Tierfamilie
       if (!hh) { if (!used.length) used.push(nextAnimal()); hh = animalName(used[0]); }
       if (!fam.has(hh)) fam.set(hh, COLORS[fam.size % COLORS.length]);
-      const kind = p.age == null ? "adult" : p.age < 2 ? "infant" : p.age < 18 ? "child" : "adult";
+      const kind = p.age == null ? "adult" : p.age < AGE.child ? "infant" : p.age < AGE.adult ? "child" : "adult";
       return { id: uid(), name: p.name, household: hh, color: fam.get(hh), ...(p.age != null ? { age: p.age } : { kind }) };
     });
     // Kinder, die nur als Alter im Angebot stehen (nicht in der Namensliste), nicht verlieren (#474)
@@ -42,8 +42,9 @@ export function importParty(trip: Trip, o: ImportedOffer) {
   if (!party.adults && !party.kids && !party.infants) return;
   const animal = nextAnimal();
   const list = placeholderTravelers([{ animal, adults: party.adults || 1, kids: party.kids, infants: party.infants }]);
-  // bekannte Alter: Kinder über 2 an die Kinder, bis 2 an die Kleinkinder
-  const older = (o.childAges || []).filter(a => a > INFANT_MAX), young = (o.childAges || []).filter(a => a <= INFANT_MAX);
+  // bekannte Alter: 2–11 an die Kinder, unter 2 an die Kleinkinder (ab 12 zählen sie zu den Erwachsenen)
+  const ages = o.childAges || [];
+  const older = ages.filter(a => a >= AGE.child && a < AGE.adult), young = ages.filter(a => a < AGE.child);
   for (const p of list) {
     const age = p.kind === "child" ? older.shift() : p.kind === "infant" ? young.shift() : undefined;
     if (age != null) p.age = age;

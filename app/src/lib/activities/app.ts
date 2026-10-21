@@ -6,12 +6,13 @@ import type { EventHit, EventQuery, EventSearchResult } from "../events/types";
 import { evWhen, searchEventsRemote } from "../events/app";
 import { locOf } from "../geo/maps";
 import type { ActivityHit, ActivityQuery, ActivitySearchResult } from "./types";
+import { serverError } from "../neterror";
 
 async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   const res = await fetch(`${FLIGHTS_URL}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(res.status === 429 ? t("search.tooMany") : data.error || t("search.status", { s: res.status }));
+  if (!res.ok) throw new Error(serverError(data, res.status));
   return data as T;
 }
 

@@ -30,7 +30,7 @@
       <button type="button" class="x" onclick={() => rows.splice(i, 1)} aria-label={t("family.remove", { name: animalName(r.animal) })}>×</button>
       </div>
       <div class="qf-counts">
-      {#each [["adults", t("age.adultShort"), t("age.adults")], ["kids", t("age.kids"), t("age.kidsRange")], ["infants", t("age.infantShort"), t("age.infantsRange")]] as [k, l, full] (k)}
+      {#each [["adults", t("age.adultShort"), t("age.adultsRange")], ["kids", t("age.kids"), t("age.kidsRange")], ["infants", t("age.infantShort"), t("age.infantsRange")]] as [k, l, full] (k)}
         <span class="qf-step" role="group" aria-label={full} title={full}>
           <button type="button" onclick={() => step(r, k as K, -1)} aria-label={t("step.less", { what: l })}>−</button>
           <input class="qf-n" type="number" inputmode="numeric" min="0" max="20" value={r[k as K] || 0} aria-label={full} onchange={e => type(r, k as K, e)} /><small>{l}</small>

@@ -252,8 +252,8 @@ try {
   // Rückfragen (z. B. Verpflegung) mit der ersten Antwort beantworten
   while (await nd.locator(".rev-q").count()) await nd.locator(".rev-q").first().locator(".chip").first().click();
   await nd.locator('.rev-list li[data-k="people"] .linkbtn').click();
-  await nd.locator(".rev-cnt", { hasText: "Kinder (3–17)" }).locator("button", { hasText: "+" }).click();
-  await nd.locator(".rev-cnt", { hasText: "Kleinkinder (0–2)" }).locator("button", { hasText: "+" }).click();
+  await nd.locator(".rev-cnt", { hasText: "Kinder (2–11)" }).locator("button", { hasText: "+" }).click();
+  await nd.locator(".rev-cnt", { hasText: "Kleinkinder (unter 2)" }).locator("button", { hasText: "+" }).click();
   await nd.locator('.rev-list li[data-k="people"]', { hasText: "4 Personen" }).waitFor();
   await shot(nd, "5-personen");
   await nd.locator(".imp-create").click();

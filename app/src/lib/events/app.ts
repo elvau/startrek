@@ -9,12 +9,13 @@ import { searchLocs, type AirportData } from "../geo/locations";
 import { findCity, type GeoData } from "../geo/places";
 import type { EventHit, EventQuery, EventSearchResult } from "./types";
 import { errorText } from "../netcheck";
+import { serverError } from "../neterror";
 
 async function remote(q: EventQuery, signal?: AbortSignal): Promise<EventSearchResult> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
   const res = await fetch(`${FLIGHTS_URL}/events/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(res.status === 429 ? t("search.tooMany") : data.error || t("search.status", { s: res.status }));
+  if (!res.ok) throw new Error(serverError(data, res.status));
   return data as EventSearchResult;
 }
 

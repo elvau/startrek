@@ -4,7 +4,7 @@
  * gewünschte Zahl an Nächten. Abstimmungen über Termine, Angebote eines Postens oder frei, je Person 👍, egal, 👎.
  * Alles liegt in der Reise (trip.avail, trip.polls), wie die übrigen Reisedaten; Personen sind Kennungen der Reisenden.
  */
-import { isActive, uid, type Trip } from "./model";
+import { AGE, isActive, uid, type Trip } from "./model";
 
 export type Avail = "yes" | "maybe" | "no";
 export interface AvailPlan {
@@ -72,7 +72,7 @@ export const daysBetween = (a: string, b: string) => Math.round((toT(b) - toT(a)
 const okD = (d?: string) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
 /** wer abstimmt und Zeiten einträgt: aktive Reisende ab dem Erwachsenenalter (Kinder entscheiden die Eltern) */
-export const voters = (trip: Trip) => trip.travelers.filter(x => isActive(x) && (x.age == null || x.age >= (trip.settings.adultAge ?? 12)));
+export const voters = (trip: Trip) => trip.travelers.filter(x => isActive(x) && (x.age == null || x.age >= (trip.settings.adultAge ?? AGE.adult)));
 
 /** antippen: offen → kann → vielleicht → kann nicht → offen */
 export function cycle(a?: Avail): Avail | undefined {

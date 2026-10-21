@@ -8,6 +8,7 @@ import { idToken } from "../cloud/cloud.svelte";
 import { app, calc, tripMode } from "../store.svelte";
 import type { BugReport } from "./types";
 import { recentErrors, recentNav } from "./log";
+import { serverError } from "../neterror";
 
 export const bugDialog = $state({ open: false });
 
@@ -47,6 +48,6 @@ export async function sendBug(text: string, image?: Blob | null): Promise<{ numb
   if (image) f.set("image", image, "bild.jpg");
   const res = await fetch(`${FLIGHTS_URL}/bug`, { method: "POST", headers: { authorization: `Bearer ${token}` }, body: f });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(ERR[res.status] ? t(ERR[res.status]) : i18n.lang === "de" && data.error ? data.error : t("search.status", { s: res.status }));
+  if (!res.ok) throw new Error(ERR[res.status] ? t(ERR[res.status]) : serverError(data, res.status));
   return data;
 }
