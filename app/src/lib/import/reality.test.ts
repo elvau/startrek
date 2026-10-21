@@ -70,4 +70,17 @@ describe("Realitätscheck (#461)", () => {
     expect(r.whole!.lo).toBeGreaterThan(r.real.lo);
     expect(round10({ lo: 103.4, hi: 181 })).toEqual({ lo: 100, hi: 190 });
   });
+  it("Flugdeal ohne Unterkunft: automatische Posten mit neuen IDs je Variante bleiben eine Zeile (#482)", () => {
+    const trip = blank();
+    importToTrip(trip, { kind: "flight", adults: 2, price: { perPerson: 99 }, flights: { legs: [{ dir: "out", from: "DUS", to: "BCN" }], baggage: { cabin: 1, checked: 0 } } }, AT);
+    applyParts(trip, { rental: "estimate" });
+    // wie syncAuto: jeder Lauf legt den Posten mit neuer ID an
+    const fresh = (t: Trip) => { food(t); for (const i of t.items) if (i.auto === "food") i.id = uid(); };
+    const r = reality(trip, { food: true }, fresh);
+    const f = r.rows.filter(x => x.assumption === "food");
+    expect(f).toHaveLength(1);
+    expect([f[0].lo, f[0].hi]).toEqual([105, 210]);
+    for (const x of r.rows) expect(x.lo).toBeLessThanOrEqual(x.hi);
+    expect(r.whole!.hi).toBeCloseTo(r.rows.reduce((a, x) => a + x.hi, 0));
+  });
 });
