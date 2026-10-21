@@ -84,3 +84,23 @@ describe("Realitätscheck (#461)", () => {
     expect(r.whole!.hi).toBeCloseTo(r.rows.reduce((a, x) => a + x.hi, 0));
   });
 });
+
+describe("Realitätscheck: Pauschalreise ohne Flugdaten und automatische Posten (#482)", () => {
+  it("Paketpreis ohne Flug-Legs steht an der Unterkunft; automatische Posten bleiben eine Zeile mit lo ≤ hi", () => {
+    const trip = blank();
+    importToTrip(trip, { kind: "package", from: "2026-11-27", to: "2026-12-05", adults: 2, price: { total: 3119.56, perPerson: 1559.78 }, stay: { name: "JAZ Elite Aurora", board: "all" } }, AT);
+    const st = trip.items.find(i => i.cat === "stay")!;
+    expect(st.options[0].price.unit).toBe(3119.56);
+    // automatische Posten mit neuer ID je Variante (wie syncAuto)
+    const sync = (t: Trip) => {
+      t.items = t.items.filter(i => i.auto !== "souvenir");
+      t.items.push({ id: uid(), cat: "misc", name: "Souvenirs", auto: "souvenir", status: "idea", options: [{ id: uid(), label: "", estimate: true, price: { mode: "person", currency: "EUR", adult: 30 } }] });
+    };
+    const r = reality(trip, { food: false }, sync);
+    expect(r.offer.lo).toBeCloseTo(1559.78);
+    const souv = r.rows.filter(x => x.name === "Souvenirs");
+    expect(souv).toHaveLength(1);
+    expect([souv[0].lo, souv[0].hi]).toEqual([30, 30]);
+    for (const x of r.rows) expect(x.lo).toBeLessThanOrEqual(x.hi + 0.001);
+  });
+});
