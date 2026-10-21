@@ -2,6 +2,7 @@
   import { netMessage, isNetworkError } from "../neterror";
   import { arrow, i18n, t, tn, type Key } from "../i18n/index.svelte";
   import BrokerNote from "./BrokerNote.svelte";
+  import ExtLink from "./ExtLink.svelte";
   /*
    * KI-Assistent (Beta) als Chat unten rechts: Wunsch schreiben, nachschärfen („lieber im Juni“, „günstiger“),
    * Vorschläge direkt übernehmen. Frühere Wünsche gehen als Zusammenhang mit, damit Nachfragen funktionieren.
@@ -346,14 +347,14 @@
                   {#if a.groups?.length}<li class="ai-groups">🗓 {a.groups.map(g => `${g.label || groupKeys(base()).get(g.key) || g.key} ${dateDE(g.from)}–${dateDE(g.to)}`).join(" · ")}</li>{/if}
                   {#if a.bookings?.length}
                     {#each a.bookings as b, k (k)}
-                      <li>✈ {b.offer.out.from} {dayShort(b.offer.out.dep)} {time(b.offer.out.dep)} {arrow()} {b.offer.out.to} · {b.offer.out.carriers.join(" / ")} · {tn("ai.split", Math.ceil(b.travelers / Math.max(1, b.seats)), { p: b.travelers, s: b.seats })}<b>{eur(bookingPrice(b))}</b></li>
+                      <li>✈ {b.offer.out.from} {dayShort(b.offer.out.dep)} {time(b.offer.out.dep)} {arrow()} {b.offer.out.to} · {#if b.offer.url}<ExtLink href={b.offer.url} sponsored={b.offer.sponsored} track={[b.offer.source, "flight"]}>{b.offer.out.carriers.join(" / ")} ↗</ExtLink>{:else}{b.offer.out.carriers.join(" / ")}{/if} · {tn("ai.split", Math.ceil(b.travelers / Math.max(1, b.seats)), { p: b.travelers, s: b.seats })}<b>{eur(bookingPrice(b))}</b></li>
                     {/each}
-                  {:else if f}<li>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {f.out.carriers.join(" / ")}<b>{eur(f.price)}</b></li>{/if}
+                  {:else if f}<li>✈ {f.out.from} {dayShort(f.out.dep)} {time(f.out.dep)} {arrow()} {f.out.to} · {#if f.url}<ExtLink href={f.url} sponsored={f.sponsored} track={[f.source, "flight"]}>{f.out.carriers.join(" / ")} ↗</ExtLink>{:else}{f.out.carriers.join(" / ")}{/if}<b>{eur(f.price)}</b></li>{/if}
                   {#if a.arrival}<li>🚗 {a.arrival.label || t("ai.ownArrival")}<b>≈ {eur(a.arrival.eur)}</b></li>{/if}
                   {#if pv.access > 0.5}<li>🚆 {t("ai.access")}<b>≈ {eur(pv.access)}</b></li>{/if}
                   {#if a.camper}<li class="ai-camp">⛺ {a.camper.stops.map(s => `${s.place} (${s.nights})`).join(" · ")}<b>≈ {eur(pv.camp)}</b></li>
                     {#if pv.rent > 0.5}<li>🚐 {t("camp.rent")}<b>≈ {eur(pv.rent)}</b></li>{/if}{/if}
-                  {#if a.stay}<li>🛏 {a.stay.name}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{(a.stay.board || a.board) ? ` · ${t(`board.${a.stay.board || a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
+                  {#if a.stay}<li>🛏 {#if a.stay.url}<ExtLink href={a.stay.url} gate name={a.stay.sourceName}>{a.stay.name} ↗</ExtLink>{:else}{a.stay.name}{/if}{a.stay.score ? ` · ${a.stay.score.toFixed(1)}` : ""}{(a.stay.board || a.board) ? ` · ${t(`board.${a.stay.board || a.board}` as Key)}` : ""}<b>{eur(Math.round(a.stay.total))}</b></li>{/if}
                   {#if a.transport}<li>🚗 {a.transport.label}<b>≈ {eur(a.transport.eur)}</b></li>{/if}
                   {#if a.events?.length}<li class="ai-events">🎫 {a.events.map(e => `${e.name} · ${dayShort(e.start.slice(0, 10))}${e.start.length > 10 ? ` ${e.start.slice(11, 16)}` : ""}`).join(", ")}</li>{/if}
                   {#if a.extras?.length}<li>🎟 {a.extras.map(x => x.name).join(", ")}<b>≈ {eur(a.extras.reduce((s, x) => s + x.eur, 0))}</b></li>{/if}
