@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Trip } from "./model";
-import { asVariant, bundle, commonTitle, ensureCompare, isBundle, joinTarget, leaveCompare, siblings, variantLabel } from "./variants";
+import { isArchived, asVariant, bundle, commonTitle, ensureCompare, isBundle, joinTarget, leaveCompare, siblings, variantLabel } from "./variants";
 
 const trip = (id: string, place: string, country = "Frankreich"): Trip => ({ id, name: "Chalet-Wochenende", place, country, travelers: [], items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } });
 
@@ -52,5 +52,15 @@ describe("Reise auf eine andere ziehen", () => {
     asVariant(a, b);
     expect(joinTarget(a, x)).toEqual({ id: a.cmp!.id, title: "Chalet-Wochenende" });
     expect(joinTarget(a, b)).toBeNull();
+  });
+});
+
+describe("archivierte Varianten (#433)", () => {
+  it("nur mit Zeitpunkt und nie die gewählte", () => {
+    const pick = { id: "a", cmp: { chosen: "2026-10-21" } };
+    expect(isArchived({ id: "b", cmp: { archived: "2026-10-21" } }, pick)).toBe(true);
+    expect(isArchived({ id: "c", cmp: {} }, pick)).toBe(false);
+    expect(isArchived({ id: "a", cmp: { archived: "2026-10-20" } }, pick)).toBe(false);
+    expect(isArchived({ id: "d" })).toBe(false);
   });
 });

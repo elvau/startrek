@@ -68,6 +68,9 @@ export function bundle<T extends { id: string; cmp?: { id: string; title: string
 export const siblings = <T extends { id: string; cmp?: { id: string } | null }>(t: { id: string; cmp?: { id: string } }, all: T[]) =>
   t.cmp ? all.filter(x => x.id !== t.id && x.cmp?.id === t.cmp!.id) : [];
 
+/** archiviert (#433): nach „Diese nehmen“ die anderen Varianten, bis sie wiederhergestellt werden; die gewählte nie */
+export const isArchived = (t: { id: string; cmp?: { archived?: string } | null }, pick?: { id: string }) => !!t.cmp?.archived && t.id !== pick?.id;
+
 /** gewählte Variante („Diese nehmen“, #430): die mit dem jüngsten Zeitpunkt; umentscheiden = andere neu wählen */
 export function pickedOf<T extends { id: string; cmp?: { chosen?: string } | null }>(list: T[]): T | undefined {
   return list.filter(x => x.cmp?.chosen).sort((a, b) => b.cmp!.chosen!.localeCompare(a.cmp!.chosen!))[0];
