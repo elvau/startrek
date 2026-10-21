@@ -184,6 +184,11 @@ export function watchVotes(id: string, fn: (byUid: Record<string, VoteDoc>) => v
     return [d.id, { v: x.v || {}, ...(x.w ? { w: x.w } : {}) }];
   }))), err);
 }
+/** Stimmen einer Reise einmal lesen (Stand auf der Startseiten-Kachel, #429) */
+export async function votesOnce(id: string): Promise<Record<string, VoteMap>> {
+  const s = await getDocsFromServer(collection(start().db, "trips", id, "votes"));
+  return Object.fromEntries(s.docs.map(d => [d.id, ((d.data() as Partial<VoteDoc>).v || {}) as VoteMap]));
+}
 export const saveVotes = (id: string, uid: string, v: VoteMap, w: WhyMap = {}) => setDoc(doc(start().db, "trips", id, "votes", uid), { v, w, at: serverTimestamp() });
 
 /** Inhalt der Reise frisch vom Server (nicht aus dem Zwischenspeicher); null, wenn es sie nicht gibt */

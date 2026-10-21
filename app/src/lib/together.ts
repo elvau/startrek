@@ -39,6 +39,8 @@ export interface PollOption {
   /** Angebot eines Postens */
   itemId?: string;
   optionId?: string;
+  /** Variante eines Vergleichs (#432): Kennung der Reise */
+  tripId?: string;
 }
 /**
  * Art der Abstimmung (#432): eine Stimme, mehrere Stimmen oder Meilen-Wahl (Meilen frei verteilen, auch alle auf eine
@@ -49,7 +51,8 @@ export interface VetoWhy { r?: string; f?: boolean }
 export interface Poll {
   id: string;
   q: string;
-  kind: "dates" | "offers" | "free";
+  /** variants: über die Varianten eines Vergleichs, liegt in einer der Varianten (#432) */
+  kind: "dates" | "offers" | "free" | "variants";
   options: PollOption[];
   mode?: PollMode;
   /** Meilen je Person (Meilen-Wahl), höchstens Möglichkeiten × 5 */
@@ -200,6 +203,20 @@ export function applyResult(trip: Trip, p: Poll, optionId: string) {
   }
   p.closed = new Date().toISOString();
   p.result = optionId;
+}
+
+/** offene bzw. letzte Abstimmung über die Varianten eines Vergleichs in dieser Reise (#432) */
+export const variantPoll = (trip: Pick<Trip, "polls" | "cmp">) => {
+  const ps = (trip.polls || []).filter(p => p.kind === "variants" && trip.cmp && p.options.some(o => o.tripId));
+  return ps.find(p => !p.closed) ?? ps.at(-1);
+};
+
+/** Stand je Variante: wie viele dafür, wer „ohne mich“, und wie viele überhaupt abgestimmt haben */
+export function variantStand(p: Poll, votes: Record<string, Record<string, number>> = p.votes): { byTrip: Record<string, { for: number; veto: number }>; voted: number } {
+  const rows = tallyMode(p, votes);
+  const byTrip: Record<string, { for: number; veto: number }> = {};
+  for (const o of p.options) if (o.tripId) { const r = rows.find(x => x.id === o.id); byTrip[o.tripId] = { for: r?.people || 0, veto: r?.veto.length || 0 }; }
+  return { byTrip, voted: Object.values(votes).filter(m => Object.keys(m).length).length };
 }
 
 export const openPolls = (trip: Trip) => (trip.polls || []).filter(p => !p.closed);

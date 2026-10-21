@@ -11,7 +11,8 @@
   import { tripRoute } from "../routeApp";
   import RouteMini from "./RouteMini.svelte";
   import { loadGeo } from "../geo/places";
-  import { cloud } from "../cloud/cloud.svelte";
+  import { cloud, isCloud, votesOnce } from "../cloud/cloud.svelte";
+  import { mergedVotes, variantPoll, variantStand, type Poll } from "../together";
   import { flagOf, range } from "../format";
   import { ccOf } from "../geo/places";
   import { bundle, isArchived, isBundle, pickedOf, variantLabel, type Bundle } from "../variants";
@@ -47,6 +48,23 @@
   // Varianten im Bündel nach Namen (wie in der Reise, „Variante x von y“)
   const bundles = $derived<Bundle<Row>[]>(bundle(rows).filter(isBundle).map(u => ({ ...u, list: [...u.list].sort((a, b) => a.label.localeCompare(b.label, i18n.lang, { numeric: true })) })));
   const bundleOf = (r: Row) => (r.cmp ? bundles.find(b => b.cmp === r.cmp!.id) : undefined);
+  /* Stand der Abstimmung über die Varianten (#432) je Zeile: liegt in einer Variante; Stimmen im Konto einmal lesen */
+  const pollOf = (b: Bundle<Row>): { id: string; p: Poll } | undefined => {
+    for (const v of b.list) { const tr = tripFor(v.id), p = tr ? variantPoll(tr) : undefined; if (p && !p.closed) return { id: v.id, p }; }
+  };
+  let tileVotes = $state<Record<string, Record<string, Record<string, Record<string, number>>>>>({});
+  $effect(() => {
+    for (const b of bundles) {
+      const h = pollOf(b);
+      if (h && isCloud(h.id) && !(h.id in tileVotes)) { tileVotes[h.id] = {}; void votesOnce(h.id).then(v => { tileVotes[h.id] = v; }); }
+    }
+  });
+  function standOf(b: Bundle<Row>) {
+    const h = pollOf(b);
+    if (!h) return undefined;
+    const remote = Object.fromEntries(Object.entries(tileVotes[h.id] || {}).map(([u, v]) => [u, v[h.p.id] || {}]).filter(([, x]) => Object.keys(x).length));
+    return variantStand(h.p, mergedVotes(h.p, remote));
+  }
   // archivierte Varianten (#433) nur in der Vergleichskachel
   const shown = $derived(rows.filter(r => !isArchived(r, r.cmp ? pickedOf(bundleOf(r)?.list || []) : undefined)));
   const all = (u: Unit) => (isBundle(u) ? u.list : [u]);
@@ -218,6 +236,7 @@
       {@const pick = pickedOf(b.list)}
       {@const rest = b.list.filter(v => v.id !== pick?.id && !isArchived(v, pick))}
       {@const nArch = b.list.filter(v => isArchived(v, pick)).length}
+      {@const st = standOf(b)}
       <div class="ht-wrap home-cmp-wrap" class:drop-ok={canTake(b, src)} class:drop-on={over === keyOf(b)} {...zone(b)}>
         <div class="home-trip home-cmp" class:past={stateOf(b) === "past"} class:as-row={view === "list"} data-cmp={b.cmp}>
           <span class="ht-top"><button class="hc-open" onclick={() => openCompare(b.cmp)}><b>{f.cloud ? "☁ " : ""}{b.title}</b></button><span class="hc-n">{tn("home.variants", b.list.length)}</span></span>
@@ -230,7 +249,8 @@
             <button class="hc-var" class:past={rowState(v) === "past"} class:win={pick?.id === v.id} draggable={editable(v)} ondragstart={drag(v.id)} ondragend={endDrag} onclick={() => openTrip(v.id, "Vergleich")}>
               <span class="hc-flag" aria-hidden="true">{flagFor(v)}</span>
               <span class="hc-l"><span class="hr-top"><b>{pick?.id === v.id ? "✓ " : ""}{v.label}</b>{#if rowState(v) === "booked"}<span class="ht-tag">✓</span>{:else if v.s?.ai}<span class="ht-ai" title={t("home.aiTag")}><AiMark title={t("home.aiTag")} /></span>{/if}</span>
-                <small>{[v.s?.where, !same && v.from ? range(v.from, v.to) : ""].filter(Boolean).join(" · ")}</small></span>
+                <small>{[v.s?.where, !same && v.from ? range(v.from, v.to) : ""].filter(Boolean).join(" · ")}</small>
+                {#if st?.byTrip[v.id]}<small class="hc-votes">🗳 {t("cmpv.votesOf", { n: st.byTrip[v.id].for, of: st.voted })}{st.byTrip[v.id].veto ? ` · ✕ ${st.byTrip[v.id].veto}` : ""}</small>{/if}</span>
               <span class="hc-p num">{#if v.s && v.s.total > 0}<b>{eur(v.s.total)}</b>{/if}
                 <small>{[(v.people || 0) > 1 && v.s && v.s.perPerson > 0 ? t("perPerson", { v: eur(v.s.perPerson) }) : "", v.id === low ? t("home.cheapest") : ""].filter(Boolean).join(" · ")}</small></span>
             </button>
@@ -349,6 +369,7 @@
   .hc-open { all: unset; cursor: pointer; }
   .hc-open:focus-visible { outline: 2px solid var(--a); border-radius: 6px; }
   .hc-var.win { background: color-mix(in srgb, var(--good) 9%, transparent); }
+  .hc-votes { color: var(--idea); font-weight: 700; }
   .hc-arch { align-self: flex-start; font-size: 13px; color: var(--ink-2); padding: 4px 0; }
   .hc-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; }
   .hc-cmp-go { margin-inline-start: auto; padding: 0; font-weight: 700; }

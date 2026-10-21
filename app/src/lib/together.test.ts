@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
+import { variantPoll, variantStand, applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
 
 const trip = (): Trip => ({
   id: "t", name: "Reise", place: "", country: "", items: [], tiers: {}, settings: DEFAULT_SETTINGS,
@@ -119,5 +119,20 @@ describe("Arten der Abstimmung (#432)", () => {
     const t = trip();
     const p = p3("one");
     expect(missing(t, p, { [t.travelers[0].id]: { [p.options[0].id]: 1 } }).map(x => x.id)).not.toContain(t.travelers[0].id);
+  });
+});
+
+describe("Abstimmung über Varianten (#432)", () => {
+  const p = newPoll("Welche?", "variants", [{ label: "Malle", tripId: "t1" }, { label: "Hamburg", tripId: "t2" }], "one");
+  const [a, b] = p.options.map(o => o.id);
+  it("findet die offene Abstimmung nur in Varianten", () => {
+    expect(variantPoll({ polls: [p], cmp: { id: "c", title: "JGA" } })?.id).toBe(p.id);
+    expect(variantPoll({ polls: [p] })).toBeUndefined();
+    expect(variantPoll({ polls: [newPoll("x", "free", [{ label: "a" }, { label: "b" }])], cmp: { id: "c", title: "JGA" } })).toBeUndefined();
+  });
+  it("Stand je Variante: dafür, ohne mich, wie viele abgestimmt haben", () => {
+    const st = variantStand(p, { x: { [a]: 1 }, y: { [a]: 1 }, z: { [b]: 1, [a]: -1 } });
+    expect(st.byTrip).toEqual({ t1: { for: 2, veto: 1 }, t2: { for: 1, veto: 0 } });
+    expect(st.voted).toBe(3);
   });
 });
