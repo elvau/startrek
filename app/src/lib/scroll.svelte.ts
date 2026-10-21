@@ -1,5 +1,5 @@
 /* Welches Kapitel ist gerade in der Bildschirmmitte, und wie weit ist man darin gescrollt */
-export const view = $state({ active: "hero", p: 0, hp: 0, scrolled: false });
+export const view = $state({ active: "hero", p: 0, hp: 0, hf: 0, scrolled: false });
 
 /** Lage im Seitenlayout, unabhängig von Transformationen (getBoundingClientRect rechnet die mit ein) */
 function box(el: HTMLElement): { top: number; height: number } {
@@ -21,8 +21,12 @@ export function initScroll(): () => void {
     const vh = innerHeight, y = scrollY;
     view.scrolled = y > vh * 0.6;
     view.hp = Math.min(1, y / vh);
+    // Die Übersicht oben wächst beim Aufklappen über den Bildschirm: erst ausblenden, wenn ihr unterer Rand hochkommt (#442)
+    const hero = document.getElementById("hero");
+    const over = Math.max(0, (hero?.offsetHeight ?? vh) - vh);
+    view.hf = Math.max(0, Math.min(1, (y - over) / vh));
     const chapters = [...document.querySelectorAll<HTMLElement>(".chapter")];
-    let cur: string | null = y < vh * 0.55 ? "hero" : null;
+    let cur: string | null = y < over + vh * 0.55 ? "hero" : null;
     if (!cur) for (const s of chapters) {
       const r = box(s);
       if (r.top <= vh * 0.5 && r.top + r.height > vh * 0.5) { cur = s.dataset.ch!; break; }
@@ -37,6 +41,7 @@ export function initScroll(): () => void {
     document.body.classList.toggle("scrolled", view.scrolled);
     document.body.style.setProperty("--p", p.toFixed(3));
     document.documentElement.style.setProperty("--hp", view.hp.toFixed(3));
+    document.documentElement.style.setProperty("--hf", view.hf.toFixed(3));
   };
   const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
   // Wegscrollen (Rad, Touch, Tastatur, Leiste, Sprung) löst den Halt; Höhenänderungen durch die Bedienung scrollen nicht

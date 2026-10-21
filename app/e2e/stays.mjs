@@ -420,6 +420,17 @@ try {
   if (!hidden.some(r => /Nahverkehr|Sprit|Flughafentransfer/.test(r))) fail("Transport vor Ort nicht unter Versteckt: " + hidden);
   await p.locator(".hero .cp-row", { hasText: "Verpflegung Klein" }).locator(".cp-name").click();
   if (!(await p.locator(".hero .cp-calc").textContent()).includes("Tage")) fail("Rechenweg Verpflegung fehlt");
+  // Übersicht bleibt beim Scrollen durch die aufgeklappte Liste voll sichtbar, auch nach dem Hochscrollen (#442)
+  const vs = p.viewportSize();
+  await p.setViewportSize({ width: vs.width, height: 420 });
+  const heroOp = () => p.locator(".hero .hero-in").evaluate(el => Number(getComputedStyle(el).opacity));
+  const over = await p.evaluate(() => Math.max(0, document.getElementById("hero").offsetHeight - innerHeight));
+  if (over < 50) fail("Übersicht nicht höher als der Bildschirm: " + over);
+  await p.evaluate(y => scrollTo(0, y), over);
+  await until(async () => (await heroOp()) > 0.99, "Übersicht beim Scrollen durch die Liste voll sichtbar: " + await heroOp());
+  await p.evaluate(() => scrollTo(0, 0));
+  await until(async () => (await heroOp()) > 0.99, "Übersicht nach dem Hochscrollen voll sichtbar: " + await heroOp());
+  await p.setViewportSize(vs);
   await p.locator(".hero .cp-t-hidden").click();
   if (await p.locator(".hero .cp-list").count()) fail("Aufschlüsselung nicht zugeklappt");
   log(`Zusammensetzung: ${tabs.join(" + ")} = Gesamt, Verpflegung unter „Versteckt“ mit Rechenweg, zweiter Klick klappt zu`);
