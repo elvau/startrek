@@ -724,9 +724,10 @@ try {
   if (await cv.locator(".cv-table [data-row=attractions]").count()) fail("gleiche Zeile bei „nur Unterschiede“");
   await cv.locator(".cv-var[data-var=v2] .cv-take").click();
   await cv.locator(".cv-picked", { hasText: "Ardennen Belgien" }).waitFor();
-  if ((await cv.locator(".cv-head .cv-var").count()) !== 1) fail("andere Varianten nicht eingeklappt");
-  await cv.locator(".cv-others").click();
-  if ((await cv.locator(".cv-head .cv-var").count()) !== 3) fail("andere Varianten nicht aufklappbar");
+  if ((await cv.locator(".cv-head .cv-var").count()) !== 1) fail("andere Varianten nicht archiviert");
+  await cv.locator(".cv-others", { hasText: "2 archivierte Varianten" }).click();
+  if ((await cv.locator(".cv-head .cv-var").count()) !== 3) fail("archivierte Varianten nicht anzeigbar");
+  if ((await cv.locator(".cv-head .cv-restore").count()) !== 2) fail("„Wiederherstellen“ fehlt an den archivierten Varianten");
   // umbenennen und herausnehmen über „⋯“
   await cv.locator(".cv-var[data-var=v3] .cv-menu").click();
   await cv.locator(".cv-var[data-var=v3] .cv-rename").click();
@@ -737,8 +738,9 @@ try {
   await cv.locator(".cv-back").click();
   await tile.waitFor();
   const tt = await tile.innerText();
-  if (!tt.includes("2 Varianten") || !(await tile.locator(".hc-vars").first().innerText()).includes("✓ Ardennen Belgien") || !(await tile.locator(".hc-rest summary").innerText()).includes("1 weitere Variante")) fail("Kachel nach Wahl: " + tt.replace(/\n/g, " / "));
+  if (!tt.includes("2 Varianten") || !(await tile.locator(".hc-vars").first().innerText()).includes("✓ Ardennen Belgien") || !(await tile.locator(".hc-arch").innerText()).includes("1 archivierte Variante")) fail("Kachel nach Wahl: " + tt.replace(/\n/g, " / "));
   if (!(await cp.locator(".home-trip:not(.home-cmp)", { hasText: "Monschau" }).count())) fail("herausgenommene Variante nicht als eigene Reise");
+  if ((await cp.locator(".home-trip:not(.home-cmp) .ht-incmp").count()) !== 1) fail("archivierte Variante noch als eigene Kachel");
   // in der Reise: „Gewählt · 1 weitere Variante“, von dort zum Vergleich
   await tile.locator(".hc-var", { hasText: "Ardennen Belgien" }).click();
   await cp.locator(".hero .vbar", { hasText: "Gewählt · 1 weitere Variante" }).waitFor();
@@ -767,11 +769,14 @@ try {
   await cv.locator(".cv-table").waitFor();
   await cv.locator(".cv-others").click();
   await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 3, "Reise per Antippen zum Vergleich");
+  // archivierte Variante wiederherstellen
+  await cv.locator(".cv-head .cv-restore").first().click();
+  await until(async () => !(await cv.locator(".cv-head .cv-restore").count()), "Variante wiederhergestellt");
   // Vergleich trennen: alle wieder eigene Reisen
   await cv.locator(".cv-split").click();
   await until(async () => !(await cp.locator(".home-cmp").count()) && (await cp.locator(".home-trip:not(.home-cmp)").count()) === 3, "Vergleich getrennt");
   await vctx.close();
-  log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Diese nehmen (andere eingeklappt), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln, Reise auf den Vergleich ziehen bzw. per ⇆ antippen, Vergleich trennen");
+  log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Diese nehmen (andere archiviert, wiederherstellbar), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln, Reise auf den Vergleich ziehen bzw. per ⇆ antippen, Vergleich trennen");
   }
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));

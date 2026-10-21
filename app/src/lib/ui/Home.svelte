@@ -14,7 +14,7 @@
   import { cloud } from "../cloud/cloud.svelte";
   import { flagOf, range } from "../format";
   import { ccOf } from "../geo/places";
-  import { bundle, isBundle, pickedOf, variantLabel, type Bundle } from "../variants";
+  import { bundle, isArchived, isBundle, pickedOf, variantLabel, type Bundle } from "../variants";
   import { openEventPlanner } from "../event/open.svelte";
   import { openChat } from "../agent/open.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
@@ -32,7 +32,7 @@
   let shared = $state<Shared | null>(null);
   $effect(() => { if (shareIn.v) { shared = shareIn.v; shareIn.v = null; picking = true; } });
   const today = new Date().toISOString().slice(0, 10);
-  type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null; cmp?: { id: string; title: string; chosen?: string }; label: string };
+  type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null; cmp?: { id: string; title: string; chosen?: string; archived?: string }; label: string };
   const rows = $derived<Row[]>(homeTrips().map(m => {
     const tr = tripFor(m.id);
     // Zeitraum und Personen aus der Reise selbst (der Eintrag in der Liste kann älter sein)
@@ -47,6 +47,8 @@
   // Varianten im Bündel nach Namen (wie in der Reise, „Variante x von y“)
   const bundles = $derived<Bundle<Row>[]>(bundle(rows).filter(isBundle).map(u => ({ ...u, list: [...u.list].sort((a, b) => a.label.localeCompare(b.label, i18n.lang, { numeric: true })) })));
   const bundleOf = (r: Row) => (r.cmp ? bundles.find(b => b.cmp === r.cmp!.id) : undefined);
+  // archivierte Varianten (#433) nur in der Vergleichskachel
+  const shown = $derived(rows.filter(r => !isArchived(r, r.cmp ? pickedOf(bundleOf(r)?.list || []) : undefined)));
   const all = (u: Unit) => (isBundle(u) ? u.list : [u]);
   const rowState = (r: Row): TripState => r.s?.state ?? (r.to && r.to < today ? "past" : "planned");
   const stateOf = (u: Unit): TripState => {
@@ -72,6 +74,8 @@
   const countryOf = (u: Unit) => rowCountry(all(u)[0]);
   const keyOf = (u: Unit) => (isBundle(u) ? `cmp:${u.cmp}` : u.id);
   const groups = $derived.by(() => {
+    // archivierte Varianten (#433) nur in der Vergleichskachel, nicht als eigene Kachel
+    const rows = shown;
     const byState = (cmp: (a: Unit, b: Unit) => number, pastCmp = cmp) => [
       { k: "planned", title: t("home.planned"), list: rows.filter(r => stateOf(r) === "planned").sort(cmp) },
       { k: "booked", title: t("home.booked"), list: rows.filter(r => stateOf(r) === "booked").sort(cmp) },
@@ -212,7 +216,8 @@
       {@const low = cheapest(b)}
       {@const same = sameDates(b)}
       {@const pick = pickedOf(b.list)}
-      {@const rest = pick ? b.list.filter(v => v.id !== pick.id) : b.list}
+      {@const rest = b.list.filter(v => v.id !== pick?.id && !isArchived(v, pick))}
+      {@const nArch = b.list.filter(v => isArchived(v, pick)).length}
       <div class="ht-wrap home-cmp-wrap" class:drop-ok={canTake(b, src)} class:drop-on={over === keyOf(b)} {...zone(b)}>
         <div class="home-trip home-cmp" class:past={stateOf(b) === "past"} class:as-row={view === "list"} data-cmp={b.cmp}>
           <span class="ht-top"><button class="hc-open" onclick={() => openCompare(b.cmp)}><b>{f.cloud ? "☁ " : ""}{b.title}</b></button><span class="hc-n">{tn("home.variants", b.list.length)}</span></span>
@@ -230,14 +235,12 @@
                 <small>{[(v.people || 0) > 1 && v.s && v.s.perPerson > 0 ? t("perPerson", { v: eur(v.s.perPerson) }) : "", v.id === low ? t("home.cheapest") : ""].filter(Boolean).join(" · ")}</small></span>
             </button>
           {/snippet}
-          <!-- gewählt (#430): oben, die übrigen eingeklappt -->
+          <!-- gewählt (#430): oben; die übrigen archiviert (#433), wiederherstellen in der Vergleichsansicht -->
           <div class="hc-vars">
             {#if pick}{@render varRow(pick)}{/if}
-            {#if !pick}{#each rest as v (v.id)}{@render varRow(v)}{/each}{/if}
+            {#each rest as v (v.id)}{@render varRow(v)}{/each}
           </div>
-          {#if pick && rest.length}
-            <details class="hc-rest"><summary>{tn("cmpv.showOthers", rest.length)}</summary><div class="hc-vars">{#each rest as v (v.id)}{@render varRow(v)}{/each}</div></details>
-          {/if}
+          {#if nArch}<button class="linkbtn hc-arch" onclick={() => openCompare(b.cmp)}>🗄 {tn("cmpv.archivedN", nArch)}</button>{/if}
           <span class="hc-foot">
             {#if b.list.some(editable)}<button class="linkbtn hc-split" onclick={() => split(b)}>✂ {t("cmpv.split")}</button>{/if}
             <button class="linkbtn hc-cmp-go" onclick={() => openCompare(b.cmp)}>{t("home.compare")} →</button>
@@ -346,8 +349,7 @@
   .hc-open { all: unset; cursor: pointer; }
   .hc-open:focus-visible { outline: 2px solid var(--a); border-radius: 6px; }
   .hc-var.win { background: color-mix(in srgb, var(--good) 9%, transparent); }
-  .hc-rest { width: 100%; font-size: 13px; }
-  .hc-rest summary { cursor: pointer; color: var(--ink-2); padding: 4px 0; }
+  .hc-arch { align-self: flex-start; font-size: 13px; color: var(--ink-2); padding: 4px 0; }
   .hc-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; }
   .hc-cmp-go { margin-inline-start: auto; padding: 0; font-weight: 700; }
   .hc-split { padding: 0; font-size: 13px; color: var(--ink-2); }

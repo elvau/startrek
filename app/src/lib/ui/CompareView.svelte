@@ -11,7 +11,7 @@
   import { ccOf, loadGeo } from "../geo/places";
   import { geo } from "../geo/geo.svelte";
   import { cheapestId, column, explain, rowMin, rowSpread, sameTrip, shownRows, type Col, type RowKey } from "../compareView";
-  import { leaveCompare, pickedOf, variantLabel } from "../variants";
+  import { isArchived, leaveCompare, pickedOf, variantLabel } from "../variants";
   import TopNav from "./TopNav.svelte";
   import AiMark from "./AiMark.svelte";
   import AppFooter from "./AppFooter.svelte";
@@ -24,8 +24,11 @@
     .sort((a, b) => a.label.localeCompare(b.label, i18n.lang, { numeric: true })));
   const picked = $derived(pickedOf(all.map(v => ({ id: v.id, cmp: v.tr.cmp }))));
   let showAll = $state(false);
+  /** archiviert (#429/#433): nach „Diese nehmen“ die anderen Varianten, bis sie wiederhergestellt werden */
+  const archivedOf = (v: V) => isArchived({ id: v.id, cmp: v.tr.cmp }, picked);
+  const nArchived = $derived(all.filter(archivedOf).length);
   // nach „Diese nehmen“: gewählte zuerst, die anderen eingeklappt (nicht gelöscht)
-  const list = $derived(picked ? [all.find(v => v.id === picked.id)!, ...(showAll ? all.filter(v => v.id !== picked.id) : [])] : all);
+  const list = $derived(picked ? [all.find(v => v.id === picked.id)!, ...all.filter(v => v.id !== picked.id && (showAll || !archivedOf(v)))] : all.filter(v => showAll || !archivedOf(v)));
   const cols = $derived(list.map(v => v.col));
   const low = $derived(cheapestId(all.map(v => v.col)));
   const ref = $derived(all.find(v => v.id === low)?.col);
@@ -60,11 +63,17 @@
   async function take(v: V) {
     const at = new Date().toISOString();
     // umentscheiden: frühere Wahl an anderen Varianten aufheben
-    for (const o of all) if (o.id !== v.id && o.tr.cmp?.chosen) await editTrip(o.id, tr => { if (tr.cmp) delete tr.cmp.chosen; });
-    await editTrip(v.id, tr => { if (tr.cmp) tr.cmp.chosen = at; });
+    // die anderen archivieren (nicht löschen, #433)
+    for (const o of all) if (o.id !== v.id && (o.tr.cmp?.chosen || !o.tr.cmp?.archived)) await editTrip(o.id, tr => { if (tr.cmp) { delete tr.cmp.chosen; tr.cmp.archived ||= at; } });
+    await editTrip(v.id, tr => { if (tr.cmp) { tr.cmp.chosen = at; delete tr.cmp.archived; } });
     showAll = false;
   }
-  async function untake(v: V) { await editTrip(v.id, tr => { if (tr.cmp) delete tr.cmp.chosen; }); }
+  /** Wahl zurücknehmen: alle Varianten wieder sichtbar */
+  async function untake(v: V) {
+    await editTrip(v.id, tr => { if (tr.cmp) delete tr.cmp.chosen; });
+    for (const o of all) if (o.tr.cmp?.archived) await editTrip(o.id, tr => { if (tr.cmp) delete tr.cmp.archived; });
+  }
+  async function restore(v: V) { await editTrip(v.id, tr => { if (tr.cmp) delete tr.cmp.archived; }); }
   async function rename(v: V) {
     const x = prompt(t("tm.renameVarQ"), v.label)?.trim();
     if (x) await editTrip(v.id, tr => { if (tr.cmp) tr.cmp.label = x.slice(0, 60); });
@@ -101,7 +110,7 @@
     </div>
     {#if picked}
       <p class="cv-picked">✓ {t("cmpv.pickedNote", { x: all.find(v => v.id === picked.id)?.label || "" })}
-        <button class="linkbtn cv-others" onclick={() => (showAll = !showAll)}>{showAll ? t("cmpv.hideOthers") : tn("cmpv.showOthers", all.length - 1)}</button></p>
+        {#if nArchived}<button class="linkbtn cv-others" onclick={() => (showAll = !showAll)}>{showAll ? t("cmpv.hideOthers") : tn("cmpv.archivedN", nArchived)}</button>{/if}</p>
     {/if}
 
     <!-- Desktop: Spalten je Variante -->
@@ -119,6 +128,7 @@
               {#if v.edit}
                 {#if picked?.id === v.id}<button class="btn sm cv-untake" onclick={() => untake(v)}>✓ {t("cmpv.taken")}</button>
                 {:else}<button class="btn sm primary cv-take" onclick={() => take(v)}>{t("cmpv.take")}</button>{/if}
+                {#if archivedOf(v)}<button class="btn sm cv-restore" onclick={() => restore(v)}>↩ {t("cmpv.restore")}</button>{/if}
               {/if}
               <button class="btn sm cv-edit" onclick={() => openTrip(v.id, "Vergleich")}>{v.edit ? t("cmpv.edit") : t("cmpv.open")}</button>
               {#if v.edit}
@@ -177,6 +187,7 @@
       <div class="cv-mob-acts">
         {#each list as v (v.id)}
           {#if v.edit && picked?.id !== v.id}<button class="btn sm primary cv-take" onclick={() => take(v)}>{flag(v)} {t("cmpv.takeShort")}</button>{/if}
+          {#if v.edit && archivedOf(v)}<button class="btn sm cv-restore" onclick={() => restore(v)}>{flag(v)} ↩ {t("cmpv.restore")}</button>{/if}
           <button class="btn sm cv-edit" onclick={() => openTrip(v.id, "Vergleich")}>{flag(v)} {v.edit ? t("cmpv.edit") : t("cmpv.open")}</button>
         {/each}
       </div>
