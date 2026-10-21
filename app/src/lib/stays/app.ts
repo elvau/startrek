@@ -8,6 +8,7 @@ import { locOf } from "../geo/maps";
 import { dir } from "../directory.svelte";
 import { myHome } from "../prefs";
 import { searchMarket } from "./market";
+import { serverError } from "../neterror";
 
 /** Gäste: Erwachsene und Alter der Kinder (Hotels rechnen bis 17 als Kind); ohne Alter: Kind 8, Baby 1 */
 export function guests(people: Traveler[]): Pick<StayQuery, "adults" | "childAges"> {
@@ -120,6 +121,6 @@ export async function searchStaysRemote(q: StayQuery, signal?: AbortSignal): Pro
   const body = { ...q, market: q.market || searchMarket(myHome(dir), typeof navigator !== "undefined" ? navigator.language : undefined), lang: q.lang || i18n.lang };
   const res = await fetch(`${FLIGHTS_URL}/stays/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(res.status === 429 ? t("search.tooMany") : data.error || t("search.status", { s: res.status }));
+  if (!res.ok) throw new Error(serverError(data, res.status));
   return data as StaySearchResult;
 }

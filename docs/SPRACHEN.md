@@ -28,7 +28,10 @@ Schlüssel mit Endungen nach [Intl.PluralRules](https://developer.mozilla.org/do
 ## Hinweise
 
 - Die Übersetzungen sind maschinell erstellt. Muttersprachler sollten sie prüfen.
-- Die Reiseideen (Inhaltsseiten /reise/ und die Posten, die sie in der App anlegen) und Fehlermeldungen des Such-Dienstes bleiben vorerst deutsch.
+- Die Reiseideen (Inhaltsseiten /reise/ und die Posten, die sie in der App anlegen) bleiben vorerst deutsch.
+- Fehlermeldungen des Such-Dienstes (#466): Der Dienst schickt neben dem deutschen Text einen Code (`app/src/lib/errcodes.ts`),
+  die App zeigt `err.<code>` (`serverError` in `neterror.ts`). Neue feste Fehlertexte im Worker dort in `BY_TEXT` eintragen;
+  Prüfmeldungen ungültiger Anfragen laufen als `bad_request` und erscheinen genau nur auf Deutsch.
 - Die Browser-Tests laufen auf Deutsch (`locale: "de-DE"`).
 
 ## Länder (#162)

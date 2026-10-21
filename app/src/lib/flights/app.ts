@@ -11,6 +11,7 @@ import { guessAirports, type Guess } from "./origin";
 import { origin } from "./origin.svelte";
 import { airportData } from "../geo/geo.svelte";
 import { addOnExtras, addOns, sumAddOns, type AddOns, type BagNeed } from "./addons";
+import { serverError } from "../neterror";
 
 /** Adresse des Such-Dienstes (Cloudflare Worker); leer: noch nicht eingerichtet */
 export const FLIGHTS_URL = (import.meta.env.VITE_FLIGHTS_URL as string | undefined)?.replace(/\/$/, "") || "";
@@ -271,7 +272,7 @@ export async function searchFlights(q: FlightQuery, signal?: AbortSignal): Promi
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await fetch(`${FLIGHTS_URL}/flights/search`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(q), signal });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(res.status === 429 ? t("search.tooMany") : body.error || t("search.status", { s: res.status }));
+    if (!res.ok) throw new Error(serverError(body, res.status));
     data = body as SearchResult;
     const pax = (q.adults || 0) + (q.children || 0) || 1;
     const bad = (data.offers || []).filter(o => !saneOffer(o, pax));

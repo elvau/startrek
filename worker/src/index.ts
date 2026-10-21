@@ -5,6 +5,7 @@
  */
 import { parseQuery, searchAll, type FlightEnv } from "../../app/src/lib/flights/search";
 import { healthBody } from "./health";
+import { withCode } from "../../app/src/lib/errcodes";
 import { parseStayQuery, searchStays, type StayEnv } from "../../app/src/lib/stays/search";
 import type { FlightQuery } from "../../app/src/lib/flights/types";
 import type { StayQuery } from "../../app/src/lib/stays/types";
@@ -72,8 +73,9 @@ function cors(origin: string | null, env: Env): Record<string, string> {
   return { "access-control-allow-origin": origin, "access-control-allow-methods": "POST, GET, OPTIONS", "access-control-allow-headers": "content-type, authorization", "access-control-max-age": "86400", vary: "origin" };
 }
 
+// Fehler bekommen einen festen Code (#466), die App übersetzt ihn
 const json = (body: unknown, status: number, headers: Record<string, string>) =>
-  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", ...headers } });
+  new Response(JSON.stringify(withCode(body, status)), { status, headers: { "content-type": "application/json; charset=utf-8", ...headers } });
 
 export default {
   // täglich (Zeitplan in wrangler.toml): abgelaufene Einträge des Angebotsspeichers löschen (#462)
