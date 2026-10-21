@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { answer, checks, levelOf, partyOf, reviewOf, setParty } from "./review";
+import { suggestParty, answer, checks, levelOf, partyOf, reviewOf, setParty } from "./review";
 import type { ImportedOffer } from "./ai";
 
 const pkg: ImportedOffer = {
@@ -37,6 +37,13 @@ describe("Sicherheit je Angabe (#458)", () => {
     expect(reviewOf(o, new Set(), true).questions).toEqual(["board"]);
     const a = answer(answer(o, "people", "3"), "board", "half");
     expect([a.adults, a.stay?.board]).toEqual([3, "half"]);
+  });
+  it("Personen nur geraten: trotzdem nachfragen, vorbelegt mit dem Vorschlag, sonst 2", () => {
+    const o: ImportedOffer = { kind: "stay", place: "Rom", adults: 2, stay: { name: "Casa", board: "half" }, confidence: { place: 1, stay: 1, board: 1, people: 0.5 } };
+    expect(reviewOf(o).questions).toEqual(["people"]);
+    expect(suggestParty(o)).toEqual({ adults: 2, kids: 0, infants: 0 });
+    expect(suggestParty({ kind: "stay", childAges: [6] })).toEqual({ adults: 2, kids: 1, infants: 0 });
+    expect(reviewOf(setParty(o, suggestParty(o))).questions).toEqual([]);
   });
   it("alles sicher und nichts offen: direkt anlegen", () => {
     const o: ImportedOffer = { kind: "flight", place: "Rom", adults: 2, flights: { legs: [{ dir: "out", from: "DUS", to: "FCO" }], baggage: { cabin: 1, checked: 0 } }, confidence: { place: 1, people: 1, flights: 0.9, baggage: 0.95 } };

@@ -887,6 +887,7 @@ export const ar: Dict = {
   "imp.a.baggage.cabin": "أمتعة اليد فقط",
   "imp.a.baggage.checked": "نعم، حقيبة واحدة",
   "imp.a.dunno": "لا أعرف",
+  "imp.a.ok": "صحيح",
   "imp.a.transfer.no": "لا",
   "imp.a.transfer.yes": "نعم",
   "imp.aaChanged": "آخر تعديل في {d}.",

@@ -12,7 +12,7 @@
   import { money } from "../calc";
   import { dateDE, range } from "../format";
   import type { ConfKey, ImportedOffer } from "../import/ai";
-  import { ANSWERS, DUNNO, answer, partyOf, reviewOf, setParty, type Level, type Party, type QuestionId } from "../import/review";
+  import { ANSWERS, DUNNO, answer, partyOf, reviewOf, setParty, suggestParty, type Level, type Party, type QuestionId } from "../import/review";
   import { clampCount } from "../count";
 
   let { offer = $bindable(), peopleKnown = false, cachedUntil = "", oncreate, onback }: { offer: ImportedOffer; peopleKnown?: boolean; cachedUntil?: string; oncreate: () => void; onback: () => void } = $props();
@@ -51,6 +51,11 @@
   const party = $derived(partyOf(offer));
   const COUNTS: { k: keyof Party; l: Key; min: number }[] = [{ k: "adults", l: "imp.rev.adults", min: 1 }, { k: "kids", l: "imp.rev.kids", min: 0 }, { k: "infants", l: "imp.rev.infants", min: 0 }];
   const setCount = (k: keyof Party, v: number) => { offer = setParty(offer, { ...party, [k]: Math.max(k === "adults" ? 1 : 0, Math.min(k === "adults" ? 60 : 30, v)) }); };
+  // Rückfrage Personen: Zähler, vorbelegt mit dem Vorschlag; „Passt“ übernimmt (#474)
+  let draft = $state<Party | null>(null);
+  const pd = $derived(draft ?? suggestParty(offer));
+  const setDraft = (k: keyof Party, v: number) => { draft = { ...pd, [k]: Math.max(k === "adults" ? 1 : 0, Math.min(k === "adults" ? 60 : 30, v)) }; };
+  function confirmParty() { offer = setParty(offer, pd); answered = [...answered, "people"]; draft = null; }
   // korrigiert gilt als sicher
   function sure(k: ConfKey) { offer.confidence = { ...(offer.confidence || {}), [k]: 1 }; }
 </script>
@@ -70,7 +75,23 @@
     {#each r.questions as q (q)}
       <div class="rev-q" role="group" aria-label={t(`imp.q.${q}` as Key)}>
         <b>{t(`imp.q.${q}` as Key)}</b>
+        {#if q === "people"}
+          <div class="rev-qp">
+            {#each COUNTS as c (c.k)}
+              <div class="f rev-cnt">{t(c.l)}
+                <span class="qf-step" role="group" aria-label={t(c.l)}>
+                  <button type="button" disabled={pd[c.k] <= c.min} onclick={() => setDraft(c.k, pd[c.k] - 1)} aria-label={t("step.less", { what: t(c.l) })}>−</button>
+                  <input class="qf-n" type="number" inputmode="numeric" min={c.min} max="60" value={pd[c.k]} aria-label={t(c.l)}
+                    onchange={e => { setDraft(c.k, clampCount(e.currentTarget.value, c.min, 60, pd[c.k])); e.currentTarget.value = String(pd[c.k]); }} />
+                  <button type="button" onclick={() => setDraft(c.k, pd[c.k] + 1)} aria-label={t("step.more", { what: t(c.l) })}>+</button>
+                </span>
+              </div>
+            {/each}
+            <button type="button" class="btn sm primary rev-ok" onclick={confirmParty}>{t("imp.a.ok")}</button>
+          </div>
+        {:else}
         <div class="chips">{#each ANSWERS[q] as v (v)}<button type="button" class="chip" onclick={() => pick(q, v)}><span aria-hidden="true">{ansIcon(q, v)}</span> {ansLabel(q, v)}</button>{/each}</div>
+        {/if}
       </div>
     {/each}
   {/if}
@@ -115,6 +136,8 @@
 
 <style>
   .rev { display: flex; flex-direction: column; gap: 10px; }
+  .rev-qp { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .rev-ok { align-self: flex-start; margin-top: 4px; }
   .rev-top { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
   .rev-top p { margin: 2px 0 0; }
   .rev-ring { --p: 0; flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--a) calc(var(--p) * 1%), var(--line) 0); }

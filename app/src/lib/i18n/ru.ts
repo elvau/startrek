@@ -862,6 +862,7 @@ export const ru: Dict = {
   "imp.a.baggage.cabin": "Только ручная кладь",
   "imp.a.baggage.checked": "Да, один чемодан",
   "imp.a.dunno": "Не знаю",
+  "imp.a.ok": "Верно",
   "imp.a.transfer.no": "Нет",
   "imp.a.transfer.yes": "Да",
   "imp.aaChanged": "Последнее изменение: {d}.",

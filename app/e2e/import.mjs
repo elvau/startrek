@@ -39,7 +39,8 @@ const DEAL = {
 const PARK = {
   kind: "stay", title: "Ferienpark an der Elbe", provider: "Ferienparks", place: "Hamburg", country: "DE", from: "2027-05-05", to: "2027-05-10",
   adults: 2, price: { total: 500, currency: "EUR" }, stay: { name: "Ferienpark Elbe", price: 500 },
-  confidence: { place: 1, dates: 1, people: 1, price: 1, stay: 1 }
+  // Personen nur aus „Doppelzimmer“ abgeleitet: Rückfrage mit Zählern, vorbelegt mit 2
+  confidence: { place: 1, dates: 1, people: 0.5, price: 1, stay: 1 }
 };
 
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4186", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
@@ -249,7 +250,12 @@ try {
   await until(async () => (await nd.locator(".parts").count()) || (await nd.locator(".imp-create").count()), "Übersicht oder Was fehlt noch");
   // Personen: ein Kind und ein Kleinkind dazu (#474); dafür von „Was fehlt noch?“ zurück zur Übersicht, falls übersprungen
   if (await nd.locator(".parts").count()) await nd.locator(".parts .btn", { hasText: "Zurück" }).click();
-  // Rückfragen (z. B. Verpflegung) mit der ersten Antwort beantworten
+  // Personen geraten: Zähler mit dem Vorschlag der KI (2 Erwachsene), „Passt“ übernimmt
+  const pq = nd.locator(".rev-q", { hasText: "Wie viele Personen" });
+  if (await pq.locator(".rev-cnt", { hasText: "Erwachsene" }).locator("input").inputValue() !== "2") fail("Personen-Rückfrage nicht mit 2 vorbelegt");
+  if (await pq.locator(".chip").count()) fail("Personen-Rückfrage noch mit festen Antworten");
+  await pq.locator(".rev-ok", { hasText: "Passt" }).click();
+  // weitere Rückfragen (z. B. Verpflegung) mit der ersten Antwort beantworten
   while (await nd.locator(".rev-q").count()) await nd.locator(".rev-q").first().locator(".chip").first().click();
   await nd.locator('.rev-list li[data-k="people"] .linkbtn').click();
   await nd.locator(".rev-cnt", { hasText: "Kinder (2–11)" }).locator("button", { hasText: "+" }).click();
@@ -278,7 +284,7 @@ try {
     if (park.items.some(i => i.cat === "flights")) fail("Flug angelegt, obwohl nicht gebraucht");
     if (park.travelers.map(x => x.kind).join() !== "adult,adult,child,infant") fail("Personen: " + park.travelers.map(x => x.kind));
   }
-  log("Nur Unterkunft: Kind und Kleinkind ergänzt, Flug nicht nötig, Anreise mit der Bahn aus dem Wohnort geschätzt");
+  log("Nur Unterkunft: Personen-Rückfrage mit 2 vorbelegt, Kind und Kleinkind ergänzt, Flug nicht nötig, Anreise mit der Bahn aus dem Wohnort geschätzt");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Import ok");
