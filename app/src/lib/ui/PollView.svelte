@@ -4,7 +4,7 @@
    * „✕ Ohne mich“, Frist. Planerin stellt Art, Meilen und Frist ein und übernimmt das Ergebnis.
    */
   import { t, tn, type Key } from "../i18n/index.svelte";
-  import { access, app } from "../store.svelte";
+  import { access, app, takeVariant } from "../store.svelte";
   import { cloudTrip } from "../cloud/cloud.svelte";
   import { dateDE } from "../format";
   import { applyResult, dueSoon, maxMiles, mergedVotes, milesLeft, milesOf, missing, pollOpen, tallyMode, VETO, type Poll, type PollMode } from "../together";
@@ -42,15 +42,22 @@
   const out = $derived(vetoesNow(p));
   const signed = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${eur(Math.abs(v))}`;
   /** Folgen je Möglichkeit, wenn alle mit „Ohne mich“ (ggf. mit Familie) wegfallen */
-  const effects = $derived(Object.fromEntries(p.options.filter(o => out[o.id]?.length).map(o => [o.id, without(trip, out[o.id], tr => applyOption(tr, p, o.id), geo)])));
+  const effects = $derived(p.kind === "variants" ? {} : Object.fromEntries(p.options.filter(o => out[o.id]?.length).map(o => [o.id, without(trip, out[o.id], tr => applyOption(tr, p, o.id), geo)])));
   const vetoName = (k: string, o: string) => `${nameOf(k)}${why[k]?.[o]?.f ? ` (${t("veto.withFamily")})` : ""}${why[k]?.[o]?.r ? `: „${why[k][o].r}“` : ""}`;
   function veto(o: string, v: number) {
     // zurücknehmen ohne Rückfrage, sonst erst das Fenster
     if (v === VETO) void act(o, "veto"); else vetoFor = o;
   }
-  const notes = $derived(open ? myNotes(p) : []);
+  const notes = $derived(open && p.kind !== "variants" ? myNotes(p) : []);
   /** Ergebnis übernehmen: wer bei der Möglichkeit nicht dabei wäre, wird nach Rückfrage auf „nicht dabei“ gestellt */
   function take(id: string, label: string) {
+    // über Varianten (#432): Abstimmung schließen und die Variante nehmen, die anderen archivieren
+    if (p.kind === "variants") {
+      applyResult(trip, p, id);
+      const tid = p.options.find(o => o.id === id)?.tripId;
+      if (tid) void takeVariant(tid);
+      return;
+    }
     const ids = out[id] || [];
     if (ids.length) {
       if (!confirm(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
@@ -125,7 +132,7 @@
   {/if}
   {#if !p.closed && !access.readonly && rows[0] && rows[0].score > 0}
     <p class="fu-acts">
-      <button class="btn sm primary poll-apply" onclick={() => take(rows[0].id, rows[0].label)}>{p.kind === "dates" ? t("poll.applyDates", { x: rows[0].label }) : p.kind === "offers" ? t("poll.applyOffer", { x: rows[0].label }) : t("poll.close", { x: rows[0].label })}</button>
+      <button class="btn sm primary poll-apply" onclick={() => take(rows[0].id, rows[0].label)}>{p.kind === "dates" ? t("poll.applyDates", { x: rows[0].label }) : p.kind === "offers" ? t("poll.applyOffer", { x: rows[0].label }) : p.kind === "variants" ? t("poll.applyVariant", { x: rows[0].label }) : t("poll.close", { x: rows[0].label })}</button>
     </p>
   {/if}
   {#if !access.readonly}<button class="linkbtn danger small" onclick={onremove}>{t("poll.remove")}</button>{/if}

@@ -594,6 +594,19 @@ export async function editTrip(id: string, fn: (t: Trip) => void) {
   localRev.n++;
 }
 
+/** „Diese nehmen“ (#430): Variante wählen, die anderen archivieren (#433); auch als Ergebnis einer Abstimmung (#432) */
+export async function takeVariant(id: string) {
+  const cid = tripFor(id)?.cmp?.id;
+  if (!cid) return;
+  const at = new Date().toISOString();
+  for (const m of allTrips()) {
+    const o = tripFor(m.id);
+    if (m.id === id || o?.cmp?.id !== cid || (!o.cmp.chosen && o.cmp.archived)) continue;
+    await editTrip(m.id, x => { if (x.cmp) { delete x.cmp.chosen; x.cmp.archived ||= at; } });
+  }
+  await editTrip(id, x => { if (x.cmp) { x.cmp.chosen = at; delete x.cmp.archived; } });
+}
+
 /**
  * Reise auf eine andere bzw. einen Vergleich ziehen: beide im selben Vergleich, Name der Variante ist der Name der
  * Reise (zwei eigenständige Reisen haben oft denselben Ort). Gibt die Kennung des Vergleichs zurück.

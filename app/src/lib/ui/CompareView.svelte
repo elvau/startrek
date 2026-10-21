@@ -5,13 +5,16 @@
    * „Bearbeiten“ (öffnet die Planung), umbenennen, aus dem Vergleich nehmen, Variante hinzufügen.
    */
   import { i18n, t, tn, type Key } from "../i18n/index.svelte";
-  import { addVariant, allTrips, app, editTrip, goHome, openTrip, splitCompare, switchTrip, tripFor } from "../store.svelte";
+  import { addVariant, allTrips, app, editTrip, goHome, openTrip, splitCompare, switchTrip, takeVariant, tripFor } from "../store.svelte";
   import { eur } from "../calc";
   import { flagOf, range } from "../format";
   import { ccOf, loadGeo } from "../geo/places";
   import { geo } from "../geo/geo.svelte";
   import { cheapestId, column, explain, rowMin, rowSpread, sameTrip, shownRows, type Col, type RowKey } from "../compareView";
   import { isArchived, leaveCompare, pickedOf, variantLabel } from "../variants";
+  import { addPoll, mergedVotes, newPoll, variantPoll, variantStand } from "../together";
+  import { remoteVotes } from "../polls.svelte";
+  import PollView from "./PollView.svelte";
   import TopNav from "./TopNav.svelte";
   import AiMark from "./AiMark.svelte";
   import AppFooter from "./AppFooter.svelte";
@@ -60,18 +63,31 @@
   };
   const maxOf = (k: RowKey) => Math.max(1, ...cols.map(c => c.cells[k].sum));
 
-  async function take(v: V) {
-    const at = new Date().toISOString();
-    // umentscheiden: frühere Wahl an anderen Varianten aufheben
-    // die anderen archivieren (nicht löschen, #433)
-    for (const o of all) if (o.id !== v.id && (o.tr.cmp?.chosen || !o.tr.cmp?.archived)) await editTrip(o.id, tr => { if (tr.cmp) { delete tr.cmp.chosen; tr.cmp.archived ||= at; } });
-    await editTrip(v.id, tr => { if (tr.cmp) { tr.cmp.chosen = at; delete tr.cmp.archived; } });
-    showAll = false;
-  }
+  // umentscheiden: frühere Wahl aufheben, die anderen archivieren (nicht löschen, #433)
+  async function take(v: V) { await takeVariant(v.id); showAll = false; }
   /** Wahl zurücknehmen: alle Varianten wieder sichtbar */
   async function untake(v: V) {
     await editTrip(v.id, tr => { if (tr.cmp) delete tr.cmp.chosen; });
     for (const o of all) if (o.tr.cmp?.archived) await editTrip(o.id, tr => { if (tr.cmp) delete tr.cmp.archived; });
+  }
+  /* ---------- Abstimmung über die Varianten (#432) ---------- */
+  // liegt in einer Variante; die wird im Hintergrund zur offenen Reise, damit Stimmen, „Wer bist du?“ und „Ohne mich“ greifen
+  const host = $derived(all.find(v => { const p = variantPoll(v.tr); return p && !p.closed; }) ?? all.find(v => variantPoll(v.tr)));
+  $effect(() => { if (host && app.trip.id !== host.id) switchTrip(host.id, "Vergleich: Abstimmung"); });
+  const vpoll = $derived(host && app.trip.id === host.id ? variantPoll(app.trip) : undefined);
+  const stand = $derived(vpoll ? variantStand(vpoll, mergedVotes(vpoll, remoteVotes(vpoll))) : undefined);
+  const canPoll = $derived(all.some(v => v.edit) && all.filter(v => !archivedOf(v)).length > 1);
+  function startPoll() {
+    // in der geteilten Variante mit den meisten Mitgliedern (dort stimmen alle ab), sonst in der ersten bearbeitbaren
+    const h = all.filter(v => v.edit).sort((a, b) => Number(b.cloud) - Number(a.cloud) || b.members.length - a.members.length)[0];
+    if (!h) return;
+    const p = newPoll(t("cmpv.pollQ", { title }), "variants", all.filter(v => !archivedOf(v)).map(v => ({ label: v.label, tripId: v.id })), "one");
+    void editTrip(h.id, tr => addPoll(tr, p));
+  }
+  function removePoll() {
+    if (!vpoll || !confirm(t("poll.removeQ"))) return;
+    app.trip.polls = (app.trip.polls || []).filter(p => p.id !== vpoll.id);
+    if (!app.trip.polls.length) delete app.trip.polls;
   }
   async function restore(v: V) { await editTrip(v.id, tr => { if (tr.cmp) delete tr.cmp.archived; }); }
   async function rename(v: V) {
@@ -124,6 +140,7 @@
             <b class="cv-total num">{eur(v.col.total)}</b>
             <small>{t("perPerson", { v: eur(v.col.perPerson) })}{#if v.id === low} · <span class="cv-low">{t("home.cheapest")}</span>{:else if ref} · <span class="cv-more">{signed(v.col.total - ref.total)}</span>{/if}</small>
             {#if why(v)}<small class="cv-why">{why(v)}</small>{/if}
+            {#if stand?.byTrip[v.id]}<small class="cv-votes">🗳 {tn("poll.forN", stand.byTrip[v.id].for)}{stand.byTrip[v.id].veto ? ` · ✕ ${stand.byTrip[v.id].veto}` : ""}</small>{/if}
             <span class="cv-acts">
               {#if v.edit}
                 {#if picked?.id === v.id}<button class="btn sm cv-untake" onclick={() => untake(v)}>✓ {t("cmpv.taken")}</button>
@@ -192,6 +209,12 @@
         {/each}
       </div>
     </div>
+    <!-- Abstimmung über die Varianten (#432), direkt unter dem Vergleich -->
+    {#if vpoll}
+      <section class="cv-poll" aria-label={t("cmpv.poll")}><PollView p={vpoll} onremove={removePoll} /></section>
+    {:else if canPoll}
+      <p class="cv-poll-start"><button class="btn sm" onclick={startPoll}>🗳 {t("cmpv.pollStart")}</button> <small class="muted">{t("cmpv.pollHint")}</small></p>
+    {/if}
     <AppFooter home />
   </div>
 </section>
@@ -202,6 +225,9 @@
   .cv-meta { margin: 0 0 10px; color: var(--ink-2); }
   .cv-mode { margin-bottom: 10px; }
   .cv-picked { margin: 0 0 10px; font-weight: 600; color: var(--good); }
+  .cv-votes { color: var(--idea); font-weight: 700; }
+  .cv-poll { margin: 16px 0; text-align: start; }
+  .cv-poll-start { margin: 16px 0; text-align: start; }
   .cv-table, .cv-mob, .cv-picked, .cv-mode { text-align: start; }
   .cv-mode { justify-content: center; }
   .cv-table { display: grid; overflow-x: auto; border-radius: 18px; border: 1px solid var(--glass-line); background: var(--paper); box-shadow: 0 20px 50px -24px rgba(14, 36, 56, .45); }
