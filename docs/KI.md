@@ -84,7 +84,7 @@ Fragen beantworten („Was fehlt noch?“) oder Änderungen vorschlagen („gün
 Planer und Kontoeinrichtung bauen ihre Anfragen im Format von Gemini. `worker/src/ki.ts` wählt den Anbieter:
 **Claude** (`worker/src/claude.ts`, Standard `claude-haiku-5-5`), wenn `ANTHROPIC_API_KEY` gesetzt ist, sonst Gemini.
 Mit beiden Schlüsseln springt Gemini ein, wenn Claude beim ersten Aufruf einer Anfrage überlastet ist, nicht rechtzeitig
-antwortet oder einen Serverfehler meldet; danach bleibt die Anfrage beim Anbieter, der geantwortet hat.
+antwortet, einen Serverfehler meldet oder Guthaben bzw. Ausgabenlimit aufgebraucht sind (Anthropic: 400 mit „credit balance“/„usage limit“ oder 402); danach bleibt die Anfrage beim Anbieter, der geantwortet hat.
 `claude.ts` übersetzt Anfrage und Antwort (Schema, Werkzeugaufrufe, Ergebnisse) und schickt die Denkblöcke von Claude
 unverändert zurück; der Verlauf wird nur angehängt. Ohne SDK, weil Cloudflare den Dienst ohne Installationsschritt baut.
 Kosten mit Haiku: grob unter 1 Cent je Planung (0,10 $ / 0,50 $ je Mio. Token Ein-/Ausgabe, Verlauf im Zwischenspeicher).

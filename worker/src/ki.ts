@@ -32,8 +32,8 @@ export function kiModels(env: KiEnv): string[] {
 
 export const kiReady = (env: KiEnv) => !!(env.ANTHROPIC_API_KEY || env.GEMINI_API_KEY);
 
-/** Fehler, bei denen der andere Anbieter es versuchen darf (nicht bei ungültiger Anfrage oder falschem Schlüssel) */
-export const switchable = (msg: string) => /^KI-Fehler (429|500|502|503|504|524) /.test(msg) || /^KI-Fehler: keine Antwort/.test(msg);
+/** Fehler, bei denen der andere Anbieter es versuchen darf (auch Guthaben leer oder Limit erreicht, 402; nicht bei ungültiger Anfrage oder falschem Schlüssel) */
+export const switchable = (msg: string) => /^KI-Fehler (402|429|500|502|503|504|524) /.test(msg) || /^KI-Fehler: keine Antwort/.test(msg);
 
 export function kiCaller(env: KiEnv, o: { f?: typeof fetch; onCall?: () => void; sleep?: (ms: number) => Promise<void> } = {}) {
   const callers: ((p: object) => Promise<unknown>)[] = [];
