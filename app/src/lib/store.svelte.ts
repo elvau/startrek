@@ -478,7 +478,7 @@ export function duplicateTrip(variant = false) {
   const src = app.trip.id;
   const copy: Trip = JSON.parse(JSON.stringify(app.trip));
   copy.id = uid();
-  if (variant) { delete copy.polls; if (copy.cmp) delete copy.cmp.label; }
+  if (variant) { delete copy.polls; if (copy.cmp) { delete copy.cmp.label; delete copy.cmp.chosen; delete copy.cmp.archived; } }
   else { copy.name = `${copy.name} (${tr("store.copy")})`; delete copy.cmp; }
   const toCloud = !!cloud.user;
   open(copy, "Kopie");
@@ -592,6 +592,19 @@ export async function editTrip(id: string, fn: (t: Trip) => void) {
   put(K_TRIP(id), JSON.stringify(tr));
   markEdited(id);
   localRev.n++;
+}
+
+/** „Diese nehmen“ (#430): Variante wählen, die anderen archivieren (#433); auch als Ergebnis einer Abstimmung (#432) */
+export async function takeVariant(id: string) {
+  const cid = tripFor(id)?.cmp?.id;
+  if (!cid) return;
+  const at = new Date().toISOString();
+  for (const m of allTrips()) {
+    const o = tripFor(m.id);
+    if (m.id === id || o?.cmp?.id !== cid || (!o.cmp.chosen && o.cmp.archived)) continue;
+    await editTrip(m.id, x => { if (x.cmp) { delete x.cmp.chosen; x.cmp.archived ||= at; } });
+  }
+  await editTrip(id, x => { if (x.cmp) { x.cmp.chosen = at; delete x.cmp.archived; } });
 }
 
 /**

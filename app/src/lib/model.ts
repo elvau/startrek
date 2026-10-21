@@ -566,7 +566,7 @@ export interface Trip {
    * Vergleichs und kurzer Name der Variante (fehlt: Ort bzw. Land). In der Reise selbst, damit Mitreisende es auch sehen.
    * chosen: „Diese nehmen“ (ISO, #430); gewählt ist die Variante mit dem jüngsten Zeitpunkt, die anderen sind eingeklappt.
    */
-  cmp?: { id: string; title: string; label?: string; chosen?: string };
+  cmp?: { id: string; title: string; label?: string; chosen?: string; archived?: string };
   /**
    * per KI importiertes Angebot (#457, #459): Art, Anbieter, Link, beworbener Preis, gültig bis und die Posten, die zum
    * Angebot gehören. Alles andere (ergänzt, geschätzt) zählt im Realitätscheck zur ganzen Reise (#461).

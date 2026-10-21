@@ -5,13 +5,19 @@
    * „Bearbeiten“ (öffnet die Planung), umbenennen, aus dem Vergleich nehmen, Variante hinzufügen.
    */
   import { i18n, t, tn, type Key } from "../i18n/index.svelte";
-  import { addVariant, allTrips, app, editTrip, goHome, openTrip, splitCompare, switchTrip, tripFor } from "../store.svelte";
+  import { addVariant, allTrips, app, editTrip, goHome, openTrip, splitCompare, switchTrip, takeVariant, tripFor } from "../store.svelte";
   import { eur } from "../calc";
   import { flagOf, range } from "../format";
   import { ccOf, loadGeo } from "../geo/places";
   import { geo } from "../geo/geo.svelte";
   import { cheapestId, column, explain, rowMin, rowSpread, sameTrip, shownRows, type Col, type RowKey } from "../compareView";
-  import { leaveCompare, pickedOf, variantLabel } from "../variants";
+  import { isArchived, leaveCompare, pickedOf, variantLabel } from "../variants";
+  import { addPoll, mergedVotes, newPoll, variantPoll, variantStand } from "../together";
+  import { remoteVotes, vetoesNow } from "../polls.svelte";
+  import { without } from "../without";
+  import PollView from "./PollView.svelte";
+  import { runWhatIf, whatIfRun } from "../watch.svelte";
+  import { addDay, daysBetween } from "../together";
   import TopNav from "./TopNav.svelte";
   import AiMark from "./AiMark.svelte";
   import AppFooter from "./AppFooter.svelte";
@@ -24,8 +30,11 @@
     .sort((a, b) => a.label.localeCompare(b.label, i18n.lang, { numeric: true })));
   const picked = $derived(pickedOf(all.map(v => ({ id: v.id, cmp: v.tr.cmp }))));
   let showAll = $state(false);
+  /** archiviert (#429/#433): nach „Diese nehmen“ die anderen Varianten, bis sie wiederhergestellt werden */
+  const archivedOf = (v: V) => isArchived({ id: v.id, cmp: v.tr.cmp }, picked);
+  const nArchived = $derived(all.filter(archivedOf).length);
   // nach „Diese nehmen“: gewählte zuerst, die anderen eingeklappt (nicht gelöscht)
-  const list = $derived(picked ? [all.find(v => v.id === picked.id)!, ...(showAll ? all.filter(v => v.id !== picked.id) : [])] : all);
+  const list = $derived(picked ? [all.find(v => v.id === picked.id)!, ...all.filter(v => v.id !== picked.id && (showAll || !archivedOf(v)))] : all.filter(v => showAll || !archivedOf(v)));
   const cols = $derived(list.map(v => v.col));
   const low = $derived(cheapestId(all.map(v => v.col)));
   const ref = $derived(all.find(v => v.id === low)?.col);
@@ -57,20 +66,73 @@
   };
   const maxOf = (k: RowKey) => Math.max(1, ...cols.map(c => c.cells[k].sum));
 
-  async function take(v: V) {
-    const at = new Date().toISOString();
-    // umentscheiden: frühere Wahl an anderen Varianten aufheben
-    for (const o of all) if (o.id !== v.id && o.tr.cmp?.chosen) await editTrip(o.id, tr => { if (tr.cmp) delete tr.cmp.chosen; });
-    await editTrip(v.id, tr => { if (tr.cmp) tr.cmp.chosen = at; });
-    showAll = false;
+  // umentscheiden: frühere Wahl aufheben, die anderen archivieren (nicht löschen, #433)
+  async function take(v: V) { await takeVariant(v.id); showAll = false; }
+  /** Wahl zurücknehmen: alle Varianten wieder sichtbar */
+  async function untake(v: V) {
+    await editTrip(v.id, tr => { if (tr.cmp) delete tr.cmp.chosen; });
+    for (const o of all) if (o.tr.cmp?.archived) await editTrip(o.id, tr => { if (tr.cmp) delete tr.cmp.archived; });
   }
-  async function untake(v: V) { await editTrip(v.id, tr => { if (tr.cmp) delete tr.cmp.chosen; }); }
+  /* ---------- Abstimmung über die Varianten (#432) ---------- */
+  // liegt in einer Variante; die wird im Hintergrund zur offenen Reise, damit Stimmen, „Wer bist du?“ und „Ohne mich“ greifen
+  const host = $derived(all.find(v => { const p = variantPoll(v.tr); return p && !p.closed; }) ?? all.find(v => variantPoll(v.tr)));
+  $effect(() => { if (host && app.trip.id !== host.id) switchTrip(host.id, "Vergleich: Abstimmung"); });
+  const vpoll = $derived(host && app.trip.id === host.id ? variantPoll(app.trip) : undefined);
+  const stand = $derived(vpoll ? variantStand(vpoll, mergedVotes(vpoll, remoteVotes(vpoll))) : undefined);
+  /** „Ohne mich“ je Variante (#439): wer, und was es für die anderen an dieser Variante bedeutet */
+  const vetoFx = $derived.by(() => {
+    const out: Record<string, { names: string; after: number; before: number }> = {};
+    if (!vpoll) return out;
+    const now = vetoesNow(vpoll);
+    for (const o of vpoll.options) {
+      const v = all.find(x => x.id === o.tripId), ids = now[o.id] || [];
+      if (!v || !ids.length) continue;
+      const w = without(v.tr, ids, undefined, geo);
+      out[v.id] = { names: ids.map(x => v.tr.travelers.find(y => y.id === x)?.name || "?").join(", "), after: w.after.perPerson, before: w.before.perPerson };
+    }
+    return out;
+  });
+  const canPoll = $derived(all.some(v => v.edit) && all.filter(v => !archivedOf(v)).length > 1);
+  function startPoll() {
+    // in der geteilten Variante mit den meisten Mitgliedern (dort stimmen alle ab), sonst in der ersten bearbeitbaren
+    const h = all.filter(v => v.edit).sort((a, b) => Number(b.cloud) - Number(a.cloud) || b.members.length - a.members.length)[0];
+    if (!h) return;
+    const p = newPoll(t("cmpv.pollQ", { title }), "variants", all.filter(v => !archivedOf(v)).map(v => ({ label: v.label, tripId: v.id })), "one");
+    void editTrip(h.id, tr => addPoll(tr, p));
+  }
+  function removePoll() {
+    if (!vpoll || !confirm(t("poll.removeQ"))) return;
+    app.trip.polls = (app.trip.polls || []).filter(p => p.id !== vpoll.id);
+    if (!app.trip.polls.length) delete app.trip.polls;
+  }
+  async function restore(v: V) { await editTrip(v.id, tr => { if (tr.cmp) delete tr.cmp.archived; }); }
   async function rename(v: V) {
     const x = prompt(t("tm.renameVarQ"), v.label)?.trim();
     if (x) await editTrip(v.id, tr => { if (tr.cmp) tr.cmp.label = x.slice(0, 60); });
   }
   async function remove(v: V) {
     if (confirm(t("cmpv.removeQ", { x: v.label }))) await editTrip(v.id, leaveCompare);
+  }
+  /* ---------- „Was wäre wenn …“ (#430): Variante mit anderem Zeitraum, Abflughafen oder Nächten, Preise neu gesucht ---------- */
+  let wi = $state<{ base: string; from: string; to: string; airport: string } | null>(null);
+  const airportOf = (tr: Trip) => tr.items.find(i => i.cat === "flights")?.options.find(o => o.legs?.length)?.legs?.find(l => l.dir === "out")?.from || "";
+  function openWhatIf() {
+    const b = (picked && all.find(v => v.id === picked.id)) || first;
+    if (b) wi = { base: b.id, from: b.tr.from || "", to: b.tr.to || "", airport: airportOf(b.tr) };
+  }
+  const wiBase = $derived(wi ? all.find(v => v.id === wi!.base) : undefined);
+  const wiNights = $derived(wi?.from && wi.to ? daysBetween(wi.from, wi.to) : 0);
+  function setBase(id: string) { const b = all.find(v => v.id === id); if (b && wi) wi = { base: id, from: b.tr.from || "", to: b.tr.to || "", airport: airportOf(b.tr) }; }
+  function nights(d: number) { if (wi?.from && wi.to && wiNights + d >= 1) wi.to = addDay(wi.to, d); }
+  async function goWhatIf() {
+    if (!wi || !wiBase) return;
+    const b = wiBase.tr, parts = [
+      wi.from !== b.from || wi.to !== b.to ? range(wi.from, wi.to) : "",
+      wi.airport && wi.airport.toUpperCase() !== airportOf(b) ? t("whatif.from", { x: wi.airport.toUpperCase() }) : ""
+    ].filter(Boolean);
+    if (!parts.length) { wi = null; return; }
+    await runWhatIf(wi.base, { from: wi.from, to: wi.to, ...(wi.airport ? { airport: wi.airport } : {}) }, `${wiBase.label} · ${parts.join(" · ")}`);
+    wi = null;
   }
   function add() {
     // Kopie der gewählten bzw. ersten Variante
@@ -92,16 +154,34 @@
     <button class="linkbtn cv-back" onclick={goHome}>← {t("cmpv.back")}</button>
     <h1 class="home-title cv-title">{first?.cloud ? "☁ " : ""}{title}</h1>
     <p class="cv-meta">{[sameDates && first?.tr.from ? range(first.tr.from, first.tr.to) : "", first ? tn("n.persons", first.col.people) : "", first?.members.length ? t("home.with", { names: first.members.join(", ") }) : ""].filter(Boolean).join(" · ")}
-      {#if first?.edit}· <button class="linkbtn cv-add" onclick={add}>+ {t("cmpv.add")}</button>{/if}
+      {#if first?.edit}· <button class="linkbtn cv-add" onclick={add}>+ {t("cmpv.add")}</button>
+        · <button class="linkbtn cv-whatif" onclick={openWhatIf} aria-expanded={!!wi}>⚡ {t("whatif.title")}</button>{/if}
       {#if all.some(v => v.edit)}· <button class="linkbtn cv-split" onclick={split}>✂ {t("cmpv.split")}</button>{/if}</p>
 
+    {#if wi}
+      <div class="cv-wi" role="group" aria-label={t("whatif.title")}>
+        <p class="small muted">{t("whatif.hint")}</p>
+        <div class="ed-row">
+          {#if all.length > 1}<label class="f">{t("whatif.base")}<select value={wi.base} onchange={e => setBase(e.currentTarget.value)}>{#each all.filter(v => v.edit) as v (v.id)}<option value={v.id}>{v.label}</option>{/each}</select></label>{/if}
+          <label class="f">{t("imp.rev.from")}<input class="wi-from" type="date" bind:value={wi.from} /></label>
+          <label class="f">{t("imp.rev.to")}<input class="wi-to" type="date" bind:value={wi.to} /></label>
+          <span class="f">{t("whatif.nights")}<span class="qf-step"><button type="button" onclick={() => nights(-1)} disabled={wiNights <= 1} aria-label={t("step.less", { what: t("whatif.nights") })}>−</button><b class="num qf-n">{wiNights}</b><button type="button" onclick={() => nights(1)} aria-label={t("step.more", { what: t("whatif.nights") })}>+</button></span></span>
+          <label class="f">{t("whatif.airport")}<input class="wi-ap" maxlength="3" size="4" bind:value={wi.airport} placeholder="DUS" /></label>
+        </div>
+        <p class="fu-acts">
+          <button class="btn sm primary wi-go" disabled={whatIfRun.busy || !wi.from || !wi.to || wi.to <= wi.from} onclick={goWhatIf}>{whatIfRun.busy ? t("whatif.busy") : t("whatif.go")}</button>
+          <button class="btn sm" onclick={() => (wi = null)}>{t("cancel")}</button>
+        </p>
+      </div>
+    {/if}
+    {#if whatIfRun.msg}<p class="small cv-wi-msg" role="status">{whatIfRun.msg}</p>{/if}
     <div class="chips cv-mode" role="group" aria-label={t("cmpv.rows")}>
       <button class="chip sm" class:on={!diffMode} aria-pressed={!diffMode} onclick={() => (onlyDiff = false)}>{t("cmpv.all")}</button>
       <button class="chip sm" class:on={diffMode} aria-pressed={diffMode} onclick={() => (onlyDiff = true)}>{t("cmpv.diff")}</button>
     </div>
     {#if picked}
       <p class="cv-picked">✓ {t("cmpv.pickedNote", { x: all.find(v => v.id === picked.id)?.label || "" })}
-        <button class="linkbtn cv-others" onclick={() => (showAll = !showAll)}>{showAll ? t("cmpv.hideOthers") : tn("cmpv.showOthers", all.length - 1)}</button></p>
+        {#if nArchived}<button class="linkbtn cv-others" onclick={() => (showAll = !showAll)}>{showAll ? t("cmpv.hideOthers") : tn("cmpv.archivedN", nArchived)}</button>{/if}</p>
     {/if}
 
     <!-- Desktop: Spalten je Variante -->
@@ -115,10 +195,13 @@
             <b class="cv-total num">{eur(v.col.total)}</b>
             <small>{t("perPerson", { v: eur(v.col.perPerson) })}{#if v.id === low} · <span class="cv-low">{t("home.cheapest")}</span>{:else if ref} · <span class="cv-more">{signed(v.col.total - ref.total)}</span>{/if}</small>
             {#if why(v)}<small class="cv-why">{why(v)}</small>{/if}
+            {#if stand?.byTrip[v.id]}<small class="cv-votes">🗳 {tn("poll.forN", stand.byTrip[v.id].for)}{stand.byTrip[v.id].veto ? ` · ✕ ${stand.byTrip[v.id].veto}` : ""}</small>{/if}
+            {#if vetoFx[v.id]}{@const f = vetoFx[v.id]}<small class="cv-veto">✕ {t("cmpv.vetoFx", { names: f.names, after: eur(f.after), before: eur(f.before) })}</small>{/if}
             <span class="cv-acts">
               {#if v.edit}
                 {#if picked?.id === v.id}<button class="btn sm cv-untake" onclick={() => untake(v)}>✓ {t("cmpv.taken")}</button>
                 {:else}<button class="btn sm primary cv-take" onclick={() => take(v)}>{t("cmpv.take")}</button>{/if}
+                {#if archivedOf(v)}<button class="btn sm cv-restore" onclick={() => restore(v)}>↩ {t("cmpv.restore")}</button>{/if}
               {/if}
               <button class="btn sm cv-edit" onclick={() => openTrip(v.id, "Vergleich")}>{v.edit ? t("cmpv.edit") : t("cmpv.open")}</button>
               {#if v.edit}
@@ -177,10 +260,17 @@
       <div class="cv-mob-acts">
         {#each list as v (v.id)}
           {#if v.edit && picked?.id !== v.id}<button class="btn sm primary cv-take" onclick={() => take(v)}>{flag(v)} {t("cmpv.takeShort")}</button>{/if}
+          {#if v.edit && archivedOf(v)}<button class="btn sm cv-restore" onclick={() => restore(v)}>{flag(v)} ↩ {t("cmpv.restore")}</button>{/if}
           <button class="btn sm cv-edit" onclick={() => openTrip(v.id, "Vergleich")}>{flag(v)} {v.edit ? t("cmpv.edit") : t("cmpv.open")}</button>
         {/each}
       </div>
     </div>
+    <!-- Abstimmung über die Varianten (#432), direkt unter dem Vergleich -->
+    {#if vpoll}
+      <section class="cv-poll" aria-label={t("cmpv.poll")}><PollView p={vpoll} onremove={removePoll} /></section>
+    {:else if canPoll}
+      <p class="cv-poll-start"><button class="btn sm" onclick={startPoll}>🗳 {t("cmpv.pollStart")}</button> <small class="muted">{t("cmpv.pollHint")}</small></p>
+    {/if}
     <AppFooter home />
   </div>
 </section>
@@ -191,6 +281,13 @@
   .cv-meta { margin: 0 0 10px; color: var(--ink-2); }
   .cv-mode { margin-bottom: 10px; }
   .cv-picked { margin: 0 0 10px; font-weight: 600; color: var(--good); }
+  .cv-votes { color: var(--idea); font-weight: 700; }
+  .cv-wi { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: 0 0 12px; text-align: start; background: var(--paper); }
+  .cv-wi .ed-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; }
+  .cv-wi-msg { color: var(--warn); text-align: start; }
+  .cv-veto { color: #C4452E; }
+  .cv-poll { margin: 16px 0; text-align: start; }
+  .cv-poll-start { margin: 16px 0; text-align: start; }
   .cv-table, .cv-mob, .cv-picked, .cv-mode { text-align: start; }
   .cv-mode { justify-content: center; }
   .cv-table { display: grid; overflow-x: auto; border-radius: 18px; border: 1px solid var(--glass-line); background: var(--paper); box-shadow: 0 20px 50px -24px rgba(14, 36, 56, .45); }

@@ -176,6 +176,11 @@ export async function watchVotes(id: string) {
     cloudVotes.whyByUid = Object.fromEntries(Object.entries(by).map(([k, d]) => [k, d.w || {}]));
   }, () => { unVotes = null; });
 }
+/** Stimmen einer Konto-Reise einmal lesen (Konto → Abstimmung → Möglichkeit → Wert); ohne Konto oder Fehler: leer */
+export async function votesOnce(id: string): Promise<Record<string, Record<string, Record<string, number>>>> {
+  if (!fbUser || !isCloud(id)) return {};
+  return (await load()).votesOnce(id).catch(() => ({}));
+}
 /** eigene Stimmen in einer Konto-Reise speichern (alle Abstimmungen der Reise auf einmal) */
 export async function saveMyVotes(id: string, v: Record<string, Record<string, number>>, w: Record<string, Record<string, { r?: string; f?: boolean }>> = {}) {
   if (!fbUser) return;
