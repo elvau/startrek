@@ -41,7 +41,7 @@ describe("Kurtaxe automatisch", () => {
     tr.tiers.stay = [{ min: 2, pct: 10 }];
     expect(calcItem(tr.items[0], tr).extras?.onsite).toBeCloseTo(180 * 0.075);
   });
-  it.fails("Prozent-Kurtaxe mit Höchstnächten (Edinburgh, höchstens 5 Nächte) beachtet die Grenze (#499)", () => {
+  it("Prozent-Kurtaxe mit Höchstnächten (Edinburgh, höchstens 5 Nächte) beachtet die Grenze (#499)", () => {
     const tr = trip("Edinburgh", [P("a", 40)], [stay(opt({ mode: "unit", currency: "EUR", unit: 100 }), "2027-07-01", "2027-07-11")]);
     // 5 % von 5 Nächten à 100 €, nicht von allen 10
     expect(calcItem(tr.items[0], tr).extras?.onsite).toBeCloseTo(25);

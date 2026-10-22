@@ -3,11 +3,13 @@
  * Personen, die nicht mehr dabei sind.
  */
 import { describe, expect, it } from "vitest";
-import { applyResult, bestPeriods, hitsBlocked, blockedDays, milesLeft, milesOf, missing, newPoll, nextVote, planDays, setAvail, tally, tallyMode, vote, voters, type Poll } from "./together";
+import { addDay, applyResult, bestPeriods, hitsBlocked, blockedDays, milesLeft, milesOf, missing, newPoll, nextVote, planDays, setAvail, tally, tallyMode, vote, voters, type Avail, type Poll } from "./together";
 import { DEFAULT_SETTINGS, type Traveler, type Trip } from "./model";
 
 const P = (id: string, age: number | null, x: Partial<Traveler> = {}): Traveler => ({ id, name: id, age, household: id, ...x });
 const trip = (x: Partial<Trip> = {}): Trip => ({ id: "t", name: "T", place: "", country: "", travelers: [P("a", 40), P("b", 40), P("c", 40), P("k", 8)], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...x });
+/** n Tage „kann“ ab from */
+const yes = (from: string, n: number): Record<string, Avail> => Object.fromEntries(Array.from({ length: n }, (_, i) => [addDay(from, i), "yes" as const]));
 const poll = (mode?: Poll["mode"]): Poll => ({ id: "p", q: "?", kind: "free", mode, options: [{ id: "x", label: "X" }, { id: "y", label: "Y" }, { id: "z", label: "Z" }], votes: {} });
 
 describe("Termin finden", () => {
@@ -18,7 +20,8 @@ describe("Termin finden", () => {
     expect(planDays({ from: "2027-1-1", to: "2027-01-05" })).toEqual([]);
   });
   it("Zeitraum genau so lang wie gewünscht", () => {
-    const tr = trip({ avail: { from: "2027-07-01", to: "2027-07-08", nights: 7, by: { a: { "2027-07-03": "yes" } } } });
+    // nicht eingetragene Tage sind offen (#500): a trägt alle Tage „kann“ ein
+    const tr = trip({ avail: { from: "2027-07-01", to: "2027-07-08", nights: 7, by: { a: yes("2027-07-01", 8) } } });
     expect(bestPeriods(tr).map(p => [p.from, p.to])).toEqual([["2027-07-01", "2027-07-08"]]);
   });
   it("gewünscht länger als der Zeitraum: keine Vorschläge", () => {
@@ -26,7 +29,7 @@ describe("Termin finden", () => {
     expect(bestPeriods(tr)).toEqual([]);
   });
   it("„kann nicht“ am Abreisetag schließt den Zeitraum aus", () => {
-    const tr = trip({ avail: { from: "2027-07-01", to: "2027-07-10", nights: 3, by: { a: { "2027-07-04": "no" } } } });
+    const tr = trip({ avail: { from: "2027-07-01", to: "2027-07-10", nights: 3, by: { a: { ...yes("2027-07-01", 10), "2027-07-04": "no" } } } });
     const best = bestPeriods(tr, 10);
     expect(best.every(p => !(p.from <= "2027-07-04" && "2027-07-04" <= p.to) || p.no.includes("a"))).toBe(true);
     expect(best[0].no).toEqual([]);
@@ -53,13 +56,14 @@ describe("Termin finden", () => {
     expect(hitsBlocked(blockedDays(tr), "2027-07-04", "2027-07-05")).toBe(true);
     expect(hitsBlocked(blockedDays(tr), "kaputt", "2027-07-05")).toBe(false);
   });
-  it.fails("wer nur einzelne Tage mit „kann“ markiert, gilt außerhalb davon nicht als „kann“ (#500)", () => {
+  it("wer nur einzelne Tage mit „kann“ markiert, gilt außerhalb davon nicht als „kann“ (#500)", () => {
     // a kann nur in der ersten Woche (so eingetragen), b hat nichts eingetragen
     const by = { a: Object.fromEntries(["01", "02", "03", "04", "05"].map(d => [`2027-07-${d}`, "yes" as const])) };
     const tr = trip({ avail: { from: "2027-07-01", to: "2027-07-31", nights: 4, by } });
-    const late = bestPeriods(tr, 10).find(p => p.from >= "2027-07-20");
-    expect(late).toBeDefined();
-    expect(late!.yes).not.toContain("a");
+    const best = bestPeriods(tr, 10);
+    expect(best[0]).toMatchObject({ from: "2027-07-01", yes: ["a"] });
+    // später ist niemand eingetragen: kein Vorschlag mit a als „kann“
+    expect(best.filter(p => p.from >= "2027-07-06").every(p => !p.yes.includes("a"))).toBe(true);
   });
 });
 
@@ -119,12 +123,13 @@ describe("Abstimmen", () => {
     vote(p, "a", "x", 1);
     expect(missing(tr, p, { b: { y: 0 } }).map(x => x.id)).toEqual(["c"]);
   });
-  it.fails("Stimmen von Personen, die nicht mehr dabei sind, zählen nicht mit (#501)", () => {
+  it("Stimmen von Personen, die nicht mehr dabei sind, zählen nicht mit (#501)", () => {
     const tr = trip(), p = poll("one");
     p.votes = { a: { x: 1 }, weg: { y: 1 }, weg2: { y: 1 } };
     tr.polls = [p];
     // „weg“ und „weg2“ stehen nicht mehr in der Reise: x müsste vorn liegen
-    expect(tallyMode(p)[0].id).toBe("x");
+    expect(tallyMode(p, p.votes, tr)[0].id).toBe("x");
+    expect(tally(p, tr)[0].id).toBe("x");
   });
   it("Ergebnis übernehmen: Termin ohne gültige Daten ändert die Reise nicht", () => {
     const tr = trip({ from: "2027-01-01", to: "2027-01-05" });

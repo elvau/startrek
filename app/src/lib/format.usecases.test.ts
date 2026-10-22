@@ -23,7 +23,7 @@ describe("Zeitspannen und Namen", () => {
     expect(range("2027-07-18", "2027-07-29")).toBe("18. bis 29. Juli");
     expect(range("2027-07-28", "2027-08-03")).toBe("28. Juli bis 3. August");
   });
-  it.fails("Zeitraum über ein Jahr hinweg nennt nicht nur den Monat (gleicher Monat, anderes Jahr) (#505)", () => {
+  it("Zeitraum über ein Jahr hinweg nennt nicht nur den Monat (gleicher Monat, anderes Jahr) (#505)", () => {
     expect(range("2027-07-18", "2028-07-29")).not.toBe("18. bis 29. Juli");
   });
   it("Reisename aus Ziel und Zeitraum", () => {
@@ -74,7 +74,7 @@ describe("Pass-Gültigkeit", () => {
   it("Rückreise nach der Frist: bis zur Rückreise", () => {
     expect(validUntil({ days: 30, from: "entry" }, "2027-03-01", "2027-06-01")).toBe("2027-06-01");
   });
-  it.fails("Monatsende: 31. August + 6 Monate ist Ende Februar, nicht März (#504)", () => {
+  it("Monatsende: 31. August + 6 Monate ist Ende Februar, nicht März (#504)", () => {
     expect(validUntil({ months: 6, from: "entry" }, "2027-08-31", "2027-09-10")).toBe("2028-02-29");
   });
 });

@@ -60,7 +60,7 @@ describe("Use Case: Familienurlaub komplett", () => {
       expect(h.members.reduce((a, m) => a + m.v, 0)).toBeCloseTo(h.total);
     }
   });
-  it.fails("kleine Posten (unter 50 Cent je Familie) fehlen in der Abrechnung je Familie (#502)", () => {
+  it("kleine Posten (unter 50 Cent je Familie) zählen in der Abrechnung je Familie mit (#502)", () => {
     // 1 € Toilette für alle 7: je Familie unter 50 Cent, die Familienkarten ergeben dann nicht mehr die Summe
     const tr = t(); tr.items.push(item("wc", "misc", [opt("o", unit(1))]));
     tr.detail = { ...tr.detail, misc: true };
@@ -408,8 +408,8 @@ describe("Use Case: Zahleneingabe", () => {
     [7, 7], ["0", 0]
   ])("%s → %s", (s, v) => expect(parseNum(s)).toBeCloseTo(v as number));
   it.each([[""], ["abc"], [null], [undefined], ["€"]])("%s → NaN", s => expect(parseNum(s)).toBeNaN());
-  it.fails("englisch mit Tausenderkomma: 1,234.56 (#503)", () => expect(parseNum("1,234.56")).toBeCloseTo(1234.56));
-  it.fails("Tausenderkomma ohne Nachkomma: 1,234,567 (#503)", () => expect(parseNum("1,234,567")).toBe(1234567));
+  it("englisch mit Tausenderkomma: 1,234.56 (#503)", () => expect(parseNum("1,234.56")).toBeCloseTo(1234.56));
+  it("Tausenderkomma ohne Nachkomma: 1,234,567 (#503)", () => expect(parseNum("1,234,567")).toBe(1234567));
 });
 
 /* ---------- Invarianten mit Zufallsreisen ---------- */
@@ -467,8 +467,8 @@ describe("Invarianten über 300 Zufallsreisen", () => {
       const tr = randomTrip(s); if (!tr.travelers.some(x => x.active !== false)) continue;
       const T = totals(tr);
       expect(sum(T.byHousehold), `Reise ${s}`).toBeCloseTo(T.due, 4);
-      // Zeilen unter 50 Cent zeigt die Abrechnung nicht (#502), daher höchstens 0,50 € je Posten Abweichung
-      for (const h of householdShares(tr, T)) expect(Math.abs(h.total - T.byHousehold[h.name]), `Reise ${s}, ${h.name}`).toBeLessThanOrEqual(0.5 * tr.items.length + 0.01);
+      // auch Anteile unter 50 Cent zählen in die Summe der Familie (#502)
+      for (const h of householdShares(tr, T)) expect(h.total, `Reise ${s}, ${h.name}`).toBeCloseTo(T.byHousehold[h.name], 4);
     }
   });
   it("nichts ist negativ, Zuschüsse höchstens Kosten, fest + offen = Summe", () => {

@@ -136,7 +136,7 @@ describe("Use Case: getrennte Kassen", () => {
     const tr = trip([P("m", 40, "K"), P("p", 40, "K"), P("q", 40, "K"), P("k", 8, "K", { payer: "weg" })]);
     expect(kasseOf(tr, tr.travelers[3]).map(([k]) => k)).toEqual(["p:m", "p:p", "p:q"]);
   });
-  it.fails("Umstellung auf gemeinsame Kasse: frühere Einträge einzelner Erwachsener gehen in die Familienkasse (#498)", () => {
+  it("Umstellung auf gemeinsame Kasse: frühere Einträge einzelner Erwachsener gehen in die Familienkasse (#498)", () => {
     // drei Erwachsene zahlen erst getrennt; nachdem einer abreist, gilt automatisch die gemeinsame Kasse
     const tr = trip([P("m", 40, "K"), P("p", 40, "K"), P("q", 40, "K"), P("s", 30, "Solo")], { expenses: [exp("x", 80, "p:m")] });
     tr.travelers[2].active = false;
@@ -144,7 +144,7 @@ describe("Use Case: getrennte Kassen", () => {
     // K hat 80 € ausgelegt und schuldet davon 2/3 → +26,67; Solo schuldet 26,67 an K, nicht an „p:m“
     expect(L.moves).toEqual([{ from: "Solo", to: "K", v: 26.67 }]);
   });
-  it.fails("Umstellung von getrennt auf gemeinsam (Einstellung): keine Überweisung an sich selbst (#498)", () => {
+  it("Umstellung von getrennt auf gemeinsam (Einstellung): keine Überweisung an sich selbst (#498)", () => {
     const tr = trip([P("m", 40, "K"), P("p", 40, "K")], { households: { K: { kasse: "each" } }, expenses: [exp("x", 40, "p:m")] });
     tr.households!.K.kasse = "joint";
     const L = ledger(tr, totals(tr));
