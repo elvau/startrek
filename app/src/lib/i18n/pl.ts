@@ -1591,6 +1591,7 @@ export const pl: Dict = {
   "ks.decide.one": "{n} sprzeciw – zdecyduj",
   "ks.decide.other": "{n} sprzeciwu – zdecyduj",
   "ks.disputed": "Sprzeciw: {list}",
+  "ks.droppedPaid": "Pozycja odrzucona. Już zwrócono? To usuń płatność.",
   "ks.done": "Zrobione",
   "ks.each": "każdy",
   "ks.each2": "każdy płaci za siebie",

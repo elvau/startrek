@@ -233,6 +233,7 @@
           <span class="ks-n">
             {#if e.itemId}<button class="linkbtn" onclick={() => showItem(e.itemId!)}>{e.label}</button>{:else}{e.label}{/if}
             <small class="muted">{[t("ks.byWho", { name: nm(e.by) }), e.for ? t("ks.forWho", { list: e.for.map(nm).join(", ") }) : "", e.date ? dateDE(e.date) : "", e.exp?.who && shared ? t("ks.sentBy", { name: cap(e.exp.who) }) : ""].filter(Boolean).join(" · ")}</small>
+            {#if e.dropped}<small class="ks-st">↩ {t("ks.droppedPaid")}</small>{/if}
             {#if e.state === "open"}<small class="ks-st">⏳ {t("ks.waiting")}</small>
             {:else if e.state === "disputed"}<small class="ks-st ks-no">❌ {t("ks.disputed", { list: noText(e) })}</small>
             {:else if e.state === "rejected"}<small class="ks-st ks-no">{t("ks.rejected")}</small>

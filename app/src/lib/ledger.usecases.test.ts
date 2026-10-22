@@ -101,11 +101,21 @@ describe("Use Case: Zahlungen zu Posten", () => {
     expect(bal(L, "Solo")).toBeCloseTo(50);
     expect(sumBal(L)).toBeCloseTo(0);
   });
-  it.fails("Zahlung zu einem später verworfenen Posten verschwindet aus der Kasse (Geld ist aber ausgelegt, Entscheidung #506)", () => {
-    // Anzahlung geleistet, Posten dann verworfen: Klein hat 300 € ausgelegt, die Kasse zeigt sie nicht mehr
+  it("Zahlung zu einem verworfenen Posten bleibt in der Kasse, mit Hinweis (#506)", () => {
+    // Anzahlung geleistet, Posten dann verworfen: das Geld ist ausgelegt, verteilt wie zuletzt gerechnet
     const tr = t(); tr.items[0].status = "dropped";
     const L = ledger(tr, totals(tr));
-    expect(L.spent).toBeGreaterThanOrEqual(900);
+    expect(L.spent).toBeCloseTo(910);
+    expect(bal(L, "Hase")).toBeCloseTo(610 - 300);
+    expect(sumBal(L)).toBeCloseTo(0);
+    expect(L.entries.filter(e => e.dropped).map(e => e.key)).toEqual(["h:0", "h:1"]);
+    expect(L.entries.find(e => e.key === "k:0")?.dropped).toBeUndefined();
+  });
+  it("Zahlung zu einem Posten im einfachen Modus bleibt in der Kasse, ohne Hinweis", () => {
+    const tr = t(); tr.detail = { stay: false, attractions: true };
+    const L = ledger(tr, totals(tr));
+    expect(L.spent).toBeCloseTo(910);
+    expect(L.entries.some(e => e.dropped)).toBe(false);
   });
 });
 

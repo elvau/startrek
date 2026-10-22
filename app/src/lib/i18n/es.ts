@@ -1549,6 +1549,7 @@ export const es: Dict = {
   "ks.decide.one": "{n} objeción: decide, por favor",
   "ks.decide.other": "{n} objeciones: decide, por favor",
   "ks.disputed": "Objeción: {list}",
+  "ks.droppedPaid": "Partida descartada. ¿Ya reembolsada? Entonces borra el pago.",
   "ks.done": "Hecho",
   "ks.each": "cada uno",
   "ks.each2": "cada uno paga lo suyo",

@@ -1630,6 +1630,7 @@ export const ar: Dict = {
   "ks.decide.two": "اعتراضان – يرجى القرار",
   "ks.decide.zero": "لا اعتراضات",
   "ks.disputed": "اعتراض: {list}",
+  "ks.droppedPaid": "تم استبعاد البند. هل استُرد المبلغ؟ احذف الدفعة إذن.",
   "ks.done": "تم",
   "ks.each": "لكلٍّ",
   "ks.each2": "كل شخص يدفع عن نفسه",
