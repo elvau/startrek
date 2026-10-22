@@ -1,0 +1,24 @@
+/*
+ * Handy-Ansicht (#530, body.mob bis 760 px): Die Reise als Pager. Oben Kopf und Reiter, unten die Leiste; dazwischen
+ * wischt man seitlich zwischen den Seiten (Übersicht, Kapitel, Tage, Abrechnung), jede Seite scrollt für sich.
+ */
+body.mob{--mob-top:62px;--mob-tabs:62px;--mob-bar:60px;overflow:hidden;overscroll-behavior:none}
+body.mob .wrap{display:block;max-width:none;padding:0}
+body.mob .wrap > main.pager{position:fixed;left:0;right:0;top:calc(var(--mob-top) + var(--mob-tabs));bottom:calc(var(--mob-bar) + env(safe-area-inset-bottom,0px));z-index:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+body.mob .wrap > main.pager::-webkit-scrollbar{display:none}
+body.mob main.pager > .chapter{flex:0 0 100%;width:100%;min-width:0;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;padding:12px 12px 96px;opacity:1;filter:none}
+/* Kapitelkopf kompakt: Name, Summe, Einfach/Detailliert */
+body.mob .ch-ico,body.mob .ch-t small{display:none}
+body.mob .ch-head{align-items:center;gap:8px;margin-bottom:10px}
+body.mob .ch-t h2{font-size:24px}
+body.mob .ch-sum b{font-size:20px}
+/* Übersicht als erste Seite: ohne Vollbildhöhe und ohne „Reise entdecken“ (dafür gibt es Reiter und Leiste) */
+body.mob .pg-hero{padding:0 0 96px}
+body.mob .pg-hero .hero{min-height:auto;padding:12px 12px 24px}
+body.mob .pg-hero .hero-in{transform:none;opacity:1}
+body.mob .hint{display:none}
+/* schwebend bleibt nur der KI-Knopf, über der Leiste; Fehler melden steht unter „Mehr“ */
+body.mob .bug-fab{display:none}
+body.mob .ai-fab{bottom:calc(var(--mob-bar) + 12px + env(safe-area-inset-bottom,0px));padding:10px 14px}
+body.mob .ai-fab .ai-fab-lbl{display:none}
+body.mob .ai-note{bottom:calc(var(--mob-bar) + 70px + env(safe-area-inset-bottom,0px))}
