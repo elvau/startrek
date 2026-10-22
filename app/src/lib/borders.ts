@@ -38,7 +38,11 @@ export const MIN_VALID: Record<string, MinValid> = {
 
 const addMonths = (iso: string, m: number) => {
   const d = new Date(`${iso}T00:00:00Z`);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
   d.setUTCMonth(d.getUTCMonth() + m);
+  // Zielmonat zu kurz: letzter Tag des Monats statt Überlauf in den nächsten
+  d.setUTCDate(Math.min(day, new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()));
   return d.toISOString().slice(0, 10);
 };
 const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
