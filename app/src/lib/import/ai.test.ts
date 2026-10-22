@@ -60,3 +60,16 @@ describe("Anfrage an den Such-Dienst (#457)", () => {
     expect(p.toolConfig.functionCallingConfig.allowedFunctionNames).toEqual(["fill_trip"]);
   });
 });
+
+describe("Kreuzfahrt aus der KI-Antwort (#525)", () => {
+  it("Häfen, Seetage, Zeiten, Kabine; Unsinn fällt weg", () => {
+    const o = parseImportAi({ kind: "cruise", cruise: { line: "Reederei", ship: "Meeresblick", cabin: "balcony", cabins: 2, price: 1299, per: "person", ports: [
+      { place: "Kiel", date: "2027-06-01", dep: "18:00" }, { sea: true, date: "2027-06-02", place: "Ostsee", arr: "08:00" },
+      { place: "Oslo", date: "2027-06-03", arr: "9:00", dep: "17:30" }, {}, { place: "Kiel", date: "2027-06-04" }] } });
+    expect(o).toEqual({ kind: "cruise", cruise: { line: "Reederei", ship: "Meeresblick", cabin: "balcony", cabins: 2, price: 1299, per: "person", ports: [
+      { place: "Kiel", date: "2027-06-01", dep: "18:00" }, { date: "2027-06-02", sea: true }, { place: "Oslo", date: "2027-06-03", dep: "17:30" }, { place: "Kiel", date: "2027-06-04" }] } });
+    expect(offerUsable(o)).toBe(true);
+    // nur ein Hafen und ohne Schiff: keine Kreuzfahrt
+    expect(parseImportAi({ kind: "cruise", cruise: { ports: [{ place: "Kiel" }] } })).toEqual({ kind: "other" });
+  });
+});

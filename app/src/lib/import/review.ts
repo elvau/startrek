@@ -31,20 +31,21 @@ const has = (o: ImportedOffer, k: ConfKey): boolean => ({
   price: !!o.price,
   flights: !!o.flights,
   stay: !!o.stay,
+  cruise: !!o.cruise,
   board: !!o.stay?.board,
   baggage: !!o.flights?.baggage,
   transfer: o.transfer?.included != null || !!o.transfer?.price
 })[k];
 
 /** Felder in der Reihenfolge der Anzeige */
-const ORDER: ConfKey[] = ["place", "dates", "people", "price", "flights", "stay", "board", "baggage", "transfer"];
+const ORDER: ConfKey[] = ["place", "dates", "people", "price", "flights", "cruise", "stay", "board", "baggage", "transfer"];
 
 /** Übersicht: erkannte Angaben mit Stufe, offene Rückfragen, Gesamtwert (0–100), ob direkt angelegt werden kann */
 export function reviewOf(o: ImportedOffer, answered: ReadonlySet<QuestionId> = new Set(), peopleKnown = false): Review {
   const c = o.confidence || {};
   const fields = ORDER.filter(k => has(o, k)).map(key => ({ key, level: levelOf(c[key]) }));
   const low = (k: ConfKey) => !has(o, k) || levelOf(c[k]) === "low";
-  const pkg = !!(o.flights && o.stay);
+  const pkg = !!(o.flights && (o.stay || o.cruise));
   const q: QuestionId[] = [];
   // auch bei nur geratener Anzahl nachfragen, vorbelegt mit dem Vorschlag der KI
   if (!peopleKnown && low("people")) q.push("people");
@@ -72,13 +73,15 @@ export function answer(o: ImportedOffer, id: QuestionId, value: string): Importe
 }
 
 /** Posten, die als „bitte prüfen“ markiert werden: zugehörige Angaben nur abgeleitet oder geraten */
-export function checks(o: ImportedOffer): { flights: boolean; stay: boolean; transfer: boolean } {
+export function checks(o: ImportedOffer): { flights: boolean; stay: boolean; cruise: boolean; transfer: boolean } {
   const c = o.confidence || {};
   const unsure = (...ks: ConfKey[]) => ks.some(k => has(o, k) && levelOf(c[k]) !== "high");
-  const pkg = !!(o.flights && o.stay && !o.flights.price && !o.stay.price);
+  const main = o.stay || o.cruise;
+  const pkg = !!(o.flights && main && !o.flights.price && !o.stay?.price);
   return {
-    flights: unsure("flights", "baggage", "dates") || (!pkg && unsure("price") && !o.stay),
-    stay: unsure("stay", "board", "dates") || ((pkg || !o.flights) && unsure("price")),
+    flights: unsure("flights", "baggage", "dates") || (!pkg && unsure("price") && !main),
+    stay: unsure("stay", "board", "dates") || (!o.cruise && (pkg || !o.flights) && unsure("price")),
+    cruise: !!o.cruise && (unsure("cruise", "dates") || ((pkg || !o.flights) && unsure("price"))),
     transfer: unsure("transfer")
   };
 }

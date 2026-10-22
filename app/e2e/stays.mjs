@@ -597,6 +597,10 @@ try {
     await p.locator(".start .home-trip", { hasText: "Mittelmeer" }).first().click();
     await p.locator("#stay .cr-open").scrollIntoViewIfNeeded();
     await p.locator("#stay .cr-open").click();
+    // Kreuzfahrt-Dialog (#519): Suche mit Fahrtgebiet und Portal-Links, „Von Hand“ legt den Posten an
+    await p.locator(".cs-area").waitFor();
+    if ((await p.locator(".cs-links a").count()) < 3) fail("Kreuzfahrt-Portale fehlen");
+    await p.locator(".cs-hand").click();
     const kc = p.locator("#stay .card.edit");
     await kc.locator(".cr-cabed").first().waitFor();
     if ((await kc.locator(".cr-cabed").count()) !== 2) fail("Kabinen nach Familien: " + await kc.locator(".cr-cabed").count());

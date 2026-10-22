@@ -40,6 +40,8 @@
       }
       case "price": return [o.price?.total ? t("imp.rev.total", { v: money(o.price.total, cur) }) : "", o.price?.perPerson ? t("imp.rev.pp", { v: money(o.price.perPerson, cur) }) : ""].filter(Boolean).join(" · ");
       case "flights": { const l = o.flights!.legs; return [l.map(x => `${x.from} → ${x.to}`).join(", "), l[0].carrier].filter(Boolean).join(" · "); }
+      case "cruise": { const c = o.cruise!, ps = c.ports.filter(p => p.place).map(p => p.place!);
+        return [[c.line, c.ship].filter(Boolean).join(" "), ps.filter((x, i) => i === 0 || x !== ps[i - 1]).join(" → "), c.cabin ? t(`cr.type.${c.cabin}` as Key) : ""].filter(Boolean).join(" · "); }
       case "stay": return [o.stay!.name, o.stay!.stars ? "★".repeat(o.stay!.stars) : ""].filter(Boolean).join(" ");
       case "board": return t(`board.${o.stay!.board}` as Key);
       case "baggage": return o.flights!.baggage!.checked ? t("imp.rev.bagChecked") : t("imp.rev.bagCabin");

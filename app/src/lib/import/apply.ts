@@ -3,11 +3,13 @@
  * Hand: Preis laut Angebot, Anbieter, Datum, Link zum Original; gekennzeichnet als importiert (nicht live prüfbar).
  * Pauschalreise (#188): Flug, Unterkunft und enthaltener Transfer bekommen dieselbe Paket-Kennung, der Paketpreis
  * steht an der Unterkunft, die anderen Teile kosten 0 € (Paket aufbrechen: #460). Nebenkosten hängen an Flug bzw. Unterkunft.
+ * Kreuzfahrt (#525): Posten wie „Neue Kreuzfahrt“ mit Route aus dem Angebot; sie trägt den Paketpreis statt der Unterkunft.
  */
 import { t } from "../i18n/index.svelte";
-import { AGE, uid, type Extra, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
+import { AGE, isActive, uid, type AiMark, type Extra, type FlightLeg, type Item, type Option, type Port, type Traveler, type Trip } from "../model";
+import { suggestCabins, syncCruise } from "../cruise";
 import { animalName, nextAnimal, partyTravelers } from "../placeholders";
-import type { ImportedOffer, ImportLeg } from "./ai";
+import type { ImportCruise, ImportedOffer, ImportLeg } from "./ai";
 import { checks, partyOf } from "./review";
 
 const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"];
@@ -65,27 +67,58 @@ function extra(x: NonNullable<ImportedOffer["extras"]>[number], o: ImportedOffer
   return { id: uid(), kind: x.kind, ...(x.label ? { label: x.label } : {}), amount: x.amount, basis: x.basis, pay: x.pay, source: o.provider || t("imp.source") };
 }
 
+/**
+ * Kreuzfahrt aus Angebot oder Suche (#525, #519): Kabinen nach Familien wie bei „Neue Kreuzfahrt“. Preis je Kabine bzw.
+ * Person laut Angebot, sonst der Gesamtpreis nach Personen auf die Kabinen verteilt (Rest an die letzte, damit die Summe stimmt).
+ */
+export function cruiseItem(trip: Trip, c: ImportCruise, o: { total?: number; cur: string; source: Option["source"]; mark: AiMark; pkg?: Option["pkg"] }): Item {
+  const people = trip.travelers.filter(isActive);
+  const cabins = suggestCabins(people, c.cabin || "inside");
+  if (c.price && o.total == null) for (const x of cabins) { x.price = c.price; if (c.per === "person") x.per = "person"; }
+  else if (o.total) {
+    const n = Math.max(1, people.length), total = o.total;
+    let left = total;
+    cabins.forEach((x, i) => { x.price = i === cabins.length - 1 ? Math.round(left * 100) / 100 : Math.round(total * x.who.length / n * 100) / 100; left -= x.price; });
+  }
+  const opt: Option = { id: uid(), label: [c.line, c.ship].filter(Boolean).join(" · ") || t("cr.label"), ...(o.pkg ? { pkg: o.pkg } : {}),
+    price: { mode: "unit", basis: "stay", currency: o.cur, unit: 0 }, source: o.source, cabins };
+  const it: Item = { id: uid(), cat: "stay", name: c.ship || t("cr.new"), status: "idea", icon: "ship", options: [opt], ai: o.mark,
+    cruise: { ...(c.line ? { line: c.line } : {}), ...(c.ship ? { ship: c.ship } : {}), ports: cruisePorts(c, trip.from, trip.to) } };
+  syncCruise(it);
+  return it;
+}
+
+const cruisePorts = (c: ImportCruise, from?: string, to?: string): Port[] => {
+  const ps: Port[] = c.ports.map(p => ({ date: p.date || "", ...(p.place ? { place: p.place } : {}), ...(p.arr ? { arr: p.arr } : {}), ...(p.dep ? { dep: p.dep } : {}), ...(p.sea ? { sea: true } : {}) }));
+  if (!ps.length) return [{ date: from || "" }, { date: to || "" }];
+  if (!ps[0].date && from) ps[0].date = from;
+  if (!ps[ps.length - 1].date && to) ps[ps.length - 1].date = to;
+  return ps;
+};
+
 /** Angebot in die (neue) Reise übernehmen: Ziel, Daten, Reisende, Posten */
 export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISOString(), keep = false) {
   importParty(trip, o);
   const legs = o.flights?.legs || [];
   // keep: in eine bestehende Reise (Paket-Dialog, #188): Ziel, Daten und Name nur, wenn noch leer
-  if ((o.place || o.stay?.place) && !(keep && trip.place)) trip.place = o.place || o.stay!.place!;
+  const cr = o.cruise, crDays = (cr?.ports || []).map(p => p.date).filter((d): d is string => !!d).sort();
+  const crPlace = cr?.ports.find(p => p.place)?.place;
+  if ((o.place || o.stay?.place || crPlace) && !(keep && trip.place)) trip.place = o.place || o.stay?.place || crPlace!;
   if (o.country && !(keep && trip.country)) trip.country = o.country;
-  if (!(keep && trip.from)) trip.from = o.from || legs.find(l => l.dir === "out")?.dep?.slice(0, 10) || trip.from;
-  if (!(keep && trip.to)) trip.to = o.to || (trip.from && o.nights ? addDays(trip.from, o.nights) : undefined) || legs.filter(l => l.dir === "back").at(-1)?.dep?.slice(0, 10) || trip.to;
+  if (!(keep && trip.from)) trip.from = o.from || legs.find(l => l.dir === "out")?.dep?.slice(0, 10) || crDays[0] || trip.from;
+  if (!(keep && trip.to)) trip.to = o.to || (trip.from && o.nights ? addDays(trip.from, o.nights) : undefined) || legs.filter(l => l.dir === "back").at(-1)?.dep?.slice(0, 10) || crDays.at(-1) || trip.to;
   if (o.title && !(keep && trip.autoName === false)) { trip.name = o.title; trip.autoName = false; }
   trip.detail ||= {};
   const mark = { at, kind: "imported" as const };
   const cur = o.price?.currency || "EUR";
   const people = Math.max(1, trip.travelers.filter(p => p.active !== false).length);
   const total = o.price?.total ?? (o.price?.perPerson ? Math.round(o.price.perPerson * people * 100) / 100 : undefined);
-  const pkg = !!(legs.length && o.stay && !o.flights?.price && !o.stay.price && total && (o.kind === "package" || o.kind === "other"));
+  const pkg = !!(legs.length && (cr || o.stay) && !o.flights?.price && !o.stay?.price && total && (o.kind === "package" || o.kind === "other" || o.kind === "cruise"));
   // Pauschalreise (#188): gemeinsame Paket-Kennung, Preis an der Unterkunft
   const pkgId = pkg ? uid() : "";
   const unit = (v: number | undefined) => ({ mode: "unit" as const, currency: cur, unit: v ?? 0 });
   const items: Item[] = [];
-  let flight: Option | undefined, stay: Option | undefined;
+  let flight: Option | undefined, stay: Option | undefined, cruise: Option | undefined;
 
   if (legs.length) {
     const out = legs.find(l => l.dir === "out") || legs[0];
@@ -100,14 +133,22 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
     items.push({ id: uid(), cat: "flights", name: t("fl.nameRoute", { a: out.from, b: out.to }), status: "idea", options: [flight], ai: mark });
     trip.detail.flights = true;
   }
+  if (cr) {
+    // ohne eigenen Kreuzfahrtpreis trägt sie den Preis laut Angebot (allein oder als Paket mit Flug)
+    const price = pkg ? total : cr.price ? undefined : (o.flights?.price || o.stay?.price) ? undefined : total;
+    const it = cruiseItem(trip, cr, { total: price, cur, source: sourceOf(o, at), mark, ...(pkg ? { pkg: { id: pkgId, main: true } } : {}) });
+    cruise = it.options[0];
+    items.push(it);
+    trip.detail.stay = true;
+  }
   if (o.stay) {
     const s = o.stay;
     // Pauschalreise ohne Flugdaten (nur „mit Flug“): Paketpreis an der Unterkunft, sonst stünde sie mit 0 € da
     const flightless = o.kind === "package" && !legs.length;
-    const price = pkg ? total : s.price ?? (o.kind === "stay" || flightless ? total : undefined);
+    const price = pkg && !cr ? total : s.price ?? (!cr && (o.kind === "stay" || flightless) ? total : undefined);
     stay = {
       id: uid(), label: s.name || t("imp.stay"),
-      ...(s.place ? { detail: s.place } : {}), ...(pkg ? { pkg: { id: pkgId, main: true } } : {}),
+      ...(s.place ? { detail: s.place } : {}), ...(pkg && !cr ? { pkg: { id: pkgId, main: true } } : {}),
       price: { ...unit(price), basis: "stay", capacity: people },
       source: sourceOf(o, at),
       stay: { ...(s.stars ? { stars: s.stars } : {}), ...(s.board ? { board: s.board } : {}), ...(s.boards ? { boards: s.boards.map(x => ({ ...x })) } : {}), ...(s.freeCancel ? { freeCancel: true } : {}) },
@@ -135,12 +176,12 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
     trip.detail.attractions = true;
   }
   for (const x of o.extras || []) {
-    const to = (x.kind === "bag" || x.kind === "seat" ? flight || stay : stay || flight);
+    const to = (x.kind === "bag" || x.kind === "seat" ? flight || cruise || stay : cruise || stay || flight);
     if (to) (to.extras ||= []).push(extra(x, o));
   }
   // unsichere Angaben (#458): Posten als „bitte prüfen“ markieren
   const unsure = checks(o);
-  for (const it of items) if ((it.cat === "flights" && unsure.flights) || (it.cat === "stay" && unsure.stay) || (it.hint === "transfer" && unsure.transfer)) it.check = true;
+  for (const it of items) if ((it.cat === "flights" && unsure.flights) || (it.cruise && unsure.cruise) || (it.cat === "stay" && !it.cruise && unsure.stay) || (it.hint === "transfer" && unsure.transfer)) it.check = true;
   trip.items.push(...items);
   if (!(keep && trip.offer)) trip.offer = {
     at, kind: o.kind, items: items.map(i => i.id),

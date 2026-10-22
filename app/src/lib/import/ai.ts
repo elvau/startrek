@@ -4,7 +4,7 @@
  * Werten (parseImportAi). Dateien gehen nur zur Auswertung an die KI und werden nirgends gespeichert.
  * Ausweis- und Passdaten gehören nicht zum Schema; Namen nur als Teilnehmer aus Listen.
  */
-import { BOARDS, type Board, type ExtraBasis, type ExtraKind } from "../model";
+import { BOARDS, CABIN_TYPES, type Board, type CabinType, type ExtraBasis, type ExtraKind } from "../model";
 import { PARTY_KINDS, type PartyKind } from "../agent/types";
 
 export const IMPORT_TEXT_MAX = 20000;
@@ -16,16 +16,19 @@ export const IMPORT_TOTAL_MAX = 11_000_000;
 export const IMPORT_MIMES = ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const;
 export type ImportMime = (typeof IMPORT_MIMES)[number];
 
-export const IMPORT_KINDS = ["package", "flight", "stay", "rental", "other"] as const;
+export const IMPORT_KINDS = ["package", "flight", "stay", "cruise", "rental", "other"] as const;
 export type ImportKind = (typeof IMPORT_KINDS)[number];
 /** Angaben, zu denen die KI ihre Sicherheit nennt (0–1); fehlt: nicht angegeben */
-export const CONF_KEYS = ["place", "dates", "people", "price", "flights", "stay", "board", "baggage", "transfer"] as const;
+export const CONF_KEYS = ["place", "dates", "people", "price", "flights", "stay", "cruise", "board", "baggage", "transfer"] as const;
 export type ConfKey = (typeof CONF_KEYS)[number];
 const EXTRA_KINDS = ["citytax", "tax", "cleaning", "resort", "bag", "seat", "insurance", "other"] as const;
 const BASES = ["person", "personNight", "night", "day", "personDay", "booking", "percent"] as const;
 const PAYS = ["included", "onsite", "extra"] as const;
 const LANGS = ["de", "en", "es", "fr", "pl", "ru", "ar"] as const;
 
+/** Kreuzfahrt (#525): Häfen in Reihenfolge (erster Einschiffung, letzter Ausschiffung), Seetage mit sea */
+export interface ImportPort { place?: string; date?: string; arr?: string; dep?: string; sea?: boolean }
+export interface ImportCruise { line?: string; ship?: string; ports: ImportPort[]; cabin?: CabinType; cabins?: number; price?: number; per?: "cabin" | "person" }
 export interface ImportLeg { dir: "out" | "via" | "back"; from: string; to: string; dep?: string; arr?: string; carrier?: string; flightNo?: string }
 export interface ImportedOffer {
   kind: ImportKind;
@@ -56,6 +59,7 @@ export interface ImportedOffer {
   stay?: { name?: string; place?: string; stars?: number; board?: Board; boards?: { board: Board; extra?: number }[]; rooms?: number; price?: number; freeCancel?: boolean };
   transfer?: { included?: boolean; price?: number };
   rental?: { company?: string; car?: string; price?: number };
+  cruise?: ImportCruise;
   extras?: { kind: ExtraKind; label?: string; amount: number; basis: ExtraBasis; pay: "included" | "onsite" | "extra" }[];
   confidence?: Partial<Record<ConfKey, number>>;
 }
@@ -72,11 +76,21 @@ const when = (v: unknown) => {
   const m = v.match(/^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/);
   return m && day(m[1]) ? (m[2] ? `${m[1]}T${m[2]}` : m[1]) : undefined;
 };
+const hm = (v: unknown) => (typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v.trim()) ? v.trim() : undefined);
 const url = (v: unknown) => (typeof v === "string" && /^https?:\/\/[^\s]+$/i.test(v.trim()) ? v.trim().slice(0, 500) : undefined);
 const prune = <T extends object>(o: T): T | undefined => {
   for (const k of Object.keys(o) as (keyof T)[]) if (o[k] === undefined) delete o[k];
   return Object.keys(o).length ? o : undefined;
 };
+
+/** Häfen einer Kreuzfahrt (#525, auch Kreuzfahrt-Suche): Ort oder Seetag, Datum, Liegezeiten; Unsinn fällt weg */
+export function parsePorts(raw: unknown): ImportPort[] {
+  return (Array.isArray(raw) ? raw : []).map(obj).map(p => {
+    const sea = p.sea === true, place = str(p.place, 60);
+    if (!sea && !place) return undefined;
+    return prune({ place: sea ? undefined : place, date: day(p.date), arr: sea ? undefined : hm(p.arr), dep: sea ? undefined : hm(p.dep), sea: sea || undefined }) as ImportPort;
+  }).filter((p): p is ImportPort => !!p).slice(0, 40);
+}
 
 /** Antwort der KI prüfen: unbekannte Felder und Werte außerhalb der Grenzen fallen weg */
 export function parseImportAi(raw: unknown): ImportedOffer {
@@ -117,6 +131,14 @@ export function parseImportAi(raw: unknown): ImportedOffer {
   });
   out.transfer = prune({ included: bool(obj(a.transfer).included), price: num(obj(a.transfer).price, 1, 20_000) });
   out.rental = prune({ company: str(obj(a.rental).company, 40), car: str(obj(a.rental).car, 40), price: num(obj(a.rental).price, 1, 50_000) });
+  const cr = obj(a.cruise);
+  const ports = parsePorts(cr.ports);
+  // ohne mindestens zwei Häfen bzw. Tage keine Route (sonst bleibt es bei Reederei und Schiff)
+  if (ports.length >= 2 || str(cr.ship) || str(cr.line)) out.cruise = { ports: ports.length >= 2 ? ports : [], ...prune({
+    line: str(cr.line, 60), ship: str(cr.ship, 60), cabin: oneOf(cr.cabin, CABIN_TYPES), cabins: int(cr.cabins, 1, 30),
+    price: num(cr.price, 1, 500_000), per: oneOf(cr.per, ["cabin", "person"] as const)
+  }) };
+  if (out.kind === "cruise" && !out.cruise) out.kind = "other";
   const extras = (Array.isArray(a.extras) ? a.extras : []).map(obj).map(x => {
     const amount = num(x.amount, 0.01, 50_000), basis = oneOf(x.basis, BASES), pay = oneOf(x.pay, PAYS);
     return amount && basis && pay ? (prune({ kind: oneOf(x.kind, EXTRA_KINDS) || "other", label: str(x.label, 60), amount, basis, pay }) as NonNullable<ImportedOffer["extras"]>[number]) : undefined;
@@ -131,22 +153,27 @@ export function parseImportAi(raw: unknown): ImportedOffer {
 }
 
 /** etwas Brauchbares erkannt? (Ziel, Zeitraum, Preis, Flug oder Unterkunft) */
-export const offerUsable = (o: ImportedOffer) => !!(o.place || o.from || o.price || o.flights || o.stay?.name);
+export const offerUsable = (o: ImportedOffer) => !!(o.place || o.from || o.price || o.flights || o.stay?.name || o.cruise?.ports.length);
 
 const SYSTEM = `You read a travel offer, booking confirmation or participant list (screenshots, PDF, text of a web page, any language) for a group travel cost planner.
 Call fill_trip exactly once. Only fill what the material states or clearly implies; never invent prices, times, hotels or people. Leave unknown fields out.
-- kind: package (flight + accommodation sold together for one price), flight, stay, rental (car), other.
+- kind: package (flight + accommodation sold together for one price), flight, stay, cruise (ship voyage, also with flights), rental (car), other.
 - price: what the offer advertises, total for everyone and/or per person, with currency (ISO code). For a package, the package price.
 - flights.price / stay.price: only if the offer prices them separately. flights.legs: one leg per flight with IATA codes when shown (else city), local times as YYYY-MM-DDTHH:MM, dir out/back (via for further legs of a round trip).
 - flights.baggage: bags included per person (cabin = cabin trolley, checked = hold bags). Leave out if not mentioned.
 - stay.board: board included in the price (self, breakfast, half, full, all). stay.boards: board options the offer lets you choose, with extra = surcharge per person and night in the offer's currency (0 for the included one).
 - transfer.included: true/false only if the offer says so.
+- cruise: line (cruise company), ship, ports = the itinerary in order (first = embarkation, last = disembarkation; a port
+  twice if the ship returns), each with place (city), date YYYY-MM-DD and local arr/dep as HH:MM when shown; a day at sea
+  as { sea: true, date }. cabin: inside, outside (ocean view), balcony or suite; cabins: number of cabins booked;
+  cruise.price: the cruise price per cabin (per = cabin) or per person (per = person) if stated that way. For a cruise
+  do not fill stay; price.total stays the whole offer. place: the embarkation port.
 - extras: fees the offer names (city tax, resort fee, cleaning, baggage, seats …) with amount, basis and pay (included, onsite = paid locally, extra = paid at booking on top).
 - adults: number of adults travelling; childAges: the age of every child and infant travelling (0 for a baby; the app counts under 2 as infant, 2–11 as child, 12 and older as adult price). Count children from the booking (e.g. "2 adults, 2 children (5, 8)") and never leave them out; if only their number is stated, give it as children (without childAges). "zu zweit", "for two", "für 2 Personen", "2 Erw." or a price per person in a double room without other numbers mean 2 adults (people confidence 0.6 if only implied by the room). partyKind: family (one household, parents with their children), couple (two partners) or group (friends, team, club, colleagues); family or couple only if the offer or booking says so.
 - travelers: only from participant lists; first name, family name as household, age if given. Never copy ID card, passport, birth date, address, phone, e-mail or booking numbers.
 - country: ISO-2 of the destination. Dates as YYYY-MM-DD. validUntil: until when the offer is valid, if stated.
 - url: the offer's own web address if visible.
-- confidence (0-1) for place, dates, people, price, flights, stay, board, baggage, transfer: 1 = stated literally, 0.6 = derived, 0.3 = guessed. Leave out what is not mentioned at all.
+- confidence (0-1) for place, dates, people, price, flights, stay, cruise (route and cabin), board, baggage, transfer: 1 = stated literally, 0.6 = derived, 0.3 = guessed. Leave out what is not mentioned at all.
 - title: short trip name in the user's language, e.g. "Mallorca im Mai".`;
 
 const S = (type: string, extra: object = {}) => ({ type, ...extra });
@@ -176,6 +203,13 @@ const DECL = {
       }),
       transfer: S("OBJECT", { properties: { included: S("BOOLEAN"), price: S("NUMBER") } }),
       rental: S("OBJECT", { properties: { company: S("STRING"), car: S("STRING"), price: S("NUMBER") } }),
+      cruise: S("OBJECT", {
+        properties: {
+          line: S("STRING"), ship: S("STRING"),
+          ports: S("ARRAY", { items: S("OBJECT", { properties: { place: S("STRING"), date: S("STRING"), arr: S("STRING"), dep: S("STRING"), sea: S("BOOLEAN") } }) }),
+          cabin: S("STRING", { enum: [...CABIN_TYPES] }), cabins: S("INTEGER"), price: S("NUMBER"), per: S("STRING", { enum: ["cabin", "person"] })
+        }
+      }),
       extras: S("ARRAY", { items: S("OBJECT", { properties: { kind: S("STRING", { enum: [...EXTRA_KINDS] }), label: S("STRING"), amount: S("NUMBER"), basis: S("STRING", { enum: [...BASES] }), pay: S("STRING", { enum: [...PAYS] }) } }) }),
       confidence: S("OBJECT", { properties: Object.fromEntries(CONF_KEYS.map(k => [k, S("NUMBER")])) })
     }

@@ -108,3 +108,38 @@ describe("Kleinkinder aus der Übersicht (#474)", () => {
     expect(a.travelers.map(p => p.kind)).toEqual(["adult", "adult", "child", "child", "infant"]);
   });
 });
+
+describe("Kreuzfahrt importieren (#525)", () => {
+  const route = [
+    { place: "Barcelona", date: "2027-05-02", dep: "18:00" }, { sea: true, date: "2027-05-03" },
+    { place: "Palermo", date: "2027-05-04", arr: "08:00", dep: "17:00" }, { place: "Barcelona", date: "2027-05-09", arr: "07:00" }
+  ];
+  it("Route, Kabinen nach Familien, Gesamtpreis auf die Kabinen verteilt", () => {
+    const trip = blank();
+    const items = importToTrip(trip, { kind: "cruise", adults: 3, partyKind: "group", price: { total: 2999, currency: "EUR" }, cruise: { line: "Reederei", ship: "Meeresblick", ports: route, cabin: "balcony" } }, AT);
+    expect(items.map(i => i.cat)).toEqual(["stay"]);
+    const [cr] = items;
+    expect(trip).toMatchObject({ place: "Barcelona", from: "2027-05-02", to: "2027-05-09" });
+    expect(cr).toMatchObject({ name: "Meeresblick", icon: "ship", from: "2027-05-02", to: "2027-05-09", cruise: { line: "Reederei", ship: "Meeresblick" } });
+    expect(cr.cruise!.ports.map(p => p.sea ? "~" : p.place)).toEqual(["Barcelona", "~", "Palermo", "Barcelona"]);
+    expect(cr.cruise!.ports[2]).toMatchObject({ arr: "08:00", dep: "17:00" });
+    const o = cr.options[0];
+    expect(o.label).toBe("Reederei · Meeresblick");
+    expect(o.cabins!.length).toBe(3);
+    expect(o.cabins!.every(c => c.type === "balcony")).toBe(true);
+    expect(o.cabins!.reduce((a, c) => a + c.price, 0)).toBeCloseTo(2999, 2);
+    expect(o.price.unit).toBeCloseTo(2999, 2);
+  });
+  it("Preis pro Person laut Angebot an den Kabinen", () => {
+    const [cr] = importToTrip(blank(), { kind: "cruise", adults: 2, partyKind: "couple", cruise: { ports: route, price: 899, per: "person" } }, AT);
+    expect(cr.options[0].cabins).toMatchObject([{ type: "inside", price: 899, per: "person" }]);
+    expect(cr.options[0].price.unit).toBe(1798);
+  });
+  it("mit Flug als Paket: Preis an der Kreuzfahrt, Flug zu 0 €", () => {
+    const items = importToTrip(blank(), { kind: "cruise", adults: 2, price: { total: 2400 }, flights: { legs: [{ dir: "out", from: "DUS", to: "BCN", dep: "2027-05-02T07:00" }, { dir: "back", from: "BCN", to: "DUS", dep: "2027-05-09T12:00" }] }, cruise: { ports: route } }, AT);
+    const [fl, cr] = items;
+    expect(fl.options[0]).toMatchObject({ price: { unit: 0 }, pkg: {} });
+    expect(cr.options[0].pkg).toMatchObject({ main: true, id: fl.options[0].pkg!.id });
+    expect(cr.options[0].price.unit).toBe(2400);
+  });
+});

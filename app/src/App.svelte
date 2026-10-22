@@ -35,6 +35,7 @@
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
   import PackageDialog from "./lib/ui/PackageDialog.svelte";
+  import CruiseDialog from "./lib/ui/CruiseDialog.svelte";
   import { takeShared } from "./lib/import/share.svelte";
   import CompareView from "./lib/ui/CompareView.svelte";
   import AppFooter from "./lib/ui/AppFooter.svelte";
@@ -104,7 +105,7 @@
   // Karte der Reise, aufgeklappt im Kapitel Unterkunft oder Erlebnisse
   let mapOpen = $state<"stay" | "attractions" | null>(null);
   // Pauschalreise eintragen (#188), aus den Kapiteln Flug und Unterkunft
-  let pkgOpen = $state(false);
+  let pkgOpen = $state(false), cruiseOpen = $state(false);
 
   // Tageskurse für die Anzeige in anderer Währung und für Preise in Fremdwährung (einmal am Tag)
   onMount(() => { void loadRates(); });
@@ -279,7 +280,7 @@
           <div class="search-row"><button class="btn st-open" class:primary={!app.trip.camper} onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
             <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button>
             <button class="btn priv-open" title={t("priv.searchHint")} onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
-            <button class="btn cr-open" title={t("cr.title")} onclick={addCruise}>🚢 {t("cr.open")}</button>
+            <button class="btn cr-open" title={t("cs.title")} onclick={() => (cruiseOpen = true)}>🚢 {t("cr.open")}</button>
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
           {#if mapOpen === "stay"}<TripMap onclose={() => (mapOpen = null)} />{/if}
         {/if}
@@ -338,6 +339,7 @@
 {#if showWho || (whoAsk.open && !!cloud.user && !!whoCt)}<WhoAmI onclose={whoClose} />{/if}
 <!-- Flug- und Unterkunftssuche im eigenen Fenster (aus Kapitel, Posten und Plan); danach ist man wieder dort -->
 {#if pkgOpen}<PackageDialog onclose={() => (pkgOpen = false)} />{/if}
+{#if cruiseOpen}<CruiseDialog onclose={() => (cruiseOpen = false)} onhand={addCruise} />{/if}
 {#if flightSearch.open}{#key flightSearch.scope}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/key}{/if}
 {#if staySearch.open}{#key staySearch.scope}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}
 {#if privStay.open}{#key privStay.itemId}<PrivateStay itemId={privStay.itemId} onclose={() => (privStay.open = false)} />{/key}{/if}
