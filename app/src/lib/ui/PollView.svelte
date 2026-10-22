@@ -20,7 +20,7 @@
   const trip = $derived(app.trip);
   const remote = $derived(remoteVotes(p));
   const votes = $derived(mergedVotes(p, remote));
-  const rows = $derived(tallyMode(p, votes));
+  const rows = $derived(tallyMode(p, votes, trip));
   const open = $derived(pollOpen(p));
   const soon = $derived(dueSoon(p));
   const me = $derived(myVoter());

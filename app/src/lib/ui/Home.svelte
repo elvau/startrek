@@ -63,7 +63,7 @@
     const h = pollOf(b);
     if (!h) return undefined;
     const remote = Object.fromEntries(Object.entries(tileVotes[h.id] || {}).map(([u, v]) => [u, v[h.p.id] || {}]).filter(([, x]) => Object.keys(x).length));
-    return variantStand(h.p, mergedVotes(h.p, remote));
+    return variantStand(h.p, mergedVotes(h.p, remote), tripFor(h.id) ?? undefined);
   }
   // archivierte Varianten (#433) nur in der Vergleichskachel
   const shown = $derived(rows.filter(r => !isArchived(r, r.cmp ? pickedOf(bundleOf(r)?.list || []) : undefined)));

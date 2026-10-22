@@ -133,7 +133,7 @@
       {#if p.mode}
         <PollView {p} onremove={() => removePoll(p.id)} />
       {:else}
-      {@const rows = tally(p)}
+      {@const rows = tally(p, trip)}
       {@const miss = missing(trip, p)}
       <article class="poll" class:closed={!!p.closed} data-poll={p.id}>
         <header><b>{p.q}</b>{#if p.closed}<span class="poll-done">✓ {t("poll.closed")}</span>{/if}</header>
