@@ -54,31 +54,30 @@ try {
   if (await p.evaluate(() => getComputedStyle(document.body).overflow === "hidden")) fail("Startseite scrollt nicht");
   log("Startseite: Einstiege in zwei Spalten, Seite scrollbar");
   await p.locator(".home-trip", { hasText: "Kroatien" }).first().click();
-  const on = () => p.locator(".mtabs .mt.on").getAttribute("data-pg");
-  const bar = () => p.locator(".mbar .mb.on").getAttribute("data-mb");
+  const on = () => p.locator(".mbar .mb.on").getAttribute("data-pg");
   await p.locator("main.pager").waitFor();
-  if ((await p.locator(".mtabs .mt").count()) !== 9) fail("Reiter: " + await p.locator(".mtabs .mt").count());
-  if (await on() !== "hero" || await bar() !== "home") fail("Start nicht auf der Übersicht");
+  if ((await p.locator(".mbar .mb").count()) !== 9) fail("Reiter: " + await p.locator(".mbar .mb").count());
+  if (await on() !== "hero") fail("Start nicht auf der Übersicht");
+  if (await p.locator(".mtabs").count()) fail("Reiter oben noch da");
+  if (!/€/.test(await p.locator(".mbar .mb-tot").innerText())) fail("Gesamtsumme unten fehlt");
   if (await p.locator(".bug-fab").isVisible()) fail("Fehler melden schwebt noch");
   if (await p.locator(".dock").count()) fail("alte Leiste unten noch da");
   // Seite hat keine lange Seite mehr: Fenster scrollt nicht
   if ((await p.evaluate(() => document.documentElement.scrollHeight)) > 900) fail("Seite scrollt noch");
-  // Reiter: Unterkunft; Leiste zeigt Planen
-  await p.locator('.mtabs [data-pg="stay"]').click();
-  await until(async () => (await on()) === "stay" && (await bar()) === "plan", "Reiter Unterkunft");
+  // Leiste: Unterkunft
+  await p.locator('.mbar [data-pg="stay"]').click();
+  await until(async () => (await on()) === "stay", "Leiste Unterkunft");
   if (!(await p.locator('main.pager > [data-ch="stay"]').innerText()).includes("Ferienhaus mit Pool")) fail("Unterkunft: Posten fehlt");
   // wischen nach links: nächste Seite (erst, wenn der Sprung angekommen ist)
   await p.waitForTimeout(900);
   await p.evaluate(() => { const m = document.querySelector("main.pager"); m.scrollBy({ left: m.clientWidth }); });
   await until(async () => (await on()) === "transport", "wischen → Vor Ort");
-  // Leiste: Tage, Abrechnung, Planen (zuletzt offenes Kapitel), Übersicht
-  await p.locator('.mbar [data-mb="days"]').click();
-  await until(async () => (await on()) === "plan" && (await bar()) === "days", "Leiste Tage");
-  await p.locator('.mbar [data-mb="split"]').click();
+  // Leiste: Tage, Abrechnung, Übersicht
+  await p.locator('.mbar [data-pg="plan"]').click();
+  await until(async () => (await on()) === "plan", "Leiste Tage");
+  await p.locator('.mbar [data-pg="split"]').click();
   await until(async () => (await on()) === "split", "Leiste Abrechnung");
-  await p.locator('.mbar [data-mb="plan"]').click();
-  await until(async () => (await on()) === "transport", "Leiste Planen → zuletzt Vor Ort");
-  await p.locator('.mbar [data-mb="home"]').click();
+  await p.locator('.mbar [data-pg="hero"]').click();
   await until(async () => (await on()) === "hero", "Leiste Übersicht");
   // Kachel der Übersicht springt ins Kapitel
   await p.locator(".ht-tile.ht-st").click();
@@ -93,7 +92,7 @@ try {
   await until(async () => !(await villa.evaluate(e => e.classList.contains("compact"))), "Posten aufklappen");
   await villa.locator(".ic-fold").click();
   await until(async () => villa.evaluate(e => e.classList.contains("compact")), "Posten zuklappen");
-  await p.locator('.mtabs [data-pg="attractions"]').click();
+  await p.locator('.mbar [data-pg="attractions"]').click();
   await until(async () => (await on()) === "attractions", "Reiter Erlebnisse");
   const att = p.locator('main.pager > [data-ch="attractions"]');
   await att.locator(".card[data-item=a1]").click();
@@ -105,7 +104,7 @@ try {
   if (!(await att.locator(".fs-direct").isVisible())) fail("⋯ zeigt keine Anbieter-Links");
   log("Posten zugeklappt als Zeile (Preis, Status), Antippen klappt auf, nur einer offen; Anbieter-Links hinter ⋯");
   // Abrechnung (#532): Familien als Karussell mit Reitern, Kasse und Zuschüsse dahinter
-  await p.locator('.mbar [data-mb="split"]').click();
+  await p.locator('.mbar [data-pg="split"]').click();
   await until(async () => (await on()) === "split", "Leiste Abrechnung");
   const sp = p.locator('main.pager > [data-ch="split"]');
   const shTabs = sp.locator(".sh-tab");
@@ -122,12 +121,12 @@ try {
   if ((await sp.evaluate(e => e.scrollHeight)) > 1300) fail("Abrechnung noch zu lang: " + await sp.evaluate(e => e.scrollHeight));
   log("Abrechnung: Familien als Karussell mit Beträgen in den Reitern, Kasse und Zuschüsse dahinter, Kapitel zugeklappt");
   // Mehr: Fehler melden, Kostenübersicht, Fußzeile
-  await p.locator('.mbar [data-mb="more"]').click();
+  await p.locator(".mbar .mb-tot").click();
   const sh = p.locator(".mb-sheet");
   await sh.waitFor();
   if (!(await sh.locator(".foot-legal").innerText()).includes("Impressum")) fail("Mehr: Fußzeile fehlt");
   await sh.locator(".sheet-x").click();
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  log("Handy: Pager mit 9 Seiten, Reiter, Wischen, Leiste (Übersicht, Planen, Tage, Abrechnung, Mehr), Kachel springt ins Kapitel, kein langes Scrollen");
+  log("Handy: Pager mit 9 Seiten, Wischen, Leiste unten mit allen Seiten und Gesamtsumme (öffnet Mehr), Kachel springt ins Kapitel, kein langes Scrollen");
   console.log("\nHandy-Ansicht: alles in Ordnung");
 } finally { await b.close(); server.kill(); }

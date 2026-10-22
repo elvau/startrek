@@ -1,6 +1,7 @@
 /*
  * Handy-Ansicht (#530): Die Reise ist ein Pager aus Seiten, die man seitlich wischt (Übersicht, je Kapitel eine Seite,
- * Tage, Abrechnung); jede Seite scrollt für sich. Unten eine feste Leiste, oben Reiter. Desktop bleibt eine lange Seite.
+ * Tage, Abrechnung); jede Seite scrollt für sich. Unten eine feste Leiste mit den Seiten und der Gesamtsumme.
+ * Desktop bleibt eine lange Seite.
  * Sprünge per scrollIntoView (Posten zeigen, Suche übernehmen) funktionieren weiter: sie scrollen den Pager mit.
  */
 import { CHAPTERS, type ChapterKey } from "./chapters";
@@ -11,15 +12,9 @@ export const MOB_MAX = 760;
 export type PageKey = "hero" | ChapterKey;
 /** Seiten in der Reihenfolge des Pagers */
 export const PAGES: PageKey[] = ["hero", ...CHAPTERS.map(c => c.k)];
-/** Kapitel, die „Planen“ in der Leiste zusammenfasst */
-export const PLAN_PAGES: PageKey[] = ["trav", "flights", "stay", "transport", "attractions", "misc"];
 
 /** openItem: am Handy aufgeklappter Posten (#531), immer höchstens einer */
-export const mob = $state<{ on: boolean; page: PageKey; lastPlan: PageKey; more: boolean; openItem: string }>({ on: false, page: "hero", lastPlan: "flights", more: false, openItem: "" });
-
-/** Leiste unten: welcher Eintrag ist gerade aktiv */
-export type BarKey = "home" | "plan" | "days" | "split";
-export const barOf = (p: PageKey): BarKey => (p === "hero" ? "home" : p === "plan" ? "days" : p === "split" ? "split" : "plan");
+export const mob = $state<{ on: boolean; page: PageKey; more: boolean; openItem: string }>({ on: false, page: "hero", more: false, openItem: "" });
 
 /** nächste bzw. vorige Seite (für Tastatur und Tests); am Rand bleibt es */
 export const stepPage = (p: PageKey, d: 1 | -1): PageKey => PAGES[Math.max(0, Math.min(PAGES.length - 1, PAGES.indexOf(p) + d))];
@@ -29,7 +24,7 @@ export const pageAt = (scrollLeft: number, width: number, keys: PageKey[] = PAGE
   keys[Math.max(0, Math.min(keys.length - 1, Math.round(Math.abs(scrollLeft) / Math.max(1, width))))];
 
 let pager: HTMLElement | null = null;
-/** Ziel eines Sprungs: Seiten, über die der Pager dabei scrollt, zählen nicht (sonst stimmte „Planen“ nicht mehr) */
+/** Ziel eines Sprungs: Seiten, über die der Pager dabei scrollt, zählen nicht (die Leiste springt sonst hin und her) */
 let target: PageKey | null = null, targetTimer: ReturnType<typeof setTimeout> | undefined;
 /** Lage des Pagers neu auswerten (nach einem unterbrochenen Sprung) */
 let recheck = () => {};
@@ -42,7 +37,6 @@ function setPage(p: PageKey) {
   if (mob.page === p) return;
   mob.page = p;
   try { if (tripId) sessionStorage.setItem(PAGE_KEY, JSON.stringify({ id: tripId, page: p })); } catch { /* egal */ }
-  if (PLAN_PAGES.includes(p)) mob.lastPlan = p;
   view.active = p;
   document.body.dataset.ch = p;
 }

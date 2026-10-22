@@ -152,7 +152,7 @@ try {
   await m.locator(".start .home-trip", { hasText: "Split mobil" }).click();
   // kompakte Posten (#242, #531): eine Zeile mit Name und Preis; Bild und Hin/Zurück erst nach dem Antippen
   const sCard = m.locator("#stay .card[data-item='s']"), fCard = m.locator("#flights .card[data-item='f']");
-  await m.locator('.mtabs [data-pg="stay"]').click();
+  await m.locator('.mbar [data-pg="stay"]').click();
   if (await sCard.locator(".stay-img").isVisible() || await fCard.locator(".bp-legs").isVisible()) fail("Handy: Karten nicht kompakt");
   if (!(await sCard.evaluate(e => e.classList.contains("compact")))) fail("Handy: Unterkunft nicht als Zeile");
   if (!/€/.test(await sCard.innerText())) fail("Handy: Preis fehlt in der Zeile");
@@ -164,7 +164,7 @@ try {
   await pop.waitFor({ state: "detached" });
   for (const [ch, id, btn, sum] of [["flights", "f", ".fs-item", "DUS→SPU"], ["stay", "s", ".st-item", "18.07. – 25.07."]]) {
     const c = m.locator(`#${ch} .card[data-item='${id}']`);
-    await m.locator(`.mtabs [data-pg="${ch}"]`).click();
+    await m.locator(`.mbar [data-pg="${ch}"]`).click();
     await c.click();
     await c.locator(".ic-fold").waitFor();
     await c.locator("h3, .fc-route, .st-name").first().click().catch(() => c.click({ position: { x: 20, y: 40 } }));
@@ -192,19 +192,19 @@ try {
     await c.locator(".editor").waitFor({ state: "detached" });
   }
   // Knopf oben im Kapitel öffnet dasselbe Fenster
-  await m.locator('.mtabs [data-pg="flights"]').click();
+  await m.locator('.mbar [data-pg="flights"]').click();
   await m.locator("#flights .fs-open").click();
   await m.locator(".modal-bg .modal .fs-aps").waitFor();
   await m.locator(".modal-bg .modal .modal-h .x").click();
   log("Handy: „?“-Hinweise öffnen und schließen; Karten kompakt (Einzelheiten beim Antippen); Flug- und Unterkunftsposten eingeklappt mit Zusammenfassung, Suche oben als Fenster, danach wieder am Posten; Kapitelknopf ebenso");
   // Neuladen im selben Tab bleibt in der Reise (Issue #255); über die Marke und neu laden bleibt es auf der Startseite
   // Handy (#530): statt des Scrollstands bleibt die offene Seite des Pagers
-  await m.locator('.mtabs [data-pg="flights"]').click();
+  await m.locator('.mbar [data-pg="flights"]').click();
   await m.waitForTimeout(700);
   await m.reload();
   await m.locator(".top .brand-btn").waitFor();
   if (await m.locator(".start").count()) fail("Neuladen in der Reise landet auf der Startseite");
-  await until(async () => (await m.locator(".mtabs .mt.on").getAttribute("data-pg")) === "flights", "Seite nach dem Neuladen");
+  await until(async () => (await m.locator(".mbar .mb.on").getAttribute("data-pg")) === "flights", "Seite nach dem Neuladen");
   await m.locator(".top .brand-btn").click();
   await m.locator(".start").waitFor();
   await m.reload();
@@ -631,7 +631,7 @@ try {
   // Aufteilung am Posten (#229): Oma nur 8 der 21 Nächte im Ferienhaus
   const house = tp.locator("#stay .card[data-item]", { hasText: "Ferienhaus" });
   // Handy (#531): Posten erst aufklappen
-  await tp.locator('.mtabs [data-pg="stay"]').click();
+  await tp.locator('.mbar [data-pg="stay"]').click();
   await house.click();
   await until(async () => (await house.locator(".isplit").innerText().catch(() => "")).includes("8 von 21 Nächten"), "Aufteilung am Posten");
   await tlc.locator(".tl-reset").click();
