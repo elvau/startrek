@@ -2483,6 +2483,7 @@ export const es: Dict = {
   "split.overview": "Resumen",
   "split.share": "{p} % del viaje",
   "split.simpleLine": "Total, repartido por igual",
+  "split.smallLine": "Importes pequeños (menos de 0,50 €)",
   "split.tapRow": "Toca una fila para ver las partidas de una familia.",
   "split.uniform": "Los {n} pagan lo mismo: {v}. Toca una fila para ver el detalle.",
   "split.uniformAbout": "Los {n} pagan casi lo mismo: unos {v} por persona. Toca una fila para ver detalles.",

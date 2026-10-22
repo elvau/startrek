@@ -2483,6 +2483,7 @@ export const en: Dict = {
   "split.overview": "Overview",
   "split.share": "{p} % of the trip",
   "split.simpleLine": "Total, split evenly",
+  "split.smallLine": "Small amounts (under €0.50)",
   "split.tapRow": "Tap a row for a family's items.",
   "split.uniform": "All {n} pay the same: {v}. Tap a row for details.",
   "split.uniformAbout": "All {n} pay almost the same: about {v} per person. Tap a row for details.",

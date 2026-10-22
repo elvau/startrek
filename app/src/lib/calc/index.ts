@@ -500,13 +500,15 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
         if (!inn.length) continue;
         lines.push({ key: "line:" + l.id, label: l.label || t("trav.noName"), v: (l.amount / who.length) * inn.length, who: inn.length, detail: t("perPerson", { v: eurPP(l.amount / who.length) }), fixed: false });
       }
+      // Anteile unter 50 Cent: eine Sammelzeile, damit die Karte weiter die Summe der Familie zeigt
+      const small = { v: 0, fixed: true };
       for (const it of trip.items) {
         if (it.cat !== cat) continue;
         const r = T.items[it.id];
         if (!r || !r.counts) continue;
         const inn = ms.filter(t => r.per[t.id] != null && r.per[t.id] > 0.005);
         const v = inn.reduce((a, t) => a + r.per[t.id], 0);
-        if (v < 0.5) continue;
+        if (v < 0.5) { if (v > 0.005) { small.v += v; small.fixed &&= FIXED.includes(it.status); } continue; }
         const grp: Partial<Record<AgeClass, { n: number; v: number }>> = {};
         inn.forEach(t => { const c = ageClass(t.age, trip.settings, t.kind); (grp[c] ||= { n: 0, v: Math.round(r.per[t.id]) }).n++; });
         const keys = (["adult", "child", "infant"] as AgeClass[]).filter(c => grp[c]);
@@ -519,6 +521,7 @@ export function householdShares(trip: Trip, T: Totals = totals(trip)): Household
         const nights = r.stay && nn && nn < r.stay.nights.length ? t("split.nightsOf", { a: nn, b: r.stay.nights.length }) : "";
         lines.push({ key: it.id, item: it, label: it.name || t("trav.noName"), v, who: inn.length, detail, ...(nights ? { nights } : {}), fixed: FIXED.includes(it.status) });
       }
+      if (small.v > 0) lines.push({ key: "small:" + cat, label: t("split.smallLine"), v: small.v, who: ms.length, detail: "", fixed: small.fixed });
       return { cat, sum: lines.reduce((a, l) => a + l.v, 0), lines };
     }).filter(c => c.lines.length);
     const costs = cats.reduce((a, c) => a + c.sum, 0);
