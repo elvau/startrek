@@ -18,6 +18,8 @@ export function initScroll(): () => void {
   let pin: string | null = null;
   const tick = () => {
     raf = 0;
+    // Handy (#530): Seiten statt einer langen Seite, das aktive Kapitel setzt der Pager
+    if (document.body.classList.contains("mob")) return;
     const vh = innerHeight, y = scrollY;
     view.scrolled = y > vh * 0.6;
     view.hp = Math.min(1, y / vh);

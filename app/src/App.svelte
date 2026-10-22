@@ -1,6 +1,6 @@
 <script lang="ts">
   import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { entryCurrency, loadRates } from "./lib/currency.svelte";
   import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed, goHome } from "./lib/store.svelte";
   import { saveView } from "./lib/resume";
@@ -29,6 +29,9 @@
   import ItemCard from "./lib/ui/ItemCard.svelte";
   import TicketAside from "./lib/ui/TicketAside.svelte";
   import Dock from "./lib/ui/Dock.svelte";
+  import MobileTabs from "./lib/ui/MobileTabs.svelte";
+  import MobileBar from "./lib/ui/MobileBar.svelte";
+  import { attachPager, initMobile, mob } from "./lib/mobile.svelte";
   import { reveal } from "./lib/ui/reveal";
   import PresencePlan from "./lib/ui/PresencePlan.svelte";
   import TripTimeline from "./lib/ui/TripTimeline.svelte";
@@ -107,6 +110,9 @@
   let mapOpen = $state<"stay" | "attractions" | null>(null);
   // Pauschalreise eintragen (#188), aus den Kapiteln Flug und Unterkunft
   let pkgOpen = $state(false);
+  // Handy (#530): main ist der Pager mit einer Seite je Kapitel
+  let mainEl = $state<HTMLElement>();
+  $effect(() => { if (mob.on && mainEl) { const id = app.trip.id; return untrack(() => attachPager(mainEl!, id)); } });
 
   // Tageskurse für die Anzeige in anderer Währung und für Preise in Fremdwährung (einmal am Tag)
   onMount(() => { void loadRates(); });
@@ -120,6 +126,7 @@
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
     applyDocument();
     const off = initScroll();
+    const offMob = initMobile();
     // nach einem Neuladen an die gemerkte Stelle der Reise zurück; Scrollstand dabei laufend merken
     if (resumeScroll.y) { const y = resumeScroll.y; resumeScroll.y = 0; requestAnimationFrame(() => scrollTo({ top: y })); }
     let st: ReturnType<typeof setTimeout> | undefined;
@@ -130,7 +137,7 @@
     const outside = (e: MouseEvent) => { if (app.editing && !(e.target as HTMLElement).closest(".card:not(.plan-card), .add, .cr-open, .mode, .modal-bg")) app.editing = null; };
     addEventListener("keydown", esc);
     addEventListener("click", outside);
-    return () => { off(); clearTimeout(st); removeEventListener("scroll", keep); removeEventListener("keydown", esc); removeEventListener("click", outside); };
+    return () => { off(); offMob(); clearTimeout(st); removeEventListener("scroll", keep); removeEventListener("keydown", esc); removeEventListener("click", outside); };
   });
 
   $effect(() => { document.body.classList.toggle("editing", !!app.editing); });
@@ -205,11 +212,16 @@
 <Home />
 {:else}
 <TopNav />
-<Hero />
+{#if mob.on}<MobileTabs />{:else}<Hero />{/if}
 
 <div class="wrap">
-  <main>
-    <TripTimeline />
+  <main bind:this={mainEl} class:pager={mob.on}>
+    {#if mob.on}
+      <!-- Handy (#530): erste Seite des Pagers ist die Übersicht der Reise -->
+      <section class="chapter pg-hero" class:on={mob.page === "hero"} data-ch="hero"><Hero /><TripTimeline /></section>
+    {:else}
+      <TripTimeline />
+    {/if}
     <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>
       <!-- gemeinsam planen (#173): Termin finden, abstimmen -->
@@ -315,9 +327,10 @@
   <TicketAside />
 </div>
 
-<AppFooter />
+<!-- Handy: Fußzeile unter „Mehr“ -->
+{#if !mob.on}<AppFooter />{/if}
 
-<Dock onopen={() => (sheet = true)} />
+{#if mob.on}<MobileBar />{:else}<Dock onopen={() => (sheet = true)} />{/if}
 {#if sheet}
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
   <div class="modal-bg sheet-bg" onclick={e => { if (e.target === e.currentTarget) sheet = false; }}>

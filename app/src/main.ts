@@ -4,6 +4,7 @@ import "@fontsource-variable/figtree";
 import "@fontsource-variable/bricolage-grotesque/opsz.css";
 import "./styles/app.css";
 import "./styles/editor.css";
+import "./styles/mobile.css";
 import App from "./App.svelte";
 import { i18nReady } from "./lib/i18n/index.svelte";
 import { loadBeacon } from "./lib/visits";
