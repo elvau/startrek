@@ -15,7 +15,8 @@ describe("Termin finden (#174)", () => {
 
   it("beste Zeiträume: alle können vorn, vielleicht zählt halb, ohne Überschneidung, Kinder zählen nicht", () => {
     const t = trip();
-    // Anna kann 3.–6. nicht, Ben 10.–12. vielleicht, Cleo kann 15. nicht
+    // alle tragen erst „kann“ ein; Anna kann 3.–6. nicht, Ben 10.–12. vielleicht, Cleo kann 15. nicht
+    for (let i = 1; i <= 20; i++) for (const id of ["a", "b", "c"]) setAvail(t, id, `2027-07-${String(i).padStart(2, "0")}`, "yes");
     for (const d of ["2027-07-03", "2027-07-04", "2027-07-05", "2027-07-06"]) setAvail(t, "a", d, "no");
     for (const d of ["2027-07-10", "2027-07-11", "2027-07-12"]) setAvail(t, "b", d, "maybe");
     setAvail(t, "c", "2027-07-15", "no");
@@ -29,8 +30,16 @@ describe("Termin finden (#174)", () => {
   it("niemand hat etwas eingetragen: keine Vorschläge; noch offen wird gezeigt", () => {
     const t = trip();
     expect(bestPeriods(t)).toEqual([]);
-    setAvail(t, "a", "2027-07-02", "yes");
+    for (const d of ["02", "03", "04", "05"]) setAvail(t, "a", `2027-07-${d}`, "yes");
     expect(bestPeriods(t)[0].open).toEqual(["b", "c"]);
+  });
+
+  it("wer nur einzelne Tage mit „kann“ markiert, ist für andere Zeiträume offen, nicht „kann“", () => {
+    const t = trip();
+    for (const d of ["01", "02", "03", "04", "05"]) setAvail(t, "a", `2027-07-${d}`, "yes");
+    const best = bestPeriods(t, 10);
+    expect(best.find(r => r.from === "2027-07-20")).toBeUndefined();
+    expect(best.every(r => r.yes.includes("a") === (r.to <= "2027-07-05"))).toBe(true);
   });
 
   it("gesperrte Tage für Suche und KI", () => {

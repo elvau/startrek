@@ -99,15 +99,17 @@ export function planDays(p: Pick<AvailPlan, "from" | "to">): string[] {
   return Array.from({ length: n + 1 }, (_, i) => addDay(p.from, i));
 }
 
-/** eine Person in einem Zeitraum (An- bis Abreisetag): kann nicht, wenn ein Tag „kann nicht“ ist, vielleicht bei einem „vielleicht“ */
+/** eine Person in einem Zeitraum (An- bis Abreisetag): kann nicht, wenn ein Tag „kann nicht“ ist; offen, wenn ein Tag ohne Eintrag ist;
+ *  sonst vielleicht bei einem „vielleicht“, kann nur, wenn alle Tage „kann“ sind */
 function personIn(m: Record<string, Avail> | undefined, from: string, to: string): Avail | "open" {
   if (!m || !Object.keys(m).length) return "open";
-  let maybe = false;
+  let maybe = false, unset = false;
   for (let d = from; d <= to; d = addDay(d, 1)) {
     if (m[d] === "no") return "no";
     if (m[d] === "maybe") maybe = true;
+    else if (m[d] !== "yes") unset = true;
   }
-  return maybe ? "maybe" : "yes";
+  return unset ? "open" : maybe ? "maybe" : "yes";
 }
 
 /** beste Zeiträume mit der gewünschten Zahl an Nächten, ohne Überschneidung, beste zuerst */
