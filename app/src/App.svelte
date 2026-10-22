@@ -1,6 +1,6 @@
 <script lang="ts">
   import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { entryCurrency, loadRates } from "./lib/currency.svelte";
   import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed, goHome } from "./lib/store.svelte";
   import { saveView } from "./lib/resume";
@@ -112,7 +112,7 @@
   let pkgOpen = $state(false);
   // Handy (#530): main ist der Pager mit einer Seite je Kapitel
   let mainEl = $state<HTMLElement>();
-  $effect(() => { if (mob.on && mainEl) return attachPager(mainEl); });
+  $effect(() => { if (mob.on && mainEl) { const id = app.trip.id; return untrack(() => attachPager(mainEl!, id)); } });
 
   // Tageskurse für die Anzeige in anderer Währung und für Preise in Fremdwährung (einmal am Tag)
   onMount(() => { void loadRates(); });

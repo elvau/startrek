@@ -34,9 +34,14 @@ let target: PageKey | null = null, targetTimer: ReturnType<typeof setTimeout> | 
 /** Lage des Pagers neu auswerten (nach einem unterbrochenen Sprung) */
 let recheck = () => {};
 
+/** nach dem Neuladen wieder auf der Seite, die offen war (wie der Scrollstand am Desktop, #255); nur in diesem Tab */
+const PAGE_KEY = "sf-mob-page";
+let tripId = "";
+
 function setPage(p: PageKey) {
   if (mob.page === p) return;
   mob.page = p;
+  try { if (tripId) sessionStorage.setItem(PAGE_KEY, JSON.stringify({ id: tripId, page: p })); } catch { /* egal */ }
   if (PLAN_PAGES.includes(p)) mob.lastPlan = p;
   view.active = p;
   document.body.dataset.ch = p;
@@ -56,8 +61,12 @@ export function goPage(p: PageKey, smooth = true) {
 }
 
 /** Pager anbinden: beim Wischen die aktuelle Seite merken */
-export function attachPager(el: HTMLElement): () => void {
+export function attachPager(el: HTMLElement, trip = ""): () => void {
   pager = el;
+  tripId = trip;
+  mob.page = "hero";
+  let back: PageKey | null = null;
+  try { const v = JSON.parse(sessionStorage.getItem(PAGE_KEY) || "null"); if (v?.id === trip && PAGES.includes(v.page)) back = v.page; } catch { /* egal */ }
   let raf = 0;
   const keys = () => [...el.children].map(c => (c as HTMLElement).dataset.ch as PageKey).filter(Boolean);
   const tick = () => {
@@ -72,7 +81,8 @@ export function attachPager(el: HTMLElement): () => void {
   const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
   recheck = on;
   el.addEventListener("scroll", on, { passive: true });
-  tick();
+  if (back && back !== "hero") requestAnimationFrame(() => goPage(back!, false));
+  else { el.scrollTo({ left: 0 }); tick(); }
   return () => { el.removeEventListener("scroll", on); el.removeEventListener("touchstart", touch); if (pager === el) pager = null; };
 }
 
