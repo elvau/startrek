@@ -93,6 +93,13 @@ export function setAvail(trip: Trip, person: string, day: string, a: Avail | und
 }
 
 /** Tage des Planungszeitraums (höchstens 120) */
+/** Zeitraum prüfen: Bis vor Von („order“) oder Reise länger als der Zeitraum („nights“); "" = in Ordnung oder noch leer */
+export function planError(from: string, to: string, nights: number): "" | "order" | "nights" {
+  if (!okD(from) || !okD(to)) return "";
+  if (to < from) return "order";
+  return nights > daysBetween(from, to) ? "nights" : "";
+}
+
 export function planDays(p: Pick<AvailPlan, "from" | "to">): string[] {
   if (!okD(p.from) || !okD(p.to) || p.to < p.from) return [];
   const n = Math.min(daysBetween(p.from, p.to), 119);
