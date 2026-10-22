@@ -37,3 +37,16 @@ describe("Abrechnung pro Haushalt", () => {
     expect(householdShares(t, T).reduce((a, h) => a + h.total, 0)).toBeCloseTo(T.total);
   });
 });
+
+describe("Abrechnung pro Haushalt: kleine Posten", () => {
+  it("Anteile unter 50 Cent stehen in einer Sammelzeile, Familienkarten ergeben die Summe", () => {
+    const t = trip();
+    t.travelers = ["a", "b", "c", "d", "e", "f", "g"].map(id => ({ id, name: id, age: 30, household: id === "a" || id === "b" ? "AB" : id === "c" || id === "d" ? "CD" : id }));
+    t.items = [{ id: "k", cat: "misc", name: "Kleinkram", status: "booked", options: [{ id: "x", label: "", price: { mode: "unit", currency: "EUR", unit: 1 } }] }];
+    const T = totals(t);
+    const hs = householdShares(t, T);
+    for (const h of hs) expect(h.total).toBeCloseTo(T.byHousehold[h.name]);
+    expect(hs.reduce((a, h) => a + h.total, 0)).toBeCloseTo(T.total);
+    expect(hs.find(h => h.name === "e")!.cats[0].lines[0].key).toBe("small:misc");
+  });
+});

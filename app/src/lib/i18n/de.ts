@@ -2481,6 +2481,7 @@ export const de = {
   "split.overview": "Übersicht",
   "split.share": "{p} % der Reise",
   "split.simpleLine": "Gesamtbetrag, gleich verteilt",
+  "split.smallLine": "Kleinbeträge (unter 0,50 €)",
   "split.tapRow": "Zeile antippen für die Posten einer Familie.",
   "split.uniform": "Alle {n} zahlen gleich viel: {v}. Zeile antippen für Einzelheiten.",
   "split.uniformAbout": "Alle {n} zahlen fast gleich viel: ca. {v} pro Person. Zeile antippen für Einzelheiten.",

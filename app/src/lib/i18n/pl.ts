@@ -2579,6 +2579,7 @@ export const pl: Dict = {
   "split.overview": "Przegląd",
   "split.share": "{p} % podróży",
   "split.simpleLine": "Suma podzielona po równo",
+  "split.smallLine": "Drobne kwoty (poniżej 0,50 €)",
   "split.tapRow": "Dotknij wiersza, aby zobaczyć pozycje rodziny.",
   "split.uniform": "Wszyscy ({n}) płacą tyle samo: {v}. Dotknij wiersza, aby zobaczyć szczegóły.",
   "split.uniformAbout": "Wszyscy ({n}) płacą prawie tyle samo: ok. {v} na osobę. Dotknij wiersza, aby zobaczyć szczegóły.",
