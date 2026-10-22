@@ -70,6 +70,8 @@ export interface LedgerEntry {
   itemId?: string;
   expId?: string;
   payIdx?: number;
+  /** Zahlung zu einem verworfenen Posten (#506): zählt, mit Hinweis „schon erstattet?“ */
+  dropped?: boolean;
   /** Familien, für die es war (fehlt: alle) */
   for?: string[];
   /** Ausgabe: Freigabe (nur „ok“ zählt im Saldo) */
@@ -88,9 +90,15 @@ export function ledger(trip: Trip, T: Totals, owner?: string): Ledger {
   const ids = new Set(ks.map(k => k.id));
   const paid: Record<string, number> = {}, owed: Record<string, number> = {};
   const add = (m: Record<string, number>, k: string, v: number) => { m[k] = (m[k] || 0) + v; };
-  /** Gutschrift an eine Kasse; älterer Eintrag mit Familienname, die jetzt getrennt zahlt: auf ihre Erwachsenen verteilt */
+  /** Gutschrift an eine Kasse; älterer Eintrag mit Familienname, die jetzt getrennt zahlt: auf ihre Erwachsenen verteilt;
+   *  Eintrag einer Personen-Kasse, die es nicht mehr gibt (Familie zahlt jetzt gemeinsam): an die Kasse der Person */
   const credit = (m: Record<string, number>, by: string, v: number) => {
-    if (ids.has(by) || by.startsWith("p:")) return add(m, by, v);
+    if (ids.has(by)) return add(m, by, v);
+    if (by.startsWith("p:")) {
+      const t = act.find(x => x.id === by.slice(2));
+      if (!t) return add(m, by, v);
+      return kasseOf(trip, t).forEach(([k, f]) => add(m, k, v * f));
+    }
     const parts = ks.filter(k => k.hh === by);
     if (!parts.length) return add(m, by, v);
     parts.forEach(k => add(m, k.id, v / parts.length));
@@ -117,15 +125,17 @@ export function ledger(trip: Trip, T: Totals, owner?: string): Ledger {
 
   for (const it of trip.items) {
     const r = T.items[it.id];
-    if (!it.payments?.length || !r?.counts) continue;
-    // Anteil je Person wie in der Abrechnung (Kinderpreise, Nächte …)
+    if (!it.payments?.length) continue;
+    // Anteil je Person wie in der Abrechnung (Kinderpreise, Nächte …); Posten verworfen oder im einfachen Modus (#506):
+    // das Geld ist trotzdem ausgelegt, verteilt wie zuletzt gerechnet, sonst auf alle
     const w = new Map<Traveler, number>();
-    for (const t of act) if (r.per[t.id] > 0) w.set(t, r.per[t.id]);
+    for (const t of act) if ((r?.per[t.id] || 0) > 0) w.set(t, r!.per[t.id]);
+    const dropped = it.status === "dropped";
     it.payments.forEach((p, i) => {
       if (!p.by || !(p.amount > 0)) return;
       credit(paid, p.by, p.amount);
       spread(p.amount, w);
-      entries.push({ key: `${it.id}:${i}`, kind: "pay", label: it.name, by: p.by, v: p.amount, date: p.at, cat: it.cat, itemId: it.id, payIdx: i });
+      entries.push({ key: `${it.id}:${i}`, kind: "pay", label: it.name, by: p.by, v: p.amount, date: p.at, cat: it.cat, itemId: it.id, payIdx: i, ...(dropped ? { dropped } : {}) });
     });
   }
   const pending = { n: 0, v: 0, disputed: 0 };

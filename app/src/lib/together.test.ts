@@ -15,7 +15,8 @@ describe("Termin finden (#174)", () => {
 
   it("beste Zeiträume: alle können vorn, vielleicht zählt halb, ohne Überschneidung, Kinder zählen nicht", () => {
     const t = trip();
-    // Anna kann 3.–6. nicht, Ben 10.–12. vielleicht, Cleo kann 15. nicht
+    // alle tragen erst „kann“ ein; Anna kann 3.–6. nicht, Ben 10.–12. vielleicht, Cleo kann 15. nicht
+    for (let i = 1; i <= 20; i++) for (const id of ["a", "b", "c"]) setAvail(t, id, `2027-07-${String(i).padStart(2, "0")}`, "yes");
     for (const d of ["2027-07-03", "2027-07-04", "2027-07-05", "2027-07-06"]) setAvail(t, "a", d, "no");
     for (const d of ["2027-07-10", "2027-07-11", "2027-07-12"]) setAvail(t, "b", d, "maybe");
     setAvail(t, "c", "2027-07-15", "no");
@@ -29,8 +30,16 @@ describe("Termin finden (#174)", () => {
   it("niemand hat etwas eingetragen: keine Vorschläge; noch offen wird gezeigt", () => {
     const t = trip();
     expect(bestPeriods(t)).toEqual([]);
-    setAvail(t, "a", "2027-07-02", "yes");
+    for (const d of ["02", "03", "04", "05"]) setAvail(t, "a", `2027-07-${d}`, "yes");
     expect(bestPeriods(t)[0].open).toEqual(["b", "c"]);
+  });
+
+  it("wer nur einzelne Tage mit „kann“ markiert, ist für andere Zeiträume offen, nicht „kann“", () => {
+    const t = trip();
+    for (const d of ["01", "02", "03", "04", "05"]) setAvail(t, "a", `2027-07-${d}`, "yes");
+    const best = bestPeriods(t, 10);
+    expect(best.find(r => r.from === "2027-07-20")).toBeUndefined();
+    expect(best.every(r => r.yes.includes("a") === (r.to <= "2027-07-05"))).toBe(true);
   });
 
   it("gesperrte Tage für Suche und KI", () => {
@@ -134,5 +143,19 @@ describe("Abstimmung über Varianten (#432)", () => {
     const st = variantStand(p, { x: { [a]: 1 }, y: { [a]: 1 }, z: { [b]: 1, [a]: -1 } });
     expect(st.byTrip).toEqual({ t1: { for: 2, veto: 1 }, t2: { for: 1, veto: 0 } });
     expect(st.voted).toBe(3);
+  });
+});
+
+describe("Abstimmung: nur aktuelle Stimmberechtigte (#501)", () => {
+  it("Stimmen von Personen, die nicht mehr dabei sind, zählen nicht", () => {
+    const t = trip();
+    t.travelers.push({ id: "x", name: "Xaver", household: "X", age: 30, active: false }, { id: "y", name: "Yvo", household: "Y", age: 30, active: false });
+    const p = newPoll("Wohin?", "free", [{ label: "X" }, { label: "Y" }], "one");
+    const [ox, oy] = p.options;
+    p.votes = { a: { [ox.id]: 1 }, x: { [oy.id]: 1 }, y: { [oy.id]: 1 } };
+    expect(tallyMode(p, p.votes, t)[0]).toMatchObject({ id: ox.id, people: 1 });
+    expect(tallyMode(p, p.votes)[0].id).toBe(oy.id);
+    expect(tally(p, t)[0]).toMatchObject({ id: ox.id, up: 1 });
+    expect(variantStand(p, p.votes, t).voted).toBe(1);
   });
 });

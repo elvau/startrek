@@ -78,7 +78,7 @@
   const host = $derived(all.find(v => { const p = variantPoll(v.tr); return p && !p.closed; }) ?? all.find(v => variantPoll(v.tr)));
   $effect(() => { if (host && app.trip.id !== host.id) switchTrip(host.id, "Vergleich: Abstimmung"); });
   const vpoll = $derived(host && app.trip.id === host.id ? variantPoll(app.trip) : undefined);
-  const stand = $derived(vpoll ? variantStand(vpoll, mergedVotes(vpoll, remoteVotes(vpoll))) : undefined);
+  const stand = $derived(vpoll ? variantStand(vpoll, mergedVotes(vpoll, remoteVotes(vpoll)), app.trip) : undefined);
   /** „Ohne mich“ je Variante (#439): wer, und was es für die anderen an dieser Variante bedeutet */
   const vetoFx = $derived.by(() => {
     const out: Record<string, { names: string; after: number; before: number }> = {};

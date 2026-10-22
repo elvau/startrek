@@ -99,15 +99,17 @@ export function planDays(p: Pick<AvailPlan, "from" | "to">): string[] {
   return Array.from({ length: n + 1 }, (_, i) => addDay(p.from, i));
 }
 
-/** eine Person in einem Zeitraum (An- bis Abreisetag): kann nicht, wenn ein Tag „kann nicht“ ist, vielleicht bei einem „vielleicht“ */
+/** eine Person in einem Zeitraum (An- bis Abreisetag): kann nicht, wenn ein Tag „kann nicht“ ist; offen, wenn ein Tag ohne Eintrag ist;
+ *  sonst vielleicht bei einem „vielleicht“, kann nur, wenn alle Tage „kann“ sind */
 function personIn(m: Record<string, Avail> | undefined, from: string, to: string): Avail | "open" {
   if (!m || !Object.keys(m).length) return "open";
-  let maybe = false;
+  let maybe = false, unset = false;
   for (let d = from; d <= to; d = addDay(d, 1)) {
     if (m[d] === "no") return "no";
     if (m[d] === "maybe") maybe = true;
+    else if (m[d] !== "yes") unset = true;
   }
-  return maybe ? "maybe" : "yes";
+  return unset ? "open" : maybe ? "maybe" : "yes";
 }
 
 /** beste Zeiträume mit der gewünschten Zahl an Nächten, ohne Überschneidung, beste zuerst */
@@ -175,11 +177,19 @@ export function vote(p: Poll, person: string, option: string, v: Vote | undefine
   if (!Object.keys(m).length) delete p.votes[person];
 }
 
+/** nur Stimmen aktueller Stimmberechtigter zählen (Entfernte, „nicht dabei“ und Kinder nicht); Stimmen aus dem Konto („u:…“) bleiben */
+export function eligibleVotes<V>(trip: Trip | undefined, votes: Record<string, V>): Record<string, V> {
+  if (!trip) return votes;
+  const ok = new Set(voters(trip).map(x => x.id));
+  return Object.fromEntries(Object.entries(votes).filter(([k]) => ok.has(k) || k.startsWith("u:")));
+}
+
 export interface Tally { id: string; label: string; score: number; up: number; meh: number; down: number }
 /** Auszählung: 👍 +1, egal 0, 👎 −1; bei Gleichstand weniger 👎 vorn, dann die Reihenfolge */
-export function tally(p: Poll): Tally[] {
+export function tally(p: Poll, trip?: Trip): Tally[] {
+  const all = Object.values(eligibleVotes(trip, p.votes));
   const rows = p.options.map(o => {
-    const vs = Object.values(p.votes).map(m => m[o.id]).filter(v => v !== undefined);
+    const vs = all.map(m => m[o.id]).filter(v => v !== undefined);
     return { id: o.id, label: o.label, up: vs.filter(v => v === 1).length, meh: vs.filter(v => v === 0).length, down: vs.filter(v => v === -1).length, score: 0 };
   });
   for (const r of rows) r.score = r.up - r.down;
@@ -212,7 +222,8 @@ export const variantPoll = (trip: Pick<Trip, "polls" | "cmp">) => {
 };
 
 /** Stand je Variante: wie viele dafür, wer „ohne mich“, und wie viele überhaupt abgestimmt haben */
-export function variantStand(p: Poll, votes: Record<string, Record<string, number>> = p.votes): { byTrip: Record<string, { for: number; veto: number }>; voted: number } {
+export function variantStand(p: Poll, votes: Record<string, Record<string, number>> = p.votes, trip?: Trip): { byTrip: Record<string, { for: number; veto: number }>; voted: number } {
+  votes = eligibleVotes(trip, votes);
   const rows = tallyMode(p, votes);
   const byTrip: Record<string, { for: number; veto: number }> = {};
   for (const o of p.options) if (o.tripId) { const r = rows.find(x => x.id === o.id); byTrip[o.tripId] = { for: r?.people || 0, veto: r?.veto.length || 0 }; }
@@ -263,9 +274,9 @@ export interface ModeTally { id: string; label: string; score: number; people: n
  * Meilen-Wahl: wer mehr verteilt hat als erlaubt (z. B. nachträglich gesenkt), zählt anteilig. Beste zuerst, bei
  * Gleichstand weniger „ohne mich“, dann die Reihenfolge.
  */
-export function tallyMode(p: Poll, votes: Record<string, Record<string, number>> = p.votes): ModeTally[] {
+export function tallyMode(p: Poll, votes: Record<string, Record<string, number>> = p.votes, trip?: Trip): ModeTally[] {
   const rows = p.options.map(o => ({ id: o.id, label: o.label, score: 0, people: 0, veto: [] as string[] }));
-  for (const [who, m] of Object.entries(votes)) {
+  for (const [who, m] of Object.entries(eligibleVotes(trip, votes))) {
     const sum = Object.values(m).filter(v => v > 0).reduce((a, b) => a + b, 0);
     const f = p.mode === "miles" && sum > milesOf(p) ? milesOf(p) / sum : 1;
     for (const r of rows) {
