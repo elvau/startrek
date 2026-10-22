@@ -29,7 +29,6 @@
   import ItemCard from "./lib/ui/ItemCard.svelte";
   import TicketAside from "./lib/ui/TicketAside.svelte";
   import Dock from "./lib/ui/Dock.svelte";
-  import MobileTabs from "./lib/ui/MobileTabs.svelte";
   import MobileBar from "./lib/ui/MobileBar.svelte";
   import { attachPager, initMobile, mob } from "./lib/mobile.svelte";
   import { reveal } from "./lib/ui/reveal";
@@ -212,7 +211,7 @@
 <Home />
 {:else}
 <TopNav />
-{#if mob.on}<MobileTabs />{:else}<Hero />{/if}
+{#if !mob.on}<Hero />{/if}
 
 <div class="wrap">
   <main bind:this={mainEl} class:pager={mob.on}>

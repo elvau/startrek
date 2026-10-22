@@ -29,7 +29,7 @@
 <div class="icp">
   <span class="icp-ic" aria-hidden="true"><Icon name={item.icon || icon} /></span>
   <span class="icp-m">
-    <b>{autoName(item.name)}</b>
+    <b>{autoName(item.name) || opt?.label || (item.cat === "stay" ? t("stay.new") : t("chapter.addItem"))}</b>
     <small>{#if sub}{sub} · {/if}<StatusBadge status={item.status} />{#if item.check} <span class="icp-chk" title={t("imp.check")}>⚠</span>{/if}</small>
   </span>
   <span class="icp-p num">{unpriced ? "–" : eur(r?.net || 0)}{#if !unpriced && r?.n && r.n > 1}<small>{t("pp", { v: eur((r?.net || 0) / r.n) })}</small>{/if}</span>

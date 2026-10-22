@@ -47,7 +47,8 @@
   }
   $effect(() => {
     const b = tabs?.children[at] as HTMLElement | undefined;
-    if (tabs && b) tabs.scrollTo({ left: b.offsetLeft - (tabs.clientWidth - b.offsetWidth) / 2, behavior: "smooth" });
+    // nur verschieben, wenn der Reiter nicht ganz zu sehen ist (sonst schnitte die Mitte den ersten an)
+    if (tabs && b && (b.offsetLeft < tabs.scrollLeft || b.offsetLeft + b.offsetWidth > tabs.scrollLeft + tabs.clientWidth)) tabs.scrollTo({ left: Math.max(0, b.offsetLeft - 8), behavior: "smooth" });
   });
 
   function jump(id: string) {
@@ -163,7 +164,7 @@
 {/if}
 
 <style>
-  .sh-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 8px; }
+  .sh-tabs { position: relative; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 8px; padding: 1px 2px; }
   .sh-tabs::-webkit-scrollbar { display: none; }
   .sh-tab { flex: none; white-space: nowrap; }
   .sh-car { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -12px; padding: 0 12px; scroll-padding: 0 12px; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { barOf, pageAt, PAGES, stepPage } from "./mobile.svelte";
+import { pageAt, PAGES, stepPage } from "./mobile.svelte";
 
 describe("Handy-Pager (#530)", () => {
   it("Seiten: Übersicht, Kapitel, Tage, Abrechnung", () => {
@@ -10,9 +10,6 @@ describe("Handy-Pager (#530)", () => {
     expect(pageAt(390 * 3 + 120, 390)).toBe("stay");
     expect(pageAt(-390 * 8, 390)).toBe("split");
     expect(pageAt(99999, 390)).toBe("split");
-  });
-  it("Leiste: Kapitel zählen zu Planen, Tage und Abrechnung eigene Einträge", () => {
-    expect(["hero", "trav", "misc", "plan", "split"].map(p => barOf(p as never))).toEqual(["home", "plan", "plan", "days", "split"]);
   });
   it("blättern bleibt am Rand stehen", () => {
     expect(stepPage("hero", -1)).toBe("hero");

@@ -381,8 +381,8 @@ export const GUIDE: GuidePage[] = [
       "Ohne Netz kannst du weiterplanen. Die Änderungen werden beim nächsten Online-Gang abgeglichen.",
       "Buchungsdaten wie Ausweis oder Reisepass liegen nur in deinem Konto, nie in einer Reise und nie bei der KI.",
       "In deinem Konto siehst du jederzeit, was Split&Fly über dich speichert, und kannst es ausdrucken oder als Datei laden.",
-      "Etwas klappt nicht? Über „Fehler melden“ (Beta) schickst du uns eine Nachricht. Am Handy steht es unten unter „Mehr“.",
-      "Am Handy hat jede Reise unten eine Leiste: Übersicht, Planen, Tage, Abrechnung und Mehr. Unter „Planen“ wischst du seitlich von Kapitel zu Kapitel, oben siehst du die Reiter und die Gesamtkosten."
+      "Etwas klappt nicht? Über „Fehler melden“ (Beta) schickst du uns eine Nachricht. Am Handy erreichst du es über die Summe unten rechts.",
+      "Am Handy hat jede Reise unten eine Leiste mit allen Kapiteln und der Gesamtsumme. Zwischen den Kapiteln wischst du auch seitlich; die Summe antippen öffnet die Kostenübersicht, „Fehler melden“ und die Links zu Anleitung und Impressum."
     ],
     faq: [
       { q: "Gehen meine Reisen verloren, wenn ich mich nicht anmelde?", a: "Ohne Konto liegen sie nur in diesem Browser. Löschst du die Browserdaten, sind sie weg. Mit Konto sind sie gesichert." },
