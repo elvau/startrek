@@ -109,14 +109,15 @@ export const PARTNERS = {
   pincamp: p<void>({ name: "PiNCAMP", cat: "camping", link: home("https://www.pincamp.de/") }),
   acsi: p<void>({ name: "ACSI", cat: "camping", link: home("https://www.eurocampings.de/") }),
   park4night: p<void>({ name: "park4night", cat: "camping", link: home("https://park4night.com/de") }),
-  /* Parken am Abflughafen (#419); Airparks, Holiday Extras (Awin) bekommen die Kennung mit der Freischaltung */
+  /* Parken am Abflughafen (#419); Holiday Extras (Awin, zugelassen 10/2026) bekommt die Kennung (awinmid), sobald bekannt */
   parkenUndFliegen: p<ParkLinkQuery | undefined>({ name: "Parken und Fliegen", cat: "parking", net: "awin", link: parkenUndFliegenLink, tag: awin(14793) }),
   parkos: p<void>({ name: "Parkos", cat: "parking", link: home("https://parkos.de/") }),
-  airparks: p<void>({ name: "Airparks", cat: "parking", net: "awin", link: home("https://www.airparks.de/") }),
+  airparks: p<void>({ name: "Airparks", cat: "parking", net: "awin", link: home("https://www.airparks.de/"), tag: awin(14699) }),
+  holidayExtras: p<void>({ name: "Holiday Extras", cat: "parking", net: "awin", link: home("https://www.holidayextras.de/") }),
   /* Reiseversicherung: nur als Tipp, keine Beratung (§ 34d GewO) */
   check24Insurance: p<void>({ name: "CHECK24", cat: "insurance", link: home("https://www.check24.de/reiseversicherung/") }),
   ergo: p<void>({ name: "ERGO Reiseversicherung", cat: "insurance", net: "awin", link: home("https://www.reiseversicherung.de/") }),
-  hanseMerkur: p<void>({ name: "HanseMerkur", cat: "insurance", net: "awin", link: home("https://www.hansemerkur.de/reiseversicherung") }),
+  hanseMerkur: p<void>({ name: "HanseMerkur", cat: "insurance", net: "awin", link: home("https://www.hansemerkur.de/reiseversicherung"), tag: awin(11705) }),
   allianz: p<void>({ name: "Allianz Travel", cat: "insurance", link: home("https://www.allianz-reiseversicherung.de/") })
 };
 
