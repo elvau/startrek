@@ -473,6 +473,10 @@ export interface TripEvent {
   lon?: number;
   /** Seite des Anbieters (Tickets) */
   url?: string;
+  /** Ticketpreis pro Person von bis (laut Anbieter oder selbst eingetragen); gerechnet wird mit min */
+  price?: { min: number; max?: number; currency: string };
+  /** Posten der Tickets (beim Übernehmen angelegt, danach nur aktualisiert) */
+  item?: string;
 }
 
 /** Zuschuss zur Reise (Kasse, Sponsor, Familie): wird von den Kosten der Begünstigten abgezogen */

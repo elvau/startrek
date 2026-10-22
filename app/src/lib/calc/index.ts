@@ -38,6 +38,8 @@ export const lineWho = (l: SimpleLine, trip: Trip): Traveler[] => activeTraveler
 
 /** Kurs: eigener der Reise, sonst Tageskurs der EZB, sonst 1 */
 export const rateOf = (cur: string, s: Settings) => (cur === "EUR" ? 1 : s.rates[cur] || fx.rates?.rates[cur] || 1);
+/** Kurs bekannt (sonst rechnet rateOf 1 : 1) */
+export const hasRate = (cur: string, s: Settings) => cur === "EUR" || !!(s.rates[cur] || fx.rates?.rates[cur]);
 
 export interface StayCalc {
   nights: string[];

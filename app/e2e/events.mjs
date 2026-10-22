@@ -40,7 +40,8 @@ const STAYS = {
 const EVENTS = {
   events: [
     { id: "fd:1", source: "footballdata", sourceName: "football-data.org", name: "Arsenal – Bayern", start: "2027-05-15T15:30", venue: "Emirates Stadium", cc: "GB",
-      address: "75 Drayton Park London N5 1BU", category: "UEFA Champions League", lat: 51.555, lon: -0.108, url: "https://tickets.example/ars-fcb" },
+      address: "75 Drayton Park London N5 1BU", category: "UEFA Champions League", lat: 51.555, lon: -0.108, url: "https://tickets.example/ars-fcb",
+      price: { min: 60, max: 180, currency: "EUR" } },
     { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal", start: "2027-05-22T17:30", venue: "Stamford Bridge", cc: "GB", category: "Premier League" },
     // gleiche ID doppelt (älterer Such-Dienst): die Liste darf nicht leer bleiben
     { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal (VIP)", start: "2027-05-23T17:30", cc: "GB" }
@@ -112,9 +113,11 @@ try {
   await p.setViewportSize({ width: 1280, height: 900 });
   if (evAsked[0]?.q !== "Arsenal") fail("Event-Suche: " + JSON.stringify(evAsked));
   if ((await m.locator(".ev-hit").count()) !== 2) fail("nicht zwei Termine");
+  if (!/60.*180/.test(await m.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).locator(".ev-price").innerText())) fail("Ticketpreis im Treffer fehlt");
   await m.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
   const val = async label => m.locator("label.f", { hasText: label }).locator("input").inputValue();
   if (await val("Was?") !== "Arsenal – Bayern" || await val("Wo genau?") !== "Emirates Stadium" || await val("Datum") !== "2027-05-15" || await val("Beginn") !== "15:30") fail("Felder nicht ausgefüllt");
+  if (await m.locator(".ev-tmin").inputValue() !== "60" || await m.locator(".ev-tmax").inputValue() !== "180") fail("Ticketpreis nicht übernommen");
   // Stadt kommt nach dem Laden der Orte aus der Anschrift, das Ziel aus der Lage des Stadions: Flughäfen im Umkreis
   const dest = m.locator(".ev-form .lp").first().locator("input");
   for (let i = 0; i < 40 && !(await dest.inputValue()).startsWith("Umkreis London"); i++) await p.waitForTimeout(150);
@@ -161,6 +164,8 @@ try {
   if (!(await short.locator(".ev-line", { hasText: "Highbury Rooms" }).count())) fail("Unterkunft nicht die nahe gut bewertete");
   if (!(await short.locator(".ev-line", { hasText: "km zum Veranstaltungsort" }).count())) fail("Entfernung zum Stadion fehlt");
   if (!(await m.locator("a.ev-tickets").count())) fail("Ticket-Link fehlt");
+  // Tickets: Spanne, gerechnet mit dem günstigsten für alle
+  if (!/60.*180/.test(await short.locator(".ev-tix").innerText())) fail("Tickets im Vorschlag: " + await short.locator(".ev-tix").innerText());
   log("Passende Flüge je Vorschlag, gut bewertete Unterkunft");
 
   // übernehmen: Reise heißt wie das Event, Daten gesetzt, Flug und Unterkunft angelegt
@@ -173,7 +178,8 @@ try {
   if (!(await p.locator(".hero .ev-hero", { hasText: "Emirates Stadium" }).count())) fail("Event nicht im Kopf");
   if (!(await p.locator("#flights .card", { hasText: "Test Air" }).count())) fail("Flug nicht übernommen");
   if (!(await p.locator("#stay .card", { hasText: "Highbury Rooms" }).count())) fail("Unterkunft nicht übernommen");
-  log("Vorschlag übernommen: Name, Daten, Flug und Unterkunft");
+  if (!(await p.locator("#attractions .card", { hasText: "Tickets: Arsenal – Bayern" }).count())) fail("Tickets nicht übernommen");
+  log("Vorschlag übernommen: Name, Daten, Flug, Unterkunft und Tickets");
 
   // Erlebnisse finden: was am Reiseort im Reisezeitraum läuft, Touren; Übernehmen legt Posten an
   // Touren & Tickets zuerst, dann Events vor Ort
@@ -212,13 +218,13 @@ try {
   if (!(await att.locator(".card", { hasText: "Tower of London" }).count())) fail("Tour nicht übernommen");
   await att.locator(".card", { hasText: "Tower of London" }).locator(".row-img").waitFor();
   const prices = () => p.evaluate(() => { const t = JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current"))); return t.items.filter(i => i.cat === "attractions").map(i => i.options[0].price.adult).join(); });
-  for (let i = 0; i < 20 && (await prices()) !== "89,42"; i++) await p.waitForTimeout(150);
-  if ((await prices()) !== "89,42") fail("Preise der Erlebnisse: " + await prices());
+  for (let i = 0; i < 20 && (await prices()) !== "60,89,42"; i++) await p.waitForTimeout(150);
+  if ((await prices()) !== "60,89,42") fail("Preise der Erlebnisse: " + await prices());
   log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €, mit Foto) als Posten übernommen");
   // Kopf: Events & Aktivitäten sammelt Event und Erlebnisse, „Sonstige Kosten“ ohne die Tour
   await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
   const evTile = await p.locator(".hero .ht-ev").innerText();
-  if (!evTile.includes("Tower of London") && !evTile.includes("Coldplay")) fail("Kachel Events & Aktivitäten: " + evTile);
+  if (!evTile.includes("Tickets: Arsenal") || !evTile.includes("191")) fail("Kachel Events & Aktivitäten: " + evTile);
   if ((await p.locator(".hero .ht-misc").innerText()).includes("Tower of London")) fail("Tour unter Sonstige Kosten");
 
   // nur das Land bekannt (Sabah FK, Aserbaidschan): Hauptstadt Baku angenommen, mit Hinweis zum Prüfen
