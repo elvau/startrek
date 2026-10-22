@@ -106,7 +106,7 @@ describe("Partner-Verzeichnis", () => {
 
 describe("Awin-Programme mit Kennung (10/2026)", () => {
   it("Airparks und HanseMerkur: Link über awin1.com mit awinmid, als Partner-Link; ohne Partner-Links direkt", () => {
-    for (const [id, mid] of [["airparks", "14699"], ["hanseMerkur", "11705"]] as const) {
+    for (const [id, mid] of [["airparks", "14699"], ["holidayExtras", "55335"], ["hanseMerkur", "11705"]] as const) {
       const on = partnerLink(id, undefined, true)!;
       expect(on.url).toContain("awin1.com");
       expect(on.url).toContain(`awinmid=${mid}`);
