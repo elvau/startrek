@@ -39,8 +39,8 @@ const TRIPS = [
   // Gruppe: jede Person rechnet für sich ab (eigener Haushalt), Verpflegung an
   { id: "gruppe", name: "Stammtisch Wien", place: "Wien", country: "Österreich", from: "2027-03-12", to: "2027-03-14", ...base,
     travelers: ["Löwe", "Panda", "Fuchs", "Biber", "Wolf", "Koala"].map((n, i) => ({ id: "s" + i, name: n, household: n })), food: { on: true, style: "mix" },
-    // Kassen-Test: Ortstaxe Wien weggeklickt, damit die Beträge glatt bleiben
-    items: [{ id: "gs", cat: "stay", name: "Hotel Wien", status: "idea", from: "2027-03-12", to: "2027-03-14", options: [{ id: "go", label: "Hotel", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 600, capacity: 6 }, autoOff: ["auto:citytax:vienna"] }] }] },
+    // Kassen-Test: Ortstaxe Wien und Trinkgeld (#517) weggeklickt, damit die Beträge glatt bleiben
+    items: [{ id: "gs", cat: "stay", name: "Hotel Wien", status: "idea", from: "2027-03-12", to: "2027-03-14", options: [{ id: "go", label: "Hotel", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 600, capacity: 6 }, autoOff: ["auto:citytax:vienna", "auto:tips"] }] }] },
   // Anreise zum Flughafen: drei Familien, alle in den Gruppenbus, dann eine Fahrgemeinschaft
   { id: "anreise", name: "Ibiza Clique", place: "Ibiza", country: "Spanien", from: "2027-07-02", to: "2027-07-09", ...base,
     travelers: ["Ali", "Bea", "Cem", "Dio", "Eli", "Fay"].map((n, i) => ({ id: "c" + i, name: n, household: ["Nord", "Süd", "West"][i >> 1] })),
