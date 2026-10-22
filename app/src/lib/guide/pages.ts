@@ -165,13 +165,17 @@ export const GUIDE: GuidePage[] = [
       "Der Tagesplan warnt, wenn Nächte ohne Unterkunft sind oder doppelt gebucht wurden.",
       "Nach der Landung ohne Anschluss kannst du direkt „Unterkunft am Flughafen suchen“. Für eine Unterkunft, die du schon hast, gibt es „🏠 Privat“.",
       "Wo die Suche es weiß, siehst du „kostenlos stornierbar“. Für die Buchung gehst du zum Anbieter.",
-      "Kreuzfahrt? Mit „🚢 Kreuzfahrt“ trägst du Reederei, Schiff und die Häfen mit Liegezeiten ein, dazu Seetage. Ein- und Ausschiffung ergeben die Nächte an Bord.",
+      "Kreuzfahrt? „🚢 Kreuzfahrt“ öffnet drei Wege: „Suchen“ nach Fahrtgebiet, Abfahrtshafen, Zeitraum, Nächten und Kabine, „Importieren“ für ein Angebot oder eine Buchung (Screenshot, PDF, Text, Link) oder „Von Hand“. Treffer und Importe kommen mit Route und Kabinen nach Familien.",
+      "Von Hand trägst du Reederei, Schiff und die Häfen mit Liegezeiten ein, dazu Seetage. Ein- und Ausschiffung ergeben die Nächte an Bord.",
+      "Mehrere Kreuzfahrten vergleichen: An der Kreuzfahrt-Karte „🔎 Weitere Kreuzfahrt vergleichen“. Jede Fahrt wird ein Angebot A, B, C mit eigener Route; die Tabelle zeigt Route, Kabinen, Nebenkosten, Preis pro Person und was die ganze Reise pro Person kostet. Antippen wählt die Fahrt.",
+      "„🏨 Mit Rundreise an Land vergleichen“ legt eine Variante „An Land“ an: bis zu drei Städte der Route mit Hotel-Richtwert und vorbelegter Suche, Fahrten dazwischen geschätzt. Der Vergleich der Varianten zeigt dazu Ziele und Fahrzeit an Land.",
       "Bei der Kreuzfahrt trägst du Kabinen ein: Typ, Preis und wer darin wohnt. „Kabinen nach Familien vorschlagen“ verteilt alle auf Kabinen. Jede Kabine kostet die Personen darin.",
       "Die Häfen erscheinen im Tagesplan mit Liegezeit, Seetage als eigene Tage. Auf der Karte der Kreuzfahrt findest du „Flug zum Hafen“, „Hotelnacht davor“ und „Ausflüge in den Häfen“. „Einreise & Tipps“ zeigt die Länder aller Häfen."
     ],
     faq: [
       { q: "Was ist, wenn die Gruppe nicht in ein Zimmer passt?", a: "Die Belegung berücksichtigt die maximale Gästezahl und die Zimmer. Passt es nicht, teile die Gruppe auf mehrere Unterkünfte auf." },
       { q: "Kann ich auch eine private Unterkunft eintragen?", a: "Ja. Du kannst jede Unterkunft von Hand eintragen, auch eine, die du nicht über die Suche findest, zum Beispiel ein Haus von Bekannten." },
+      { q: "Woher kommen die Treffer der Kreuzfahrt-Suche?", a: "Die KI sucht im Netz nach passenden Fahrten und zeigt bis zu sechs mit „ab“-Preis pro Person und Link zur Fundstelle. Die Preise sind nicht live geprüft, deshalb ist der Posten als „bitte prüfen“ markiert. Darunter findest du Links zu Kreuzfahrt-Portalen zum Selbstvergleichen. Für die Suche musst du angemeldet sein." },
       { q: "Wie teilen sich die Kosten einer Kreuzfahrt auf?", a: "Nach Kabinen. Jede Kabine kostet die Personen darin, geteilt nach Personen. Wohnen zwei Familien in einer Kabine, zum Beispiel Oma mit Enkel, zahlt jede ihren Anteil. Getränkepaket, WLAN, Hafengebühren und Trinkgeld trägst du unter „Nebenkosten“ ein." }
     ],
     where: "Kapitel „Ankommen“",

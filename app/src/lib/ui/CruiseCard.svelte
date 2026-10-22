@@ -1,16 +1,19 @@
 <script lang="ts">
   // Kreuzfahrt (#516): Karte im Kapitel Unterkunft mit Route (Häfen, Seetage) und Kabinen
-  import StayCompare from "./StayCompare.svelte";
+  import CruiseCompare from "./CruiseCompare.svelte";
   import StatusBadge from "./StatusBadge.svelte";
   import { arrow, locale, t, tn, type Key } from "../i18n/index.svelte";
   import { hhKey, noPrice, type Item } from "../model";
-  import { access, app, calc } from "../store.svelte";
+  import { access, addVariant, app, calc } from "../store.svelte";
   import { eur } from "../calc";
   import { CABIN_ICON, cabinTotal, cruiseTitle, portTime, routeLine, shoresOf, withoutCabin } from "../cruise";
   import { fx } from "../currency.svelte";
   import { openFlightSearch } from "../flights/open.svelte";
   import { openStaySearch } from "../stays/open.svelte";
   import { openExplore } from "../activities/open.svelte";
+  import { openCruise } from "../cruises/open.svelte";
+  import { cruiseToLand, landCities } from "../cruises/land";
+  import { ensureGeo, geo } from "../geo/geo.svelte";
   import { dir } from "../directory.svelte";
   import { prefsFor } from "../prefs";
   import { addDays, okDate } from "../calc/travel";
@@ -50,18 +53,22 @@
     else if (what === "hotel") openStaySearch({ ...(embark?.place ? { place: embark.place.trim() } : {}), ...(okDate(a) ? { from: addDays(a!, -1), to: a } : {}) });
     else { const sh = shoresOf(app.trip, prefsFor(app.trip, dir).shore).find(x => x.date >= (embark?.date || "")); openExplore("tours", sh ? { place: sh.place, date: sh.date } : undefined); }
   }
+  // Kreuzfahrt gegen Rundreise an Land (#520): Variante der Reise, darin die Kreuzfahrt durch Städte an Land ersetzt
+  let landMsg = $state("");
+  async function toLand(e: Event) {
+    e.stopPropagation();
+    await ensureGeo(app.trip).catch(() => {});
+    if (!landCities(item.cruise?.ports || [], geo).length) { landMsg = t("cl.noRoute"); return; }
+    const id = item.id;
+    addVariant();
+    cruiseToLand(app.trip, id, geo);
+    if (app.trip.cmp) app.trip.cmp.label = t("cl.landLabel");
+  }
   const typeList = $derived(cabins.map(c => t(`cr.type.${c.type}` as Key)).join(", "));
   let shown = $state(false);
   $effect(() => { const tm = setTimeout(() => (shown = true), 300); return () => clearTimeout(tm); });
-  // Vergleich nebeneinander, solange noch nicht gebucht
+  // Vergleich nebeneinander (#520), solange noch nicht gebucht
   const cmp = $derived(item.options.length > 1 && item.status !== "booked" && item.status !== "paid");
-  function choose(id: string, e: Event) { e.stopPropagation(); if (!access.readonly) item.chosen = id; }
-  function drop(id: string, e: Event) {
-    e.stopPropagation();
-    if (access.readonly || item.options.length < 2) return;
-    item.options = item.options.filter(o => o.id !== id);
-    if (item.chosen === id) item.chosen = undefined;
-  }
 </script>
 
 <div class="stay cruise">
@@ -109,8 +116,11 @@
         <button type="button" class="chip cr-goflight" onclick={e => go(e, "flight")}>✈ {t("cr.flight")}</button>
         <button type="button" class="chip cr-gohotel" onclick={e => go(e, "hotel")}>🛏 {t("cr.hotel")}</button>
         {#if ports.some((p, i) => i > 0 && i < ports.length - 1 && !p.sea)}<button type="button" class="chip cr-gotours" onclick={e => go(e, "tours")}>🎡 {t("cr.tours")}</button>{/if}
+        {#if item.options.length < 2}<button type="button" class="chip cr-more" onclick={e => { e.stopPropagation(); openCruise(item.id); }}>🔎 {t("cc.more")}</button>{/if}
+        <button type="button" class="chip cr-land" onclick={toLand}>🏨 {t("cl.open")}</button>
       </div>
     {/if}
+    {#if landMsg}<div class="warnline">{landMsg}</div>{/if}
     {#if missing.length}<div class="warnline">⚠ {t("cr.noCabin", { list: missing.map(x => x.name || "?").join(", ") })}</div>{/if}
     <div class="stay-foot">
       <div class="pay">
@@ -128,7 +138,7 @@
 </div>
 
 {#if cmp}
-  <StayCompare {item} {r} nights={nn} onchoose={choose} ondrop={drop} />
+  <CruiseCompare {item} />
 {/if}
 
 <style>

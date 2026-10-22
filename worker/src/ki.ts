@@ -35,7 +35,7 @@ export const kiReady = (env: KiEnv) => !!(env.ANTHROPIC_API_KEY || env.GEMINI_AP
 /** Fehler, bei denen der andere Anbieter es versuchen darf (auch Guthaben leer oder Limit erreicht, 402; nicht bei ungültiger Anfrage oder falschem Schlüssel) */
 export const switchable = (msg: string) => /^KI-Fehler (402|429|500|502|503|504|524) /.test(msg) || /^KI-Fehler: keine Antwort/.test(msg);
 
-export function kiCaller(env: KiEnv, o: { f?: typeof fetch; onCall?: () => void; sleep?: (ms: number) => Promise<void> } = {}) {
+export function kiCaller(env: KiEnv, o: { f?: typeof fetch; onCall?: () => void; sleep?: (ms: number) => Promise<void>; timeoutMs?: number } = {}) {
   const callers: ((p: object) => Promise<unknown>)[] = [];
   if (env.ANTHROPIC_API_KEY) callers.push(claudeCaller({ key: env.ANTHROPIC_API_KEY, model: env.CLAUDE_MODEL || CLAUDE_MODEL, effort: env.CLAUDE_EFFORT, ...o }));
   if (env.GEMINI_API_KEY) callers.push(geminiCaller({ key: env.GEMINI_API_KEY, models: [env.GEMINI_MODEL || GEMINI_DEFAULT, env.GEMINI_FALLBACK_MODEL || ""], ...o }));

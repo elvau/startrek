@@ -245,6 +245,8 @@ export interface Option {
   hints?: ("checkin" | "payfee")[];
   /** Kreuzfahrt (#516): Kabinen mit Preis und Bewohnern; ersetzen die gleichmäßige Verteilung des Preises */
   cabins?: Cabin[];
+  /** Kreuzfahrt (#520): eigene Route dieses Angebots (mehrere Fahrten am Posten); das gewählte steht in Item.cruise */
+  cruise?: CruiseRoute;
 }
 
 export type CabinType = "inside" | "outside" | "balcony" | "suite";
@@ -264,9 +266,12 @@ export interface Cabin {
 export interface Port { date: string; place?: string; cc?: string; lat?: number; lon?: number; arr?: string; dep?: string; sea?: boolean }
 /** Puffer beim Landgang in Minuten: nach dem Anlegen bis vom Schiff, vor dem Ablegen wieder an Bord samt Rückweg */
 export interface ShoreBuffer { after?: number; before?: number }
+export interface CruiseRoute { line?: string; ship?: string; ports: Port[] }
 export interface Cruise {
   line?: string;
   ship?: string;
+  /** Angebot, zu dem Route, Reederei und Schiff gerade gehören (#520); fehlt: das gewählte */
+  opt?: string;
   /** eigene Puffer für diese Kreuzfahrt (vor den Vorlieben) */
   shore?: ShoreBuffer;
   /** in Reihenfolge: erster Hafen Einschiffung, letzter Ausschiffung */

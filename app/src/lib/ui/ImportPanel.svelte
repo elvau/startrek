@@ -28,10 +28,10 @@
   import { openFlightSearch } from "../flights/open.svelte";
   import { openStaySearch } from "../stays/open.svelte";
   import { openExplore } from "../activities/open.svelte";
-  import type { Traveler, Trip } from "../model";
+  import type { Item, Traveler, Trip } from "../model";
   import { SRC_ICON } from "../import/icons";
 
-  let { onclose, travelers, peopleKnown = false, check = false, into = false, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
+  let { onclose, travelers, peopleKnown = false, check = false, into = false, onitems, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; onitems?: (items: Item[]) => void; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
   // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
   let found = $state<ImportedOffer | null>(null);
   // schon geprüft (Angebotsspeicher, #462): gültig bis
@@ -132,7 +132,7 @@
     if (!found) return;
     if (check) { const d = draftTrip(); importToTrip(d, found); draft = d; stage = "report"; return; }
     // Paket in die offene Reise (#188): Ziel, Daten, Name bleiben, kein „Was fehlt noch?“
-    if (into) { importToTrip(app.trip, found, undefined, true); onclose(); return; }
+    if (into) { const items = importToTrip(app.trip, found, undefined, true); onitems?.(items); onclose(); return; }
     if (hasMissing(found)) stage = "parts"; else create();
   }
   function create() {

@@ -24,8 +24,9 @@ export interface Part { id: PartId; state: "offer" | "package" | "app" | "missin
 
 /** Bausteine in der Reihenfolge der Anzeige; ohne Flug (choices.flight „none“) die Frage nach der Anreise */
 export function partsOf(o: ImportedOffer, choices: Choices = {}): Part[] {
-  const fl = !!o.flights, st = !!o.stay;
-  const pkg = fl && st && !o.flights!.price && !o.stay!.price;
+  // Kreuzfahrt (#525) ist die Unterkunft
+  const fl = !!o.flights, st = !!(o.stay || o.cruise);
+  const pkg = fl && st && !o.flights!.price && !o.stay?.price;
   const out: Part[] = [];
   out.push(fl ? { id: "flight", state: pkg ? "package" : "offer", choices: [] } : { id: "flight", state: "missing", choices: ["search", "later", "none"], def: "later" });
   if (!fl && choices.flight === "none") out.push({ id: "arrival", state: "missing", choices: [...ARRIVAL, "none"], def: "car" });

@@ -4,11 +4,12 @@
  */
 import { CAT_KEYS, type CatKey, type Trip } from "./model";
 import { totals } from "./calc";
+import { tripFacts } from "./cruises/land";
 
 export type RowKey = CatKey | "hidden";
 export const ROWS: RowKey[] = [...CAT_KEYS, "hidden"];
 export interface Cell { sum: number; names: string[] }
-export interface Col { id: string; total: number; perPerson: number; people: number; cells: Record<RowKey, Cell> }
+export interface Col { id: string; total: number; perPerson: number; people: number; cells: Record<RowKey, Cell>; facts?: { places: number; hours: number; cruise: boolean } }
 
 const HIDDEN = new Set(["food", "souvenir"]);
 
@@ -36,7 +37,8 @@ export function column(trip: Trip): Col {
     cells[k].names = named[k].sort((a, b) => b[1] - a[1]).map(x => x[0]).filter(Boolean);
   }
   const people = Math.max(1, T.active);
-  return { id: trip.id, total: T.total, perPerson: T.total / people, people, cells };
+  const facts = tripFacts(trip);
+  return { id: trip.id, total: T.total, perPerson: T.total / people, people, cells, ...(facts ? { facts } : {}) };
 }
 
 /** günstigste Spalte (Gesamt) und je Zeile das Minimum */

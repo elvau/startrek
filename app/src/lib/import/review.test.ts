@@ -50,7 +50,7 @@ describe("Sicherheit je Angabe (#458)", () => {
     expect(reviewOf(o).direct).toBe(true);
   });
   it("bitte prüfen: Flug sicher, Unterkunft und Paketpreis abgeleitet", () => {
-    expect(checks(answer(answer(pkg, "baggage", "checked"), "transfer", "yes"))).toEqual({ flights: false, stay: true, transfer: false });
+    expect(checks(answer(answer(pkg, "baggage", "checked"), "transfer", "yes"))).toMatchObject({ flights: false, stay: true, transfer: false });
     expect(checks({ ...pkg, confidence: { ...pkg.confidence, price: 0.5, stay: 1, board: 1 } }).stay).toBe(true);
   });
 });
@@ -67,5 +67,14 @@ describe("Personen in der Übersicht (#474)", () => {
   });
   it("Flug-Regel (#483): unter 2 Kleinkind, 2–11 Kind, ab 12 zählt als erwachsen", () => {
     expect(partyOf({ kind: "stay", adults: 2, childAges: [1, 2, 11, 12, 15] })).toEqual({ adults: 4, kids: 2, infants: 1 });
+  });
+});
+
+describe("Kreuzfahrt in der Übersicht (#525)", () => {
+  it("Route als eigene Angabe; unsicher → Kreuzfahrt bitte prüfen", () => {
+    const o = { kind: "cruise" as const, place: "Kiel", cruise: { ports: [{ place: "Kiel" }, { place: "Oslo" }] }, confidence: { place: 1, cruise: 0.6 } };
+    expect(reviewOf(o).fields.map(f => f.key)).toEqual(["place", "cruise"]);
+    expect(checks(o)).toMatchObject({ cruise: true, stay: false });
+    expect(checks({ ...o, confidence: { place: 1, cruise: 1 } }).cruise).toBe(false);
   });
 });

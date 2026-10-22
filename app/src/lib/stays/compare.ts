@@ -6,6 +6,7 @@
 import type { FlightLeg, Item, Option, Trip } from "../model";
 import { activeOption, totals } from "../calc";
 import { syncFood } from "../food";
+import { syncCruise } from "../cruise";
 import { hasCoords } from "../geo/maps";
 import { ccOf, findCity, kmBetween, townNear, type GeoData, type Place } from "../geo/places";
 import { tripSpots } from "../geo/spots";
@@ -108,6 +109,8 @@ export function effectOf(trip: Trip, itemId: string, optionId: string, g: GeoDat
   const tr: Trip = JSON.parse(JSON.stringify(trip));
   const it = tr.items.find(i => i.id === itemId);
   if (it) it.chosen = optionId;
+  // Kreuzfahrt (#520): Zeitraum und Route des Angebots
+  if (it?.cruise) syncCruise(it);
   if (g.world.length) syncFood(tr, g);
   const T = totals(tr);
   const food = tr.items.filter(i => i.auto === "food").reduce((s, i) => s + (T.items[i.id]?.net || 0), 0);

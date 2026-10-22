@@ -6,7 +6,7 @@ import type { ConfKey } from "./ai";
 import type { PartId } from "./parts";
 
 export const FIELD_ICON: Record<ConfKey, string> = {
-  place: "📍", dates: "📅", people: "👥", price: "💶", flights: "✈", stay: "🛏", board: "🍳", baggage: "🧳", transfer: "🚌"
+  place: "📍", dates: "📅", people: "👥", price: "💶", flights: "✈", stay: "🛏", cruise: "🚢", board: "🍳", baggage: "🧳", transfer: "🚌"
 };
 export const PART_ICON: Record<PartId, string> = { flight: "✈", arrival: "🛣", stay: "🛏", access: "🚗", transfer: "🚌", rental: "🚙", fun: "🎟" };
 export const BOARD_ICON: Record<Board, string> = { self: "🚫", breakfast: "🍳", half: "🍽", full: "🍲", all: "🍹" };
