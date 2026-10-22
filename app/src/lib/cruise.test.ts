@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { cabinsTotal, cruiseTitle, newCruise, portTime, routeLine, suggestCabins, syncCruise, withoutCabin } from "./cruise";
 import { calcItem, totals } from "./calc";
+import { syncTips } from "./fees";
 import { DEFAULT_SETTINGS, type Item, type Traveler, type Trip } from "./model";
 
 const P = (id: string, household: string, age = 40): Traveler => ({ id, name: id, age, household });
@@ -48,8 +49,9 @@ describe("Kreuzfahrt abgleichen", () => {
 
 describe("Kosten je Kabine", () => {
   // ohne Trinkgeld (eigene Tests in tips.test.ts)
+  afterEach(() => syncTips(true, undefined));
   const priced = (t: Trip): Item => {
-    t.tips = { off: true };
+    syncTips(false, undefined);
     const it0 = newCruise(t, "EUR");
     const cs = it0.options[0].cabins!;
     cs[0].price = 2380; cs[1].price = 2960; cs[2].price = 1540;

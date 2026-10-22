@@ -42,9 +42,9 @@
   // Trinkgeld im Reiseland (gepflegte Gepflogenheiten)
   const tipCc = $derived(imp.countries[0] || "");
   const tip = $derived(tipCc ? TIPS[tipCc] : undefined);
-  // Trinkgeld als versteckte Kosten an Unterkunft und Kreuzfahrt (#517): Land und Vorliebe an die Reise für die Rechnung
+  // Trinkgeld als versteckte Kosten an Unterkunft und Kreuzfahrt (#517): Land und Vorliebe für die Rechnung (nur im Speicher)
   const tipsOn = $derived(prefsFor(app.trip, dir).tips !== false);
-  $effect(() => { if (!access.readonly) syncTips(app.trip, tipsOn, tipCc || undefined); });
+  $effect(() => { syncTips(tipsOn, tipCc || undefined); });
 </script>
 
 <div class="plan food">

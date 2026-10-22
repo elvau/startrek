@@ -3,6 +3,7 @@
  * Durchfahrten mit dem Auto, Trinkgeld. Richtwerte ohne Gewähr („ca.“), Stand und Quellen in docs/NEBENKOSTEN.md.
  * Ein neuer Ort bzw. ein neues Land ist eine Zeile.
  */
+import { tipCtx } from "./tipsState.svelte";
 import { DRIVER_AGE, isActive, type Deposit, type Extra, type Item, type Option, type Traveler, type Trip } from "./model";
 
 export const FEES_AS_OF = "2026";
@@ -205,12 +206,11 @@ export function autoDeposit(it: Item, o: Option, rate = 1, cars = 1): Deposit | 
 export const STAY_TIPS: Record<TipNorm, number> = { none: 0, round: 2, usual: 3, high: 5 };
 export const CRUISE_TIP = 14;
 
-/** Trinkgeld der Reise nachführen: Land (Sitte) und Vorliebe; true, wenn sich etwas geändert hat */
-export function syncTips(trip: Trip, on: boolean, cc: string | undefined): boolean {
-  const next = { ...(cc ? { cc } : {}), ...(on ? {} : { off: true }) };
-  const cur = trip.tips || {};
-  if (cur.cc === next.cc && !!cur.off === !!next.off) return false;
-  if (Object.keys(next).length) trip.tips = next; else delete trip.tips;
+/** Trinkgeld nachführen: Land (Sitte) und Vorliebe; true, wenn sich etwas geändert hat */
+export function syncTips(on: boolean, cc: string | undefined): boolean {
+  if (tipCtx.cc === cc && !tipCtx.off === on) return false;
+  tipCtx.cc = cc;
+  tipCtx.off = !on || undefined;
   return true;
 }
 
@@ -232,8 +232,8 @@ export function autoExtras(it: Item, o: Option, trip: Trip, rate0: (cur: string)
       ...(c.freeUpTo != null ? { freeUpTo: c.freeUpTo } : {}), ...(c.max ? { max: c.max } : {}), source: `${c.source}, ${FEES_AS_OF}`, ...(o.autoOff?.includes(id) ? { off: true } : {}) });
   }
   // Trinkgeld (#517): Kreuzfahrt immer, Unterkunft nach der Sitte im Land; nicht privat, nicht wenn selbst eingetragen
-  if (it.cat === "stay" && !it.private && !trip.tips?.off && !own.some(x => x.kind === "tips")) {
-    const norm = trip.tips?.cc ? TIPS[trip.tips.cc]?.norm : undefined;
+  if (it.cat === "stay" && !it.private && !tipCtx.off && !own.some(x => x.kind === "tips")) {
+    const norm = tipCtx.cc ? TIPS[tipCtx.cc]?.norm : undefined;
     const eur = it.cruise ? CRUISE_TIP : norm ? STAY_TIPS[norm] : 0;
     if (eur) {
       const id = it.cruise ? "auto:tips:cruise" : "auto:tips";

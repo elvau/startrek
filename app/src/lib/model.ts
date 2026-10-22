@@ -583,8 +583,6 @@ export interface Trip {
   food?: FoodCfg;
   /** Souvenirs (#421): einrechnen, eigener Betrag pro Person (fehlt: aus den Vorlieben) */
   souvenir?: { on?: boolean; eur?: number };
-  /** Trinkgeld als versteckte Kosten (#517): Land der Reise (für die Sitte) und aus, wenn in den Vorlieben abgeschaltet */
-  tips?: { cc?: string; off?: boolean };
   /** Transport vor Ort schätzen (#420): Flughafentransfer, Nahverkehr bzw. Sprit */
   local?: { on?: boolean };
   /** Reisebeobachtung: letzter Preisvergleich der Posten */
