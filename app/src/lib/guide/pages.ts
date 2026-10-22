@@ -164,11 +164,15 @@ export const GUIDE: GuidePage[] = [
       "Pauschalreise? Mit „📦 Paket“ trägst du sie von Hand ein oder importierst das Angebot. Der Paketpreis steht an der Unterkunft, der Flug erscheint im Kapitel Flüge als „im Paket“, der Status gilt für beides. Mit „⇆ einzeln suchen“ vergleichst du das Paket mit Flug und Hotel einzeln.",
       "Der Tagesplan warnt, wenn Nächte ohne Unterkunft sind oder doppelt gebucht wurden.",
       "Nach der Landung ohne Anschluss kannst du direkt „Unterkunft am Flughafen suchen“. Für eine Unterkunft, die du schon hast, gibt es „🏠 Privat“.",
-      "Wo die Suche es weiß, siehst du „kostenlos stornierbar“. Für die Buchung gehst du zum Anbieter."
+      "Wo die Suche es weiß, siehst du „kostenlos stornierbar“. Für die Buchung gehst du zum Anbieter.",
+      "Kreuzfahrt? Mit „🚢 Kreuzfahrt“ trägst du Reederei, Schiff und die Häfen mit Liegezeiten ein, dazu Seetage. Ein- und Ausschiffung ergeben die Nächte an Bord.",
+      "Bei der Kreuzfahrt trägst du Kabinen ein: Typ, Preis und wer darin wohnt. „Kabinen nach Familien vorschlagen“ verteilt alle auf Kabinen. Jede Kabine kostet die Personen darin.",
+      "Die Häfen erscheinen im Tagesplan mit Liegezeit, Seetage als eigene Tage. Auf der Karte der Kreuzfahrt findest du „Flug zum Hafen“, „Hotelnacht davor“ und „Ausflüge in den Häfen“. „Einreise & Tipps“ zeigt die Länder aller Häfen."
     ],
     faq: [
       { q: "Was ist, wenn die Gruppe nicht in ein Zimmer passt?", a: "Die Belegung berücksichtigt die maximale Gästezahl und die Zimmer. Passt es nicht, teile die Gruppe auf mehrere Unterkünfte auf." },
-      { q: "Kann ich auch eine private Unterkunft eintragen?", a: "Ja. Du kannst jede Unterkunft von Hand eintragen, auch eine, die du nicht über die Suche findest, zum Beispiel ein Haus von Bekannten." }
+      { q: "Kann ich auch eine private Unterkunft eintragen?", a: "Ja. Du kannst jede Unterkunft von Hand eintragen, auch eine, die du nicht über die Suche findest, zum Beispiel ein Haus von Bekannten." },
+      { q: "Wie teilen sich die Kosten einer Kreuzfahrt auf?", a: "Nach Kabinen. Jede Kabine kostet die Personen darin, geteilt nach Personen. Wohnen zwei Familien in einer Kabine, zum Beispiel Oma mit Enkel, zahlt jede ihren Anteil. Getränkepaket, WLAN, Hafengebühren und Trinkgeld trägst du unter „Nebenkosten“ ein." }
     ],
     where: "Kapitel „Ankommen“",
     emoji: "🛏",
@@ -197,7 +201,8 @@ export const GUIDE: GuidePage[] = [
       "Einfach oder Detailliert: Neue Reisen starten im einfachen Modus mit einem Betrag je Bereich. Du kannst je Bereich oder für die ganze Reise zu „Detailliert“ wechseln und umgekehrt. Dabei geht nichts verloren.",
       "Die Verpflegung lässt sich über Tagessätze nach Stil schätzen, vom Selbstkochen bis gehoben.",
       "Für bekannte Orte schlägt die App Klassiker mit Preisen vor.",
-      "Das Datum des Preises steht dabei. Bei Schätzungen zeigt das Kennzeichen „Geschätzt“, dass noch ein echter Preis fehlt."
+      "Das Datum des Preises steht dabei. Bei Schätzungen zeigt das Kennzeichen „Geschätzt“, dass noch ein echter Preis fehlt.",
+      "Trinkgeld schätzt die App als versteckte Kosten: an Unterkünften nach der Sitte im Land, auf Kreuzfahrten pro Person und Nacht. Am Posten wegklickbar, in den Vorlieben unter „Trinkgeld einrechnen“ ganz abschaltbar."
     ],
     faq: [
       { q: "Was ist der Unterschied zwischen Gewählt und Gebucht?", a: "Gewählt heißt: Das ist mein Favorit, ich vergleiche nicht mehr. Gebucht heißt: Es ist gebucht, die Kosten gelten als fest." },

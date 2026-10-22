@@ -1,8 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { syncTips } from "../fees";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import { totals } from "../calc";
 import { importToTrip } from "./apply";
 import type { ImportedOffer } from "./ai";
+
+// Trinkgeld (#517) aus: hier geht es um andere Beträge (eigene Tests in tips.test.ts)
+beforeAll(() => syncTips(false));
+afterAll(() => syncTips(true));
 
 const AT = "2026-10-20T12:00:00.000Z";
 const blank = (): Trip => ({ id: "t", name: "Neue Reise", autoName: true, place: "", country: "", travelers: [{ id: "p", name: "Fuchs", household: "Fuchs", kind: "adult", placeholder: true }], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { variantPoll, variantStand, applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
+import { variantPoll, variantStand, applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, planError, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
 
 const trip = (): Trip => ({
   id: "t", name: "Reise", place: "", country: "", items: [], tiers: {}, settings: DEFAULT_SETTINGS,
@@ -157,5 +157,14 @@ describe("Abstimmung: nur aktuelle Stimmberechtigte (#501)", () => {
     expect(tallyMode(p, p.votes)[0].id).toBe(oy.id);
     expect(tally(p, t)[0]).toMatchObject({ id: ox.id, up: 1 });
     expect(variantStand(p, p.votes, t).voted).toBe(1);
+  });
+});
+
+describe("Termin finden: Zeitraum prüfen", () => {
+  it("Bis vor Von, Reise länger als der Zeitraum, sonst in Ordnung", () => {
+    expect(planError("2026-11-05", "2026-10-11", 7)).toBe("order");
+    expect(planError("2026-11-05", "2026-11-10", 7)).toBe("nights");
+    expect(planError("2026-11-05", "2026-11-12", 7)).toBe("");
+    expect(planError("", "2026-11-12", 7)).toBe("");
   });
 });

@@ -11,7 +11,7 @@
   import Help from "./Help.svelte";
   import PollView from "./PollView.svelte";
   import { getLocalMe, setLocalMe, sharedVoting } from "../polls.svelte";
-  import { addDay, addPoll, applyResult, bestPeriods, cycle, missing, newPoll, planDays, setAvail, tally, vote, voters, type Avail, type Period, type PollMode, type Vote } from "../together";
+  import { addDay, addPoll, applyResult, bestPeriods, cycle, missing, newPoll, planDays, planError, setAvail, tally, vote, voters, type Avail, type Period, type PollMode, type Vote } from "../together";
 
   const trip = $derived(app.trip);
   const people = $derived(voters(trip));
@@ -22,8 +22,12 @@
   const nameOf = (id: string) => trip.travelers.find(x => x.id === id)?.name || "?";
 
   // neuer Planungszeitraum: ab heute in drei Wochen, acht Wochen lang, Nächte wie die Reise (sonst 7)
-  let fFrom = $state(""), fTo = $state(""), fNights = $state(7);
+  // erst eingeklappt mit Erklärung: die Felder sehen sonst wie das Reisedatum aus
+  let fFrom = $state(""), fTo = $state(""), fNights = $state(7), fOpen = $state(false);
+  const fErr = $derived(planError(fFrom, fTo, fNights));
+  const pErr = $derived(plan ? planError(plan.from, plan.to, plan.nights) : "");
   function startPlan() {
+    if (fErr) return;
     const today = new Date().toISOString().slice(0, 10);
     const from = fFrom || (trip.from && trip.from > today ? addDay(trip.from, -14) : addDay(today, 21));
     const to = fTo && fTo > from ? fTo : addDay(from, 56);
@@ -77,13 +81,19 @@
 <div class="tg">
   <h3>📅 {t("tg.title")} <Help k="avail" /></h3>
   {#if !plan}
+    <p class="muted small tg-lead">{t("tg.lead")}</p>
     {#if !access.readonly}
-      <div class="ed-row tg-new">
-        <label class="f">{t("tg.from")}<input type="date" bind:value={fFrom} /></label>
-        <label class="f">{t("tg.to")}<input type="date" bind:value={fTo} min={fFrom} /></label>
-        <label class="f">{t("tg.nights")}<input class="n sm" type="number" min="1" max="60" bind:value={fNights} /></label>
-        <button class="btn sm primary tg-start" onclick={startPlan}>{t("tg.start")}</button>
-      </div>
+      {#if !fOpen}
+        <button class="btn sm tg-open" onclick={() => (fOpen = true)}>{t("tg.begin")}</button>
+      {:else}
+        <div class="ed-row tg-new">
+          <label class="f">{t("tg.from")}<input type="date" bind:value={fFrom} /></label>
+          <label class="f">{t("tg.to")}<input type="date" bind:value={fTo} min={fFrom} /></label>
+          <label class="f">{t("tg.nights")}<input class="n sm" type="number" min="1" max="60" bind:value={fNights} /></label>
+          <button class="btn sm primary tg-start" disabled={!!fErr} onclick={startPlan}>{t("tg.start")}</button>
+        </div>
+        {#if fErr}<p class="warnline small tg-err">{t(fErr === "order" ? "tg.errOrder" : "tg.errNights")}</p>{/if}
+      {/if}
     {/if}
   {:else}
     <div class="ed-row tg-head">
@@ -91,6 +101,7 @@
       <label class="f">{t("tg.to")}<input type="date" bind:value={plan.to} min={plan.from} disabled={access.readonly} /></label>
       <label class="f">{t("tg.nights")}<input class="n sm" type="number" min="1" max="60" bind:value={plan.nights} disabled={access.readonly} /></label>
     </div>
+    {#if pErr}<p class="warnline small tg-err">{t(pErr === "order" ? "tg.errOrder" : "tg.errNights")}</p>{/if}
     <p class="muted small">{t("tg.howTo")} <span class="tg-leg"><i class="yes">✓</i> {t("tg.yes")} <i class="maybe">~</i> {t("tg.maybeL")} <i class="no">✕</i> {t("tg.no")}</span></p>
     <div class="tg-grid" role="grid" aria-label={t("tg.title")}>
       <div class="tg-row tg-days" role="row">

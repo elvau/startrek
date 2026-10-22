@@ -1131,3 +1131,13 @@ a.home-act{text-decoration:none}
 .search-row>.btn.car-add{white-space:normal;text-align:start;max-width:100%}
 .car-day{font-weight:500;opacity:.85;margin-inline-start:4px}
 @media (max-width:640px){.car-day{display:block;margin:2px 0 0}}
+/* eingeklappte Abschnitte im Bearbeiten (Posten, Kreuzfahrt) */
+.ed-acc{border:1px solid var(--line);border-radius:12px;padding:0 12px}
+.ed-acc[open]{padding-bottom:12px}
+.ed-acc>summary{list-style:none;cursor:pointer;display:flex;gap:10px;align-items:baseline;padding:10px 0}
+.ed-acc>summary::-webkit-details-marker{display:none}
+.ed-acc>summary::after{content:"▾";margin-inline-start:auto;color:var(--ink-3)}
+.ed-acc[open]>summary::after{content:"▴"}
+.ed-acc>summary .dlabel{flex:none}
+.ed-sum{font-size:13.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ed-acc>:not(summary)+:not(summary){margin-top:8px}

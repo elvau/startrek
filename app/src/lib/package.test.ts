@@ -1,10 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { syncTips } from "./fees";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
 import { totals } from "./calc";
 import { breakPkg, createPackage, pkgCompare, pkgInfo, pkgOf, pkgState, restorePkg, setStatus } from "./package";
 import { activeOption } from "./calc";
 import { uid, type Item } from "./model";
 import { importToTrip } from "./import/apply";
+
+// Trinkgeld (#517) aus: hier geht es um andere Beträge (eigene Tests in tips.test.ts)
+beforeAll(() => syncTips(false));
+afterAll(() => syncTips(true));
 
 const trip = (): Trip => ({ id: "t", name: "Mallorca", autoName: false, place: "Palma", country: "ES", from: "2027-05-10", to: "2027-05-17",
   travelers: [1, 2, 3, 4].map(i => ({ id: `p${i}`, name: `P${i}`, household: i < 3 ? "A" : "B" })), items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } });

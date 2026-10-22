@@ -92,7 +92,8 @@
   const hadOut = had && !had.some(l => l.dir === "via") ? had.find(l => l.dir === "out") : undefined;
   const hadBack = hadOut ? [...had!].reverse().find(l => l.dir === "back") : undefined;
   const base = { ...defaultQuery(trip, "", start.ids ?? item?.participants ?? defaultFlyers(trip)),
-    ...(hadOut ? { to: hadOut.to, depart: hadOut.dep.slice(0, 10), ...(hadBack ? { ret: hadBack.dep.slice(0, 10), latest: hadBack.arr.slice(0, 10) } : {}) } : {}) };
+    ...(hadOut ? { to: hadOut.to, depart: hadOut.dep.slice(0, 10), ...(hadBack ? { ret: hadBack.dep.slice(0, 10), latest: hadBack.arr.slice(0, 10) } : {}) } : {}),
+    ...(start.to ? { to: start.to } : {}), ...(start.depart ? { depart: start.depart } : {}), ...(start.ret ? { ret: start.ret } : {}) };
   const known = airportsOf(trip);
   // Abflughäfen: eigene Auswahl (gemerkt) oder die 4 nächsten zum Wohnort
   const prefs = prefsFor(trip, dir);

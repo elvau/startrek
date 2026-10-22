@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { TIPS } from "../fees";
+  import { TIPS, syncTips } from "../fees";
+  import { dir } from "../directory.svelte";
+  import { prefsFor } from "../prefs";
   import { imp } from "../importantState.svelte";
   import { flagOf } from "../format";
   import { t, tn, type Key } from "../i18n/index.svelte";
@@ -40,6 +42,9 @@
   // Trinkgeld im Reiseland (gepflegte Gepflogenheiten)
   const tipCc = $derived(imp.countries[0] || "");
   const tip = $derived(tipCc ? TIPS[tipCc] : undefined);
+  // Trinkgeld als versteckte Kosten an Unterkunft und Kreuzfahrt (#517): Vorliebe für die Rechnung (nur im Speicher)
+  const tipsOn = $derived(prefsFor(app.trip, dir).tips !== false);
+  $effect(() => { syncTips(tipsOn); });
 </script>
 
 <div class="plan food">

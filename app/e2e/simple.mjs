@@ -241,6 +241,21 @@ try {
   await gp.locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
   const tg = gp.locator("#together .tg");
   await tg.scrollIntoViewIfNeeded();
+  // neu anlegen: erst Erklärung und Knopf (sah sonst wie das Reisedatum aus); Bis vor Von oder zu kurz: Hinweis, Loslegen gesperrt
+  await tg.locator(".tg-reset").click();
+  if (!(await tg.locator(".tg-lead").innerText()).includes("Noch kein Reisedatum") || await tg.locator(".tg-new").count()) fail("Termin finden nicht eingeklappt");
+  await tg.locator(".tg-open").click();
+  const tgIn = l => tg.locator(".tg-new label.f", { hasText: l }).locator("input");
+  await tgIn("Frühester").fill("2027-07-01");
+  await tgIn("Spätester").fill("2027-06-11");
+  if (!(await tg.locator(".tg-err").innerText()).includes("vor dem frühesten") || !(await tg.locator(".tg-start").isDisabled())) fail("Bis vor Von nicht gemeldet");
+  await tgIn("Spätester").fill("2027-07-03");
+  if (!(await tg.locator(".tg-err").innerText()).includes("länger als der Zeitraum")) fail("Zu kurzer Zeitraum nicht gemeldet");
+  await tgIn("Spätester").fill("2027-07-14");
+  await tgIn("Reisedauer").fill("3");
+  if (await tg.locator(".tg-err").count()) fail("Hinweis bleibt trotz gültiger Daten");
+  await tg.locator(".tg-start").click();
+  log("Termin finden: eingeklappt mit Erklärung, Bis vor Von und zu kurzer Zeitraum gemeldet, Loslegen gesperrt");
   const cell = (row, day) => tg.locator(".tg-row").filter({ hasText: row }).locator(".tg-c").nth(day - 1);
   // Tage ohne Eintrag sind offen: alle tragen zuerst „kann“ ein (einmal antippen);
   // Anna kann 1.–4. nicht (dreimal antippen = kann nicht), Ben 8. vielleicht (zweimal)
@@ -320,13 +335,13 @@ try {
   await gctx.close();
   log("Abstimmen: über die Zeiträume (eine Stimme, Cleo „ohne mich“, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten, Meilen-Wahl mit 4 Meilen; „Ohne mich“ mit Fenster, Grund, Info an Anna, mit Familie, trotzdem nehmen stellt beide auf „nicht dabei“");
 
-  // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
+  // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen; Trinkgeld (#517) weggeklickt
   const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }, { id: "c", name: "Tom", household: "Smith", age: 38 }, { id: "d", name: "Mia", household: "Smith", age: 36 }],
     detail: { flights: true, stay: true, transport: true },
     items: [
       { id: "s", cat: "stay", name: "Villa am Meer", status: "chosen", from: "2027-07-18", to: "2027-07-25", options: [{ id: "v", label: "Villa Ana", price: { mode: "unit", currency: "EUR", unit: 980, basis: "stay" },
-        extras: [{ id: "x1", kind: "citytax", amount: 2.8, basis: "personNight", pay: "onsite", est: true, freeUpTo: 12, source: "Stadt Split" }] }] },
+        extras: [{ id: "x1", kind: "citytax", amount: 2.8, basis: "personNight", pay: "onsite", est: true, freeUpTo: 12, source: "Stadt Split" }], autoOff: ["auto:tips"] }] },
       { id: "car", cat: "transport", icon: "car", name: "Mietwagen", status: "idea", options: [{ id: "c", label: "Kompakt", price: { mode: "unit", currency: "EUR", unit: 245 }, deposit: { amount: 1200, how: "credit" } }] }
     ], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
   const xctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
@@ -377,10 +392,11 @@ try {
     const f = "../public/" + new globalThis.URL(r.request().url()).pathname.slice(1);
     return existsSync(f) ? r.fulfill({ status: 200, contentType: "application/json", body: readFileSync(f) }) : r.fulfill({ status: 404, body: "" });
   });
+  // Trinkgeld (#517) weggeklickt: hier geht es um die Kurtaxe
   const ROM = { id: "rom", name: "Rom", place: "Rom", country: "Italien", from: "2027-07-18", to: "2027-07-25",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }],
     detail: { stay: true, flights: true }, households: {},
-    items: [{ id: "h", cat: "stay", name: "Hotel", status: "chosen", from: "2027-07-18", to: "2027-07-25", options: [{ id: "o", label: "Hotel Roma", price: { mode: "unit", currency: "EUR", unit: 700, basis: "stay" }, stay: { stars: 4 },
+    items: [{ id: "h", cat: "stay", name: "Hotel", status: "chosen", from: "2027-07-18", to: "2027-07-25", options: [{ id: "o", label: "Hotel Roma", price: { mode: "unit", currency: "EUR", unit: 700, basis: "stay" }, stay: { stars: 4 }, autoOff: ["auto:tips"],
       query: { place: "Rom", checkin: "2027-07-18", checkout: "2027-07-25", adults: 1, childAges: [9], rooms: 1 } }] }],
     tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } };
   const HR = { id: "hr", name: "Kroatien mit dem Auto", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
@@ -714,8 +730,8 @@ try {
   const cv = cp.locator(".cmpv");
   await cv.locator(".cv-table").waitFor();
   const head = await cv.locator(".cv-head").innerText();
-  // Summen wie in der Reise: 214 + 1680 + 80 = 1974 €
-  if (!head.includes("1.974 €") || !head.includes("2.656 €") || !head.includes("2.090 €")) fail("Summen im Vergleich: " + head.replace(/\n/g, " / "));
+  // Summen wie in der Reise: 214 + 1680 + 80 = 1974 €, dazu Trinkgeld 2 € × 4 Nächte (#517) = 1982 €
+  if (!head.includes("1.982 €") || !head.includes("2.664 €") || !head.includes("2.098 €")) fail("Summen im Vergleich: " + head.replace(/\n/g, " / "));
   if (!head.includes("Unterkunft +700") ) fail("Erklärung fehlt: " + head.replace(/\n/g, " / "));
   // Schaltflächen aller Spalten auf gleicher Höhe, auch in der günstigsten ohne Zusatzzeile (Desktop)
   const actsY = await cv.locator(".cv-head .cv-acts").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));

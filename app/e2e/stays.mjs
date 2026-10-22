@@ -272,11 +272,11 @@ try {
   if (await cards.locator(".cmp-own").count()) fail("eigener Punkt nicht entfernt");
   await cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Ferienwohnung Klara" }).waitFor();
-  // 783 € + Kurtaxe Split automatisch geschätzt (2 € × 1 Person × 7 Nächte)
-  if (!(await cards.locator(".stay .price b").textContent()).includes("797")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
+  // 783 € + Kurtaxe Split automatisch geschätzt (2 € × 1 Person × 7 Nächte) + Trinkgeld Kroatien (3 € × 7 Nächte, #517)
+  if (!(await cards.locator(".stay .price b").textContent()).includes("818")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
   await cards.locator(".cmp-t", { hasText: "Rooms Šećer" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).waitFor();
-  log("Vergleich nebeneinander: A/B, Entfernung zum Zentrum und zum Meer, eigener Punkt per Google-Maps-Link, ganze Reise je Angebot; Klara gewählt (783 € + ca. 14 € Kurtaxe), zurück zu Rooms Šećer");
+  log("Vergleich nebeneinander: A/B, Entfernung zum Zentrum und zum Meer, eigener Punkt per Google-Maps-Link, ganze Reise je Angebot; Klara gewählt (783 € + ca. 14 € Kurtaxe + ca. 21 € Trinkgeld), zurück zu Rooms Šećer");
 
   // wie im Artefakt: Anwesenheit aus dem Flug, Lücke im Plan → „Unterkunft suchen“ für genau diese Nächte und Personen
   const TRIP = {
@@ -584,6 +584,89 @@ try {
   await pm.waitFor({ state: "detached" });
   if (!(await pc.locator(".price .num").textContent()).includes("140")) fail("Privat mit Kosten: " + await pc.locator(".price .num").textContent());
   log("Privat in Lissabon: kostenlos und gewählt, Reiseziel für Flug- und Event-Suche, Kosten 20 € pro Nacht = 140 €");
+
+  // Kreuzfahrt (#516): im Kapitel Unterkunft anlegen, Kabinen nach Familien, Route mit Häfen, Preis je Kabine
+  {
+    const K = {
+      id: "k516", name: "Mittelmeer", place: "Barcelona", country: "Spanien", from: "2027-06-05", to: "2027-06-12",
+      travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 38 },
+        { id: "c", name: "Carla", household: "Hase", age: 41 }, { id: "d", name: "Dirk", household: "Hase", age: 44 }, { id: "e", name: "Ella", household: "Hase", age: 8 }],
+      items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, detail: { stay: true }
+    };
+    await reloadHome(p, { set: { "rk2-t:k516": K, "rk2-index": [{ id: "k516", name: K.name, place: K.place }], "rk2-current": "k516" } });
+    await p.locator(".start .home-trip", { hasText: "Mittelmeer" }).first().click();
+    await p.locator("#stay .cr-open").scrollIntoViewIfNeeded();
+    await p.locator("#stay .cr-open").click();
+    const kc = p.locator("#stay .card.edit");
+    await kc.locator(".cr-cabed").first().waitFor();
+    if ((await kc.locator(".cr-cabed").count()) !== 2) fail("Kabinen nach Familien: " + await kc.locator(".cr-cabed").count());
+    await kc.locator(".cr-linein").fill("Reederei Test");
+    await kc.locator(".cr-shipin").fill("MS Test");
+    // erster Hafen ist offen: Einschiffung Barcelona ab 17 Uhr
+    await kc.locator(".cr-port").fill("Barcelona");
+    await kc.locator(".cr-dep").fill("17:00");
+    await kc.locator(".cr-pl").last().click();
+    await kc.locator(".cr-port").fill("Barcelona");
+    await kc.locator(".cr-addsea").click();
+    await kc.locator(".cr-addport").click();
+    await kc.locator(".cr-port").fill("Palermo");
+    // Ortssuche (#518): voller Name getippt → Land und Lage des Hafens ohne Auswahl
+    await kc.locator(".cr-arr").fill("08:00");
+    await kc.locator(".cr-dep").fill("17:00");
+    if ((await kc.locator(".cr-pl").count()) !== 4) fail("Häfen: " + await kc.locator(".cr-pl").count());
+    await kc.locator(".cr-price").nth(0).fill("2000");
+    await kc.locator(".cr-price").nth(1).fill("2400");
+    await kc.locator(".ed-foot .btn.primary").click();
+    const kk = p.locator("#stay .card[data-item]", { has: p.locator(".cruise") });
+    // Kabinen 4.400 € + Trinkgeld an Bord (14 € × 5 Personen × 7 Nächte, #517)
+    await until(async () => (await kk.locator(".price .num").textContent()).includes("4.890"), "Kreuzfahrt 4.890 €");
+    const route = await kk.locator(".cr-route").innerText();
+    if (!route.includes("Palermo") || !route.includes("Seetag") || !route.includes("8–17")) fail("Route: " + route);
+    const kt = await kk.innerText();
+    if (!kt.includes("MS Test") || !kt.includes("7 Nächte") || !kt.includes("2 Kabinen") || !kt.includes("Reederei Test")) fail("Kreuzfahrt-Karte: " + kt);
+    if (kt.includes("Ohne Kabine")) fail("Warnung trotz Kabinen");
+    if (!(await kk.locator(".cr-cab", { hasText: "Carla, Dirk, Ella" }).locator(".amt", { hasText: "Hase" }).count())) fail("Kabine Hase: " + kt);
+    // Ella aus der Kabine nehmen: Warnung
+    await kk.click();
+    await kk.locator("[data-sec=cabins] > summary").click();
+    await kk.locator(".cr-cabed").nth(1).locator(".chip", { hasText: "Ella" }).click();
+    await kk.locator(".ed-foot .btn.primary").click();
+    await kk.locator(".warnline", { hasText: "Ohne Kabine: Ella" }).waitFor();
+    const saved = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:k516") || "{}"));
+    const pal = saved.items?.[0]?.cruise?.ports?.find(x => x.place === "Palermo");
+    if (pal?.cc !== "IT" || !pal.lat) fail("Palermo ohne Land und Lage: " + JSON.stringify(pal));
+    // Anreise (#518): Hotelnacht vor der Abfahrt mit Ort und Datum, Flug mit Ziel Abfahrtshafen
+    await kk.locator(".cr-gohotel").click();
+    const hm = p.locator(".modal", { has: p.locator(".st-dates") });
+    await hm.waitFor();
+    if ((await hm.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "Barcelona") fail("Hotelnacht: Ort");
+    if ((await hm.locator(".st-dates .dr-btn").getAttribute("data-from")) !== "2027-06-04" || (await hm.locator(".st-dates .dr-btn").getAttribute("data-to")) !== "2027-06-05") fail("Hotelnacht: Datum");
+    await hm.locator(".modal-h .x").click();
+    await kk.locator(".cr-goflight").click();
+    const fm2 = p.locator(".modal", { has: p.locator(".fs-form") });
+    await fm2.waitFor();
+    if (!(await fm2.locator("label.f", { hasText: "Nach" }).locator("input").inputValue()).includes("Barcelona")) fail("Flug zum Hafen: Ziel");
+    await fm2.locator(".modal-h .x").click();
+    // Landgang: Erlebnissuche gleich in Palermo am 07.06., Fenster 9:00–15:30 (1 h nach dem Anlegen, 1,5 h vor dem Ablegen)
+    await kk.locator(".cr-gotours").click();
+    const xm = p.locator(".modal", { has: p.locator(".xp-tabs") });
+    const shore = await xm.locator(".xp-shore").innerText();
+    if (!shore.includes("Palermo") || !shore.includes("08:00") || !shore.includes("17:00") || !shore.includes("6,5 h")) fail("Landgang: " + shore);
+    if (!(await xm.locator(".xp-where").innerText()).includes("09:00")) fail("Zeitfenster Landgang: " + await xm.locator(".xp-where").innerText());
+    await xm.locator(".modal-h .x").click();
+    // eigener Puffer an der Kreuzfahrt: 2 h vor dem Ablegen → Ausflüge bis 6 h, Fenster bis 15:00
+    await kk.locator("h3").click();
+    await kk.locator("[data-sec=route] > summary").click();
+    await kk.locator(".cr-bufbefore").fill("120");
+    await kk.locator(".ed-foot .btn.primary").click();
+    await kk.locator(".cr-gotours").click();
+    const shore2 = await xm.locator(".xp-shore").innerText();
+    if (!shore2.includes("6 h") || !shore2.includes("2 h vor")) fail("eigener Puffer: " + shore2);
+    if (!(await xm.locator(".xp-where").innerText()).includes("15:00")) fail("Zeitfenster mit eigenem Puffer: " + await xm.locator(".xp-where").innerText());
+    await xm.locator(".modal-h .x").click();
+    log("Kreuzfahrt-Anreise: Palermo mit Land und Lage, Hotelnacht 04.–05.06. in Barcelona, Flug nach Barcelona, Ausflüge in den Häfen");
+    log("Kreuzfahrt: 2 Kabinen nach Familien, Route Barcelona – Seetag – Palermo (8–17) – Barcelona, 7 Nächte, 4.400 € + Trinkgeld = 4.890 €, Warnung ohne Kabine");
+  }
 
   // #441: Flüge und Erlebnisse vergleichen: Buchstaben, Hin- und Rückflug, Umstiege, Gepäck, ganze Reise p. P.; Erlebnisse mit Entfernung zum Hotel
   {

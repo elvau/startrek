@@ -1,7 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { syncTips } from "../fees";
 import { totals } from "./index";
 import { costParts } from "./parts";
 import type { Item, Trip } from "../model";
+
+// Trinkgeld (#517) aus: hier geht es um andere Beträge (eigene Tests in tips.test.ts)
+beforeAll(() => syncTips(false));
+afterAll(() => syncTips(true));
 
 const unit = (v: number) => ({ mode: "unit" as const, currency: "EUR", unit: v });
 const trip = (items: Item[], more: Partial<Trip> = {}): Trip => ({

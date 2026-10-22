@@ -17,6 +17,8 @@ export interface Hint {
   /** Flughäfen und Stichwörter (Orte, Posten), bei denen der Hinweis gilt */
   aps?: string[];
   words?: RegExp;
+  /** gilt, sobald eine Kreuzfahrt geplant ist (#518) */
+  cruise?: boolean;
   /** Art: Einreise (Land, Pässe laut `pass`), Warnung (Land, für alle), Ort oder Haustier (#322, Bestimmung) */
   kind: "entry" | "warn" | "place" | "pet";
   /**
@@ -73,6 +75,7 @@ export const HINTS: Hint[] = [
   { id: "kp", kind: "warn", cc: ["KP"], words: /nordkorea|north korea|pjöngjang|pyongyang|rason|wonsan/i,
     links: [{ label: "Koryo Tours", url: "https://koryogroup.com/" }, { label: "Young Pioneer Tours", url: "https://www.youngpioneertours.com/" }] },
   // besondere Orte
+  { id: "cruise", kind: "place", cruise: true, links: [{ label: "Auswärtiges Amt", url: "https://www.auswaertiges-amt.de/de/reiseundsicherheit" }] },
   { id: "galapagos", kind: "place", aps: ["GPS", "SCY"], words: /gal[aá]pagos|baltra|puerto ayora|isabela/i,
     links: [{ label: "TCT online (CGREG)", url: "https://siig-cgreg.gobiernogalapagos.gob.ec/" }, { label: "Parque Nacional Galápagos", url: "https://www.galapagos.gob.ec/" }],
     fee: { adult: 220, child: 120, currency: "USD", cat: "misc" } },
@@ -112,6 +115,8 @@ export function tripCountries(trip: Trip, ccOfCountry: (name?: string) => string
     if (!o) continue;
     for (const l of o.legs || []) if (l.dir !== "back") add(ccOfAirport(l.to));
     if (o.query?.country) add(ccOfCountry(o.query.country));
+    // Kreuzfahrt (#518): Länder aller Häfen (Landgang)
+    for (const p of it.cruise?.ports || []) add(p.cc);
   }
   return [...out];
 }
@@ -127,7 +132,8 @@ export const tripText = (trip: Trip, places: string[]) =>
 /** Hinweise für die Reise: je Land die Einreise, je Ort die Besonderheiten (Flughäfen, Orte, Posten, Tagesplan) */
 export function hintsFor(trip: Trip, countries: string[], places: string[]): Hint[] {
   const aps = tripAps(trip), text = tripText(trip, places);
-  return HINTS.filter(h => (h.cc || []).some(c => countries.includes(c)) || (h.kind !== "entry" && ((h.aps || []).some(a => aps.has(a)) || !!h.words?.test(text))));
+  const cruise = trip.items.some(i => i.cruise && i.status !== "dropped");
+  return HINTS.filter(h => (h.cc || []).some(c => countries.includes(c)) || (h.cruise && cruise) || (h.kind !== "entry" && ((h.aps || []).some(a => aps.has(a)) || !!h.words?.test(text))));
 }
 
 /** Warnungen für das Ziel einer Flugsuche (Länder der Zielflughäfen, Zieltext): z. B. Nordkorea nur mit organisierter Tour */

@@ -101,8 +101,13 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
 
 ## Awin
 
-Publisher-Konto für splitandfly.com (Publisher-ID `3121582`, öffentlich, steht in jedem Awin-Link). Beworben 10/2026,
-Stand „offen“: TUI Cars, Sunny Cars, Sixt, Europcar (Mietwagen), TUI Camper, Roadsurfer (Camper), Airparks, Holiday Extras,
-Tui.com, ab-in-den-urlaub (Pauschalreisen), TUI Cruises/Mein Schiff (Kreuzfahrten),
-HanseMerkur (Versicherung). Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen; Link-Format
+Publisher-Konto für splitandfly.com (Publisher-ID `3121582`, öffentlich, steht in jedem Awin-Link). Beworben 10/2026.
+Stand 22.10.2026:
+- **zugelassen:** Airparks DE (`awinmid` 14699), Holiday Extras DE (`awinmid` 55335) (Parken am Flughafen),
+  HanseMerkur Versicherungsgruppe DE (`awinmid` 11705, Reiseversicherung; nur als Tipp, keine Beratung)
+- **abgelehnt:** Sunny Cars („arbeitet nicht mit diesem Publisher-Typ“), ab-in-den-urlaub (Pauschalreisen)
+- **offen:** TUI Cars, Sixt, Europcar (Mietwagen), TUI Camper, Roadsurfer (Camper), Tui.com (Pauschalreisen),
+  TUI Cruises/Mein Schiff (Kreuzfahrten)
+
+Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen (`tag: awin(…)` in `app/src/lib/partners/index.ts`); Link-Format
 `https://www.awin1.com/cread.php?awinmid=…&awinaffid=3121582&ued=<Ziel>`.

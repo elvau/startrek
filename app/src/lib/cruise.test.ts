@@ -1,0 +1,172 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { cabinsTotal, cruiseTitle, newCruise, shoreAt, shoreOf, shoresOf, portTime, routeLine, suggestCabins, syncCruise, withoutCabin } from "./cruise";
+import { calcItem, totals } from "./calc";
+import { syncTips } from "./fees";
+import { DEFAULT_SETTINGS, type Item, type Traveler, type Trip } from "./model";
+import { itinerary, stations } from "./itinerary";
+import { hintsFor, tripCountries } from "./hints";
+import { tripSpots } from "./geo/spots";
+import type { GeoData } from "./geo/places";
+
+const P = (id: string, household: string, age = 40): Traveler => ({ id, name: id, age, household });
+const trip = (travelers: Traveler[]): Trip => ({
+  id: "t", name: "Kreuzfahrt", place: "Barcelona", country: "ES", from: "2027-06-05", to: "2027-06-12",
+  travelers, items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }
+});
+// Familie Klein (2), Familie Hase (4 mit Kindern), Oma allein
+const group = () => trip([P("a", "Klein"), P("b", "Klein"), P("c", "Hase"), P("d", "Hase"), P("e", "Hase", 8), P("f", "Hase", 5), P("o", "Oma", 70)]);
+
+describe("Kabinen vorschlagen", () => {
+  it("je Familie eine Kabine", () => {
+    const cs = suggestCabins(group().travelers);
+    expect(cs.map(c => c.who)).toEqual([["a", "b"], ["c", "d", "e", "f"], ["o"]]);
+  });
+  it("große Familie gleichmäßig auf Kabinen mit höchstens 4", () => {
+    const t = trip(["1", "2", "3", "4", "5"].map(id => P(id, "Groß")));
+    expect(suggestCabins(t.travelers).map(c => c.who.length)).toEqual([3, 2]);
+  });
+});
+
+describe("Kreuzfahrt abgleichen", () => {
+  it("neu: Zeitraum der Reise, Kabinen nach Familien, alle dabei", () => {
+    const t = group(), it0 = newCruise(t, "EUR");
+    expect(it0.cat).toBe("stay");
+    expect([it0.from, it0.to]).toEqual(["2027-06-05", "2027-06-12"]);
+    expect(it0.options[0].cabins).toHaveLength(3);
+    expect(it0.participants).toHaveLength(7);
+    expect(withoutCabin(it0.options[0], t)).toEqual([]);
+  });
+  it("Zeitraum aus erstem und letztem Hafen, Preis = Summe der Kabinen, Teilnehmende aus Kabinen", () => {
+    const t = group(), it0 = newCruise(t, "EUR");
+    it0.cruise!.ports = [{ date: "2027-07-01", place: "Genua" }, { date: "2027-07-02", sea: true }, { date: "2027-07-08", place: "Genua" }];
+    const cs = it0.options[0].cabins!;
+    cs[0].price = 2000; cs[1].price = 700; cs[1].per = "person"; cs[2].price = 900;
+    cs.pop();
+    syncCruise(it0);
+    expect([it0.from, it0.to]).toEqual(["2027-07-01", "2027-07-08"]);
+    expect(it0.options[0].price.unit).toBe(2000 + 4 * 700);
+    expect(cabinsTotal(cs)).toBe(4800);
+    expect(it0.participants).toEqual(["a", "b", "c", "d", "e", "f"]);
+    expect(withoutCabin(it0.options[0], t).map(x => x.id)).toEqual(["o"]);
+  });
+});
+
+describe("Kosten je Kabine", () => {
+  // ohne Trinkgeld (eigene Tests in tips.test.ts)
+  afterEach(() => syncTips(true));
+  const priced = (t: Trip): Item => {
+    syncTips(false);
+    const it0 = newCruise(t, "EUR");
+    const cs = it0.options[0].cabins!;
+    cs[0].price = 2380; cs[1].price = 2960; cs[2].price = 1540;
+    it0.status = "chosen";
+    syncCruise(it0);
+    return it0;
+  };
+  it("jede Familie zahlt ihre Kabine, Summe stimmt", () => {
+    const t = group(), it0 = priced(t);
+    t.items.push(it0);
+    const r = calcItem(it0, t);
+    expect(r.net).toBeCloseTo(2380 + 2960 + 1540);
+    expect(r.per.a).toBeCloseTo(1190);
+    expect(r.per.e).toBeCloseTo(740);
+    expect(r.stay?.nights).toHaveLength(7);
+    const T = totals(t);
+    expect(T.byHousehold.Klein).toBeCloseTo(2380);
+    expect(T.byHousehold.Hase).toBeCloseTo(2960);
+    expect(T.byHousehold.Oma).toBeCloseTo(1540);
+  });
+  it("Oma mit Enkel in einer Kabine: nach Personen geteilt", () => {
+    const t = group(), it0 = priced(t);
+    const cs = it0.options[0].cabins!;
+    cs[1].who = ["c", "d", "e"]; cs[2].who = ["o", "f"];
+    syncCruise(it0);
+    t.items.push(it0);
+    const T = totals(t);
+    expect(T.byHousehold.Hase).toBeCloseTo(2960 + 770);
+    expect(T.byHousehold.Oma).toBeCloseTo(770);
+  });
+  it("Fremdwährung wird umgerechnet", () => {
+    const t = group(), it0 = priced(t);
+    t.settings.rates = { EUR: 1, USD: 2 };
+    it0.options[0].price.currency = "USD";
+    expect(calcItem(it0, t).net).toBeCloseTo((2380 + 2960 + 1540) / 2);
+  });
+});
+
+describe("Anzeige", () => {
+  it("Route ohne Seetage und doppelte Häfen", () => {
+    const it0 = newCruise(group(), "EUR");
+    it0.cruise!.ports = [{ date: "1", place: "Barcelona" }, { date: "2", sea: true }, { date: "3", place: "Palermo" }, { date: "4", place: "Palermo" }, { date: "5", place: "Barcelona" }];
+    expect(routeLine(it0)).toBe("Barcelona → Palermo → Barcelona");
+  });
+  it("Überschrift: eigener Name, sonst ab dem ersten Hafen", () => {
+    const it0 = newCruise(group(), "EUR");
+    expect(cruiseTitle(it0)).toBe("Neue Kreuzfahrt");
+    it0.cruise!.ports[0].place = "Genua";
+    expect(cruiseTitle(it0)).toBe("Kreuzfahrt ab Genua");
+    it0.name = "Nordland 2027";
+    expect(cruiseTitle(it0)).toBe("Nordland 2027");
+  });
+  it("Liegezeit kurz", () => {
+    expect(portTime({ date: "", arr: "08:00", dep: "17:30" })).toEqual({ arr: "8", dep: "17:30" });
+    expect(portTime({ date: "" })).toEqual({});
+  });
+});
+
+describe("Häfen im Reiseplan, Länder, Hinweis (#518)", () => {
+  const routed = () => {
+    const t = group(), it0 = newCruise(t, "EUR");
+    it0.status = "chosen";
+    it0.cruise!.ports = [
+      { date: "2027-06-05", place: "Barcelona", cc: "ES", lat: 41.38, lon: 2.18, dep: "17:00" },
+      { date: "2027-06-06", sea: true },
+      { date: "2027-06-07", place: "Palermo", cc: "IT", lat: 38.12, lon: 13.36, arr: "08:00", dep: "17:00" },
+      { date: "2027-06-08", place: "Valletta", cc: "MT", lat: 35.9, lon: 14.51, arr: "08:00", dep: "18:00" },
+      { date: "2027-06-12", place: "Barcelona", cc: "ES", lat: 41.38, lon: 2.18, arr: "08:00" }];
+    syncCruise(it0);
+    t.items.push(it0);
+    return t;
+  };
+  it("Einschiffung, Häfen mit Liegezeit, Seetag; Ort des Tages ist der Hafen", () => {
+    const days = itinerary(routed());
+    const d = (x: string) => days.find(y => y.date === x)!;
+    expect(d("2027-06-05").entries.map(e => [e.kind, e.text, e.time])).toContainEqual(["port", "Einschiffung in Barcelona", "17:00"]);
+    expect(d("2027-06-06")).toMatchObject({ sea: true, place: "Seetag" });
+    expect(d("2027-06-07").place).toBe("Palermo");
+    expect(d("2027-06-07").entries.find(e => e.kind === "port")).toMatchObject({ text: "Palermo", time: "08:00", sub: "ab 17" });
+    expect(d("2027-06-12").entries.map(e => e.text)).toContain("Ausschiffung in Barcelona");
+    expect(stations(days).map(s => s.place)).toEqual(["Barcelona", "Palermo", "Valletta", "Barcelona"]);
+  });
+  it("Länder aller Häfen, Hinweis zum Reisepass, Hafen als Ort für den Transfer", () => {
+    const t = routed();
+    expect(tripCountries(t, () => null, () => undefined)).toEqual(["ES", "IT", "MT"]);
+    expect(hintsFor(t, [], []).map(h => h.id)).toContain("cruise");
+    expect(hintsFor(group(), [], []).map(h => h.id)).not.toContain("cruise");
+    const spots = tripSpots(t, { world: [], places: {} } as unknown as GeoData).filter(s => s.kind === "stay");
+    expect(spots.map(s => s.name)).toEqual(["Barcelona"]);
+  });
+});
+
+describe("Landgang: Zeitfenster mit Puffer (#518)", () => {
+  it("1 h nach dem Anlegen, 1,5 h vor dem Ablegen", () => {
+    expect(shoreOf({ date: "2027-06-07", place: "Palermo", arr: "08:00", dep: "17:00" }))
+      .toMatchObject({ place: "Palermo", start: "2027-06-07T09:00", end: "2027-06-07T15:30", minutes: 390 });
+    expect(shoreOf({ date: "2027-06-07", place: "Kurz", arr: "10:00", dep: "12:00" })!.minutes).toBe(0);
+    expect(shoreOf({ date: "2027-06-07", place: "Ohne Zeiten" })).toEqual({ place: "Ohne Zeiten", date: "2027-06-07", after: 60, before: 90 });
+    expect(shoreOf({ date: "2027-06-06", sea: true })).toBeNull();
+  });
+  it("nur Häfen zwischen Ein- und Ausschiffung", () => {
+    const t = group(), it0 = newCruise(t, "EUR");
+    it0.cruise!.ports = [{ date: "2027-06-05", place: "Barcelona", dep: "17:00" }, { date: "2027-06-06", sea: true },
+      { date: "2027-06-07", place: "Palermo", arr: "08:00", dep: "17:00" }, { date: "2027-06-12", place: "Barcelona", arr: "08:00" }];
+    t.items.push(it0);
+    expect(shoresOf(t).map(s => s.place)).toEqual(["Palermo"]);
+    expect(shoreAt(t, "Palermo", "2027-06-07")?.minutes).toBe(390);
+    expect(shoreAt(t, "Palermo", "2027-06-08")).toBeNull();
+    // eigene Puffer: Vorlieben, an der Kreuzfahrt geht vor
+    expect(shoreAt(t, "Palermo", "2027-06-07", { after: 30, before: 60 })?.minutes).toBe(450);
+    it0.cruise!.shore = { before: 120 };
+    expect(shoreAt(t, "Palermo", "2027-06-07", { after: 30, before: 60 })).toMatchObject({ start: "2027-06-07T08:30", end: "2027-06-07T15:00", minutes: 390 });
+  });
+});

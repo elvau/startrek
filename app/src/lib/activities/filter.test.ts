@@ -24,6 +24,9 @@ describe("Erlebnisse filtern", () => {
     expect([60, 120, 180, 300, 301, undefined].map(lenOf)).toEqual(["short", "short", "half", "half", "day", null]);
     expect(T.filter(a => tourPasses(a, { ...noTourFilter(), len: "half" })).map(a => a.id)).toEqual(["boot"]);
     expect(T.filter(a => tourPasses(a, { ...noTourFilter(), minRating: 4.5, maxPrice: 80 })).map(a => a.id)).toEqual(["boot"]);
+    // Landgang (#518): höchstens so lang, Touren ohne Dauer bleiben drin
+    const longest = Math.max(...T.map(a => a.minutes || 0));
+    expect(T.filter(a => tourPasses(a, { ...noTourFilter(), maxMin: longest - 1 })).length).toBe(T.filter(a => a.minutes == null || a.minutes < longest).length);
     const fc = tourFacets(T, noTourFilter());
     expect(fc.lens).toEqual([{ key: "short", count: 1, min: 25 }, { key: "half", count: 1, min: 60 }, { key: "day", count: 1, min: 110 }]);
     expect(fc.price).toEqual({ lo: 25, hi: 110 });
