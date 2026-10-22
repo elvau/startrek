@@ -16,7 +16,10 @@ body.mob .ch-sum b{font-size:20px}
 /* Übersicht als erste Seite: ohne Vollbildhöhe und ohne „Reise entdecken“ (dafür gibt es Reiter und Leiste) */
 body.mob .pg-hero{padding:0 0 96px}
 body.mob .pg-hero .hero{min-height:auto;padding:12px 12px 24px}
-body.mob .pg-hero .hero-in{transform:none;opacity:1}
+body.mob .pg-hero .hero{display:block}
+body.mob .pg-hero .hero-in{transform:none;opacity:1;width:100%;min-width:0}
+/* langer Reisename („Reise · November 2026 · 26 Tage“) drückte die Seite breiter als den Bildschirm */
+body.mob .pg-hero .hero h1{font-size:clamp(28px,9vw,40px);overflow-wrap:anywhere;margin:8px 0 8px}
 body.mob .hint{display:none}
 /* schwebend bleibt nur der KI-Knopf, über der Leiste; Fehler melden steht unter „Mehr“ */
 body.mob .bug-fab{display:none}
@@ -40,3 +43,5 @@ body.mob .home-act:last-child:nth-child(odd){grid-column:1 / -1}
 body.mob .moon{top:auto;bottom:18%;right:auto;left:8%;width:56px;height:56px}
 /* fallende Münzen der Abrechnung lägen am Handy über der Summe */
 body.mob .coin.fall{display:none}
+/* Figuren bei „Wer fährt mit“: am Handy stehen sie (die Schritte hängen am Scrollen der langen Seite, das es hier nicht gibt) */
+body.mob .walker .leg{animation:none!important}
