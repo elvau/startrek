@@ -14,8 +14,11 @@ export function nights(from?: string, to?: string): number {
 export function range(from?: string, to?: string): string {
   if (!from || !to) return t("date.open");
   const a = d(from), b = d(to);
+  // verschiedene Jahre: beide Daten mit Jahr
+  const year = a.getFullYear() !== b.getFullYear();
   // andere Sprachen: Zeitspanne wie im Land üblich („18–29 July“, „18–29 juillet“)
-  if (i18n.lang !== "de") return new Intl.DateTimeFormat(locale(), { day: "numeric", month: "long" }).formatRange(a, b);
+  if (i18n.lang !== "de") return new Intl.DateTimeFormat(locale(), { day: "numeric", month: "long", ...(year ? { year: "numeric" as const } : {}) }).formatRange(a, b);
+  if (year) return `${a.getDate()}. ${MONTHS[a.getMonth()]} ${a.getFullYear()} bis ${b.getDate()}. ${MONTHS[b.getMonth()]} ${b.getFullYear()}`;
   if (a.getMonth() === b.getMonth()) return `${a.getDate()}. bis ${b.getDate()}. ${MONTHS[b.getMonth()]}`;
   return `${a.getDate()}. ${MONTHS[a.getMonth()]} bis ${b.getDate()}. ${MONTHS[b.getMonth()]}`;
 }
