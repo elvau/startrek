@@ -377,10 +377,11 @@ try {
     const f = "../public/" + new globalThis.URL(r.request().url()).pathname.slice(1);
     return existsSync(f) ? r.fulfill({ status: 200, contentType: "application/json", body: readFileSync(f) }) : r.fulfill({ status: 404, body: "" });
   });
+  // Trinkgeld (#517) weggeklickt: hier geht es um die Kurtaxe
   const ROM = { id: "rom", name: "Rom", place: "Rom", country: "Italien", from: "2027-07-18", to: "2027-07-25",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }],
     detail: { stay: true, flights: true }, households: {},
-    items: [{ id: "h", cat: "stay", name: "Hotel", status: "chosen", from: "2027-07-18", to: "2027-07-25", options: [{ id: "o", label: "Hotel Roma", price: { mode: "unit", currency: "EUR", unit: 700, basis: "stay" }, stay: { stars: 4 },
+    items: [{ id: "h", cat: "stay", name: "Hotel", status: "chosen", from: "2027-07-18", to: "2027-07-25", options: [{ id: "o", label: "Hotel Roma", price: { mode: "unit", currency: "EUR", unit: 700, basis: "stay" }, stay: { stars: 4 }, autoOff: ["auto:tips"],
       query: { place: "Rom", checkin: "2027-07-18", checkout: "2027-07-25", adults: 1, childAges: [9], rooms: 1 } }] }],
     tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } };
   const HR = { id: "hr", name: "Kroatien mit dem Auto", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
