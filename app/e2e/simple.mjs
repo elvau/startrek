@@ -715,8 +715,8 @@ try {
   const cv = cp.locator(".cmpv");
   await cv.locator(".cv-table").waitFor();
   const head = await cv.locator(".cv-head").innerText();
-  // Summen wie in der Reise: 214 + 1680 + 80 = 1974 €
-  if (!head.includes("1.974 €") || !head.includes("2.656 €") || !head.includes("2.090 €")) fail("Summen im Vergleich: " + head.replace(/\n/g, " / "));
+  // Summen wie in der Reise: 214 + 1680 + 80 = 1974 €, dazu Trinkgeld 2 € × 4 Nächte (#517) = 1982 €
+  if (!head.includes("1.982 €") || !head.includes("2.664 €") || !head.includes("2.098 €")) fail("Summen im Vergleich: " + head.replace(/\n/g, " / "));
   if (!head.includes("Unterkunft +700") ) fail("Erklärung fehlt: " + head.replace(/\n/g, " / "));
   // Schaltflächen aller Spalten auf gleicher Höhe, auch in der günstigsten ohne Zusatzzeile (Desktop)
   const actsY = await cv.locator(".cv-head .cv-acts").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));
