@@ -97,3 +97,16 @@ describe("Kassen", () => {
     expect(ledger(t, totals(t)).moves).toEqual([{ from: "p:p", to: "p:m", v: 30 }]);
   });
 });
+
+describe("Kasse: Umstellung der Kassen", () => {
+  it("Eintrag einer Personen-Kasse nach Umstellung auf gemeinsam zählt für die Familie, keine Überweisung an sich selbst", () => {
+    const t = trip(); t.items = [];
+    t.households = { Klein: { kasse: "each" } };
+    t.expenses = [{ id: "x", text: "Essen", amount: 40, currency: "EUR", by: "p:b", for: ["Klein"] }];
+    t.households = { Klein: { kasse: "joint" } };
+    const L = ledger(t, totals(t));
+    expect(L.rows.map(r => r.hh)).not.toContain("p:b");
+    expect(L.rows.find(r => r.hh === "Klein")!.bal).toBeCloseTo(0);
+    expect(L.moves).toEqual([]);
+  });
+});

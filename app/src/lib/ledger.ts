@@ -88,9 +88,15 @@ export function ledger(trip: Trip, T: Totals, owner?: string): Ledger {
   const ids = new Set(ks.map(k => k.id));
   const paid: Record<string, number> = {}, owed: Record<string, number> = {};
   const add = (m: Record<string, number>, k: string, v: number) => { m[k] = (m[k] || 0) + v; };
-  /** Gutschrift an eine Kasse; älterer Eintrag mit Familienname, die jetzt getrennt zahlt: auf ihre Erwachsenen verteilt */
+  /** Gutschrift an eine Kasse; älterer Eintrag mit Familienname, die jetzt getrennt zahlt: auf ihre Erwachsenen verteilt;
+   *  Eintrag einer Personen-Kasse, die es nicht mehr gibt (Familie zahlt jetzt gemeinsam): an die Kasse der Person */
   const credit = (m: Record<string, number>, by: string, v: number) => {
-    if (ids.has(by) || by.startsWith("p:")) return add(m, by, v);
+    if (ids.has(by)) return add(m, by, v);
+    if (by.startsWith("p:")) {
+      const t = act.find(x => x.id === by.slice(2));
+      if (!t) return add(m, by, v);
+      return kasseOf(trip, t).forEach(([k, f]) => add(m, k, v * f));
+    }
     const parts = ks.filter(k => k.hh === by);
     if (!parts.length) return add(m, by, v);
     parts.forEach(k => add(m, k.id, v / parts.length));
