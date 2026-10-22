@@ -36,6 +36,8 @@
   // nach „Diese nehmen“: gewählte zuerst, die anderen eingeklappt (nicht gelöscht)
   const list = $derived(picked ? [all.find(v => v.id === picked.id)!, ...all.filter(v => v.id !== picked.id && (showAll || !archivedOf(v)))] : all.filter(v => showAll || !archivedOf(v)));
   const cols = $derived(list.map(v => v.col));
+  // Ziele und Fahrzeit nur, wenn eine Variante eine Kreuzfahrt oder Rundreise an Land hat (#520)
+  const facts = $derived(cols.some(c => c.facts));
   const low = $derived(cheapestId(all.map(v => v.col)));
   const ref = $derived(all.find(v => v.id === low)?.col);
   // Varianten derselben Reise (Juni statt Juli): standardmäßig nur Unterschiede
@@ -233,6 +235,17 @@
           {/each}
         </div>
       {/each}
+      <!-- Kreuzfahrt gegen Rundreise an Land (#520): Ziele und Fahrzeit an Land -->
+      {#if facts}
+        <div class="cv-row cv-facts" role="row" data-row="places">
+          <div class="cv-lab" role="rowheader"><b>{t("cl.places")}</b></div>
+          {#each list as v (v.id)}<div class="cv-cell" role="cell">{v.col.facts ? tn("cl.placesN", v.col.facts.places) : "–"}</div>{/each}
+        </div>
+        <div class="cv-row cv-facts" role="row" data-row="moving">
+          <div class="cv-lab" role="rowheader"><b>{t("cl.moving")}</b></div>
+          {#each list as v (v.id)}<div class="cv-cell" role="cell">{v.col.facts ? (v.col.facts.hours ? t("cl.hours", { h: v.col.facts.hours }) : v.col.facts.cruise ? t("cl.atSea") : "–") : "–"}</div>{/each}
+        </div>
+      {/if}
     </div>
     {#if !rows.length}<p class="muted">{t("cmpv.noDiff")}</p>{/if}
 
@@ -240,7 +253,8 @@
     <div class="cv-mob">
       <div class="cv-sum">
         {#each list as v (v.id)}
-          <div class="cv-s" class:win={picked?.id === v.id}><span aria-hidden="true">{flag(v)}</span><b class="num">{eur(v.col.total)}</b><small>{t("perPerson", { v: eur(v.col.perPerson) })}</small><small class="cv-sl">{v.label}</small></div>
+          <div class="cv-s" class:win={picked?.id === v.id}><span aria-hidden="true">{flag(v)}</span><b class="num">{eur(v.col.total)}</b><small>{t("perPerson", { v: eur(v.col.perPerson) })}</small><small class="cv-sl">{v.label}</small>
+            {#if facts && v.col.facts}<small class="cv-facts-m">{tn("cl.placesN", v.col.facts.places)} · {v.col.facts.hours ? t("cl.hours", { h: v.col.facts.hours }) : v.col.facts.cruise ? t("cl.atSea") : "–"}</small>{/if}</div>
         {/each}
       </div>
       {#each rows as k (k)}

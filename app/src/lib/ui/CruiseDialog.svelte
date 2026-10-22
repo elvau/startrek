@@ -14,7 +14,9 @@
   import { range } from "../format";
   import { partnersOf } from "../partners";
   import { CRUISE_AREAS, type CruiseArea, type CruiseHit } from "../cruises/search";
-  import { askCruises, hitItem } from "../cruises/app";
+  import { addAsOption, askCruises, hitItem } from "../cruises/app";
+  import { cruiseDlg } from "../cruises/open.svelte";
+  import type { Item } from "../model";
   import Modal from "./Modal.svelte";
   import ImportPanel from "./ImportPanel.svelte";
   import PartnerLinks from "./PartnerLinks.svelte";
@@ -50,27 +52,38 @@
       if ((x as Error).name !== "AbortError") error = (x as Error).message;
     } finally { busy = false; }
   }
+  // aus einer Kreuzfahrt-Karte (#520): Treffer und Importe kommen als weiteres Angebot an diesen Posten
+  const target = $derived(cruiseDlg.itemId ? trip.items.find(i => i.id === cruiseDlg.itemId && i.cruise) : undefined);
   function take(h: CruiseHit) {
     const it = hitItem(trip, h);
-    trip.detail = { ...(trip.detail || {}), stay: true };
-    trip.items.push(it);
     taken[h.id] = true;
     onclose();
+    if (target) { addAsOption(target, it); showItem(target.id); return; }
+    trip.detail = { ...(trip.detail || {}), stay: true };
+    trip.items.push(it);
     showItem(it.id);
+  }
+  // Import in die Reise: die importierte Kreuzfahrt wird ein Angebot am Posten statt eines eigenen Postens
+  function merged(items: Item[]) {
+    const it = items.find(i => i.cruise);
+    if (!target || !it) return;
+    addAsOption(target, it);
+    trip.items = trip.items.filter(i => i.id !== it.id);
+    showItem(target.id);
   }
   const people = $derived(g.adults + g.childAges.length);
   const route = (h: CruiseHit) => { const ps = h.ports.filter(p => p.place).map(p => p.place!); return ps.filter((x, i) => i === 0 || x !== ps[i - 1]).join(" → "); };
 </script>
 
-<Modal title={`🚢 ${t("cs.title")}`} {onclose}>
+<Modal title={`🚢 ${target ? t("cc.addTitle") : t("cs.title")}`} {onclose}>
   <div class="chips cs-mode" role="group">
     <button type="button" class="chip" class:on={mode === "search"} aria-pressed={mode === "search"} onclick={() => (mode = "search")}>🔎 {t("cs.search")}</button>
     {#if cloud.configured}<button type="button" class="chip" class:on={mode === "import"} aria-pressed={mode === "import"} onclick={() => (mode = "import")}>📥 {t("pkg.import")}</button>{/if}
-    <button type="button" class="chip cs-hand" onclick={() => { onclose(); onhand(); }}>✏ {t("pkg.hand")}</button>
+    {#if !target}<button type="button" class="chip cs-hand" onclick={() => { onclose(); onhand(); }}>✏ {t("pkg.hand")}</button>{/if}
   </div>
   {#if mode === "import"}
     <p class="small muted">{t("cs.importHint")}</p>
-    <ImportPanel {onclose} into />
+    <ImportPanel {onclose} into onitems={merged} />
   {:else}
     <form class="cs-form" onsubmit={search}>
       <div class="cs-grid">

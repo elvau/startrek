@@ -167,6 +167,8 @@ export const GUIDE: GuidePage[] = [
       "Wo die Suche es weiß, siehst du „kostenlos stornierbar“. Für die Buchung gehst du zum Anbieter.",
       "Kreuzfahrt? „🚢 Kreuzfahrt“ öffnet drei Wege: „Suchen“ nach Fahrtgebiet, Abfahrtshafen, Zeitraum, Nächten und Kabine, „Importieren“ für ein Angebot oder eine Buchung (Screenshot, PDF, Text, Link) oder „Von Hand“. Treffer und Importe kommen mit Route und Kabinen nach Familien.",
       "Von Hand trägst du Reederei, Schiff und die Häfen mit Liegezeiten ein, dazu Seetage. Ein- und Ausschiffung ergeben die Nächte an Bord.",
+      "Mehrere Kreuzfahrten vergleichen: An der Kreuzfahrt-Karte „🔎 Weitere Kreuzfahrt vergleichen“. Jede Fahrt wird ein Angebot A, B, C mit eigener Route; die Tabelle zeigt Route, Kabinen, Nebenkosten, Preis pro Person und was die ganze Reise pro Person kostet. Antippen wählt die Fahrt.",
+      "„🏨 Mit Rundreise an Land vergleichen“ legt eine Variante „An Land“ an: bis zu drei Städte der Route mit Hotel-Richtwert und vorbelegter Suche, Fahrten dazwischen geschätzt. Der Vergleich der Varianten zeigt dazu Ziele und Fahrzeit an Land.",
       "Bei der Kreuzfahrt trägst du Kabinen ein: Typ, Preis und wer darin wohnt. „Kabinen nach Familien vorschlagen“ verteilt alle auf Kabinen. Jede Kabine kostet die Personen darin.",
       "Die Häfen erscheinen im Tagesplan mit Liegezeit, Seetage als eigene Tage. Auf der Karte der Kreuzfahrt findest du „Flug zum Hafen“, „Hotelnacht davor“ und „Ausflüge in den Häfen“. „Einreise & Tipps“ zeigt die Länder aller Häfen."
     ],
