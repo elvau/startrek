@@ -11,6 +11,8 @@
 
   let { item, opt, fresh = false }: { item: Item; opt: Option | undefined; fresh?: boolean } = $props();
   const cr = $derived(item.cruise!);
+  // neu, solange keine Kabine einen Preis hat (das geschätzte Trinkgeld zählt nicht): Abschnitte offen
+  const start = untrack(() => fresh || !item.options.some(o => o.cabins?.some(c => c.price > 0)));
   const people = $derived(app.trip.travelers.filter(isActive));
   // Zeitraum, Pauschalpreis und Teilnehmende bei jeder Änderung nachziehen
   $effect(() => {
@@ -19,7 +21,7 @@
   });
 
   // Hafen zum Bearbeiten (Index); neue Kreuzfahrt: erster Hafen offen
-  let open = $state<number | null>(untrack(() => (fresh && !item.cruise?.ports[0]?.place ? 0 : null)));
+  let open = $state<number | null>(untrack(() => (start && !item.cruise?.ports[0]?.place ? 0 : null)));
   const last = $derived(cr.ports.length - 1);
   function tag(i: number) { return i === 0 ? t("cr.embark") : i === last ? t("cr.disembark") : ""; }
   function timeOf(p: Port) {
@@ -79,7 +81,7 @@
   const cabinSum = $derived(`${tn("n.cabins", cabins.length)} · ${eur(calc.T.items[item.id]?.base ?? calc.T.items[item.id]?.net ?? 0)}${item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""}`);
 </script>
 
-<details class="ed-acc cr-sec" data-sec="route" open={fresh}>
+<details class="ed-acc cr-sec" data-sec="route" open={start}>
   <summary><span class="dlabel">{t("cr.route")}</span><span class="ed-sum">{routeSum}</span></summary>
   <div class="ed-row">
     <label class="f grow">{t("cr.line")}<input class="cr-linein" bind:value={cr.line} /></label>
@@ -114,7 +116,7 @@
 </details>
 
 {#if opt}
-  <details class="ed-acc cr-sec" data-sec="cabins" open={fresh}>
+  <details class="ed-acc cr-sec" data-sec="cabins" open={start}>
     <summary><span class="dlabel">{t("cr.cabins")}</span><span class="ed-sum">{cabinSum}</span></summary>
     {#if item.options.length > 1}
       <div class="chips">

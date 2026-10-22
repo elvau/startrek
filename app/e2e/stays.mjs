@@ -617,7 +617,8 @@ try {
     await kc.locator(".cr-price").nth(1).fill("2400");
     await kc.locator(".ed-foot .btn.primary").click();
     const kk = p.locator("#stay .card[data-item]", { has: p.locator(".cruise") });
-    await until(async () => (await kk.locator(".price .num").textContent()).includes("4.400"), "Kreuzfahrt 4.400 €");
+    // Kabinen 4.400 € + Trinkgeld an Bord (14 € × 5 Personen × 7 Nächte, #517)
+    await until(async () => (await kk.locator(".price .num").textContent()).includes("4.890"), "Kreuzfahrt 4.890 €");
     const route = await kk.locator(".cr-route").innerText();
     if (!route.includes("Palermo") || !route.includes("Seetag") || !route.includes("8–17")) fail("Route: " + route);
     const kt = await kk.innerText();
@@ -630,7 +631,7 @@ try {
     await kk.locator(".cr-cabed").nth(1).locator(".chip", { hasText: "Ella" }).click();
     await kk.locator(".ed-foot .btn.primary").click();
     await kk.locator(".warnline", { hasText: "Ohne Kabine: Ella" }).waitFor();
-    log("Kreuzfahrt: 2 Kabinen nach Familien, Route Barcelona – Seetag – Palermo (8–17) – Barcelona, 7 Nächte, 4.400 €, Warnung ohne Kabine");
+    log("Kreuzfahrt: 2 Kabinen nach Familien, Route Barcelona – Seetag – Palermo (8–17) – Barcelona, 7 Nächte, 4.400 € + Trinkgeld = 4.890 €, Warnung ohne Kabine");
   }
 
   // #441: Flüge und Erlebnisse vergleichen: Buchstaben, Hin- und Rückflug, Umstiege, Gepäck, ganze Reise p. P.; Erlebnisse mit Entfernung zum Hotel

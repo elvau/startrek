@@ -5,7 +5,7 @@ import { newCruise } from "./cruise";
 import { DEFAULT_SETTINGS, type Item, type Trip } from "./model";
 
 const trip = (x: Partial<Trip> = {}): Trip => ({
-  id: "t", name: "T", place: "Ort", from: "2027-06-05", to: "2027-06-12",
+  id: "t", name: "T", place: "Ort", country: "", from: "2027-06-05", to: "2027-06-12",
   travelers: [{ id: "a", name: "A", age: 40, household: "K" }, { id: "b", name: "B", age: 38, household: "K" }],
   items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...x
 });
