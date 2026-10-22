@@ -2609,6 +2609,7 @@ export const en: Dict = {
   "mob.split": "Split",
   "mob.more": "More",
   "mob.bar": "Trip sections",
+  "mob.links": "Providers & tips",
   "cs.title": "Find or add a cruise",
   "cs.search": "Search",
   "cs.importHint": "A cruise offer or booking as screenshot, PDF, text or link: route, cabins and price are taken over.",

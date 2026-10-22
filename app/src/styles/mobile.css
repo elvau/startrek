@@ -22,3 +22,9 @@ body.mob .bug-fab{display:none}
 body.mob .ai-fab{bottom:calc(var(--mob-bar) + 12px + env(safe-area-inset-bottom,0px));padding:10px 14px}
 body.mob .ai-fab .ai-fab-lbl{display:none}
 body.mob .ai-note{bottom:calc(var(--mob-bar) + 70px + env(safe-area-inset-bottom,0px))}
+/* Posten zugeklappt (#531): eine Zeile; aufgeklappt oben „zuklappen“ */
+body.mob .card.compact{padding:10px 12px;cursor:pointer}
+body.mob .card .ic-fold{display:block;margin:-4px 0 6px auto;font-size:12.5px;font-weight:700}
+/* Anbieter-Links und Tipps erst auf „⋯“ */
+body.mob .chapter:not(.links) .fs-direct{display:none}
+body.mob .ch-links{display:block;margin:0 0 8px auto;font-size:12.5px;font-weight:700}

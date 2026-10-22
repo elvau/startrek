@@ -2705,6 +2705,7 @@ export const pl: Dict = {
   "mob.split": "Rozliczenie",
   "mob.more": "Więcej",
   "mob.bar": "Części podróży",
+  "mob.links": "Dostawcy i wskazówki",
   "cs.title": "Szukaj lub dodaj rejs",
   "cs.search": "Szukaj",
   "cs.importHint": "Oferta lub rezerwacja rejsu jako zrzut ekranu, PDF, tekst lub link: trasa, kabiny i cena zostaną przejęte.",

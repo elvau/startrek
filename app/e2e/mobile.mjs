@@ -76,6 +76,27 @@ try {
   // Kachel der Übersicht springt ins Kapitel
   await p.locator(".ht-tile.ht-st").click();
   await until(async () => (await on()) === "stay", "Kachel Unterkunft");
+  // Posten kompakt (#531): eine Zeile, Antippen klappt auf, nur einer offen
+  const stay = p.locator('main.pager > [data-ch="stay"]');
+  const villa = stay.locator(".card[data-item=s1]");
+  if (!(await villa.evaluate(e => e.classList.contains("compact")))) fail("Unterkunft nicht zugeklappt");
+  if ((await villa.boundingBox()).height > 110) fail("zugeklappte Zeile zu hoch: " + (await villa.boundingBox()).height);
+  if (!(await villa.innerText()).includes("1.792")) fail("Zeile ohne Preis: " + await villa.innerText());
+  await villa.click();
+  await until(async () => !(await villa.evaluate(e => e.classList.contains("compact"))), "Posten aufklappen");
+  await villa.locator(".ic-fold").click();
+  await until(async () => villa.evaluate(e => e.classList.contains("compact")), "Posten zuklappen");
+  await p.locator('.mtabs [data-pg="attractions"]').click();
+  await until(async () => (await on()) === "attractions", "Reiter Erlebnisse");
+  const att = p.locator('main.pager > [data-ch="attractions"]');
+  await att.locator(".card[data-item=a1]").click();
+  await att.locator(".card[data-item=a2]").click();
+  await until(async () => (await att.locator(".card:not(.compact)").count()) === 1 && !(await att.locator(".card[data-item=a2]").evaluate(e => e.classList.contains("compact"))), "nur ein Posten offen");
+  // Anbieter-Links erst auf „⋯“
+  if (await att.locator(".fs-direct").isVisible()) fail("Anbieter-Links sichtbar ohne ⋯");
+  await att.locator(".ch-links").click();
+  if (!(await att.locator(".fs-direct").isVisible())) fail("⋯ zeigt keine Anbieter-Links");
+  log("Posten zugeklappt als Zeile (Preis, Status), Antippen klappt auf, nur einer offen; Anbieter-Links hinter ⋯");
   // Mehr: Fehler melden, Kostenübersicht, Fußzeile
   await p.locator('.mbar [data-mb="more"]').click();
   const sh = p.locator(".mb-sheet");

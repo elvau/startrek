@@ -14,7 +14,8 @@ export const PAGES: PageKey[] = ["hero", ...CHAPTERS.map(c => c.k)];
 /** Kapitel, die „Planen“ in der Leiste zusammenfasst */
 export const PLAN_PAGES: PageKey[] = ["trav", "flights", "stay", "transport", "attractions", "misc"];
 
-export const mob = $state<{ on: boolean; page: PageKey; lastPlan: PageKey; more: boolean }>({ on: false, page: "hero", lastPlan: "flights", more: false });
+/** openItem: am Handy aufgeklappter Posten (#531), immer höchstens einer */
+export const mob = $state<{ on: boolean; page: PageKey; lastPlan: PageKey; more: boolean; openItem: string }>({ on: false, page: "hero", lastPlan: "flights", more: false, openItem: "" });
 
 /** Leiste unten: welcher Eintrag ist gerade aktiv */
 export type BarKey = "home" | "plan" | "days" | "split";

@@ -2609,6 +2609,7 @@ export const fr: Dict = {
   "mob.split": "Comptes",
   "mob.more": "Plus",
   "mob.bar": "Rubriques du voyage",
+  "mob.links": "Prestataires et conseils",
   "cs.title": "Chercher ou ajouter une croisière",
   "cs.search": "Chercher",
   "cs.importHint": "Offre ou réservation de croisière en capture, PDF, texte ou lien : itinéraire, cabines et prix sont repris.",

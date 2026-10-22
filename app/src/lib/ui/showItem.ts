@@ -1,3 +1,5 @@
+import { mob } from "../mobile.svelte";
+
 /* Zu einer Stelle scrollen und sie kurz aufleuchten lassen (Klasse „flash“) */
 export function flashEl(el: HTMLElement | null | undefined, block: ScrollLogicalPosition = "center") {
   if (!el) return;
@@ -13,6 +15,8 @@ export const toCamper = () => flashEl(document.querySelector<HTMLElement>("#tran
 
 /* Nach dem Übernehmen aus einer Suche: zum Posten scrollen und ihn kurz aufleuchten lassen */
 export function showItem(id: string) {
+  // Handy (#531): Posten aufgeklappt zeigen
+  mob.openItem = id;
   setTimeout(() => {
     const el = document.querySelector<HTMLElement>(`[data-item="${id}"]`);
     if (!el) return;

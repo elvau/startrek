@@ -2609,6 +2609,7 @@ export const es: Dict = {
   "mob.split": "Cuentas",
   "mob.more": "Más",
   "mob.bar": "Secciones del viaje",
+  "mob.links": "Proveedores y consejos",
   "cs.title": "Buscar o añadir un crucero",
   "cs.search": "Buscar",
   "cs.importHint": "Oferta o reserva de crucero como captura, PDF, texto o enlace: se copian ruta, camarotes y precio.",

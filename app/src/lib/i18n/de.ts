@@ -2607,6 +2607,7 @@ export const de = {
   "mob.split": "Abrechnung",
   "mob.more": "Mehr",
   "mob.bar": "Bereiche der Reise",
+  "mob.links": "Anbieter & Tipps",
   "cs.title": "Kreuzfahrt suchen oder eintragen",
   "cs.search": "Suchen",
   "cs.importHint": "Angebot oder Buchung einer Kreuzfahrt als Screenshot, PDF, Text oder Link: Route, Kabinen und Preis werden übernommen.",
