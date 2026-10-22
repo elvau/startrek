@@ -272,11 +272,11 @@ try {
   if (await cards.locator(".cmp-own").count()) fail("eigener Punkt nicht entfernt");
   await cards.locator(".cmp-t", { hasText: "Ferienwohnung Klara" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Ferienwohnung Klara" }).waitFor();
-  // 783 € + Kurtaxe Split automatisch geschätzt (2 € × 1 Person × 7 Nächte)
-  if (!(await cards.locator(".stay .price b").textContent()).includes("797")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
+  // 783 € + Kurtaxe Split automatisch geschätzt (2 € × 1 Person × 7 Nächte) + Trinkgeld Kroatien (3 € × 7 Nächte, #517)
+  if (!(await cards.locator(".stay .price b").textContent()).includes("818")) fail("Preis nach Wählen: " + await cards.locator(".stay .price b").textContent());
   await cards.locator(".cmp-t", { hasText: "Rooms Šećer" }).locator(".cmp-pick").click();
   await cards.locator(".cmp-t.sel", { hasText: "Rooms Šećer" }).waitFor();
-  log("Vergleich nebeneinander: A/B, Entfernung zum Zentrum und zum Meer, eigener Punkt per Google-Maps-Link, ganze Reise je Angebot; Klara gewählt (783 € + ca. 14 € Kurtaxe), zurück zu Rooms Šećer");
+  log("Vergleich nebeneinander: A/B, Entfernung zum Zentrum und zum Meer, eigener Punkt per Google-Maps-Link, ganze Reise je Angebot; Klara gewählt (783 € + ca. 14 € Kurtaxe + ca. 21 € Trinkgeld), zurück zu Rooms Šećer");
 
   // wie im Artefakt: Anwesenheit aus dem Flug, Lücke im Plan → „Unterkunft suchen“ für genau diese Nächte und Personen
   const TRIP = {
