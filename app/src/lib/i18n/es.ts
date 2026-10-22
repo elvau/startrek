@@ -681,7 +681,7 @@ export const es: Dict = {
   "help.fsFlex": "Buscamos el día de ida y vuelta más barato del periodo. Se descartan las vueltas con las que no llegaríais a casa a tiempo tras aterrizar, recoger el equipaje y el trayecto.",
   "help.fsOneway": "Buscamos el día más barato del intervalo, solo ida. Busca después el vuelo siguiente o de vuelta por separado.",
   "help.fsRound": "Cada tramo se busca por separado y se combina según las noches. Los vuelos son billetes separados.",
-  "help.fsWho": "Busca por familia, así valen los aeropuertos y el trayecto de cada una.",
+  "help.fsWho": "Busca por familia, así valen los aeropuertos y el trayecto de cada una. Los precios valen para todos los seleccionados juntos.",
   "help.fund": "Dinero que llega de fuera (caja del club, patrocinador, abuelos). Reduce la parte de las familias a las que va destinado.",
   "help.groups": "Crea una vez las personas y grupos con los que sueles viajar y añádelos a cualquier viaje nuevo con un toque.",
   "help.hh": "Una familia (hogar) viaja y paga junta. Aquí están la ciudad de residencia, cómo llega al aeropuerto (coche, taxi, tren, coche compartido) y, si hace falta, sus propios días de llegada y salida.",

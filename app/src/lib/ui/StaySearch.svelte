@@ -428,7 +428,7 @@
     </div>
     {#if parts > 1}<p class="small st-split-hint">{t("st.split.short", { k: per.adults + per.childAges.length, n: parts })} <Help k="stSplit" /></p>{/if}
     <!-- privat bzw. schon vorhanden (#233): ohne Suche eintragen -->
-    {#if !item}<p class="small st-priv"><span aria-hidden="true">🏠</span> {t("priv.searchHint")} <button type="button" class="linkbtn st-priv-open" onclick={() => openPrivStay()}>{t("priv.save")} ›</button></p>{/if}
+    {#if !item}<p class="small st-priv"><span aria-hidden="true">🏠</span> {t("priv.searchHint")} <button type="button" class="linkbtn st-priv-open" onclick={() => openPrivStay()}>{t("priv.save")} {arrow() === "←" ? "‹" : "›"}</button></p>{/if}
     <!-- Ausstattung, Sterne, Bewertung, Quellen: zugeklappt mit Zusammenfassung (gemerkt) -->
     <details class="fs-more" bind:open={more}>
       <summary><b>{t("fs.more")}</b> <span class="muted small">{moreSummary}</span></summary>
