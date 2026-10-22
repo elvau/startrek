@@ -14,7 +14,8 @@ Kurtaxen bzw. City Tax, Vignetten, Maut, Durchfahrten, Trinkgeld und Einreisegeb
   Weitere Autos als eigene Posten, vorbelegt mit denen, die noch in keinem Auto sitzen. Bahn oder Bus: kein Auto-Posten, keine Vignette.
   Mietwagen aus Österreich bzw. der Schweiz haben die Vignette meist schon, daher keine Automatik am Mietwagen.
 - **Einreisegebühren:** In „Wichtiges“ am Einreise-Punkt „+ Gebühr als Posten“, nur für die Personen, die sie brauchen.
-- **Trinkgeld:** Nur als Hinweis bei der Verpflegung, nicht in den Kosten.
+- **Trinkgeld (#517):** Bei der Verpflegung als Hinweis; an Unterkünften und Kreuzfahrten als geschätzte Nebenkosten vor Ort
+  (versteckt), wegklickbar, in den Vorlieben („Trinkgeld einrechnen“) abschaltbar. Siehe unten.
 - **Am Gesamtbetrag (#418):** Die Summe ist aufgeteilt in *gebucht* (Posten gebucht oder bezahlt), *geplant* (gewählt,
   Idee, einfache Beträge) und *versteckt*. Versteckt sind alle Nebenkosten vor Ort, Nebenkosten bei der Buchung solange
   der Posten nicht gebucht ist, die Anreise zum Flughafen (samt Parken) und automatische Posten (Verpflegung, Anreise mit
@@ -98,6 +99,15 @@ eingerechnet, solange der Start nicht feststeht.
 Gepflogenheiten im Restaurant je Land (`TIPS`, gut 70 Länder, Prüfung 10/2026): USA 18–22 %, Kanada 15–20 %, Japan, Korea, China nicht üblich, sonst
 aufrunden bzw. 5–15 %; dazu Hinweise auf Resortgebühren (USA, Mexiko), Strandliegen (Italien, Kroatien, Griechenland) und
 Bedienungsgeld bzw. Gedeck (Frankreich, Italien, Vereinigtes Königreich, Ungarn, Emirate).
+
+In den Kosten (#517, `STAY_TIPS` und `CRUISE_TIP` in `app/src/lib/fees.ts`, Stand 2026, Richtwerte ohne Gewähr):
+
+| Was | Richtwert | In der App |
+|---|---|---|
+| Unterkunft (Zimmerservice) | je Nacht und Unterkunft: aufrunden-Länder 2 €, übliche 3 €, hohe (USA, Kanada) 5 €; Länder ohne Sitte nichts | Land der Reise (erstes Land), vor Ort, geschätzt; nicht bei „Privat“ |
+| Kreuzfahrt (Servicepauschale) | 14 € pro Person und Nacht (Reedereien meist 12–16 €) | immer, vor Ort bzw. an Bord, geschätzt |
+
+Eigenes Trinkgeld am Angebot ersetzt die Schätzung. Vorliebe „Trinkgeld einrechnen: Nein“ schaltet beides ab.
 
 ## Mietwagen (#172)
 Richtwerte großer Vermieter (`RENTAL` in `app/src/lib/fees.ts`, Kompaktklasse, Stand 2026). Gilt für Posten aus „Mietwagen

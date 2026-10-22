@@ -227,6 +227,12 @@
         </span>
         <span class="muted small">{t("prefs.souvenirsHint")}</span>
       </div>
+      {@render lbl(t("prefs.tips"), "tips", base?.tips == null ? null : base.tips ? t("prefs.tipsYes") : t("prefs.tipsNo"))}
+      <div class="pv-seg pv-tips">
+        {#if !group}{@render chip(t("prefs.any"), st("tips", undefined), () => set("tips", undefined))}{/if}
+        {@render chip(t("prefs.tipsYes"), st("tips", true), () => pick("tips", true))}{@render chip(t("prefs.tipsNo"), st("tips", false), () => pick("tips", false))}
+      </div>
+      <p class="muted small">{t("prefs.tipsHint")}</p>
     {/snippet}
     {@render card("style", style)}
 

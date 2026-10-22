@@ -9,6 +9,7 @@ import { fx, shown } from "../currency.svelte";
 import { flightAccess, needs, nightsList, okDate, presenceOf, type AccessCalc, type Presence } from "./travel";
 import { calcExtras, type ExtrasCalc } from "./extras";
 import { autoDeposit, autoExtras } from "../fees";
+import { cabinTotal } from "../cruise";
 import { CAT_KEYS, FIXED, hhKey, isActive, isDetailed, noPrice, type AgeClass, type CatKey, type Fund, type Item, type Option, type Settings, type SimpleLine, type Tier, type Traveler, type Trip } from "../model";
 
 export function ageClass(age: number | null | undefined, s: Settings, kind?: AgeClass): AgeClass {
@@ -93,6 +94,7 @@ function withExtras(r: OptionCalc, opt: Option, it: Item, people: Traveler[], ct
 const hasStayDates = (it: Item) => it.cat === "stay" && okDate(it.from) && okDate(it.to) && it.to! > it.from!;
 
 export function calcOption(opt: Option, it: Item, trip: Trip): OptionCalc {
+  if (it.cruise && opt.cabins?.length) return calcCruise(opt, it, trip);
   if (hasStayDates(it)) return calcStay(opt, it, trip);
   const people = participantsOf(it, trip);
   const n = people.length;
@@ -179,6 +181,32 @@ function calcStay(opt: Option, it: Item, trip: Trip): OptionCalc {
   }
   const over = cap > 0 && !multi && maxOcc > cap;
   return withExtras({ n, units, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc, over, ...(nobody ? { nobody } : {}) } }, opt, it, guests, {
+    nights: nights.length, days: nights.length + 1, w, fx, trip });
+}
+
+/**
+ * Kreuzfahrt mit Kabinen (#516): alle in den Kabinen sind die ganze Fahrt an Bord; jede Kabine kostet die Personen darin
+ * (gleich nach Personen geteilt, auch bei mehreren Familien). Kabinen ohne Bewohner verteilen sich auf alle an Bord.
+ */
+function calcCruise(opt: Option, it: Item, trip: Trip): OptionCalc {
+  const nights = hasStayDates(it) ? nightsList(it.from, it.to) : [];
+  const people = participantsOf(it, trip), ids = new Set(people.map(t => t.id));
+  const p = opt.price, fx = 1 / rateOf(p.currency, trip.settings);
+  const n = people.length;
+  const tier = it.tier ? bestTier([it.tier], n) : bestTier(trip.tiers[it.cat], n);
+  const d = tier ? tier.pct / 100 : 0;
+  const per: Record<string, number> = {}, w: Record<string, number> = {}, occ: Record<string, number> = {};
+  people.forEach(t => { per[t.id] = 0; w[t.id] = nights.length; });
+  nights.forEach(x => (occ[x] = n));
+  let gross = 0, rest = 0;
+  for (const c of opt.cabins || []) {
+    const v = cabinTotal(c) * fx, inside = c.who.filter(id => ids.has(id));
+    gross += v;
+    if (inside.length) inside.forEach(id => (per[id] += (v * (1 - d)) / inside.length)); else rest += v * (1 - d);
+  }
+  if (rest && n) people.forEach(t => (per[t.id] += rest / n));
+  const maxCab = Math.max(0, ...(opt.cabins || []).map(c => c.who.length));
+  return withExtras({ n, units: 1, gross, net: gross * (1 - d), saved: gross * d, tier, per, stay: { nights, occ, w, maxOcc: maxCab, over: false } }, opt, it, people, {
     nights: nights.length, days: nights.length + 1, w, fx, trip });
 }
 

@@ -13,7 +13,7 @@ export type CardId = "flights" | "stay" | "style" | "times" | "avoid" | "special
 export const CARD_KEYS: Record<CardId, (keyof Prefs)[]> = {
   flights: ["plz", "plzCc", "airports", "maxStops", "bags", "seatsTogether", "maxHours", "access"],
   stay: ["stayType", "minStars", "board"],
-  style: ["styles", "budget", "souvenirs"],
+  style: ["styles", "budget", "souvenirs", "tips"],
   times: ["holidays", "months", "nightsMin", "nightsMax"],
   avoid: ["avoid"],
   special: ["pet", "homeCare", "stepFree", "diet", "car"],
@@ -75,6 +75,7 @@ export function summary(p: Prefs, base?: Prefs, cname: (k: string) => string = k
   for (const s of eff.styles || []) out.push({ text: t(`prefs.s.${s}` as Key), key: "styles", card: "style", ...(own("styles") ? { group: true } : {}) });
   add("budget", "style", eff.budget && t("prefs.sum.budget", { b: t(`prefs.b.${eff.budget}` as Key) }));
   add("souvenirs", "style", eff.souvenirs != null && t("prefs.sum.souvenirs", { v: eff.souvenirs }));
+  add("tips", "style", eff.tips === false && t("prefs.tipsNo"));
   add("holidays", "times", eff.holidays && t("prefs.sum.holidays", { s: holidayText(eff.holidays, loaded.regions, i18n.lang) }));
   add("months", "times", eff.months?.length && monthsText(eff.months));
   const nmin = eff.nightsMin, nmax = eff.nightsMax;

@@ -4,6 +4,7 @@
   import { access, app, calc } from "../store.svelte";
   import FlightCard from "./FlightCard.svelte";
   import StayCard from "./StayCard.svelte";
+  import CruiseCard from "./CruiseCard.svelte";
   import ItemRow from "./ItemRow.svelte";
   import OptionCompare from "./OptionCompare.svelte";
   import PollHint from "./PollHint.svelte";
@@ -49,6 +50,8 @@
 <article class="card" data-item={item.id} data-more={access.readonly ? null : `${t("card.more")} ${arrow() === "←" ? "‹" : "›"}`} class:edit={editing} class:dropped={item.status === "dropped"} tabindex="0" onclick={toggle} onkeydown={key} use:reveal aria-label={autoName(item.name)}>
   {#if item.cat === "flights" && hasLegs}
     <FlightCard {item} />
+  {:else if item.cruise}
+    <CruiseCard {item} />
   {:else if isStay}
     <StayCard {item} />
   {:else}

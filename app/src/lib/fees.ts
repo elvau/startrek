@@ -3,6 +3,7 @@
  * Durchfahrten mit dem Auto, Trinkgeld. Richtwerte ohne Gewähr („ca.“), Stand und Quellen in docs/NEBENKOSTEN.md.
  * Ein neuer Ort bzw. ein neues Land ist eine Zeile.
  */
+import { tipCtx } from "./tipsState.svelte";
 import { DRIVER_AGE, isActive, type Deposit, type Extra, type Item, type Option, type Traveler, type Trip } from "./model";
 
 export const FEES_AS_OF = "2026";
@@ -198,12 +199,28 @@ export function autoDeposit(it: Item, o: Option, rate = 1, cars = 1): Deposit | 
   return { amount: Math.round(RENTAL.deposit * rate * Math.max(1, cars)), how: "credit", est: true };
 }
 
+/**
+ * Trinkgeld als versteckte Kosten (#517), Richtwerte in Euro: Unterkunft je Nacht (Zimmerservice) nach der Sitte des Landes,
+ * Kreuzfahrt pro Person und Nacht (Servicepauschale der Reedereien, meist 12–16 €)
+ */
+export const STAY_TIPS: Record<TipNorm, number> = { none: 0, round: 2, usual: 3, high: 5 };
+export const CRUISE_TIP = 14;
+
+/** Trinkgeld nachführen: Land (Sitte) und Vorliebe; true, wenn sich etwas geändert hat */
+export function syncTips(on: boolean, cc: string | undefined): boolean {
+  if (tipCtx.cc === cc && !tipCtx.off === on) return false;
+  tipCtx.cc = cc;
+  tipCtx.off = !on || undefined;
+  return true;
+}
+
 /** automatisch geschätzte Nebenkosten eines Angebots (nicht gespeichert, wegklickbar über autoOff) */
 /** rate: Einheiten der Währung je Euro (wie in der Rechnung) */
 export function autoExtras(it: Item, o: Option, trip: Trip, rate0: (cur: string) => number): Extra[] {
   const out: Extra[] = [], rate = safeRate(rate0);
   const own = o.extras || [];
-  const c = cityTaxFor(it, o, trip);
+  // Kreuzfahrt (#516): an Bord keine Kurtaxe
+  const c = it.cruise ? null : cityTaxFor(it, o, trip);
   // Kurtaxe nur schätzen, wenn der Anbieter keine angibt
   if (c && !own.some(x => x.kind === "citytax")) {
     const s = o.stay?.stars ? Math.min(5, Math.max(1, Math.round(o.stay.stars))) as 1 | 2 | 3 | 4 | 5 : 0;
@@ -213,6 +230,16 @@ export function autoExtras(it: Item, o: Option, trip: Trip, rate0: (cur: string)
     const conv = c.basis === "percent" ? 1 : rate(o.price.currency || "EUR") / rate(c.currency);
     if (conv && isFinite(conv)) out.push({ id, kind: "citytax", amount: Math.round(amount * conv * 100) / 100, basis: c.basis, pay: "onsite", est: true,
       ...(c.freeUpTo != null ? { freeUpTo: c.freeUpTo } : {}), ...(c.max ? { max: c.max } : {}), source: `${c.source}, ${FEES_AS_OF}`, ...(o.autoOff?.includes(id) ? { off: true } : {}) });
+  }
+  // Trinkgeld (#517): Kreuzfahrt immer, Unterkunft nach der Sitte im Land; nicht privat, nicht wenn selbst eingetragen
+  if (it.cat === "stay" && !it.private && !tipCtx.off && !own.some(x => x.kind === "tips")) {
+    const norm = tipCtx.cc ? TIPS[tipCtx.cc]?.norm : undefined;
+    const eur = it.cruise ? CRUISE_TIP : norm ? STAY_TIPS[norm] : 0;
+    if (eur) {
+      const id = it.cruise ? "auto:tips:cruise" : "auto:tips";
+      out.push({ id, kind: "tips", amount: Math.round(eur * rate(o.price.currency || "EUR") * 100) / 100, basis: it.cruise ? "personNight" : "night",
+        pay: "onsite", est: true, source: `${it.cruise ? "Reedereien" : "Richtwert Zimmerservice"}, ${FEES_AS_OF}`, ...(o.autoOff?.includes(id) ? { off: true } : {}) });
+    }
   }
   // Mietwagen: junge Fahrer (eingerechnet, wegklickbar), Vollschutz und Zusatzfahrer (nur auf Wunsch)
   if (isRental(it)) {
