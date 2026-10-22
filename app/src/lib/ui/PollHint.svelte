@@ -8,7 +8,7 @@
 
   let { item }: { item: Item } = $props();
   const p = $derived((app.trip.polls || []).find(x => x.mode && pollOpen(x) && x.options.some(o => o.itemId === item.id)));
-  const top = $derived(p ? tallyMode(p, mergedVotes(p, remoteVotes(p)))[0] : undefined);
+  const top = $derived(p ? tallyMode(p, mergedVotes(p, remoteVotes(p)), app.trip)[0] : undefined);
   const go = () => document.querySelector(`[data-poll="${p!.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
 </script>
 

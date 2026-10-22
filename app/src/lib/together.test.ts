@@ -136,3 +136,17 @@ describe("Abstimmung über Varianten (#432)", () => {
     expect(st.voted).toBe(3);
   });
 });
+
+describe("Abstimmung: nur aktuelle Stimmberechtigte (#501)", () => {
+  it("Stimmen von Personen, die nicht mehr dabei sind, zählen nicht", () => {
+    const t = trip();
+    t.travelers.push({ id: "x", name: "Xaver", household: "X", age: 30, active: false }, { id: "y", name: "Yvo", household: "Y", age: 30, active: false });
+    const p = newPoll("Wohin?", "free", [{ label: "X" }, { label: "Y" }], "one");
+    const [ox, oy] = p.options;
+    p.votes = { a: { [ox.id]: 1 }, x: { [oy.id]: 1 }, y: { [oy.id]: 1 } };
+    expect(tallyMode(p, p.votes, t)[0]).toMatchObject({ id: ox.id, people: 1 });
+    expect(tallyMode(p, p.votes)[0].id).toBe(oy.id);
+    expect(tally(p, t)[0]).toMatchObject({ id: ox.id, up: 1 });
+    expect(variantStand(p, p.votes, t).voted).toBe(1);
+  });
+});
