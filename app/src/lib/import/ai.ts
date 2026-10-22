@@ -83,6 +83,15 @@ const prune = <T extends object>(o: T): T | undefined => {
   return Object.keys(o).length ? o : undefined;
 };
 
+/** Häfen einer Kreuzfahrt (#525, auch Kreuzfahrt-Suche): Ort oder Seetag, Datum, Liegezeiten; Unsinn fällt weg */
+export function parsePorts(raw: unknown): ImportPort[] {
+  return (Array.isArray(raw) ? raw : []).map(obj).map(p => {
+    const sea = p.sea === true, place = str(p.place, 60);
+    if (!sea && !place) return undefined;
+    return prune({ place: sea ? undefined : place, date: day(p.date), arr: sea ? undefined : hm(p.arr), dep: sea ? undefined : hm(p.dep), sea: sea || undefined }) as ImportPort;
+  }).filter((p): p is ImportPort => !!p).slice(0, 40);
+}
+
 /** Antwort der KI prüfen: unbekannte Felder und Werte außerhalb der Grenzen fallen weg */
 export function parseImportAi(raw: unknown): ImportedOffer {
   const a = obj(raw);
@@ -123,11 +132,7 @@ export function parseImportAi(raw: unknown): ImportedOffer {
   out.transfer = prune({ included: bool(obj(a.transfer).included), price: num(obj(a.transfer).price, 1, 20_000) });
   out.rental = prune({ company: str(obj(a.rental).company, 40), car: str(obj(a.rental).car, 40), price: num(obj(a.rental).price, 1, 50_000) });
   const cr = obj(a.cruise);
-  const ports = (Array.isArray(cr.ports) ? cr.ports : []).map(obj).map(p => {
-    const sea = p.sea === true, place = str(p.place, 60);
-    if (!sea && !place) return undefined;
-    return prune({ place: sea ? undefined : place, date: day(p.date), arr: sea ? undefined : hm(p.arr), dep: sea ? undefined : hm(p.dep), sea: sea || undefined }) as ImportPort;
-  }).filter((p): p is ImportPort => !!p).slice(0, 40);
+  const ports = parsePorts(cr.ports);
   // ohne mindestens zwei Häfen bzw. Tage keine Route (sonst bleibt es bei Reederei und Schiff)
   if (ports.length >= 2 || str(cr.ship) || str(cr.line)) out.cruise = { ports: ports.length >= 2 ? ports : [], ...prune({
     line: str(cr.line, 60), ship: str(cr.ship, 60), cabin: oneOf(cr.cabin, CABIN_TYPES), cabins: int(cr.cabins, 1, 30),

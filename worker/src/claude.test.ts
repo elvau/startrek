@@ -169,3 +169,13 @@ describe("Anbieterwahl", () => {
     expect(n.hosts).toEqual(["api.anthropic.com"]);
   });
 });
+
+describe("Claude: Websuche (Kreuzfahrt-Suche, #519)", () => {
+  it("google_search → web_search, Haiku mit der einfachen Fassung; Text aus mehreren Blöcken", () => {
+    const body = { contents: [{ role: "user", parts: [{ text: "x" }] }], tools: [{ google_search: {} }] };
+    expect(toClaude(body, "claude-haiku-5-5").tools).toEqual([{ type: "web_search_20250305", name: "web_search", max_uses: 5 }]);
+    expect(toClaude(body, "claude-sonnet-5-5")).toMatchObject({ tools: [{ type: "web_search_20260209" }], tool_choice: { type: "auto" } });
+    const r = fromClaude({ content: [{ type: "server_tool_use", id: "s", name: "web_search", input: {} }, { type: "web_search_tool_result", tool_use_id: "s", content: [] }, { type: "text", text: "{\"a\":" }, { type: "text", text: "1}" }], stop_reason: "end_turn" });
+    expect(r.candidates[0].content.parts).toEqual([{ text: "{\"a\":" }, { text: "1}" }]);
+  });
+});

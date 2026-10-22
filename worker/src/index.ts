@@ -16,6 +16,7 @@ import { whereFrom } from "./where";
 import { parseAgentRequest } from "../../app/src/lib/agent/types";
 import { parseSetupRequest, setupFromGemini, setupPayload } from "../../app/src/lib/setup/ai";
 import { importFromAi, importPayload, offerUsable, parseImportRequest } from "../../app/src/lib/import/ai";
+import { cruiseKey, cruisePayload, cruisesFromAi, parseCruiseQuery, type CruiseHit } from "../../app/src/lib/cruises/search";
 import { fetchPage } from "./page";
 import { offerStore } from "./offers";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
@@ -52,6 +53,8 @@ interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEn
   AGENT_DAILY?: string;
   /** Reise importieren (#457): Auslesen pro Nutzer und Tag (Standard 10) */
   IMPORT_DAILY?: string;
+  /** Kreuzfahrten suchen (#519, KI mit Websuche): Suchen pro Nutzer und Tag (Standard 5) */
+  CRUISE_DAILY?: string;
   FIREBASE_PROJECT_ID?: string;
   /** Firebase-Projekt der Testumgebung (elvau.github.io/startrek/); Konten daraus heißen „test:…“ */
   FIREBASE_TEST_PROJECT_ID?: string;
@@ -296,6 +299,12 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
       return (await overLimit("agent", req, env, h)) || importTrip(req, env, h);
     }
 
+    if (url.pathname === "/cruises/search" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      noteRoute(env, "cruises");
+      return (await overLimit("agent", req, env, h)) || cruiseSearch(req, env, h, ctx);
+    }
+
     if (url.pathname === "/bug" && req.method === "POST") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
       noteRoute(env, "bug");
@@ -454,6 +463,49 @@ async function importTrip(req: Request, env: Env, h: Record<string, string>): Pr
     return json({ offer, remaining }, 200, h);
   } catch (e) {
     console.log(JSON.stringify({ at: "import", model, files: r.files.length, error: (e as Error).message }));
+    await quota.refund().catch(() => {});
+    const msg = (e as Error).message;
+    if (isOverloaded(msg)) return json({ error: msg, overloaded: true, remaining: Math.max(0, limit - quota.used) }, 503, h);
+    return json({ error: msg, remaining: Math.max(0, limit - quota.used) }, 502, h);
+  }
+}
+
+/*
+ * Kreuzfahrten suchen (#519): KI mit Websuche, solange kein Partner einen Feed hat. Gleiche Suche 12 Stunden aus dem
+ * Zwischenspeicher (zählt nicht); sonst eine Suche im eigenen Tageskontingent. Ohne Treffer kein Eintrag im Speicher.
+ */
+async function cruiseSearch(req: Request, env: Env, h: Record<string, string>, ctx: ExecutionContext): Promise<Response> {
+  if (!kiReady(env)) return json({ error: "Der KI-Planer ist noch nicht eingerichtet" }, 503, h);
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return json({ error: "Bitte anmelden, um Kreuzfahrten zu suchen" }, 401, h);
+  let uid: string;
+  try { uid = await verifyAnyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7", env.FIREBASE_TEST_PROJECT_ID); requireVerified(token); }
+  catch (e) { return json({ error: (e as Error).message }, 401, h); }
+  const q = parseCruiseQuery(await req.json().catch(() => null));
+  if (typeof q === "string") return json({ error: q }, 400, h);
+  const limit = Number(env.CRUISE_DAILY) || 5;
+  const quota = await countToday(env, uid, "cruise");
+  const k = new Request(`https://cache.splitandfly/cruises/${encodeURIComponent(cruiseKey(q))}`);
+  const hit = await caches.default.match(k);
+  if (hit) return json({ cruises: (await hit.json()) as CruiseHit[], cached: true, remaining: Math.max(0, limit - quota.used) }, 200, h);
+  if (quota.used >= limit) return json({ error: `Tageslimit erreicht (${limit} Suchen). Morgen geht es weiter.`, remaining: 0 }, 429, h);
+  await quota.bump();
+  const model = kiModels(env).join(" → ");
+  try {
+    // Websuche dauert: länger warten; pausiert Claude die Runde (pause_turn), höchstens zweimal fortsetzen
+    const call = kiCaller(env, { f: meter(env), timeoutMs: 90000 });
+    const payload = cruisePayload(q);
+    let res = await call(payload) as { candidates?: { content?: object; finishReason?: string }[] };
+    for (let i = 0; i < 2 && res?.candidates?.[0]?.finishReason === "pause_turn"; i++) {
+      payload.contents.push(res.candidates[0].content as (typeof payload.contents)[number]);
+      res = await call(payload) as typeof res;
+    }
+    const cruises = cruisesFromAi(res, q);
+    const remaining = Math.max(0, limit - quota.used - 1);
+    if (cruises.length) ctx.waitUntil(caches.default.put(k, new Response(JSON.stringify(cruises), { headers: { "content-type": "application/json", "cache-control": "max-age=43200" } })));
+    return json({ cruises, remaining }, 200, h);
+  } catch (e) {
+    console.log(JSON.stringify({ at: "cruises", model, error: (e as Error).message }));
     await quota.refund().catch(() => {});
     const msg = (e as Error).message;
     if (isOverloaded(msg)) return json({ error: msg, overloaded: true, remaining: Math.max(0, limit - quota.used) }, 503, h);

@@ -50,7 +50,9 @@ export function toSchema(s: any): any {
 export function toClaude(body: any, model: string, effort?: string): any {
   const system = (body?.systemInstruction?.parts || []).map((p: any) => p.text || "").join("\n");
   const decls: any[] = (body?.tools || []).flatMap((t: any) => t.functionDeclarations || []);
-  const tools = decls.map(d => ({ name: d.name, description: d.description || "", input_schema: toSchema(d.parameters || { type: "OBJECT", properties: {} }) }));
+  const tools: any[] = decls.map(d => ({ name: d.name, description: d.description || "", input_schema: toSchema(d.parameters || { type: "OBJECT", properties: {} }) }));
+  // Websuche (Kreuzfahrt-Suche, #519): google_search von Gemini → web_search von Anthropic; Haiku kennt nur die einfache Fassung
+  if ((body?.tools || []).some((t: any) => t.google_search)) tools.push({ type: /haiku/.test(model) ? "web_search_20250305" : "web_search_20260209", name: "web_search", max_uses: 5 });
   const messages: any[] = [];
   /** Kennungen der Werkzeugaufrufe der letzten Antwort, der Reihe nach für die Ergebnisse */
   let pending: string[] = [];
@@ -87,6 +89,7 @@ export function toClaude(body: any, model: string, effort?: string): any {
 
 /** Antwort von Claude → Antwort im Gemini-Format; die rohen Blöcke gehen in der nächsten Runde unverändert zurück */
 export function fromClaude(res: any): any {
+  // Websuche: Suchaufrufe und -ergebnisse bleiben nur in _claude (für pause_turn), Text mit Quellen kommt in mehreren Blöcken
   const content: any[] = Array.isArray(res?.content) ? res.content : [];
   const parts = content.flatMap((b): any[] => (b.type === "tool_use" ? [{ functionCall: { name: b.name, args: b.input || {} } }] : b.type === "text" && b.text ? [{ text: b.text }] : []));
   return { candidates: [{ content: { role: "model", parts, _claude: content }, finishReason: res?.stop_reason }] };

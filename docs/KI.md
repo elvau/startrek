@@ -158,6 +158,9 @@ kurz im Speicher `saf-share` ab, `app/src/lib/import/share.svelte.ts` holt sie a
    „⚠ Paket teilweise ersetzt“ mit Aufbrechen (alle Teile einzeln, ohne eigenes Angebot „Preis fehlt“) oder Paket behalten;
    aufgebrochen bleibt das Paket verworfen (`pkg.off`) und lässt sich wiederherstellen. Importierte Preise und Paketpreise
    prüft die Reisebeobachtung nicht nach („📥 laut Angebot vom …“).
+   Kreuzfahrt (#525, `kind: cruise`): Reederei, Schiff, Häfen mit Liegezeiten und Seetagen, Kabinentyp, Preis je Kabine bzw.
+   Person → Kreuzfahrt-Posten (`cruiseItem`) mit Kabinen nach Familien; ohne eigenen Kabinenpreis wird der Gesamtpreis auf
+   die Kabinen verteilt. Mit Flug als Paket, der Paketpreis steht dann an der Kreuzfahrt.
 
 Sicherheit je Angabe und Rückfragen (#458, `import/review.ts`, `ui/ImportReview.svelte`): Die KI nennt je Angabe 0–1;
 hoch ab 0,85, mittel ab 0,6 (ohne Angabe der KI: mittel), sonst niedrig. Niedrig oder fehlend bei Gepäck, Transfer (Paket),
@@ -192,3 +195,16 @@ geprüft“. Angebots-Schlüssel aus den Angebotsdaten. Gültig bis `validUntil`
 `scheduled` → `sweep`); eine TTL-Richtlinie bräuchte Abrechnung in Google Cloud. Teilnehmerlisten (mit Namen) werden nie gespeichert.
 
 Dateien werden nirgends gespeichert. Weiter im Epic #456: Vergleich mit der Suche (#460), Angebotsspeicher (#462). Konzept: `docs/IMPORT.md`.
+
+## Kreuzfahrten suchen (#519)
+
+Solange kein Kreuzfahrt-Partner einen Feed liefert (Awin-Bewerbungen #526), sucht die KI mit Websuche: Gemini mit
+`google_search`, Claude mit `web_search` (`toClaude` übersetzt; Haiku nimmt `web_search_20250305`, größere Modelle
+`web_search_20260209`, höchstens 5 Suchen). Ablauf: Dialog „🚢 Kreuzfahrt“ im Kapitel Unterkunft (`ui/CruiseDialog.svelte`,
+Suchen, Importieren, Von Hand) → `POST /cruises/search` mit Fahrtgebiet, Hafen, Zeitraum, Nächten, Personen, Kabine
+(`cruises/search.ts`, `parseCruiseQuery`) → KI antwortet mit JSON (bis 6 Fahrten) → `cruisesFromAi` behält nur Treffer
+mit Link zur Fundstelle, Schiff oder Reederei und Abfahrt im Zeitraum, günstigste zuerst. Pausiert Claude die Runde
+(`pause_turn`), setzt der Dienst höchstens zweimal fort. Gleiche Suche 12 Stunden im Zwischenspeicher (zählt nicht), sonst
+eigenes Tageskontingent `CRUISE_DAILY` (Standard 5). Übernehmen (`cruises/app.ts`, `hitItem`): Kreuzfahrt-Posten mit
+Route, Kabinen nach Familien zum „ab“-Preis pro Person, Link zur Fundstelle, „bitte prüfen“. Darunter neutrale Links zu
+Portalen (`partnersOf("cruise")`).

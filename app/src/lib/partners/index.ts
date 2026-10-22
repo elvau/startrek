@@ -12,7 +12,7 @@ import {
   type ActivityLinkQuery, type FlightLinkQuery, type StayLinkQuery
 } from "../links";
 
-export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance" | "ferry" | "camper" | "camping" | "parking";
+export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance" | "ferry" | "camper" | "camping" | "parking" | "cruise";
 /** Netzwerk, über das die Provision läuft; direkt: eigenes Partnerprogramm des Anbieters */
 export type PartnerNet = "direct" | "travelpayouts" | "awin" | "amazon";
 
@@ -114,6 +114,12 @@ export const PARTNERS = {
   parkos: p<void>({ name: "Parkos", cat: "parking", link: home("https://parkos.de/") }),
   airparks: p<void>({ name: "Airparks", cat: "parking", net: "awin", link: home("https://www.airparks.de/"), tag: awin(14699) }),
   holidayExtras: p<void>({ name: "Holiday Extras", cat: "parking", net: "awin", link: home("https://www.holidayextras.de/"), tag: awin(55335) }),
+  /* Kreuzfahrten (#519): Portale und Reedereien zum Vergleichen; Awin-Bewerbungen offen (#526), bis dahin neutral */
+  eHoi: p<void>({ name: "e-hoi", cat: "cruise", net: "awin", link: home("https://www.e-hoi.de/") }),
+  kreuzfahrtenZentrale: p<void>({ name: "Kreuzfahrten-Zentrale", cat: "cruise", net: "awin", link: home("https://www.kreuzfahrten-zentrale.de/") }),
+  dreamlines: p<void>({ name: "Dreamlines", cat: "cruise", net: "awin", link: home("https://www.dreamlines.de/") }),
+  costa: p<void>({ name: "Costa Kreuzfahrten", cat: "cruise", net: "awin", link: home("https://www.costakreuzfahrten.de/") }),
+  meinSchiff: p<void>({ name: "Mein Schiff", cat: "cruise", net: "awin", link: home("https://www.meinschiff.com/") }),
   /* Reiseversicherung: nur als Tipp, keine Beratung (§ 34d GewO) */
   check24Insurance: p<void>({ name: "CHECK24", cat: "insurance", link: home("https://www.check24.de/reiseversicherung/") }),
   ergo: p<void>({ name: "ERGO Reiseversicherung", cat: "insurance", net: "awin", link: home("https://www.reiseversicherung.de/") }),

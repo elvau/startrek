@@ -53,7 +53,7 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 ## Einen Partner hinzufügen
 
 1. Eintrag in `PARTNERS` (`app/src/lib/partners/index.ts`) in der passenden Kategorie:
-   - `name`, `cat` (flight, stay, activity, food, car, transfer, insurance, ferry, camper, camping, parking), `net` (direct, travelpayouts, awin, amazon),
+   - `name`, `cat` (flight, stay, activity, food, car, transfer, insurance, ferry, camper, camping, parking, cruise), `net` (direct, travelpayouts, awin, amazon),
    - `link`: Link mit vorausgefüllten Angaben (Ort, Datum, Personen); `null`, wenn die Angaben nicht reichen,
    - `tag`: Partnerkennung anhängen (erst nach Freischaltung).
    Neue Kategorie: in `PartnerCat` ergänzen und an der Stelle in der Oberfläche `<PartnerLinks ids={partnersOf("…")} q={…} />` einsetzen.
@@ -88,6 +88,7 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 | Airparks | Parken am Flughafen | Awin (beworben 10/2026) | – |
 | Parken und Fliegen | Parken am Flughafen | Awin | ja (`awinmid=14793`) |
 | Holiday Extras | Parken am Flughafen (noch nicht in der App) | Awin (beworben 10/2026) | – |
+| e-hoi, Kreuzfahrten-Zentrale, Dreamlines, Costa, Mein Schiff | Kreuzfahrten (#519) | Awin (Bewerbung #526) | – |
 | CHECK24, Allianz Travel | Versicherung (nur Tipp) | – | – |
 | Yesim, Airalo | eSIM (noch kein Platz in der App, #297) | Travelpayouts | freigeschaltet: Yesim `p=5998`/`campaign_id=224`, Airalo `p=8310`/`campaign_id=541` |
 | ERGO, HanseMerkur | Versicherung (nur Tipp) | Awin (HanseMerkur beworben 10/2026, ERGO nicht gefunden) | – |
@@ -107,7 +108,7 @@ Stand 22.10.2026:
   HanseMerkur Versicherungsgruppe DE (`awinmid` 11705, Reiseversicherung; nur als Tipp, keine Beratung)
 - **abgelehnt:** Sunny Cars („arbeitet nicht mit diesem Publisher-Typ“), ab-in-den-urlaub (Pauschalreisen)
 - **offen:** TUI Cars, Sixt, Europcar (Mietwagen), TUI Camper, Roadsurfer (Camper), Tui.com (Pauschalreisen),
-  TUI Cruises/Mein Schiff (Kreuzfahrten)
+  TUI Cruises/Mein Schiff (Kreuzfahrten); zu bewerben (#526): e-hoi, Kreuzfahrten-Zentrale, Dreamlines, Costa
 
 Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen (`tag: awin(…)` in `app/src/lib/partners/index.ts`); Link-Format
 `https://www.awin1.com/cread.php?awinmid=…&awinaffid=3121582&ued=<Ziel>`.

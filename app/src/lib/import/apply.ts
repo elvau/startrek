@@ -6,7 +6,7 @@
  * Kreuzfahrt (#525): Posten wie „Neue Kreuzfahrt“ mit Route aus dem Angebot; sie trägt den Paketpreis statt der Unterkunft.
  */
 import { t } from "../i18n/index.svelte";
-import { AGE, isActive, uid, type Extra, type FlightLeg, type Item, type Option, type Port, type Traveler, type Trip } from "../model";
+import { AGE, isActive, uid, type AiMark, type Extra, type FlightLeg, type Item, type Option, type Port, type Traveler, type Trip } from "../model";
 import { suggestCabins, syncCruise } from "../cruise";
 import { animalName, nextAnimal, partyTravelers } from "../placeholders";
 import type { ImportCruise, ImportedOffer, ImportLeg } from "./ai";
@@ -68,19 +68,24 @@ function extra(x: NonNullable<ImportedOffer["extras"]>[number], o: ImportedOffer
 }
 
 /**
- * Kreuzfahrt aus dem Angebot (#525): Kabinen nach Familien wie bei „Neue Kreuzfahrt“. Preis je Kabine bzw. Person laut
- * Angebot, sonst der Gesamtpreis nach Personen auf die Kabinen verteilt (Rest an die letzte, damit die Summe stimmt).
+ * Kreuzfahrt aus Angebot oder Suche (#525, #519): Kabinen nach Familien wie bei „Neue Kreuzfahrt“. Preis je Kabine bzw.
+ * Person laut Angebot, sonst der Gesamtpreis nach Personen auf die Kabinen verteilt (Rest an die letzte, damit die Summe stimmt).
  */
-function cruiseOption(trip: Trip, c: ImportCruise, total: number | undefined, base: Omit<Option, "cabins" | "price">, cur: string): Option {
+export function cruiseItem(trip: Trip, c: ImportCruise, o: { total?: number; cur: string; source: Option["source"]; mark: AiMark; pkg?: Option["pkg"] }): Item {
   const people = trip.travelers.filter(isActive);
   const cabins = suggestCabins(people, c.cabin || "inside");
-  if (c.price && total == null) for (const x of cabins) { x.price = c.price; if (c.per === "person") x.per = "person"; }
-  else if (total) {
-    const n = Math.max(1, people.length);
+  if (c.price && o.total == null) for (const x of cabins) { x.price = c.price; if (c.per === "person") x.per = "person"; }
+  else if (o.total) {
+    const n = Math.max(1, people.length), total = o.total;
     let left = total;
     cabins.forEach((x, i) => { x.price = i === cabins.length - 1 ? Math.round(left * 100) / 100 : Math.round(total * x.who.length / n * 100) / 100; left -= x.price; });
   }
-  return { ...base, price: { mode: "unit", basis: "stay", currency: cur, unit: 0 }, cabins };
+  const opt: Option = { id: uid(), label: [c.line, c.ship].filter(Boolean).join(" · ") || t("cr.label"), ...(o.pkg ? { pkg: o.pkg } : {}),
+    price: { mode: "unit", basis: "stay", currency: o.cur, unit: 0 }, source: o.source, cabins };
+  const it: Item = { id: uid(), cat: "stay", name: c.ship || t("cr.new"), status: "idea", icon: "ship", options: [opt], ai: o.mark,
+    cruise: { ...(c.line ? { line: c.line } : {}), ...(c.ship ? { ship: c.ship } : {}), ports: cruisePorts(c, trip.from, trip.to) } };
+  syncCruise(it);
+  return it;
 }
 
 const cruisePorts = (c: ImportCruise, from?: string, to?: string): Port[] => {
@@ -131,11 +136,8 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
   if (cr) {
     // ohne eigenen Kreuzfahrtpreis trägt sie den Preis laut Angebot (allein oder als Paket mit Flug)
     const price = pkg ? total : cr.price ? undefined : (o.flights?.price || o.stay?.price) ? undefined : total;
-    const label = [cr.line, cr.ship].filter(Boolean).join(" · ") || t("cr.label");
-    cruise = cruiseOption(trip, cr, price, { id: uid(), label, ...(pkg ? { pkg: { id: pkgId, main: true } } : {}), source: sourceOf(o, at) }, cur);
-    const it: Item = { id: uid(), cat: "stay", name: cr.ship || t("cr.new"), status: "idea", icon: "ship", options: [cruise], ai: mark,
-      cruise: { ...(cr.line ? { line: cr.line } : {}), ...(cr.ship ? { ship: cr.ship } : {}), ports: cruisePorts(cr, trip.from, trip.to) } };
-    syncCruise(it);
+    const it = cruiseItem(trip, cr, { total: price, cur, source: sourceOf(o, at), mark, ...(pkg ? { pkg: { id: pkgId, main: true } } : {}) });
+    cruise = it.options[0];
     items.push(it);
     trip.detail.stay = true;
   }
