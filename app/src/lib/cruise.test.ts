@@ -47,7 +47,9 @@ describe("Kreuzfahrt abgleichen", () => {
 });
 
 describe("Kosten je Kabine", () => {
+  // ohne Trinkgeld (eigene Tests in tips.test.ts)
   const priced = (t: Trip): Item => {
+    t.tips = { off: true };
     const it0 = newCruise(t, "EUR");
     const cs = it0.options[0].cabins!;
     cs[0].price = 2380; cs[1].price = 2960; cs[2].price = 1540;
