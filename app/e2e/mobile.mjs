@@ -115,8 +115,8 @@ try {
   await shTabs.nth(1).click();
   await until(async () => (await sp.locator(".sh-tab.on").innerText()).includes("Hase"), "Reiter Hase");
   const hase = sp.locator("#hh-Hase");
-  const hb = await hase.boundingBox(), vb = await sp.boundingBox();
-  if (hb.x < vb.x - 2 || hb.x > vb.x + 40) fail("Hase nicht im Bild: " + hb.x);
+  const vb = await sp.boundingBox();
+  await until(async () => { const hb = await hase.boundingBox(); return hb.x >= vb.x - 2 && hb.x <= vb.x + 40; }, "Karussell zeigt Hase");
   await hase.locator(".sh-cats summary").first().click();
   if (!(await hase.locator(".sh-cats details[open] li").count())) fail("Kapitelzeile zeigt keine Posten");
   if ((await sp.evaluate(e => e.scrollHeight)) > 1300) fail("Abrechnung noch zu lang: " + await sp.evaluate(e => e.scrollHeight));

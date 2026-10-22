@@ -37,7 +37,14 @@
   const pages = $derived([...shares.map(h => ({ k: `hh:${h.name}`, label: `${h.name} ${eur(h.total)}` })),
     ...(shares.length ? [{ k: "ledger", label: `🧾 ${t("mob.ledger")}` }] : []), { k: "funds", label: `💰 ${t("mob.funds")}` }]);
   function onCar() { if (car) at = Math.max(0, Math.min(pages.length - 1, Math.round(Math.abs(car.scrollLeft) / Math.max(1, car.clientWidth)))); }
-  function goCar(i: number) { (car?.children[i] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" }); at = i; }
+  // nur das Karussell verschieben (scrollIntoView bewegte auch den Pager); Abstand in Pixeln, so passt es auch rechts nach links
+  function goCar(i: number) {
+    const c = car?.children[i] as HTMLElement | undefined;
+    if (!car || !c) return;
+    const cr = c.getBoundingClientRect(), pr = car.getBoundingClientRect(), rtl = getComputedStyle(car).direction === "rtl";
+    car.scrollBy({ left: rtl ? cr.right - pr.right + 12 : cr.left - pr.left - 12, behavior: "smooth" });
+    at = i;
+  }
   $effect(() => {
     const b = tabs?.children[at] as HTMLElement | undefined;
     if (tabs && b) tabs.scrollTo({ left: b.offsetLeft - (tabs.clientWidth - b.offsetWidth) / 2, behavior: "smooth" });
