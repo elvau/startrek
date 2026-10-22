@@ -103,7 +103,8 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
 
 Publisher-Konto für splitandfly.com (Publisher-ID `3121582`, öffentlich, steht in jedem Awin-Link). Beworben 10/2026.
 Stand 22.10.2026:
-- **zugelassen:** Airparks DE, Holiday Extras (Parken am Flughafen), HanseMerkur Versicherungsgruppe DE (Reiseversicherung)
+- **zugelassen:** Airparks DE (`awinmid` 14699), Holiday Extras (Kennung fehlt noch) (Parken am Flughafen),
+  HanseMerkur Versicherungsgruppe DE (`awinmid` 11705, Reiseversicherung; nur als Tipp, keine Beratung)
 - **abgelehnt:** Sunny Cars („arbeitet nicht mit diesem Publisher-Typ“), ab-in-den-urlaub (Pauschalreisen)
 - **offen:** TUI Cars, Sixt, Europcar (Mietwagen), TUI Camper, Roadsurfer (Camper), Tui.com (Pauschalreisen),
   TUI Cruises/Mein Schiff (Kreuzfahrten)

@@ -103,3 +103,18 @@ describe("Partner-Verzeichnis", () => {
     expect(parkQuery(trip, item, undefined, undefined)).toBeUndefined();
   });
 });
+
+describe("Awin-Programme mit Kennung (10/2026)", () => {
+  it("Airparks und HanseMerkur: Link über awin1.com mit awinmid, als Partner-Link; ohne Partner-Links direkt", () => {
+    for (const [id, mid] of [["airparks", "14699"], ["hanseMerkur", "11705"]] as const) {
+      const on = partnerLink(id, undefined, true)!;
+      expect(on.url).toContain("awin1.com");
+      expect(on.url).toContain(`awinmid=${mid}`);
+      expect(on.url).toContain("awinaffid=3121582");
+      expect(on.sponsored).toBe(true);
+      const off = partnerLink(id, undefined, false)!;
+      expect(off.url).not.toContain("awin1.com");
+      expect(off.sponsored).toBe(false);
+    }
+  });
+});
