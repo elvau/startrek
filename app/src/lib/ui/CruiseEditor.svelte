@@ -7,7 +7,11 @@
   import { eur } from "../calc";
   import { dayShort } from "../format";
   import { addDays, okDate } from "../calc/travel";
-  import { portTime, routeLine, suggestCabins, syncCruise, withoutCabin } from "../cruise";
+  import { portTime, routeLine, shoreBuffer, suggestCabins, syncCruise, withoutCabin } from "../cruise";
+  import { dir } from "../directory.svelte";
+  import { prefsFor } from "../prefs";
+  import { ensureGeo, geo } from "../geo/geo.svelte";
+  import { ccOf, suggestCities, type CityHit } from "../geo/places";
 
   let { item, opt, fresh = false }: { item: Item; opt: Option | undefined; fresh?: boolean } = $props();
   const cr = $derived(item.cruise!);
@@ -20,6 +24,21 @@
     untrack(() => syncCruise(item));
   });
 
+  // Häfen mit Ortssuche (#518): Land und Lage für Einreise, Karte und Anreise
+  $effect(() => { void ensureGeo(app.trip).catch(() => {}); });
+  let portFocus = $state(false);
+  const prefer = $derived([...new Set([ccOf(geo, app.trip.country), ...cr.ports.map(p => p.cc)].filter((x): x is string => !!x))]);
+  const portSugg = (q: string | undefined) => (portFocus && q ? suggestCities(geo, q, prefer).filter(h => h.name !== q.trim()) : []);
+  function pickPort(p: Port, h: CityHit) {
+    p.place = h.name; p.cc = h.cc; p.lat = h.lat; p.lon = h.lon;
+    portFocus = false;
+  }
+  // getippt: genau ein bekannter Ort mit diesem Namen → Land und Lage gleich übernehmen (die Liste zeigt ihn dann nicht mehr)
+  function typedPort(p: Port) {
+    portFocus = true;
+    const exact = p.place?.trim() ? suggestCities(geo, p.place, prefer).find(h => h.name === p.place!.trim()) : undefined;
+    p.cc = exact?.cc; p.lat = exact?.lat; p.lon = exact?.lon;
+  }
   // Hafen zum Bearbeiten (Index); neue Kreuzfahrt: erster Hafen offen
   let open = $state<number | null>(untrack(() => (start && !item.cruise?.ports[0]?.place ? 0 : null)));
   const last = $derived(cr.ports.length - 1);
@@ -45,6 +64,14 @@
   }
   const routeSum = $derived([item.cruise?.ship, routeLine(item, arrow()), item.from && item.to && calc.T.items[item.id]?.stay?.nights.length ? tn("n.nights", calc.T.items[item.id]!.stay!.nights.length) : ""].filter(Boolean).join(" · ") || t("ie.open"));
 
+  // Puffer beim Landgang: eigene an der Kreuzfahrt, sonst Vorlieben, sonst Standard
+  const defBuf = $derived(shoreBuffer(undefined, prefsFor(app.trip, dir).shore));
+  function setBuf(k: "after" | "before", v: string) {
+    const n = v.trim() === "" ? undefined : Math.max(0, Math.min(240, Math.round(Number(v) || 0)));
+    const next = { ...(cr.shore || {}), [k]: n };
+    if (next[k] == null) delete next[k];
+    if (Object.keys(next).length) cr.shore = next; else delete cr.shore;
+  }
   // Kabinen
   const cabins = $derived(opt?.cabins || []);
   const missing = $derived(withoutCabin(opt, app.trip));
@@ -97,7 +124,14 @@
       </button>
       {#if open === i}
         <div class="cr-pedit">
-          {#if !p.sea}<label class="f cr-pname">{t("cr.port")}<input class="cr-port" bind:value={p.place} placeholder={t("cr.portPh")} /></label>{/if}
+          {#if !p.sea}
+            {@const sg = portSugg(p.place)}
+            <label class="f cr-pname">{t("cr.port")}<input class="cr-port" bind:value={p.place} placeholder={t("cr.portPh")} autocomplete="off"
+              onfocus={() => (portFocus = true)} onblur={() => setTimeout(() => (portFocus = false), 150)}
+              oninput={() => typedPort(p)} />
+              {#if sg.length}<div class="sugg">{#each sg as h (h.cc + h.name)}<button type="button" onmousedown={e => e.preventDefault()} onclick={() => pickPort(p, h)}>{h.name} <small class="muted">{h.land}</small></button>{/each}</div>{/if}
+            </label>
+          {/if}
           <label class="f">{t("ks.date")}<input class="cr-date" type="date" bind:value={p.date} /></label>
           {#if !p.sea}
             <label class="f">{t("cr.arr")}<input class="cr-arr" type="time" value={p.arr ?? ""} onchange={e => (p.arr = e.currentTarget.value || undefined)} /></label>
@@ -113,6 +147,12 @@
     <button type="button" class="linkbtn cr-addsea" onclick={() => addPort(true)}>+ {t("cr.addSea")}</button>
   </div>
   <p class="muted small">{t("cr.periodHint")}</p>
+  <!-- Landgang (#518): eigene Puffer für diese Kreuzfahrt, leer = aus den Vorlieben bzw. Standard -->
+  <div class="ed-row cr-buf">
+    <label class="f">{t("cr.bufAfter")}<input class="n sm cr-bufafter" inputmode="numeric" placeholder={String(defBuf.after)} value={cr.shore?.after ?? ""} oninput={e => setBuf("after", e.currentTarget.value)} /></label>
+    <label class="f">{t("cr.bufBefore")}<input class="n sm cr-bufbefore" inputmode="numeric" placeholder={String(defBuf.before)} value={cr.shore?.before ?? ""} oninput={e => setBuf("before", e.currentTarget.value)} /></label>
+    <span class="muted small ed-note">{t("cr.bufHint")}</span>
+  </div>
 </details>
 
 {#if opt}
@@ -169,6 +209,7 @@
   .cr-pedit > * { min-width: 0; }
   .cr-pedit .f input { width: 100%; box-sizing: border-box; background: var(--paper); }
   .cr-pdrop { grid-column: 1 / -1; justify-self: start; }
+  .cr-pname { position: relative; }
   .cr-cabed { border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: var(--paper-2); }
   .cr-cabed .hd { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 13.5px; }
   .cr-x { margin-inline-start: auto; border: 0; background: none; color: var(--ink-3); font-size: 18px; padding: 2px 6px; cursor: pointer; }

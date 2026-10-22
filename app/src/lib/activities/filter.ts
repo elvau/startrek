@@ -48,14 +48,16 @@ export const TOUR_LENS: TourLen[] = ["short", "half", "day"];
 /** bis 2 Stunden, bis 5 Stunden (halber Tag), länger */
 export const lenOf = (min?: number): TourLen | null => (min == null ? null : min <= 120 ? "short" : min <= 300 ? "half" : "day");
 
-export interface TourFilter { len: TourLen | null; minRating: number | null; maxPrice: number | null }
-export const noTourFilter = (): TourFilter => ({ len: null, minRating: null, maxPrice: null });
+/** maxMin: höchstens so lange (Landgang einer Kreuzfahrt, #518); Touren ohne Dauer bleiben drin */
+export interface TourFilter { len: TourLen | null; minRating: number | null; maxPrice: number | null; maxMin: number | null }
+export const noTourFilter = (): TourFilter => ({ len: null, minRating: null, maxPrice: null, maxMin: null });
 export type TourSort = "default" | "popular" | "rating" | "price" | "short";
 
 export function tourPasses(a: ActivityHit, f: TourFilter, skip?: keyof TourFilter): boolean {
   if (skip !== "len" && f.len && lenOf(a.minutes) !== f.len) return false;
   if (skip !== "minRating" && f.minRating != null && (a.rating ?? 0) < f.minRating) return false;
   if (skip !== "maxPrice" && f.maxPrice != null && (a.price == null || a.price > f.maxPrice)) return false;
+  if (skip !== "maxMin" && f.maxMin != null && a.minutes != null && a.minutes > f.maxMin) return false;
   return true;
 }
 

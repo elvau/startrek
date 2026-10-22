@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { CRUISE_TIP, autoExtras, syncTips } from "./fees";
+import { CRUISE_TIP, autoExtras, syncTips, tipCc } from "./fees";
 import { calcItem } from "./calc";
 import { newCruise } from "./cruise";
 import { DEFAULT_SETTINGS, type Item, type Trip } from "./model";
 import { tipCtx } from "./tipsState.svelte";
 
 // Land und Vorliebe wie in der App (FoodCard): nur im Speicher
-const ctx = (cc?: string, on = true) => syncTips(on, cc);
+// Land aus der Reise (Name oder ISO-Code), Vorliebe nur im Speicher
+let land = "";
+const ctx = (cc?: string, on = true) => { land = cc || ""; syncTips(on); };
 const trip = (x: Partial<Trip> = {}): Trip => ({
-  id: "t", name: "T", place: "Ort", country: "", from: "2027-06-05", to: "2027-06-12",
+  id: "t", name: "T", place: "Ort", from: "2027-06-05", to: "2027-06-12",
   travelers: [{ id: "a", name: "A", age: 40, household: "K" }, { id: "b", name: "B", age: 38, household: "K" }],
-  items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...x
+  items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...x, country: x.country ?? land
 });
 const stay = (x: Partial<Item> = {}): Item => ({ id: "s", cat: "stay", name: "Hotel", status: "chosen", from: "2027-06-05", to: "2027-06-12",
   options: [{ id: "o", label: "Hotel", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 700 } }], ...x });
@@ -20,12 +22,12 @@ describe("Trinkgeld als versteckte Kosten (#517)", () => {
   beforeEach(() => ctx());
   it("Unterkunft nach der Sitte im Land, pro Nacht, vor Ort, geschätzt", () => {
     ctx("HR");
-    const t = trip();
-    const [x] = tipsOf(stay(), t);
+    const [x] = tipsOf(stay(), trip());
+    const t = trip({ country: "Kroatien" });
     expect(x).toMatchObject({ id: "auto:tips", basis: "night", pay: "onsite", est: true, amount: 3 });
     expect(calcItem(stay(), t).net).toBeCloseTo(700 + 7 * 3);
-    ctx("US");
-    expect(tipsOf(stay(), t)[0].amount).toBe(5);
+    expect(tipsOf(stay(), trip({ country: "Vereinigte Staaten" }))[0].amount).toBe(5);
+    expect(tipsOf(stay(), trip({ country: "United States" }))[0].amount).toBe(5);
   });
   it("ohne Land, Land ohne Trinkgeldsitte, privat oder eigener Eintrag: nichts", () => {
     expect(tipsOf(stay(), trip())).toEqual([]);
@@ -53,11 +55,18 @@ describe("Trinkgeld als versteckte Kosten (#517)", () => {
     expect(tipsOf(it0, t)[0].off).toBe(true);
     expect(calcItem(it0, t).net).toBeCloseTo(700);
   });
-  it("Abgleich mit Land und Vorliebe", () => {
-    expect(syncTips(true, "HR")).toBe(true);
-    expect({ ...tipCtx }).toEqual({ cc: "HR", off: undefined });
-    expect(syncTips(true, "HR")).toBe(false);
-    expect(syncTips(false, undefined)).toBe(true);
+  it("Land der Unterkunft (Suche) vor dem der Reise", () => {
+    const s = stay();
+    s.options[0].query = { place: "Split", country: "Kroatien", checkin: "2027-06-05", checkout: "2027-06-12", adults: 2, childAges: [], rooms: 1 };
+    expect(tipsOf(s, trip({ country: "Japan" }))[0].amount).toBe(3);
+  });
+  it("Land aus der Reise: ISO-Code oder Name in einer Sprache der App; Vorliebe nur im Speicher", () => {
+    expect(tipCc("hr")).toBe("HR");
+    expect(tipCc("Kroatien")).toBe("HR");
+    expect(tipCc("Croatia")).toBe("HR");
+    expect(tipCc("Atlantis")).toBeUndefined();
+    expect(syncTips(false)).toBe(true);
     expect(tipCtx.off).toBe(true);
+    expect(syncTips(false)).toBe(false);
   });
 });

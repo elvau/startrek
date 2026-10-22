@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { cabinsTotal, cruiseTitle, newCruise, portTime, routeLine, suggestCabins, syncCruise, withoutCabin } from "./cruise";
+import { cabinsTotal, cruiseTitle, newCruise, shoreAt, shoreOf, shoresOf, portTime, routeLine, suggestCabins, syncCruise, withoutCabin } from "./cruise";
 import { calcItem, totals } from "./calc";
 import { syncTips } from "./fees";
 import { DEFAULT_SETTINGS, type Item, type Traveler, type Trip } from "./model";
+import { itinerary, stations } from "./itinerary";
+import { hintsFor, tripCountries } from "./hints";
+import { tripSpots } from "./geo/spots";
+import type { GeoData } from "./geo/places";
 
 const P = (id: string, household: string, age = 40): Traveler => ({ id, name: id, age, household });
 const trip = (travelers: Traveler[]): Trip => ({
@@ -49,9 +53,9 @@ describe("Kreuzfahrt abgleichen", () => {
 
 describe("Kosten je Kabine", () => {
   // ohne Trinkgeld (eigene Tests in tips.test.ts)
-  afterEach(() => syncTips(true, undefined));
+  afterEach(() => syncTips(true));
   const priced = (t: Trip): Item => {
-    syncTips(false, undefined);
+    syncTips(false);
     const it0 = newCruise(t, "EUR");
     const cs = it0.options[0].cabins!;
     cs[0].price = 2380; cs[1].price = 2960; cs[2].price = 1540;
@@ -107,5 +111,62 @@ describe("Anzeige", () => {
   it("Liegezeit kurz", () => {
     expect(portTime({ date: "", arr: "08:00", dep: "17:30" })).toEqual({ arr: "8", dep: "17:30" });
     expect(portTime({ date: "" })).toEqual({});
+  });
+});
+
+describe("Häfen im Reiseplan, Länder, Hinweis (#518)", () => {
+  const routed = () => {
+    const t = group(), it0 = newCruise(t, "EUR");
+    it0.status = "chosen";
+    it0.cruise!.ports = [
+      { date: "2027-06-05", place: "Barcelona", cc: "ES", lat: 41.38, lon: 2.18, dep: "17:00" },
+      { date: "2027-06-06", sea: true },
+      { date: "2027-06-07", place: "Palermo", cc: "IT", lat: 38.12, lon: 13.36, arr: "08:00", dep: "17:00" },
+      { date: "2027-06-08", place: "Valletta", cc: "MT", lat: 35.9, lon: 14.51, arr: "08:00", dep: "18:00" },
+      { date: "2027-06-12", place: "Barcelona", cc: "ES", lat: 41.38, lon: 2.18, arr: "08:00" }];
+    syncCruise(it0);
+    t.items.push(it0);
+    return t;
+  };
+  it("Einschiffung, Häfen mit Liegezeit, Seetag; Ort des Tages ist der Hafen", () => {
+    const days = itinerary(routed());
+    const d = (x: string) => days.find(y => y.date === x)!;
+    expect(d("2027-06-05").entries.map(e => [e.kind, e.text, e.time])).toContainEqual(["port", "Einschiffung in Barcelona", "17:00"]);
+    expect(d("2027-06-06")).toMatchObject({ sea: true, place: "Seetag" });
+    expect(d("2027-06-07").place).toBe("Palermo");
+    expect(d("2027-06-07").entries.find(e => e.kind === "port")).toMatchObject({ text: "Palermo", time: "08:00", sub: "ab 17" });
+    expect(d("2027-06-12").entries.map(e => e.text)).toContain("Ausschiffung in Barcelona");
+    expect(stations(days).map(s => s.place)).toEqual(["Barcelona", "Palermo", "Valletta", "Barcelona"]);
+  });
+  it("Länder aller Häfen, Hinweis zum Reisepass, Hafen als Ort für den Transfer", () => {
+    const t = routed();
+    expect(tripCountries(t, () => null, () => undefined)).toEqual(["ES", "IT", "MT"]);
+    expect(hintsFor(t, [], []).map(h => h.id)).toContain("cruise");
+    expect(hintsFor(group(), [], []).map(h => h.id)).not.toContain("cruise");
+    const spots = tripSpots(t, { world: [], places: {} } as unknown as GeoData).filter(s => s.kind === "stay");
+    expect(spots.map(s => s.name)).toEqual(["Barcelona"]);
+  });
+});
+
+describe("Landgang: Zeitfenster mit Puffer (#518)", () => {
+  it("1 h nach dem Anlegen, 1,5 h vor dem Ablegen", () => {
+    expect(shoreOf({ date: "2027-06-07", place: "Palermo", arr: "08:00", dep: "17:00" }))
+      .toMatchObject({ place: "Palermo", start: "2027-06-07T09:00", end: "2027-06-07T15:30", minutes: 390 });
+    expect(shoreOf({ date: "2027-06-07", place: "Kurz", arr: "10:00", dep: "12:00" })!.minutes).toBe(0);
+    expect(shoreOf({ date: "2027-06-07", place: "Ohne Zeiten" })).toEqual({ place: "Ohne Zeiten", date: "2027-06-07", after: 60, before: 90 });
+    expect(shoreOf({ date: "2027-06-06", sea: true })).toBeNull();
+  });
+  it("nur Häfen zwischen Ein- und Ausschiffung", () => {
+    const t = group(), it0 = newCruise(t, "EUR");
+    it0.cruise!.ports = [{ date: "2027-06-05", place: "Barcelona", dep: "17:00" }, { date: "2027-06-06", sea: true },
+      { date: "2027-06-07", place: "Palermo", arr: "08:00", dep: "17:00" }, { date: "2027-06-12", place: "Barcelona", arr: "08:00" }];
+    t.items.push(it0);
+    expect(shoresOf(t).map(s => s.place)).toEqual(["Palermo"]);
+    expect(shoreAt(t, "Palermo", "2027-06-07")?.minutes).toBe(390);
+    expect(shoreAt(t, "Palermo", "2027-06-08")).toBeNull();
+    // eigene Puffer: Vorlieben, an der Kreuzfahrt geht vor
+    expect(shoreAt(t, "Palermo", "2027-06-07", { after: 30, before: 60 })?.minutes).toBe(450);
+    it0.cruise!.shore = { before: 120 };
+    expect(shoreAt(t, "Palermo", "2027-06-07", { after: 30, before: 60 })).toMatchObject({ start: "2027-06-07T08:30", end: "2027-06-07T15:00", minutes: 390 });
   });
 });

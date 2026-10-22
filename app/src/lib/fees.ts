@@ -206,12 +206,30 @@ export function autoDeposit(it: Item, o: Option, rate = 1, cars = 1): Deposit | 
 export const STAY_TIPS: Record<TipNorm, number> = { none: 0, round: 2, usual: 3, high: 5 };
 export const CRUISE_TIP = 14;
 
-/** Trinkgeld nachführen: Land (Sitte) und Vorliebe; true, wenn sich etwas geändert hat */
-export function syncTips(on: boolean, cc: string | undefined): boolean {
-  if (tipCtx.cc === cc && !tipCtx.off === on) return false;
-  tipCtx.cc = cc;
+/** Trinkgeld-Vorliebe nachführen; true, wenn sich etwas geändert hat */
+export function syncTips(on: boolean): boolean {
+  if (!tipCtx.off === on) return false;
   tipCtx.off = !on || undefined;
   return true;
+}
+
+/**
+ * Land der Reise für die Trinkgeld-Sitte, ohne Ortsdaten nachzuladen: ISO-Code oder Landesname in einer der Sprachen der App
+ * (gleich für Vorschau und geöffnete Reise)
+ */
+const LANGS = ["de", "en", "es", "fr", "pl", "ru", "ar"];
+let tipNames: Map<string, string> | null = null;
+export function tipCc(country: string | undefined): string | undefined {
+  const c = country?.trim();
+  if (!c) return undefined;
+  if (/^[A-Za-z]{2}$/.test(c) && TIPS[c.toUpperCase()]) return c.toUpperCase();
+  if (!tipNames) {
+    tipNames = new Map();
+    for (const l of LANGS) {
+      try { const dn = new Intl.DisplayNames([l], { type: "region" }); for (const k of Object.keys(TIPS)) { const n = dn.of(k); if (n) tipNames.set(n.toLowerCase(), k); } } catch { /* ohne Intl: nur Codes */ }
+    }
+  }
+  return tipNames.get(c.toLowerCase());
 }
 
 /** automatisch geschätzte Nebenkosten eines Angebots (nicht gespeichert, wegklickbar über autoOff) */
@@ -233,7 +251,9 @@ export function autoExtras(it: Item, o: Option, trip: Trip, rate0: (cur: string)
   }
   // Trinkgeld (#517): Kreuzfahrt immer, Unterkunft nach der Sitte im Land; nicht privat, nicht wenn selbst eingetragen
   if (it.cat === "stay" && !it.private && !tipCtx.off && !own.some(x => x.kind === "tips")) {
-    const norm = tipCtx.cc ? TIPS[tipCtx.cc]?.norm : undefined;
+    // Land der Unterkunft (Suche), sonst das der Reise
+    const cc = tipCc(o.query?.country) || tipCc(trip.country);
+    const norm = cc ? TIPS[cc]?.norm : undefined;
     const eur = it.cruise ? CRUISE_TIP : norm ? STAY_TIPS[norm] : 0;
     if (eur) {
       const id = it.cruise ? "auto:tips:cruise" : "auto:tips";

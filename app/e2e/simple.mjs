@@ -335,13 +335,13 @@ try {
   await gctx.close();
   log("Abstimmen: über die Zeiträume (eine Stimme, Cleo „ohne mich“, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten, Meilen-Wahl mit 4 Meilen; „Ohne mich“ mit Fenster, Grund, Info an Anna, mit Familie, trotzdem nehmen stellt beide auf „nicht dabei“");
 
-  // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen
+  // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen; Trinkgeld (#517) weggeklickt
   const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }, { id: "c", name: "Tom", household: "Smith", age: 38 }, { id: "d", name: "Mia", household: "Smith", age: 36 }],
     detail: { flights: true, stay: true, transport: true },
     items: [
       { id: "s", cat: "stay", name: "Villa am Meer", status: "chosen", from: "2027-07-18", to: "2027-07-25", options: [{ id: "v", label: "Villa Ana", price: { mode: "unit", currency: "EUR", unit: 980, basis: "stay" },
-        extras: [{ id: "x1", kind: "citytax", amount: 2.8, basis: "personNight", pay: "onsite", est: true, freeUpTo: 12, source: "Stadt Split" }] }] },
+        extras: [{ id: "x1", kind: "citytax", amount: 2.8, basis: "personNight", pay: "onsite", est: true, freeUpTo: 12, source: "Stadt Split" }], autoOff: ["auto:tips"] }] },
       { id: "car", cat: "transport", icon: "car", name: "Mietwagen", status: "idea", options: [{ id: "c", label: "Kompakt", price: { mode: "unit", currency: "EUR", unit: 245 }, deposit: { amount: 1200, how: "credit" } }] }
     ], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
   const xctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
@@ -730,8 +730,8 @@ try {
   const cv = cp.locator(".cmpv");
   await cv.locator(".cv-table").waitFor();
   const head = await cv.locator(".cv-head").innerText();
-  // Summen wie in der Reise: 214 + 1680 + 80 = 1974 €
-  if (!head.includes("1.974 €") || !head.includes("2.656 €") || !head.includes("2.090 €")) fail("Summen im Vergleich: " + head.replace(/\n/g, " / "));
+  // Summen wie in der Reise: 214 + 1680 + 80 = 1974 €, dazu Trinkgeld 2 € × 4 Nächte (#517) = 1982 €
+  if (!head.includes("1.982 €") || !head.includes("2.664 €") || !head.includes("2.098 €")) fail("Summen im Vergleich: " + head.replace(/\n/g, " / "));
   if (!head.includes("Unterkunft +700") ) fail("Erklärung fehlt: " + head.replace(/\n/g, " / "));
   // Schaltflächen aller Spalten auf gleicher Höhe, auch in der günstigsten ohne Zusatzzeile (Desktop)
   const actsY = await cv.locator(".cv-head .cv-acts").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top)));

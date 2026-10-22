@@ -2,7 +2,7 @@
  * Kreuzfahrt (#516): Posten im Kapitel Unterkunft mit Route (Häfen, Seetage) und Kabinen.
  * Zeitraum aus Ein- und Ausschiffung, Teilnehmende aus den Kabinen; jede Kabine kostet die Personen darin.
  */
-import { hhKey, isActive, uid, type Cabin, type CabinType, type Item, type Option, type Port, type Traveler, type Trip } from "./model";
+import { hhKey, isActive, uid, type Cabin, type CabinType, type Cruise, type Item, type Option, type Port, type ShoreBuffer, type Traveler, type Trip } from "./model";
 import { okDate } from "./calc/travel";
 import { autoName, t } from "./i18n/index.svelte";
 
@@ -98,3 +98,33 @@ export function portTime(p: Port): { arr?: string; dep?: string } {
   const h = (x?: string) => (x && /^\d\d:\d\d$/.test(x) ? (x.endsWith(":00") ? String(Number(x.slice(0, 2))) : `${Number(x.slice(0, 2))}:${x.slice(3)}`) : undefined);
   return { arr: h(p.arr), dep: h(p.dep) };
 }
+
+/*
+ * Landgang (#518): Zeitfenster je Hafen für Ausflüge. Puffer nach dem Anlegen (vom Schiff, Weg in die Stadt) und vor dem
+ * Ablegen (meist 30–60 min vorher wieder an Bord, dazu der Rückweg).
+ */
+export const SHORE_AFTER = 60, SHORE_BEFORE = 90;
+/** Puffer: an der Kreuzfahrt, sonst aus den Vorlieben, sonst Standard */
+export const shoreBuffer = (c?: Cruise, prefs?: ShoreBuffer) => ({
+  after: c?.shore?.after ?? prefs?.after ?? SHORE_AFTER, before: c?.shore?.before ?? prefs?.before ?? SHORE_BEFORE });
+export interface Shore { place: string; date: string; arr?: string; dep?: string; start?: string; end?: string; minutes?: number; after: number; before: number }
+const toMin = (x?: string) => (x && /^\d\d:\d\d$/.test(x) ? Number(x.slice(0, 2)) * 60 + Number(x.slice(3)) : null);
+const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+export function shoreOf(p: Port, buf = { after: SHORE_AFTER, before: SHORE_BEFORE }): Shore | null {
+  if (p.sea || !p.place?.trim() || !okDate(p.date)) return null;
+  const a = toMin(p.arr), d = toMin(p.dep);
+  const s = a != null ? Math.min(a + buf.after, 24 * 60 - 1) : null, e = d != null ? Math.max(d - buf.before, 0) : null;
+  return { place: p.place.trim(), date: p.date, ...(p.arr ? { arr: p.arr } : {}), ...(p.dep ? { dep: p.dep } : {}),
+    ...(s != null ? { start: `${p.date}T${hhmm(s)}` } : {}), ...(e != null ? { end: `${p.date}T${hhmm(e)}` } : {}),
+    ...(s != null && e != null ? { minutes: Math.max(0, e - s) } : {}), after: buf.after, before: buf.before };
+}
+
+/** Landgänge der Reise: Häfen zwischen Ein- und Ausschiffung (nicht verworfene Kreuzfahrten) */
+export function shoresOf(trip: Trip, prefs?: ShoreBuffer): Shore[] {
+  return trip.items.filter(i => i.cruise && i.status !== "dropped").flatMap(i => {
+    const ps = i.cruise!.ports.filter(p => okDate(p.date)), buf = shoreBuffer(i.cruise, prefs);
+    return ps.slice(1, -1).map(p => shoreOf(p, buf)).filter((x): x is Shore => !!x);
+  });
+}
+export const shoreAt = (trip: Trip, place: string, date?: string, prefs?: ShoreBuffer) => (date ? shoresOf(trip, prefs).find(s => s.place === place && s.date === date) || null : null);

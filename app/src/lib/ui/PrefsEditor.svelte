@@ -9,6 +9,7 @@
   import { BOARDS, STYLES, type Prefs } from "../model";
   import { dir } from "../directory.svelte";
   import { SOUVENIR_DEFAULT } from "../souvenir";
+  import { SHORE_AFTER, SHORE_BEFORE } from "../cruise";
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
   import { cloud } from "../cloud/cloud.svelte";
@@ -70,6 +71,13 @@
   function step(k: "maxHours" | "nightsMin" | "nightsMax" | "souvenirs", d: number, lo: number, hi: number) {
     const cur = p[k] ?? base?.[k] ?? (k === "maxHours" ? 6 : k === "nightsMin" ? 3 : k === "souvenirs" ? SOUVENIR_DEFAULT : 7);
     set(k, Math.max(lo, Math.min(hi, cur + d)));
+  }
+  // Landgang auf Kreuzfahrten (#518): Puffer in Minuten, in 15er-Schritten
+  const shoreOf = (k: "after" | "before") => p.shore?.[k] ?? base?.shore?.[k] ?? (k === "after" ? SHORE_AFTER : SHORE_BEFORE);
+  function stepShore(k: "after" | "before", d: number) {
+    const v = Math.max(0, Math.min(240, shoreOf(k) + d));
+    const next = { ...(p.shore || {}), [k]: v };
+    set("shore", next);
   }
   function setCar<K extends "seats" | "fuel">(k: K, v: NonNullable<Prefs["car"]>[K] | undefined) {
     const car = { ...(p.car || {}) };
@@ -233,6 +241,17 @@
         {@render chip(t("prefs.tipsYes"), st("tips", true), () => pick("tips", true))}{@render chip(t("prefs.tipsNo"), st("tips", false), () => pick("tips", false))}
       </div>
       <p class="muted small">{t("prefs.tipsHint")}</p>
+      {@render lbl(t("prefs.shore"), "shore", base?.shore ? t("prefs.sum.shore", { a: base.shore.after ?? SHORE_AFTER, b: base.shore.before ?? SHORE_BEFORE }) : null)}
+      <div class="pv-nights pv-shore">
+        {#each [["after", "prefs.shoreAfter"], ["before", "prefs.shoreBefore"]] as const as [k, l] (k)}
+          <span class="pv-step" class:inh={group && !own("shore")} class:chg={group && own("shore")}>
+            <button type="button" aria-label={`${t(l)} −15 min`} onclick={() => stepShore(k, -15)}>−</button>
+            <b>{shoreOf(k)} min</b>
+            <button type="button" aria-label={`${t(l)} +15 min`} onclick={() => stepShore(k, 15)}>+</button>
+          </span>
+          <span class="muted small">{t(l)}</span>
+        {/each}
+      </div>
     {/snippet}
     {@render card("style", style)}
 

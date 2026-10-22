@@ -166,7 +166,8 @@ export const GUIDE: GuidePage[] = [
       "Nach der Landung ohne Anschluss kannst du direkt „Unterkunft am Flughafen suchen“. Für eine Unterkunft, die du schon hast, gibt es „🏠 Privat“.",
       "Wo die Suche es weiß, siehst du „kostenlos stornierbar“. Für die Buchung gehst du zum Anbieter.",
       "Kreuzfahrt? Mit „🚢 Kreuzfahrt“ trägst du Reederei, Schiff und die Häfen mit Liegezeiten ein, dazu Seetage. Ein- und Ausschiffung ergeben die Nächte an Bord.",
-      "Bei der Kreuzfahrt trägst du Kabinen ein: Typ, Preis und wer darin wohnt. „Kabinen nach Familien vorschlagen“ verteilt alle auf Kabinen. Jede Kabine kostet die Personen darin."
+      "Bei der Kreuzfahrt trägst du Kabinen ein: Typ, Preis und wer darin wohnt. „Kabinen nach Familien vorschlagen“ verteilt alle auf Kabinen. Jede Kabine kostet die Personen darin.",
+      "Die Häfen erscheinen im Tagesplan mit Liegezeit, Seetage als eigene Tage. Auf der Karte der Kreuzfahrt findest du „Flug zum Hafen“, „Hotelnacht davor“ und „Ausflüge in den Häfen“. „Einreise & Tipps“ zeigt die Länder aller Häfen."
     ],
     faq: [
       { q: "Was ist, wenn die Gruppe nicht in ein Zimmer passt?", a: "Die Belegung berücksichtigt die maximale Gästezahl und die Zimmer. Passt es nicht, teile die Gruppe auf mehrere Unterkünfte auf." },
