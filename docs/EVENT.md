@@ -14,7 +14,8 @@ Die App schlägt daraus bis zu drei Reisen vor und sucht dafür Flüge und Unter
 - Flug: günstigster passender Treffer inklusive Anreise zum Abflughafen, Abflug von den nächsten Flughäfen zum Wohnort, ohne Aufgabegepäck.
 - Unterkunft: günstigste mit Bewertung ab 8 von 10, sonst die günstigste.
 - Tickets: Preis pro Person von bis (aus dem Treffer, sonst selbst eintragen). Gerechnet wird immer mit dem günstigsten
-  Ticket, für alle Reisenden; die Spanne steht im Vorschlag und im Posten.
+  Ticket, für alle Reisenden; die Spanne steht im Vorschlag und im Posten. Fremdwährung ohne Kurs: Hinweis „bitte manuell
+  in Euro eintragen“, Posten mit 0 € als Schätzung (nie 1 : 1 als Euro).
 - „Übernehmen“ setzt die Reisedaten und legt Flug, Unterkunft und Tickets (in „Erlebnisse“, ohne Preis als Schätzung zum
   Nachtragen) als Posten an; erneut übernommen wird der Ticket-Posten aktualisiert. Weitere Angebote gibt es in der Flug- und Unterkunftssuche.
 

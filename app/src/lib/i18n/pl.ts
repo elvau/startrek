@@ -1119,6 +1119,7 @@ export const pl: Dict = {
   "ev.tLine": "Bilety {range} na osobę",
   "ev.tMax": "do (opcjonalnie, {cur})",
   "ev.tMin": "Bilet na osobę od ({cur})",
+  "ev.tNoRate": "Nie udało się ustalić kursu {cur}, wpisz cenę w euro ręcznie",
   "ev.tNone": "Cena biletu nieznana, uzupełnij ją później",
   "ev.take": "Dodaj",
   "ev.taken": "Dodano. Więcej ofert znajdziesz w wyszukiwarce lotów i noclegów.",

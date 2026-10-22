@@ -171,6 +171,16 @@ describe("Tickets beim Übernehmen", () => {
     expect(ticketsEur({ min: 89, max: 250, currency: "EUR" }, 2, DEFAULT_SETTINGS)).toBe(178);
     expect(ticketsEur({ min: 50, currency: "GBP" }, 2, { ...DEFAULT_SETTINGS, rates: { EUR: 1, GBP: 0.8 } })).toBe(125);
     expect(ticketsEur(undefined, 2, DEFAULT_SETTINGS)).toBe(0);
+    expect(ticketsEur({ min: 50, currency: "XYZ" }, 2, DEFAULT_SETTINGS)).toBeNull();
     expect(planTotal({ total: 200 }, stay("Hotel", 100), 178)).toBe(478);
+  });
+  it("Fremdwährung ohne Kurs: nicht 1 : 1, sondern zum Nachtragen in Euro", () => {
+    const tr = trip();
+    tr.event = { name: "Spiel", start: "2027-05-15T15:30", price: { min: 50, max: 90, currency: "XYZ" } };
+    take(tr);
+    const o = tr.items.find(i => i.cat === "attractions")!.options[0];
+    expect(o).toMatchObject({ estimate: true, price: { currency: "EUR", adult: 0 } });
+    expect(o.detail).toContain("XYZ");
+    expect(o.detail).toContain("manuell");
   });
 });

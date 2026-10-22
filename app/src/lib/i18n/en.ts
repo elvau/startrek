@@ -1091,6 +1091,7 @@ export const en: Dict = {
   "ev.tLine": "Tickets {range} per person",
   "ev.tMax": "up to (optional, {cur})",
   "ev.tMin": "Ticket per person from ({cur})",
+  "ev.tNoRate": "Exchange rate for {cur} could not be determined, please enter the price in euros manually",
   "ev.tNone": "Ticket price unknown, add it after taking the trip",
   "ev.take": "Add to trip",
   "ev.taken": "Added. You'll find more offers in the flight and accommodation search.",

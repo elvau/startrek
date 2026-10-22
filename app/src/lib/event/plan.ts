@@ -6,7 +6,7 @@
 import { addDays } from "../flights/kiwi";
 import { takeOffer, tMin } from "../flights/app";
 import { takeStay } from "../stays/app";
-import { money, rateOf } from "../calc";
+import { hasRate, money, rateOf } from "../calc";
 import { t } from "../i18n/index.svelte";
 import { uid, type Item, type Option, type Settings, type Trip, type TripEvent } from "../model";
 import type { FlightOffer } from "../flights/types";
@@ -43,19 +43,22 @@ type TicketPrice = NonNullable<TripEvent["price"]>;
 /** Ticketpreis als Spanne („89 € – 250 €“) oder „ab 89 €“ */
 export const ticketRange = (p: TicketPrice) =>
   p.max != null && p.max > p.min ? `${money(p.min, p.currency)} – ${money(p.max, p.currency)}` : t("xp.from", { p: money(p.min, p.currency) });
-/** Tickets für n Personen in Euro, immer mit dem günstigsten Ticket */
-export const ticketsEur = (p: TicketPrice | undefined, n: number, s: Settings) => (p?.min ? Math.round((p.min * n) / rateOf(p.currency, s)) : 0);
+/** Tickets für n Personen in Euro, immer mit dem günstigsten Ticket; null: Fremdwährung ohne Kurs, nicht rechenbar */
+export const ticketsEur = (p: TicketPrice | undefined, n: number, s: Settings) =>
+  !p?.min ? 0 : hasRate(p.currency, s) ? Math.round((p.min * n) / rateOf(p.currency, s)) : null;
 
 /**
  * Tickets als Posten in „Erlebnisse“: Preis pro Person mit dem günstigsten Ticket, die Spanne im Detail.
  * Ohne Preis als Schätzung zum Nachtragen. Gibt es den Posten schon (erneut übernommen), wird er aktualisiert.
  */
 export function takeTickets(trip: Trip, ev: TripEvent): Item {
-  const p = ev.price;
+  // Fremdwährung ohne Kurs: nicht 1 : 1 als Euro rechnen, sondern zum Nachtragen in Euro
+  const p = ev.price, rated = !!p && hasRate(p.currency, trip.settings);
+  const detail = p ? [t("ev.tDetail", { range: ticketRange(p) }), rated ? "" : t("ev.tNoRate", { cur: p.currency })].filter(Boolean).join(" · ") : "";
   const opt: Option = {
     id: uid(), label: ev.name,
-    ...(p ? { detail: t("ev.tDetail", { range: ticketRange(p) }) } : {}),
-    price: { mode: "person", currency: p?.currency || "EUR", adult: p?.min || 0 }, ...(p?.min ? {} : { estimate: true }),
+    ...(detail ? { detail } : {}),
+    price: { mode: "person", currency: rated ? p!.currency : "EUR", adult: rated ? p!.min : 0 }, ...(rated && p!.min ? {} : { estimate: true }),
     ...(ev.url ? { source: { name: t("evs.tickets"), at: new Date().toISOString().slice(0, 10), url: ev.url } } : {})
   };
   const name = t("ev.tItem", { name: ev.name });

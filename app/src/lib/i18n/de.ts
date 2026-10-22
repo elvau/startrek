@@ -1089,6 +1089,7 @@ export const de = {
   "ev.tLine": "Tickets {range} pro Person",
   "ev.tMax": "bis (optional, {cur})",
   "ev.tMin": "Ticket pro Person ab ({cur})",
+  "ev.tNoRate": "Kurs für {cur} konnte nicht ermittelt werden, bitte Preis manuell in Euro eintragen",
   "ev.tNone": "Ticketpreis unbekannt, nach dem Übernehmen nachtragen",
   "ev.take": "Übernehmen",
   "ev.taken": "Übernommen. Weitere Angebote findest du in der Flug- und Unterkunftssuche.",
