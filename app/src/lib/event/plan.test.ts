@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, planTotal, followEventName, takePlan, variants, keepEnd } from "./plan";
+import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, planTotal, followEventName, takePlan, ticketsEur, variants, keepEnd } from "./plan";
+import { calcItem } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import type { StayOffer } from "../stays/types";
@@ -128,5 +129,48 @@ describe("Event mit letztem Tag (#450)", () => {
     expect(keepEnd({}, "2027-06-04", "2027-06-06")).toBe("2027-06-06");
     expect(keepEnd({ end: "2027-06-05" }, "2027-06-04", "2027-06-06")).toBe("2027-06-05");
     expect(keepEnd({}, "2027-06-08", "2027-06-06")).toBe("");
+  });
+});
+
+describe("Tickets beim Übernehmen", () => {
+  const take = (tr: Trip) => {
+    const [, short] = variants(tr.event!);
+    takePlan(tr, short, offer(["2027-05-15T08:00", "2027-05-15T09:15"], ["2027-05-16T07:00", "2027-05-16T09:15"], 320), null, null);
+  };
+  it("Spanne im Detail, gerechnet mit dem günstigsten Ticket pro Person", () => {
+    const tr = trip();
+    tr.event = { name: "Coldplay", start: "2027-05-15T20:00", url: "https://tickets.example/x", price: { min: 89, max: 250, currency: "EUR" } };
+    take(tr);
+    const it = tr.items.find(i => i.cat === "attractions")!;
+    expect(it.name).toContain("Coldplay");
+    expect(it.options[0].price).toEqual({ mode: "person", currency: "EUR", adult: 89 });
+    expect(it.options[0].detail).toMatch(/89.*250/);
+    expect(it.options[0].estimate).toBeUndefined();
+    expect(calcItem(it, tr).net).toBe(178);
+    expect(tr.event.item).toBe(it.id);
+    expect(tr.detail?.attractions).toBe(true);
+  });
+  it("erneut übernommen: derselbe Posten, neuer Preis", () => {
+    const tr = trip();
+    tr.event = { name: "Spiel", start: "2027-05-15T15:30", price: { min: 40, currency: "EUR" } };
+    take(tr);
+    tr.event.price = { min: 55, currency: "EUR" };
+    take(tr);
+    const tix = tr.items.filter(i => i.cat === "attractions");
+    expect(tix.length).toBe(1);
+    expect(tix[0].options[0].price.adult).toBe(55);
+  });
+  it("ohne Preis trotzdem als Schätzung zum Nachtragen", () => {
+    const tr = trip();
+    tr.event = { name: "Spiel", start: "2027-05-15T15:30" };
+    take(tr);
+    const it = tr.items.find(i => i.cat === "attractions")!;
+    expect(it.options[0]).toMatchObject({ estimate: true, price: { adult: 0 } });
+  });
+  it("Summe für den Vorschlag: Mindestpreis mal Personen, in Euro", () => {
+    expect(ticketsEur({ min: 89, max: 250, currency: "EUR" }, 2, DEFAULT_SETTINGS)).toBe(178);
+    expect(ticketsEur({ min: 50, currency: "GBP" }, 2, { ...DEFAULT_SETTINGS, rates: { EUR: 1, GBP: 0.8 } })).toBe(125);
+    expect(ticketsEur(undefined, 2, DEFAULT_SETTINGS)).toBe(0);
+    expect(planTotal({ total: 200 }, stay("Hotel", 100), 178)).toBe(478);
   });
 });

@@ -30,7 +30,7 @@
   import { resizeTravelers, rowsAfterResize } from "../placeholders";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
-  import { DEFAULT_H, fits, keepEnd, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, variants, type Variant } from "../event/plan";
+  import { DEFAULT_H, fits, keepEnd, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, ticketRange, ticketsEur, variants, type Variant } from "../event/plan";
   import { cityFromAddress, evWhen, searchEventsRemote, sportTag, SPORT_ICON } from "../events/app";
   import { uniqueById } from "../events/search";
   import { noteError } from "../bugs/log";
@@ -50,6 +50,10 @@
   let hours = $state(ev0?.hours || DEFAULT_H);
   /** mehrtägig: letzter Tag (#265); eigener Reisezeitraum für die günstigste Reise drumherum */
   let endDate = $state(ev0?.end || "");
+  /** Tickets pro Person von bis, aus dem Treffer oder selbst eingetragen; gerechnet wird mit „ab“ */
+  let tMin = $state<number | null>(ev0?.price?.min ?? null);
+  let tMax = $state<number | null>(ev0?.price?.max ?? null);
+  let tCur = $state(ev0?.price?.currency || "EUR");
   let wFrom = $state("");
   let wTo = $state("");
   let more = $state(false);
@@ -107,6 +111,7 @@
     endDate = keepEnd(h, date, endDate);
     if (h.start.length > 10) clock = h.start.slice(11, 16);
     venue = h.venue || "";
+    tMin = h.price?.min ?? null; tMax = h.price?.max ?? null; tCur = h.price?.currency || "EUR";
     loc = null;
     evNear = [];
     guess = "";
@@ -188,7 +193,9 @@
 
   interface Row { v: Variant; flight: Rated | null; stay: StayOffer | null; near: { offer: StayOffer; km: number } | null; useNear: boolean; stayQ: StayQuery | null; error?: string }
   const stayOf = (r: Row) => (r.useNear && r.near ? r.near.offer : r.stay);
-  const totalOf = (r: Row) => planTotal(r.flight, stayOf(r)) ?? 0;
+  // Tickets für alle mit dem günstigsten Preis
+  const tickets = $derived(ticketsEur(trip.event?.price, people.length || 1, trip.settings));
+  const totalOf = (r: Row) => planTotal(r.flight, stayOf(r), tickets) ?? 0;
   let rows = $state<Row[] | null>(null);
   let busy = $state(false);
   let error = $state("");
@@ -212,6 +219,8 @@
     const ev = {
       name: name.trim(), start: `${date}T${clock}`, hours: Number(hours) || DEFAULT_H, ...(venue.trim() ? { venue: venue.trim() } : {}),
       ...(endDate > date ? { end: endDate } : {}),
+      ...(tMin && tMin > 0 ? { price: { min: tMin, ...(tMax && tMax > tMin ? { max: tMax } : {}), currency: tCur } } : {}),
+      ...(trip.event?.item ? { item: trip.event.item } : {}),
       ...(same && picked!.lat != null ? { lat: picked!.lat, lon: picked!.lon } : {}), ...(same && picked!.url ? { url: picked!.url } : {})
     };
     const prevName = trip.event?.name;
@@ -296,6 +305,7 @@
           <b>{h.name}</b>
           <span class="muted small">{evWhen(h)}{h.venue ? ` · ${h.venue}` : ""}{h.city ? `, ${h.city}` : ""}{h.category ? ` · ${h.category}` : ""}</span>
           {#if h.sport}<span class="small ev-sport">{sportTag(h)}</span>{/if}
+          {#if h.price}<span class="small ev-price">🎟 {ticketRange(h.price)}</span>{/if}
         </button>
       {/each}
     </div>
@@ -318,6 +328,11 @@
       <label class="f">{t("ev.end")}<input class="ev-end" type="date" min={date} bind:value={endDate} /></label>
     </div>
     {#if evHol}<p class="small muted ev-hol">🏖 {evHol}</p>{/if}
+    <div class="ed-row">
+      <label class="f">{t("ev.tMin", { cur: tCur })}<input class="n ev-tmin" type="number" inputmode="decimal" min="0" step="1" bind:value={tMin} /></label>
+      <label class="f">{t("ev.tMax", { cur: tCur })}<input class="n ev-tmax" type="number" inputmode="decimal" min="0" step="1" bind:value={tMax} /></label>
+    </div>
+    <p class="muted small">{t("ev.tHint")}</p>
     <details class="ev-more" bind:open={more}>
       <summary class="small">{t("ev.more")}</summary>
       <p class="muted small">{t("ev.moreHint")}</p>
@@ -382,6 +397,11 @@
               {/if}
             {:else}
               <p class="ev-line muted">🛏 {t("ev.noNight")}</p>
+            {/if}
+            {#if trip.event?.price}
+              <p class="ev-line ev-tix">🎟 {t("ev.tLine", { range: ticketRange(trip.event.price) })} <small class="muted">{eur(tickets)}</small></p>
+            {:else}
+              <p class="ev-line muted ev-tix">🎟 {t("ev.tNone")}</p>
             {/if}
           {/if}
           <footer>
