@@ -585,6 +585,54 @@ try {
   if (!(await pc.locator(".price .num").textContent()).includes("140")) fail("Privat mit Kosten: " + await pc.locator(".price .num").textContent());
   log("Privat in Lissabon: kostenlos und gewählt, Reiseziel für Flug- und Event-Suche, Kosten 20 € pro Nacht = 140 €");
 
+  // Kreuzfahrt (#516): im Kapitel Unterkunft anlegen, Kabinen nach Familien, Route mit Häfen, Preis je Kabine
+  {
+    const K = {
+      id: "k516", name: "Mittelmeer", place: "Barcelona", country: "Spanien", from: "2027-06-05", to: "2027-06-12",
+      travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 38 },
+        { id: "c", name: "Carla", household: "Hase", age: 41 }, { id: "d", name: "Dirk", household: "Hase", age: 44 }, { id: "e", name: "Ella", household: "Hase", age: 8 }],
+      items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, detail: { stay: true }
+    };
+    await reloadHome(p, { set: { "rk2-t:k516": K, "rk2-index": [{ id: "k516", name: K.name, place: K.place }], "rk2-current": "k516" } });
+    await p.locator(".start .home-trip", { hasText: "Mittelmeer" }).first().click();
+    await p.locator("#stay .cr-open").scrollIntoViewIfNeeded();
+    await p.locator("#stay .cr-open").click();
+    const kc = p.locator("#stay .card.edit");
+    await kc.locator(".cr-cabed").first().waitFor();
+    if ((await kc.locator(".cr-cabed").count()) !== 2) fail("Kabinen nach Familien: " + await kc.locator(".cr-cabed").count());
+    await kc.locator(".cr-linein").fill("Reederei Test");
+    await kc.locator(".cr-shipin").fill("MS Test");
+    // erster Hafen ist offen: Einschiffung Barcelona ab 17 Uhr
+    await kc.locator(".cr-port").fill("Barcelona");
+    await kc.locator(".cr-dep").fill("17:00");
+    await kc.locator(".cr-pl").last().click();
+    await kc.locator(".cr-port").fill("Barcelona");
+    await kc.locator(".cr-addsea").click();
+    await kc.locator(".cr-addport").click();
+    await kc.locator(".cr-port").fill("Palermo");
+    await kc.locator(".cr-arr").fill("08:00");
+    await kc.locator(".cr-dep").fill("17:00");
+    if ((await kc.locator(".cr-pl").count()) !== 4) fail("Häfen: " + await kc.locator(".cr-pl").count());
+    await kc.locator(".cr-price").nth(0).fill("2000");
+    await kc.locator(".cr-price").nth(1).fill("2400");
+    await kc.locator(".ed-foot .btn.primary").click();
+    const kk = p.locator("#stay .card[data-item]", { has: p.locator(".cruise") });
+    await until(async () => (await kk.locator(".price .num").textContent()).includes("4.400"), "Kreuzfahrt 4.400 €");
+    const route = await kk.locator(".cr-route").innerText();
+    if (!route.includes("Palermo") || !route.includes("Seetag") || !route.includes("8–17")) fail("Route: " + route);
+    const kt = await kk.innerText();
+    if (!kt.includes("MS Test") || !kt.includes("7 Nächte") || !kt.includes("2 Kabinen") || !kt.includes("Reederei Test")) fail("Kreuzfahrt-Karte: " + kt);
+    if (kt.includes("Ohne Kabine")) fail("Warnung trotz Kabinen");
+    if (!(await kk.locator(".cr-cab", { hasText: "Carla, Dirk, Ella" }).locator(".amt", { hasText: "Hase" }).count())) fail("Kabine Hase: " + kt);
+    // Ella aus der Kabine nehmen: Warnung
+    await kk.click();
+    await kk.locator("[data-sec=cabins] > summary").click();
+    await kk.locator(".cr-cabed").nth(1).locator(".chip", { hasText: "Ella" }).click();
+    await kk.locator(".ed-foot .btn.primary").click();
+    await kk.locator(".warnline", { hasText: "Ohne Kabine: Ella" }).waitFor();
+    log("Kreuzfahrt: 2 Kabinen nach Familien, Route Barcelona – Seetag – Palermo (8–17) – Barcelona, 7 Nächte, 4.400 €, Warnung ohne Kabine");
+  }
+
   // #441: Flüge und Erlebnisse vergleichen: Buchstaben, Hin- und Rückflug, Umstiege, Gepäck, ganze Reise p. P.; Erlebnisse mit Entfernung zum Hotel
   {
     const leg = (dir, dep, arr, stops = 0) => ({ dir, from: dir === "out" ? "DUS" : "SPU", to: dir === "out" ? "SPU" : "DUS", dep, arr, stops, minutes: 130 });

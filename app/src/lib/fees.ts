@@ -203,7 +203,8 @@ export function autoDeposit(it: Item, o: Option, rate = 1, cars = 1): Deposit | 
 export function autoExtras(it: Item, o: Option, trip: Trip, rate0: (cur: string) => number): Extra[] {
   const out: Extra[] = [], rate = safeRate(rate0);
   const own = o.extras || [];
-  const c = cityTaxFor(it, o, trip);
+  // Kreuzfahrt (#516): an Bord keine Kurtaxe
+  const c = it.cruise ? null : cityTaxFor(it, o, trip);
   // Kurtaxe nur schätzen, wenn der Anbieter keine angibt
   if (c && !own.some(x => x.kind === "citytax")) {
     const s = o.stay?.stars ? Math.min(5, Math.max(1, Math.round(o.stay.stars))) as 1 | 2 | 3 | 4 | 5 : 0;

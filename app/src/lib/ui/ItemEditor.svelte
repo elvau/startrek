@@ -3,6 +3,7 @@
   import { setStatus } from "../package";
   import { addPoll, newPoll, voters } from "../together";
   import Help from "./Help.svelte";
+  import CruiseEditor from "./CruiseEditor.svelte";
   import { entryCurrency, fromShown, toShown } from "../currency.svelte";
   import { arrow, autoName, t, tn } from "../i18n/index.svelte";
   /* Bearbeiten eines Postens: oben Name, Status und Suche, der Rest eingeklappt mit Zusammenfassung */
@@ -102,13 +103,20 @@
   // neuer Posten ohne Preis: Preis (bei Flügen auch die Zeiten) gleich aufgeklappt; nur beim Öffnen, nicht beim Tippen
   const fresh = untrack(() => !calc.T.items[item.id]?.net);
   // Nebenkosten und Kaution (#169)
-  const XKINDS: Extra["kind"][] = ["citytax", "tax", "cleaning", "resort", "bag", "seat", "toll", "vignette", "visa", "tips", "insurance", "driver", "other"];
+  const XKINDS: Extra["kind"][] = ["citytax", "tax", "cleaning", "resort", "bag", "seat", "toll", "vignette", "visa", "tips", "drinks", "wifi", "port", "insurance", "driver", "other"];
   const XBASES: Extra["basis"][] = ["booking", "person", "personNight", "night", "day", "personDay", "percent"];
   const XPAYS: Extra["pay"][] = ["onsite", "extra", "included"];
   const DHOWS = ["credit", "card", "cash", "transfer"] as const;
   function addExtra() {
     if (!opt) return;
-    opt.extras = [...(opt.extras || []), { id: uid(), kind: isStay ? "citytax" : "other", amount: 0, basis: isStay ? "personNight" : "booking", pay: "onsite" }];
+    opt.extras = [...(opt.extras || []), { id: uid(), kind: isStay && !item.cruise ? "citytax" : "other", amount: 0, basis: isStay ? "personNight" : "booking", pay: "onsite" }];
+  }
+  // Kreuzfahrt: übliche Nebenkosten an Bord mit einem Tipp
+  const CRUISE_X: { kind: Extra["kind"]; basis: Extra["basis"]; pay: Extra["pay"] }[] = [
+    { kind: "drinks", basis: "personNight", pay: "extra" }, { kind: "wifi", basis: "person", pay: "onsite" },
+    { kind: "port", basis: "person", pay: "extra" }, { kind: "tips", basis: "personNight", pay: "onsite" }];
+  function addCruiseX(x: (typeof CRUISE_X)[number]) {
+    if (opt) opt.extras = [...(opt.extras || []), { id: uid(), amount: 0, ...x }];
   }
   function setDeposit(d: Partial<NonNullable<Option["deposit"]>>) {
     if (!opt) return;
@@ -154,13 +162,16 @@
     {/each}
     <Help k="status" />
   </div>
-  {#if isStay || isFlight}
+  {#if (isStay && !item.cruise) || isFlight}
     <!-- mitfliegen „wie Flug …“: Knopf sucht einen eigenen Flug -->
     <div><button class="btn primary ed-search" class:fs-item={isFlight} class:st-item={isStay} onclick={search}>
       {isStay ? `🛏 ${t("st.open")}` : main ? `✈ ${t("ie.searchOwn")}` : `✈ ${t("fs.open")}${item.participants ? ` ${t("ie.forWho", { who: [...new Set(app.trip.travelers.filter(x => item.participants!.includes(x.id)).map(hhKey))].join(", ") })}` : ""}`}</button></div>
   {/if}
 
-  {#if isStay}
+  {#if item.cruise}
+    <!-- Kreuzfahrt (#516): Zeitraum aus der Route, Preis und Teilnehmende aus den Kabinen -->
+    <CruiseEditor {item} {opt} {fresh} />
+  {:else if isStay}
     <details class="ed-acc" data-sec="period">
       <summary><span class="dlabel">{t("ie.period")}</span><span class="ed-sum">{item.from && item.to ? `${dateDE(item.from)} – ${dateDE(item.to)}` : t("ie.open")}</span></summary>
       <div class="ed-row">
@@ -218,7 +229,7 @@
     <label class="check ie-arrival"><input type="checkbox" checked={!!item.arrival} onchange={e => (item.arrival = e.currentTarget.checked || undefined)} /> {t("ie.arrival")}</label>
   {/if}
 
-  {#if opt && !main}
+  {#if opt && !main && !item.cruise}
     <details class="ed-acc" data-sec="price" open={fresh}>
       <summary><span class="dlabel">{t("ie.priceOffers")}</span><span class="ed-sum">{priceSum}</span></summary>
       {#if item.options.length > 1}
@@ -269,6 +280,7 @@
     </details>
   {/if}
 
+  {#if !item.cruise}
   <details class="ed-acc" data-sec="who">
     <summary><span class="dlabel">{t("ie.who")} <Help k="who" /></span><span class="ed-sum">{whoSum}</span></summary>
     <div class="chips">
@@ -279,6 +291,7 @@
       {/each}
     </div>
   </details>
+  {/if}
 
   {#if item.status !== "idea" && item.status !== "dropped"}
     <details class="ed-acc ie-pay" data-sec="pay">
@@ -312,6 +325,11 @@
         </div>
       {/each}
       <div><button class="linkbtn ie-xadd" onclick={addExtra}>+ {t("ie.xAdd")}</button></div>
+      {#if item.cruise}
+        <div class="chips cr-xadd"><span class="muted small">{t("cr.addExtra")}</span>
+          {#each CRUISE_X.filter(x => !opt.extras?.some(y => y.kind === x.kind)) as x (x.kind)}<button type="button" class="chip" onclick={() => addCruiseX(x)}>+ {t(`xc.kind.${x.kind}` as Key)}</button>{/each}
+        </div>
+      {/if}
       <div class="ed-row ie-dep">
         <label class="f">🔒 {t("dep.title")}<input class="n ie-depamt" inputmode="decimal" placeholder="0" value={opt.deposit?.amount ?? ""} oninput={e => setDeposit({ amount: num(e.currentTarget.value) ?? 0 })} /></label>
         <label class="f">{t("ie.depHow")}<select class="ie-dephow" value={opt.deposit?.how ?? ""} onchange={e => setDeposit({ how: (e.currentTarget.value || undefined) as NonNullable<Option["deposit"]>["how"] })}>
@@ -339,13 +357,4 @@
 <style>
   .ie-p { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
   .ie-p .dp-del { border: 0; background: none; color: var(--ink-3); font-size: 16px; cursor: pointer; }
-  .ed-acc { border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; }
-  .ed-acc[open] { padding-bottom: 12px; }
-  .ed-acc > summary { list-style: none; cursor: pointer; display: flex; gap: 10px; align-items: baseline; padding: 10px 0; }
-  .ed-acc > summary::-webkit-details-marker { display: none; }
-  .ed-acc > summary::after { content: "▾"; margin-inline-start: auto; color: var(--ink-3); }
-  .ed-acc[open] > summary::after { content: "▴"; }
-  .ed-acc > summary .dlabel { flex: none; }
-  .ed-sum { font-size: 13.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .ed-acc > :not(summary) + :not(summary) { margin-top: 8px; }
 </style>

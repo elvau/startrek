@@ -239,9 +239,33 @@ export interface Option {
   pkg?: { id: string; main?: boolean; off?: boolean };
   /** Hinweise am Flug: früh einchecken (Familie), Kartenaufschlag möglich (Abflug außerhalb EU/EWR) */
   hints?: ("checkin" | "payfee")[];
+  /** Kreuzfahrt (#516): Kabinen mit Preis und Bewohnern; ersetzen die gleichmäßige Verteilung des Preises */
+  cabins?: Cabin[];
 }
 
-export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "vignette" | "visa" | "tips" | "insurance" | "driver" | "young" | "cover" | "ferry" | "ferryPerson" | "cabin" | "other";
+export type CabinType = "inside" | "outside" | "balcony" | "suite";
+export const CABIN_TYPES: CabinType[] = ["inside", "outside", "balcony", "suite"];
+export interface Cabin {
+  id: string;
+  type: CabinType;
+  /** Preis für die ganze Fahrt in der Währung des Angebots */
+  price: number;
+  /** Preis gilt für die Kabine (Standard) oder pro Person darin */
+  per?: "person";
+  /** Reisende in der Kabine (IDs); der Preis wird nach Personen geteilt */
+  who: string[];
+}
+
+/** Hafen einer Kreuzfahrt oder Seetag (sea); an/ab als HH:MM Ortszeit */
+export interface Port { date: string; place?: string; country?: string; arr?: string; dep?: string; sea?: boolean }
+export interface Cruise {
+  line?: string;
+  ship?: string;
+  /** in Reihenfolge: erster Hafen Einschiffung, letzter Ausschiffung */
+  ports: Port[];
+}
+
+export type ExtraKind = "citytax" | "tax" | "cleaning" | "resort" | "bag" | "seat" | "toll" | "vignette" | "visa" | "tips" | "insurance" | "driver" | "young" | "cover" | "ferry" | "ferryPerson" | "cabin" | "drinks" | "wifi" | "port" | "other";
 /** pro Person, pro Person und Nacht, pro Nacht, pro Tag, pro Person und Tag, einmal je Buchung, Prozent vom Preis */
 export type ExtraBasis = "person" | "personNight" | "night" | "day" | "personDay" | "booking" | "percent";
 
@@ -358,6 +382,8 @@ export interface Item {
   hint?: string;
   /** Mietwagen (#391): Klasse und Mietzeitraum (JJJJ-MM-TT, days = per Schnellwahl); base = Richtwert Kompakt pro Tag, oneWay = Einwegmiete */
   rental?: Rental;
+  /** Kreuzfahrt (#516): Posten im Kapitel Unterkunft, Zeitraum aus Ein- und Ausschiffung */
+  cruise?: Cruise;
 }
 
 /** eigener Eintrag im Tagesplan („Abendessen“, „Ruhetag“, „Zug nach Dubrovnik“) */

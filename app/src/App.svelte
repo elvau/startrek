@@ -1,7 +1,7 @@
 <script lang="ts">
   import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
   import { onMount } from "svelte";
-  import { loadRates } from "./lib/currency.svelte";
+  import { entryCurrency, loadRates } from "./lib/currency.svelte";
   import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed, goHome } from "./lib/store.svelte";
   import { saveView } from "./lib/resume";
   import { isDetailed } from "./lib/model";
@@ -81,6 +81,7 @@
   import { carItem, carPerDay, carWindow, insuranceItem } from "./lib/extras";
   import { airportOf, ccOf } from "./lib/geo/places";
   import { showItem, toCamper } from "./lib/ui/showItem";
+  import { newCruise } from "./lib/cruise";
   import { stationName } from "./lib/stays/stationName";
   import { airportData, ensureAirports, ensureGeo, geo } from "./lib/geo/geo.svelte";
   import { applyPlanLink } from "./lib/planApp";
@@ -124,7 +125,7 @@
     addEventListener("scroll", keep, { passive: true });
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { app.editing = null; sheet = false; } };
     // Klick außerhalb des offenen Postens schließt ihn (auch auf den Plan, der sonst ausgegraut bliebe)
-    const outside = (e: MouseEvent) => { if (app.editing && !(e.target as HTMLElement).closest(".card:not(.plan-card), .add, .mode, .modal-bg")) app.editing = null; };
+    const outside = (e: MouseEvent) => { if (app.editing && !(e.target as HTMLElement).closest(".card:not(.plan-card), .add, .cr-open, .mode, .modal-bg")) app.editing = null; };
     addEventListener("keydown", esc);
     addEventListener("click", outside);
     return () => { off(); clearTimeout(st); removeEventListener("scroll", keep); removeEventListener("keydown", esc); removeEventListener("click", outside); };
@@ -158,6 +159,14 @@
     setDetailed("transport", true);
     const it = carItem(w, carDay);
     app.trip.items.push(it);
+    showItem(it.id);
+  }
+  // Kreuzfahrt (#516): Posten im Kapitel Unterkunft, gleich zum Bearbeiten offen
+  function addCruise() {
+    setDetailed("stay", true);
+    const it = newCruise(app.trip, entryCurrency());
+    app.trip.items.push(it);
+    app.editing = it.id;
     showItem(it.id);
   }
   function addInsurance() {
@@ -270,6 +279,7 @@
           <div class="search-row"><button class="btn st-open" class:primary={!app.trip.camper} onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
             <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button>
             <button class="btn priv-open" title={t("priv.searchHint")} onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
+            <button class="btn cr-open" title={t("cr.title")} onclick={addCruise}>🚢 {t("cr.open")}</button>
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
           {#if mapOpen === "stay"}<TripMap onclose={() => (mapOpen = null)} />{/if}
         {/if}

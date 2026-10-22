@@ -27,7 +27,7 @@
   const perLeg = $derived(!bg && !!opt?.legs?.some(l => l.baggage));
   const inclText = $derived(perLeg ? opt!.legs!.map(l => `${l.from} → ${l.to}: ${bagText(l.baggage)}`).join(" · ") : bagText(bg));
 
-  const ICON: Record<Extra["kind"], string> = { citytax: "🏛", tax: "🧾", cleaning: "🧹", resort: "🏨", bag: "🧳", seat: "💺", toll: "🛣", vignette: "🎫", visa: "🛂", tips: "💶", insurance: "🛡", driver: "👥", young: "👤", cover: "🛡", ferry: "⛴", ferryPerson: "⛴", cabin: "🛏", other: "➕" };
+  const ICON: Record<Extra["kind"], string> = { citytax: "🏛", tax: "🧾", cleaning: "🧹", resort: "🏨", bag: "🧳", seat: "💺", toll: "🛣", vignette: "🎫", visa: "🛂", tips: "💶", insurance: "🛡", driver: "👥", young: "👤", cover: "🛡", ferry: "⛴", ferryPerson: "⛴", cabin: "🛏", drinks: "🥂", wifi: "📶", port: "⚓", other: "➕" };
   const name = (x: Extra) => x.label || `${t(`xc.kind.${x.kind}` as Key)}${x.cc ? ` ${flagOf(x.cc)} ${countryName(x.cc)}` : ""}`;
   // Rechnung in Worten: „2,80 € × 3 Pers. × 7 Nächte“ bzw. „pro Buchung“
   function how(l: ExtraLine): string {
