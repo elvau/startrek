@@ -15,6 +15,10 @@ const villa = (extras: Extra[], deposit?: Item["options"][number]["deposit"]): I
   options: [{ id: "v", label: "Villa", price: { mode: "unit", currency: "EUR", unit: 980, basis: "stay" }, extras, ...(deposit ? { deposit } : {}) }] });
 
 describe("Nebenkosten", () => {
+  it("Prozent-Kurtaxe mit Höchstnächten: nur der Preisanteil für die ersten Nächte (7 Nächte, höchstens 5)", () => {
+    const T = totals(trip([villa([x({ kind: "citytax", amount: 5, basis: "percent", max: 5, pay: "onsite" })])]));
+    expect(T.items.s.extras!.lines[0].amount).toBeCloseTo((980 * 5 / 7) * 0.05);
+  });
   it("Kurtaxe pro Person und Nacht, Kinder bis 12 frei: 3 Erwachsene × 7 Nächte", () => {
     const T = totals(trip([villa([x({ kind: "citytax", amount: 2.8, basis: "personNight", freeUpTo: 12, est: true })])]));
     const r = T.items.s;

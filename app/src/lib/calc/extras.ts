@@ -85,7 +85,12 @@ export function calcExtras(opt: Option, people: Traveler[], c: ExtrasCtx): Extra
       case "night": split(v * cap(c.nights, x.max) * u); break;
       case "day": split(v * cap(c.days, x.max) * u); break;
       case "percent":
-        people.forEach(t => (per[t.id] = ((c.basePer[t.id] || 0) * (x.amount || 0)) / 100));
+        // Höchstnächte (z. B. Visitor Levy): nur der Anteil des Preises für die ersten max Nächte
+        people.forEach(t => {
+          const n = c.w?.[t.id] ?? c.nights;
+          const share = x.max && x.max > 0 && n > x.max ? x.max / n : 1;
+          per[t.id] = ((c.basePer[t.id] || 0) * (x.amount || 0) * share) / 100;
+        });
         if (!baseSum) split(0);
         break;
       default: split(v * u);
