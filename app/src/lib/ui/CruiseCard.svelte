@@ -6,7 +6,7 @@
   import { hhKey, noPrice, type Item } from "../model";
   import { access, app, calc } from "../store.svelte";
   import { eur } from "../calc";
-  import { CABIN_ICON, cabinTotal, cruiseTitle, portTime, routeLine, withoutCabin } from "../cruise";
+  import { CABIN_ICON, cabinTotal, cruiseTitle, portTime, routeLine, shoresOf, withoutCabin } from "../cruise";
   import { fx } from "../currency.svelte";
   import { openFlightSearch } from "../flights/open.svelte";
   import { openStaySearch } from "../stays/open.svelte";
@@ -46,7 +46,7 @@
     const a = embark?.date, b = back?.date;
     if (what === "flight") openFlightSearch({ ...(embark?.place ? { to: embark.place.trim() } : {}), ...(okDate(a) ? { depart: a } : {}), ...(okDate(b) ? { ret: b } : {}) });
     else if (what === "hotel") openStaySearch({ ...(embark?.place ? { place: embark.place.trim() } : {}), ...(okDate(a) ? { from: addDays(a!, -1), to: a } : {}) });
-    else openExplore("tours");
+    else { const sh = shoresOf(app.trip).find(x => x.date >= (embark?.date || "")); openExplore("tours", sh ? { place: sh.place, date: sh.date } : undefined); }
   }
   const typeList = $derived(cabins.map(c => t(`cr.type.${c.type}` as Key)).join(", "));
   let shown = $state(false);

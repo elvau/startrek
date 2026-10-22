@@ -98,3 +98,30 @@ export function portTime(p: Port): { arr?: string; dep?: string } {
   const h = (x?: string) => (x && /^\d\d:\d\d$/.test(x) ? (x.endsWith(":00") ? String(Number(x.slice(0, 2))) : `${Number(x.slice(0, 2))}:${x.slice(3)}`) : undefined);
   return { arr: h(p.arr), dep: h(p.dep) };
 }
+
+/*
+ * Landgang (#518): Zeitfenster je Hafen für Ausflüge. Puffer nach dem Anlegen (vom Schiff, Weg in die Stadt) und vor dem
+ * Ablegen (meist 30–60 min vorher wieder an Bord, dazu der Rückweg).
+ */
+export const SHORE_AFTER = 60, SHORE_BEFORE = 90;
+export interface Shore { place: string; date: string; arr?: string; dep?: string; start?: string; end?: string; minutes?: number }
+const toMin = (x?: string) => (x && /^\d\d:\d\d$/.test(x) ? Number(x.slice(0, 2)) * 60 + Number(x.slice(3)) : null);
+const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+export function shoreOf(p: Port): Shore | null {
+  if (p.sea || !p.place?.trim() || !okDate(p.date)) return null;
+  const a = toMin(p.arr), d = toMin(p.dep);
+  const s = a != null ? Math.min(a + SHORE_AFTER, 24 * 60 - 1) : null, e = d != null ? Math.max(d - SHORE_BEFORE, 0) : null;
+  return { place: p.place.trim(), date: p.date, ...(p.arr ? { arr: p.arr } : {}), ...(p.dep ? { dep: p.dep } : {}),
+    ...(s != null ? { start: `${p.date}T${hhmm(s)}` } : {}), ...(e != null ? { end: `${p.date}T${hhmm(e)}` } : {}),
+    ...(s != null && e != null ? { minutes: Math.max(0, e - s) } : {}) };
+}
+
+/** Landgänge der Reise: Häfen zwischen Ein- und Ausschiffung (nicht verworfene Kreuzfahrten) */
+export function shoresOf(trip: Trip): Shore[] {
+  return trip.items.filter(i => i.cruise && i.status !== "dropped").flatMap(i => {
+    const ps = i.cruise!.ports.filter(p => okDate(p.date));
+    return ps.slice(1, -1).map(shoreOf).filter((x): x is Shore => !!x);
+  });
+}
+export const shoreAt = (trip: Trip, place: string, date?: string) => (date ? shoresOf(trip).find(s => s.place === place && s.date === date) || null : null);

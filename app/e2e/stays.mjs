@@ -647,7 +647,13 @@ try {
     await fm2.waitFor();
     if (!(await fm2.locator("label.f", { hasText: "Nach" }).locator("input").inputValue()).includes("Barcelona")) fail("Flug zum Hafen: Ziel");
     await fm2.locator(".modal-h .x").click();
-    if (!(await kk.locator(".cr-gotours").count())) fail("Ausflüge in den Häfen fehlt");
+    // Landgang: Erlebnissuche gleich in Palermo am 07.06., Fenster 9:00–15:30 (1 h nach dem Anlegen, 1,5 h vor dem Ablegen)
+    await kk.locator(".cr-gotours").click();
+    const xm = p.locator(".modal", { has: p.locator(".xp-tabs") });
+    const shore = await xm.locator(".xp-shore").innerText();
+    if (!shore.includes("Palermo") || !shore.includes("08:00") || !shore.includes("17:00") || !shore.includes("6,5 h")) fail("Landgang: " + shore);
+    if (!(await xm.locator(".xp-where").innerText()).includes("09:00")) fail("Zeitfenster Landgang: " + await xm.locator(".xp-where").innerText());
+    await xm.locator(".modal-h .x").click();
     log("Kreuzfahrt-Anreise: Palermo mit Land und Lage, Hotelnacht 04.–05.06. in Barcelona, Flug nach Barcelona, Ausflüge in den Häfen");
     log("Kreuzfahrt: 2 Kabinen nach Familien, Route Barcelona – Seetag – Palermo (8–17) – Barcelona, 7 Nächte, 4.400 € + Trinkgeld = 4.890 €, Warnung ohne Kabine");
   }

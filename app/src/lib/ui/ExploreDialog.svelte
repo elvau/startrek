@@ -28,6 +28,8 @@
   import type { ActivityHit } from "../activities/types";
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
+  import { shoreAt } from "../cruise";
+  import { untrack } from "svelte";
 
   let { onclose, inline = false }: { onclose: () => void; inline?: boolean } = $props();
   const trip = app.trip;
@@ -40,12 +42,18 @@
     const sts = stations(days).map(s => ({ place: s.place, from: s.from, to: days.find(d => d.date > s.from && d.place !== s.place)?.date || days.at(-1)?.date || s.from }));
     return sts.length > 1 ? sts : [];
   });
-  let pick = $state<{ place: string; from?: string; to?: string } | null>(null);
+  // Landgang (#518): von der Kreuzfahrt aus gleich mit Hafen und Tag
+  const at0 = untrack(() => explore.at);
+  explore.at = undefined;
+  let pick = $state<{ place: string; from?: string; to?: string } | null>(at0 ? { place: at0.place, from: at0.date, to: at0.date } : null);
   let other = $state("");
-  const win = $derived(pick ? { ...win0, city: pick.place, ...(pick.from ? { from: pick.from, to: pick.to, start: undefined, end: undefined } : {}) } : win0);
+  // Hafen an diesem Tag: Zeitfenster mit Puffer, Touren höchstens so lang
+  const shore = $derived(pick ? shoreAt(trip, pick.place, pick.from) : null);
+  const shoreMax = (p: { place: string; from?: string } | null) => (p ? shoreAt(trip, p.place, p.from)?.minutes ?? null : null);
+  const win = $derived(pick ? { ...win0, city: pick.place, ...(pick.from ? { from: pick.from, to: pick.to, start: shore?.start, end: shore?.end } : {}) } : win0);
   const city = $derived(win.city);
   function choose(p: { place: string; from?: string; to?: string } | null) {
-    pick = p; tours = null; events = null; searchedFor = ""; tof = noTourFilter(); evf = noEvFilter();
+    pick = p; tours = null; events = null; searchedFor = ""; tof = { ...noTourFilter(), maxMin: shoreMax(p) }; evf = noEvFilter();
     if (explore.tab === "tours") void findTours();
   }
   const stamp = (iso: string) => `${dayShort(iso.slice(0, 10))} ${iso.slice(11, 16)}`;
@@ -62,7 +70,9 @@
   let taken = $state<Record<string, boolean>>({});
   // Filter auf die Treffer (keine neue Anfrage)
   let evf = $state(noEvFilter());
-  let tof = $state(noTourFilter());
+  let tof = $state({ ...noTourFilter(), maxMin: untrack(() => shoreMax(pick)) });
+  // längere Touren, die nicht zum Landgang passen (ausgeblendet), und Touren ohne Dauer
+  const tooLong = $derived(tof.maxMin != null ? (tours || []).filter(a => a.minutes != null && a.minutes > tof.maxMin!).length : 0);
   let tsort = $state<TourSort>("default");
   const evShown = $derived((events || []).filter(h => evPasses(h, evf)));
   const evFc = $derived(evFacets(events || [], evf));
@@ -128,6 +138,8 @@
   function take(id: string, make: () => ReturnType<typeof eventItem>) {
     setDetailed("attractions", true);
     const item = takeInto(app.trip, make());
+    // am Landgang übernommen: gleich an diesem Tag im Tagesplan
+    if (shore && !item.day) item.day = shore.date;
     taken[id] = true;
     showItem(item.id);
   }
@@ -144,6 +156,10 @@
       </form>
     {:else}
       <p class="muted small xp-where">📍 {city} · 📅 {when}</p>
+      {#if shore}
+        <p class="small xp-shore">⚓ {t("xp.shore", { place: shore.place, a: shore.arr || "–", b: shore.dep || "–" })}{#if shore.minutes != null}{" "}{t("xp.shoreFit", { h: duration(shore.minutes) })}{/if}
+          {#if tooLong} · {t("xp.shoreHidden", { n: tooLong })} <button type="button" class="linkbtn xp-shore-all" onclick={() => (tof.maxMin = null)}>{t("xp.shoreAll")}</button>{/if}</p>
+      {/if}
       <div class="chips xp-places">
         {#each places as pl (pl.place + pl.from)}
           <button type="button" class="chip sm" class:on={city === pl.place} onclick={() => choose(pl)}>{pl.place} <small>{dayShort(pl.from)}</small></button>
@@ -235,7 +251,7 @@
                 <label class="f ff-hours"><span class="dual-head"><span class="dlabel">{t("xp.f.price")}</span><b class="num">{tof.maxPrice != null ? t("sf.upTo", { v: eur(tof.maxPrice) }) : t("st.any")}</b></span>
                   <input type="range" min={toFc.price.lo} max={toFc.price.hi} step="5" bind:value={priceMax} aria-label={t("xp.f.price")} /></label>
               {/if}
-              {#if toShown.length < tours.length}<p class="muted small">{t("fs.f.shown", { n: toShown.length, of: tours.length })} · <button type="button" class="linkbtn" onclick={() => { tof = noTourFilter(); priceMax = toFc.price?.hi || 0; }}>{t("fs.f.reset")}</button></p>{/if}
+              {#if toShown.length < tours.length}<p class="muted small">{t("fs.f.shown", { n: toShown.length, of: tours.length })} · <button type="button" class="linkbtn" onclick={() => { tof = { ...noTourFilter(), maxMin: shore?.minutes ?? null }; priceMax = toFc.price?.hi || 0; }}>{t("fs.f.reset")}</button></p>{/if}
             </div>
           {/if}
           <div class="xp-list">
@@ -245,6 +261,7 @@
                 <div class="xp-b">
                   <b>{a.title}</b>
                   <span class="muted small">{a.rating ? `★ ${a.rating.toFixed(1)}${a.reviews ? ` (${a.reviews})` : ""}` : ""}{a.rating && a.minutes ? " · " : ""}{a.minutes ? `⏱ ${duration(a.minutes)}` : ""}</span>
+                  {#if shore?.minutes != null && !a.minutes}<span class="small xp-shore-q">⚠ {t("xp.shoreUnknown")}</span>{/if}
                   {#if a.price}<span class="xp-price">{t("xp.from", { p: money(a.price, a.currency) })}</span>{/if}
                 </div>
                 <div class="xp-acts">
@@ -266,6 +283,8 @@
 </Modal>
 
 <style>
+  .xp-shore { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--a-soft); }
+  .xp-shore-q { color: var(--warn); font-weight: 600; }
   .xp-places { align-items: center; margin-bottom: 6px; }
   .xp-other { display: flex; gap: 6px; }
   .xp-other input { width: 170px; min-width: 0; }

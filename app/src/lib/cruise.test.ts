@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { cabinsTotal, cruiseTitle, newCruise, portTime, routeLine, suggestCabins, syncCruise, withoutCabin } from "./cruise";
+import { cabinsTotal, cruiseTitle, newCruise, shoreAt, shoreOf, shoresOf, portTime, routeLine, suggestCabins, syncCruise, withoutCabin } from "./cruise";
 import { calcItem, totals } from "./calc";
 import { syncTips } from "./fees";
 import { DEFAULT_SETTINGS, type Item, type Traveler, type Trip } from "./model";
@@ -145,5 +145,24 @@ describe("Häfen im Reiseplan, Länder, Hinweis (#518)", () => {
     expect(hintsFor(group(), [], []).map(h => h.id)).not.toContain("cruise");
     const spots = tripSpots(t, { world: [], places: {} } as unknown as GeoData).filter(s => s.kind === "stay");
     expect(spots.map(s => s.name)).toEqual(["Barcelona"]);
+  });
+});
+
+describe("Landgang: Zeitfenster mit Puffer (#518)", () => {
+  it("1 h nach dem Anlegen, 1,5 h vor dem Ablegen", () => {
+    expect(shoreOf({ date: "2027-06-07", place: "Palermo", arr: "08:00", dep: "17:00" }))
+      .toMatchObject({ place: "Palermo", start: "2027-06-07T09:00", end: "2027-06-07T15:30", minutes: 390 });
+    expect(shoreOf({ date: "2027-06-07", place: "Kurz", arr: "10:00", dep: "12:00" })!.minutes).toBe(0);
+    expect(shoreOf({ date: "2027-06-07", place: "Ohne Zeiten" })).toEqual({ place: "Ohne Zeiten", date: "2027-06-07" });
+    expect(shoreOf({ date: "2027-06-06", sea: true })).toBeNull();
+  });
+  it("nur Häfen zwischen Ein- und Ausschiffung", () => {
+    const t = group(), it0 = newCruise(t, "EUR");
+    it0.cruise!.ports = [{ date: "2027-06-05", place: "Barcelona", dep: "17:00" }, { date: "2027-06-06", sea: true },
+      { date: "2027-06-07", place: "Palermo", arr: "08:00", dep: "17:00" }, { date: "2027-06-12", place: "Barcelona", arr: "08:00" }];
+    t.items.push(it0);
+    expect(shoresOf(t).map(s => s.place)).toEqual(["Palermo"]);
+    expect(shoreAt(t, "Palermo", "2027-06-07")?.minutes).toBe(390);
+    expect(shoreAt(t, "Palermo", "2027-06-08")).toBeNull();
   });
 });
