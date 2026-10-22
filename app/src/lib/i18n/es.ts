@@ -1091,6 +1091,7 @@ export const es: Dict = {
   "ev.tLine": "Entradas {range} por persona",
   "ev.tMax": "hasta (opcional, {cur})",
   "ev.tMin": "Entrada por persona desde ({cur})",
+  "ev.tNoRate": "No se pudo obtener el tipo de cambio de {cur}, introduce el precio en euros manualmente",
   "ev.tNone": "Precio de la entrada desconocido, añádelo después",
   "ev.take": "Añadir",
   "ev.taken": "Añadido. Encontrarás más ofertas en la búsqueda de vuelos y alojamiento.",

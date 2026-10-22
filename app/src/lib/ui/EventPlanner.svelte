@@ -195,7 +195,7 @@
   const stayOf = (r: Row) => (r.useNear && r.near ? r.near.offer : r.stay);
   // Tickets für alle mit dem günstigsten Preis
   const tickets = $derived(ticketsEur(trip.event?.price, people.length || 1, trip.settings));
-  const totalOf = (r: Row) => planTotal(r.flight, stayOf(r), tickets) ?? 0;
+  const totalOf = (r: Row) => planTotal(r.flight, stayOf(r), tickets ?? 0) ?? 0;
   let rows = $state<Row[] | null>(null);
   let busy = $state(false);
   let error = $state("");
@@ -399,7 +399,8 @@
               <p class="ev-line muted">🛏 {t("ev.noNight")}</p>
             {/if}
             {#if trip.event?.price}
-              <p class="ev-line ev-tix">🎟 {t("ev.tLine", { range: ticketRange(trip.event.price) })} <small class="muted">{eur(tickets)}</small></p>
+              <p class="ev-line ev-tix">🎟 {t("ev.tLine", { range: ticketRange(trip.event.price) })}
+                {#if tickets == null}<small class="warnline">{t("ev.tNoRate", { cur: trip.event.price.currency })}</small>{:else}<small class="muted">{eur(tickets)}</small>{/if}</p>
             {:else}
               <p class="ev-line muted ev-tix">🎟 {t("ev.tNone")}</p>
             {/if}
