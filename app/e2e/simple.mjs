@@ -241,6 +241,21 @@ try {
   await gp.locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
   const tg = gp.locator("#together .tg");
   await tg.scrollIntoViewIfNeeded();
+  // neu anlegen: erst Erklärung und Knopf (sah sonst wie das Reisedatum aus); Bis vor Von oder zu kurz: Hinweis, Loslegen gesperrt
+  await tg.locator(".tg-reset").click();
+  if (!(await tg.locator(".tg-lead").innerText()).includes("Noch kein Reisedatum") || await tg.locator(".tg-new").count()) fail("Termin finden nicht eingeklappt");
+  await tg.locator(".tg-open").click();
+  const tgIn = l => tg.locator(".tg-new label.f", { hasText: l }).locator("input");
+  await tgIn("Frühester").fill("2027-07-01");
+  await tgIn("Spätester").fill("2027-06-11");
+  if (!(await tg.locator(".tg-err").innerText()).includes("vor dem frühesten") || !(await tg.locator(".tg-start").isDisabled())) fail("Bis vor Von nicht gemeldet");
+  await tgIn("Spätester").fill("2027-07-03");
+  if (!(await tg.locator(".tg-err").innerText()).includes("länger als der Zeitraum")) fail("Zu kurzer Zeitraum nicht gemeldet");
+  await tgIn("Spätester").fill("2027-07-14");
+  await tgIn("Reisedauer").fill("3");
+  if (await tg.locator(".tg-err").count()) fail("Hinweis bleibt trotz gültiger Daten");
+  await tg.locator(".tg-start").click();
+  log("Termin finden: eingeklappt mit Erklärung, Bis vor Von und zu kurzer Zeitraum gemeldet, Loslegen gesperrt");
   const cell = (row, day) => tg.locator(".tg-row").filter({ hasText: row }).locator(".tg-c").nth(day - 1);
   // Tage ohne Eintrag sind offen: alle tragen zuerst „kann“ ein (einmal antippen);
   // Anna kann 1.–4. nicht (dreimal antippen = kann nicht), Ben 8. vielleicht (zweimal)
