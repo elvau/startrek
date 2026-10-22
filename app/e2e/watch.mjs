@@ -328,9 +328,9 @@ try {
   const stayCat = p.locator(".aside .cat", { hasText: "Unterkunft" });
   if (await stayCat.locator(".cat-d").isVisible()) fail("Posten der Kategorie ohne Wunsch aufgeklappt");
   await stayCat.locator(".cat-t").click();
-  // 2 × 480 € plus City Tax Berlin 7,5 % (automatisch geschätzt) = 1.032 €
+  // 2 × 480 € plus City Tax Berlin 7,5 % (automatisch geschätzt) = 1.032 €, dazu Trinkgeld 2 € × 2 Nächte × 2 Unterkünfte (#517) = 1.040 €
   const catD = await stayCat.locator(".cat-d").innerText();
-  if (!catD.includes("1.032")) fail("Posten nach ▾ nicht sichtbar: " + catD);
+  if (!catD.includes("1.040")) fail("Posten nach ▾ nicht sichtbar: " + catD);
   await p.setViewportSize({ width: 1280, height: 900 });
   log("Gesamtanzeige: passt ins Fenster (eigener Scrollbalken), Posten je Kategorie auf ▾");
   log("Große Gruppe: Flug in 3 Buchungen à 4, gesucht für 4, Preise × 3 (wählbar, max. 9 je Suche); Ferienwohnung auf 2 Unterkünfte à 6, gesucht für 6, übernommen 2 × 480 €");
