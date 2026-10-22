@@ -55,6 +55,11 @@ describe("Trinkgeld als versteckte Kosten (#517)", () => {
     expect(tipsOf(it0, t)[0].off).toBe(true);
     expect(calcItem(it0, t).net).toBeCloseTo(700);
   });
+  it("Land der Unterkunft (Suche) vor dem der Reise", () => {
+    const s = stay();
+    s.options[0].query = { place: "Split", country: "Kroatien", checkin: "2027-06-05", checkout: "2027-06-12", adults: 2, childAges: [], rooms: 1 };
+    expect(tipsOf(s, trip({ country: "Japan" }))[0].amount).toBe(3);
+  });
   it("Land aus der Reise: ISO-Code oder Name in einer Sprache der App; Vorliebe nur im Speicher", () => {
     expect(tipCc("hr")).toBe("HR");
     expect(tipCc("Kroatien")).toBe("HR");

@@ -7,7 +7,9 @@
   import { eur } from "../calc";
   import { dayShort } from "../format";
   import { addDays, okDate } from "../calc/travel";
-  import { portTime, routeLine, suggestCabins, syncCruise, withoutCabin } from "../cruise";
+  import { portTime, routeLine, shoreBuffer, suggestCabins, syncCruise, withoutCabin } from "../cruise";
+  import { dir } from "../directory.svelte";
+  import { prefsFor } from "../prefs";
   import { ensureGeo, geo } from "../geo/geo.svelte";
   import { ccOf, suggestCities, type CityHit } from "../geo/places";
 
@@ -62,6 +64,14 @@
   }
   const routeSum = $derived([item.cruise?.ship, routeLine(item, arrow()), item.from && item.to && calc.T.items[item.id]?.stay?.nights.length ? tn("n.nights", calc.T.items[item.id]!.stay!.nights.length) : ""].filter(Boolean).join(" · ") || t("ie.open"));
 
+  // Puffer beim Landgang: eigene an der Kreuzfahrt, sonst Vorlieben, sonst Standard
+  const defBuf = $derived(shoreBuffer(undefined, prefsFor(app.trip, dir).shore));
+  function setBuf(k: "after" | "before", v: string) {
+    const n = v.trim() === "" ? undefined : Math.max(0, Math.min(240, Math.round(Number(v) || 0)));
+    const next = { ...(cr.shore || {}), [k]: n };
+    if (next[k] == null) delete next[k];
+    if (Object.keys(next).length) cr.shore = next; else delete cr.shore;
+  }
   // Kabinen
   const cabins = $derived(opt?.cabins || []);
   const missing = $derived(withoutCabin(opt, app.trip));
@@ -137,6 +147,12 @@
     <button type="button" class="linkbtn cr-addsea" onclick={() => addPort(true)}>+ {t("cr.addSea")}</button>
   </div>
   <p class="muted small">{t("cr.periodHint")}</p>
+  <!-- Landgang (#518): eigene Puffer für diese Kreuzfahrt, leer = aus den Vorlieben bzw. Standard -->
+  <div class="ed-row cr-buf">
+    <label class="f">{t("cr.bufAfter")}<input class="n sm cr-bufafter" inputmode="numeric" placeholder={String(defBuf.after)} value={cr.shore?.after ?? ""} oninput={e => setBuf("after", e.currentTarget.value)} /></label>
+    <label class="f">{t("cr.bufBefore")}<input class="n sm cr-bufbefore" inputmode="numeric" placeholder={String(defBuf.before)} value={cr.shore?.before ?? ""} oninput={e => setBuf("before", e.currentTarget.value)} /></label>
+    <span class="muted small ed-note">{t("cr.bufHint")}</span>
+  </div>
 </details>
 
 {#if opt}

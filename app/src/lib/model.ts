@@ -139,6 +139,8 @@ export interface Prefs {
   souvenirs?: number;
   /** Trinkgeld bei Unterkunft und Kreuzfahrt einrechnen (#517; fehlt: ja) */
   tips?: boolean;
+  /** Landgang auf Kreuzfahrten (#518): Puffer in Minuten nach dem Anlegen und vor dem Ablegen (fehlt: Standard) */
+  shore?: ShoreBuffer;
 }
 
 export interface Directory {
@@ -260,9 +262,13 @@ export interface Cabin {
 
 /** Hafen einer Kreuzfahrt oder Seetag (sea); an/ab als HH:MM Ortszeit; Land (ISO) und Lage aus der Ortssuche (#518) */
 export interface Port { date: string; place?: string; cc?: string; lat?: number; lon?: number; arr?: string; dep?: string; sea?: boolean }
+/** Puffer beim Landgang in Minuten: nach dem Anlegen bis vom Schiff, vor dem Ablegen wieder an Bord samt Rückweg */
+export interface ShoreBuffer { after?: number; before?: number }
 export interface Cruise {
   line?: string;
   ship?: string;
+  /** eigene Puffer für diese Kreuzfahrt (vor den Vorlieben) */
+  shore?: ShoreBuffer;
   /** in Reihenfolge: erster Hafen Einschiffung, letzter Ausschiffung */
   ports: Port[];
 }

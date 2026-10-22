@@ -654,6 +654,16 @@ try {
     if (!shore.includes("Palermo") || !shore.includes("08:00") || !shore.includes("17:00") || !shore.includes("6,5 h")) fail("Landgang: " + shore);
     if (!(await xm.locator(".xp-where").innerText()).includes("09:00")) fail("Zeitfenster Landgang: " + await xm.locator(".xp-where").innerText());
     await xm.locator(".modal-h .x").click();
+    // eigener Puffer an der Kreuzfahrt: 2 h vor dem Ablegen → Ausflüge bis 6 h, Fenster bis 15:00
+    await kk.locator("h3").click();
+    await kk.locator("[data-sec=route] > summary").click();
+    await kk.locator(".cr-bufbefore").fill("120");
+    await kk.locator(".ed-foot .btn.primary").click();
+    await kk.locator(".cr-gotours").click();
+    const shore2 = await xm.locator(".xp-shore").innerText();
+    if (!shore2.includes("6 h") || !shore2.includes("2 h vor")) fail("eigener Puffer: " + shore2);
+    if (!(await xm.locator(".xp-where").innerText()).includes("15:00")) fail("Zeitfenster mit eigenem Puffer: " + await xm.locator(".xp-where").innerText());
+    await xm.locator(".modal-h .x").click();
     log("Kreuzfahrt-Anreise: Palermo mit Land und Lage, Hotelnacht 04.–05.06. in Barcelona, Flug nach Barcelona, Ausflüge in den Häfen");
     log("Kreuzfahrt: 2 Kabinen nach Familien, Route Barcelona – Seetag – Palermo (8–17) – Barcelona, 7 Nächte, 4.400 € + Trinkgeld = 4.890 €, Warnung ohne Kabine");
   }

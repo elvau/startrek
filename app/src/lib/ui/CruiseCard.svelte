@@ -11,6 +11,8 @@
   import { openFlightSearch } from "../flights/open.svelte";
   import { openStaySearch } from "../stays/open.svelte";
   import { openExplore } from "../activities/open.svelte";
+  import { dir } from "../directory.svelte";
+  import { prefsFor } from "../prefs";
   import { addDays, okDate } from "../calc/travel";
 
   let { item }: { item: Item } = $props();
@@ -46,7 +48,7 @@
     const a = embark?.date, b = back?.date;
     if (what === "flight") openFlightSearch({ ...(embark?.place ? { to: embark.place.trim() } : {}), ...(okDate(a) ? { depart: a } : {}), ...(okDate(b) ? { ret: b } : {}) });
     else if (what === "hotel") openStaySearch({ ...(embark?.place ? { place: embark.place.trim() } : {}), ...(okDate(a) ? { from: addDays(a!, -1), to: a } : {}) });
-    else { const sh = shoresOf(app.trip).find(x => x.date >= (embark?.date || "")); openExplore("tours", sh ? { place: sh.place, date: sh.date } : undefined); }
+    else { const sh = shoresOf(app.trip, prefsFor(app.trip, dir).shore).find(x => x.date >= (embark?.date || "")); openExplore("tours", sh ? { place: sh.place, date: sh.date } : undefined); }
   }
   const typeList = $derived(cabins.map(c => t(`cr.type.${c.type}` as Key)).join(", "));
   let shown = $state(false);

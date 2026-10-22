@@ -251,7 +251,8 @@ export function autoExtras(it: Item, o: Option, trip: Trip, rate0: (cur: string)
   }
   // Trinkgeld (#517): Kreuzfahrt immer, Unterkunft nach der Sitte im Land; nicht privat, nicht wenn selbst eingetragen
   if (it.cat === "stay" && !it.private && !tipCtx.off && !own.some(x => x.kind === "tips")) {
-    const cc = tipCc(trip.country);
+    // Land der Unterkunft (Suche), sonst das der Reise
+    const cc = tipCc(o.query?.country) || tipCc(trip.country);
     const norm = cc ? TIPS[cc]?.norm : undefined;
     const eur = it.cruise ? CRUISE_TIP : norm ? STAY_TIPS[norm] : 0;
     if (eur) {

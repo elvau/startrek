@@ -153,7 +153,7 @@ describe("Landgang: Zeitfenster mit Puffer (#518)", () => {
     expect(shoreOf({ date: "2027-06-07", place: "Palermo", arr: "08:00", dep: "17:00" }))
       .toMatchObject({ place: "Palermo", start: "2027-06-07T09:00", end: "2027-06-07T15:30", minutes: 390 });
     expect(shoreOf({ date: "2027-06-07", place: "Kurz", arr: "10:00", dep: "12:00" })!.minutes).toBe(0);
-    expect(shoreOf({ date: "2027-06-07", place: "Ohne Zeiten" })).toEqual({ place: "Ohne Zeiten", date: "2027-06-07" });
+    expect(shoreOf({ date: "2027-06-07", place: "Ohne Zeiten" })).toEqual({ place: "Ohne Zeiten", date: "2027-06-07", after: 60, before: 90 });
     expect(shoreOf({ date: "2027-06-06", sea: true })).toBeNull();
   });
   it("nur Häfen zwischen Ein- und Ausschiffung", () => {
@@ -164,5 +164,9 @@ describe("Landgang: Zeitfenster mit Puffer (#518)", () => {
     expect(shoresOf(t).map(s => s.place)).toEqual(["Palermo"]);
     expect(shoreAt(t, "Palermo", "2027-06-07")?.minutes).toBe(390);
     expect(shoreAt(t, "Palermo", "2027-06-08")).toBeNull();
+    // eigene Puffer: Vorlieben, an der Kreuzfahrt geht vor
+    expect(shoreAt(t, "Palermo", "2027-06-07", { after: 30, before: 60 })?.minutes).toBe(450);
+    it0.cruise!.shore = { before: 120 };
+    expect(shoreAt(t, "Palermo", "2027-06-07", { after: 30, before: 60 })).toMatchObject({ start: "2027-06-07T08:30", end: "2027-06-07T15:00", minutes: 390 });
   });
 });

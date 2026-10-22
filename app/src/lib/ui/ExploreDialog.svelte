@@ -29,6 +29,8 @@
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
   import { shoreAt } from "../cruise";
+  import { dir } from "../directory.svelte";
+  import { prefsFor } from "../prefs";
   import { untrack } from "svelte";
 
   let { onclose, inline = false }: { onclose: () => void; inline?: boolean } = $props();
@@ -48,8 +50,9 @@
   let pick = $state<{ place: string; from?: string; to?: string } | null>(at0 ? { place: at0.place, from: at0.date, to: at0.date } : null);
   let other = $state("");
   // Hafen an diesem Tag: Zeitfenster mit Puffer, Touren höchstens so lang
-  const shore = $derived(pick ? shoreAt(trip, pick.place, pick.from) : null);
-  const shoreMax = (p: { place: string; from?: string } | null) => (p ? shoreAt(trip, p.place, p.from)?.minutes ?? null : null);
+  const shorePrefs = $derived(prefsFor(trip, dir).shore);
+  const shore = $derived(pick ? shoreAt(trip, pick.place, pick.from, shorePrefs) : null);
+  const shoreMax = (p: { place: string; from?: string } | null) => (p ? shoreAt(trip, p.place, p.from, prefsFor(trip, dir).shore)?.minutes ?? null : null);
   const win = $derived(pick ? { ...win0, city: pick.place, ...(pick.from ? { from: pick.from, to: pick.to, start: shore?.start, end: shore?.end } : {}) } : win0);
   const city = $derived(win.city);
   function choose(p: { place: string; from?: string; to?: string } | null) {
@@ -157,7 +160,7 @@
     {:else}
       <p class="muted small xp-where">📍 {city} · 📅 {when}</p>
       {#if shore}
-        <p class="small xp-shore">⚓ {t("xp.shore", { place: shore.place, a: shore.arr || "–", b: shore.dep || "–" })}{#if shore.minutes != null}{" "}{t("xp.shoreFit", { h: duration(shore.minutes) })}{/if}
+        <p class="small xp-shore">⚓ {t("xp.shore", { place: shore.place, a: shore.arr || "–", b: shore.dep || "–" })}{#if shore.minutes != null}{" "}{t("xp.shoreFit", { h: duration(shore.minutes), a: duration(shore.after), b: duration(shore.before) })}{/if}
           {#if tooLong} · {t("xp.shoreHidden", { n: tooLong })} <button type="button" class="linkbtn xp-shore-all" onclick={() => (tof.maxMin = null)}>{t("xp.shoreAll")}</button>{/if}</p>
       {/if}
       <div class="chips xp-places">
