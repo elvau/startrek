@@ -242,10 +242,12 @@ try {
   const tg = gp.locator("#together .tg");
   await tg.scrollIntoViewIfNeeded();
   const cell = (row, day) => tg.locator(".tg-row").filter({ hasText: row }).locator(".tg-c").nth(day - 1);
-  // Anna kann 1.–4. nicht (dreimal antippen = kann nicht), Ben 8. vielleicht (zweimal), Cleo trägt 10. „kann“ ein
-  for (const d of [1, 2, 3, 4]) for (let i = 0; i < 3; i++) await cell("Anna", d).click();
-  for (let i = 0; i < 2; i++) await cell("Ben", 8).click();
-  await cell("Cleo", 10).click();
+  // Tage ohne Eintrag sind offen: alle tragen zuerst „kann“ ein (einmal antippen);
+  // Anna kann 1.–4. nicht (dreimal antippen = kann nicht), Ben 8. vielleicht (zweimal)
+  for (const who of ["Anna", "Ben", "Cleo"]) for (let d = 1; d <= 14; d++) {
+    const taps = who === "Anna" && d <= 4 ? 3 : who === "Ben" && d === 8 ? 2 : 1;
+    for (let i = 0; i < taps; i++) await cell(who, d).click();
+  }
   if (!(await tg.locator(".tg-count").innerText()).includes("3 von 3")) fail("Eingetragen-Zähler: " + await tg.locator(".tg-count").innerText());
   const firstBest = await tg.locator(".tg-best li").first().innerText();
   if (!firstBest.includes("09.07.") || !firstBest.includes("alle 3")) fail("Bester Zeitraum: " + firstBest);
