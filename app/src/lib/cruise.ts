@@ -2,7 +2,7 @@
  * Kreuzfahrt (#516): Posten im Kapitel Unterkunft mit Route (Häfen, Seetage) und Kabinen.
  * Zeitraum aus Ein- und Ausschiffung, Teilnehmende aus den Kabinen; jede Kabine kostet die Personen darin.
  */
-import { hhKey, isActive, uid, type Cabin, type CabinType, type Cruise, type Item, type Option, type Port, type ShoreBuffer, type Traveler, type Trip } from "./model";
+import { hhKey, isActive, uid, type Cabin, type CabinType, type Cruise, type CruiseRoute, type Item, type Option, type Port, type ShoreBuffer, type Traveler, type Trip } from "./model";
 import { okDate } from "./calc/travel";
 import { autoName, t } from "./i18n/index.svelte";
 
@@ -45,6 +45,7 @@ export const withoutCabin = (opt: Option | undefined, trip: Trip): Traveler[] =>
 export function syncCruise(it: Item) {
   const c = it.cruise;
   if (!c) return;
+  swapRoute(it, c);
   const ps = c.ports.filter(p => okDate(p.date));
   if (ps.length) {
     const a = ps[0].date, b = ps[ps.length - 1].date;
@@ -62,6 +63,46 @@ export function syncCruise(it: Item) {
   const cur = it.participants;
   if (!who.length) { if (cur) it.participants = undefined; return; }
   if (!cur || cur.length !== who.length || who.some(id => !cur.includes(id))) it.participants = who;
+}
+
+/*
+ * Mehrere Fahrten an einem Posten (#520): jedes Angebot kann eine eigene Route haben (Option.cruise). Item.cruise zeigt
+ * immer die des gewählten; wird ein anderes gewählt, geht die bisherige Route an ihr Angebot zurück und die neue wird
+ * geladen. Angebote ohne eigene Route behalten die bisherige (eine Fahrt mit mehreren Preisen).
+ */
+const routeOf = (c: Cruise): CruiseRoute => JSON.parse(JSON.stringify({ ...(c.line ? { line: c.line } : {}), ...(c.ship ? { ship: c.ship } : {}), ports: c.ports }));
+function swapRoute(it: Item, c: Cruise) {
+  const main = mainOption(it);
+  if (!main || c.opt === main.id) return;
+  const prev = c.opt ? it.options.find(o => o.id === c.opt) : undefined;
+  if (prev) prev.cruise = routeOf(c);
+  if (main.cruise) {
+    const r = main.cruise;
+    c.line = r.line; c.ship = r.ship; c.ports = JSON.parse(JSON.stringify(r.ports));
+    if (!c.line) delete c.line;
+    if (!c.ship) delete c.ship;
+  }
+  c.opt = main.id;
+}
+
+/** Route eines Angebots: eigene, beim gewählten bzw. ohne eigene die des Postens */
+export function optRoute(it: Item, o: Option): CruiseRoute {
+  const c = it.cruise || { ports: [] };
+  if (o.cruise && o.id !== (c.opt || mainOption(it)?.id)) return o.cruise;
+  return { ...(c.line ? { line: c.line } : {}), ...(c.ship ? { ship: c.ship } : {}), ports: c.ports };
+}
+
+export interface CruiseFacts { line?: string; ship?: string; from?: string; to?: string; nights: number; harbours: number; sea: number; first?: string; last?: string; route: string }
+/** Eckdaten eines Angebots für den Vergleich: Nächte, Häfen (ohne Ein- und Ausschiffung), Seetage, Route als Zeile */
+export function cruiseFacts(it: Item, o: Option): CruiseFacts {
+  const r = optRoute(it, o);
+  const dated = r.ports.filter(p => okDate(p.date)).map(p => p.date).sort();
+  const named = r.ports.filter(p => !p.sea && p.place?.trim()).map(p => p.place!.trim());
+  const from = dated[0], to = dated[dated.length - 1];
+  const nights = from && to && to > from ? Math.round((Date.parse(to) - Date.parse(from)) / 86400000) : 0;
+  const names = named.filter((n, i) => i === 0 || n !== named[i - 1]);
+  return { ...(r.line ? { line: r.line } : {}), ...(r.ship ? { ship: r.ship } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), nights,
+    harbours: Math.max(0, named.length - 2), sea: r.ports.filter(p => p.sea).length, first: names[0], last: names[names.length - 1], route: names.join(" → ") };
 }
 
 /** neue Kreuzfahrt: Ein- und Ausschiffung am Anfang und Ende der Reise, Kabinen nach Familien */

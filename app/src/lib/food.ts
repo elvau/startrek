@@ -53,7 +53,8 @@ export function boardFor(trip: Trip, ids: string[]): Board | undefined {
   if (!isDetailed(trip, "stay")) return undefined;
   for (const it of trip.items) {
     if (it.cat !== "stay" || it.status === "dropped" || (it.participants && !it.participants.some(id => ids.includes(id)))) continue;
-    const b = activeOption(it, trip)?.stay?.board;
+    // Kreuzfahrt (#520): Vollpension an Bord, sonst rechnete der Vergleich mit Land das Essen doppelt
+    const b = it.cruise ? "full" : activeOption(it, trip)?.stay?.board;
     if (b) return b;
   }
   return undefined;

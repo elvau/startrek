@@ -672,6 +672,42 @@ try {
     log("Kreuzfahrt: 2 Kabinen nach Familien, Route Barcelona – Seetag – Palermo (8–17) – Barcelona, 7 Nächte, 4.400 € + Trinkgeld = 4.890 €, Warnung ohne Kabine");
   }
 
+  // #520: Kreuzfahrten vergleichen (Angebote mit eigener Route) und gegen eine Rundreise an Land
+  {
+    const cab = (id, type, price) => [{ id: id + "1", type, price, who: ["a", "b"] }, { id: id + "2", type, price, who: ["c"] }];
+    const R = {
+      id: "k520", name: "Kreuzfahrt-Vergleich", place: "Barcelona", country: "Spanien", from: "2027-06-05", to: "2027-06-12",
+      travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 38 }, { id: "c", name: "Carla", household: "Hase", age: 41 }],
+      tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, detail: { stay: true },
+      items: [{ id: "cr", cat: "stay", name: "Kreuzfahrt", icon: "ship", status: "idea", from: "2027-06-05", to: "2027-06-12", chosen: "oa",
+        cruise: { line: "Reederei A", ship: "Schiff A", opt: "oa", ports: [{ date: "2027-06-05", place: "Barcelona" }, { date: "2027-06-07", place: "Marseille" }, { date: "2027-06-09", place: "Rom" }, { date: "2027-06-12", place: "Barcelona" }] },
+        options: [
+          { id: "oa", label: "A", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 3000 }, cabins: cab("a", "outside", 1500) },
+          { id: "ob", label: "B", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 2400 }, cabins: cab("b", "inside", 1200),
+            cruise: { line: "Reederei B", ship: "Schiff B", ports: [{ date: "2027-06-06", place: "Genua" }, { date: "2027-06-08", sea: true }, { date: "2027-06-10", place: "Palma" }, { date: "2027-06-13", place: "Genua" }] } }] }]
+    };
+    await reloadHome(p, { set: { "rk2-t:k520": R, "rk2-index": [{ id: "k520", name: R.name, place: R.place }], "rk2-current": "k520" } });
+    await p.locator(".start .home-trip", { hasText: "Kreuzfahrt-Vergleich" }).first().click();
+    const card = p.locator("#stay .card", { has: p.locator(".cc") });
+    const rows = card.locator(".cc .cc-row.opt");
+    await rows.first().waitFor();
+    if ((await rows.count()) !== 2) fail("Kreuzfahrt-Vergleich: Zeilen " + await rows.count());
+    const ra = await rows.nth(0).innerText(), rb = await rows.nth(1).innerText();
+    if (!ra.includes("Schiff A") || !ra.includes("Barcelona → Marseille → Rom → Barcelona") || !ra.includes("gewählt")) fail("Fahrt A: " + ra);
+    if (!rb.includes("Schiff B") || !rb.includes("Genua → Palma → Genua") || !rb.includes("1 Seetag") || !/−\d/.test(rb)) fail("Fahrt B: " + rb);
+    // B wählen: Route und Zeitraum des Postens folgen
+    await rows.nth(1).click();
+    await until(async () => (await card.locator(".cr-route").innerText()).includes("Genua"), "Route nach Wahl von B");
+    await rows.nth(0).click();
+    await until(async () => (await card.locator(".cr-route").innerText()).includes("Marseille"), "Route zurück zu A");
+    // gegen Rundreise an Land: neue Variante „An Land“ mit Hotels je Stadt und Fahrten dazwischen
+    await card.locator(".cr-land").click();
+    await until(async () => (await p.locator("#stay .card", { hasText: "Unterkunft in Marseille" }).count()) > 0, "An Land: Hotel in Marseille");
+    if (await p.locator("#stay .cruise").count()) fail("An Land: Kreuzfahrt noch da");
+    if (!(await p.locator("#transport").innerText()).includes("Marseille → Rom")) fail("An Land: Fahrt Marseille → Rom");
+    log("Kreuzfahrten vergleichen: A/B mit eigener Route, Wahl wechselt Route; Variante „An Land“ mit Hotels je Stadt und Fahrten");
+  }
+
   // #441: Flüge und Erlebnisse vergleichen: Buchstaben, Hin- und Rückflug, Umstiege, Gepäck, ganze Reise p. P.; Erlebnisse mit Entfernung zum Hotel
   {
     const leg = (dir, dep, arr, stops = 0) => ({ dir, from: dir === "out" ? "DUS" : "SPU", to: dir === "out" ? "SPU" : "DUS", dep, arr, stops, minutes: 130 });

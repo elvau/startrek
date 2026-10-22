@@ -6,7 +6,8 @@ import { noteError } from "../bugs/log";
 import { agentError } from "../agent/app";
 import { cruiseItem } from "../import/apply";
 import type { ImportCruise } from "../import/ai";
-import type { Item, Trip } from "../model";
+import { uid, type Item, type Option, type Trip } from "../model";
+import { syncCruise } from "../cruise";
 import type { CruiseHit, CruiseQuery } from "./search";
 
 export class CruiseError extends Error {}
@@ -36,4 +37,16 @@ export function hitItem(trip: Trip, h: CruiseHit, at = new Date().toISOString())
   if (!trip.place) trip.place = ports.find(p => p.place)?.place || trip.place;
   it.check = true;
   return it;
+}
+
+/** Weitere Fahrt an eine Kreuzfahrt (#520): das Angebot eines neuen Kreuzfahrt-Postens mit eigener Route und Kabinen */
+export function addAsOption(target: Item, src: Item): Option {
+  const o: Option = JSON.parse(JSON.stringify(src.options[0]));
+  o.id = uid();
+  o.cruise = JSON.parse(JSON.stringify({ ...(src.cruise?.line ? { line: src.cruise.line } : {}), ...(src.cruise?.ship ? { ship: src.cruise.ship } : {}), ports: src.cruise?.ports || [] }));
+  // aktuelle Route des Postens vorher an sein Angebot binden, sonst gälte sie nach dem Wechsel für alle
+  syncCruise(target);
+  target.options.push(o);
+  if (src.check) target.check = true;
+  return o;
 }
