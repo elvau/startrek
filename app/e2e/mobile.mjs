@@ -46,6 +46,13 @@ try {
   p.on("pageerror", e => errors.push(e.message));
   await p.goto("http://127.0.0.1:4183/");
   await reloadHome(p, { set: { "rk2-t:demo": TRIP, "rk2-index": [{ id: "demo", name: TRIP.name, place: TRIP.place }], "rk2-current": "demo" } });
+  // Startseite (#533): Einstiege in zwei Spalten, Seite scrollt
+  const acts = p.locator(".home-acts .home-act");
+  await acts.first().waitFor();
+  const [a0, a1] = [await acts.nth(0).boundingBox(), await acts.nth(1).boundingBox()];
+  if (Math.abs(a0.y - a1.y) > 4 || a1.x <= a0.x) fail("Startseite: Kacheln nicht nebeneinander");
+  if (await p.evaluate(() => getComputedStyle(document.body).overflow === "hidden")) fail("Startseite scrollt nicht");
+  log("Startseite: Einstiege in zwei Spalten, Seite scrollbar");
   await p.locator(".home-trip", { hasText: "Kroatien" }).first().click();
   const on = () => p.locator(".mtabs .mt.on").getAttribute("data-pg");
   const bar = () => p.locator(".mbar .mb.on").getAttribute("data-mb");
@@ -97,6 +104,23 @@ try {
   await att.locator(".ch-links").click();
   if (!(await att.locator(".fs-direct").isVisible())) fail("⋯ zeigt keine Anbieter-Links");
   log("Posten zugeklappt als Zeile (Preis, Status), Antippen klappt auf, nur einer offen; Anbieter-Links hinter ⋯");
+  // Abrechnung (#532): Familien als Karussell mit Reitern, Kasse und Zuschüsse dahinter
+  await p.locator('.mbar [data-mb="split"]').click();
+  await until(async () => (await on()) === "split", "Leiste Abrechnung");
+  const sp = p.locator('main.pager > [data-ch="split"]');
+  const shTabs = sp.locator(".sh-tab");
+  if ((await shTabs.count()) !== 4) fail("Abrechnung: Reiter " + (await shTabs.allTextContents()).join(" | "));
+  if (!(await shTabs.nth(0).innerText()).includes("Klein") || !(await shTabs.nth(1).innerText()).includes("Hase")) fail("Abrechnung: Familien in den Reitern");
+  if (await sp.locator(".sh-cats details[open]").count()) fail("Abrechnung: Kapitel nicht zugeklappt");
+  await shTabs.nth(1).click();
+  await until(async () => (await sp.locator(".sh-tab.on").innerText()).includes("Hase"), "Reiter Hase");
+  const hase = sp.locator("#hh-Hase");
+  const hb = await hase.boundingBox(), vb = await sp.boundingBox();
+  if (hb.x < vb.x - 2 || hb.x > vb.x + 40) fail("Hase nicht im Bild: " + hb.x);
+  await hase.locator(".sh-cats summary").first().click();
+  if (!(await hase.locator(".sh-cats details[open] li").count())) fail("Kapitelzeile zeigt keine Posten");
+  if ((await sp.evaluate(e => e.scrollHeight)) > 1300) fail("Abrechnung noch zu lang: " + await sp.evaluate(e => e.scrollHeight));
+  log("Abrechnung: Familien als Karussell mit Beträgen in den Reitern, Kasse und Zuschüsse dahinter, Kapitel zugeklappt");
   // Mehr: Fehler melden, Kostenübersicht, Fußzeile
   await p.locator('.mbar [data-mb="more"]').click();
   const sh = p.locator(".mb-sheet");

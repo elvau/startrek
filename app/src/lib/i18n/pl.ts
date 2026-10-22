@@ -2705,6 +2705,8 @@ export const pl: Dict = {
   "mob.split": "Rozliczenie",
   "mob.more": "Więcej",
   "mob.bar": "Części podróży",
+  "mob.ledger": "Kasa",
+  "mob.funds": "Dopłaty",
   "mob.links": "Dostawcy i wskazówki",
   "cs.title": "Szukaj lub dodaj rejs",
   "cs.search": "Szukaj",

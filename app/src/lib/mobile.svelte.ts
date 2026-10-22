@@ -63,6 +63,8 @@ export function goPage(p: PageKey, smooth = true) {
 /** Pager anbinden: beim Wischen die aktuelle Seite merken */
 export function attachPager(el: HTMLElement, trip = ""): () => void {
   pager = el;
+  // nur in der Reise scrollt die Seite selbst nicht (die Startseite schon)
+  document.body.classList.add("mob-pager");
   tripId = trip;
   mob.page = "hero";
   let back: PageKey | null = null;
@@ -83,7 +85,7 @@ export function attachPager(el: HTMLElement, trip = ""): () => void {
   el.addEventListener("scroll", on, { passive: true });
   if (back && back !== "hero") requestAnimationFrame(() => goPage(back!, false));
   else { el.scrollTo({ left: 0 }); tick(); }
-  return () => { el.removeEventListener("scroll", on); el.removeEventListener("touchstart", touch); if (pager === el) pager = null; };
+  return () => { el.removeEventListener("scroll", on); el.removeEventListener("touchstart", touch); if (pager === el) { pager = null; document.body.classList.remove("mob-pager"); } };
 }
 
 /** Breite beobachten: Handy-Ansicht an oder aus */

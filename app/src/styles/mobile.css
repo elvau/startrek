@@ -2,7 +2,8 @@
  * Handy-Ansicht (#530, body.mob bis 760 px): Die Reise als Pager. Oben Kopf und Reiter, unten die Leiste; dazwischen
  * wischt man seitlich zwischen den Seiten (Übersicht, Kapitel, Tage, Abrechnung), jede Seite scrollt für sich.
  */
-body.mob{--mob-top:62px;--mob-tabs:62px;--mob-bar:60px;overflow:hidden;overscroll-behavior:none}
+body.mob{--mob-top:62px;--mob-tabs:62px;--mob-bar:60px}
+body.mob-pager{overflow:hidden;overscroll-behavior:none}
 body.mob .wrap{display:block;max-width:none;padding:0}
 body.mob .wrap > main.pager{position:fixed;left:0;right:0;top:calc(var(--mob-top) + var(--mob-tabs));bottom:calc(var(--mob-bar) + env(safe-area-inset-bottom,0px));z-index:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
 body.mob .wrap > main.pager::-webkit-scrollbar{display:none}
@@ -28,3 +29,10 @@ body.mob .card .ic-fold{display:block;margin:-4px 0 6px auto;font-size:12.5px;fo
 /* Anbieter-Links und Tipps erst auf „⋯“ */
 body.mob .chapter:not(.links) .fs-direct{display:none}
 body.mob .ch-links{display:block;margin:0 0 8px auto;font-size:12.5px;font-weight:700}
+/* Startseite (#533): Einstiege in zwei Spalten, kompakter */
+body.mob .home-acts{grid-template-columns:1fr 1fr;gap:10px}
+body.mob .home-act{padding:12px 14px;border-radius:18px;gap:2px}
+body.mob .home-act b{font-size:15px;line-height:1.2}
+body.mob .home-act small{font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body.mob .home-ico{font-size:24px;margin-bottom:2px}
+body.mob .home-act:last-child:nth-child(odd){grid-column:1 / -1}

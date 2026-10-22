@@ -2609,6 +2609,8 @@ export const fr: Dict = {
   "mob.split": "Comptes",
   "mob.more": "Plus",
   "mob.bar": "Rubriques du voyage",
+  "mob.ledger": "Caisse",
+  "mob.funds": "Contributions",
   "mob.links": "Prestataires et conseils",
   "cs.title": "Chercher ou ajouter une croisière",
   "cs.search": "Chercher",

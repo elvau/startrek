@@ -2607,6 +2607,8 @@ export const de = {
   "mob.split": "Abrechnung",
   "mob.more": "Mehr",
   "mob.bar": "Bereiche der Reise",
+  "mob.ledger": "Kasse",
+  "mob.funds": "Zuschüsse",
   "mob.links": "Anbieter & Tipps",
   "cs.title": "Kreuzfahrt suchen oder eintragen",
   "cs.search": "Suchen",

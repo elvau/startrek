@@ -2705,6 +2705,8 @@ export const ru: Dict = {
   "mob.split": "Расчёт",
   "mob.more": "Ещё",
   "mob.bar": "Разделы поездки",
+  "mob.ledger": "Касса",
+  "mob.funds": "Взносы",
   "mob.links": "Поставщики и советы",
   "cs.title": "Найти или добавить круиз",
   "cs.search": "Поиск",

@@ -11,6 +11,7 @@
   import Ledger from "./Ledger.svelte";
   import type { Key } from "../i18n/index.svelte";
   import { groupLabel, perPerson, persons, pp, shareGroups } from "../groups";
+  import { mob } from "../mobile.svelte";
 
   const shares = $derived(householdShares(app.trip, calc.T));
   // ab 5 Familien: Tabelle statt Karten; gleiche Beträge für alle: die Aufschlüsselung nur einmal
@@ -27,14 +28,31 @@
   const label = (k: string) => CAT_CHAPTERS.find(c => c.k === k)!;
   const ST = (s: string) => t(`status.${s}` as Key);
 
+  /*
+   * Handy (#532): Familien als Karussell, oben Reiter mit Beträgen; Kasse und Zuschüsse als eigene Seiten dahinter.
+   * Kapitel der Familie zugeklappt, Antippen zeigt die Posten. Ab 5 Familien bleibt die Tabelle.
+   */
+  const carousel = $derived(mob.on && !many);
+  let car = $state<HTMLElement>(), tabs = $state<HTMLElement>(), at = $state(0);
+  const pages = $derived([...shares.map(h => ({ k: `hh:${h.name}`, label: `${h.name} ${eur(h.total)}` })),
+    ...(shares.length ? [{ k: "ledger", label: `🧾 ${t("mob.ledger")}` }] : []), { k: "funds", label: `💰 ${t("mob.funds")}` }]);
+  function onCar() { if (car) at = Math.max(0, Math.min(pages.length - 1, Math.round(Math.abs(car.scrollLeft) / Math.max(1, car.clientWidth)))); }
+  function goCar(i: number) { (car?.children[i] as HTMLElement | undefined)?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" }); at = i; }
+  $effect(() => {
+    const b = tabs?.children[at] as HTMLElement | undefined;
+    if (tabs && b) tabs.scrollTo({ left: b.offsetLeft - (tabs.clientWidth - b.offsetWidth) / 2, behavior: "smooth" });
+  });
+
   function jump(id: string) {
     app.editing = id;
     requestAnimationFrame(() => document.querySelector(`[data-item="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
   }
 </script>
 
+{#if !carousel}
 <FundsCard />
 {#if shares.length}<Ledger />{/if}
+{/if}
 {#if tests.length && shares.length}<p class="warnline test-banner">⚠ {tn("test.inSplit", tests.length)}</p>{/if}
 {#snippet card(h: HouseholdShare, same = false)}
   <article class="card share" id={same ? undefined : `hh-${h.name}`} use:reveal>
@@ -54,7 +72,7 @@
     </div>{/if}
     <div class="sh-cats">
       {#each h.cats as c (c.cat)}
-        <details open>
+        <details open={!carousel}>
           <summary style="--cc:var(--c-{c.cat})"><i></i><Icon name={label(c.cat).icon} size={16} /><span>{label(c.cat).label}</span><b class="num">{eur(c.sum)}</b></summary>
           <ul>
             {#each c.lines as l (l.key)}
@@ -119,13 +137,32 @@
   </article>
   {#if uniform && !showAll}{@render card(shares.reduce((a, h) => (h.members.length < a.members.length ? h : a)), true)}{/if}
 {/if}
+{#if carousel}
+  <div class="sh-tabs" bind:this={tabs} role="tablist">
+    {#each pages as pg, i (pg.k)}<button type="button" role="tab" class="chip sm sh-tab" class:on={at === i} aria-selected={at === i} onclick={() => goCar(i)}>{pg.label}</button>{/each}
+  </div>
+  <div class="sh-car" bind:this={car} onscroll={onCar}>
+    {#each shares as h (h.name)}<div class="sh-pg">{@render card(h)}</div>{/each}
+    {#if shares.length}<div class="sh-pg sh-pg-ledger"><Ledger /></div>{/if}
+    <div class="sh-pg sh-pg-funds"><FundsCard /></div>
+  </div>
+  {#if !shares.length}<div class="empty-ch">{t("split.empty")}</div>{/if}
+{:else}
 {#each shares as h (h.name)}
   {#if !many || showAll || openHh[h.name]}{@render card(h)}{/if}
 {:else}
   <div class="empty-ch">{t("split.empty")}</div>
 {/each}
+{/if}
 
 <style>
+  .sh-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 0 8px; }
+  .sh-tabs::-webkit-scrollbar { display: none; }
+  .sh-tab { flex: none; white-space: nowrap; }
+  .sh-car { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -12px; padding: 0 12px; scroll-padding: 0 12px; }
+  .sh-car::-webkit-scrollbar { display: none; }
+  .sh-pg { flex: 0 0 calc(100% - 18px); min-width: 0; scroll-snap-align: start; }
+  .sh-pg > :global(.card) { margin: 0; }
   .sh-scroll { overflow-x: auto; margin: 0 -4px; }
   .sh-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
   .sh-table th, .sh-table td { padding: 7px 6px; border-bottom: 1px solid var(--line); text-align: start; white-space: nowrap; }

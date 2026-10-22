@@ -2798,6 +2798,8 @@ export const ar: Dict = {
   "mob.split": "الحساب",
   "mob.more": "المزيد",
   "mob.bar": "أقسام الرحلة",
+  "mob.ledger": "الصندوق",
+  "mob.funds": "المساهمات",
   "mob.links": "المزوّدون والنصائح",
   "cs.title": "ابحث عن رحلة بحرية أو أضفها",
   "cs.search": "بحث",
