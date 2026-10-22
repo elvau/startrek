@@ -6,7 +6,9 @@
 import { addDays } from "../flights/kiwi";
 import { takeOffer, tMin } from "../flights/app";
 import { takeStay } from "../stays/app";
-import type { Trip, TripEvent } from "../model";
+import { money, rateOf } from "../calc";
+import { t } from "../i18n/index.svelte";
+import { uid, type Item, type Option, type Settings, type Trip, type TripEvent } from "../model";
 import type { FlightOffer } from "../flights/types";
 import type { StayOffer, StayQuery } from "../stays/types";
 
@@ -32,9 +34,37 @@ export interface Variant {
   window?: { from: string; to: string };
 }
 
-/** Gesamtpreis eines Vorschlags: nur mit Flug, sonst keine vollständige Reise und damit kein Preis */
-export function planTotal(flight: { total: number } | null, stay: { total: number } | null): number | null {
-  return flight ? flight.total + (stay ? Math.round(stay.total) : 0) : null;
+/** Gesamtpreis eines Vorschlags: nur mit Flug, sonst keine vollständige Reise und damit kein Preis; tickets in Euro */
+export function planTotal(flight: { total: number } | null, stay: { total: number } | null, tickets = 0): number | null {
+  return flight ? flight.total + (stay ? Math.round(stay.total) : 0) + tickets : null;
+}
+
+type TicketPrice = NonNullable<TripEvent["price"]>;
+/** Ticketpreis als Spanne („89 € – 250 €“) oder „ab 89 €“ */
+export const ticketRange = (p: TicketPrice) =>
+  p.max != null && p.max > p.min ? `${money(p.min, p.currency)} – ${money(p.max, p.currency)}` : t("xp.from", { p: money(p.min, p.currency) });
+/** Tickets für n Personen in Euro, immer mit dem günstigsten Ticket */
+export const ticketsEur = (p: TicketPrice | undefined, n: number, s: Settings) => (p?.min ? Math.round((p.min * n) / rateOf(p.currency, s)) : 0);
+
+/**
+ * Tickets als Posten in „Erlebnisse“: Preis pro Person mit dem günstigsten Ticket, die Spanne im Detail.
+ * Ohne Preis als Schätzung zum Nachtragen. Gibt es den Posten schon (erneut übernommen), wird er aktualisiert.
+ */
+export function takeTickets(trip: Trip, ev: TripEvent): Item {
+  const p = ev.price;
+  const opt: Option = {
+    id: uid(), label: ev.name,
+    ...(p ? { detail: t("ev.tDetail", { range: ticketRange(p) }) } : {}),
+    price: { mode: "person", currency: p?.currency || "EUR", adult: p?.min || 0 }, ...(p?.min ? {} : { estimate: true }),
+    ...(ev.url ? { source: { name: t("evs.tickets"), at: new Date().toISOString().slice(0, 10), url: ev.url } } : {})
+  };
+  const name = t("ev.tItem", { name: ev.name });
+  const old = ev.item ? trip.items.find(i => i.id === ev.item) : undefined;
+  if (old) { old.name = name; old.options = [opt]; old.chosen = undefined; return old; }
+  const item: Item = { id: uid(), cat: "attractions", name, status: "idea", options: [opt] };
+  trip.items.push(item);
+  ev.item = item.id;
+  return item;
 }
 
 export const eventDay = (ev: TripEvent) => ev.start.slice(0, 10);
@@ -138,11 +168,12 @@ export function followEventName(trip: Trip, prev: string | undefined, next: stri
   if (trip.autoName !== false || (prev && trip.name === prev)) { trip.name = next; trip.autoName = false; }
 }
 
-/** Vorschlag übernehmen: Reisedaten setzen, Flug und Unterkunft als Posten anlegen */
+/** Vorschlag übernehmen: Reisedaten setzen, Flug, Unterkunft und Tickets als Posten anlegen */
 export function takePlan(trip: Trip, v: Variant, flight: FlightOffer | null, stay: StayOffer | null, q: StayQuery | null, ids?: string[]) {
   trip.from = v.out;
   trip.to = v.back;
   trip.detail ||= {};
   if (flight) { trip.detail.flights = true; takeOffer(trip, flight, undefined, ids); }
   if (stay && q && v.nights) { trip.detail.stay = true; takeStay(trip, stay, { ...q, checkin: v.out, checkout: v.back }); }
+  if (trip.event) { trip.detail.attractions = true; takeTickets(trip, trip.event); }
 }
