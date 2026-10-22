@@ -1,10 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { syncTips } from "../fees";
 import { runAgent, systemPrompt, toolsFor } from "./agent";
 import { agentError, applyEdit, hasPlan, takeAgentTrip, tripBrief } from "./app";
 import { editCount, parseAgentRequest, type AgentRequest } from "./types";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, FlightQuery } from "../flights/types";
 import type { StayOffer, StayQuery } from "../stays/types";
+
+// Trinkgeld (#517) aus: hier geht es um andere Beträge (eigene Tests in tips.test.ts)
+beforeAll(() => syncTips(false));
+afterAll(() => syncTips(true));
 
 const leg = (from: string, to: string, dep: string, arr: string) => ({ from, to, dep, arr, minutes: 150, stops: 0, route: [from, to], carriers: ["EW"], flights: ["EW1"] });
 const flight = (id: string, price: number): FlightOffer => ({ id, source: "kiwi", sourceName: "Kiwi.com", price, currency: "EUR", out: leg("DUS", "PMI", "2027-05-10T08:00", "2027-05-10T10:30"), back: leg("PMI", "DUS", "2027-05-13T18:00", "2027-05-13T20:30") });
