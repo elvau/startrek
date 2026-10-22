@@ -3,6 +3,10 @@ import { cabinsTotal, cruiseTitle, newCruise, portTime, routeLine, suggestCabins
 import { calcItem, totals } from "./calc";
 import { syncTips } from "./fees";
 import { DEFAULT_SETTINGS, type Item, type Traveler, type Trip } from "./model";
+import { itinerary, stations } from "./itinerary";
+import { hintsFor, tripCountries } from "./hints";
+import { tripSpots } from "./geo/spots";
+import type { GeoData } from "./geo/places";
 
 const P = (id: string, household: string, age = 40): Traveler => ({ id, name: id, age, household });
 const trip = (travelers: Traveler[]): Trip => ({
@@ -107,5 +111,39 @@ describe("Anzeige", () => {
   it("Liegezeit kurz", () => {
     expect(portTime({ date: "", arr: "08:00", dep: "17:30" })).toEqual({ arr: "8", dep: "17:30" });
     expect(portTime({ date: "" })).toEqual({});
+  });
+});
+
+describe("Häfen im Reiseplan, Länder, Hinweis (#518)", () => {
+  const routed = () => {
+    const t = group(), it0 = newCruise(t, "EUR");
+    it0.status = "chosen";
+    it0.cruise!.ports = [
+      { date: "2027-06-05", place: "Barcelona", cc: "ES", lat: 41.38, lon: 2.18, dep: "17:00" },
+      { date: "2027-06-06", sea: true },
+      { date: "2027-06-07", place: "Palermo", cc: "IT", lat: 38.12, lon: 13.36, arr: "08:00", dep: "17:00" },
+      { date: "2027-06-08", place: "Valletta", cc: "MT", lat: 35.9, lon: 14.51, arr: "08:00", dep: "18:00" },
+      { date: "2027-06-12", place: "Barcelona", cc: "ES", lat: 41.38, lon: 2.18, arr: "08:00" }];
+    syncCruise(it0);
+    t.items.push(it0);
+    return t;
+  };
+  it("Einschiffung, Häfen mit Liegezeit, Seetag; Ort des Tages ist der Hafen", () => {
+    const days = itinerary(routed());
+    const d = (x: string) => days.find(y => y.date === x)!;
+    expect(d("2027-06-05").entries.map(e => [e.kind, e.text, e.time])).toContainEqual(["port", "Einschiffung in Barcelona", "17:00"]);
+    expect(d("2027-06-06")).toMatchObject({ sea: true, place: "Seetag" });
+    expect(d("2027-06-07").place).toBe("Palermo");
+    expect(d("2027-06-07").entries.find(e => e.kind === "port")).toMatchObject({ text: "Palermo", time: "08:00", sub: "ab 17" });
+    expect(d("2027-06-12").entries.map(e => e.text)).toContain("Ausschiffung in Barcelona");
+    expect(stations(days).map(s => s.place)).toEqual(["Barcelona", "Palermo", "Valletta", "Barcelona"]);
+  });
+  it("Länder aller Häfen, Hinweis zum Reisepass, Hafen als Ort für den Transfer", () => {
+    const t = routed();
+    expect(tripCountries(t, () => null, () => undefined)).toEqual(["ES", "IT", "MT"]);
+    expect(hintsFor(t, [], []).map(h => h.id)).toContain("cruise");
+    expect(hintsFor(group(), [], []).map(h => h.id)).not.toContain("cruise");
+    const spots = tripSpots(t, { world: [], places: {} } as unknown as GeoData).filter(s => s.kind === "stay");
+    expect(spots.map(s => s.name)).toEqual(["Barcelona"]);
   });
 });

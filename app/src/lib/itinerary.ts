@@ -8,8 +8,9 @@ import { eventDays } from "./event/plan";
 import { activeOption } from "./calc";
 import { addDays, okDate, stopsOf } from "./calc/travel";
 import { hhKey, isActive, type Item, type NoteKind, type Trip } from "./model";
+import { portTime } from "./cruise";
 
-export type EntryKind = NoteKind | "flight" | "stay" | "event" | "item" | "drive" | "ferry" | "holiday";
+export type EntryKind = NoteKind | "flight" | "stay" | "event" | "item" | "drive" | "ferry" | "holiday" | "port";
 export interface DayEntry {
   key: string;
   kind: EntryKind;
@@ -32,15 +33,19 @@ export interface Day {
   place: string;
   /** neuer Ort gegenüber dem Vortag (Reisetag) */
   moved: boolean;
+  /** Seetag einer Kreuzfahrt (#518): kein Ort, keine Station */
+  sea?: boolean;
   title?: string;
   /** Vorschlag, wenn keine eigene Überschrift: Anreise, Rückreise, Weiter nach … */
   auto?: string;
   entries: DayEntry[];
 }
 
-export const KIND_ICON: Record<EntryKind, string> = { flight: "✈️", stay: "🛏", event: "🎟", item: "📌", see: "🏛", food: "🍽", fun: "🎢", rest: "😌", move: "🚆", note: "📝", drive: "🚗", ferry: "⛴", holiday: "🎉" };
+export const KIND_ICON: Record<EntryKind, string> = { flight: "✈️", stay: "🛏", event: "🎟", item: "📌", see: "🏛", food: "🍽", fun: "🎢", rest: "😌", move: "🚆", note: "📝", drive: "🚗", ferry: "⛴", holiday: "🎉", port: "⚓" };
 export const NOTE_KINDS: NoteKind[] = ["see", "food", "fun", "rest", "move", "note"];
 
+/** Platzhalter für einen Seetag in der Ortsbestimmung */
+const SEA = "\u0000sea";
 const hm = (iso?: string) => (iso && iso.length >= 16 ? iso.slice(11, 16) : undefined);
 
 /** Reisetage: Zeitraum der Reise, sonst vom ersten bis zum letzten Flug */
@@ -96,6 +101,17 @@ export function itinerary(trip: Trip): Day[] {
         flightSeen.set(fk, e);
         add(l.dep, e);
       }
+    } else if (it.cruise) {
+      // Kreuzfahrt (#518): Ein- und Ausschiffung, Häfen mit Liegezeit, Seetage
+      const ps = it.cruise.ports.filter(p => okDate(p.date)), last = ps.length - 1;
+      ps.forEach((p, i) => {
+        const tm = portTime(p), place = p.place?.trim() || "";
+        const text = p.sea ? t("cr.sea") : i === 0 ? t("day.embark", { place }) : i === last ? t("day.disembark", { place }) : place;
+        const time = i === 0 ? p.dep : i === last ? p.arr : p.arr;
+        // Hafen unterwegs: Ankunft als Uhrzeit, Ablegen darunter
+        const sub = !p.sea && i > 0 && i < last && tm.dep ? t("cr.depAt", { t: tm.dep }) : undefined;
+        add(p.date, { key: `${it.id}:p${i}`, kind: "port", itemId: it.id, text, ...(time ? { time } : {}), ...(sub ? { sub } : {}), who: whoOf(trip, it), order: time || (i === 0 ? "18:00" : i === last ? "08:00" : "09:00") });
+      });
     } else if (it.cat === "stay" && it.from && it.to) {
       const name = o?.label || it.name;
       add(it.from, { key: `${it.id}:in`, kind: "stay", itemId: it.id, text: t("day.checkin", { name }), who: whoOf(trip, it), order: "23:00" });
@@ -118,10 +134,15 @@ export function itinerary(trip: Trip): Day[] {
   }
 
   // Ort je Nacht: Unterkunft, die diese Nacht abdeckt (erste gefundene), sonst Ziel der Reise
-  const stays = live.filter(i => i.cat === "stay" && i.from && i.to);
+  const stays = live.filter(i => i.cat === "stay" && i.from && i.to && !i.cruise);
+  // Kreuzfahrt (#518): Ort des Tages ist der Hafen, Seetag ohne Ort
+  const ports = live.filter(i => i.cruise && i.from && i.to).flatMap(i => i.cruise!.ports.filter(p => okDate(p.date) && (p.sea || p.place?.trim())));
+  const portOf = (d: string) => ports.find(p => p.date === d);
   // ohne Unterkunft: Station aus den Flügen (Rundreise Bangkok → Chiang Mai → Phuket)
   const stops = trip.travelers.filter(isActive).flatMap(x => stopsOf(x, trip, it => activeOption(it, trip)));
   const placeOf = (d: string) => {
+    const pt = portOf(d);
+    if (pt) return pt.sea ? SEA : pt.place!.trim();
     const s = stays.find(i => i.from! <= d && d < i.to!);
     if (s) return stayPlace(trip, s);
     const st = stops.find(x => x.from <= d && d < x.to);
@@ -131,7 +152,12 @@ export function itinerary(trip: Trip): Day[] {
   let prev = "";
   return dates.map((d, i) => {
     const last = i === dates.length - 1;
-    const night = last ? "" : placeOf(d);
+    const pt = portOf(d);
+    const night = last && !pt ? "" : placeOf(d);
+    if (night === SEA) {
+      const entries = byDay.get(d)!.sort((a, b) => a.order.localeCompare(b.order));
+      return { date: d, n: i + 1, place: t("cr.sea"), moved: false, sea: true, title: trip.days?.[d]?.title, entries };
+    }
     const place = night || (last ? prev : "") || home;
     const moved = i > 0 && !!night && !!prev && night !== prev;
     const auto = i === 0 ? t("day.arrive") : last ? t("day.leave") : moved ? t("day.onTo", { place: night }) : undefined;
@@ -164,7 +190,7 @@ export function stations(days: Day[]): { place: string; from: string; nights: nu
   for (const d of days.slice(0, -1)) {
     const cur = out.at(-1);
     if (cur && cur.place === d.place) cur.nights++;
-    else if (d.place) out.push({ place: d.place, from: d.date, nights: 1 });
+    else if (d.place && !d.sea) out.push({ place: d.place, from: d.date, nights: 1 });
   }
   return out;
 }

@@ -258,8 +258,8 @@ export interface Cabin {
   who: string[];
 }
 
-/** Hafen einer Kreuzfahrt oder Seetag (sea); an/ab als HH:MM Ortszeit */
-export interface Port { date: string; place?: string; country?: string; arr?: string; dep?: string; sea?: boolean }
+/** Hafen einer Kreuzfahrt oder Seetag (sea); an/ab als HH:MM Ortszeit; Land (ISO) und Lage aus der Ortssuche (#518) */
+export interface Port { date: string; place?: string; cc?: string; lat?: number; lon?: number; arr?: string; dep?: string; sea?: boolean }
 export interface Cruise {
   line?: string;
   ship?: string;

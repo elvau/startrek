@@ -16,6 +16,13 @@ export function tripSpots(trip: Trip, geo: GeoData): Spot[] {
   if (ev && hasCoords(ev)) out.push({ id: "event", kind: "event", name: ev.name, lat: ev.lat!, lon: ev.lon! });
   for (const i of trip.items) {
     if (i.status === "dropped" || (i.cat !== "stay" && i.cat !== "attractions")) continue;
+    // Kreuzfahrt (#518): Ein- und Ausschiffungshafen als Unterkunft (Transfer vom Flughafen, Karte)
+    if (i.cruise) {
+      const ps = i.cruise.ports.filter(p => !p.sea && hasCoords(p));
+      for (const [k, p] of [ps[0], ps.at(-1)].entries()) if (p && (k === 0 || p !== ps[0]) && !(k === 1 && ps[0] && p.place === ps[0].place))
+        out.push({ id: `item:${i.id}:${k}`, kind: "stay", name: p.place || "", lat: p.lat!, lon: p.lon!, itemId: i.id });
+      continue;
+    }
     const l = (activeOption(i, trip) || i.options[0])?.loc;
     if (hasCoords(l)) out.push({ id: "item:" + i.id, kind: i.cat === "stay" ? "stay" : "event", name: i.name || i.options[0]?.label || "", lat: l.lat, lon: l.lon, itemId: i.id });
   }

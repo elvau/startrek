@@ -6,6 +6,10 @@ export interface FlightScope {
   ids?: string[];
   /** Treffer kommen als Angebote in diesen Posten */
   itemId?: string;
+  /** Ziel und Daten vorgeben (Kreuzfahrt: Flug zum Abfahrtshafen, #518) */
+  to?: string;
+  depart?: string;
+  ret?: string;
 }
 
 export const flightSearch = $state<{ open: boolean; scope: FlightScope }>({ open: false, scope: {} });
