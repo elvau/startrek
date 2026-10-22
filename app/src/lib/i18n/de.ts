@@ -1547,6 +1547,7 @@ export const de = {
   "ks.decide.one": "{n} Einspruch – bitte entscheiden",
   "ks.decide.other": "{n} Einsprüche – bitte entscheiden",
   "ks.disputed": "Einspruch: {list}",
+  "ks.droppedPaid": "Posten verworfen. Schon erstattet? Dann die Zahlung löschen.",
   "ks.done": "Erledigt",
   "ks.each": "jeweils",
   "ks.each2": "jeder zahlt selbst",
