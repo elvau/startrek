@@ -376,7 +376,11 @@ export function parseNum(v: unknown): number {
   if (typeof v === "number") return v;
   let s = String(v).trim().replace(/\s|€|¥/g, "");
   if (!s) return NaN;
-  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+  const c = s.lastIndexOf(","), d = s.lastIndexOf(".");
+  // Komma und Punkt: das letzte ist das Dezimalzeichen; mehrere Kommas ohne Punkt: Tausendertrennzeichen
+  if (c >= 0 && d > c) s = s.replace(/,/g, "");
+  else if (c >= 0 && s.indexOf(",") !== c && d < 0) s = s.replace(/,/g, "");
+  else if (c >= 0) s = s.replace(/\./g, "").replace(",", ".");
   else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
   const n = parseFloat(s);
   return isNaN(n) ? NaN : n;

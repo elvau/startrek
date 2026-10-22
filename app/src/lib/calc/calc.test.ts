@@ -154,6 +154,9 @@ describe("Zahleneingabe", () => {
     expect(parseNum("1.234,50 €")).toBe(1234.5);
     expect(parseNum("1.234")).toBe(1234);
     expect(parseNum("12.5")).toBe(12.5);
+    expect(parseNum("1,234.56")).toBe(1234.56);
+    expect(parseNum("1,234,567")).toBe(1234567);
+    expect(parseNum("12,5")).toBe(12.5);
     expect(parseNum("")).toBeNaN();
   });
 });
