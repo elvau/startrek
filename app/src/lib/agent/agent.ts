@@ -9,7 +9,7 @@
  */
 import { addDays } from "../flights/kiwi";
 import { parseQuery } from "../flights/search";
-import { parseStayQuery } from "../stays/search";
+import { parseStayQuery, roomsFor } from "../stays/search";
 import type { FlightOffer, FlightQuery, SearchResult } from "../flights/types";
 import type { StayOffer, StayQuery, StaySearchResult } from "../stays/types";
 import type { EventHit, EventQuery, EventSearchResult } from "../events/types";
@@ -533,7 +533,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     // aufgeteilt (#494): für eine Teilgruppe (nur Erwachsene, höchstens die ganze Gruppe)
     const unit = r.stayMode && Number.isInteger(a.groupSize) && a.groupSize >= 1 ? Math.min(a.groupSize, size(), 20) : 0;
     const who = unit ? { adults: unit, childAges: [] } : guests();
-    const rooms = Number.isInteger(a.rooms) && a.rooms >= 1 ? Math.min(10, who.adults, a.rooms) : Math.min(10, Math.max(1, Math.ceil(who.adults / 2)));
+    const rooms = Number.isInteger(a.rooms) && a.rooms >= 1 ? Math.min(10, who.adults, a.rooms) : Math.min(10, roomsFor(who.adults, who.childAges.length));
     const q = parseStayQuery({
       place: a.place, country: a.country, checkin: a.checkin, checkout: a.checkout,
       ...who, rooms, type: r.prefs?.stayType ?? "all", currency: "EUR", market: r.market, lang: r.lang
