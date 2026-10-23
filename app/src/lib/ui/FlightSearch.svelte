@@ -1,5 +1,6 @@
 <script lang="ts">
   import { netMessage, showError, isNetText } from "../neterror";
+  import SearchLoading from "./SearchLoading.svelte";
   import { blockedDays, hitsBlocked } from "../together";
   import Help from "./Help.svelte";
   import { arrow, autoName, t, tn, type Key } from "../i18n/index.svelte";
@@ -592,7 +593,7 @@
     {#if split.bookings > 1}<p class="small fs-split-hint">{t("fs.split.hint", { n: split.bookings, k: split.size, all: n })}</p>{/if}
     <p class="fs-facts small"><span><span aria-hidden="true">👥</span> {people}{who ? ` · ${[...new Set(flyers(trip, who).map(hhKey))].join(", ")}` : ""}</span>{#if aps.length && kind !== "round"}<span><span aria-hidden="true">🛫</span> {aps.join(", ")}</span>{/if}</p>
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
-    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? `${t("fs.busy")} ${progress}` : kind === "round" ? t("fs.roundBtn") : aps.length > 1 ? t("fs.compareN", { n: aps.length }) : t("fs.searchBtn")}</button>
+    <button class="btn primary" class:busy disabled={busy || !FLIGHTS_URL}>{busy ? `${t("fs.busy")} ${progress}` : kind === "round" ? t("fs.roundBtn") : aps.length > 1 ? t("fs.compareN", { n: aps.length }) : t("fs.searchBtn")}</button>
     {#if kind !== "round" && to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
       {@const d0 = toLoc ?? resolveLoc(airportData, to, cc)}
       {@const o0 = originLoc(aps[0])}
@@ -602,6 +603,7 @@
   </form>
 
   {#if error}<p class="err small">{error}{#if isNetText(error)} <button type="button" class="linkbtn" onclick={() => search()}>{t("net.retry")}</button>{/if}</p>{/if}
+  {#if busy}<SearchLoading kind="flights" from={aps.length === 1 ? aps[0] : ""} to={toLoc?.code ?? ""} />{/if}
 
   {#if rounds}
     {@render bagBar()}

@@ -5,6 +5,7 @@
    * „Bearbeiten“ (öffnet die Planung), umbenennen, aus dem Vergleich nehmen, Variante hinzufügen.
    */
   import { i18n, t, tn, type Key } from "../i18n/index.svelte";
+  import SearchLoading from "./SearchLoading.svelte";
   import { addVariant, allTrips, app, editTrip, goHome, openTrip, splitCompare, switchTrip, takeVariant, tripFor } from "../store.svelte";
   import { eur } from "../calc";
   import { flagOf, range } from "../format";
@@ -171,11 +172,12 @@
           <label class="f">{t("whatif.airport")}<input class="wi-ap" maxlength="3" size="4" bind:value={wi.airport} placeholder="DUS" /></label>
         </div>
         <p class="fu-acts">
-          <button class="btn sm primary wi-go" disabled={whatIfRun.busy || !wi.from || !wi.to || wi.to <= wi.from} onclick={goWhatIf}>{whatIfRun.busy ? t("whatif.busy") : t("whatif.go")}</button>
+          <button class="btn sm primary wi-go" class:busy={whatIfRun.busy} disabled={whatIfRun.busy || !wi.from || !wi.to || wi.to <= wi.from} onclick={goWhatIf}>{whatIfRun.busy ? t("whatif.busy") : t("whatif.go")}</button>
           <button class="btn sm" onclick={() => (wi = null)}>{t("cancel")}</button>
         </p>
       </div>
     {/if}
+    {#if whatIfRun.busy}<SearchLoading kind="flights" cards={0} steps={[t("whatif.busy"), t("load.flights.2"), t("load.stay.1")]} />{/if}
     {#if whatIfRun.msg}<p class="small cv-wi-msg" role="status">{whatIfRun.msg}</p>{/if}
     <div class="chips cv-mode" role="group" aria-label={t("cmpv.rows")}>
       <button class="chip sm" class:on={!diffMode} aria-pressed={!diffMode} onclick={() => (onlyDiff = false)}>{t("cmpv.all")}</button>

@@ -145,7 +145,12 @@ try {
   // Koffer insgesamt statt „je Person einer“
   await setBags(m.locator(".fs-form"), 1);
   await m.locator(".fs-form .btn.primary").click();
+  // Ladeanimation, solange gesucht wird: Flugzeug, Text, Platzhalter-Karten, Kreis im Knopf; weg mit den Treffern
+  await m.locator(".sload-flights .plane").waitFor();
+  if ((await m.locator(".sload-flights .sload-card").count()) !== 2) fail("Ladeanimation: Platzhalter-Karten");
+  if (!(await m.locator(".fs-form .btn.primary.busy").count())) fail("Ladeanimation: Kreis im Knopf");
   await m.locator(".fs-res").first().waitFor();
+  if (await m.locator(".sload").count()) fail("Ladeanimation bleibt nach den Treffern");
   if (asked[0]?.bagCount !== 1) fail("Kofferzahl nicht in der Anfrage: " + JSON.stringify(asked[0]));
   if (asked.length !== 2 || asked.map(a => a.from).join() !== on.slice(0, 2).join()) fail("Anfragen je Flughafen: " + JSON.stringify(asked.map(a => a.from)));
   const a0 = asked[0];
