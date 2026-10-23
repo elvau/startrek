@@ -52,7 +52,10 @@ try {
   const [a0, a1] = [await acts.nth(0).boundingBox(), await acts.nth(1).boundingBox()];
   if (Math.abs(a0.y - a1.y) > 4 || a1.x <= a0.x) fail("Startseite: Kacheln nicht nebeneinander");
   if (await p.evaluate(() => getComputedStyle(document.body).overflow === "hidden")) fail("Startseite scrollt nicht");
-  log("Startseite: Einstiege in zwei Spalten, Seite scrollbar");
+  // Fehler melden: auf der Startseite schwebt der 🐞-Knopf unten links
+  if (!(await p.locator(".bug-fab").isVisible())) fail("Startseite: Fehler melden fehlt");
+  if (await p.locator(".top-bug").count()) fail("Startseite: 🐞 in der Kopfzeile");
+  log("Startseite: Einstiege in zwei Spalten, Seite scrollbar, Fehler melden unten links");
   await p.locator(".home-trip", { hasText: "Kroatien" }).first().click();
   const on = () => p.locator(".mbar .mb.on").getAttribute("data-pg");
   await p.locator("main.pager").waitFor();
@@ -60,7 +63,12 @@ try {
   if (await on() !== "hero") fail("Start nicht auf der Übersicht");
   if (await p.locator(".mtabs").count()) fail("Reiter oben noch da");
   if (!/€/.test(await p.locator(".mbar .mb-tot").innerText())) fail("Gesamtsumme unten fehlt");
-  if (await p.locator(".bug-fab").isVisible()) fail("Fehler melden schwebt noch");
+  // Fehler melden in der Reise: nicht schwebend (dort liegt die Leiste), sondern oben in der Kopfzeile
+  if (await p.locator(".bug-fab").count()) fail("Fehler melden schwebt noch");
+  await p.locator("header.top .top-bug").click();
+  await p.locator(".modal", { hasText: "Fehler melden" }).waitFor();
+  await p.keyboard.press("Escape");
+  await until(async () => !(await p.locator(".modal", { hasText: "Fehler melden" }).count()), "Fehler melden schließen");
   if (await p.locator(".dock").count()) fail("alte Leiste unten noch da");
   // Übersicht: nichts ragt über den Bildschirmrand (langer Name, Kostenbox)
   const wide = await p.evaluate(() => [...document.querySelectorAll(".pg-hero *")].filter(e => e.getBoundingClientRect().right > innerWidth + 1 && e.getBoundingClientRect().width > 40).map(e => e.className));

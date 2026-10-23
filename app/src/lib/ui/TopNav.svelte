@@ -22,6 +22,9 @@
   import { goPage, mob } from "../mobile.svelte";
   import { openInfo } from "../info/app.svelte";
   import { canInstall, installApp } from "../install.svelte";
+  import { bugDialog } from "../bugs/app.svelte";
+  import { cloud } from "../cloud/cloud.svelte";
+  import { FLIGHTS_URL } from "../flights/app";
 
   let { home = false }: { home?: boolean } = $props();
 
@@ -78,6 +81,8 @@
     {/if}
     <div class="top-r">
       {#if !home}<ImportantButton />{/if}
+      <!-- Handy in der Reise: Fehler melden hier statt als schwebender Knopf (dort liegt die Leiste) -->
+      {#if !home && mob.on && cloud.configured && FLIGHTS_URL}<button class="tbtn top-bug" onclick={() => (bugDialog.open = true)} aria-label={t("bug.title")} title={t("bug.open")}><span aria-hidden="true">🐞</span></button>{/if}
       <span class="top-wide"><GroupsButton /></span>
       <span class="top-wide"><PrefsButton /></span>
       <Account compact />

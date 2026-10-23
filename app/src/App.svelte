@@ -343,7 +343,7 @@
 <BrokerGate />
 {#if needTerms}<TermsGate />{/if}
 {#if cloud.configured}<AgentChat />{/if}
-{#if cloud.configured && FLIGHTS_URL}<BugButton />{/if}
+{#if cloud.configured && FLIGHTS_URL}<BugButton fab={!mob.on || app.home} />{/if}
 {#if admin.open && admin.is && cloud.user}<UsagePanel />{/if}
 {#if connect.open && cloud.user}<ConnectDialog />{/if}
 {#if myData.open && cloud.user}<MyDataDialog />{/if}
