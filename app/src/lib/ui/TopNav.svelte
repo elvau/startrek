@@ -19,6 +19,7 @@
   import ImportantButton from "./ImportantButton.svelte";
   import { access, goHome } from "../store.svelte";
   import { heroEdit } from "./heroEdit.svelte";
+  import { goPage, mob } from "../mobile.svelte";
   import { openInfo } from "../info/app.svelte";
   import { canInstall, installApp } from "../install.svelte";
 
@@ -61,7 +62,7 @@
       <button class="brand brand-btn" onclick={goHome} aria-label={t("home.back")} title={t("home.back")}><img class="brand-ico" src="icon.svg" alt="" width="22" height="22"><span class="brand-txt">Split<span class="brand-y">&amp;</span>Fly</span></button>
       <TripMenu compact />
       {#if !access.readonly}
-        <button class="icon-btn top-edit" class:on={heroEdit.open} onclick={() => { heroEdit.open = !heroEdit.open; if (heroEdit.open) scrollTo({ top: 0, behavior: "smooth" }); }}
+        <button class="icon-btn top-edit" class:on={heroEdit.open} onclick={() => { heroEdit.open = !heroEdit.open; if (heroEdit.open) { if (mob.on) goPage("hero"); else scrollTo({ top: 0, behavior: "smooth" }); } }}
           aria-expanded={heroEdit.open} aria-label={heroEdit.open ? t("close") : t("hero.edit")} title={heroEdit.open ? t("close") : t("hero.edit")}><span aria-hidden="true">{heroEdit.open ? "×" : "✎"}</span></button>
       {/if}
     {/if}

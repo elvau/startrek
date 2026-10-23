@@ -20,9 +20,13 @@
   import { reveal } from "./reveal";
   import { itemLoc, mapsUrl } from "../geo/maps";
   import { flashEl } from "./showItem";
+  import ItemCompact from "./ItemCompact.svelte";
+  import { mob } from "../mobile.svelte";
 
   let { item, icon }: { item: Item; icon: string } = $props();
   const editing = $derived(app.editing === item.id);
+  // Handy (#531): zugeklappt eine Zeile, bis man den Posten antippt (immer nur einer offen)
+  const compact = $derived(mob.on && mob.openItem !== item.id && !editing);
   const hasLegs = $derived(!!item.follow || item.options.some(o => o.legs?.length));
   const isStay = $derived(item.cat === "stay");
   // Link zum Anbieter des gewählten Angebots (aus der Suche übernommen), bleibt auf der Karte
@@ -37,17 +41,28 @@
   }
 
   function toggle(e: MouseEvent) {
+    if (compact) { mob.openItem = item.id; return; }
     if (access.readonly) return;
     if ((e.target as HTMLElement).closest("button,input,select,a,label,.xc,.rc")) return;
     app.editing = editing ? null : item.id;
   }
   function key(e: KeyboardEvent) {
+    if (e.key === "Enter" && e.target === e.currentTarget && compact) { mob.openItem = item.id; return; }
     if (e.key === "Enter" && e.target === e.currentTarget && !access.readonly) app.editing = editing ? null : item.id;
+  }
+  function fold(e: Event) {
+    e.stopPropagation();
+    mob.openItem = "";
+    if (editing) app.editing = null;
   }
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
-<article class="card" data-item={item.id} data-more={access.readonly ? null : `${t("card.more")} ${arrow() === "←" ? "‹" : "›"}`} class:edit={editing} class:dropped={item.status === "dropped"} tabindex="0" onclick={toggle} onkeydown={key} use:reveal aria-label={autoName(item.name)}>
+<article class="card" data-item={item.id} data-more={access.readonly || compact ? null : `${t("card.more")} ${arrow() === "←" ? "‹" : "›"}`} class:edit={editing} class:dropped={item.status === "dropped"} class:compact tabindex="0" onclick={toggle} onkeydown={key} use:reveal aria-label={autoName(item.name)}>
+  {#if compact}
+    <ItemCompact {item} {icon} />
+  {:else}
+  {#if mob.on}<button type="button" class="linkbtn ic-fold" onclick={fold}>▴ {t("imp.fold")}</button>{/if}
   {#if item.cat === "flights" && hasLegs}
     <FlightCard {item} />
   {:else if item.cruise}
@@ -79,4 +94,5 @@
   {#if item.ai}<div class="aif"><AiMark /> {t(`ai.mark.${item.ai.kind}` as Key)}
     {#if item.check}<span class="aif-check">⚠ {t("imp.check")}</span>{#if !access.readonly}<button class="linkbtn aif-ok" onclick={() => (item.check = undefined)}>{t("imp.checked")}</button>{/if}{/if}</div>{/if}
   {#if editing}<ItemEditor {item} />{/if}
+  {/if}
 </article>
