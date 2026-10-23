@@ -7,6 +7,9 @@
   import { bugDialog, sendBug, shrink } from "../bugs/app.svelte";
   import Modal from "./Modal.svelte";
 
+  // fab: runder Knopf unten links; in der Reise am Handy liegt er stattdessen oben in der Kopfzeile
+  let { fab = true }: { fab?: boolean } = $props();
+
   let text = $state("");
   let file = $state<File | null>(null);
   let preview = $state("");
@@ -37,7 +40,7 @@
   }
 </script>
 
-<button class="bug-fab" onclick={() => (bugDialog.open = true)} title={t("bug.open")}><span aria-hidden="true">🐞</span><span class="bug-lbl">{t("bug.title")}</span></button>
+{#if fab}<button class="bug-fab" onclick={() => (bugDialog.open = true)} title={t("bug.open")}><span aria-hidden="true">🐞</span><span class="bug-lbl">{t("bug.title")}</span></button>{/if}
 
 {#if bugDialog.open}
   <Modal title={t("bug.title")} onclose={close}>
