@@ -4,6 +4,7 @@
    * buchbare Touren und Tickets (Viator). Antippen legt einen Posten in „Erlebnisse“ an, der Dialog bleibt offen.
    */
   import { netMessage, showError } from "../neterror";
+  import SearchLoading from "./SearchLoading.svelte";
   import { i18n, t, type Key } from "../i18n/index.svelte";
   import BrokerNote from "./BrokerNote.svelte";
   import { app, setDetailed } from "../store.svelte";
@@ -179,10 +180,10 @@
       {#if explore.tab === "events"}
         <form class="ev-find" onsubmit={findEvents}>
           <label class="f ev-grow">{t("xp.kw")}<input type="search" enterkeyhint="search" bind:value={kw} placeholder={t("xp.kwPh")} /></label>
-          <button class="btn" disabled={evBusy}>{evBusy ? t("evs.busy") : t("evs.go")}</button>
+          <button class="btn" class:busy={evBusy} disabled={evBusy}>{evBusy ? t("evs.busy") : t("evs.go")}</button>
         </form>
         {#if evErr}<p class="warnline">{evErr}</p>{/if}
-        {#if evBusy && !events}<p class="muted small">{t("evs.busy")}</p>{/if}
+        {#if evBusy && !events}<SearchLoading kind="events" />{/if}
         {#if events}
           {#if !events.length && !evErr}<p class="muted small">{t("xp.noEvents")}</p>{#if farOut}<p class="warnline xp-farout">{t("xp.farOut")}</p>{/if}{/if}
           {#if events.length > 1}
@@ -229,7 +230,7 @@
           </div>
         {/if}
       {:else}
-        {#if toBusy}<p class="muted small">{t("evs.busy")}</p>{/if}
+        {#if toBusy}<SearchLoading kind="tours" />{/if}
         {#if toErr}<p class="warnline">{toErr}</p>{/if}
         {#if toursOff}
           <p class="muted small">{toursWhy === "domain" ? t("xp.toursLiveOnly") : t("xp.toursSetup")}</p>

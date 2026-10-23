@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t, type Key } from "../i18n/index.svelte";
+  import SearchLoading from "./SearchLoading.svelte";
   /*
    * Reise per KI importieren (#457): Dateien (auch per Ziehen, Einfügen oder Teilen-Menü), Text oder Link einwerfen,
    * auslesen lassen, daraus eine Reise anlegen. Über „Neue Reise“ entsteht immer eine Reise. Nur mit Anmeldung.
@@ -196,9 +197,9 @@
     {/if}
     {#each notes as n (n)}<p class="small imp-note" role="status">{n}</p>{/each}
     <details class="small imp-priv"><summary><span aria-hidden="true">🔒</span> {t("imp.privacyT")}</summary><p>{t("imp.privacy")}</p></details>
-    {#if busy}<p class="small imp-wait ai-busy" role="status">⏳ {t("imp.wait")}{#if slow} {t("imp.waitLong")}{/if}</p>{/if}
+    {#if busy}<SearchLoading kind="import" cards={0} sub={slow ? `${t("imp.wait")} ${t("imp.waitLong")}` : t("imp.wait")} />{/if}
     {#if err}<p class="err small" role="alert">{err}{#if retryable} <button type="button" class="btn small imp-retry" disabled={busy} onclick={go}>{t("imp.retry")}</button>{/if}</p>{/if}
-    <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
+    <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" class:busy disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
   {/if}
 </div>
 

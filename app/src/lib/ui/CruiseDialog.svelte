@@ -4,6 +4,7 @@
    * von Hand eintragen. Treffer werden Kreuzfahrt-Posten mit Route und Kabinen; Preise sind „ab“-Preise der Fundstelle.
    */
   import { t, tn, type Key } from "../i18n/index.svelte";
+  import SearchLoading from "./SearchLoading.svelte";
   import { app } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { CABIN_TYPES, isActive, type CabinType } from "../model";
@@ -102,9 +103,10 @@
       </div>
       <p class="small muted">👥 {tn("n.persons", people)} · {t("cs.aiHint")}</p>
       {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
-      <button class="btn primary cs-go" disabled={busy || !FLIGHTS_URL || !from}>{busy ? t("cs.busy") : `🔎 ${t("cs.searchBtn")}`}</button>
+      <button class="btn primary cs-go" class:busy disabled={busy || !FLIGHTS_URL || !from}>{busy ? t("cs.busy") : `🔎 ${t("cs.searchBtn")}`}</button>
     </form>
     {#if error}<p class="err small">{error}</p>{/if}
+    {#if busy}<SearchLoading kind="cruise" />{/if}
     {#if hits}
       {#if !hits.length}<p class="small cs-none">{t("cs.none")}</p>{/if}
       <ul class="cs-hits">

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { netMessage, showError, isNetText } from "../neterror";
+  import SearchLoading from "./SearchLoading.svelte";
   import { arrow, autoName, locale, t, tn } from "../i18n/index.svelte";
   import BrokerNote from "./BrokerNote.svelte";
   import ExtLink from "./ExtLink.svelte";
@@ -464,7 +465,7 @@
     </p>
     {#if partial.length}<p class="small st-partial"><span aria-hidden="true">⚠️</span> {t("stay.partial", { list: partial.map(x => t("st.partialOf", { name: x.t.name, a: x.nights, b: nn })).join(", ") })}</p>{/if}
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
-    <button class="btn primary" disabled={busy || !FLIGHTS_URL}>{busy ? t("st.busy", { src: SOURCES.filter(s => eff.includes(s.id)).map(s => s.name).join(` ${t("and")} `) }) : t("st.searchBtn")}</button>
+    <button class="btn primary" class:busy disabled={busy || !FLIGHTS_URL}>{busy ? t("st.busy", { src: SOURCES.filter(s => eff.includes(s.id)).map(s => s.name).join(` ${t("and")} `) }) : t("st.searchBtn")}</button>
     {#if place.trim() && nn > 0}
       {@const pets = petsAlong(trip, who.map(x => x.t.id))}
       {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), ...(pets ? { pets } : {}) }}
@@ -475,6 +476,7 @@
   </form>
 
   {#if error}<p class="err small">{error}{#if isNetText(error)} <button type="button" class="linkbtn" onclick={() => search()}>{t("net.retry")}</button>{/if}</p>{/if}
+  {#if busy}<SearchLoading kind="stay" />{/if}
 
   {#if list && asked}
     {#if sources.length}
