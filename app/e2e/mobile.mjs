@@ -62,6 +62,9 @@ try {
   if (!/€/.test(await p.locator(".mbar .mb-tot").innerText())) fail("Gesamtsumme unten fehlt");
   if (await p.locator(".bug-fab").isVisible()) fail("Fehler melden schwebt noch");
   if (await p.locator(".dock").count()) fail("alte Leiste unten noch da");
+  // Übersicht: nichts ragt über den Bildschirmrand (langer Name, Kostenbox)
+  const wide = await p.evaluate(() => [...document.querySelectorAll(".pg-hero *")].filter(e => e.getBoundingClientRect().right > innerWidth + 1 && e.getBoundingClientRect().width > 40).map(e => e.className));
+  if (wide.length) fail("Übersicht breiter als der Bildschirm: " + wide.join(", "));
   // Seite hat keine lange Seite mehr: Fenster scrollt nicht
   if ((await p.evaluate(() => document.documentElement.scrollHeight)) > 900) fail("Seite scrollt noch");
   // Leiste: Unterkunft
