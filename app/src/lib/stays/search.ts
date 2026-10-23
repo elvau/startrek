@@ -82,6 +82,9 @@ const int = (v: unknown, min: number, max: number) => Number.isInteger(v) && (v 
 const DAY = 86400000;
 
 /** Anfrage prüfen (im Such-Dienst, bevor irgendwer gefragt wird) */
+/** Zimmer vorbelegen: je zwei Erwachsene eins, Kinder teilen sich das Zimmer der Eltern (etwa vier Personen je Zimmer), nie mehr als Erwachsene (#539) */
+export const roomsFor = (adults: number, children: number) => Math.max(1, Math.min(adults, Math.max(Math.ceil(adults / 2), Math.ceil((adults + children) / 4))));
+
 export function parseStayQuery(b: unknown): StayQuery | string {
   const o = (b || {}) as Record<string, unknown>;
   const str = (k: string) => (typeof o[k] === "string" ? (o[k] as string).trim() : "");
