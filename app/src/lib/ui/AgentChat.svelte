@@ -1,5 +1,6 @@
 <script lang="ts">
   import { netMessage, isNetworkError } from "../neterror";
+  import SearchLoading from "./SearchLoading.svelte";
   import { arrow, i18n, t, tn, type Key } from "../i18n/index.svelte";
   import BrokerNote from "./BrokerNote.svelte";
   import ExtLink from "./ExtLink.svelte";
@@ -380,7 +381,7 @@
           {/if}
         </div>
       {/each}
-      {#if busy}<p class="ai-msg ai-busy">{onTrip ? t("ai.busyTrip") : t("ai.busy")}{#if waited >= 5} <span class="ai-wait" dir="ltr">{clock(waited)}</span>{/if}{#if waited >= 90}<br>{t("ai.busyLong")}{/if}
+      {#if busy}<SearchLoading kind="ai" art /><p class="ai-msg ai-busy">{onTrip ? t("ai.busyTrip") : t("ai.busy")}{#if waited >= 5} <span class="ai-wait" dir="ltr">{clock(waited)}</span>{/if}{#if waited >= 90}<br>{t("ai.busyLong")}{/if}
         <br><small class="muted">{t("ai.bgHint")}</small> <button class="linkbtn ai-cancel" onclick={cancel}>{t("ai.cancel")}</button></p>{/if}
     </div>
 

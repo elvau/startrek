@@ -21,8 +21,9 @@ body.mob .pg-hero .hero-in{transform:none;opacity:1;width:100%;min-width:0}
 /* langer Reisename („Reise · November 2026 · 26 Tage“) drückte die Seite breiter als den Bildschirm */
 body.mob .pg-hero .hero h1{font-size:clamp(28px,9vw,40px);overflow-wrap:anywhere;margin:8px 0 8px}
 body.mob .hint{display:none}
-/* schwebend bleibt nur der KI-Knopf, über der Leiste; Fehler melden steht unter „Mehr“ */
-body.mob .bug-fab{display:none}
+/* in der Reise schwebt nur der KI-Knopf über der Leiste; Fehler melden steht oben in der Kopfzeile (🐞) und unter „Mehr“.
+   Auf der Startseite bleibt der 🐞-Knopf unten links, auf Höhe des KI-Knopfs */
+body.mob .bug-fab{bottom:calc(var(--mob-bar) + 12px + env(safe-area-inset-bottom,0px))}
 body.mob .ai-fab{bottom:calc(var(--mob-bar) + 12px + env(safe-area-inset-bottom,0px));padding:10px 14px}
 body.mob .ai-fab .ai-fab-lbl{display:none}
 body.mob .ai-note{bottom:calc(var(--mob-bar) + 70px + env(safe-area-inset-bottom,0px))}

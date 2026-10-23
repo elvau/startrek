@@ -1,5 +1,6 @@
 <script lang="ts">
   import { netMessage, showError } from "../neterror";
+  import SearchLoading from "./SearchLoading.svelte";
   import { arrow, i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
   import BrokerNote from "./BrokerNote.svelte";
   import ExtLink from "./ExtLink.svelte";
@@ -290,13 +291,14 @@
   <p class="muted">{t("ev.lead")}</p>
   <form class="ev-find" onsubmit={find}>
     <label class="f ev-grow">{t("evs.label")}<input type="search" enterkeyhint="search" bind:value={eq} placeholder={t("evs.ph")} /></label>
-    <button class="btn" disabled={evBusy}>{evBusy ? t("evs.busy") : t("evs.go")}</button>
+    <button class="btn" class:busy={evBusy} disabled={evBusy}>{evBusy ? t("evs.busy") : t("evs.go")}</button>
   </form>
   <div class="chips ev-sports" aria-label={t("sp.title")}>
     <span class="muted small">{t("sp.title")}</span>
     {#each SPORT_CHIPS as s (s)}<button type="button" class="chip sm" class:on={sport === s} aria-pressed={sport === s} onclick={() => findSport(s)}>{SPORT_ICON[s]} {t(`sp.${s}` as Key)}</button>{/each}
   </div>
   {#if evErr}<p class="warnline">{evErr}</p>{/if}
+  {#if evBusy}<SearchLoading kind="events" />{/if}
   {#if hits}
     {#if !hits.length}<p class="muted small">{t("evs.none")}</p>{/if}
     <div class="ev-hits">
@@ -354,9 +356,10 @@
         onchange={e => { const el = e.currentTarget; const before = trip.travelers.length; const after = resizeTravelers(trip, Number(el.value) || before); el.value = String(after); rows = rowsAfterResize(rows, before, after); }} /></label>
     </div>
     <p class="muted small">{t("ev.from", { aps: aps.join(", "), p: tn("n.persons", people.length) })} {t("ev.rule")}</p>
-    <button class="btn primary" disabled={busy}>{busy ? t("ev.progress") : t("ev.go")}</button>
+    <button class="btn primary" class:busy disabled={busy}>{busy ? t("ev.progress") : t("ev.go")}</button>
     {#if error}<p class="warnline">{error}</p>{/if}
   </form>
+  {#if busy}<SearchLoading kind="flights" steps={[t("ev.progress"), t("load.flights.2"), t("load.stay.2")]} />{/if}
 
   {#if done}
     <p class="ev-done">✓ {t("ev.taken")}</p>
