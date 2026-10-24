@@ -167,17 +167,24 @@ export function ledger(trip: Trip, T: Totals, owner?: string): Ledger {
   return { entries, rows, spent, moves: settle(rows), settled, pending };
 }
 
-/** Ausgleich mit möglichst wenigen Überweisungen: größter Schuldner zahlt an größten Gläubiger */
+/**
+ * Ausgleich mit möglichst wenigen Überweisungen: größter Schuldner zahlt an größten Gläubiger, auf den Cent.
+ * Unter 50 Cent wird nichts überwiesen. Ein Rundungsrest zwischen Schuldnern und Gläubigern geht auf den jeweils größten Betrag der größeren Seite.
+ */
 export function settle(rows: { hh: string; bal: number }[]): Move[] {
-  const pos = rows.filter(r => r.bal > 0.5).map(r => ({ ...r })).sort((a, b) => b.bal - a.bal);
-  const neg = rows.filter(r => r.bal < -0.5).map(r => ({ ...r, bal: -r.bal })).sort((a, b) => b.bal - a.bal);
+  const cents = (v: number) => Math.round(v * 100);
+  const pos = rows.map(r => ({ hh: r.hh, c: cents(r.bal) })).filter(r => r.c > 50).sort((a, b) => b.c - a.c);
+  const neg = rows.map(r => ({ hh: r.hh, c: -cents(r.bal) })).filter(r => r.c > 50).sort((a, b) => b.c - a.c);
+  const diff = pos.reduce((a, r) => a + r.c, 0) - neg.reduce((a, r) => a + r.c, 0);
+  if (diff > 0 && pos.length) pos[0].c -= Math.min(diff, pos[0].c);
+  else if (diff < 0 && neg.length) neg[0].c -= Math.min(-diff, neg[0].c);
   const out: Move[] = [];
   for (let i = 0, j = 0; i < neg.length && j < pos.length && out.length < 200;) {
-    const v = Math.min(neg[i].bal, pos[j].bal);
-    if (v > 0.5) out.push({ from: neg[i].hh, to: pos[j].hh, v: Math.round(v * 100) / 100 });
-    neg[i].bal -= v; pos[j].bal -= v;
-    if (neg[i].bal < 0.5) i++;
-    if (pos[j].bal < 0.5) j++;
+    const v = Math.min(neg[i].c, pos[j].c);
+    if (v > 50) out.push({ from: neg[i].hh, to: pos[j].hh, v: v / 100 });
+    neg[i].c -= v; pos[j].c -= v;
+    if (neg[i].c < 50) i++;
+    if (pos[j].c < 50) j++;
   }
   return out;
 }
