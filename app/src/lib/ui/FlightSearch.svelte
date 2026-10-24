@@ -757,6 +757,8 @@
               {#if o.nights != null}<span class="pill-n">{tn("fs.nightsThere", o.nights)}</span>{/if}
               {#if !isNaN(o.home)}<span class="pill-h">{t("fs.homeAt", { t: fmtMin(o.home) })}</span>{/if}
               {#if o.accessHours}<span class="pill-h">{t("fs.accessAbout", { h: hm(o.accessHours) })}</span>{/if}
+              {#if o.forkHome}<span class="pill-h fs-fork" title={t("fs.forkHomeHint")}>⚠ {t("fs.forkHome", { ap: o.forkHome })}</span>{/if}
+              {#if o.forkDest}<span class="pill-h fs-fork">⚠ {t("fs.forkDest", { a: o.forkDest.arr, b: o.forkDest.dep })}</span>{/if}
               {#if arrivalGap(o, refs)}
                 {@const g = arrivalGap(o, refs)!}
                 <span class="pill-h fs-sync" class:near={Math.abs(g.min) <= 180}>🤝 {Math.abs(g.min) < 15 ? t("fs.sync.same", { who: g.who }) : g.min > 0 ? t("fs.sync.after", { h: hhmm(g.min), who: g.who }) : t("fs.sync.before", { h: hhmm(-g.min), who: g.who })}</span>
