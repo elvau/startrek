@@ -39,6 +39,14 @@ describe("Trinkgeld als versteckte Kosten (#517)", () => {
     own.options[0].extras = [{ id: "x", kind: "tips", amount: 10, basis: "booking", pay: "onsite" }];
     expect(tipsOf(own, trip())).toEqual([]);
   });
+  it("Unterkunft ohne Preis zählt keine geschätzten Nebenkosten (#544)", () => {
+    ctx("HR");
+    const t = trip({ country: "Kroatien" });
+    const empty = stay({ options: [{ id: "o", label: "", price: { mode: "person", currency: "EUR" } }] });
+    expect(calcItem(empty, t).net).toBe(0);
+    expect(calcItem(empty, t).extras).toBeUndefined();
+    expect(calcItem(stay(), t).net).toBeGreaterThan(700);
+  });
   it("Kreuzfahrt pro Person und Nacht, unabhängig vom Land", () => {
     const t = trip(), it0 = newCruise(t, "EUR");
     const [x] = tipsOf(it0, t);
