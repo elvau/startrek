@@ -30,7 +30,7 @@
 {#if cloud.configured}
   <div class="acct" class:compact bind:this={root}>
     {#if !cloud.user}
-      <button class="tm-btn" onclick={() => (cloud.showLogin = true)} disabled={!cloud.ready}>{t("acct.login")}</button>
+      <button class="tm-btn" onclick={() => (cloud.showLogin = true)} disabled={!cloud.ready} aria-label={t("acct.login")} title={t("acct.login")}><span class="acct-lbl">{t("acct.login")}</span><span class="acct-ico" aria-hidden="true">👤</span></button>
     {:else}
       <button class="acct-btn" onclick={() => (open = !open)} aria-expanded={open} aria-label={t("acct.account")} title={cloud.user.email}>
         <span class="av sm acct-av">{cloud.user.name[0]?.toUpperCase()}</span>

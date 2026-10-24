@@ -55,6 +55,12 @@ try {
   // Fehler melden: auf der Startseite schwebt der 🐞-Knopf unten links
   if (!(await p.locator(".bug-fab").isVisible())) fail("Startseite: Fehler melden fehlt");
   if (await p.locator(".top-bug").count()) fail("Startseite: 🐞 in der Kopfzeile");
+  // schwebende Knöpfe sitzen ganz unten (keine Leiste auf der Startseite) und lassen der Liste Platz zum Weiterscrollen (#553)
+  for (const sel of [".bug-fab", ".ai-fab"]) {
+    const fb = await p.locator(sel).boundingBox();
+    if (!fb || fb.y + fb.height < 844 - 30) fail(`Startseite: ${sel} schwebt zu hoch über der Reiseliste: ` + JSON.stringify(fb));
+  }
+  if (!(await p.evaluate(() => parseFloat(getComputedStyle(document.querySelector(".start")).paddingBottom) >= 90))) fail("Startseite: kein Platz unter der Reiseliste für die schwebenden Knöpfe");
   log("Startseite: Einstiege in zwei Spalten, Seite scrollbar, Fehler melden unten links");
   await p.locator(".home-trip", { hasText: "Kroatien" }).first().click();
   const on = () => p.locator(".mbar .mb.on").getAttribute("data-pg");
@@ -63,6 +69,11 @@ try {
   if (await on() !== "hero") fail("Start nicht auf der Übersicht");
   if (await p.locator(".mtabs").count()) fail("Reiter oben noch da");
   if (!/€/.test(await p.locator(".mbar .mb-tot").innerText())) fail("Gesamtsumme unten fehlt");
+  // Kopfzeile: der Reisename ist lesbar (nicht nur ein Buchstabe), Anmelden nur als Symbol (#553)
+  const nameW = (await p.locator("header.top .tm-name").boundingBox()).width;
+  if (nameW < 90) fail("Reisename in der Kopfzeile zu schmal: " + nameW);
+  if (await p.locator("header.top .tm-plus").isVisible()) fail("Kopfzeile: „+“ nimmt dem Reisenamen den Platz");
+  log("Kopfzeile in der Reise: Reisename " + Math.round(nameW) + " px breit");
   // Fehler melden in der Reise: nicht schwebend (dort liegt die Leiste), sondern oben in der Kopfzeile
   if (await p.locator(".bug-fab").count()) fail("Fehler melden schwebt noch");
   await p.locator("header.top .top-bug").click();
