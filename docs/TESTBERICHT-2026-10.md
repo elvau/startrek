@@ -82,7 +82,7 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
 - **Soll:** Bei abweichendem Rückflughafen (zuhause oder am Ziel) deutlich markieren, Anfahrt für beide Flughäfen rechnen
   (Parken geht dann nicht, eher Bahn/Taxi), Filter „gleicher Flughafen hin und zurück“ als Standard für Familien.
 
-### 🔴 F4 Event in der Nähe: nur Flüge, sonst Abbruch (siehe auch #535)
+### 🔴 F4 Event in der Nähe: nur Flüge, sonst Abbruch (siehe auch #535) → #535 (Kommentar)
 - **Schritte:** „Zu einem Event“ → „Borussia Dortmund“ → „M'gladbach – Dortmund“, Wohnort 44137 Dortmund, 4 Personen,
   „Reisen vorschlagen“.
 - **Ist:** „Für diesen Termin gab es keinen passenden Flug …“. Kein Vorschlag mit Auto, Bahn oder Fanbus; die Strecke ist
@@ -137,7 +137,7 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
   besser „Kasse“/„Haushalt“ oder „Person“.
 - Neue Reise startet mit Souvenirs 30 € pro Person, auch für Kinder, bevor Ort oder Datum feststehen.
 
-### 🟡 F13 Handy: Reisename in der Kopfzeile nur ein Buchstabe
+### 🟡 F13 Handy: Reisename in der Kopfzeile nur ein Buchstabe → #553
 - 390 px: Die Reise-Pille zeigt „🧳 M“ (Makarska), daneben +, ✎, ❗, 🐞, Anmelden, ⋯. Man sieht nicht, welche Reise offen ist.
 - Die schwebenden Knöpfe „Fehler melden“ und „KI“ liegen auf der Reiseliste über dem Papierkorb bzw. dem Titel.
 
