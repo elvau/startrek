@@ -47,7 +47,7 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
 
 ## 2. Fehler
 
-### 🔴 F7 Währung klein geschrieben wird als Euro gerechnet
+### 🔴 F7 Währung klein geschrieben wird als Euro gerechnet → #543
 - **Wo:** Posten bearbeiten → Preis & Angebote → Feld „Währung“ (freies Textfeld, 3 Zeichen).
 - **Schritte:** Unterkunft anlegen, 5 Nächte, Währung `thb`, Preis pro Nacht `600`.
 - **Ist:** 3.000 € (600 „Euro“ pro Nacht). Mit `THB` stimmt es (ca. 16 € pro Nacht).
@@ -56,7 +56,7 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
 - **Soll:** Auswahlliste wie bei der Kasse (dort gibt es schon eine), sonst Großschreibung erzwingen und bei unbekanntem Code
   warnen statt 1 : 1 zu rechnen.
 
-### 🔴 F1 Leere Unterkunft kostet schon Geld (Trinkgeld-Schätzung)
+### 🔴 F1 Leere Unterkunft kostet schon Geld (Trinkgeld-Schätzung) → #544
 - **Schritte:** Reise Thailand, Kapitel „Ankommen“ auf „Detailliert“, „+ Unterkunft“, nichts eintragen.
 - **Ist:** Karte zeigt „Preis unbekannt“, zählt aber „+ ca. 42 € vor Ort · Trinkgeld“ in Kapitel und Gesamt (zwei leere
   Unterkünfte = 84 €).
@@ -65,7 +65,7 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
 - Dazu: Beim Umschalten „Einfach → Detailliert“ entsteht ein leerer Posten „Neue Unterkunft“ über die ganze Reise, obwohl
   kein Betrag eingetragen war. Mit leerem Betrag sollte kein Posten entstehen.
 
-### 🔴 F6 Ziel geändert, Flug und Hotel passen nicht mehr: keine Warnung
+### 🔴 F6 Ziel geändert, Flug und Hotel passen nicht mehr: keine Warnung → #551
 - **Schritte:** Reise Makarska mit Flug DUS→SPU und Hotel in Makarska → „Als Variante kopieren“ → in der Variante Ort
   „Alcúdia“, Land „Spanien“.
 - **Ist:** Flug nach Split und Hotel in Makarska bleiben, die App rechnet „SPU → Alcúdia ca. 11:12 h“ mit dem Auto (Mallorca
@@ -74,7 +74,7 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
 - **Soll:** Nach Zieländerung fragen „Flüge und Unterkünfte zum alten Ziel entfernen?“; in Vergleich und Reise warnen, wenn
   Ziel-Flughafen oder Unterkunft weit vom Reiseziel liegen. Fahrzeit-Schätzung über Wasser nicht anbieten.
 
-### 🔴 F3 Flug mit Rückflug an einem anderen Flughafen: Anfahrt nur für den Abflughafen
+### 🔴 F3 Flug mit Rückflug an einem anderen Flughafen: Anfahrt nur für den Abflughafen → #550
 - **Wo:** Flugsuche, Familie aus Köln, mehrere Abflughäfen (CGN, DUS, DTM, NRN), Ziel „Umkreis Makarska“.
 - **Ist:** Treffer wie „Hin DUS → WAW → SJJ, Rück DBV → NRN (Weeze)“ mit „Anfahrt 212 €“ (Auto + 15 Tage Parken in DUS).
   Das Auto steht in Düsseldorf, die Familie landet in Weeze. Ebenso Hin nach Sarajevo (Bosnien), Rück ab Mostar: am Ziel
@@ -90,14 +90,14 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
 - **Soll:** Unter ca. 500 km zuerst Auto/Bahn/Bus vorschlagen (die Bausteine aus „Unterwegs“ gibt es schon), Übernachtung
   optional („Tagesausflug“).
 
-### 🟠 F2 „Die Reise heißt vorerst Gruppenreise 🦊 Fuchs“ stimmt nicht
+### 🟠 F2 „Die Reise heißt vorerst Gruppenreise 🦊 Fuchs“ stimmt nicht → #545
 - **Schritte:** Neue Reise → Gruppe → „Mit Platzhalter-Tieren“ → Reise anlegen.
 - **Ist:** Reise heißt „Neue Reise“, kein Fuchs unter den Personen.
 - **Ursache:** `who.mascot` wird in `app/src/lib/ui/WhoPicker.svelte` angezeigt, aber nirgends verwendet (`who.ts`,
   `NewTripDialog.svelte`).
 - **Soll:** Name übernehmen oder den Satz entfernen.
 
-### 🟠 F8 Event-Dialog hinterlässt halbe Reisen
+### 🟠 F8 Event-Dialog hinterlässt halbe Reisen → #546, #547
 - **Ist:** Schon beim Starten der Event-Suche entsteht eine Reise (4 Platzhalter, ohne Namen und Datum). Findet sich kein
   Flug oder schließt man den Dialog, bleibt sie in „Geplante Reisen“ als „Neue Reise“ bzw. „M'gladbach – Dortmund“ ohne
   Reisedaten stehen.
@@ -107,7 +107,7 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
 - In der Event-Liste stand „Nottingham Forest B Team vs Borussia Dortmund U21s · Undefined“: der Ort `undefined` wird als
   Text angezeigt.
 
-### 🟠 F9 Reiseidee verteilt Ferienhaus und Auto pro Kopf, auch auf Kinder
+### 🟠 F9 Reiseidee verteilt Ferienhaus und Auto pro Kopf, auch auf Kinder → #552
 - **Schritte:** Reiseideen → „Gardasee mit mehreren Familien“ → „Mit diesen Werten eigene Reise planen“.
 - **Ist:** Ferienhaus 305 € pro Person, Kinder gleich viel; „Anreise mit dem Auto (…, geteilt)“ 70 € pro Person, also zahlt die
   Familie mit mehr Kindern mehr Sprit. Die Seite selbst rät: „Legt vorher fest, ob Kinder bei der Unterkunft voll, halb oder gar
@@ -115,12 +115,12 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
   Familie aus“ – das kann die App aber nicht (V2).
 - **Soll:** Auto als Posten je Familie/Auto übernehmen; Text der Seite an das anpassen, was die App kann.
 
-### 🟠 F10 Reiseidee + eigener Wohnort: Anreise doppelt
+### 🟠 F10 Reiseidee + eigener Wohnort: Anreise doppelt → #552
 - **Ist:** Nach Eingabe des Wohnorts bietet „Unterwegs“ „+ Auto als Posten (ca. 229 €)“ an, obwohl aus der Reiseidee schon
   „Anreise mit dem Auto 770 €“ als Posten da ist. Wer beides nimmt, zahlt die Anreise doppelt.
 - **Soll:** Den pauschalen Posten aus der Reiseidee ersetzen bzw. darauf hinweisen.
 
-### 🟠 F11 Lücken in der Rundreise werden ohne Flug nicht erkannt
+### 🟠 F11 Lücken in der Rundreise werden ohne Flug nicht erkannt → #549
 - **Schritte:** Solo-Reise 01.–22.02., Hostel 01.–04.02., Guesthouse 05.–10.02., keine Flüge.
 - **Ist:** „Wer ist wann wo“ zeigt eine leere Leiste („Anwesenheit offen“), keine Warnung für die Nacht 04.→05.02. und
   10.–22.02. Die Unterkünfte erscheinen nicht in der Leiste.
@@ -141,7 +141,7 @@ mit Vorschlag „alle 6“ gegen „5 von 6 ohne Tiger“, Abstimmung daraus, Ka
 - 390 px: Die Reise-Pille zeigt „🧳 M“ (Makarska), daneben +, ✎, ❗, 🐞, Anmelden, ⋯. Man sieht nicht, welche Reise offen ist.
 - Die schwebenden Knöpfe „Fehler melden“ und „KI“ liegen auf der Reiseliste über dem Papierkorb bzw. dem Titel.
 
-### 🟡 F14 Kasse zeigt keine Cent
+### 🟡 F14 Kasse zeigt keine Cent → #548
 - Ausgabe „Abendessen Tapas 240,50 €“ erscheint als „241 €“. Ausgleich ist richtig gerechnet (Panda → Frosch 60 €,
   Hase/Tiger/Löwe → Frosch je 40 €), aber bei Geld unter Freunden erwartet man Cent.
 
