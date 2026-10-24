@@ -160,3 +160,19 @@ describe("Zahleneingabe", () => {
     expect(parseNum("")).toBeNaN();
   });
 });
+
+describe("Währungscode normalisieren", () => {
+  const s = { ...DEFAULT_SETTINGS, rates: { THB: 0.027 } };
+  it("klein geschrieben rechnet wie groß geschrieben", async () => {
+    const { rateOf, hasRate } = await import("./index");
+    expect(rateOf("thb", s)).toBe(0.027);
+    expect(rateOf("THB", s)).toBe(0.027);
+    expect(hasRate("thb", s)).toBe(true);
+    expect(rateOf(" eur", s)).toBe(1);
+  });
+  it("unbekannter Code ist erkennbar", async () => {
+    const { hasRate } = await import("./index");
+    expect(hasRate("EURO", s)).toBe(false);
+    expect(hasRate("BAT", s)).toBe(false);
+  });
+});
