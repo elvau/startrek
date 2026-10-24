@@ -6,7 +6,11 @@
  */
 
 /** cat: Bereich des Postens, der daraus in der App entsteht (Reiseidee öffnen, #402) */
-export interface CostRow { cat: "flights" | "stay" | "transport" | "attractions" | "misc"; label: string; from: number; to: number; note?: string }
+export interface CostRow {
+  cat: "flights" | "stay" | "transport" | "attractions" | "misc"; label: string; from: number; to: number; note?: string;
+  /** Preis je Auto (Spanne): die App legt dafür einen Posten je Familie an statt eines Betrags pro Kopf (#552) */
+  car?: { from: number; to: number };
+}
 export interface Faq { q: string; a: string }
 export interface Page {
   slug: string;
@@ -171,7 +175,7 @@ export const PAGES: Page[] = [
     ],
     example: "3 Familien mit 6 Erwachsenen und 5 Kindern, 7 Nächte im Sommer, Ferienhaus mit Pool, Anreise mit drei Autos",
     costs: [
-      { cat: "transport", label: "Anreise mit dem Auto (Sprit, Vignette, Maut, geteilt)", from: 50, to: 90 },
+      { cat: "transport", label: "Anreise mit dem Auto (Sprit, Vignette, Maut, geteilt)", from: 50, to: 90, car: { from: 120, to: 200 } },
       { cat: "stay", label: "Ferienhaus mit Pool (7 Nächte, geteilt durch 11)", from: 230, to: 380 },
       { cat: "misc", label: "Kurtaxe (Kinder oft frei)", from: 7, to: 17 },
       { cat: "misc", label: "Essen und Getränke", from: 210, to: 315 },
@@ -185,7 +189,7 @@ export const PAGES: Page[] = [
       "Freizeitpark-Tickets sind online meist günstiger als an der Kasse."
     ],
     faq: [
-      { q: "Wie teilen mehrere Familien ein Ferienhaus fair auf?", a: "Üblich ist: Erwachsene zahlen voll, Kinder einen festen Anteil (zum Beispiel die Hälfte). Bleibt eine Familie kürzer, zahlt sie nur ihre Nächte. Split&Fly rechnet das pro Person und pro Familie aus." },
+      { q: "Wie teilen mehrere Familien ein Ferienhaus fair auf?", a: "Üblich ist: Erwachsene zahlen voll, Kinder einen festen Anteil (zum Beispiel die Hälfte). Bleibt eine Familie kürzer, zahlt sie nur ihre Nächte. Split&Fly rechnet jede Familie mit ihren Nächten und dem Preis je Person aus; Kinderpreise tragt ihr beim Angebot ein, einen festen Kinderanteil für Pauschalen gibt es noch nicht." },
       { q: "Was kostet die Anreise an den Gardasee?", a: "Aus Süddeutschland etwa 120 bis 200 € pro Auto für Sprit, Vignette und Maut hin und zurück, aus Norddeutschland entsprechend mehr." }
     ],
     plan: { ziel: "Riva del Garda", land: "IT", name: "Gardasee mit Familien", fam: "2-2,2-2,2-1" },

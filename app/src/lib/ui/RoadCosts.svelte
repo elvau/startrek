@@ -6,6 +6,7 @@
    */
   import { t, tn } from "../i18n/index.svelte";
   import Help from "./Help.svelte";
+  import { IDEA_CAR } from "../idea";
   import { access, app, setDetailed } from "../store.svelte";
   import { eur, moneyExact, rateOf } from "../calc";
   import { isActive, uid, type Item } from "../model";
@@ -115,6 +116,8 @@
       note: noteFor(),
       ...(cars.length && rest.length ? { participants: rest } : {}),
       options: [optionFor()] };
+    // eigener Auto-Posten ersetzt die pauschale Anreise aus der Reiseidee (sonst doppelt, #552)
+    for (const i of app.trip.items) if (i.hint === IDEA_CAR && i.status !== "dropped") i.status = "dropped";
     app.trip.items.push(it);
     showItem(it.id);
   }

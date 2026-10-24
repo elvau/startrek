@@ -1019,6 +1019,7 @@ export const en: Dict = {
   "install.title": "Split&Fly as an app",
   "install.why": "Split&Fly then opens from your home screen like an app, without the browser bar and even offline.",
   "idea.detail": "€{from}–{to} per person according to the trip idea (as of {stand})",
+  "idea.detailCar": "€{from}–{to} per car according to the travel idea (as of {stand}), one item per family",
   "idea.option": "Estimate",
   "info.title": "What's new & next",
   "info.version": "Version {v}",

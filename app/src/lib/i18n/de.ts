@@ -1017,6 +1017,7 @@ export const de = {
   "install.title": "Split&Fly als App",
   "install.why": "Danach startet Split&Fly vom Home-Bildschirm wie eine App, ohne Browserleiste und auch ohne Netz.",
   "idea.detail": "{from}–{to} € pro Person laut Reiseidee (Stand {stand})",
+  "idea.detailCar": "{from}–{to} € pro Auto laut Reiseidee (Stand {stand}), ein Posten je Familie",
   "idea.option": "Richtwert",
   "info.title": "Neues & Ausblick",
   "info.version": "Version {v}",
