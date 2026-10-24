@@ -4,12 +4,12 @@
   /* Wer ist wann da, und hat jede Nacht ein Bett? Pro Haushalt ein Balken über alle Nächte. */
   import { access, app } from "../store.svelte";
   import { hhKey, isActive } from "../model";
-  import { presences, participantsOf } from "../calc";
+  import { participantsOf } from "../calc";
   import { airNights, needs, nightsList, okDate, addDays } from "../calc/travel";
   import { activeOption } from "../calc";
   import { stationName } from "../stays/stationName";
   import { dateDE, dayShort } from "../format";
-  import { arrivals, gaps, hintList } from "../stays/presence";
+  import { arrivals, gaps, hintList, planPresences } from "../stays/presence";
   import { openStaySearch } from "../stays/open.svelte";
   import { toCamper } from "./showItem";
   import { airportNights } from "../stays/airports";
@@ -23,7 +23,7 @@
 
   const plan = $derived.by(() => {
     const trip = app.trip;
-    const pres = presences(trip);
+    const pres = planPresences(trip);
     const stays = trip.items.filter(it => it.cat === "stay" && it.status !== "dropped" && okDate(it.from) && okDate(it.to) && it.to! > it.from!);
     const dates = [trip.from, trip.to, ...stays.flatMap(s => [s.from, s.to]), ...Object.values(pres).flatMap(p => (p ? [p.a, p.d] : []))].filter(okDate).sort() as string[];
     if (dates.length < 2) return null;

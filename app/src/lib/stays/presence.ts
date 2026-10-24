@@ -129,9 +129,17 @@ export function segments(trip: Trip, ids?: string[]): { from: string; to: string
 }
 const addDay = (d: string) => new Date(Date.parse(d + "T12:00:00Z") + 86400000).toISOString().slice(0, 10);
 
+/** Anwesenheit wie presences; ohne eigene Zeiten oder Flug gelten die Reisedaten (#549) */
+export function planPresences(trip: Trip): Record<string, Presence | null> {
+  const pres = presences(trip);
+  if (!(okDate(trip.from) && okDate(trip.to) && trip.to > trip.from)) return pres;
+  for (const t of trip.travelers) pres[t.id] ??= { a: trip.from, d: trip.to, src: "trip" };
+  return pres;
+}
+
 /** Nächte ohne Unterkunft, zusammengefasst nach gleichem Zeitraum (nur wer bekannte Anwesenheit hat) */
 export function gaps(trip: Trip): Gap[] {
-  const pres = presences(trip);
+  const pres = planPresences(trip);
   const stays = stayItems(trip);
   const act = trip.travelers.filter(isActive);
   const map = new Map<string, Gap>();
