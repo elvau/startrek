@@ -6,7 +6,7 @@
   import { t, tn } from "../i18n/index.svelte";
   import Help from "./Help.svelte";
   import { access, app, calc } from "../store.svelte";
-  import { eur, parseNum } from "../calc";
+  import { eur as eurRound, eurCent as eur, parseNum } from "../calc";
   import { CAT_CHAPTERS } from "../chapters";
   import { hhKey, isActive, uid, type CatKey, type Expense } from "../model";
   import { CURRENCIES, entryCurrency } from "../currency.svelte";
@@ -137,7 +137,7 @@
   <div class="ks-head">
     <div>
       <h3>🧾 {t("ks.title")} <Help k="ks" /></h3>
-      <p class="muted small">{empty ? t("ks.hint") : t("ks.spent", { v: eur(L.spent), plan: eur(calc.T.total) })}</p>
+      <p class="muted small">{empty ? t("ks.hint") : t("ks.spent", { v: eur(L.spent), plan: eurRound(calc.T.total) })}</p>
     </div>
     {#if !access.readonly && !adding}<button class="btn sm ks-add" onclick={start}>+ {t("ks.add")}</button>{/if}
   </div>

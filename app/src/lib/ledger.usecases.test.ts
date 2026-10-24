@@ -225,3 +225,20 @@ describe("Invarianten der Kasse über 300 Zufallsreisen", () => {
     }
   });
 });
+
+describe("Ausgleich auf den Cent (#548)", () => {
+  it("240,50 € für 6 Personen: Beträge mit Cent, Summe passt zu den Salden", () => {
+    // eine Person hat 240,50 € bezahlt, alle sechs teilen: Anteil 40,083333…
+    const share = 240.5 / 6;
+    const rows = [{ hh: "A", bal: 240.5 - share }, ...["B", "C", "D", "E", "F"].map(hh => ({ hh, bal: -share }))];
+    const m = settle(rows);
+    expect(m.map(x => x.v)).toEqual([40.08, 40.08, 40.08, 40.08, 40.08]);
+    expect(m.reduce((a, x) => a + x.v, 0)).toBeCloseTo(200.4, 5);
+  });
+  it("Rundungsrest geht auf die größte Seite, Summe bleibt gleich", () => {
+    const m = settle([{ hh: "A", bal: 10 }, { hh: "B", bal: -3.33 }, { hh: "C", bal: -3.33 }, { hh: "D", bal: -3.34 }]);
+    const sum = Math.round(m.reduce((a, x) => a + x.v, 0) * 100);
+    expect(sum).toBe(1000);
+    expect(m.every(x => Math.abs(x.v * 100 - Math.round(x.v * 100)) < 1e-9)).toBe(true);
+  });
+});

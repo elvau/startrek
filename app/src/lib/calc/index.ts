@@ -441,6 +441,12 @@ export const moneyExact = (v: number, currency: string) =>
   Number.isInteger(v) ? money(v, currency) : new Intl.NumberFormat(locale(), { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 export const eur = (v: number) => { const s = shown(v || 0); return money(s.v, s.currency); };
 
+/** Betrag in der Währung der Person mit Cent, wenn er nicht glatt aufgeht (Kasse: 240,50 € statt 241 €) */
+export const eurCent = (v: number) => {
+  const s = shown(v || 0);
+  return Math.abs(s.v - Math.round(s.v)) < 0.005 || s.currency === "JPY" || s.currency === "KRW" ? money(s.v, s.currency) : moneyExact(s.v, s.currency);
+};
+
 const fmt2 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const cur2 = new Map<string, Intl.NumberFormat>();
 /** Anteil pro Person: unter 100 € mit Cent, wenn er nicht glatt aufgeht (20 € für 3 → „6,67 €“ statt „7 €“) */
