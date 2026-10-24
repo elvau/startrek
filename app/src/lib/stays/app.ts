@@ -1,6 +1,7 @@
 /* Unterkunftssuche in der App: Anfrage aus der Reise, Treffer als Angebot in einen Unterkunft-Posten */
 import { i18n, t } from "../i18n/index.svelte";
 import { feeToExtra } from "./fees";
+import { roomsFor } from "./search";
 import { addOffer, isActive, uid, type Item, type Option, type Traveler, type Trip } from "../model";
 import { FLIGHTS_URL } from "../flights/app";
 import type { StayOffer, StayQuery, StaySearchResult, StayType } from "./types";
@@ -30,8 +31,16 @@ export function guests(people: Traveler[]): Pick<StayQuery, "adults" | "childAge
  */
 export const UNIT_MAX = 8;
 export const autoParts = (guests: number, _type?: StayType) => (guests <= 10 ? 1 : Math.ceil(guests / UNIT_MAX));
-/** Zimmer: ganze Unterkunft eine, sonst je zwei Gäste ein Zimmer (höchstens 30) */
-export const autoRooms = (guests: number, type: StayType) => (type === "whole" ? 1 : Math.min(30, Math.max(1, Math.ceil(guests / 2))));
+/**
+ * Zimmer: ganze Unterkunft eine, sonst je zwei Gäste ein Zimmer (höchstens 30).
+ * Mit Erwachsenen (#539): je zwei Erwachsene eins, Kinder teilen sich das Zimmer der Eltern (etwa vier Personen je Zimmer),
+ * nie mehr Zimmer als Erwachsene.
+ */
+export const autoRooms = (guests: number, type: StayType, adults?: number) => {
+  if (type === "whole") return 1;
+  if (adults == null) return Math.min(30, Math.max(1, Math.ceil(guests / 2)));
+  return Math.min(30, roomsFor(adults, guests - adults));
+};
 
 /** Gäste der größten von parts Unterkünften: Erwachsene anteilig aufgerundet, Kinder reihum */
 export function splitGuests(g: Pick<StayQuery, "adults" | "childAges">, parts: number): Pick<StayQuery, "adults" | "childAges"> {

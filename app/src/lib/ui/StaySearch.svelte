@@ -140,7 +140,7 @@
   const all = $derived(g.adults + g.childAges.length);
   const per = $derived(splitGuests(g, parts));
   $effect(() => { const p = autoParts(all, type); if (!partsSet) parts = p; });
-  $effect(() => { const r = autoRooms(Math.ceil(all / Math.max(1, parts || 1)), type); if (!roomsSet) rooms = r; });
+  $effect(() => { const r = autoRooms(per.adults + per.childAges.length, type, per.adults); if (!roomsSet) rooms = r; });
   const partial = $derived(who.filter(x => x.nights < nn));
   const arr = arrivals(trip).filter(a => !ids || a.ids.some(id => ids.includes(id)));
 
@@ -276,7 +276,7 @@
         ];
         for (const tr of tries) {
           const g2 = splitGuests(g, tr.parts);
-          const q2: StayQuery = { ...q, ...g2, type: tr.type, rooms: tr.type === "whole" ? 1 : Math.max(1, Math.min(autoRooms(g2.adults + g2.childAges.length, tr.type), g2.adults)) };
+          const q2: StayQuery = { ...q, ...g2, type: tr.type, rooms: tr.type === "whole" ? 1 : Math.max(1, Math.min(autoRooms(g2.adults + g2.childAges.length, tr.type, g2.adults), g2.adults)) };
           const r2 = await searchStaysRemote(q2, ctrl.signal);
           const got2 = keepStays(r2.offers, q2);
           if (got2.length) { r = r2; got = got2; q = q2; parts = tr.parts; partsSet = true; fellBack = tr.type === "whole" ? t("st.fallbackParts", { n: tr.parts }) : t("st.fallbackAll"); break; }

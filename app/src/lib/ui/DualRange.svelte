@@ -4,6 +4,7 @@
   let { lo = $bindable(), hi = $bindable(), min = 1, max, label, unit = "", maxNote = "" }:
     { lo: number; hi: number; min?: number; max: number; label: string; unit?: string; maxNote?: string } = $props();
 
+  // Liegen beide Griffe übereinander, kommt „von“ nach oben (sonst klebt „bis“ davor und „von“ lässt sich nie mehr ziehen)
   const pct = (v: number) => ((v - min) / ((max - min) || 1)) * 100;
   // Grenzen einhalten: nie außerhalb, „von“ nie über „bis“; beim Ziehen bleibt der Regler am anderen stehen
   // (der Wert ändert sich dann nicht, also setzt Svelte den Regler nicht zurück: selbst zurücksetzen)
@@ -20,9 +21,9 @@
   <div class="dual" dir="ltr">
     <div class="dual-track"></div>
     <div class="dual-fill" style:left="{pct(lo)}%" style:right="{100 - pct(hi)}%"></div>
-    <input type="range" {min} {max} step="1" value={lo} aria-label="{label}: {t('range.from')}"
+    <input type="range" {min} {max} step="1" value={lo} style:z-index={lo === hi && lo > min ? 3 : 1} aria-label="{label}: {t('range.from')}"
       oninput={e => { lo = Math.min(+e.currentTarget.value, hi); e.currentTarget.value = String(lo); }} />
-    <input type="range" {min} {max} step="1" value={hi} aria-label="{label}: {t('range.to')}"
+    <input type="range" {min} {max} step="1" value={hi} style:z-index="2" aria-label="{label}: {t('range.to')}"
       oninput={e => { hi = Math.max(+e.currentTarget.value, lo); e.currentTarget.value = String(hi); }} />
   </div>
   <div class="dual-axis" dir="ltr"><span>{min}</span><span>{maxNote || max}</span></div>

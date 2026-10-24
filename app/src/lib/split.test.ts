@@ -60,6 +60,13 @@ describe("Unterkünfte für große Gruppen", () => {
     expect(autoRooms(15, "hotel")).toBe(8);
     expect(autoRooms(80, "all")).toBe(30);
   });
+  it("Zimmer mit Kindern: Kinder teilen das Zimmer der Eltern (#539)", () => {
+    expect(autoRooms(5, "hotel", 2)).toBe(2);
+    expect(autoRooms(3, "all", 2)).toBe(1);
+    expect(autoRooms(4, "hotel", 4)).toBe(2);
+    expect(autoRooms(8, "hotel", 2)).toBe(2);
+    expect(autoRooms(5, "whole", 2)).toBe(1);
+  });
   it("Gäste der größten Unterkunft", () => {
     expect(splitGuests({ adults: 15, childAges: [] }, 2)).toEqual({ adults: 8, childAges: [] });
     expect(splitGuests({ adults: 6, childAges: [3, 8, 12] }, 2)).toEqual({ adults: 3, childAges: [3, 12] });
