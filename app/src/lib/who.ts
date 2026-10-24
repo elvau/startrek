@@ -78,3 +78,6 @@ export function whoGroupName(w: Who, d: Directory): string {
   const names = d.groups.filter(g => w.groups.includes(g.id)).map(g => g.name);
   return names.length > 2 ? `${names.slice(0, 2).join(" & ")} …` : names.join(" & ");
 }
+
+/** vorläufiger Reisename bei Gruppe mit Platzhalter-Tieren, wie im Dialog angekündigt (label = Name mit Tier), sonst "" */
+export const whoTripName = (w: Who, label: (mascot: string) => string): string => (w.mode === "group" && w.src === "animals" ? label(w.mascot) : "");
