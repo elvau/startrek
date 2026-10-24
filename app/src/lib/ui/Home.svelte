@@ -16,7 +16,7 @@
   import { flagOf, range } from "../format";
   import { ccOf } from "../geo/places";
   import { bundle, isArchived, isBundle, pickedOf, variantLabel, type Bundle } from "../variants";
-  import { openEventPlanner } from "../event/open.svelte";
+  import { openEventPlannerFresh } from "../event/open.svelte";
   import { openChat } from "../agent/open.svelte";
   import NewTripDialog from "./NewTripDialog.svelte";
   import RealityDialog from "./RealityDialog.svelte";
@@ -129,7 +129,7 @@
   // zuletzt geöffnete Reise (bleibt im Hintergrund offen): oben direkt weiterplanen
   const last = $derived(rows.find(r => r.id === app.trip.id));
   const lastCmp = $derived(last?.cmp ? bundleOf(last) : undefined);
-  function event() { startTrip(); openEventPlanner(); }
+  function event() { startTrip(); openEventPlannerFresh(); }
   // unberührte Entwürfe beim Anzeigen der Startseite aufräumen; Reisen ohne Kosten nur nach Rückfrage
   $effect(() => { if (cloud.ready || !cloud.configured) sweepPristine(); });
   const empties = $derived(rows.length ? emptyTrips() : []);
