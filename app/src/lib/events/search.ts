@@ -5,6 +5,7 @@ import { searchTicketmaster } from "./ticketmaster";
 import { searchSports, SPORT_FILTERS } from "./sports";
 import type { EventEnv, EventHit, EventQuery, EventSearchResult } from "./types";
 import { errorText } from "../netcheck";
+import { cleanHit } from "./clean";
 
 interface Provider {
   id: string;
@@ -28,7 +29,7 @@ const key = (e: EventHit) => `${e.start.slice(0, 10)}|${e.name.toLowerCase().nor
 
 export function mergeEvents(lists: EventHit[][]): EventHit[] {
   const out = new Map<string, EventHit>();
-  for (const e of lists.flat()) {
+  for (const e of lists.flat().map(cleanHit)) {
     const k = key(e), cur = out.get(k);
     // erster Treffer bleibt, fehlende Angaben kommen vom zweiten
     out.set(k, cur ? { ...e, ...cur, city: cur.city ?? e.city, venue: cur.venue ?? e.venue, lat: cur.lat ?? e.lat, lon: cur.lon ?? e.lon, url: cur.url ?? e.url } : e);

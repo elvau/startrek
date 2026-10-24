@@ -1,4 +1,5 @@
 /* Ticketmaster Discovery API: Konzerte, Sport, Shows weltweit (kostenloser Schlüssel) */
+import { cleanText } from "./clean";
 import type { EventHit, EventQuery } from "./types";
 
 export const TM_URL = "https://app.ticketmaster.com/discovery/v2/events.json";
@@ -27,7 +28,7 @@ export function fromTicketmaster(data: any): EventHit[] {
     return {
       id: `tm:${e.id}`, source: "ticketmaster", sourceName: "Ticketmaster", name: String(e.name || ""),
       start: d.localDate ? (d.localTime ? `${d.localDate}T${String(d.localTime).slice(0, 5)}` : d.localDate) : "",
-      ...(v.name ? { venue: v.name } : {}), ...(v.city?.name ? { city: v.city.name } : {}),
+      ...(cleanText(v.name) ? { venue: cleanText(v.name) } : {}), ...(cleanText(v.city?.name) ? { city: cleanText(v.city?.name) } : {}),
       ...(v.country?.countryCode ? { cc: v.country.countryCode } : {}),
       ...(isFinite(lat) && isFinite(lon) && (lat || lon) ? { lat, lon } : {}),
       ...(e.url ? { url: e.url } : {}),
