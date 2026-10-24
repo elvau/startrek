@@ -84,7 +84,8 @@ export interface OptionCalc {
 /** Nebenkosten in die Rechnung eines Angebots einbauen */
 function withExtras(r: OptionCalc, opt: Option, it: Item, people: Traveler[], ctx: { nights: number; days: number; w?: Record<string, number>; fx: number; trip: Trip }): OptionCalc {
   // gepflegte Schätzungen (Kurtaxe je Ort) dazu, solange nicht weggeklickt bzw. vom Anbieter angegeben
-  const auto = autoExtras(it, opt, ctx.trip, c => rateOf(c, ctx.trip.settings));
+  // Schätzungen erst, wenn das Angebot einen Preis hat (#544)
+  const auto = noPrice(opt) && !it.cruise ? [] : autoExtras(it, opt, ctx.trip, c => rateOf(c, ctx.trip.settings));
   if (auto.length) opt = { ...opt, extras: [...(opt.extras || []), ...auto] };
   const dep = autoDeposit(it, opt, rateOf(opt.price.currency || "EUR", ctx.trip.settings), r.units);
   if (dep) opt = { ...opt, deposit: dep };

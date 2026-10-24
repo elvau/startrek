@@ -721,7 +721,8 @@ export function setDetailed(cat: CatKey, on: boolean, edit = false) {
       const it: Item = { id: uid(), cat, name: CAT_NAMES(cat), status: "chosen", options: [{ id: uid(), label: "", price }], ...(cat === "flights" ? { access: false } : {}) };
       trip.items.push(it);
       if (edit) app.editing = it.id;
-    } else if (edit) addItem(cat);
+    }
+    // ohne Betrag kein leerer Posten (#544): „+ Posten“ legt ihn bei Bedarf an
     return;
   }
   if (has) {
