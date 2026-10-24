@@ -59,7 +59,7 @@ function normalize(t: Trip): Trip {
   return t;
 }
 
-type NewOpts = { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[]; items?: Item[]; kicker?: string };
+type NewOpts = { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[]; items?: Item[]; kicker?: string; /** vorläufiger Name, bis Ort oder Zeitraum da sind */ provisional?: string };
 
 /** Leere Reise; ohne Namen heißt sie „Neue Reise“, bis Ort oder Zeitraum da sind oder man selbst einen vergibt */
 function emptyTrip(o: NewOpts = {}): Trip {
@@ -70,7 +70,7 @@ function emptyTrip(o: NewOpts = {}): Trip {
   // Bereiche, für die schon Posten mitkommen (z. B. aus einer Reiseidee), richten sich wie bisher nach den Posten
   const simple = (c: CatKey) => ((o.items || []).some(i => i.cat === c && !i.auto) ? {} : { [c]: false });
   return {
-    id: uid(), name: own || auto || "", autoName: !own,
+    id: uid(), name: own || auto || o.provisional?.trim() || "", autoName: !own,
     place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
     travelers, items: o.items || [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...(o.kicker ? { kicker: o.kicker } : {}),
     // Verpflegung gehört zu den versteckten Kosten: bei neuen Reisen eingerechnet, gespeicherte behalten ihre Einstellung (#388, #418).
@@ -656,8 +656,8 @@ export function openTrip(id: string, why = "Startseite") {
 }
 
 /** neue Reise mit diesen Reisenden (Standard: eine Person) und direkt hinein */
-export function startTrip(travelers?: Traveler[]) {
-  newTrip(travelers ? { travelers } : {});
+export function startTrip(travelers?: Traveler[], provisional?: string) {
+  newTrip({ ...(travelers ? { travelers } : {}), ...(provisional ? { provisional } : {}) });
   app.home = false;
   scrollTo({ top: 0 });
 }
