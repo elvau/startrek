@@ -1546,6 +1546,7 @@ export const pl: Dict = {
   "ie.billing": "Rozliczenie",
   "ie.checkin": "Przyjazd",
   "ie.currency": "Waluta",
+  "ie.noRate": "Brak kursu dla „{cur}” – cena jest liczona 1:1 jako euro. Sprawdź kod (np. THB) lub wpisz własny kurs.",
   "ie.delete": "Usuń pozycję",
   "ie.dep": "Wylot",
   "ie.dropOffer": "Usuń tę ofertę",

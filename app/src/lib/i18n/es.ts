@@ -1506,6 +1506,7 @@ export const es: Dict = {
   "ie.billing": "Cálculo",
   "ie.checkin": "Llegada",
   "ie.currency": "Moneda",
+  "ie.noRate": "No se conoce el tipo de cambio de «{cur}»; el precio se cuenta 1:1 como euros. Revisa el código (p. ej. THB) o introduce tu propio tipo.",
   "ie.delete": "Borrar partida",
   "ie.dep": "Salida",
   "ie.dropOffer": "Quitar esta oferta",

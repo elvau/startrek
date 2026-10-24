@@ -1504,6 +1504,7 @@ export const de = {
   "ie.billing": "Abrechnung",
   "ie.checkin": "Anreise",
   "ie.currency": "Währung",
+  "ie.noRate": "Für „{cur}“ ist kein Kurs bekannt, der Preis wird 1 : 1 als Euro gerechnet. Code prüfen (z. B. THB) oder einen eigenen Kurs eintragen.",
   "ie.delete": "Posten löschen",
   "ie.dep": "Abflug",
   "ie.dropOffer": "Dieses Angebot entfernen",

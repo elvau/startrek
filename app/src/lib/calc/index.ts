@@ -38,9 +38,15 @@ export const activeTravelers = (trip: Trip) => trip.travelers.filter(isActive);
 export const lineWho = (l: SimpleLine, trip: Trip): Traveler[] => activeTravelers(trip).filter(t => !l.who || l.who.includes(t.id));
 
 /** Kurs: eigener der Reise, sonst Tageskurs der EZB, sonst 1 */
-export const rateOf = (cur: string, s: Settings) => (cur === "EUR" ? 1 : s.rates[cur] || fx.rates?.rates[cur] || 1);
+export const rateOf = (cur: string, s: Settings) => {
+  const c = (cur || "").trim().toUpperCase();
+  return c === "EUR" ? 1 : s.rates[c] || fx.rates?.rates[c] || 1;
+};
 /** Kurs bekannt (sonst rechnet rateOf 1 : 1) */
-export const hasRate = (cur: string, s: Settings) => cur === "EUR" || !!(s.rates[cur] || fx.rates?.rates[cur]);
+export const hasRate = (cur: string, s: Settings) => {
+  const c = (cur || "").trim().toUpperCase();
+  return c === "EUR" || !!(s.rates[c] || fx.rates?.rates[c]);
+};
 
 export interface StayCalc {
   nights: string[];

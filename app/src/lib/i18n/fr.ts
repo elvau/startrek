@@ -1506,6 +1506,7 @@ export const fr: Dict = {
   "ie.billing": "Calcul",
   "ie.checkin": "Arrivée",
   "ie.currency": "Devise",
+  "ie.noRate": "Aucun taux n’est connu pour « {cur} » : le prix est compté 1 pour 1 en euros. Vérifiez le code (p. ex. THB) ou saisissez votre propre taux.",
   "ie.delete": "Supprimer le poste",
   "ie.dep": "Départ",
   "ie.dropOffer": "Retirer cette offre",

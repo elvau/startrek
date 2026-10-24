@@ -1506,6 +1506,7 @@ export const en: Dict = {
   "ie.billing": "Pricing",
   "ie.checkin": "Check-in",
   "ie.currency": "Currency",
+  "ie.noRate": "No exchange rate is known for “{cur}”, so the price is counted 1:1 as euros. Check the code (e.g. THB) or enter your own rate.",
   "ie.delete": "Delete item",
   "ie.dep": "Departure",
   "ie.dropOffer": "Remove this offer",
