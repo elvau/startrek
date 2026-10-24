@@ -291,6 +291,22 @@ try {
   await p.keyboard.press("Escape");
   log("Kein Flug: Meldung statt Karten, vorher mit zwei Umstiegen nachgesucht");
 
+  // Start → „Zu einem Event“, Suche ohne Flug, Planer schließen: keine halbe Reise bleibt zurück (#546)
+  await p.evaluate(() => localStorage.clear());
+  await p.goto(URL);
+  await p.locator(".start .home-event").click();
+  const m5 = p.locator(".modal");
+  await m5.locator(".ev-form").waitFor();
+  await m5.locator(".ev-find input").fill("Arsenal");
+  await m5.locator(".ev-find .btn").click();
+  await m5.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
+  await m5.locator(".ev-form .btn.primary").click();
+  await m5.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
+  await p.keyboard.press("Escape");
+  await p.locator(".start .home-title").waitFor();
+  if (await p.locator(".start .home-trip").count()) fail("Reise vom abgebrochenen Event-Planer bleibt stehen");
+  log("Event-Planer ohne übernommenen Vorschlag geschlossen: keine Reise bleibt zurück");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Event-Reise ok");
 } finally { await browser.close(); server.kill(); }
