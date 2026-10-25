@@ -26,6 +26,9 @@ body.mob .hint{display:none}
 body.mob .bug-fab{bottom:calc(var(--mob-bar) + 12px + env(safe-area-inset-bottom,0px))}
 body.mob .ai-fab{bottom:calc(var(--mob-bar) + 12px + env(safe-area-inset-bottom,0px));padding:10px 14px}
 body.mob .ai-fab .ai-fab-lbl{display:none}
+/* Startseite hat keine Leiste unten: die Knöpfe sitzen ganz unten und lassen der Reiseliste Platz zum Weiterscrollen (#553) */
+body.mob:not(.mob-pager) .bug-fab,body.mob:not(.mob-pager) .ai-fab{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+body.mob:not(.mob-pager) .start{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 body.mob .ai-note{bottom:calc(var(--mob-bar) + 70px + env(safe-area-inset-bottom,0px))}
 /* Posten zugeklappt (#531): eine Zeile; aufgeklappt oben „zuklappen“ */
 body.mob .card.compact{padding:10px 12px;cursor:pointer}
@@ -49,3 +52,8 @@ body.mob .walker .leg{animation:none!important}
 /* Kostenbox der Übersicht in voller Breite statt breiter als der Bildschirm */
 body.mob .pg-hero .hero .total{box-sizing:border-box;display:flex;width:100%;max-width:100%;min-width:0;padding:14px 12px}
 body.mob .pg-hero .hero .total > *{max-width:100%;min-width:0}
+
+/* Kopfzeile in der Reise: der Reisename braucht Platz (#553). „+“ steht in der Reiseauswahl, Anmelden nur als Symbol */
+body.mob .top:not(.on-home) .tm-plus{display:none}
+body.mob .top:not(.on-home) .acct .tm-btn .acct-lbl{display:none}
+body.mob .top:not(.on-home) .acct .tm-btn .acct-ico{display:inline}
