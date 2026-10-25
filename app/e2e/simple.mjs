@@ -653,13 +653,16 @@ try {
   if (saved.travelers.length !== 11 || new Set(saved.travelers.map(x => x.household)).size !== 3) fail("Familien falsch: " + saved.travelers.map(x => x.name).join(", "));
   const cats = saved.items.map(i => i.cat).sort().join(",");
   // misc: Verpflegung, Souvenirs (#421) und der Posten der Idee
-  if (cats !== "attractions,misc,misc,misc,stay,transport") fail("Posten der Reiseidee: " + cats);
+  // Auto-Anreise je Familie (drei Autos, #552): ein Posten je Familie statt eines Betrags pro Kopf
+  if (cats !== "attractions,misc,misc,misc,stay,transport,transport,transport") fail("Posten der Reiseidee: " + cats);
+  const carItems = saved.items.filter(i => i.hint === "idea:car");
+  if (carItems.length !== 3 || carItems.some(i => i.options[0].price.mode !== "unit" || !i.participants?.length)) fail("Auto-Anreise nicht je Familie: " + JSON.stringify(carItems.map(i => [i.participants?.length, i.options[0].price])));
   const ideaHouse = lp.locator("#stay .card", { hasText: "Ferienhaus mit Pool" });
   await ideaHouse.scrollIntoViewIfNeeded();
   // Richtwert 230–380 € pro Person → 305 € × 11 Personen
   if (!(await ideaHouse.innerText()).includes("3.355")) fail("Ferienhaus ohne Richtwert: " + (await ideaHouse.innerText()));
   if (!saved.kicker?.includes("3 Familien")) fail("Beispielrechnung fehlt in der Reise: " + saved.kicker);
-  log("Link von Inhaltsseite: Reise „Gardasee mit Familien“ in Riva del Garda (Italien) mit 3 Familien, 6 Erw. und 5 Kindern und 5 Posten aus der Reiseidee (Richtwerte); Adresse bereinigt");
+  log("Link von Inhaltsseite: Reise „Gardasee mit Familien“ in Riva del Garda (Italien) mit 3 Familien, 6 Erw. und 5 Kindern und 7 Posten aus der Reiseidee (Richtwerte, Auto je Familie); Adresse bereinigt");
   await lctx.close();
 
   // Haustiere (#322): Familie Klein mit Hund (reist mit) → Hinweise unter „Wichtiges“ für London;
