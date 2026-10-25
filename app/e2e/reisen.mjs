@@ -303,7 +303,11 @@ try {
   if ((await badge()) !== n0) fail("wieder geöffnet, Zähler nicht zurück");
   if (!(await imp.locator(".imp-entries").innerText()).includes("Vereinigte Staaten")) fail("Einreise im Überblick fehlt");
   if (await p.locator(".hints").count()) fail("alte Karte „Einreise & Tipps“ noch da");
-  log("Wichtiges: ESTA für 7 Personen im Popup der Bubble, je Person abhaken, Zähler sinkt, wieder öffnen; alte Karte entfällt");
+  // eSIM (#297): USA ohne EU-Roaming, einzeilig; aufgeklappt mit Yesim und Airalo
+  await imp.locator(".imp-line[data-key='esim']").click();
+  const esim = imp.locator(".imp-card[data-key='esim']");
+  if (!/Yesim[\s\S]*Airalo/.test(await esim.innerText()) || !(await esim.innerText()).includes("Vereinigte Staaten")) fail("eSIM-Hinweis: " + (await esim.innerText()));
+  log("Wichtiges: ESTA für 7 Personen im Popup der Bubble, je Person abhaken, Zähler sinkt, wieder öffnen; alte Karte entfällt; eSIM-Hinweis mit Yesim und Airalo");
   // neue Fassung beim Auswärtigen Amt: Punkt ist wieder offen
   aaMod = "2026-10-02";
   await open("Kalifornien");

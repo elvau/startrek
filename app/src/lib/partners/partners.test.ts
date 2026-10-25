@@ -79,6 +79,13 @@ describe("Partner-Verzeichnis", () => {
     expect(partnerLink("skyscanner", { ...fl, to: "Split" }, false)).toBeNull();
     expect(partnerLink("booking", stay, false)!.url).toContain("ss=Trogir%2C+Croatia");
   });
+  it("eSIM: Yesim und Airalo über Travelpayouts, nur mit Partner-Links an", () => {
+    expect(partnersOf("esim")).toEqual(["yesim", "airalo"]);
+    const u = new URL(partnerLink("airalo", undefined, true)!.url);
+    expect([u.origin, u.searchParams.get("p"), u.searchParams.get("campaign_id"), u.searchParams.get("u")]).toEqual(["https://tp.media", "8310", "541", "https://www.airalo.com/"]);
+    expect(new URL(partnerLink("yesim", undefined, true)!.url).searchParams.get("p")).toBe("5998");
+    expect(partnerLink("yesim", undefined, false)).toMatchObject({ url: "https://yesim.app/", sponsored: false });
+  });
   it("Parken und Fliegen über Awin: Zielseite als ued, Programm 14793, nur mit Partner-Links an", () => {
     const on = partnerLink("parkenUndFliegen", undefined, true)!;
     const u = new URL(on.url);

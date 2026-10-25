@@ -11,6 +11,9 @@ export const SCHENGEN = new Set(["AT", "BE", "BG", "HR", "CZ", "DK", "EE", "FI",
 /** EU, EWR und Schweiz: Freizügigkeit, kein EES und kein ETIAS */
 export const FREE_MOVEMENT = new Set([...SCHENGEN, "CY", "IE"]);
 
+/** EU und EWR: Roaming wie zu Hause (die Schweiz gehört nicht dazu) */
+export const EU_ROAMING = new Set([...FREE_MOVEMENT].filter(c => c !== "CH"));
+
 export const EES_LINKS = [
   { label: "EES (EU)", url: "https://travel-europe.europa.eu/ees_en" },
   { label: "ETIAS (EU)", url: "https://travel-europe.europa.eu/etias_en" }

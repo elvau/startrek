@@ -17,6 +17,8 @@
   import { GENERAL_LINKS, type Hint } from "../hints";
   import { icsFor, type BookAhead, type BookWindow, type Sale } from "../bookahead";
   import PartnerLinks from "./PartnerLinks.svelte";
+  import { partnersOf, sponsoredAny } from "../partners";
+  import { partner } from "../partnerState.svelte";
   import { cancelEvents, icsHref as calHref, icsName, toIcs, type CalEvent } from "../calendar";
   import { countryName } from "../geo/locations";
   import { flagOf } from "../format";
@@ -58,7 +60,7 @@
 
   const LEVEL: Record<string, Key> = { warning: "aa.warning", partial: "aa.partial", situation: "aa.situation" };
   const ENT: Record<EntryKind, Key> = { home: "ent.home", free: "ent.free", eta: "ent.eta", evisa: "ent.evisa", arrival: "ent.arrival", visa: "ent.visa", none: "ent.none", unknown: "ent.unknown" };
-  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", book: "🎟️", place: "📍", deposit: "🔒", poll: "🗳", pet: "🐾" };
+  const ICON: Record<string, string> = { warn: "⛔", entry: "🛂", border: "🛃", pass: "🪪", book: "🎟️", place: "📍", deposit: "🔒", poll: "🗳", pet: "🐾", esim: "📶" };
   const icon = (p: Point) => (p.kind === "aa" ? (p.level === "situation" ? "⚠️" : "⛔") : ICON[p.kind]);
   const date = (iso: string) => iso.split("-").reverse().join(".");
   const validText = (v: MinValid) => t(`imp.valid.${v.months ? "m" : "d"}${v.from === "entry" ? "Entry" : "Exit"}` as Key, { n: v.months || v.days || 0 });
@@ -70,6 +72,7 @@
     if (p.kind === "book") return t("book.title", { place: p.book!.label });
     if (p.kind === "deposit") return t("imp.dep.title", { v: money(p.deposit!.amount, p.deposit!.currency), name: p.deposit!.name });
     if (p.kind === "poll") return t("imp.poll.t", { q: p.poll!.q });
+    if (p.kind === "esim") return t("imp.esim.t");
     return t(`hint.${p.hint!.id}.t` as Key);
   }
   function text(p: Point) {
@@ -79,6 +82,7 @@
         + (fallbackNats(p).length ? ` ${t("imp.aaFallback")}` : "");
     }
     if (p.kind === "border") return t("imp.border.x");
+    if (p.kind === "esim") return t("imp.esim.x", { c: esimCountries(p).map(cc => countryName(cc)).join(", ") });
     if (p.kind === "book") return t("book.lead");
     if (p.kind === "deposit") return p.deposit!.how === "credit" ? t("imp.dep.credit") : t("imp.dep.other", { how: p.deposit!.how ? t(`dep.how.${p.deposit!.how}` as Key) : "–" });
     if (p.kind === "pass") return t("imp.pass.x", { d: date(p.pass!.expires), c: countryName(p.cc!), r: date(p.pass!.needed) });
@@ -121,6 +125,9 @@
     }
     return [...gs.values()].map(g => `${groupLabel(g.names, -1)} (${flagOf(g.nat)}${g.multi ? `, ${t("ent.bestPass")}` : ""}): ${t(ENT[g.kind], { n: g.days ?? 0 })}`);
   }
+  /** eSIM: Länder aus der Signatur (außerhalb von EU/EWR) */
+  const esimCountries = (p: Point) => p.sig.split(",");
+  const ESIM = partnersOf("esim");
   const hintIds = (p: Point) => (p.kind === "entry" ? p.persons!.filter(x => x.hint).map(x => x.id) : undefined);
   const isTask = (p: Point) => p.kind === "entry" || p.kind === "pass";
   const verb = (p: Point) => (isTask(p) ? t("imp.done") : t("imp.read"));
@@ -263,6 +270,10 @@
         </li>
       {/each}
     </ul>
+  {/if}
+  {#if p.kind === "esim"}
+    <p class="small">{t("imp.esim.links")} <PartnerLinks ids={ESIM} /></p>
+    {#if sponsoredAny(ESIM, undefined, partner.on)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
   {/if}
   {#if p.valid}<p class="imp-valid">🪪 {validText(p.valid)}</p>{/if}
   {#if links(p).length || (p.hint?.fee && hintIds(p)?.length !== 0)}

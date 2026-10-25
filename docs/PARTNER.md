@@ -53,7 +53,7 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 ## Einen Partner hinzufügen
 
 1. Eintrag in `PARTNERS` (`app/src/lib/partners/index.ts`) in der passenden Kategorie:
-   - `name`, `cat` (flight, stay, activity, food, car, transfer, insurance, ferry, camper, camping, parking, cruise), `net` (direct, travelpayouts, awin, amazon),
+   - `name`, `cat` (flight, stay, activity, food, car, transfer, insurance, ferry, camper, camping, parking, cruise, esim), `net` (direct, travelpayouts, awin, amazon),
    - `link`: Link mit vorausgefüllten Angaben (Ort, Datum, Personen); `null`, wenn die Angaben nicht reichen,
    - `tag`: Partnerkennung anhängen (erst nach Freischaltung).
    Neue Kategorie: in `PartnerCat` ergänzen und an der Stelle in der Oberfläche `<PartnerLinks ids={partnersOf("…")} q={…} />` einsetzen.
@@ -90,7 +90,7 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 | Holiday Extras | Parken am Flughafen (noch nicht in der App) | Awin (beworben 10/2026) | – |
 | e-hoi, Kreuzfahrten-Zentrale, Dreamlines, Costa, Mein Schiff | Kreuzfahrten (#519) | Awin (beworben 10/2026, #526) | – |
 | CHECK24, Allianz Travel | Versicherung (nur Tipp) | – | – |
-| Yesim, Airalo | eSIM (noch kein Platz in der App, #297) | Travelpayouts | freigeschaltet: Yesim `p=5998`/`campaign_id=224`, Airalo `p=8310`/`campaign_id=541` |
+| Yesim, Airalo | eSIM (Hinweis in „Wichtiges“ bei Reiseländern ohne EU-Roaming, #297) | Travelpayouts | ja (Yesim `p=5998`, `campaign_id=224`; Airalo `p=8310`, `campaign_id=541`) |
 | ERGO, HanseMerkur | Versicherung (nur Tipp) | Awin (HanseMerkur beworben 10/2026, ERGO nicht gefunden) | – |
 
 Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Dienst (Secret `TRAVELPAYOUTS_MARKER`), nicht hier.
