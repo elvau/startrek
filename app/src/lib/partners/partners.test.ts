@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parkQuery } from "./park";
-import { AWIN_PUBLISHER, PARTNERS, partnerLink, partnersOf, sponsoredAny, type PartnerId } from ".";
+import { AWIN_PUBLISHER, CJ_PUBLISHER, PARTNERS, cj, partnerLink, partnersOf, sponsoredAny, type PartnerId } from ".";
 
 const stay = { place: "Trogir", country: "Croatia", checkin: "2027-07-18", checkout: "2027-07-25", adults: 2, childAges: [8], rooms: 1 };
 const fl = { from: "DUS", to: "SPU", depart: "2027-07-18", ret: "2027-07-29", adults: 2, children: 0, infants: 0 };
@@ -78,6 +78,11 @@ describe("Partner-Verzeichnis", () => {
     // Skyscanner nur mit Flughafencodes
     expect(partnerLink("skyscanner", { ...fl, to: "Split" }, false)).toBeNull();
     expect(partnerLink("booking", stay, false)!.url).toContain("ss=Trogir%2C+Croatia");
+  });
+  it("CJ: Ziel-Link über anrdoezrs.net mit PID und Link-ID", () => {
+    const u = new URL(cj(12345)("https://www.getyourguide.de/s/?q=Rom"));
+    expect(u.origin + u.pathname).toBe(`https://www.anrdoezrs.net/click-${CJ_PUBLISHER}-12345`);
+    expect(u.searchParams.get("url")).toBe("https://www.getyourguide.de/s/?q=Rom");
   });
   it("eSIM: Yesim und Airalo über Travelpayouts, nur mit Partner-Links an", () => {
     expect(partnersOf("esim")).toEqual(["yesim", "airalo"]);

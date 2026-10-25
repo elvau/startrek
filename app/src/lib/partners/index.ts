@@ -14,7 +14,7 @@ import {
 
 export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance" | "ferry" | "camper" | "camping" | "parking" | "cruise" | "esim";
 /** Netzwerk, über das die Provision läuft; direkt: eigenes Partnerprogramm des Anbieters */
-export type PartnerNet = "direct" | "travelpayouts" | "awin" | "amazon";
+export type PartnerNet = "direct" | "travelpayouts" | "awin" | "cj" | "amazon";
 
 export interface Partner<Q> {
   name: string;
@@ -73,16 +73,20 @@ export const AWIN_PUBLISHER = "3121582";
 /** Awin: Ziel-Link über awin1.com weiterleiten; mid = Programm (Advertiser-ID), ued = Zielseite */
 export const awin = (mid: number) => (url: string) =>
   `https://www.awin1.com/cread.php?${new URLSearchParams({ awinmid: String(mid), awinaffid: AWIN_PUBLISHER, ued: url })}`;
+/** CJ (öffentlich, steht in jedem Partner-Link): Publisher-ID (PID) des Kontos */
+export const CJ_PUBLISHER = "8096976";
+/** CJ: Ziel-Link über anrdoezrs.net weiterleiten; aid = Link-ID des Programms (aus „Links“ im CJ-Konto), url = Zielseite */
+export const cj = (aid: number) => (url: string) => `https://www.anrdoezrs.net/click-${CJ_PUBLISHER}-${aid}?${new URLSearchParams({ url })}`;
 
 export const PARTNERS = {
   /* Flüge */
   googleFlights: p<FlightPartnerQuery>({ name: "Google Flights", nameKey: "fs.googleFlights", cat: "flight", link: q => googleFlightsLink({ ...q, from: q.fromName || q.from, to: q.toName || q.to }) }),
   skyscanner: p<FlightPartnerQuery>({ name: "Skyscanner", cat: "flight", link: q => skyscannerLink(q) }),
   /* Unterkünfte */
-  booking: p<StayLinkQuery>({ name: "Booking.com", cat: "stay", net: "direct", link: bookingLink }),
+  booking: p<StayLinkQuery>({ name: "Booking.com", cat: "stay", net: "cj", link: bookingLink }),
   airbnb: p<StayLinkQuery>({ name: "Airbnb", cat: "stay", link: airbnbLink }),
   /* Erlebnisse */
-  getYourGuide: p<ActivityLinkQuery>({ name: "GetYourGuide", cat: "activity", net: "travelpayouts", link: getYourGuideLink }),
+  getYourGuide: p<ActivityLinkQuery>({ name: "GetYourGuide", cat: "activity", net: "cj", link: getYourGuideLink }),
   viator: p<ActivityLinkQuery>({ name: "Viator", cat: "activity", net: "direct", link: viatorLink, tag: params(VIATOR_PARTNER) }),
   tiqets: p<ActivityLinkQuery>({ name: "Tiqets", cat: "activity", net: "travelpayouts", link: tiqetsLink, tag: tp(2074, 89) }),
   klook: p<ActivityLinkQuery>({ name: "Klook", cat: "activity", net: "travelpayouts", link: klookLink, tag: tp(4110, 137) }),
