@@ -1,7 +1,7 @@
 /* Flugsuche in der App: Anfrage aus der Reise, Ergebnis als Angebot in einen Flug-Posten */
 import { noteError } from "../bugs/log";
 import { t, tn } from "../i18n/index.svelte";
-import { AGE, addOffer, hhKey, isActive, uid, type FlightLeg, type Item, type Option, type Traveler, type Trip } from "../model";
+import { AGE, addOffer, hhKey, isActive, uid, type FlightLeg, type Household, type Item, type Option, type Traveler, type Trip } from "../model";
 import { dayShort, nights } from "../format";
 import { accessFor, airportsOf, roadKm } from "../calc/travel";
 import { activeOption } from "../calc";
@@ -333,6 +333,10 @@ export interface Rated extends FlightOffer {
   /** wieder zu Hause (Minuten seit Epoche), nur mit Rückflug */
   home: number;
   nights: number | null;
+  /** Rückflug landet an einem anderen Flughafen als dem Abflughafen (Anfahrt zu beiden gerechnet, ohne Parken) */
+  forkHome?: string;
+  /** Ankunft am Ziel und Rückflug ab verschiedenen Flughäfen */
+  forkDest?: { arr: string; dep: string };
 }
 
 /** Anfahrt der Familien, die fliegen, zum Flughafen (hin und zurück, Parken für die Reisetage), dazu „zuhause ca.“ */
@@ -342,12 +346,25 @@ export function rate(trip: Trip, o: FlightOffer, origin: string, withAccess: boo
   flyers(trip, ids).forEach(t => (counts[hhKey(t)] = (counts[hhKey(t)] || 0) + 1));
   const days = o.back ? Math.max(1, nights(o.out.dep.slice(0, 10), o.back.arr.slice(0, 10)) + 1) : Math.max(1, nights(trip.from, trip.to) + 1);
   let cost = 0, hours = 0;
-  if (ap) for (const hh in counts) { const a = accessFor(hh, ap, counts[hh], days, trip); cost += a.cost; hours = Math.max(hours, a.hours); }
+  // Rückflug an einen anderen Flughafen zuhause: das Auto steht am Abflughafen, Parken für die ganze Reise passt nicht (#550)
+  const outCode = (o.out.from || origin).toUpperCase(), backCode = o.back?.to?.toUpperCase();
+  const forkHome = !!backCode && backCode !== outCode;
+  const apBack = forkHome ? airportsOf(trip).find(a => a.code === backCode) : undefined;
+  const households: Record<string, Household> = { ...trip.households };
+  for (const hh in counts) households[hh] = { ...households[hh], parking: { ...households[hh]?.parking, off: true } };
+  const noPark: Trip = { ...trip, households };
+  if (ap) for (const hh in counts) {
+    if (!forkHome) { const a = accessFor(hh, ap, counts[hh], days, trip); cost += a.cost; hours = Math.max(hours, a.hours); continue; }
+    const a = accessFor(hh, ap, counts[hh], days, noPark), b = apBack ? accessFor(hh, apBack, counts[hh], days, noPark) : a;
+    cost += (a.cost + b.cost) / 2; hours = Math.max(hours, a.hours, b.hours);
+  }
   const add = need ? addOns(o, need) : undefined;
   return {
     ...o, origin, access: Math.round(cost), accessHours: hours, total: o.price + (withAccess ? Math.round(cost) : 0) + Math.round(add?.total || 0), ...(add ? { add } : {}),
     home: o.back ? tMin(o.back.arr) + Math.round((hours + EXIT_H) * 60) : NaN,
-    nights: o.back ? nights(o.out.arr.slice(0, 10), o.back.dep.slice(0, 10)) : null
+    nights: o.back ? nights(o.out.arr.slice(0, 10), o.back.dep.slice(0, 10)) : null,
+    ...(forkHome ? { forkHome: backCode } : {}),
+    ...(o.back && o.out.to.toUpperCase() !== o.back.from.toUpperCase() ? { forkDest: { arr: o.out.to.toUpperCase(), dep: o.back.from.toUpperCase() } } : {})
   };
 }
 

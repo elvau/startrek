@@ -25,7 +25,7 @@ import { myNotes, remoteAll } from "./polls.svelte";
 import { loadSafety, personalHints, type SafetyData } from "./personal";
 
 /** Bestimmungen: Warnstufen, Warnungen, Einreise, Grenze, Reisepass, dazu hohe Kautionen; Rest (Früh buchen, Orte) ist „Gut zu wissen“ */
-const RULES = new Set<PointKind>(["aa", "warn", "entry", "border", "pass", "deposit", "pet"]);
+const RULES = new Set<PointKind>(["aa", "warn", "entry", "border", "pass", "deposit", "pet", "esim"]);
 
 class ImportantState {
   visa = $state<VisaData | null>(null);

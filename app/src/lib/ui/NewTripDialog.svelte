@@ -8,7 +8,8 @@
   import { cloud } from "../cloud/cloud.svelte";
   import ImportPanel from "./ImportPanel.svelte";
   import { dir } from "../directory.svelte";
-  import { whoCount, whoGroupName, whoMissing } from "../who";
+  import { whoCount, whoGroupName, whoMissing, whoTripName } from "../who";
+  import { animalEmoji, animalName } from "../placeholders";
   import Modal from "./Modal.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
   import WhoPicker, { newWho, whoTravelers } from "./WhoPicker.svelte";
@@ -28,7 +29,7 @@
   function create(e: Event) {
     e.preventDefault();
     if (missing) return;
-    startTrip(whoTravelers(who));
+    startTrip(whoTravelers(who), whoTripName(who, m => t("who.nameGroup", { a: `${animalEmoji(m)} ${animalName(m)}` })));
     onclose();
   }
 </script>

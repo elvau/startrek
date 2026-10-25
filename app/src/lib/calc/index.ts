@@ -38,9 +38,15 @@ export const activeTravelers = (trip: Trip) => trip.travelers.filter(isActive);
 export const lineWho = (l: SimpleLine, trip: Trip): Traveler[] => activeTravelers(trip).filter(t => !l.who || l.who.includes(t.id));
 
 /** Kurs: eigener der Reise, sonst Tageskurs der EZB, sonst 1 */
-export const rateOf = (cur: string, s: Settings) => (cur === "EUR" ? 1 : s.rates[cur] || fx.rates?.rates[cur] || 1);
+export const rateOf = (cur: string, s: Settings) => {
+  const c = (cur || "").trim().toUpperCase();
+  return c === "EUR" ? 1 : s.rates[c] || fx.rates?.rates[c] || 1;
+};
 /** Kurs bekannt (sonst rechnet rateOf 1 : 1) */
-export const hasRate = (cur: string, s: Settings) => cur === "EUR" || !!(s.rates[cur] || fx.rates?.rates[cur]);
+export const hasRate = (cur: string, s: Settings) => {
+  const c = (cur || "").trim().toUpperCase();
+  return c === "EUR" || !!(s.rates[c] || fx.rates?.rates[c]);
+};
 
 export interface StayCalc {
   nights: string[];
@@ -78,7 +84,8 @@ export interface OptionCalc {
 /** Nebenkosten in die Rechnung eines Angebots einbauen */
 function withExtras(r: OptionCalc, opt: Option, it: Item, people: Traveler[], ctx: { nights: number; days: number; w?: Record<string, number>; fx: number; trip: Trip }): OptionCalc {
   // gepflegte Schätzungen (Kurtaxe je Ort) dazu, solange nicht weggeklickt bzw. vom Anbieter angegeben
-  const auto = autoExtras(it, opt, ctx.trip, c => rateOf(c, ctx.trip.settings));
+  // Schätzungen erst, wenn das Angebot einen Preis hat (#544)
+  const auto = noPrice(opt) && !it.cruise ? [] : autoExtras(it, opt, ctx.trip, c => rateOf(c, ctx.trip.settings));
   if (auto.length) opt = { ...opt, extras: [...(opt.extras || []), ...auto] };
   const dep = autoDeposit(it, opt, rateOf(opt.price.currency || "EUR", ctx.trip.settings), r.units);
   if (dep) opt = { ...opt, deposit: dep };
@@ -433,6 +440,12 @@ export const money = (v: number, currency: string) => {
 export const moneyExact = (v: number, currency: string) =>
   Number.isInteger(v) ? money(v, currency) : new Intl.NumberFormat(locale(), { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 export const eur = (v: number) => { const s = shown(v || 0); return money(s.v, s.currency); };
+
+/** Betrag in der Währung der Person mit Cent, wenn er nicht glatt aufgeht (Kasse: 240,50 € statt 241 €) */
+export const eurCent = (v: number) => {
+  const s = shown(v || 0);
+  return Math.abs(s.v - Math.round(s.v)) < 0.005 || s.currency === "JPY" || s.currency === "KRW" ? money(s.v, s.currency) : moneyExact(s.v, s.currency);
+};
 
 const fmt2 = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const cur2 = new Map<string, Intl.NumberFormat>();

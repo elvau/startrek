@@ -3,7 +3,7 @@ import { parsePlan, stripPlan } from "./plan";
 import { app, newTrip } from "./store.svelte";
 import { groupTravelers, nextAnimal, placeholderTravelers } from "./placeholders";
 import { countryName } from "./geo/locations";
-import { ideaItems } from "./idea";
+import { familiesOf, ideaItems } from "./idea";
 import type { Item, Traveler } from "./model";
 
 export async function applyPlanLink(): Promise<boolean> {
@@ -20,7 +20,7 @@ export async function applyPlanLink(): Promise<boolean> {
   if (p.idea) {
     const { PAGES, STAND } = await import("./seo/pages");
     const page = PAGES.find(x => x.slug === p.idea);
-    if (page) { items = ideaItems(page, STAND); kicker = page.example; }
+    if (page) { items = ideaItems(page, STAND, familiesOf(travelers)); kicker = page.example; }
   }
   newTrip({ place: p.place, ...(p.name ? { name: p.name } : {}), ...(travelers ? { travelers } : {}), ...(items ? { items, kicker } : {}) });
   if (p.cc) app.trip.country = countryName(p.cc);

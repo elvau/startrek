@@ -12,9 +12,12 @@ const anna = { id: "a", name: "Anna", household: "Klein" }, ben = { id: "b", nam
 const tom = { id: "t", name: "Tom", household: "Smith", nat: "GB" };
 const us = HINTS.filter(h => h.id === "us");
 
+// eSIM hat eigene Tests (unten); hier nur die übrigen Punkte
+const pts = (i: Parameters<typeof importantPoints>[0]) => importantPoints(i).filter(p => p.kind !== "esim");
+
 describe("Wichtiges zur Reise", () => {
   it("USA: ESTA je Person, Warnstufe des Auswärtigen Amts zuerst", () => {
-    const ps = importantPoints({ trip: trip([anna, ben]), countries: ["US"], hints: us, visa, advice: { US: { id: "x", name: "USA", warning: false, partial: false, situation: true, situationPart: false, modified: "2026-09-30" } } });
+    const ps = pts({ trip: trip([anna, ben]), countries: ["US"], hints: us, visa, advice: { US: { id: "x", name: "USA", warning: false, partial: false, situation: true, situationPart: false, modified: "2026-09-30" } } });
     expect(ps.map(p => p.key)).toEqual(["entry:US", "aa:US"]);
     expect(ps[0].persons!.map(p => p.name)).toEqual(["Anna", "Ben"]);
     expect(ps[0].hint?.id).toBe("us");
@@ -23,29 +26,29 @@ describe("Wichtiges zur Reise", () => {
 
   it("Reisewarnung vor Einreise, ohne Warnung kein Punkt vom Auswärtigen Amt", () => {
     const adv = (warning: boolean) => ({ US: { id: "x", name: "USA", warning, partial: false, situation: false, situationPart: false } });
-    expect(importantPoints({ trip: trip([anna]), countries: ["US"], hints: us, visa, advice: adv(true) }).map(p => p.key)).toEqual(["aa:US", "entry:US"]);
-    expect(importantPoints({ trip: trip([anna]), countries: ["US"], hints: us, visa, advice: adv(false) }).map(p => p.key)).toEqual(["entry:US"]);
+    expect(pts({ trip: trip([anna]), countries: ["US"], hints: us, visa, advice: adv(true) }).map(p => p.key)).toEqual(["aa:US", "entry:US"]);
+    expect(pts({ trip: trip([anna]), countries: ["US"], hints: us, visa, advice: adv(false) }).map(p => p.key)).toEqual(["entry:US"]);
   });
 
   it("Pass entscheidet: Brite braucht für die USA auch eine Genehmigung, die TDAC für Thailand gilt für alle Pässe", () => {
-    const ps = importantPoints({ trip: trip([anna, tom]), countries: ["US", "TH"], hints: HINTS.filter(h => h.id === "us" || h.id === "th"), visa, advice: {} });
+    const ps = pts({ trip: trip([anna, tom]), countries: ["US", "TH"], hints: HINTS.filter(h => h.id === "us" || h.id === "th"), visa, advice: {} });
     expect(ps.find(p => p.key === "entry:US")!.persons!.map(p => `${p.name}:${p.nat}:${p.hint}`)).toEqual(["Anna:DE:true", "Tom:GB:true"]);
     expect(ps.find(p => p.key === "entry:TH")!.persons!.map(p => p.name)).toEqual(["Anna", "Tom"]);
   });
 
   it("Hinweise nur für passende Pässe: China visumfrei nur laut Text für Deutsche, Brite braucht ein Visum (Überblick, ohne Text)", () => {
     const v: VisaData = { cc: ["CN", "DE", "GB"], m: { DE: "30,,180", GB: "r,90," } };
-    const ps = importantPoints({ trip: trip([anna, tom]), countries: ["CN"], hints: HINTS.filter(h => h.id === "cn"), visa: v, advice: {} });
+    const ps = pts({ trip: trip([anna, tom]), countries: ["CN"], hints: HINTS.filter(h => h.id === "cn"), visa: v, advice: {} });
     const e = ps.find(p => p.key === "entry:CN")!;
     expect(e.persons!.map(p => `${p.name}:${p.kind}:${!!p.hint}`)).toEqual(["Anna:free:true", "Tom:visa:false"]);
     // nur Brite: Punkt wegen Visum, Hinweis-Text gilt für niemanden
-    const gb = importantPoints({ trip: trip([tom]), countries: ["CN"], hints: HINTS.filter(h => h.id === "cn"), visa: v, advice: {} })[0];
+    const gb = pts({ trip: trip([tom]), countries: ["CN"], hints: HINTS.filter(h => h.id === "cn"), visa: v, advice: {} })[0];
     expect(gb.persons!.some(p => p.hint)).toBe(false);
   });
 
   it("mehrere Pässe: der günstigste zählt, mit Hinweis", () => {
     const v: VisaData = { cc: ["US", "DE", "RU"], m: { DE: "t,,r", RU: "r,r," } };
-    const ps = importantPoints({ trip: trip([{ id: "m", name: "Mira", household: "K", nat: "RU", nat2: "DE" }]), countries: ["US"], hints: us, visa: v, advice: {} });
+    const ps = pts({ trip: trip([{ id: "m", name: "Mira", household: "K", nat: "RU", nat2: "DE" }]), countries: ["US"], hints: us, visa: v, advice: {} });
     expect(ps[0].persons![0]).toMatchObject({ nat: "DE", kind: "eta", multi: true, hint: true });
   });
 
@@ -53,29 +56,29 @@ describe("Wichtiges zur Reise", () => {
     const fritz = { id: "f", name: "Fritz", household: "Huber", nat: "AT" };
     const aa = { US: { id: "x", name: "USA", warning: false, partial: true, situation: false, situationPart: false } };
     const gov = { US: { GB: { level: "partial" as const, url: "https://www.gov.uk/foreign-travel-advice/usa", modified: "2026-10-01" }, US: { level: null, url: "u" } } };
-    const ps = importantPoints({ trip: trip([anna, tom, fritz]), countries: ["US"], hints: [], visa, advice: aa, gov });
+    const ps = pts({ trip: trip([anna, tom, fritz]), countries: ["US"], hints: [], visa, advice: aa, gov });
     const a = ps.find(p => p.key === "aa:US")!, g = ps.find(p => p.key === "gov:GB:US")!;
     expect(a.persons!.map(p => `${p.name}:${!!p.fallback}`)).toEqual(["Anna:false", "Fritz:true"]);
     expect(g).toMatchObject({ kind: "aa", src: "GB", level: "partial", sig: "partial|2026-10-01" });
     expect(g.persons!.map(p => p.name)).toEqual(["Tom"]);
     // ohne Daten aus Großbritannien: Tom liest beim Auswärtigen Amt mit
-    const off = importantPoints({ trip: trip([anna, tom]), countries: ["US"], hints: [], visa, advice: aa });
+    const off = pts({ trip: trip([anna, tom]), countries: ["US"], hints: [], visa, advice: aa });
     expect(off.find(p => p.key === "aa:US")!.persons!.map(p => p.name)).toEqual(["Anna", "Tom"]);
   });
 
   it("Heimatland und Inaktive zählen nicht", () => {
-    expect(importantPoints({ trip: trip([anna, { ...ben, active: false }]), countries: ["DE"], hints: [], visa, advice: {} })).toEqual([]);
+    expect(pts({ trip: trip([anna, { ...ben, active: false }]), countries: ["DE"], hints: [], visa, advice: {} })).toEqual([]);
   });
 
   it("besondere Orte und Warnungen als eigene Punkte", () => {
-    const ps = importantPoints({ trip: trip([anna]), countries: [], hints: HINTS.filter(h => h.id === "machu" || h.id === "kp"), visa, advice: {} });
+    const ps = pts({ trip: trip([anna]), countries: [], hints: HINTS.filter(h => h.id === "machu" || h.id === "kp"), visa, advice: {} });
     expect(ps.map(p => `${p.key}/${p.kind}`)).toEqual(["hint:kp/warn", "hint:machu/place"]);
     // gelesen je Person: alle Reisenden
     expect(ps[1].persons!.map(p => p.name)).toEqual(["Anna"]);
   });
 
   it("gelesen je Person; aufgeklappt nur Dringendes", () => {
-    const ps = importantPoints({ trip: trip([anna, ben]), countries: ["US"], hints: HINTS.filter(h => h.id === "machu"), visa,
+    const ps = pts({ trip: trip([anna, ben]), countries: ["US"], hints: HINTS.filter(h => h.id === "machu"), visa,
       advice: { US: { id: "x", name: "USA", warning: false, partial: false, situation: true, situationPart: false } } });
     const done: DoneMap = {};
     const machu = ps.find(p => p.key === "hint:machu")!;
@@ -87,11 +90,11 @@ describe("Wichtiges zur Reise", () => {
   });
 
   it("roter Zähler nur bei Dringendem (Fehlerbericht #22)", () => {
-    const calm = importantPoints({ trip: trip([anna]), countries: ["US"], hints: [], visa: null,
+    const calm = pts({ trip: trip([anna]), countries: ["US"], hints: [], visa: null,
       advice: { US: { id: "x", name: "USA", warning: false, partial: false, situation: true, situationPart: false } } });
     expect(openCount(calm)).toBe(1);
     expect(urgentOpenCount(calm)).toBe(0);
-    const hot = importantPoints({ trip: trip([anna]), countries: [], hints: HINTS.filter(h => h.id === "kp"), visa, advice: {} });
+    const hot = pts({ trip: trip([anna]), countries: [], hints: HINTS.filter(h => h.id === "kp"), visa, advice: {} });
     expect(urgentOpenCount(hot)).toBe(1);
     const done: DoneMap = {};
     markDone(done, hot[0]);
@@ -100,7 +103,7 @@ describe("Wichtiges zur Reise", () => {
   });
 
   it("abhaken je Person, Zähler, wieder öffnen", () => {
-    const ps = importantPoints({ trip: trip([anna, ben]), countries: ["US"], hints: us, visa, advice: {} });
+    const ps = pts({ trip: trip([anna, ben]), countries: ["US"], hints: us, visa, advice: {} });
     const done: DoneMap = {};
     expect(openCount(ps, done)).toBe(1);
     markDone(done, ps[0], "a");
@@ -117,15 +120,15 @@ describe("Wichtiges zur Reise", () => {
   it("ändert sich der Inhalt oder kommt jemand dazu, ist der Punkt wieder offen", () => {
     const adv = (modified: string) => ({ US: { id: "x", name: "USA", warning: true, partial: false, situation: false, situationPart: false, modified } });
     const done: DoneMap = {};
-    const [p1] = importantPoints({ trip: trip([anna]), countries: ["US"], hints: [], visa, advice: adv("2026-09-01") });
+    const [p1] = pts({ trip: trip([anna]), countries: ["US"], hints: [], visa, advice: adv("2026-09-01") });
     markDone(done, p1);
     expect(isOpen(p1, done)).toBe(false);
-    const [p2] = importantPoints({ trip: trip([anna]), countries: ["US"], hints: [], visa, advice: adv("2026-10-02") });
+    const [p2] = pts({ trip: trip([anna]), countries: ["US"], hints: [], visa, advice: adv("2026-10-02") });
     expect(isOpen(p2, done)).toBe(true);
-    const e = importantPoints({ trip: trip([anna]), countries: ["US"], hints: us, visa, advice: {} })[0];
+    const e = pts({ trip: trip([anna]), countries: ["US"], hints: us, visa, advice: {} })[0];
     markDone(done, e);
     expect(isOpen(e, done)).toBe(false);
-    const e2 = importantPoints({ trip: trip([anna, ben]), countries: ["US"], hints: us, visa, advice: {} })[0];
+    const e2 = pts({ trip: trip([anna, ben]), countries: ["US"], hints: us, visa, advice: {} })[0];
     expect(isOpen(e2, done)).toBe(true);
     expect(doneIds(e2, done)).toEqual(["a"]);
   });
@@ -164,6 +167,19 @@ describe("Grenzregeln und Reisepass", () => {
     expect(b.persons!.map(p => p.name)).toEqual(["Tom", "Uma"]);
     expect(isUrgent(b)).toBe(true);
     expect(importantPoints({ trip: { ...fr, travelers: [anna] }, countries: ["FR"], hints: [], visa, advice: {} }).some(p => p.kind === "border")).toBe(false);
+  });
+});
+
+describe("eSIM außerhalb von EU/EWR (#297)", () => {
+  it("nur für Länder ohne EU-Roaming, nicht für Leute von dort; Schweiz zählt", () => {
+    const esim = (countries: string[], ts: Trip["travelers"] = [anna, tom]) => importantPoints({ trip: trip(ts), countries, hints: [], visa, advice: {} }).find(p => p.kind === "esim");
+    expect(esim(["ES", "NO"])).toBeUndefined();
+    const p = esim(["US", "FR", "CH"])!;
+    expect(p).toMatchObject({ key: "esim", sig: "CH,US", cc: "US" });
+    expect(p.persons!.map(x => x.name)).toEqual(["Anna", "Tom"]);
+    expect(isUrgent(p)).toBe(false);
+    expect(esim(["GB"])!.persons!.map(x => x.name)).toEqual(["Anna"]);
+    expect(esim(["GB"], [tom])).toBeUndefined();
   });
 });
 

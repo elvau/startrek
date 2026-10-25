@@ -6,6 +6,7 @@ import type { RoundTrip } from "./roundtrip";
 import type { FlightOffer } from "./types";
 import { activeOption, totals } from "../calc";
 import { presences } from "../calc";
+import { accessFor, airportsOf } from "../calc/travel";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 
 const trip = (): Trip => ({
@@ -258,5 +259,23 @@ describe("Gepäck bei Rundreisen mit getrennten Tickets (#210)", () => {
     expect(roundToOption(rt, true).extras).toBeUndefined();
     // Gepäck je Strecke (fehlt: nicht angegeben)
     expect(o.legs!.map(l => l.baggage?.checked)).toEqual([undefined, 0, 4]);
+  });
+  it("Rückflug an anderen Flughafen: Anfahrt zu beiden, ohne Parken, Treffer gekennzeichnet (#550)", () => {
+    const t = trip();
+    t.households = { Klein: { geo: { lat: 51.23, lon: 6.78, ort: "Düsseldorf" }, mode: "car" } };
+    const [a] = fromKiwi(fixture);
+    const same = rate(t, a, "DUS", true);
+    expect(same.forkHome).toBeUndefined();
+    const leg = (from: string, to: string, dep: string, arr: string) => ({ ...a.out, from, to, dep, arr });
+    const fork = { ...a, out: leg("DUS", "SPU", "2027-07-18T06:10", "2027-07-18T08:05"), back: leg("DBV", "NRN", "2027-07-29T16:25", "2027-07-29T18:25") };
+    const r = rate(t, fork, "DUS", true);
+    expect(r.forkHome).toBe("NRN");
+    expect(r.forkDest).toEqual({ arr: "SPU", dep: "DBV" });
+    // erwartet: Mittel aus Fahrt zu DUS und zu NRN (je hin und zurück), ohne Parken
+    const ap = (c: string) => airportsOf(t).find(x => x.code === c)!;
+    const np = { ...t, households: { Klein: { ...t.households!.Klein, parking: { off: true } } } };
+    const exp = (accessFor("Klein", ap("DUS"), 4, 12, np).cost + accessFor("Klein", ap("NRN"), 4, 12, np).cost) / 2;
+    expect(r.access).toBe(Math.round(exp));
+    expect(r.access).toBeGreaterThan(0);
   });
 });

@@ -8,7 +8,8 @@
    * Reise zu einem Event: Was, wo, wann. Daraus bis zu drei Vorschläge (ohne Nacht, eine Nacht, ab Vortag),
    * je mit dem günstigsten passenden Flug (inkl. Anfahrt) und einer gut bewerteten Unterkunft.
    */
-  import { app, startTrip, switchTrip } from "../store.svelte";
+  import { app, deleteTrip, goHome, startTrip, switchTrip } from "../store.svelte";
+  import { eventPlanner } from "../event/open.svelte";
   import { eur } from "../calc";
   import { dayShort, range, time } from "../format";
   import Modal from "./Modal.svelte";
@@ -277,6 +278,15 @@
     rows = null;
   }
 
+  /** Schließen: eine nur für den Planer angelegte Reise bleibt ohne übernommenen Vorschlag nicht zurück (#546) */
+  function close() {
+    const drop = eventPlanner.fresh && !done && app.trip.id === trip.id;
+    eventPlanner.fresh = false;
+    ctrl?.abort();
+    onclose();
+    if (drop) void deleteTrip(trip.id).then(goHome);
+  }
+
   const n = $derived(people.length || 1);
   const found = $derived(rows?.filter(r => r.flight) ?? []);
   const cheapest = $derived(found.length ? Math.min(...found.map(totalOf)) : null);
@@ -287,7 +297,7 @@
   const mapLink = $derived(venue.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue.trim()}, ${place.split(",")[0].trim()}`)}` : "");
 </script>
 
-<Modal title={t("ev.title")} {onclose} wide>
+<Modal title={t("ev.title")} onclose={close} wide>
   <p class="muted">{t("ev.lead")}</p>
   <form class="ev-find" onsubmit={find}>
     <label class="f ev-grow">{t("evs.label")}<input type="search" enterkeyhint="search" bind:value={eq} placeholder={t("evs.ph")} /></label>

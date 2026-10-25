@@ -21,7 +21,7 @@ export function nightsList(a?: string, b?: string): string[] {
 }
 
 /** Anwesenheit: erste Nacht a, Abreisetag d (nicht mehr übernachtet) */
-export interface Presence { a: string; d: string; src: "manual" | "flight" }
+export interface Presence { a: string; d: string; src: "manual" | "flight" | "trip" }
 
 export const needs = (p: Presence | null, night: string) => !p || (p.a <= night && night < p.d);
 

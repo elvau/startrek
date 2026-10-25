@@ -195,6 +195,7 @@ body[data-ch="split"] .amb-split{opacity:1}
 /* Konto, Anmelden, Teilen */
 .banner{position:absolute;top:78px;left:50%;transform:translateX(-50%);z-index:5;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-size:13px;font-weight:600;box-shadow:var(--shadow);white-space:nowrap}
 .banner.err{color:#C4452E;top:118px}
+.acct-ico{display:none}
 .acct{position:relative}
 .acct .tm-pop{inset-inline-start:auto;inset-inline-end:0}
 .acct-btn{position:relative;border:0;background:transparent;padding:2px;border-radius:99px}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addToNew, dropFromNew, toggleSavedGroup, togglePicked, whoCount, whoGroupName, whoMissing, type Who } from "./who";
+import { addToNew, dropFromNew, toggleSavedGroup, togglePicked, whoCount, whoGroupName, whoMissing, whoTripName, type Who } from "./who";
 import type { Directory } from "./model";
 
 const d: Directory = {
@@ -50,5 +50,17 @@ describe("Neue Reise: wer fährt mit", () => {
     expect(whoGroupName(w, d)).toBe("Familie Klein");
     dropFromNew(w, "a");
     expect(w.ng.ids).toEqual([]);
+  });
+});
+
+describe("Reisename bei Gruppe mit Tieren (#545)", () => {
+  const label = (m: string) => `Gruppenreise ${m}`;
+  it("heißt wie angekündigt, auch nach anderem Tier", () => {
+    expect(whoTripName(who({ mode: "group", src: "animals", mascot: "Fuchs" }), label)).toBe("Gruppenreise Fuchs");
+    expect(whoTripName(who({ mode: "group", src: "animals", mascot: "Zebra" }), label)).toBe("Gruppenreise Zebra");
+  });
+  it("sonst kein vorläufiger Name", () => {
+    expect(whoTripName(who({ mode: "group", src: "saved" }), label)).toBe("");
+    expect(whoTripName(who({ mode: "family", src: "animals" }), label)).toBe("");
   });
 });

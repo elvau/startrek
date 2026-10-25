@@ -10,7 +10,7 @@
   import { hhKey, isActive, uid, type Extra, type FlightLeg, type Item, type Option, type Status } from "../model";
   import { app, calc, removeItem } from "../store.svelte";
   import type { Key } from "../i18n/index.svelte";
-  import { activeOption, ageClass, calcOption, eur, followed, parseNum } from "../calc";
+  import { activeOption, ageClass, calcOption, eur, followed, hasRate, parseNum } from "../calc";
   import { dateDE, dayShort, time } from "../format";
   import { dayRange } from "../itinerary";
   import { kassen, kasseName } from "../ledger";
@@ -247,8 +247,11 @@
             <option value="unit">{t("ie.flat")}</option>
           </select>
         </label>
-        <label class="f">{t("ie.currency")}<input class="short" bind:value={opt.price.currency} maxlength="3" /></label>
+        <label class="f">{t("ie.currency")}<input class="short" value={opt.price.currency} oninput={e => (opt.price.currency = e.currentTarget.value.toUpperCase())} maxlength="3" /></label>
       </div>
+      {#if opt.price.currency && !hasRate(opt.price.currency, app.trip.settings)}
+        <p class="small ed-note" role="alert">{t("ie.noRate", { cur: opt.price.currency })}</p>
+      {/if}
       <div class="ed-row">
         {#if opt.price.mode === "person"}
           <label class="f">{t("age.adults")}{perNight ? ` / ${t("ie.night")}` : ""}<input class="n" inputmode="decimal" value={opt.price.adult ?? ""} oninput={e => (opt.price.adult = num(e.currentTarget.value))} /></label>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arrivals, gaps, guestsIn, hints, segments, stations, stayWindow } from "./presence";
+import { arrivals, gaps, guestsIn, hints, planPresences, segments, stations, stayWindow } from "./presence";
 import { takeStay } from "./app";
 import type { Trip } from "../model";
 import type { StayOffer } from "./types";
@@ -88,5 +88,28 @@ describe("Gruppe mit verschiedenen Zeiten", () => {
     expect(segments(t()).map(s => [s.from, s.to, s.ids.join("")])).toEqual([
       ["2027-04-02", "2027-04-08", "ab"], ["2027-04-08", "2027-04-15", "abo"], ["2027-04-15", "2027-04-22", "aboj"], ["2027-04-22", "2027-04-28", "abo"]
     ]);
+  });
+});
+
+describe("Ohne Flüge gelten die Reisedaten als Anwesenheit (#549)", () => {
+  const solo = (): Trip => ({
+    id: "t", name: "T", place: "Ort", country: "", from: "2027-02-01", to: "2027-02-22", tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } },
+    travelers: [{ id: "a", name: "Anna", household: "Anna", age: 40 }],
+    items: [
+      { id: "s1", cat: "stay", name: "A", status: "idea", from: "2027-02-01", to: "2027-02-04", options: [{ id: "o1", label: "A", price: { mode: "unit", currency: "EUR", unit: 100 } }] },
+      { id: "s2", cat: "stay", name: "B", status: "idea", from: "2027-02-05", to: "2027-02-10", options: [{ id: "o2", label: "B", price: { mode: "unit", currency: "EUR", unit: 100 } }] }
+    ]
+  });
+  it("Anwesenheit aus den Reisedaten", () => {
+    expect(planPresences(solo()).a).toEqual({ a: "2027-02-01", d: "2027-02-22", src: "trip" });
+  });
+  it("Lücken: Nacht 04.→05. und 10.–22.02. werden gemeldet", () => {
+    expect(gaps(solo()).map(g => [g.from, g.to, g.nights])).toEqual([["2027-02-04", "2027-02-05", 1], ["2027-02-10", "2027-02-22", 12]]);
+  });
+  it("eigene Zeiten haben Vorrang, ohne Reisedaten bleibt es offen", () => {
+    const t = solo(); t.households = { Anna: { arrive: "2027-02-02", depart: "2027-02-06" } };
+    expect(planPresences(t).a).toEqual({ a: "2027-02-02", d: "2027-02-06", src: "manual" });
+    const u = solo(); delete u.from;
+    expect(planPresences(u).a).toBeNull();
   });
 });
