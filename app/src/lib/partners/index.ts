@@ -12,7 +12,7 @@ import {
   type ActivityLinkQuery, type FlightLinkQuery, type StayLinkQuery
 } from "../links";
 
-export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance" | "ferry" | "camper" | "camping" | "parking" | "cruise";
+export type PartnerCat = "flight" | "stay" | "activity" | "food" | "car" | "transfer" | "insurance" | "ferry" | "camper" | "camping" | "parking" | "cruise" | "esim";
 /** Netzwerk, über das die Provision läuft; direkt: eigenes Partnerprogramm des Anbieters */
 export type PartnerNet = "direct" | "travelpayouts" | "awin" | "amazon";
 
@@ -120,6 +120,9 @@ export const PARTNERS = {
   dreamlines: p<void>({ name: "Dreamlines", cat: "cruise", net: "awin", link: home("https://www.dreamlines.de/") }),
   costa: p<void>({ name: "Costa Kreuzfahrten", cat: "cruise", net: "awin", link: home("https://www.costakreuzfahrten.de/") }),
   meinSchiff: p<void>({ name: "Mein Schiff", cat: "cruise", net: "awin", link: home("https://www.meinschiff.com/") }),
+  /* eSIM für Reisen außerhalb von EU/EWR (#297), über Travelpayouts freigeschaltet */
+  yesim: p<void>({ name: "Yesim", cat: "esim", net: "travelpayouts", link: home("https://yesim.app/"), tag: tp(5998, 224) }),
+  airalo: p<void>({ name: "Airalo", cat: "esim", net: "travelpayouts", link: home("https://www.airalo.com/"), tag: tp(8310, 541) }),
   /* Reiseversicherung: nur als Tipp, keine Beratung (§ 34d GewO) */
   check24Insurance: p<void>({ name: "CHECK24", cat: "insurance", link: home("https://www.check24.de/reiseversicherung/") }),
   ergo: p<void>({ name: "ERGO Reiseversicherung", cat: "insurance", net: "awin", link: home("https://www.reiseversicherung.de/") }),

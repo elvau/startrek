@@ -13,14 +13,14 @@ import { adviceLevel, type Advice, type AdviceMap } from "./advice";
 import { bestEntry, natsOf, needsAction, type EntryKind, type VisaData } from "./visa";
 import { hintForPass, type Hint } from "./hints";
 import { adviceSource, type GovAdvice, type GovMap, type GovSrc } from "./govadvice";
-import { FREE_MOVEMENT, MIN_VALID, SCHENGEN, validUntil, type MinValid } from "./borders";
+import { EU_ROAMING, FREE_MOVEMENT, MIN_VALID, SCHENGEN, validUntil, type MinValid } from "./borders";
 import { CITIES, saleFor, type BookAhead, type Sale } from "./bookahead";
 import { activeOption, participantsOf, rateOf } from "./calc";
 import { autoDeposit } from "./fees";
 import { missing, openPolls, pollOpen } from "./together";
 import type { VetoNote } from "./without";
 
-export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place" | "deposit" | "poll" | "pet";
+export type PointKind = "aa" | "warn" | "entry" | "border" | "pass" | "book" | "place" | "deposit" | "poll" | "pet" | "esim";
 
 export interface PointPerson {
   id: string; name: string;
@@ -69,7 +69,7 @@ export interface Point {
 /** erledigt je Punkt: Signatur beim Abhaken, bei Punkten für Personen die erledigten Personen */
 export type DoneMap = Record<string, { sig: string; ids?: string[] }>;
 
-const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, deposit: 2, poll: 2, pet: 2, book: 3, situation: 3, place: 4 } as const;
+const PRIO = { warning: 0, warn: 0, pass: 0, partial: 1, entry: 2, border: 2, deposit: 2, poll: 2, pet: 2, book: 3, situation: 3, place: 4, esim: 4 } as const;
 /** Kautionen ab diesem Betrag (oder nur mit Kreditkarte) sind ein wichtiger Punkt */
 export const DEPOSIT_MIN = 300;
 
@@ -142,6 +142,11 @@ export function importantPoints({ trip, countries, hints, visa, advice, gov = {}
   const schengen = countries.find(c => SCHENGEN.has(c));
   const outsiders = schengen ? act.filter(p => !natsOf(p).some(n => FREE_MOVEMENT.has(n))) : [];
   if (outsiders.length) out.push({ key: "border:schengen", kind: "border", prio: PRIO.border, sig: "ees", cc: schengen, persons: outsiders.map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" })) });
+  // eSIM (#297): Reiseländer außerhalb von EU/EWR kosten Roaming; für alle, die nicht von dort kommen
+  const roam = countries.filter(c => !EU_ROAMING.has(c));
+  const roamers = act.filter(p => roam.some(c => !natsOf(p).includes(c)));
+  if (roam.length && (!act.length || roamers.length)) out.push({ key: "esim", kind: "esim", prio: PRIO.esim, sig: [...roam].sort().join(","), cc: roam[0],
+    ...(roamers.length ? { persons: roamers.map(p => ({ id: p.id, name: p.name, nat: p.nat || "DE" })) } : {}) });
   // Früh buchen: je Reiseziel ein Punkt; gebuchte bzw. bezahlte Orte (als Posten übernommen) fallen weg
   const booked = new Set(trip.items.filter(i => i.hint && (i.status === "booked" || i.status === "paid")).map(i => i.hint!));
   const visit = trip.from && trip.from >= new Date(now).toISOString().slice(0, 10) ? trip.from : undefined;
