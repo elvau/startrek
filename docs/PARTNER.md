@@ -112,3 +112,15 @@ Stand 22.10.2026:
 
 Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen (`tag: awin(…)` in `app/src/lib/partners/index.ts`); Link-Format
 `https://www.awin1.com/cread.php?awinmid=…&awinaffid=3121582&ued=<Ziel>`.
+
+## CJ (Commission Junction)
+
+Publisher-Konto für splitandfly.com, beworben 10/2026. Travelpayouts hatte GetYourGuide und Booking.com zum Start
+abgelehnt, deshalb laufen diese über CJ.
+Stand 25.10.2026, **offen:** Booking.com DACH, GetYourGuide INT, Kiwi.com, Fewo-direkt, Vrbo (mit Länderprogrammen),
+Agoda EU, Hotels.com DACH, Expedia DACH, Trip.com, EconomyBookings, AirportRentalCars, Suntransfers, Balearia,
+Omio, World Nomads (nur als Tipp).
+
+Nach der ersten Freischaltung: Netzwerk `cj` mit Link-Format im Verzeichnis anlegen (braucht die Publisher-ID, PID),
+CJ in `public/datenschutz.html` und im Impressum nennen. Kiwi.com: Buchungslinks der Flugsuche (`bookingUrl` aus
+`app/src/lib/flights/kiwi.ts`) über CJ leiten, falls Deeplinks erlaubt sind.
