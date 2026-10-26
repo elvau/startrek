@@ -26,7 +26,7 @@
   <li>With an account, trips are stored in Google Firebase so you can use them on several devices and share them with others.</li>
   <li>For flight and accommodation searches, only <strong>places, dates and the number of people</strong> are sent to the
     providers, no names and no email addresses.</li>
-  <li>Booking details (ID card, passport) are optional, are stored only in your account and go nowhere else.</li>
+  <li>The app does not store ID card or passport numbers. Optional “Just for you” details (e.g. until when your passport is valid) are stored only in your account and go nowhere else.</li>
   <li>The AI planner (beta) is only available with an account; your travel request is sent to Anthropic (Claude) for it, or to Google Gemini as a fallback. The same applies to files, texts and links you drop in to import a trip; the files are not stored.</li>
   <li>The maps (accommodation search, “Trip map”) load map images from OpenFreeMap only when you open them; the small route images (start page, day plan) load a map section as soon as a trip has a route.</li>
   <li>Bug reports (beta) are stored in a non-public project on GitHub; images are deleted after 30 days.</li>
@@ -70,8 +70,8 @@
   With an account, Firebase additionally stores your sign-in and a copy of your trips in the browser (IndexedDB) so the
   app also works offline; when signing in with an email link, the app remembers the email address until you open the
   link. So that the app starts without a connection and can be installed, a service worker stores the program files and
-  general data (e.g. airports, countries) in the browser (Cache Storage); they contain no personal data. Booking details
-  are not stored in the browser (see section 5). All of this is strictly necessary for the
+  general data (e.g. airports, countries) in the browser (Cache Storage); they contain no personal data. “Just for you”
+  details are not stored in the browser (see section 5). All of this is strictly necessary for the
   function you request (§ 25(2) no. 2 TDDDG). You can delete this data at any time in your browser settings.
 </p>
 
@@ -103,7 +103,7 @@
   <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase and privacy</a>.
 </p>
 
-<h3>Saved people and booking details</h3>
+<h3>Saved people and “Just for you” details</h3>
 <p>
   Under “Groups and people” you can enter a name, date of birth or age and an approximate place of residence (postcode)
   for each saved person. The app uses this to calculate the age at the start of the trip and the journey to the airport.
@@ -130,8 +130,9 @@
   note.
 </p>
 <p>
-  Optionally you can save <strong>booking details</strong> (names as on the ID, gender, nationality or nationalities,
-  ID card and passport number with validity, issuing country) to make later bookings quicker. This also includes whether
+  Optionally you can save <strong>“Just for you”</strong> details per person: gender, nationality or nationalities and
+  until when ID card and passport are valid. The app does not ask for or store ID card or passport numbers, names as on
+  the ID or the issuing country; any entered earlier are deleted from the account the next time they are opened. This also includes whether
   you want to see information on LGBTQ+ rights at the destination (when setting up your account); we do not ask about
   sexual orientation. Gender and nationality are used only in your browser for matching entry and travel information. These details:
 </p>
@@ -149,13 +150,12 @@
     sending any details about you; the matching runs only in your browser. These notes are not saved in the trip (not
     even as “read”) and are not visible to fellow travellers;</li>
   <li>are not sent into trips, to the search service, to the providers, to the AI planner or into bug reports;</li>
-  <li>can be deleted at any time per person or completely (“Delete all booking details”); deleting a person deletes
+  <li>can be deleted at any time per person or completely (“Delete all “Just for you” details”); deleting a person deletes
     them too.</li>
 </ul>
 <p>
   Technically the data is stored at Google (see above) and is in principle accessible to me as the operator of the
-  Firebase project. I do not look at it and use it only to show it to you. Nothing is currently booked through
-  Split&amp;Fly; the data will only be used once there is a booking function and you trigger a booking yourself. Legal
+  Firebase project. I do not look at it and use it only to show it to you. Legal
   basis: Art. 6(1)(a) and (b) GDPR (voluntary information for the function you request). Only enter other people’s data
   with their consent.
 </p>
@@ -223,7 +223,7 @@
 <p>
   If you ask the AI assistant within an open trip, a summary of that trip is also sent: destination, travel dates and
   the items (area, name, status, amount, for flights route and times). Names of travellers (also in names such as
-  “Flight family …”), notes, booking numbers, payments, kitty expenses and booking details (ID card, passport) are not
+  “Flight family …”), notes, booking numbers, payments, kitty expenses and “Just for you” details are not
   sent. The app only applies changes made by the AI once you confirm them.
 </p>
 <p>
@@ -281,7 +281,7 @@
   searches per key and day (key ID and date, deleted after two days). For trips in your account the search service
   reads and writes your trips in Firebase (section 5), only those you are a member of, and changes them only with edit
   rights. The assistant receives destination, travel dates, number of travellers by age group and the items with
-  prices, no names of travellers and no booking details (ID card, passport).
+  prices, no names of travellers and no “Just for you” details.
 </p>
 <p>
   What you enter into your assistant and what it retrieves from here is processed by its provider (e.g. Anthropic,

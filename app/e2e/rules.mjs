@@ -29,9 +29,9 @@ const KEY = "einladung-0123456789abcdef";
 const trip = { name: "Regeltest", data: "{}", owner: "anna", memberIds: ["anna", "ben"], members: { anna: "owner", ben: "editor" }, memberNames: { anna: "Anna", ben: "Ben" }, invite: { key: KEY, role: "viewer" } };
 await expect("Reise anlegen (Admin)", patch("admin", "/trips/regeltest", trip), 200);
 await expect("Profil anlegen (Admin)", patch("admin", "/profiles/anna", { data: "{\"p\":1}" }), 200);
-await expect("Buchungsdaten anlegen (Admin)", patch("admin", "/travelDocs/anna", { data: "{\"pass\":\"X\"}" }), 200);
+await expect("travelDocs anlegen (Admin)", patch("admin", "/travelDocs/anna", { data: "{\"pass\":\"X\"}" }), 200);
 
-// Profile und Buchungsdaten: nur die eigene Person
+// Profile und travelDocs: nur die eigene Person
 for (const coll of ["profiles", "travelDocs"]) {
   await expect(`${coll}: Anna liest ihre`, req("anna", `/${coll}/anna`), 200);
   for (const who of ["mallory", ""]) {
@@ -42,7 +42,7 @@ for (const coll of ["profiles", "travelDocs"]) {
   }
   await expect(`${coll}: Ben (Mitreisender) liest Annas`, req("ben", `/${coll}/anna`), 403);
 }
-log("Profile und Buchungsdaten: nur für die eigene Person, auch nicht für Mitreisende");
+log("Profile und travelDocs: nur für die eigene Person, auch nicht für Mitreisende");
 
 // Reisen: lesen nur Mitglieder, auflisten nur die eigenen
 await expect("Mallory liest die Reise", req("mallory", "/trips/regeltest"), 403);

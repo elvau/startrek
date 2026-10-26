@@ -131,7 +131,7 @@ try {
   if (!(await p.locator(".modal .pt tr[data-id=booking]").innerText()).includes("neutral")) fail("Partnerliste Booking.com nicht neutral");
   log("Admin-Ansicht: Eintrag nur mit Freigabe, Worker-Aufrufe über 90 % rot, Anbieter mit Grenze, Treffer im Zwischenspeicher, Klicks und Partnerliste");
 
-  // Konto zurücksetzen: eigene Reise, geteilte Reise, Aktionsseite, Personen und Buchungsdaten im Emulator anlegen
+  // Konto zurücksetzen: eigene Reise, geteilte Reise, Aktionsseite, Personen und travelDocs im Emulator anlegen
   const FS = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
   const H = { Authorization: "Bearer owner", "Content-Type": "application/json" };
   const users = await (await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/demo-reisekasse/accounts:query", { method: "POST", headers: { Authorization: "Bearer owner", "Content-Type": "application/json" }, body: "{}" })).json().catch(() => ({}));
@@ -166,7 +166,7 @@ try {
   if (left.length) fail("auf dem Gerät noch: " + left.join(", "));
   await um.locator(".adm-reset-reload").click();
   await p.locator(".top .acct-btn").waitFor();
-  log("Konto zurücksetzen: eigene Reise, Aktionsseite, Personen und Buchungsdaten gelöscht, geteilte Reise verlassen, Gerät leer, weiter angemeldet");
+  log("Konto zurücksetzen: eigene Reise, Aktionsseite, Personen und travelDocs gelöscht, geteilte Reise verlassen, Gerät leer, weiter angemeldet");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Fehler melden ok");

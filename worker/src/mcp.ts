@@ -3,7 +3,7 @@
  * und plant Reisen im Konto.
  * Anmeldung mit persönlichem Schlüssel (apikey.ts). Gesucht wird mit unseren Suchen; Angebote merkt sich der
  * Such-Dienst einige Stunden, damit der Assistent sie per Kennung in eine Reise übernehmen kann. Gebucht wird beim Anbieter
- * über den Link des Angebots. Buchungsdaten (Ausweis, Reisepass) gibt es hier nicht.
+ * über den Link des Angebots. Angaben „Nur für dich“ (travelDocs) gibt es hier nicht.
  */
 import { parseQuery } from "../../app/src/lib/flights/search";
 import { parseStayQuery } from "../../app/src/lib/stays/search";
