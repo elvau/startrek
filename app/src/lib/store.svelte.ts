@@ -8,7 +8,8 @@ import { CAT_KEYS, AGE, DEFAULT_SETTINGS, OLD_CHILD_AGE, isDetailed, uid, type C
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { applyClaims } from "./claims";
-import { shareLike, watchChat, watchVotes } from "./cloud/cloud.svelte";
+import { applySelf } from "./self";
+import { cloudSelf, shareLike, watchChat, watchSelf, watchVotes } from "./cloud/cloud.svelte";
 import { ensureCompare, joinTarget, leaveCompare } from "./variants";
 import { cloud, cloudTrip, freshCloudTrip, patchTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
@@ -247,6 +248,13 @@ $effect.root(() => {
     if (!c || access.readonly || !cloud.loaded[id] || app.editing) return;
     untrack(() => applyClaims(app.trip, c));
   });
+  // selbst Eingetragenes (#571) übernehmen: Termine und Wohnort (nur wer bearbeiten darf, wie oben)
+  $effect(() => {
+    const id = app.trip.id, c = cloudTrip(id)?.claims, by = cloudSelf.trip === id ? cloudSelf.byUid : null;
+    if (!c || !by || access.readonly || !cloud.loaded[id] || app.editing) return;
+    untrack(() => applySelf(app.trip, by, c));
+  });
+  $effect(() => { const id = app.trip.id; void watchSelf(isCloud(id) && cloud.loaded[id] && cloud.user ? id : ""); });
   // Stimmen der Konto-Reise beobachten (#432), sobald ihr Stand da ist
   $effect(() => { const id = app.trip.id; void watchVotes(isCloud(id) && cloud.loaded[id] && cloud.user ? id : ""); });
   // Gruppenchat der Konto-Reise beobachten (für ungelesene Nachrichten auch bei geschlossenem Fenster)

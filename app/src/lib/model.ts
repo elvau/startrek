@@ -417,6 +417,8 @@ export interface Household {
   cc?: string;
   /** aufgelöster Wohnort, wird beim Eintippen der PLZ gesetzt */
   geo?: { lat: number; lon: number; ort: string };
+  /** Region für Schulferien und regionale Feiertage (#570), z. B. „DE-NW“; fehlt: aus der PLZ abgeleitet */
+  region?: string;
   /** Anreise zum Flughafen: selbst fahren und parken, bringen und abholen lassen, Fahrdienst/Taxi, Bahn, Gruppenbus, Fahrgemeinschaft */
   mode?: AccessMode;
   cars?: number;
@@ -607,6 +609,8 @@ export interface Trip {
    * Angebot gehören. Alles andere (ergänzt, geschätzt) zählt im Realitätscheck zur ganzen Reise (#461).
    */
   offer?: { at: string; kind: string; provider?: string; url?: string; price?: { total?: number; perPerson?: number; currency?: string }; validUntil?: string; items: string[] };
+  /** Familienvorschläge (#571): je Konto der Zeitpunkt des zuletzt übernommenen oder abgelehnten Vorschlags */
+  famDone?: Record<string, string>;
   /** Wichtiges: erledigte Punkte (important.ts), bei Punkten für Personen je Person */
   done?: Record<string, { sig: string; ids?: string[] }>;
   /** Roadtrip: gewählte Fähre je Überfahrt („Von>Nach“ → Fähren-ID, „none“: keine Fähre) */

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { t } from "../i18n/index.svelte";
   import Help from "./Help.svelte";
-  import { changeRole, cloud, cloudTrip, dropClaim, inviteLink, kick, makeInvite, revokeInvite, type Role } from "../cloud/cloud.svelte";
+  import { changeRole, cloud, cloudSelf, cloudTrip, cloudVotes, dropClaim, inviteLink, kick, makeInvite, revokeInvite, type Role } from "../cloud/cloud.svelte";
+  import { tn } from "../i18n/index.svelte";
+  import { memberState } from "../self";
   import { app } from "../store.svelte";
   import Modal from "./Modal.svelte";
   import type { Key } from "../i18n/index.svelte";
@@ -18,6 +20,25 @@
   const L = (r: Role) => t(`share.role.${r}` as Key);
   // „Wer bist du?“ (#435): welche Person der Reise ein Mitglied ist (Name aus der Reise, sonst wie gewählt)
   const isWho = (uid: string) => { const c = ct?.claims[uid]; if (!c) return ""; return (id === app.trip.id ? app.trip.travelers.find(x => x.id === c.t)?.name : "") || c.n; };
+
+  // Stand je Mitglied (#571): Termine, Abstimmungen, Wohnort; nur für die offene Reise
+  const here = $derived(id === app.trip.id);
+  const stateOf = (u: string) => {
+    if (!here || !ct) return null;
+    const selfs = cloudSelf.trip === id ? cloudSelf.byUid : {};
+    const st = memberState(app.trip, u, selfs, ct.claims, pid => Object.keys(cloudVotes.byUid[u]?.[pid] || {}).length > 0);
+    return st.who ? st : null;
+  };
+  const openList = (st: NonNullable<ReturnType<typeof stateOf>>) =>
+    [st.dates === false ? t("self.todoDates") : "", st.polls ? tn("self.todoPolls", st.polls) : "", !st.home ? t("self.todoHome") : ""].filter(Boolean);
+  let reminded = $state("");
+  async function remind(u: string, list: string[]) {
+    const text = t("self.remind", { name: isWho(u) || ct?.memberNames[u] || "", trip: ct?.name || "", list: list.join(", ") });
+    try {
+      if (typeof navigator.share === "function") await navigator.share({ title: ct?.name, text, ...(link ? { url: link } : {}) });
+      else { await navigator.clipboard.writeText(link ? `${text} ${link}` : text); reminded = u; setTimeout(() => (reminded = ""), 2000); }
+    } catch { /* abgebrochen */ }
+  }
 
   async function run(fn: () => Promise<unknown>) {
     busy = true; err = "";
@@ -66,7 +87,13 @@
             <span class="av sm">{(ct?.memberNames[uid] || "?")[0].toUpperCase()}</span>
             <span class="mn">{ct?.memberNames[uid] || t("share.unknown")}{uid === me ? ` (${t("share.you")})` : ""}
               {#if isWho(uid)}<small class="muted share-who">= {isWho(uid)}{#if owner && uid !== me} <button class="linkbtn small share-unlink" disabled={busy} onclick={() => run(() => dropClaim(id, uid))}>{t("share.unlink")}</button>{/if}</small>
-              {:else if r !== "owner"}<small class="muted share-who">{t("share.noWho")}</small>{/if}</span>
+              {:else if r !== "owner"}<small class="muted share-who">{t("share.noWho")}</small>{/if}
+              {#if stateOf(uid)}
+                {@const st = stateOf(uid)!}
+                {@const list = openList(st)}
+                <small class="share-st" class:done={!list.length}>{list.length ? t("self.todo", { list: list.join(" · ") }) : `✓ ${t("self.allDone")}`}
+                  {#if list.length && uid !== me}<button class="linkbtn small share-remind" onclick={() => remind(uid, list)}>{reminded === uid ? `✓ ${t("share.copied")}` : t("self.remindBtn")}</button>{/if}</small>
+              {/if}</span>
             {#if owner && r !== "owner"}
               <select value={r} aria-label={t("share.roleLabel")} onchange={e => run(() => changeRole(id, uid, e.currentTarget.value as Role))}>
                 <option value="editor">{L("editor")}</option><option value="viewer">{L("viewer")}</option>
@@ -85,4 +112,6 @@
 
 <style>
   .share-who { display: block; }
+  .share-st { display: block; color: var(--warn); }
+  .share-st.done { color: var(--good); }
 </style>

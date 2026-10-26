@@ -241,6 +241,27 @@ try {
   await ogc.locator(".ai-head .x").click();
   log("Gruppenchat: Zuschauerin schreibt, Zähler bei Anna, Bild verkleinert als JPEG und Link kommen an, kein Video, löschen nur eigene");
 
+  // Selbst eintragen (#571): Anna startet „Termin finden“; Oma (nur ansehen) trägt ihre Zeile und den Wohnort ihrer Familie selbst ein
+  await atg.scrollIntoViewIfNeeded();
+  await atg.locator(".tg-open").click();
+  await atg.locator(".tg-start").click();
+  await otg.locator(".tg-grid").waitFor();
+  await until(async () => (await otg.locator(".tg-todo").innerText().catch(() => "")).includes("Du bist Oma") && (await otg.locator(".tg-todo").innerText()).includes("Termine eintragen"), "Oma sieht, was noch fehlt");
+  const omaRow = side => side.locator(".tg-row", { has: side.locator(".tg-name", { hasText: /^Oma/ }) });
+  if (await omaRow(oma).locator(".tg-c").first().isDisabled()) fail("Oma kann ihre eigene Zeile nicht antippen");
+  if (!(await otg.locator(".tg-row", { has: oma.locator(".tg-name", { hasText: /^Jonas/ }) }).locator(".tg-c").first().isDisabled())) fail("Oma kann fremde Zeilen antippen");
+  await omaRow(oma).locator(".tg-c").first().click();
+  await until(async () => (await omaRow(anna).locator(".tg-c").first().innerText()) === "✓" && (await omaRow(anna).locator(".tg-name").innerText()).includes("🔒"), "Anna sieht Omas ✓, Zeile gesperrt");
+  if (!(await omaRow(anna).locator(".tg-c").first().isDisabled())) fail("Anna kann Omas Zeile ändern");
+  await until(async () => !(await otg.locator(".tg-todo").innerText()).includes("Termine eintragen"), "Termine bei Oma erledigt");
+  const omaHh = await oma.evaluate(() => (JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").travelers || []).find(x => x.name === "Oma")?.household);
+  await oma.locator(".hh-sum b", { hasText: new RegExp(`^${omaHh}$`) }).click();
+  const oself = oma.locator(".hh-self");
+  await oself.locator(".home-plz").fill("41236");
+  await until(async () => (await anna.locator(".hh-sum", { has: anna.locator("b", { hasText: new RegExp(`^${omaHh}$`) }) }).innerText()).includes("Mönchengladbach"), "Anna hat Omas Wohnort in der Reise");
+  await until(async () => (await anna.evaluate(h => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").households?.[h]?.geo?.ort, omaHh)) === "Mönchengladbach", "Wohnort in Annas Reise übernommen");
+  log("Selbst eintragen: Zuschauerin trägt eigene Zeile (für andere gesperrt) und Wohnort ein, Anna übernimmt beides in die Reise");
+
   // Variante (#428): Anna kopiert die geteilte Reise als Variante; sie ist mit denselben Mitgliedern geteilt, die Startseite
   // bündelt beide in einer Kachel
   await anna.locator(".top .tm-btn").first().click();
