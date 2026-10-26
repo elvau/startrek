@@ -293,30 +293,33 @@ export const GUIDE: GuidePage[] = [
     slug: "gemeinsam",
     nav: "Gemeinsam",
     title: "Gemeinsam planen und abstimmen",
-    description: "Reisen in Split&Fly per Einladungslink teilen, Rollen vergeben und über Ziel, Termin oder Unterkunft abstimmen: eine Stimme, mehrere Stimmen oder Meilen.",
+    description: "Reisen in Split&Fly per Einladungslink teilen, Rollen vergeben, im Gruppenchat schreiben und über Ziel, Termin oder Unterkunft abstimmen: eine Stimme, mehrere Stimmen oder Meilen.",
     h1: "Gemeinsam planen und abstimmen",
     intro: [
-      "Eine Reise teilst du mit einem Link. Alle sehen dieselben Zahlen live, auf allen Geräten. Wenn die Gruppe sich nicht einig ist, stimmt ihr in der Reise ab."
+      "Eine Reise teilst du mit einem Link. Alle sehen dieselben Zahlen live, auf allen Geräten. Absprachen laufen im Gruppenchat der Reise, und wenn die Gruppe sich nicht einig ist, stimmt ihr ab."
     ],
     steps: [
       "Melde dich an (mit Google oder per E-Mail-Link). Teilen geht nur mit Konto.",
       "Öffne in der Reise „Teilen“ und kopiere den Einladungslink.",
       "Wähle die Rolle: „Plant mit“ darf bearbeiten, „Sieht zu“ darf nur lesen.",
       "Schick den Link per Nachricht an die Mitreisenden. Wer ihn öffnet, ist dabei.",
-      "Für Streitfragen eine Abstimmung starten: Frage und Möglichkeiten eintragen (eine pro Zeile), die Art wählen und optional eine Frist setzen."
+      "Für Streitfragen eine Abstimmung starten: Frage und Möglichkeiten eintragen (eine pro Zeile), die Art wählen und optional eine Frist setzen.",
+      "Zum Absprechen unten rechts auf 💬 „Gruppe“ tippen (über dem KI-Assistenten): Text, Emojis und Bilder an alle in der Reise."
     ],
     tips: [
       "Eine Stimme: Jeder wählt eine Möglichkeit. Mehrere Stimmen: Jeder wählt alle, die für ihn gehen. Meilen-Wahl: Jeder verteilt seine Meilen frei, auch alle auf eine Möglichkeit.",
       "Bei jeder Möglichkeit kann man „Ohne mich“ sagen: Wird sie gewählt, ist diese Person nicht dabei.",
       "Zwei Abstimmungen sind schon vorbereitet: „Wann fahren wir?“ und „Welches Angebot für …?“. Das Ergebnis lässt sich als Reisedatum oder Angebot übernehmen.",
-      "Damit deine Stimme zählt, sag kurz, wer du in der Reise bist. Die App zeigt, wer noch nicht abgestimmt hat."
+      "Damit deine Stimme zählt, sag kurz, wer du in der Reise bist. Die App zeigt, wer noch nicht abgestimmt hat.",
+      "Im Gruppenchat schreiben alle Mitglieder, auch wer nur zusieht. Die Zahl am 💬-Knopf zeigt neue Nachrichten. Bilder werden verkleinert, Videos und Sprachnachrichten gibt es nicht."
     ],
     faq: [
       { q: "Kann jeder meine Reise ändern?", a: "Nur wer „Plant mit“ hat. Wer „Sieht zu“ liest nur. Die Reise gehört dir als Besitzer." },
       { q: "Kann ich eine geteilte Reise verlassen?", a: "Ja, im Reisemenü unter „Reise verlassen“. Du siehst die Reise danach nicht mehr. Besitzer können Mitglieder verwalten." },
-      { q: "Brauchen die anderen ein Konto?", a: "Zum Mitplanen ja. Das Anmelden geht in wenigen Sekunden mit Google oder per Link in der E-Mail." }
+      { q: "Brauchen die anderen ein Konto?", a: "Zum Mitplanen ja. Das Anmelden geht in wenigen Sekunden mit Google oder per Link in der E-Mail." },
+      { q: "Wer sieht den Gruppenchat, und kann ich Nachrichten löschen?", a: "Alle, die in der Reise sind. Eigene Nachrichten löschst du mit 🗑 für alle; der Besitzer der Reise kann jede Nachricht löschen. Den Chat gibt es, sobald die Reise mit mindestens einer weiteren Person geteilt ist." }
     ],
-    where: "Reise → Teilen und Abstimmungen",
+    where: "Reise → Teilen, Abstimmungen und 💬 Gruppenchat",
     emoji: "🗳",
     shots: [{ img: "trav", alt: "Kapitel Wer fährt mit mit dem Bereich Termin finden und den Abstimmungen", caption: "Abstimmungen und Terminfindung stehen unten im Kapitel „Wer fährt mit“.", pins: {
       termin: "📅 Termin finden: wann passt es allen?",

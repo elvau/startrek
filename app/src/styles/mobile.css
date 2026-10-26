@@ -26,8 +26,14 @@ body.mob .hint{display:none}
 body.mob .bug-fab{bottom:calc(var(--mob-bar) + 12px + env(safe-area-inset-bottom,0px))}
 body.mob .ai-fab{bottom:calc(var(--mob-bar) + 12px + env(safe-area-inset-bottom,0px));padding:10px 14px}
 body.mob .ai-fab .ai-fab-lbl{display:none}
+body.mob .gc-fab{bottom:calc(var(--mob-bar) + 70px + env(safe-area-inset-bottom,0px));padding:10px 14px}
+body.mob .gc-fab .gc-lbl{display:none}
+body.mob:has(.gc-fab) .ai-note{bottom:calc(var(--mob-bar) + 128px + env(safe-area-inset-bottom,0px))}
+/* Gruppenchat-Fenster über der Leiste unten, damit Eingabe und Hinweis frei bleiben */
+body.mob .ai-chat.gc{bottom:calc(var(--mob-bar) + 8px + env(safe-area-inset-bottom,0px));height:min(80svh,calc(100svh - var(--mob-bar) - var(--mob-top) - 16px - env(safe-area-inset-bottom,0px)))}
 /* Startseite hat keine Leiste unten: die Knöpfe sitzen ganz unten und lassen der Reiseliste Platz zum Weiterscrollen (#553) */
 body.mob:not(.mob-pager) .bug-fab,body.mob:not(.mob-pager) .ai-fab{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+body.mob:not(.mob-pager) .gc-fab{bottom:calc(72px + env(safe-area-inset-bottom,0px))}
 body.mob:not(.mob-pager) .start{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 body.mob .ai-note{bottom:calc(var(--mob-bar) + 70px + env(safe-area-inset-bottom,0px))}
 /* Posten zugeklappt (#531): eine Zeile; aufgeklappt oben „zuklappen“ */

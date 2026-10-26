@@ -8,7 +8,7 @@ import { CAT_KEYS, AGE, DEFAULT_SETTINGS, OLD_CHILD_AGE, isDetailed, uid, type C
 import { autoName } from "./format";
 import { soloTraveler } from "./placeholders";
 import { applyClaims } from "./claims";
-import { shareLike, watchVotes } from "./cloud/cloud.svelte";
+import { shareLike, watchChat, watchVotes } from "./cloud/cloud.svelte";
 import { ensureCompare, joinTarget, leaveCompare } from "./variants";
 import { cloud, cloudTrip, freshCloudTrip, patchTrip, initCloud, isCloud, logout as cloudLogout, wipeAccount, markSynced, needsPush, push, remoteTrip, removeCloudTrip, roleOf, upload, watch, type CloudTrip, type Role } from "./cloud/cloud.svelte";
 import { pruneIndex } from "./cloud/prune";
@@ -249,6 +249,8 @@ $effect.root(() => {
   });
   // Stimmen der Konto-Reise beobachten (#432), sobald ihr Stand da ist
   $effect(() => { const id = app.trip.id; void watchVotes(isCloud(id) && cloud.loaded[id] && cloud.user ? id : ""); });
+  // Gruppenchat der Konto-Reise beobachten (für ungelesene Nachrichten auch bei geschlossenem Fenster)
+  $effect(() => { const id = app.home ? "" : app.trip.id; void watchChat(isCloud(id) && cloud.loaded[id] && cloud.user ? id : ""); });
   // aktuelle Reise beobachten, sobald sie als Konto-Reise bekannt ist
   $effect(() => { const id = app.trip.id; void cloud.trips.length; void watch(id); });
   // zurückgehaltene Änderung anwenden, wenn nicht mehr bearbeitet wird

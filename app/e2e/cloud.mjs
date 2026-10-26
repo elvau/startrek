@@ -213,6 +213,34 @@ try {
     .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); throw e; });
   log("Abstimmen: Anna wählt sich und stimmt, Oma stimmt als Zuschauerin mit eigenem Konto („✕ Ohne mich“ mit Namen, Fenster), Anna sieht es live und bekommt die Info, Folgen an der Möglichkeit");
 
+  // Gruppenchat: Oma (nur ansehen) schreibt, Anna sieht den Zähler und antwortet mit Bild; löschen nur eigene
+  await oma.locator(".gc-fab").click();
+  const ogc = oma.locator(".gc");
+  await ogc.locator("textarea").fill("Hallo zusammen 🎳");
+  await ogc.locator("textarea").press("Enter");
+  await until(async () => (await anna.locator(".gc-fab .gc-badge").innerText().catch(() => "")) === "1", "Anna sieht 1 neue Nachricht");
+  await anna.locator(".gc-fab").click();
+  const agc = anna.locator(".gc");
+  await until(async () => /Oma[\s\S]*Hallo zusammen 🎳/.test(await agc.locator(".gc-msgs").innerText()), "Anna liest Omas Nachricht mit Namen");
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await agc.locator(".gc-file").setInputFiles({ name: "strand.png", mimeType: "image/png", buffer: png });
+  await agc.locator(".gc-pre img").waitFor();
+  await agc.locator("textarea").fill("Unser Strand: https://example.com/strand");
+  await agc.locator(".gc-send").click();
+  await until(async () => (await ogc.locator(".gc-img img").count()) === 1 && (await ogc.locator(".gc-msg a[href='https://example.com/strand']").count()) === 1, "Oma sieht Annas Bild und Link");
+  const src = await ogc.locator(".gc-img img").getAttribute("src");
+  if (!src?.startsWith("data:image/jpeg;base64,")) throw new Error("Bild nicht als verkleinertes JPEG: " + src?.slice(0, 40));
+  await agc.locator(".gc-file").setInputFiles({ name: "film.mp4", mimeType: "video/mp4", buffer: Buffer.from("0000") });
+  await until(async () => (await agc.locator(".gc-errline").innerText().catch(() => "")).includes("keine Videos"), "Video abgelehnt");
+  const annaMsg = ogc.locator(".gc-msg", { hasText: "Unser Strand" });
+  if (await annaMsg.locator(".gc-del").count()) throw new Error("Oma kann Annas Nachricht löschen");
+  oma.once("dialog", d => d.accept());
+  await ogc.locator(".gc-msg", { hasText: "Hallo zusammen" }).locator(".gc-del").click();
+  await until(async () => !(await agc.locator(".gc-msgs").innerText()).includes("Hallo zusammen"), "Omas gelöschte Nachricht ist bei Anna weg");
+  await agc.locator(".ai-head .x").click();
+  await ogc.locator(".ai-head .x").click();
+  log("Gruppenchat: Zuschauerin schreibt, Zähler bei Anna, Bild verkleinert als JPEG und Link kommen an, kein Video, löschen nur eigene");
+
   // Variante (#428): Anna kopiert die geteilte Reise als Variante; sie ist mit denselben Mitgliedern geteilt, die Startseite
   // bündelt beide in einer Kachel
   await anna.locator(".top .tm-btn").first().click();
