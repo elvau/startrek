@@ -261,6 +261,14 @@ try {
   await until(async () => (await anna.locator(".hh-sum", { has: anna.locator("b", { hasText: new RegExp(`^${omaHh}$`) }) }).innerText()).includes("Mönchengladbach"), "Anna hat Omas Wohnort in der Reise");
   await until(async () => (await anna.evaluate(h => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").households?.[h]?.geo?.ort, omaHh)) === "Mönchengladbach", "Wohnort in Annas Reise übernommen");
   log("Selbst eintragen: Zuschauerin trägt eigene Zeile (für andere gesperrt) und Wohnort ein, Anna übernimmt beides in die Reise");
+  // Ferien-Region (#570): aus der PLZ geschätzt (41236 → Nordrhein-Westfalen), änderbar
+  await anna.locator(".hh-sum b", { hasText: new RegExp(`^${omaHh}$`) }).click();
+  const areg = anna.locator(".hh.open .hh-region");
+  await until(async () => (await areg.locator(".hol-region").inputValue().catch(() => "")) === "DE-NW" && (await areg.locator(".hh-guess").innerText()).includes("aus der PLZ geschätzt"), "Region aus der PLZ");
+  await areg.locator(".hol-region").selectOption("DE-NI");
+  await until(async () => (await anna.evaluate(h => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").households?.[h]?.region, omaHh)) === "DE-NI" && !(await areg.locator(".hh-guess").count()), "Region selbst gewählt");
+  await anna.locator(".hh-sum b", { hasText: new RegExp(`^${omaHh}$`) }).click();
+  log("Ferien-Region: aus der PLZ geschätzt (NRW), selbst geändert (Niedersachsen)");
 
   // Variante (#428): Anna kopiert die geteilte Reise als Variante; sie ist mit denselben Mitgliedern geteilt, die Startseite
   // bündelt beide in einer Kachel

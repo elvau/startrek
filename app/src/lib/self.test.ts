@@ -84,14 +84,14 @@ describe("Selbst eintragen (#571)", () => {
 describe("aus dem Konto (#571)", () => {
   it("Familie: gleicher Nachname, ohne einen selbst, Alter zum Stichtag; Wohnort", async () => {
     const { familyFromDir, homeFromDir } = await import("./self");
-    const dir = { me: "1", groups: [], people: [
+    const dir = { me: "1", groups: [], prefs: { holidays: "NW" }, people: [
       { id: "1", first: "Markus", last: "Sendler", home: { plz: "44787", ort: "Bochum", lat: 51.48, lon: 7.21 } },
       { id: "2", first: "Vanessa", last: "Sendler" },
       { id: "3", first: "Emily", last: " sendler", birth: "2019-05-01" },
       { id: "4", first: "Timo", last: "Kegler" }
     ] };
     expect(familyFromDir(dir, "2027-09-01")).toEqual([{ n: "Vanessa" }, { n: "Emily", age: 8 }]);
-    expect(homeFromDir(dir)).toEqual({ plz: "44787", cc: "DE", lat: 51.48, lon: 7.21, ort: "Bochum" });
+    expect(homeFromDir(dir)).toEqual({ plz: "44787", cc: "DE", lat: 51.48, lon: 7.21, ort: "Bochum", region: "DE-NW" });
     expect(familyFromDir({ people: [], groups: [] }, "2027-09-01")).toEqual([]);
   });
 });
