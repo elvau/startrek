@@ -5,9 +5,10 @@
  * Alles liegt in der Reise (trip.avail, trip.polls), wie die übrigen Reisedaten; Personen sind Kennungen der Reisenden.
  */
 import { AGE, isActive, uid, type Trip } from "./model";
+import type { DaysCfg } from "./datefit";
 
 export type Avail = "yes" | "maybe" | "no";
-export interface AvailPlan {
+export interface AvailPlan extends DaysCfg {
   /** Zeitraum, in dem gesucht wird (JJJJ-MM-TT) */
   from: string;
   to: string;
@@ -121,7 +122,6 @@ export function setAvail(trip: Trip, person: string, day: string, a: Avail | und
   if (!Object.keys(m).length) delete p.by[person];
 }
 
-/** Tage des Planungszeitraums (höchstens 120) */
 /** Zeitraum prüfen: Bis vor Von („order“) oder Reise länger als der Zeitraum („nights“); "" = in Ordnung oder noch leer */
 export function planError(from: string, to: string, nights: number): "" | "order" | "nights" {
   if (!okD(from) || !okD(to)) return "";
@@ -129,9 +129,10 @@ export function planError(from: string, to: string, nights: number): "" | "order
   return nights > daysBetween(from, to) ? "nights" : "";
 }
 
-export function planDays(p: Pick<AvailPlan, "from" | "to">): string[] {
+/** Tage des Planungszeitraums: höchstens 120, mit „Wochenenden“ (#568) ein Jahr (das Raster zeigt dann nur passende Tage) */
+export function planDays(p: Pick<AvailPlan, "from" | "to" | "days">): string[] {
   if (!okD(p.from) || !okD(p.to) || p.to < p.from) return [];
-  const n = Math.min(daysBetween(p.from, p.to), 119);
+  const n = Math.min(daysBetween(p.from, p.to), p.days === "weekend" ? 365 : 119);
   return Array.from({ length: n + 1 }, (_, i) => addDay(p.from, i));
 }
 
@@ -148,8 +149,8 @@ function personIn(m: Record<string, Avail> | undefined, from: string, to: string
   return unset ? "open" : maybe ? "maybe" : "yes";
 }
 
-/** beste Zeiträume mit der gewünschten Zahl an Nächten, ohne Überschneidung, beste zuerst */
-export function bestPeriods(trip: Trip, max = 3): Period[] {
+/** beste Zeiträume mit der gewünschten Zahl an Nächten, ohne Überschneidung, beste zuerst; ok: nur passende (#568) */
+export function bestPeriods(trip: Trip, max = 3, ok?: (from: string, to: string) => boolean): Period[] {
   const p = trip.avail;
   if (!p || !(p.nights > 0)) return [];
   const people = voters(trip).map(x => x.id);
@@ -158,6 +159,7 @@ export function bestPeriods(trip: Trip, max = 3): Period[] {
   for (const from of planDays(p)) {
     const to = addDay(from, p.nights);
     if (to > p.to) break;
+    if (ok && !ok(from, to)) continue;
     const r: Period = { from, to, score: 0, yes: [], maybe: [], no: [], open: [] };
     for (const id of people) {
       const s = personIn(p.by[id], from, to);
