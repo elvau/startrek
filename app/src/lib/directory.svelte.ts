@@ -188,6 +188,12 @@ export function travelersFrom(ids: string[], existing: Traveler[] = [], day?: st
     .map((p, i) => ({ id: uid(), personId: p.id, name: p.first, household: p.last, age: personAge(p, day) ?? undefined, color: COLORS[(existing.length + i) % COLORS.length] }));
 }
 
+/** Herkunft merken (#567): Reisende aus gespeicherten Gruppen bekommen den Namen der ersten passenden Gruppe */
+export function tagGroups(list: Traveler[], groups: Pick<Group, "name" | "memberIds">[]): Traveler[] {
+  for (const x of list) { const g = x.personId ? groups.find(g => g.memberIds.includes(x.personId!)) : undefined; if (g?.name.trim()) x.group = g.name.trim().slice(0, 60); }
+  return list;
+}
+
 /** Aktuelle Reisende als Personen und Gruppe speichern; Wohnorte der Familien werden zum Wohnort der Personen */
 export function saveAsGroup(name: string, travelers: Traveler[], households: Record<string, Household> = {}): Group {
   const ids = travelers.map(t => {

@@ -12,11 +12,14 @@
   import { dateDE, dayShort } from "../format";
   import Help from "./Help.svelte";
   import PollView from "./PollView.svelte";
+  import Deciders from "./Deciders.svelte";
   import { getLocalMe, setLocalMe, sharedVoting } from "../polls.svelte";
-  import { addDay, addPoll, applyResult, bestPeriods, cycle, missing, newPoll, planDays, planError, setAvail, tally, vote, voters, type Avail, type Period, type PollMode, type Vote } from "../together";
+  import { addDay, addPoll, applyResult, bestPeriods, cycle, grownUps, missing, newPoll, notDeciding, planDays, planError, setAvail, tally, vote, voters, type Avail, type Period, type PollMode, type Vote } from "../together";
 
   const trip = $derived(app.trip);
   const people = $derived(voters(trip));
+  // Begleitung (#567): reist mit, trägt aber nichts ein
+  const others = $derived(notDeciding(trip));
   const plan = $derived(trip.avail);
   const days = $derived(plan ? planDays(plan) : []);
   // selbst Eingetragenes (#571): eigene Zeile über das eigene Konto, auch mit „nur ansehen“; für andere gesperrt
@@ -100,12 +103,13 @@
   }
 </script>
 
-{#if people.length > 1}
+{#if grownUps(trip).length > 1}
 <div class="tg">
   {#if todo?.who}
     {@const open = [todo.dates === false ? t("self.todoDates") : "", todo.polls ? tn("self.todoPolls", todo.polls) : "", !todo.home ? t("self.todoHome") : ""].filter(Boolean)}
     <p class="tg-todo small" class:done={!open.length}>{t("self.you", { name: todo.who.name })} {open.length ? t("self.todo", { list: open.join(" · ") }) : `✓ ${t("self.allDone")}`}</p>
   {/if}
+  <Deciders />
   <h3>📅 {t("tg.title")} <Help k="avail" /></h3>
   {#if !plan}
     <p class="muted small tg-lead">{t("tg.lead")}</p>
@@ -145,6 +149,7 @@
         </div>
       {/each}
     </div>
+    {#if others.length}<p class="muted small tg-others">{t("dec.notEntering", { list: others.map(x => x.name).join(", ") })}</p>{/if}
     <p class="small tg-count">{t("tg.entered", { a: entered, n: people.length })}</p>
     {#if best.length}
       <ol class="tg-best">

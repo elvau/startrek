@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { variantPoll, variantStand, applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, planError, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
+import { circles, notDeciding, setDeciders, voters, variantPoll, variantStand, applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, planError, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
 
 const trip = (): Trip => ({
   id: "t", name: "Reise", place: "", country: "", items: [], tiers: {}, settings: DEFAULT_SETTINGS,
@@ -166,5 +166,33 @@ describe("Termin finden: Zeitraum prüfen", () => {
     expect(planError("2026-11-05", "2026-11-10", 7)).toBe("nights");
     expect(planError("2026-11-05", "2026-11-12", 7)).toBe("");
     expect(planError("", "2026-11-12", 7)).toBe("");
+  });
+});
+
+describe("Wer entscheidet mit (#567)", () => {
+  const club = (): Trip => ({
+    id: "k", name: "Kegeltour", place: "", country: "", items: [], tiers: {}, settings: {} as Trip["settings"],
+    travelers: [
+      { id: "a", name: "Monika", household: "A", group: "Kegelclub" }, { id: "b", name: "Daniel", household: "B", group: "Kegelclub" },
+      { id: "c", name: "Fabian", household: "A" }, { id: "k", name: "Emily", household: "A", age: 8 }, { id: "x", name: "Ingolf", household: "C", active: false }
+    ]
+  });
+  it("ohne Auswahl alle aktiven Erwachsenen, mit Auswahl nur der Kreis, Kinder nie", () => {
+    const t = club();
+    expect(voters(t).map(x => x.id)).toEqual(["a", "b", "c"]);
+    setDeciders(t, ["a", "b", "k"]);
+    expect(t.deciders).toEqual(["a", "b"]);
+    expect(voters(t).map(x => x.id)).toEqual(["a", "b"]);
+    expect(notDeciding(t).map(x => x.id)).toEqual(["c"]);
+  });
+  it("alle gewählt oder niemand mehr da: keine Einschränkung", () => {
+    const t = club();
+    setDeciders(t, ["a", "b", "c"]);
+    expect(t.deciders).toBeUndefined();
+    t.deciders = ["weg"];
+    expect(voters(t).map(x => x.id)).toEqual(["a", "b", "c"]);
+  });
+  it("Schnellwahl nach Herkunftsgruppe, Rest als Begleitung", () => {
+    expect(circles(club())).toEqual([{ key: "Kegelclub", ids: ["a", "b"] }, { key: "", ids: ["c"] }]);
   });
 });

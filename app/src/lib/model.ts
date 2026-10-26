@@ -32,6 +32,8 @@ export interface Traveler {
   nat?: string;
   /** zweiter Pass (ISO-2), optional: für die Einreise zählt der günstigere */
   nat2?: string;
+  /** aus dieser gespeicherten Gruppe hinzugefügt (Name, #567), für „Wer entscheidet mit?“ */
+  group?: string;
   /** Kasse: Kind wird von diesem Erwachsenen (ID) bezahlt, wenn die Eltern getrennte Kassen haben; fehlt: von allen Erwachsenen der Familie */
   payer?: string;
 }
@@ -609,6 +611,8 @@ export interface Trip {
    * Angebot gehören. Alles andere (ergänzt, geschätzt) zählt im Realitätscheck zur ganzen Reise (#461).
    */
   offer?: { at: string; kind: string; provider?: string; url?: string; price?: { total?: number; perPerson?: number; currency?: string }; validUntil?: string; items: string[] };
+  /** Wer entscheidet mit (#567): Reisende-Kennungen; fehlt: alle aktiven Erwachsenen */
+  deciders?: string[];
   /** Familienvorschläge (#571): je Konto der Zeitpunkt des zuletzt übernommenen oder abgelehnten Vorschlags */
   famDone?: Record<string, string>;
   /** Wichtiges: erledigte Punkte (important.ts), bei Punkten für Personen je Person */
