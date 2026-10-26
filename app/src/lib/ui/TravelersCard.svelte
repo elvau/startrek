@@ -3,8 +3,8 @@
   import { access, app } from "../store.svelte";
   import { t, t as tt, tn, type Key } from "../i18n/index.svelte";
   import { ageClass } from "../calc";
-  import { isActive, isDetailed, uid } from "../model";
-  import { dir, saveAsGroup, travelersFrom } from "../directory.svelte";
+  import { isActive, isDetailed, uid, type Group } from "../model";
+  import { dir, saveAsGroup, tagGroups, travelersFrom } from "../directory.svelte";
   import { applyPeople, personAge } from "../people";
   import { prefsFor } from "../prefs";
   import Households from "./Households.svelte";
@@ -121,8 +121,8 @@
     app.trip.travelers.push({ id: uid(), name: "", household: app.trip.travelers[0]?.household || "", color: COLORS[i % COLORS.length] });
     edit = true;
   }
-  function addFrom(ids: string[]) {
-    app.trip.travelers.push(...travelersFrom(ids, app.trip.travelers, app.trip.from || undefined));
+  function addFrom(ids: string[], g?: Group) {
+    app.trip.travelers.push(...tagGroups(travelersFrom(ids, app.trip.travelers, app.trip.from || undefined), g ? [g] : []));
     pick = false;
   }
   function saveGroup() {
@@ -234,7 +234,7 @@
     <div class="pick">
       {#each dir.groups as g (g.id)}
         {@const neu = g.memberIds.filter(id => !app.trip.travelers.some(t => t.personId === id))}
-        <button class="chip" disabled={!neu.length} onclick={() => addFrom(g.memberIds)}>{g.name} <small>{neu.length ? `+${neu.length}` : t("trav.allThere")}</small></button>
+        <button class="chip" disabled={!neu.length} onclick={() => addFrom(g.memberIds, g)}>{g.name} <small>{neu.length ? `+${neu.length}` : t("trav.allThere")}</small></button>
       {/each}
       {#each dir.people.filter(p => !app.trip.travelers.some(t => t.personId === p.id)) as p (p.id)}
         <button class="chip" onclick={() => addFrom([p.id])}>+ {p.first} {p.last}</button>

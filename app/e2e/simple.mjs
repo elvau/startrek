@@ -244,6 +244,15 @@ try {
   await gp.locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
   const tg = gp.locator("#together .tg");
   await tg.scrollIntoViewIfNeeded();
+  // Wer entscheidet mit (#567): Cleo abwählen, dann trägt sie nicht ein (eigene Zeile weg, Hinweis); wieder alle
+  await tg.locator(".dec-edit").click();
+  await tg.locator(".dec-people .chip", { hasText: "Cleo" }).click();
+  await until(async () => (await tg.locator(".dec-sum").innerText()) === "2 von 3" && !(await tg.locator(".tg-row .tg-name", { hasText: "Cleo" }).count())
+    && (await tg.locator(".tg-others").innerText()).includes("Cleo"), "Cleo entscheidet nicht mit");
+  await tg.locator(".dec-quick .chip", { hasText: "Alle Erwachsenen" }).click();
+  await until(async () => (await tg.locator(".dec-sum").innerText()).startsWith("Alle Erwachsenen") && (await tg.locator(".tg-row .tg-name", { hasText: "Cleo" }).count()) === 1, "wieder alle");
+  await tg.locator(".dec-edit").click();
+  log("Wer entscheidet mit: Abwählen nimmt die Person aus „Termin finden“ (Hinweis „trägt nicht ein“), „Alle Erwachsenen“ stellt zurück");
   // neu anlegen: erst Erklärung und Knopf (sah sonst wie das Reisedatum aus); Bis vor Von oder zu kurz: Hinweis, Loslegen gesperrt
   await tg.locator(".tg-reset").click();
   if (!(await tg.locator(".tg-lead").innerText()).includes("Noch kein Reisedatum") || await tg.locator(".tg-new").count()) fail("Termin finden nicht eingeklappt");
