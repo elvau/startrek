@@ -304,19 +304,25 @@ export const GUIDE: GuidePage[] = [
       "Wähle die Rolle: „Plant mit“ darf bearbeiten, „Sieht zu“ darf nur lesen.",
       "Schick den Link per Nachricht an die Mitreisenden. Wer ihn öffnet, ist dabei.",
       "Für Streitfragen eine Abstimmung starten: Frage und Möglichkeiten eintragen (eine pro Zeile), die Art wählen und optional eine Frist setzen.",
-      "Zum Absprechen unten rechts auf 💬 „Gruppe“ tippen (über dem KI-Assistenten): Text, Emojis und Bilder an alle in der Reise."
+      "Zum Absprechen unten rechts auf 💬 „Gruppe“ tippen (über dem KI-Assistenten): Text, Emojis und Bilder an alle in der Reise.",
+      "Unter „Wer entscheidet mit?“ festlegen, wer Termine einträgt und abstimmt, z. B. nur der Kegelclub und nicht die Begleitung.",
+      "„Termin finden starten“: Zeitraum wählen und „Welche Tage kommen in Frage?“: alle Tage oder Wochenenden (2 Nächte, lange Wochenenden, 4+), auf Wunsch schulkindkonform, mit Brückentagen und Schulferien mitnehmen, meiden oder nur Ferien."
     ],
     tips: [
       "Eine Stimme: Jeder wählt eine Möglichkeit. Mehrere Stimmen: Jeder wählt alle, die für ihn gehen. Meilen-Wahl: Jeder verteilt seine Meilen frei, auch alle auf eine Möglichkeit.",
       "Bei jeder Möglichkeit kann man „Ohne mich“ sagen: Wird sie gewählt, ist diese Person nicht dabei.",
       "Zwei Abstimmungen sind schon vorbereitet: „Wann fahren wir?“ und „Welches Angebot für …?“. Das Ergebnis lässt sich als Reisedatum oder Angebot übernehmen.",
       "Damit deine Stimme zählt, sag kurz, wer du in der Reise bist. Die App zeigt, wer noch nicht abgestimmt hat.",
-      "Im Gruppenchat schreiben alle Mitglieder, auch wer nur zusieht. Die Zahl am 💬-Knopf zeigt neue Nachrichten. Bilder werden verkleinert, Videos und Sprachnachrichten gibt es nicht."
+      "Im Gruppenchat schreiben alle Mitglieder, auch wer nur zusieht. Die Zahl am 💬-Knopf zeigt neue Nachrichten. Bilder werden verkleinert, Videos und Sprachnachrichten gibt es nicht.",
+      "Wer über den Link beitritt und „Wer bist du?“ beantwortet, trägt seine Termine und den Wohnort der Familie selbst ein, auch mit „Sieht zu“. Die eigene Familie aus dem Konto geht als Vorschlag an die Planer.",
+      "Im Raster mit gedrückter linker Maustaste ziehen setzt ✓ über mehrere Tage, mit der rechten ✕. Auf dem Handy gibt es die Ansicht „Wochenenden“: je Termin einmal antippen.",
+      "Ferien und Feiertage kommen aus der Ferien-Region jeder Familie. Sie wird aus der PLZ geschätzt und lässt sich in den Familien-Einstellungen ändern."
     ],
     faq: [
       { q: "Kann jeder meine Reise ändern?", a: "Nur wer „Plant mit“ hat. Wer „Sieht zu“ liest nur. Die Reise gehört dir als Besitzer." },
       { q: "Kann ich eine geteilte Reise verlassen?", a: "Ja, im Reisemenü unter „Reise verlassen“. Du siehst die Reise danach nicht mehr. Besitzer können Mitglieder verwalten." },
       { q: "Brauchen die anderen ein Konto?", a: "Zum Mitplanen ja. Das Anmelden geht in wenigen Sekunden mit Google oder per Link in der E-Mail." },
+      { q: "Was heißt „schulkindkonform“?", a: "Außer dem Anreisetag (Abfahrt nach der Schule) liegt kein Schultag im Zeitraum. Ein Feiertag zählt nur, wenn er in der Region jeder Familie mit Schulkind gilt. In den Ferien geht jeder Starttag; Berufstätige brauchen dann Urlaubstage, die App zeigt wie viele." },
       { q: "Wer sieht den Gruppenchat, und kann ich Nachrichten löschen?", a: "Alle, die in der Reise sind. Eigene Nachrichten löschst du mit 🗑 für alle; der Besitzer der Reise kann jede Nachricht löschen. Den Chat gibt es, sobald die Reise mit mindestens einer weiteren Person geteilt ist." }
     ],
     where: "Reise → Teilen, Abstimmungen und 💬 Gruppenchat",

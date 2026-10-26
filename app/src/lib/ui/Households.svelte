@@ -143,13 +143,6 @@
             <HomeInput cls="f plzf" label={t("hh.home")} value={{ cc: H.cc, plz: H.plz, ort: H.geo?.ort }} onpick={x => setHome(name, x)} onclear={() => clearHome(name)} />
             {#if H.geo}<span class="muted ed-note">📍 {H.geo.ort}</span>{/if}
           </div>
-          {#if H.geo || H.region}
-            {@const R = householdRegion(H)}
-            <div class="ed-row hh-region">
-              <span class="f">{t("hh.region")}<HolidayPicker value={R?.region} empty={t("hh.regionNone")} onchange={v => { if (v) H.region = v; else delete H.region; }} /></span>
-              {#if R?.guessed}<span class="muted ed-note hh-guess">{R.check ? `⚠ ${t("hh.regionCheck")}` : t("hh.regionGuess")}</span>{/if}
-            </div>
-          {/if}
           <div class="ed-row">
             <label class="f">{t("hh.access")}
               <select value={H.mode || "car"} onchange={e => { H.mode = e.currentTarget.value as AccessMode; if (H.mode === "with" && !H.link) H.link = names.find(x => x !== name); }}>
@@ -197,6 +190,13 @@
             {#if H.arrive || H.depart}<button class="linkbtn" onclick={() => { H.arrive = undefined; H.depart = undefined; }}>{t("hh.useFlight")}</button>
             {:else}<span class="muted ed-note">{t("hh.emptyFlight")}</span>{/if}
           </div>
+          {#if H.geo || H.region}
+            {@const R = householdRegion(H)}
+            <div class="ed-row hh-region">
+              <span class="f">{t("hh.region")}<HolidayPicker value={R?.region} empty={t("hh.regionNone")} onchange={v => { if (v) H.region = v; else delete H.region; }} /></span>
+              {#if R?.guessed}<span class="muted ed-note hh-guess">{R.check ? `⚠ ${t("hh.regionCheck")}` : t("hh.regionGuess")}</span>{/if}
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
