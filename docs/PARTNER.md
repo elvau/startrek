@@ -53,7 +53,7 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 ## Einen Partner hinzufügen
 
 1. Eintrag in `PARTNERS` (`app/src/lib/partners/index.ts`) in der passenden Kategorie:
-   - `name`, `cat` (flight, stay, activity, food, car, transfer, insurance, ferry, camper, camping, parking, cruise, esim), `net` (direct, travelpayouts, awin, amazon),
+   - `name`, `cat` (flight, stay, activity, food, car, transfer, insurance, ferry, camper, camping, parking, cruise, esim), `net` (direct, travelpayouts, awin, cj, amazon),
    - `link`: Link mit vorausgefüllten Angaben (Ort, Datum, Personen); `null`, wenn die Angaben nicht reichen,
    - `tag`: Partnerkennung anhängen (erst nach Freischaltung).
    Neue Kategorie: in `PartnerCat` ergänzen und an der Stelle in der Oberfläche `<PartnerLinks ids={partnersOf("…")} q={…} />` einsetzen.
@@ -66,9 +66,9 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 | Partner | Kategorie | Netzwerk | Kennung aktiv |
 |---|---|---|---|
 | Google Flights, Skyscanner | Flüge | – | – |
-| Booking.com | Unterkunft | direkt | – |
+| Booking.com | Unterkunft | CJ (beworben 10/2026) | – |
 | Airbnb | Unterkunft | – | – |
-| GetYourGuide | Erlebnisse | Travelpayouts | – |
+| GetYourGuide | Erlebnisse | CJ (beworben 10/2026; Travelpayouts abgelehnt) | – |
 | Tiqets | Erlebnisse | Travelpayouts | ja (`p=2074`, `campaign_id=89`) |
 | Klook | Erlebnisse | Travelpayouts | ja (`p=4110`, `campaign_id=137`) |
 | Viator | Erlebnisse | direkt | ja (`pid`, `mcid`, `medium`) |
@@ -112,3 +112,17 @@ Stand 22.10.2026:
 
 Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen (`tag: awin(…)` in `app/src/lib/partners/index.ts`); Link-Format
 `https://www.awin1.com/cread.php?awinmid=…&awinaffid=3121582&ued=<Ziel>`.
+
+## CJ (Commission Junction)
+
+Publisher-Konto für splitandfly.com, beworben 10/2026. Travelpayouts hatte GetYourGuide und Booking.com zum Start
+abgelehnt, deshalb laufen diese über CJ.
+Stand 25.10.2026, **offen:** Booking.com DACH, GetYourGuide INT, Kiwi.com, Fewo-direkt, Vrbo (mit Länderprogrammen),
+Agoda EU, Hotels.com DACH, Expedia DACH, Trip.com, EconomyBookings, AirportRentalCars, Suntransfers, Balearia,
+Omio, World Nomads (nur als Tipp).
+
+Publisher-ID (PID) `8096976` (öffentlich, steht in jedem CJ-Link), im Verzeichnis als `CJ_PUBLISHER`. Partner über CJ
+bekommen `tag: cj(aid)`: Der Ziel-Link wird über `https://www.anrdoezrs.net/click-8096976-<aid>?url=<Ziel>` geleitet; `aid` ist
+die Link-ID eines Text-Links des Programms (CJ-Konto → Links, nach der Freischaltung). Mit der ersten Kennung CJ in
+`public/datenschutz.html` und im Impressum nennen. Kiwi.com: Buchungslinks der Flugsuche (`bookingUrl` aus
+`app/src/lib/flights/kiwi.ts`) über CJ leiten, falls Deeplinks erlaubt sind.

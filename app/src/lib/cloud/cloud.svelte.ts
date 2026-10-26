@@ -11,6 +11,8 @@ import type { Trip } from "../model";
 import { configured, emulator } from "./config";
 import type { Role, TripDoc } from "./firebase";
 import type { CampaignDoc } from "../campaign";
+import { byTime, CHAT_LIMIT, cleanText, parseMsg, validImg, type ChatMsg } from "../chat";
+import { parseSelf, type SelfDoc, type Selfs } from "../self";
 
 export type { Role };
 export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** „Wer bist du?“ (#435): Konto → Reisende-Kennung, Vorname */ claims: NonNullable<TripDoc["claims"]>; /** zuletzt im Konto gespeichert (ISO) */ updated?: string; /** von wem (Konto-ID) */ by?: string }
@@ -187,6 +189,66 @@ export async function saveMyVotes(id: string, v: Record<string, Record<string, n
   cloudVotes.byUid = { ...cloudVotes.byUid, [fbUser.uid]: v };
   cloudVotes.whyByUid = { ...cloudVotes.whyByUid, [fbUser.uid]: w };
   await (await load()).saveVotes(id, fbUser.uid, v, w);
+}
+
+/* ---------- Selbst eintragen (#571): je Mitglied ein Dokument unter der Reise ---------- */
+
+/** selbst Eingetragenes der offenen Konto-Reise: Konto → Termine, Wohnort, Familienvorschlag */
+export const cloudSelf = $state({ trip: "", byUid: {} as Selfs });
+let unSelf: Unsubscribe | null = null;
+export async function watchSelf(id: string) {
+  if (cloudSelf.trip === id && unSelf) return;
+  unSelf?.(); unSelf = null;
+  cloudSelf.trip = id; cloudSelf.byUid = {};
+  if (!id || !fbUser || !isCloud(id)) return;
+  const f = await load();
+  if (cloudSelf.trip !== id) return;
+  unSelf = f.watchSelf(id, by => {
+    if (cloudSelf.trip !== id) return;
+    cloudSelf.byUid = Object.fromEntries(Object.entries(by).map(([k, d]) => [k, parseSelf(d)]));
+  }, () => { unSelf = null; });
+}
+/** eigene Angaben speichern (nur die genannten Teile); sofort lokal sichtbar */
+export async function saveMySelf(id: string, part: SelfDoc) {
+  if (!fbUser) return;
+  const u = fbUser.uid;
+  if (cloudSelf.trip === id) cloudSelf.byUid = { ...cloudSelf.byUid, [u]: { ...(cloudSelf.byUid[u] || {}), ...part } };
+  await (await load()).saveSelf(id, u, part as Record<string, unknown>);
+}
+
+/* ---------- Gruppenchat: je Nachricht ein Dokument unter der Reise ---------- */
+
+/** Nachrichten der offenen Konto-Reise, älteste zuerst; failed: Laden ging nicht (z. B. Regeln noch nicht eingespielt) */
+export const cloudChat = $state({ trip: "", msgs: [] as ChatMsg[], failed: false });
+let unChat: Unsubscribe | null = null;
+/** Chat der Reise beobachten (nur Konto-Reisen, nur Mitglieder); leer bzw. andere Kennung: aufhören */
+export async function watchChat(id: string) {
+  if (cloudChat.trip === id && unChat) return;
+  unChat?.(); unChat = null;
+  cloudChat.trip = id; cloudChat.msgs = []; cloudChat.failed = false;
+  if (!id || !fbUser || !isCloud(id)) return;
+  const f = await load();
+  if (cloudChat.trip !== id) return;
+  unChat = f.watchChat(id, CHAT_LIMIT, docs => {
+    if (cloudChat.trip !== id) return;
+    cloudChat.msgs = docs.map(d => parseMsg(d.id, d.data)).filter((m): m is ChatMsg => !!m).sort(byTime);
+  }, () => { unChat = null; if (cloudChat.trip === id) cloudChat.failed = true; });
+}
+/** Nachricht senden (Name wie in der Reise), Bild schon verkleinert */
+export async function postChat(id: string, n: string, text: string, img?: string) {
+  if (!fbUser) return;
+  const t = cleanText(text);
+  const pic = img && validImg(img) ? img : undefined;
+  if (!t && !pic) return;
+  await (await load()).sendChat(id, { u: fbUser.uid, n: n.trim().slice(0, 40), t }, pic);
+}
+export async function removeChat(id: string, m: ChatMsg) { await (await load()).deleteChat(id, m.id, !!m.img); }
+/** Bilder je Nachricht, einmal geladen (null: fehlt bzw. Fehler) */
+const imgs = new Map<string, Promise<string | null>>();
+export function chatImage(id: string, msgId: string): Promise<string | null> {
+  const k = `${id}/${msgId}`;
+  if (!imgs.has(k)) imgs.set(k, load().then(f => f.chatImage(id, msgId)).then(d => (validImg(d) ? d : null)).catch(() => { imgs.delete(k); return null; }));
+  return imgs.get(k)!;
 }
 
 /** Besitzer: Zuordnung eines Mitglieds lösen */

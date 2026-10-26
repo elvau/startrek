@@ -1,5 +1,6 @@
 /*
- * Buchungsdaten der gespeicherten Personen (Ausweis, Reisepass). Liegen nur im Konto (travelDocs/{uid}):
+ * Angaben „Nur für dich“ der gespeicherten Personen (Geschlecht, Ablauf von Ausweis und Pass, Staatsangehörigkeiten, LGBTQ+).
+ * Liegen nur im Konto (travelDocs/{uid}):
  * nicht im Browser-Speicher, nicht in Reisen, nicht beim KI-Planer, Such-Dienst oder in Fehlermeldungen.
  * Werden erst geladen, wenn man sie öffnet, und beim Abmelden aus dem Speicher der Seite entfernt.
  */
@@ -15,12 +16,15 @@ let owner = "";
 let saved = "";
 let timer: ReturnType<typeof setTimeout> | undefined;
 
-/** leere Felder weglassen, Personen ohne Angaben und gelöschte Personen weglassen */
+/** gespeicherte Felder; alles andere (frühere Ausweis- und Passnummern, Namen laut Ausweis) fällt nach dem nächsten Laden aus dem Konto weg */
+const KEYS = new Set<string>(["gender", "idExpiry", "passExpiry", "nats", "lgbtq"]);
+
+/** leere und unbekannte Felder weglassen, Personen ohne Angaben und gelöschte Personen weglassen */
 function clean(map: Record<string, TravelDoc>): Record<string, TravelDoc> {
   const out: Record<string, TravelDoc> = {};
   for (const [id, d] of Object.entries(map)) {
     if (!dir.people.some(p => p.id === id)) continue;
-    const e = Object.fromEntries(Object.entries(d).filter(([, v]) => typeof v === "string" && v.trim())) as TravelDoc;
+    const e = Object.fromEntries(Object.entries(d).filter(([k, v]) => KEYS.has(k) && typeof v === "string" && v.trim())) as TravelDoc;
     if (Object.keys(e).length) out[id] = e;
   }
   return out;
@@ -66,7 +70,7 @@ export function setDocFields(personId: string, f: Partial<TravelDoc>) {
   else { pending.set(personId, { ...pending.get(personId), ...f }); void loadDocs(); }
 }
 
-export const hasDoc = (personId: string) => Object.values(docs.map[personId] || {}).some(v => typeof v === "string" && v.trim());
+export const hasDoc = (personId: string) => Object.entries(docs.map[personId] || {}).some(([k, v]) => KEYS.has(k) && typeof v === "string" && v.trim());
 
 export async function removeDoc(personId: string) {
   delete docs.map[personId];

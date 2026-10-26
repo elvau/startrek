@@ -13,7 +13,7 @@ const now = Math.floor(Date.now() / 1000);
 const token = uid => `${b64({ alg: "none", typ: "JWT" })}.${b64({ iss: `https://securetoken.google.com/${P}`, aud: P, sub: uid, user_id: uid, auth_time: now, iat: now, exp: now + 3600, firebase: { sign_in_provider: uid.startsWith("gast") ? "anonymous" : "password" } })}.`;
 const H = uid => ({ "content-type": "application/json", ...(uid === "admin" ? { Authorization: "Bearer owner" } : uid ? { Authorization: `Bearer ${token(uid)}` } : {}) });
 
-const sv = v => Array.isArray(v) ? { arrayValue: { values: v.map(sv) } } : typeof v === "string" ? { stringValue: v } : typeof v === "number" ? { integerValue: String(v) }
+const sv = v => Array.isArray(v) ? { arrayValue: { values: v.map(sv) } } : typeof v === "string" ? { stringValue: v } : typeof v === "boolean" ? { booleanValue: v } : typeof v === "number" ? { integerValue: String(v) }
   : v === null ? { nullValue: null } : { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sv(x)])) } };
 const fields = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, sv(v)]));
 const req = (uid, path, init = {}) => fetch(`${FS}${path}`, { ...init, headers: H(uid) });
@@ -29,9 +29,9 @@ const KEY = "einladung-0123456789abcdef";
 const trip = { name: "Regeltest", data: "{}", owner: "anna", memberIds: ["anna", "ben"], members: { anna: "owner", ben: "editor" }, memberNames: { anna: "Anna", ben: "Ben" }, invite: { key: KEY, role: "viewer" } };
 await expect("Reise anlegen (Admin)", patch("admin", "/trips/regeltest", trip), 200);
 await expect("Profil anlegen (Admin)", patch("admin", "/profiles/anna", { data: "{\"p\":1}" }), 200);
-await expect("Buchungsdaten anlegen (Admin)", patch("admin", "/travelDocs/anna", { data: "{\"pass\":\"X\"}" }), 200);
+await expect("travelDocs anlegen (Admin)", patch("admin", "/travelDocs/anna", { data: "{\"pass\":\"X\"}" }), 200);
 
-// Profile und Buchungsdaten: nur die eigene Person
+// Profile und travelDocs: nur die eigene Person
 for (const coll of ["profiles", "travelDocs"]) {
   await expect(`${coll}: Anna liest ihre`, req("anna", `/${coll}/anna`), 200);
   for (const who of ["mallory", ""]) {
@@ -42,7 +42,7 @@ for (const coll of ["profiles", "travelDocs"]) {
   }
   await expect(`${coll}: Ben (Mitreisender) liest Annas`, req("ben", `/${coll}/anna`), 403);
 }
-log("Profile und Buchungsdaten: nur für die eigene Person, auch nicht für Mitreisende");
+log("Profile und travelDocs: nur für die eigene Person, auch nicht für Mitreisende");
 
 // Reisen: lesen nur Mitglieder, auflisten nur die eigenen
 await expect("Mallory liest die Reise", req("mallory", "/trips/regeltest"), 403);
@@ -100,6 +100,56 @@ await expect("Fremder stimmt ab", vote("fremd", "fremd", { p1: { o1: 1 } }), 403
 await expect("Ben löscht Mallorys Stimme", req("ben", "/trips/regeltest/votes/mallory", { method: "DELETE" }), 403);
 await expect("Anna (Besitzerin) löscht Mallorys Stimme", req("anna", "/trips/regeltest/votes/mallory", { method: "DELETE" }), 200);
 log("Stimmen: nur die eigene, lesen nur Mitglieder, löschen nur selbst oder die Besitzerin");
+
+// Selbst eintragen (#571): eigenes Dokument je Mitglied, jede Rolle, nur bekannte Felder
+const self = (uid, who, o) => patch(uid, `/trips/regeltest/self/${who}`, o);
+await expect("Mallory (Zuschauer) trägt Termine und Wohnort ein", self("mallory", "mallory", { a: { "2027-09-03": "yes" }, h: { plz: "44787", ort: "Bochum" }, f: { m: [{ n: "Gisela" }], at: "2027-01-01" } }), 200);
+await expect("Ben liest Mallorys Angaben", req("ben", "/trips/regeltest/self/mallory"), 200);
+await expect("Fremder liest Mallorys Angaben", req("fremd", "/trips/regeltest/self/mallory"), 403);
+await expect("Fremder trägt sich ein", self("fremd", "fremd", { a: {} }), 403);
+await expect("Mallory trägt für Ben ein", self("mallory", "ben", { a: { "2027-09-03": "no" } }), 403);
+await expect("Mallory mit Zusatzfeld", self("mallory", "mallory", { a: {}, rolle: "owner" }), 403);
+await expect("Mallory mit fremdem Feld im Wohnort", self("mallory", "mallory", { h: { plz: "1", iban: "DE00" } }), 403);
+await expect("Mallory mit zu großem Familienvorschlag", self("mallory", "mallory", { f: { m: Array.from({ length: 13 }, (_, i) => ({ n: "K" + i })), at: "x" } }), 403);
+await expect("Ben löscht Mallorys Angaben", req("ben", "/trips/regeltest/self/mallory", { method: "DELETE" }), 403);
+await expect("Anna (Besitzerin) löscht Mallorys Angaben", req("anna", "/trips/regeltest/self/mallory", { method: "DELETE" }), 200);
+log("Selbst eintragen: nur das eigene Dokument, jede Rolle, nur bekannte Felder; lesen nur Mitglieder");
+
+// Gruppenchat: Mitglieder schreiben im eigenen Namen mit Serverzeit, nichts ändern; Bild als data:-Adresse daneben
+const DOCS = `projects/${P}/databases/(default)/documents/trips/regeltest`;
+const chat = (uid, id, o, at = true) => req(uid, ":commit", { method: "POST", body: JSON.stringify({ writes: [{
+  update: { name: `${DOCS}/chat/${id}`, fields: fields(o) },
+  ...(at ? { updateTransforms: [{ fieldPath: "at", setToServerValue: "REQUEST_TIME" }] } : {})
+}] }) });
+const pic = (uid, id, d) => patch(uid, `/trips/regeltest/chatImg/${id}`, { u: uid, d });
+await expect("Mallory (Zuschauer) schreibt", chat("mallory", "m1", { u: "mallory", n: "Mal", t: "Hallo 🎳" }), 200);
+await expect("Ben liest den Chat", req("ben", "/trips/regeltest/chat/m1"), 200);
+await expect("Ben listet den Chat", req("ben", "/trips/regeltest/chat"), 200);
+await expect("Fremder liest den Chat", req("fremd", "/trips/regeltest/chat/m1"), 403);
+await expect("Fremder listet den Chat", req("fremd", "/trips/regeltest/chat"), 403);
+await expect("Fremder schreibt", chat("fremd", "f1", { u: "fremd", n: "F", t: "Spam" }), 403);
+await expect("Mallory schreibt als Ben", chat("mallory", "m2", { u: "ben", n: "Ben", t: "Ich zahle alles" }), 403);
+await expect("Mallory schreibt ohne Serverzeit", chat("mallory", "m3", { u: "mallory", n: "Mal", t: "x" }, false), 403);
+await expect("Mallory schreibt leer", chat("mallory", "m4", { u: "mallory", n: "Mal", t: "" }), 403);
+await expect("Mallory schreibt zu lang", chat("mallory", "m5", { u: "mallory", n: "Mal", t: "x".repeat(1001) }), 403);
+await expect("Mallory schreibt mit Zusatzfeld", chat("mallory", "m6", { u: "mallory", n: "Mal", t: "x", video: "https://x" }), 403);
+await expect("Mallory ändert ihre Nachricht", chat("mallory", "m1", { u: "mallory", n: "Mal", t: "geändert" }), 403);
+await expect("Ben ändert Mallorys Nachricht", chat("ben", "m1", { u: "ben", n: "Ben", t: "geändert" }), 403);
+await expect("Mallory schickt ein Bild", pic("mallory", "m7", "data:image/jpeg;base64,/9j/4AAQSkZJRg=="), 200);
+await expect("Mallory schickt die Nachricht zum Bild", chat("mallory", "m7", { u: "mallory", n: "Mal", t: "", img: true }), 200);
+await expect("Ben liest das Bild", req("ben", "/trips/regeltest/chatImg/m7"), 200);
+await expect("Fremder liest das Bild", req("fremd", "/trips/regeltest/chatImg/m7"), 403);
+await expect("Mallory schickt ein Video", pic("mallory", "m8", "data:video/mp4;base64,AAAA"), 403);
+await expect("Mallory schickt ein SVG", pic("mallory", "m8", "data:image/svg+xml;base64,PHN2Zz4="), 403);
+await expect("Mallory schickt einen Link statt Bild", pic("mallory", "m8", "https://example.com/a.jpg"), 403);
+await expect("Mallory schickt ein zu großes Bild", pic("mallory", "m8", "data:image/jpeg;base64," + "A".repeat(340000)), 403);
+await expect("Mallory schickt ein Bild als Ben", patch("mallory", "/trips/regeltest/chatImg/m8", { u: "ben", d: "data:image/jpeg;base64,AAAA" }), 403);
+await expect("Ben löscht Mallorys Nachricht", req("ben", "/trips/regeltest/chat/m1", { method: "DELETE" }), 403);
+await expect("Ben löscht Mallorys Bild", req("ben", "/trips/regeltest/chatImg/m7", { method: "DELETE" }), 403);
+await expect("Mallory löscht ihre Nachricht", req("mallory", "/trips/regeltest/chat/m1", { method: "DELETE" }), 200);
+await expect("Anna (Besitzerin) löscht Mallorys Bild", req("anna", "/trips/regeltest/chatImg/m7", { method: "DELETE" }), 200);
+await expect("Anna (Besitzerin) löscht Mallorys Nachricht", req("anna", "/trips/regeltest/chat/m7", { method: "DELETE" }), 200);
+log("Gruppenchat: nur Mitglieder, nur im eigenen Namen mit Serverzeit, nicht ändern, nur Bilder bis 340 KB; löschen selbst oder Besitzerin");
 
 // Gast ohne Konto (anonyme Anmeldung): beitreten und sich wählen ja, eigene Reisen und Aktionsseiten nein
 await expect("Gast legt eine Reise an", patch("gast1", "/trips/gastreise", { name: "G", data: "{}", owner: "gast1", memberIds: ["gast1"], members: { gast1: "owner" }, invite: null }), 403);

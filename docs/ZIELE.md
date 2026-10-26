@@ -71,7 +71,7 @@ von Hand starten (`scripts/hinweise.mjs`, läuft auch bei Änderungen am Skript)
 | ETIAS | Reisegenehmigung für visumfreie Pässe von außerhalb der EU, noch nicht in Kraft; „letztes Quartal 2026“ hat die EU im Juli 2026 von der Seite genommen, 2027 wahrscheinlich (Stand Oktober 2026) | travel-europe.europa.eu/etias |
 | Mindestgültigkeit Reisepass (Regel des Ziellands, gilt für die meisten Pässe) | 6 Monate ab Einreise: TH, ID, VN, KH, LA, MM, LK, IN, NP, MY, SG, CN, EG, AE, JO, OM, SA, KE, TZ, UG, RW; 6 Monate über Aufenthalt: PH; 150 Tage ab Einreise: TR; 3 Monate über Ausreise: NZ; 30 Tage über Ausreise: ZA; sonst bis Reiseende | Länderseiten des Auswärtigen Amts |
 
-Die Prüfung des eigenen Reisepasses nutzt das Ablaufdatum aus den Buchungsdaten im Konto, nur im Browser; in der Reise
+Die Prüfung des eigenen Reisepasses nutzt das Ablaufdatum aus den Angaben „Nur für dich“ im Konto, nur im Browser; in der Reise
 steht nur „erledigt“ je Person, ohne Datum. Wird ETIAS eingeführt: Text `imp.border.x` und die Signatur `ees` in
 `important.ts` anpassen, damit der Punkt bei allen wieder als offen erscheint.
 

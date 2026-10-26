@@ -38,3 +38,12 @@ describe("Profil speichern (#364)", () => {
     expect(parseDir(j({ people: [anna], groups: "x", terms }))).toEqual({ people: [anna], groups: [], terms });
   });
 });
+
+describe("Herkunft aus Gruppen (#567)", () => {
+  it("erste passende Gruppe, Personen ohne Gruppe bleiben ohne", async () => {
+    const { tagGroups } = await import("./directory.svelte");
+    const list = tagGroups([{ id: "1", name: "Monika", household: "A", personId: "p1" }, { id: "2", name: "Fabian", household: "A", personId: "p9" }, { id: "3", name: "Platzhalter", household: "B" }],
+      [{ name: "Kegelclub", memberIds: ["p1", "p2"] }, { name: "Familie", memberIds: ["p1", "p9"] }]);
+    expect(list.map(x => x.group)).toEqual(["Kegelclub", "Familie", undefined]);
+  });
+});

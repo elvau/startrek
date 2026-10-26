@@ -14,19 +14,32 @@
   import { hhFocus } from "./hhFocus.svelte";
   import { flashEl } from "./showItem";
   import { untrack } from "svelte";
+  import { cloud, cloudSelf, cloudTrip, saveMySelf } from "../cloud/cloud.svelte";
+  import { travelerOf } from "../claims";
+  import { selfHomeOf } from "../self";
+  import SelfFamily from "./SelfFamily.svelte";
+  import HolidayPicker from "./HolidayPicker.svelte";
+  import { householdRegion } from "../plzRegion";
 
   const names = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))]);
   const pres = $derived(presences(app.trip));
   let open = $state<string | null>(null);
+  // selbst eintragen (#571): die eigene Familie darf ihren Wohnort auch mit „nur ansehen“ setzen
+  const ct = $derived(cloudTrip(app.trip.id));
+  const claims = $derived(ct?.claims || {});
+  const selfs = $derived(cloudSelf.trip === app.trip.id ? cloudSelf.byUid : {});
+  const meT = $derived(ct && cloud.user ? travelerOf(app.trip, cloud.user.uid, claims) : undefined);
+  const myHh = $derived(meT ? hhKey(meT) : "");
+  const selfHome = (name: string) => selfHomeOf(app.trip, name, selfs, claims);
 
   function hh(name: string): Household {
     app.trip.households ||= {};
     return (app.trip.households[name] ||= { mode: "car", cars: 1 });
   }
   function toggle(name: string) {
-    if (access.readonly) return;
+    if (access.readonly && name !== myHh) return;
     open = open === name ? null : name;
-    if (open) hh(name);
+    if (open && !access.readonly) hh(name);
   }
   // Sprung von der Anfahrt am Flug (#243): Familie aufklappen, hinscrollen, aufleuchten
   $effect(() => {
@@ -39,11 +52,15 @@
     });
   });
   function setHome(name: string, x: Home) {
+    if (name === myHh && ct) void saveMySelf(app.trip.id, { h: { ...(x.plz ? { plz: x.plz } : {}), cc: x.cc, lat: x.lat, lon: x.lon, ort: x.ort } });
+    if (access.readonly) return;
     const h = hh(name);
+    // neuer Wohnort: Region wieder aus der PLZ schätzen
+    delete h.region;
     h.plz = x.plz; h.geo = { lat: x.lat, lon: x.lon, ort: x.ort };
     if (x.cc !== "DE") h.cc = x.cc; else delete h.cc;
   }
-  function clearHome(name: string) { const h = hh(name); delete h.plz; delete h.geo; delete h.cc; }
+  function clearHome(name: string) { const h = hh(name); delete h.plz; delete h.geo; delete h.cc; delete h.region; }
 
   function members(name: string) { return app.trip.travelers.filter(t => isActive(t) && hhKey(t) === name); }
   function presText(name: string) {
@@ -56,7 +73,8 @@
   function accessText(name: string) {
     const h = app.trip.households?.[name];
     if (h?.mode === "with" && h.link) return t("hh.ridesWith", { name: h.link });
-    const home = h?.geo ? homeText({ plz: h.plz, ort: h.geo.ort }) : t("hh.noHome");
+    const sh = h?.geo ? undefined : selfHome(name);
+    const home = h?.geo ? homeText({ plz: h.plz, ort: h.geo.ort }) : sh?.ort ? homeText({ plz: sh.plz, ort: sh.ort }) : t("hh.noHome");
     const m = h?.mode || "car";
     const riders = ridersOf(app.trip, name);
     return `${home} · ${t(SHORT_KEY[m])}${(m === "car" || m === "drop") && (h?.cars || 1) > 1 ? ` × ${h?.cars}` : ""}${riders.length ? ` · ${t("hh.poolWith", { list: riders.join(", ") })}` : ""}`;
@@ -93,6 +111,7 @@
       </select>
     {/if}
   </div>
+  <SelfFamily />
   {#each names as name (name)}
     <div class="hh" class:open={open === name} data-hh={name}>
       <button class="hh-sum" onclick={() => toggle(name)} aria-expanded={open === name}>
@@ -101,7 +120,23 @@
         <span>{presText(name)}</span>
         <span class="hh-car" aria-hidden="true">{open === name ? "▴" : "▾"}</span>
       </button>
-      {#if open === name}
+      {#if open === name && access.readonly}
+        {@const S = selfHome(name)}
+        <div class="hh-ed hh-self">
+          <div class="ed-row">
+            <HomeInput cls="f plzf" label={t("hh.home")} value={{ cc: S?.cc, plz: S?.plz, ort: S?.ort }} onpick={x => setHome(name, x)} onclear={() => {}} />
+            {#if S?.ort}<span class="muted ed-note">📍 {S.ort}</span>{/if}
+          </div>
+          {#if S?.ort}
+            {@const R = householdRegion(S)}
+            <div class="ed-row hh-region">
+              <span class="f">{t("hh.region")}<HolidayPicker value={R?.region} empty={t("hh.regionNone")} onchange={v => S && saveMySelf(app.trip.id, { h: { ...S, ...(v ? { region: v } : {}) } })} /></span>
+              {#if R?.guessed}<span class="muted ed-note hh-guess">{R.check ? `⚠ ${t("hh.regionCheck")}` : t("hh.regionGuess")}</span>{/if}
+            </div>
+          {/if}
+          <p class="muted ed-note">{t("self.homeNote")}</p>
+        </div>
+      {:else if open === name}
         {@const H = app.trip.households![name]}
         <div class="hh-ed">
           <div class="ed-row">
@@ -155,6 +190,13 @@
             {#if H.arrive || H.depart}<button class="linkbtn" onclick={() => { H.arrive = undefined; H.depart = undefined; }}>{t("hh.useFlight")}</button>
             {:else}<span class="muted ed-note">{t("hh.emptyFlight")}</span>{/if}
           </div>
+          {#if H.geo || H.region}
+            {@const R = householdRegion(H)}
+            <div class="ed-row hh-region">
+              <span class="f">{t("hh.region")}<HolidayPicker value={R?.region} empty={t("hh.regionNone")} onchange={v => { if (v) H.region = v; else delete H.region; }} /></span>
+              {#if R?.guessed}<span class="muted ed-note hh-guess">{R.check ? `⚠ ${t("hh.regionCheck")}` : t("hh.regionGuess")}</span>{/if}
+            </div>
+          {/if}
         </div>
       {/if}
     </div>

@@ -5,9 +5,10 @@
  * Alles liegt in der Reise (trip.avail, trip.polls), wie die übrigen Reisedaten; Personen sind Kennungen der Reisenden.
  */
 import { AGE, isActive, uid, type Trip } from "./model";
+import type { DaysCfg } from "./datefit";
 
 export type Avail = "yes" | "maybe" | "no";
-export interface AvailPlan {
+export interface AvailPlan extends DaysCfg {
   /** Zeitraum, in dem gesucht wird (JJJJ-MM-TT) */
   from: string;
   to: string;
@@ -74,8 +75,37 @@ export const addDay = (d: string, n: number) => new Date(toT(d) + n * DAY).toISO
 export const daysBetween = (a: string, b: string) => Math.round((toT(b) - toT(a)) / DAY);
 const okD = (d?: string) => !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
-/** wer abstimmt und Zeiten einträgt: aktive Reisende ab dem Erwachsenenalter (Kinder entscheiden die Eltern) */
-export const voters = (trip: Trip) => trip.travelers.filter(x => isActive(x) && (x.age == null || x.age >= (trip.settings.adultAge ?? AGE.adult)));
+/** aktive Reisende ab dem Erwachsenenalter (Kinder entscheiden die Eltern) */
+export const grownUps = (trip: Trip) => trip.travelers.filter(x => isActive(x) && (x.age == null || x.age >= (trip.settings.adultAge ?? AGE.adult)) && x.kind !== "child" && x.kind !== "infant");
+/**
+ * wer abstimmt und Zeiten einträgt: die Erwachsenen, die mitentscheiden (#567, z. B. nur der Kegelclub, nicht die
+ * Begleitung); ohne Auswahl bzw. wenn davon niemand mehr dabei ist: alle Erwachsenen
+ */
+export const voters = (trip: Trip) => {
+  const all = grownUps(trip);
+  if (!trip.deciders?.length) return all;
+  const d = new Set(trip.deciders);
+  const v = all.filter(x => d.has(x.id));
+  return v.length ? v : all;
+};
+/** Erwachsene, die nicht mitentscheiden (Begleitung) */
+export const notDeciding = (trip: Trip) => { const v = new Set(voters(trip).map(x => x.id)); return grownUps(trip).filter(x => !v.has(x.id)); };
+
+export interface Circle { key: string; ids: string[] }
+/** Schnellwahl: je Herkunftsgruppe die Erwachsenen; wer aus keiner Gruppe kommt, unter „others“ (nur wenn es Gruppen gibt) */
+export function circles(trip: Trip): Circle[] {
+  const all = grownUps(trip), out: Circle[] = [];
+  for (const x of all) if (x.group) { const c = out.find(c => c.key === x.group); if (c) c.ids.push(x.id); else out.push({ key: x.group, ids: [x.id] }); }
+  const rest = all.filter(x => !x.group).map(x => x.id);
+  if (out.length && rest.length) out.push({ key: "", ids: rest });
+  return out;
+}
+/** Auswahl setzen: alle Erwachsenen (bzw. leer) heißt keine Einschränkung */
+export function setDeciders(trip: Trip, ids: string[]) {
+  const all = grownUps(trip).map(x => x.id);
+  const keep = [...new Set(ids)].filter(id => all.includes(id));
+  if (!keep.length || keep.length === all.length) delete trip.deciders; else trip.deciders = keep;
+}
 
 /** antippen: offen → kann → vielleicht → kann nicht → offen */
 export function cycle(a?: Avail): Avail | undefined {
@@ -92,7 +122,6 @@ export function setAvail(trip: Trip, person: string, day: string, a: Avail | und
   if (!Object.keys(m).length) delete p.by[person];
 }
 
-/** Tage des Planungszeitraums (höchstens 120) */
 /** Zeitraum prüfen: Bis vor Von („order“) oder Reise länger als der Zeitraum („nights“); "" = in Ordnung oder noch leer */
 export function planError(from: string, to: string, nights: number): "" | "order" | "nights" {
   if (!okD(from) || !okD(to)) return "";
@@ -100,9 +129,10 @@ export function planError(from: string, to: string, nights: number): "" | "order
   return nights > daysBetween(from, to) ? "nights" : "";
 }
 
-export function planDays(p: Pick<AvailPlan, "from" | "to">): string[] {
+/** Tage des Planungszeitraums: höchstens 120, mit „Wochenenden“ (#568) ein Jahr (das Raster zeigt dann nur passende Tage) */
+export function planDays(p: Pick<AvailPlan, "from" | "to" | "days">): string[] {
   if (!okD(p.from) || !okD(p.to) || p.to < p.from) return [];
-  const n = Math.min(daysBetween(p.from, p.to), 119);
+  const n = Math.min(daysBetween(p.from, p.to), p.days === "weekend" ? 365 : 119);
   return Array.from({ length: n + 1 }, (_, i) => addDay(p.from, i));
 }
 
@@ -119,8 +149,8 @@ function personIn(m: Record<string, Avail> | undefined, from: string, to: string
   return unset ? "open" : maybe ? "maybe" : "yes";
 }
 
-/** beste Zeiträume mit der gewünschten Zahl an Nächten, ohne Überschneidung, beste zuerst */
-export function bestPeriods(trip: Trip, max = 3): Period[] {
+/** beste Zeiträume mit der gewünschten Zahl an Nächten, ohne Überschneidung, beste zuerst; ok: nur passende (#568) */
+export function bestPeriods(trip: Trip, max = 3, ok?: (from: string, to: string) => boolean): Period[] {
   const p = trip.avail;
   if (!p || !(p.nights > 0)) return [];
   const people = voters(trip).map(x => x.id);
@@ -129,6 +159,7 @@ export function bestPeriods(trip: Trip, max = 3): Period[] {
   for (const from of planDays(p)) {
     const to = addDay(from, p.nights);
     if (to > p.to) break;
+    if (ok && !ok(from, to)) continue;
     const r: Period = { from, to, score: 0, yes: [], maybe: [], no: [], open: [] };
     for (const id of people) {
       const s = personIn(p.by[id], from, to);

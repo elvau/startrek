@@ -153,6 +153,48 @@ service cloud.firestore {
           && (!('w' in request.resource.data) || (request.resource.data.w is map && request.resource.data.w.size() <= 40));
         allow delete: if signedIn() && (uid() == userId || isOwner(tripDoc()));
       }
+
+      // Selbst eintragen (#571): je Mitglied ein Dokument mit eigenen Terminen (a), Wohnort der Familie (h) und
+      // Familienvorschlag (f); jede Rolle, auch „nur ansehen“ und Gäste, nur das eigene; lesen alle Mitglieder.
+      match /self/{userId} {
+        function tripDoc() { return get(/databases/$(database)/documents/trips/$(tripId)).data; }
+        function validSelf(d) {
+          return d.keys().hasOnly(['a', 'h', 'f', 'at'])
+            && (!('a' in d) || (d.a is map && d.a.size() <= 400))
+            && (!('h' in d) || (d.h is map && d.h.keys().hasOnly(['plz', 'cc', 'lat', 'lon', 'ort', 'region'])))
+            && (!('f' in d) || (d.f is map && d.f.keys().hasOnly(['m', 'at']) && d.f.m is list && d.f.m.size() <= 12 && d.f.at is string));
+        }
+        allow read: if isMember(tripDoc());
+        allow create, update: if isMember(tripDoc()) && uid() == userId && validSelf(request.resource.data);
+        allow delete: if signedIn() && (uid() == userId || isOwner(tripDoc()));
+      }
+
+      // Gruppenchat: je Nachricht ein Dokument. Lesen und schreiben alle Mitglieder (auch „nur ansehen“ und Gäste),
+      // nur im eigenen Namen, nicht ändern; löschen Verfasser (auch nach dem Verlassen der Reise) und Besitzer.
+      match /chat/{msgId} {
+        function tripDoc() { return get(/databases/$(database)/documents/trips/$(tripId)).data; }
+        allow read: if isMember(tripDoc());
+        allow create: if isMember(tripDoc())
+          && request.resource.data.keys().hasOnly(['u', 'n', 't', 'img', 'at'])
+          && request.resource.data.u == uid()
+          && request.resource.data.n is string && request.resource.data.n.size() <= 40
+          && request.resource.data.t is string && request.resource.data.t.size() <= 1000
+          && request.resource.data.at == request.time
+          && (!('img' in request.resource.data) || request.resource.data.img == true)
+          && (request.resource.data.t.size() > 0 || request.resource.data.get('img', false) == true);
+        allow delete: if signedIn() && (resource.data.u == uid() || isOwner(tripDoc()));
+      }
+      // Bild einer Nachricht (gleiche Kennung), verkleinert als JPEG/WebP/PNG in einer data:-Adresse
+      match /chatImg/{msgId} {
+        function tripDoc() { return get(/databases/$(database)/documents/trips/$(tripId)).data; }
+        allow read: if isMember(tripDoc());
+        allow create: if isMember(tripDoc())
+          && request.resource.data.keys().hasOnly(['u', 'd'])
+          && request.resource.data.u == uid()
+          && request.resource.data.d is string && request.resource.data.d.size() < 340000
+          && request.resource.data.d.matches('data:image/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+');
+        allow delete: if signedIn() && (resource.data.u == uid() || isOwner(tripDoc()));
+      }
     }
   }
 }

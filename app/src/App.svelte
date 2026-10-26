@@ -43,6 +43,7 @@
   import CompareView from "./lib/ui/CompareView.svelte";
   import AppFooter from "./lib/ui/AppFooter.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
+  import GroupChat from "./lib/ui/GroupChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
   import BrokerGate from "./lib/ui/BrokerGate.svelte";
   import TermsGate from "./lib/ui/TermsGate.svelte";
@@ -342,7 +343,7 @@
 {/if}
 <BrokerGate />
 {#if needTerms}<TermsGate />{/if}
-{#if cloud.configured}<AgentChat />{/if}
+{#if cloud.configured}<AgentChat /><GroupChat />{/if}
 {#if cloud.configured && FLIGHTS_URL}<BugButton fab={!mob.on || app.home} />{/if}
 {#if admin.open && admin.is && cloud.user}<UsagePanel />{/if}
 {#if connect.open && cloud.user}<ConnectDialog />{/if}

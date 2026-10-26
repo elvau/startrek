@@ -25,7 +25,7 @@
   <li>Mit Konto liegen Reisen in Google Firebase, damit ihr sie auf mehreren Geräten und mit anderen teilen könnt.</li>
   <li>Für Flug- und Unterkunftssuchen gehen nur <strong>Orte, Daten und die Anzahl der Personen</strong> an die
     Anbieter, keine Namen und keine E-Mail-Adressen.</li>
-  <li>Buchungsdaten (Ausweis, Reisepass) sind freiwillig, liegen nur in eurem Konto und gehen nirgendwo sonst hin.</li>
+  <li>Ausweis- und Passnummern speichert die App nicht. Freiwillige Angaben „Nur für dich“ (z. B. bis wann euer Reisepass gilt) liegen nur in eurem Konto und gehen nirgendwo sonst hin.</li>
   <li>Den KI-Planer (Beta) gibt es nur mit Konto; euer Reisewunsch geht dafür an Anthropic (Claude), ersatzweise an Google Gemini. Ebenso Dateien, Texte und Links, die ihr zum Importieren einer Reise einwerft; gespeichert werden die Dateien nicht.</li>
   <li>Die Karten (Unterkunftssuche, „Karte der Reise“) laden Kartenbilder von OpenFreeMap, erst wenn ihr sie öffnet; die kleinen Routenbilder (Startseite, Tagesplan) laden einen Kartenausschnitt, sobald eine Reise eine Route hat.</li>
   <li>Fehlermeldungen (Beta) landen in einem nicht öffentlichen Projekt bei GitHub, Bilder werden nach 30 Tagen gelöscht.</li>
@@ -70,7 +70,7 @@
   (IndexedDB), damit die App auch offline funktioniert; bei der Anmeldung per E-Mail-Link merkt sich die App die
   E-Mail-Adresse, bis ihr den Link öffnet. Damit die App auch ohne Netz startet und sich installieren lässt, legt ein
   Service Worker die Programmdateien und allgemeinen Daten (z. B. Flughäfen, Länder) im Browser ab (Cache Storage); persönliche
-  Daten sind darin nicht enthalten. Buchungsdaten werden nicht im Browser gespeichert (siehe Abschnitt 5).
+  Daten sind darin nicht enthalten. Angaben „Nur für dich“ werden nicht im Browser gespeichert (siehe Abschnitt 5).
   Das alles ist für die gewünschte Funktion unbedingt erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG). Ihr könnt die Daten
   jederzeit über die Browser-Einstellungen löschen.
 </p>
@@ -89,8 +89,15 @@
     (für alle Mitglieder der Reise sichtbar, ihr könnt die Zuordnung jederzeit lösen bzw. die Reise verlassen);</li>
   <li>bei geteilten Reisen eure Stimmen in Abstimmungen (auch „Ohne mich“, mit freiwilliger Begründung und ob die Familie mitgemeint ist) je Konto, mit Zeitpunkt; für alle Mitglieder
     der Reise mit Namen sichtbar, gelöscht mit der Reise, beim Löschen des Kontos und in der Datenauskunft enthalten;</li>
+  <li>bei geteilten Reisen, was ihr für eure übernommene Person selbst eintragt: Tage unter „Termin finden“, Wohnort eurer Familie (PLZ, Ort, ungefähre Lage, Ferienregion)
+    und auf Wunsch ein Vorschlag zu eurer Familie (Vornamen und Alter aus eurem Konto), je Konto mit Zeitpunkt; für alle Mitglieder der Reise sichtbar, Planer übernehmen es in die Reise.
+    Gelöscht mit der Reise, beim Verlassen nicht, beim Löschen des Kontos ja; in der Datenauskunft enthalten;</li>
+  <li>bei geteilten Reisen eure Nachrichten im Gruppenchat: Text, Vorname, Konto und Zeitpunkt, angehängte Bilder verkleinert (beim Verkleinern
+    entfernt die App eingebettete Angaben wie Aufnahmeort und Kamera); für alle Mitglieder der Reise sichtbar. Ihr könnt eigene Nachrichten jederzeit löschen,
+    auch nach dem Verlassen der Reise; der Besitzer der Reise kann Nachrichten löschen. Gelöscht mit der Reise und beim Löschen des Kontos, Texte in der Datenauskunft
+    enthalten. Bis wann ihr den Chat gelesen habt, merkt sich nur euer Browser (localStorage);</li>
   <li>für gespeicherte Reisen: die Reisedaten, die ihr eintragt (z. B. Namen und Alter der Mitreisenden, auf Wunsch ihre Staatsangehörigkeit und einen zweiten Pass für die Einreise-Hinweise, Postleitzahl
-    und Ort des Wohnorts, Beträge, in der Kasse Ausgaben unterwegs und welche Familie was bezahlt hat, bei geteilten Reisen auch wer eine Ausgabe eingereicht, bestätigt oder beanstandet hat, mit Kontoname und Grund; unter „Termin finden“ je Person die Tage, an denen sie kann, vielleicht oder nicht kann, und Stimmen in Abstimmungen), sowie wer eine Reise sehen oder bearbeiten darf;</li>
+    und Ort des Wohnorts mit Ferienregion (aus der PLZ geschätzt oder selbst gewählt), Beträge, in der Kasse Ausgaben unterwegs und welche Familie was bezahlt hat, bei geteilten Reisen auch wer eine Ausgabe eingereicht, bestätigt oder beanstandet hat, mit Kontoname und Grund; unter „Termin finden“ je Person die Tage, an denen sie kann, vielleicht oder nicht kann, und Stimmen in Abstimmungen), sowie wer eine Reise sehen oder bearbeiten darf;</li>
   <li>für gespeicherte Personen und Gruppen: die Angaben unten (nur für euch selbst lesbar);</li>
   <li>eure Zustimmung zu den <a href="agb.html">AGB</a>: Fassung und Tag der Zustimmung (im Konto, nur für euch lesbar).</li>
 </ul>
@@ -101,7 +108,7 @@
   <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase und Datenschutz</a>.
 </p>
 
-<h3>Gespeicherte Personen und Buchungsdaten</h3>
+<h3>Gespeicherte Personen und Angaben „Nur für dich“</h3>
 <p>
   Unter „Gruppen und Personen“ könnt ihr für jede gespeicherte Person Name, Geburtsdatum oder Alter und einen
   ungefähren Wohnort (Postleitzahl) eintragen. Daraus rechnet die App das Alter zum Reisebeginn und die Anfahrt zum
@@ -123,9 +130,10 @@
   gesperrten Länder sagen nichts darüber, warum; tragt in die Notiz bitte keine persönlichen oder sensiblen Angaben ein.
 </p>
 <p>
-  Optional könnt ihr <strong>Buchungsdaten</strong> hinterlegen (Namen laut Ausweis, Geschlecht, Staatsangehörigkeit(en),
-  Personalausweis- und Reisepassnummer mit Gültigkeit, Ausstellungsland), damit spätere Buchungen schneller gehen.
-  Hierher gehört auch, ob ihr Hinweise zu LGBTQ+-Rechten im Reiseland sehen wollt (beim Einrichten des Kontos); nach
+  Optional könnt ihr je Person Angaben <strong>„Nur für dich“</strong> hinterlegen: Geschlecht, Staatsangehörigkeit(en)
+  und bis wann Personalausweis und Reisepass gültig sind. Ausweis- und Passnummern, Namen laut Ausweis oder das
+  Ausstellungsland fragt die App nicht ab und speichert sie nicht; früher eingetragene werden beim nächsten Öffnen aus
+  dem Konto gelöscht. Hierher gehört auch, ob ihr Hinweise zu LGBTQ+-Rechten im Reiseland sehen wollt (beim Einrichten des Kontos); nach
   der sexuellen Orientierung fragen wir nicht. Geschlecht und Staatsangehörigkeit nutzt die App nur in eurem Browser
   für passende Einreise- und Reisehinweise.
   Diese Angaben:
@@ -144,14 +152,12 @@
     nicht in der Reise gespeichert (auch nicht als „gelesen“) und sind für Mitreisende nicht sichtbar;</li>
   <li>gehen nicht in Reisen, nicht an den Such-Dienst, nicht an die Anbieter, nicht an den KI-Planer und nicht in
     Fehlermeldungen;</li>
-  <li>könnt ihr jederzeit je Person oder komplett löschen („Alle Buchungsdaten löschen“); beim Löschen einer Person
+  <li>könnt ihr jederzeit je Person oder komplett löschen („Alle Angaben „Nur für dich“ löschen“); beim Löschen einer Person
     werden sie mit gelöscht.</li>
 </ul>
 <p>
   Technisch liegen die Daten bei Google (siehe oben) und sind für mich als Betreiber des Firebase-Projekts
-  grundsätzlich zugänglich. Ich sehe sie mir nicht an und nutze sie nur, um sie euch anzuzeigen.
-  Gebucht wird über Split&amp;Fly derzeit nichts; die Daten werden erst verwendet, wenn es eine Buchungsfunktion gibt
-  und ihr eine Buchung selbst auslöst. Rechtsgrundlage: Art. 6 Abs. 1 lit. a und b DSGVO (freiwillige Angabe für die
+  grundsätzlich zugänglich. Ich sehe sie mir nicht an und nutze sie nur, um sie euch anzuzeigen. Rechtsgrundlage: Art. 6 Abs. 1 lit. a und b DSGVO (freiwillige Angabe für die
   gewünschte Funktion). Tragt Daten anderer Personen nur mit deren Einverständnis ein.
 </p>
 
@@ -225,8 +231,8 @@
 <p>
   Fragt ihr den KI-Assistenten in einer offenen Reise, geht zusätzlich eine Kurzfassung dieser Reise mit: Ziel,
   Reisedaten und die Posten (Bereich, Bezeichnung, Status, Betrag, bei Flügen Strecke und Zeiten). Namen der
-  Reisenden (auch in Bezeichnungen wie „Flug Familie …“), Notizen, Buchungsnummern, Zahlungen, Ausgaben der Kasse und Buchungsdaten
-  (Ausweis, Reisepass) gehen nicht mit. Änderungen
+  Reisenden (auch in Bezeichnungen wie „Flug Familie …“), Notizen, Buchungsnummern, Zahlungen, Ausgaben der Kasse und Angaben
+  „Nur für dich“ gehen nicht mit. Änderungen
   der KI übernimmt die App erst, wenn ihr sie bestätigt.
 </p>
 <p>
@@ -295,7 +301,7 @@
   kann) und zählt die Suchen pro Schlüssel und Tag (Schlüsselkennung und Datum, nach zwei Tagen gelöscht). Für Reisen im
   Konto liest und schreibt der Such-Dienst eure Reisen in Firebase (Abschnitt 5), nur solche, in denen ihr Mitglied
   seid, und ändern nur mit Bearbeitungsrecht. An den Assistenten gehen Ziel, Reisedaten, Anzahl der Reisenden nach Altersklasse
-  und die Posten mit Preisen, keine Namen der Reisenden und keine Buchungsdaten (Ausweis, Reisepass).
+  und die Posten mit Preisen, keine Namen der Reisenden und keine Angaben „Nur für dich“.
 </p>
 <p>
   Was ihr in euren Assistenten eingebt und was er von hier abruft, verarbeitet dessen Anbieter (z. B. Anthropic, OpenAI) als euer eigener Anbieter nach

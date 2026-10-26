@@ -1,7 +1,7 @@
 <script module lang="ts">
   import { exampleFamily } from "../placeholders";
   import { t, tn } from "../i18n/index.svelte";
-  import { addGroup, addPerson, dir, fullName, travelersFrom } from "../directory.svelte";
+  import { addGroup, addPerson, dir, fullName, tagGroups, travelersFrom } from "../directory.svelte";
   import { animalEmoji, animalName, groupTravelers, nextAnimal, placeholderTravelers, soloTraveler } from "../placeholders";
   import { addToNew, dropFromNew, toggleSavedGroup, togglePicked, whoCount, type Who, type WhoMode, type WhoSrc } from "../who";
   import type { Traveler } from "../model";
@@ -37,11 +37,11 @@
       return [soloTraveler(w.solo)];
     }
     if (w.mode === "partner") return placeholderTravelers([{ animal: w.partner, adults: 2, kids: 0 }]);
-    if (w.src === "saved") return travelersFrom(w.picked);
+    if (w.src === "saved") return tagGroups(travelersFrom(w.picked), dir.groups.filter(g => w.groups.includes(g.id)));
     if (w.src === "new") {
       const ids = [...w.ng.ids, ...w.ng.drafts.map(d => addPerson(d.first, d.last, d.age).id)];
-      addGroup(w.ng.name, ids);
-      return travelersFrom(ids);
+      const g = addGroup(w.ng.name, ids);
+      return tagGroups(travelersFrom(ids), [g]);
     }
     return w.mode === "family" ? placeholderTravelers(w.fams) : groupTravelers(w.group.adults, w.group.kids);
   }

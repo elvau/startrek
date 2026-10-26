@@ -213,6 +213,63 @@ try {
     .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); throw e; });
   log("Abstimmen: Anna wählt sich und stimmt, Oma stimmt als Zuschauerin mit eigenem Konto („✕ Ohne mich“ mit Namen, Fenster), Anna sieht es live und bekommt die Info, Folgen an der Möglichkeit");
 
+  // Gruppenchat: Oma (nur ansehen) schreibt, Anna sieht den Zähler und antwortet mit Bild; löschen nur eigene
+  await oma.locator(".gc-fab").click();
+  const ogc = oma.locator(".gc");
+  await ogc.locator("textarea").fill("Hallo zusammen 🎳");
+  await ogc.locator("textarea").press("Enter");
+  await until(async () => (await anna.locator(".gc-fab .gc-badge").innerText().catch(() => "")) === "1", "Anna sieht 1 neue Nachricht");
+  await anna.locator(".gc-fab").click();
+  const agc = anna.locator(".gc");
+  await until(async () => /Oma[\s\S]*Hallo zusammen 🎳/.test(await agc.locator(".gc-msgs").innerText()), "Anna liest Omas Nachricht mit Namen");
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await agc.locator(".gc-file").setInputFiles({ name: "strand.png", mimeType: "image/png", buffer: png });
+  await agc.locator(".gc-pre img").waitFor();
+  await agc.locator("textarea").fill("Unser Strand: https://example.com/strand");
+  await agc.locator(".gc-send").click();
+  await until(async () => (await ogc.locator(".gc-img img").count()) === 1 && (await ogc.locator(".gc-msg a[href='https://example.com/strand']").count()) === 1, "Oma sieht Annas Bild und Link");
+  const src = await ogc.locator(".gc-img img").getAttribute("src");
+  if (!src?.startsWith("data:image/jpeg;base64,")) throw new Error("Bild nicht als verkleinertes JPEG: " + src?.slice(0, 40));
+  await agc.locator(".gc-file").setInputFiles({ name: "film.mp4", mimeType: "video/mp4", buffer: Buffer.from("0000") });
+  await until(async () => (await agc.locator(".gc-errline").innerText().catch(() => "")).includes("keine Videos"), "Video abgelehnt");
+  const annaMsg = ogc.locator(".gc-msg", { hasText: "Unser Strand" });
+  if (await annaMsg.locator(".gc-del").count()) throw new Error("Oma kann Annas Nachricht löschen");
+  oma.once("dialog", d => d.accept());
+  await ogc.locator(".gc-msg", { hasText: "Hallo zusammen" }).locator(".gc-del").click();
+  await until(async () => !(await agc.locator(".gc-msgs").innerText()).includes("Hallo zusammen"), "Omas gelöschte Nachricht ist bei Anna weg");
+  await agc.locator(".ai-head .x").click();
+  await ogc.locator(".ai-head .x").click();
+  log("Gruppenchat: Zuschauerin schreibt, Zähler bei Anna, Bild verkleinert als JPEG und Link kommen an, kein Video, löschen nur eigene");
+
+  // Selbst eintragen (#571): Anna startet „Termin finden“; Oma (nur ansehen) trägt ihre Zeile und den Wohnort ihrer Familie selbst ein
+  await atg.scrollIntoViewIfNeeded();
+  await atg.locator(".tg-open").click();
+  await atg.locator(".tg-start").click();
+  await otg.locator(".tg-grid").waitFor();
+  await until(async () => (await otg.locator(".tg-todo").innerText().catch(() => "")).includes("Du bist Oma") && (await otg.locator(".tg-todo").innerText()).includes("Termine eintragen"), "Oma sieht, was noch fehlt");
+  const omaRow = side => side.locator(".tg-row", { has: side.locator(".tg-name", { hasText: /^Oma/ }) });
+  if (await omaRow(oma).locator(".tg-c").first().isDisabled()) fail("Oma kann ihre eigene Zeile nicht antippen");
+  if (!(await otg.locator(".tg-row", { has: oma.locator(".tg-name", { hasText: /^Jonas/ }) }).locator(".tg-c").first().isDisabled())) fail("Oma kann fremde Zeilen antippen");
+  await omaRow(oma).locator(".tg-c").first().click();
+  await until(async () => (await omaRow(anna).locator(".tg-c").first().innerText()) === "✓" && (await omaRow(anna).locator(".tg-name").innerText()).includes("🔒"), "Anna sieht Omas ✓, Zeile gesperrt");
+  if (!(await omaRow(anna).locator(".tg-c").first().isDisabled())) fail("Anna kann Omas Zeile ändern");
+  await until(async () => !(await otg.locator(".tg-todo").innerText()).includes("Termine eintragen"), "Termine bei Oma erledigt");
+  const omaHh = await oma.evaluate(() => (JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").travelers || []).find(x => x.name === "Oma")?.household);
+  await oma.locator(".hh-sum b", { hasText: new RegExp(`^${omaHh}$`) }).click();
+  const oself = oma.locator(".hh-self");
+  await oself.locator(".home-plz").fill("41236");
+  await until(async () => (await anna.locator(".hh-sum", { has: anna.locator("b", { hasText: new RegExp(`^${omaHh}$`) }) }).innerText()).includes("Mönchengladbach"), "Anna hat Omas Wohnort in der Reise");
+  await until(async () => (await anna.evaluate(h => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").households?.[h]?.geo?.ort, omaHh)) === "Mönchengladbach", "Wohnort in Annas Reise übernommen");
+  log("Selbst eintragen: Zuschauerin trägt eigene Zeile (für andere gesperrt) und Wohnort ein, Anna übernimmt beides in die Reise");
+  // Ferien-Region (#570): aus der PLZ geschätzt (41236 → Nordrhein-Westfalen), änderbar
+  await anna.locator(".hh-sum b", { hasText: new RegExp(`^${omaHh}$`) }).click();
+  const areg = anna.locator(".hh.open .hh-region");
+  await until(async () => (await areg.locator(".hol-region").inputValue().catch(() => "")) === "DE-NW" && (await areg.locator(".hh-guess").innerText()).includes("aus der PLZ geschätzt"), "Region aus der PLZ");
+  await areg.locator(".hol-region").selectOption("DE-NI");
+  await until(async () => (await anna.evaluate(h => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").households?.[h]?.region, omaHh)) === "DE-NI" && !(await areg.locator(".hh-guess").count()), "Region selbst gewählt");
+  await anna.locator(".hh-sum b", { hasText: new RegExp(`^${omaHh}$`) }).click();
+  log("Ferien-Region: aus der PLZ geschätzt (NRW), selbst geändert (Niedersachsen)");
+
   // Variante (#428): Anna kopiert die geteilte Reise als Variante; sie ist mit denselben Mitgliedern geteilt, die Startseite
   // bündelt beide in einer Kachel
   await anna.locator(".top .tm-btn").first().click();

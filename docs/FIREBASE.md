@@ -85,8 +85,8 @@ Beide laufen bei jedem Pull Request automatisch.
 
 ## Wie es funktioniert
 - Gespeicherte Personen und Gruppen liegen je Konto in `profiles/{uid}`, nur für einen selbst lesbar.
-- Buchungsdaten der Personen (Ausweis, Reisepass) liegen getrennt in `travelDocs/{uid}`, nur für einen selbst; dazu aus
-  „Konto einrichten“ Geschlecht, Staatsangehörigkeiten (`nats`) und der Schalter für LGBTQ+-Hinweise (`lgbtq`).
+- Angaben „Nur für dich“ liegen getrennt in `travelDocs/{uid}`, nur für einen selbst: Geschlecht, Ablauf von
+  Personalausweis und Reisepass (`idExpiry`, `passExpiry`), aus „Konto einrichten“ dazu Staatsangehörigkeiten (`nats`) und der Schalter für LGBTQ+-Hinweise (`lgbtq`).
   Die App liest und schreibt sie über die REST-Schnittstelle, damit keine Kopie im Browser-Speicher bleibt.
 - Jede Reise ist ein Dokument `trips/{id}` mit dem Inhalt als Text, dem Besitzer, den Mitgliedern
   mit Rolle (`owner`, `editor`, `viewer`) und optional einer Einladung (zufälliger Schlüssel und Rolle).

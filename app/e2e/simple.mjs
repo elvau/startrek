@@ -244,6 +244,47 @@ try {
   await gp.locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
   const tg = gp.locator("#together .tg");
   await tg.scrollIntoViewIfNeeded();
+  // Wer entscheidet mit (#567): Cleo abwählen, dann trägt sie nicht ein (eigene Zeile weg, Hinweis); wieder alle
+  await tg.locator(".dec-edit").click();
+  await tg.locator(".dec-people .chip", { hasText: "Cleo" }).click();
+  await until(async () => (await tg.locator(".dec-sum").innerText()) === "2 von 3" && !(await tg.locator(".tg-row .tg-name", { hasText: "Cleo" }).count())
+    && (await tg.locator(".tg-others").innerText()).includes("Cleo"), "Cleo entscheidet nicht mit");
+  await tg.locator(".dec-quick .chip", { hasText: "Alle Erwachsenen" }).click();
+  await until(async () => (await tg.locator(".dec-sum").innerText()).startsWith("Alle Erwachsenen") && (await tg.locator(".tg-row .tg-name", { hasText: "Cleo" }).count()) === 1, "wieder alle");
+  await tg.locator(".dec-edit").click();
+  log("Wer entscheidet mit: Abwählen nimmt die Person aus „Termin finden“ (Hinweis „trägt nicht ein“), „Alle Erwachsenen“ stellt zurück");
+  // Welche Tage (#568): nur Wochenenden Fr–So im September/Oktober 2027; Raster nur mit diesen Tagen (#569)
+  await tg.locator(".tg-reset").click();
+  await tg.locator(".tg-open").click();
+  await tg.locator(".tg-new label.f", { hasText: "Frühester" }).locator("input").fill("2027-09-01");
+  await tg.locator(".tg-new label.f", { hasText: "Spätester" }).locator("input").fill("2027-10-31");
+  await tg.locator(".pc-days button", { hasText: "Wochenenden" }).click();
+  await tg.locator(".pc-opt", { hasText: "2 Nächte" }).click();
+  await until(async () => (await tg.locator(".pc-count").innerText()) === "9 Termine passen", "Vorschau 9 Wochenenden");
+  if (!(await tg.locator(".pc-item").first().innerText()).includes("03.09.")) fail("erster Termin: " + await tg.locator(".pc-item").first().innerText());
+  await tg.locator(".tg-start").click();
+  await tg.locator(".tg-grid.compact").waitFor();
+  const shownDays = await tg.locator(".tg-days .tg-d:not(.x)").count();
+  if (shownDays !== 27) fail(`Raster zeigt ${shownDays} statt 27 Wochenendtage`);
+  // Ziehen (#569): links ✓ über Fr–So, rechts ✕ über das nächste Wochenende; einzelner Klick schaltet wie bisher
+  const anna = tg.locator(".tg-row").filter({ hasText: "Anna" }).locator(".tg-c:not(.x)");
+  const at = async i => { const b = await anna.nth(i).boundingBox(); return [b.x + b.width / 2, b.y + b.height / 2]; };
+  await gp.mouse.move(...await at(0)); await gp.mouse.down(); await gp.mouse.move(...await at(1)); await gp.mouse.move(...await at(2)); await gp.mouse.up();
+  await gp.mouse.move(...await at(3)); await gp.mouse.down({ button: "right" }); await gp.mouse.move(...await at(4)); await gp.mouse.move(...await at(5)); await gp.mouse.up({ button: "right" });
+  await until(async () => (await anna.allInnerTexts()).slice(0, 6).join("") === "✓✓✓✕✕✕", "Ziehen links ✓, rechts ✕");
+  await anna.nth(6).click();
+  if ((await anna.nth(6).innerText()) !== "✓") fail("Einzelklick schaltet nicht mehr");
+  // Ansicht je Wochenende: Ben sagt für das erste Wochenende „kann“, das Raster zeigt es für alle drei Tage
+  await tg.locator(".tg-view button", { hasText: "Wochenenden" }).click();
+  await tg.locator(".tg-for select").selectOption({ label: "Ben" });
+  await tg.locator(".tg-block").first().locator(".tg-bv.yes").click();
+  await until(async () => (await tg.locator(".tg-block").first().locator(".tg-bh").innerText()).includes("2 können"), "Anna und Ben können am ersten Wochenende");
+  await tg.locator(".tg-view button", { hasText: "Raster" }).click();
+  const ben = tg.locator(".tg-row").filter({ hasText: "Ben" }).locator(".tg-c:not(.x)");
+  if ((await ben.allInnerTexts()).slice(0, 3).join("") !== "✓✓✓") fail("Wochenend-Ansicht nicht im Raster");
+  await gp.evaluate(() => localStorage.removeItem("rk2-tgview"));
+  log("Welche Tage: nur Wochenenden (9 im Sept./Okt.), Raster nur mit diesen Tagen; Ziehen links ✓, rechts ✕; Ansicht je Wochenende schreibt dieselben Tage");
+
   // neu anlegen: erst Erklärung und Knopf (sah sonst wie das Reisedatum aus); Bis vor Von oder zu kurz: Hinweis, Loslegen gesperrt
   await tg.locator(".tg-reset").click();
   if (!(await tg.locator(".tg-lead").innerText()).includes("Noch kein Reisedatum") || await tg.locator(".tg-new").count()) fail("Termin finden nicht eingeklappt");

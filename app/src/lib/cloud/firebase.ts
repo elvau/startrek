@@ -10,7 +10,7 @@ import {
 } from "firebase/auth";
 import {
   arrayRemove, arrayUnion, clearIndexedDbPersistence, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDocFromServer, getDocsFromServer,
-  initializeFirestore, onSnapshot, terminate,
+  getDoc, initializeFirestore, limit, onSnapshot, orderBy, terminate, writeBatch,
   persistentLocalCache, persistentMultipleTabManager, query, runTransaction, serverTimestamp, setDoc, updateDoc, where, collection,
   type Firestore, type Unsubscribe
 } from "firebase/firestore";
@@ -165,11 +165,55 @@ export function createTrip(id: string, name: string, data: string, u: User) {
 export const saveTrip = (id: string, name: string, data: string, uid: string) =>
   updateDoc(tripRef(id), { name, data, updatedAt: serverTimestamp(), updatedBy: uid });
 
-/** Reise löschen, vorher die Stimmen darunter (Firestore löscht Unterdokumente nicht mit) */
+/** Reise löschen, vorher Stimmen und Chat darunter (Firestore löscht Unterdokumente nicht mit) */
 export async function deleteTrip(id: string) {
-  const vs = await getDocsFromServer(collection(start().db, "trips", id, "votes")).catch(() => null);
-  for (const d of vs?.docs || []) await deleteDoc(d.ref).catch(() => {});
+  for (const sub of ["votes", "self", "chat", "chatImg"]) {
+    const vs = await getDocsFromServer(collection(start().db, "trips", id, sub)).catch(() => null);
+    for (const d of vs?.docs || []) await deleteDoc(d.ref).catch(() => {});
+  }
   await deleteDoc(tripRef(id));
+}
+
+/* ---------- Selbst eintragen (#571): je Mitglied ein Dokument trips/{id}/self/{uid} ---------- */
+
+export function watchSelf(id: string, fn: (byUid: Record<string, Record<string, unknown>>) => void, err: (e: Error) => void): Unsubscribe {
+  return onSnapshot(collection(start().db, "trips", id, "self"), s => fn(Object.fromEntries(s.docs.map(d => [d.id, d.data() as Record<string, unknown>]))), err);
+}
+/** nur die genannten Felder schreiben (ganz ersetzen), die übrigen bleiben */
+export const saveSelf = (id: string, uid: string, part: Record<string, unknown>) =>
+  setDoc(doc(start().db, "trips", id, "self", uid), { ...part, at: serverTimestamp() }, { mergeFields: [...Object.keys(part), "at"] });
+
+/* ---------- Gruppenchat: je Nachricht ein Dokument trips/{id}/chat/{msgId} ---------- */
+
+/** die neuesten Nachrichten beobachten (neueste zuerst geliefert) */
+export function watchChat(id: string, max: number, fn: (docs: { id: string; data: Record<string, unknown> }[]) => void, err: (e: Error) => void): Unsubscribe {
+  const q = query(collection(start().db, "trips", id, "chat"), orderBy("at", "desc"), limit(max));
+  return onSnapshot(q, { includeMetadataChanges: false }, s => fn(s.docs.map(d => ({ id: d.id, data: d.data({ serverTimestamps: "none" }) as Record<string, unknown> }))), err);
+}
+/** Nachricht senden; mit Bild beides in einem Schritt (Bild unter derselben Kennung in chatImg) */
+export async function sendChat(id: string, m: { u: string; n: string; t: string }, img?: string) {
+  const { db } = start();
+  const ref = doc(collection(db, "trips", id, "chat"));
+  if (!img) return setDoc(ref, { ...m, at: serverTimestamp() });
+  const b = writeBatch(db);
+  b.set(doc(db, "trips", id, "chatImg", ref.id), { u: m.u, d: img });
+  b.set(ref, { ...m, img: true, at: serverTimestamp() });
+  await b.commit();
+}
+/** Bild einer Nachricht (data:-Adresse) */
+export async function chatImage(id: string, msgId: string): Promise<string | null> {
+  const s = await getDoc(doc(start().db, "trips", id, "chatImg", msgId));
+  return s.exists() ? ((s.data() as { d?: string }).d ?? null) : null;
+}
+/** Nachricht löschen, mit Bild */
+export async function deleteChat(id: string, msgId: string, img: boolean) {
+  const { db } = start();
+  if (img) await deleteDoc(doc(db, "trips", id, "chatImg", msgId)).catch(() => {});
+  await deleteDoc(doc(db, "trips", id, "chat", msgId));
+}
+/** eigene Nachrichten einer Reise (Daten herunterladen, Reise verlassen) */
+async function ownChat(id: string, uid: string) {
+  return (await getDocsFromServer(query(collection(start().db, "trips", id, "chat"), where("u", "==", uid))).catch(() => null))?.docs || [];
 }
 
 /* ---------- Abstimmen (#432): je Mitglied ein Dokument trips/{id}/votes/{uid} ---------- */
@@ -303,6 +347,10 @@ export interface AccountData {
   campaigns: (CampaignDoc & { id: string })[];
   /** eigene Stimmen je Reise (#432) */
   votes?: Record<string, VoteDoc>;
+  /** selbst Eingetragenes je Reise (#571): Termine, Wohnort, Familienvorschlag */
+  self?: Record<string, Record<string, unknown>>;
+  /** eigene Nachrichten im Gruppenchat je Reise (Bilder als Hinweis, nicht als Daten) */
+  chat?: Record<string, { t: string; img?: boolean; at?: string }[]>;
 }
 
 /** liest alles direkt vom Server (nicht aus dem Zwischenspeicher), wie „Konto zurücksetzen“ es löschen würde */
@@ -329,7 +377,13 @@ export async function collectAccount(uid: string): Promise<AccountData> {
     campaigns: camps.docs.map(d => ({ id: d.id, ...(d.data() as CampaignDoc) })),
     // eigene Stimmen je Reise (#432)
     votes: Object.fromEntries((await Promise.all(trips.docs.map(d => getDocFromServer(doc(db, "trips", d.id, "votes", uid))
-      .then(v => (v.exists() ? [d.id, { v: (v.data() as Partial<VoteDoc>).v || {}, w: (v.data() as Partial<VoteDoc>).w || {} } as VoteDoc] as const : null)).catch(() => null)))).filter((x): x is readonly [string, VoteDoc] => !!x))
+      .then(v => (v.exists() ? [d.id, { v: (v.data() as Partial<VoteDoc>).v || {}, w: (v.data() as Partial<VoteDoc>).w || {} } as VoteDoc] as const : null)).catch(() => null)))).filter((x): x is readonly [string, VoteDoc] => !!x)),
+    self: Object.fromEntries((await Promise.all(trips.docs.map(d => getDocFromServer(doc(db, "trips", d.id, "self", uid))
+      .then(v => (v.exists() ? [d.id, v.data({ serverTimestamps: "none" })] as const : null)).catch(() => null)))).filter((x): x is readonly [string, Record<string, unknown>] => !!x)),
+    chat: Object.fromEntries((await Promise.all(trips.docs.map(async d => [d.id, (await ownChat(d.id, uid)).map(m => {
+      const x = m.data() as { t?: string; img?: boolean; at?: { toDate?: () => Date } };
+      return { t: x.t || "", ...(x.img ? { img: true } : {}), ...(x.at?.toDate ? { at: x.at.toDate().toISOString() } : {}) };
+    })] as const))).filter(([, xs]) => xs.length))
   };
 }
 
@@ -347,7 +401,12 @@ export async function wipeAccount(uid: string): Promise<WipeResult> {
   let deleted = 0, left = 0;
   for (const d of trips.docs) {
     if ((d.data() as TripDoc).owner === uid) { await deleteTrip(d.id); deleted++; }
-    else { await deleteDoc(doc(db, "trips", d.id, "votes", uid)).catch(() => {}); await removeMember(d.id, uid); left++; }
+    else {
+      await deleteDoc(doc(db, "trips", d.id, "votes", uid)).catch(() => {});
+      await deleteDoc(doc(db, "trips", d.id, "self", uid)).catch(() => {});
+      for (const m of await ownChat(d.id, uid)) await deleteChat(d.id, m.id, (m.data() as { img?: boolean }).img === true).catch(() => {});
+      await removeMember(d.id, uid); left++;
+    }
   }
   const camps = await getDocsFromServer(query(collection(db, "campaigns"), where("owner", "==", uid)));
   for (const d of camps.docs) await deleteDoc(d.ref);
