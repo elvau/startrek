@@ -18,6 +18,8 @@
   import { travelerOf } from "../claims";
   import { selfHomeOf } from "../self";
   import SelfFamily from "./SelfFamily.svelte";
+  import HolidayPicker from "./HolidayPicker.svelte";
+  import { householdRegion } from "../plzRegion";
 
   const names = $derived([...new Set(app.trip.travelers.filter(isActive).map(hhKey))]);
   const pres = $derived(presences(app.trip));
@@ -53,10 +55,12 @@
     if (name === myHh && ct) void saveMySelf(app.trip.id, { h: { ...(x.plz ? { plz: x.plz } : {}), cc: x.cc, lat: x.lat, lon: x.lon, ort: x.ort } });
     if (access.readonly) return;
     const h = hh(name);
+    // neuer Wohnort: Region wieder aus der PLZ schätzen
+    delete h.region;
     h.plz = x.plz; h.geo = { lat: x.lat, lon: x.lon, ort: x.ort };
     if (x.cc !== "DE") h.cc = x.cc; else delete h.cc;
   }
-  function clearHome(name: string) { const h = hh(name); delete h.plz; delete h.geo; delete h.cc; }
+  function clearHome(name: string) { const h = hh(name); delete h.plz; delete h.geo; delete h.cc; delete h.region; }
 
   function members(name: string) { return app.trip.travelers.filter(t => isActive(t) && hhKey(t) === name); }
   function presText(name: string) {
@@ -123,6 +127,13 @@
             <HomeInput cls="f plzf" label={t("hh.home")} value={{ cc: S?.cc, plz: S?.plz, ort: S?.ort }} onpick={x => setHome(name, x)} onclear={() => {}} />
             {#if S?.ort}<span class="muted ed-note">📍 {S.ort}</span>{/if}
           </div>
+          {#if S?.ort}
+            {@const R = householdRegion(S)}
+            <div class="ed-row hh-region">
+              <span class="f">{t("hh.region")}<HolidayPicker value={R?.region} empty={t("hh.regionNone")} onchange={v => S && saveMySelf(app.trip.id, { h: { ...S, ...(v ? { region: v } : {}) } })} /></span>
+              {#if R?.guessed}<span class="muted ed-note hh-guess">{R.check ? `⚠ ${t("hh.regionCheck")}` : t("hh.regionGuess")}</span>{/if}
+            </div>
+          {/if}
           <p class="muted ed-note">{t("self.homeNote")}</p>
         </div>
       {:else if open === name}
@@ -132,6 +143,13 @@
             <HomeInput cls="f plzf" label={t("hh.home")} value={{ cc: H.cc, plz: H.plz, ort: H.geo?.ort }} onpick={x => setHome(name, x)} onclear={() => clearHome(name)} />
             {#if H.geo}<span class="muted ed-note">📍 {H.geo.ort}</span>{/if}
           </div>
+          {#if H.geo || H.region}
+            {@const R = householdRegion(H)}
+            <div class="ed-row hh-region">
+              <span class="f">{t("hh.region")}<HolidayPicker value={R?.region} empty={t("hh.regionNone")} onchange={v => { if (v) H.region = v; else delete H.region; }} /></span>
+              {#if R?.guessed}<span class="muted ed-note hh-guess">{R.check ? `⚠ ${t("hh.regionCheck")}` : t("hh.regionGuess")}</span>{/if}
+            </div>
+          {/if}
           <div class="ed-row">
             <label class="f">{t("hh.access")}
               <select value={H.mode || "car"} onchange={e => { H.mode = e.currentTarget.value as AccessMode; if (H.mode === "with" && !H.link) H.link = names.find(x => x !== name); }}>

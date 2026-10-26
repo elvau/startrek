@@ -6,6 +6,7 @@
  */
 import { hhKey, isActive, uid as newId, type Directory, type Trip, type Traveler } from "./model";
 import { personAge } from "./people";
+import { holidayPlace } from "./holidays";
 import { travelerOf, type Claims } from "./claims";
 import type { Avail } from "./together";
 
@@ -188,5 +189,8 @@ export function homeFromDir(dir: Directory): SelfHome | undefined {
   if (!h) return undefined;
   const out: SelfHome = { cc: h.cc || "DE", lat: h.lat, lon: h.lon, ort: h.ort };
   if (h.plz) out.plz = h.plz;
+  // Ferien-Region aus den eigenen Vorlieben (#570), wenn sie zum Land des Wohnorts passt
+  const hp = holidayPlace(dir.prefs?.holidays);
+  if (hp && hp.cc === out.cc) out.region = hp.region || `${hp.cc}-`;
   return out;
 }
