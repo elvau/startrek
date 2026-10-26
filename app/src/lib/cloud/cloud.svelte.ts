@@ -12,6 +12,7 @@ import { configured, emulator } from "./config";
 import type { Role, TripDoc } from "./firebase";
 import type { CampaignDoc } from "../campaign";
 import { byTime, CHAT_LIMIT, cleanText, parseMsg, validImg, type ChatMsg } from "../chat";
+import { parseSelf, type SelfDoc, type Selfs } from "../self";
 
 export type { Role };
 export interface CloudTrip { id: string; name: string; role: Role; owner: string; members: Record<string, Role>; memberNames: Record<string, string>; invite: TripDoc["invite"]; /** „Wer bist du?“ (#435): Konto → Reisende-Kennung, Vorname */ claims: NonNullable<TripDoc["claims"]>; /** zuletzt im Konto gespeichert (ISO) */ updated?: string; /** von wem (Konto-ID) */ by?: string }
@@ -188,6 +189,31 @@ export async function saveMyVotes(id: string, v: Record<string, Record<string, n
   cloudVotes.byUid = { ...cloudVotes.byUid, [fbUser.uid]: v };
   cloudVotes.whyByUid = { ...cloudVotes.whyByUid, [fbUser.uid]: w };
   await (await load()).saveVotes(id, fbUser.uid, v, w);
+}
+
+/* ---------- Selbst eintragen (#571): je Mitglied ein Dokument unter der Reise ---------- */
+
+/** selbst Eingetragenes der offenen Konto-Reise: Konto → Termine, Wohnort, Familienvorschlag */
+export const cloudSelf = $state({ trip: "", byUid: {} as Selfs });
+let unSelf: Unsubscribe | null = null;
+export async function watchSelf(id: string) {
+  if (cloudSelf.trip === id && unSelf) return;
+  unSelf?.(); unSelf = null;
+  cloudSelf.trip = id; cloudSelf.byUid = {};
+  if (!id || !fbUser || !isCloud(id)) return;
+  const f = await load();
+  if (cloudSelf.trip !== id) return;
+  unSelf = f.watchSelf(id, by => {
+    if (cloudSelf.trip !== id) return;
+    cloudSelf.byUid = Object.fromEntries(Object.entries(by).map(([k, d]) => [k, parseSelf(d)]));
+  }, () => { unSelf = null; });
+}
+/** eigene Angaben speichern (nur die genannten Teile); sofort lokal sichtbar */
+export async function saveMySelf(id: string, part: SelfDoc) {
+  if (!fbUser) return;
+  const u = fbUser.uid;
+  if (cloudSelf.trip === id) cloudSelf.byUid = { ...cloudSelf.byUid, [u]: { ...(cloudSelf.byUid[u] || {}), ...part } };
+  await (await load()).saveSelf(id, u, part as Record<string, unknown>);
 }
 
 /* ---------- Gruppenchat: je Nachricht ein Dokument unter der Reise ---------- */

@@ -6,7 +6,9 @@
    */
   import { t, tn } from "../i18n/index.svelte";
   import { access, app } from "../store.svelte";
-  import { cloud } from "../cloud/cloud.svelte";
+  import { cloud, cloudSelf, cloudTrip, cloudVotes, saveMySelf } from "../cloud/cloud.svelte";
+  import { travelerOf } from "../claims";
+  import { memberState, mergedAvail, selfRows } from "../self";
   import { dateDE, dayShort } from "../format";
   import Help from "./Help.svelte";
   import PollView from "./PollView.svelte";
@@ -17,8 +19,20 @@
   const people = $derived(voters(trip));
   const plan = $derived(trip.avail);
   const days = $derived(plan ? planDays(plan) : []);
-  const best = $derived(plan ? bestPeriods(trip) : []);
-  const entered = $derived(people.filter(x => plan?.by[x.id] && Object.keys(plan.by[x.id]).length).length);
+  // selbst Eingetragenes (#571): eigene Zeile über das eigene Konto, auch mit „nur ansehen“; für andere gesperrt
+  const ct = $derived(cloudTrip(trip.id));
+  const claims = $derived(ct?.claims || {});
+  const selfs = $derived(cloudSelf.trip === trip.id ? cloudSelf.byUid : {});
+  const myUid = $derived(ct && cloud.user ? cloud.user.uid : "");
+  const mine = $derived(myUid ? travelerOf(trip, myUid, claims)?.id : undefined);
+  const by = $derived(mergedAvail(trip, selfs, claims));
+  const locked = $derived(selfRows(trip, selfs, claims));
+  const best = $derived(plan ? bestPeriods({ ...trip, avail: { ...plan, by } }) : []);
+  const entered = $derived(people.filter(x => by[x.id] && Object.keys(by[x.id]).length).length);
+  const canTap = (id: string) => id === mine || (!access.readonly && !locked.has(id));
+  // „Was noch fehlt“ für die eigene Person in einer geteilten Reise
+  const voted = (pid: string) => !!(myUid && Object.keys(cloudVotes.byUid[myUid]?.[pid] || {}).length) || !!(mine && Object.keys(trip.polls?.find(p => p.id === pid)?.votes[mine] || {}).length);
+  const todo = $derived(mine && myUid ? memberState(trip, myUid, selfs, claims, voted) : null);
   const nameOf = (id: string) => trip.travelers.find(x => x.id === id)?.name || "?";
 
   // neuer Planungszeitraum: ab heute in drei Wochen, acht Wochen lang, Nächte wie die Reise (sonst 7)
@@ -35,7 +49,16 @@
     trip.avail = { from, to, nights: fNights > 0 ? fNights : n, by: {} };
   }
   const SIGN: Record<Avail, string> = { yes: "✓", maybe: "~", no: "✕" };
-  const tap = (id: string, d: string) => { if (!access.readonly) setAvail(trip, id, d, cycle(plan?.by[id]?.[d])); };
+  function tap(id: string, d: string) {
+    if (!canTap(id)) return;
+    const next = cycle(by[id]?.[d]);
+    if (id === mine) {
+      const a = { ...(by[id] || {}) };
+      if (next) a[d] = next; else delete a[d];
+      void saveMySelf(trip.id, { a });
+    }
+    if (!access.readonly) setAvail(trip, id, d, next);
+  }
 
   function takeDates(r: Period) { trip.from = r.from; trip.to = r.to; }
   function pollDates() {
@@ -79,6 +102,10 @@
 
 {#if people.length > 1}
 <div class="tg">
+  {#if todo?.who}
+    {@const open = [todo.dates === false ? t("self.todoDates") : "", todo.polls ? tn("self.todoPolls", todo.polls) : "", !todo.home ? t("self.todoHome") : ""].filter(Boolean)}
+    <p class="tg-todo small" class:done={!open.length}>{t("self.you", { name: todo.who.name })} {open.length ? t("self.todo", { list: open.join(" · ") }) : `✓ ${t("self.allDone")}`}</p>
+  {/if}
   <h3>📅 {t("tg.title")} <Help k="avail" /></h3>
   {#if !plan}
     <p class="muted small tg-lead">{t("tg.lead")}</p>
@@ -110,10 +137,10 @@
       </div>
       {#each people as x (x.id)}
         <div class="tg-row" role="row">
-          <span class="tg-name" title={x.name}>{x.name}</span>
+          <span class="tg-name" class:me={x.id === mine} title={locked.has(x.id) && x.id !== mine ? t("self.ownRow", { name: x.name }) : x.name}>{x.name}{#if locked.has(x.id) && x.id !== mine} 🔒{/if}</span>
           {#each days as d (d)}
-            {@const a = plan.by[x.id]?.[d]}
-            <button class="tg-c {a || ''}" role="gridcell" disabled={access.readonly} aria-label="{x.name}, {dayShort(d)}: {a ? t(`tg.${a === 'maybe' ? 'maybeL' : a}`) : t('tg.unset')}" onclick={() => tap(x.id, d)}>{a ? SIGN[a] : ""}</button>
+            {@const a = by[x.id]?.[d]}
+            <button class="tg-c {a || ''}" role="gridcell" disabled={!canTap(x.id)} aria-label="{x.name}, {dayShort(d)}: {a ? t(`tg.${a === 'maybe' ? 'maybeL' : a}`) : t('tg.unset')}" onclick={() => tap(x.id, d)}>{a ? SIGN[a] : ""}</button>
           {/each}
         </div>
       {/each}
@@ -200,6 +227,9 @@
   .tg h3 { margin: 6px 0 0; font-size: 15px; }
   .tg p { margin: 0; }
   .tg-leg { white-space: nowrap; }
+  .tg-todo { padding: 8px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--ink); }
+  .tg-todo.done { background: var(--good-soft); }
+  .tg-name.me { font-weight: 700; }
   .tg-leg i, .tg-c { font-style: normal; }
   .tg-grid { overflow-x: auto; display: grid; gap: 2px; padding-bottom: 4px; }
   .tg-row { display: flex; gap: 2px; align-items: center; }

@@ -101,6 +101,20 @@ await expect("Ben löscht Mallorys Stimme", req("ben", "/trips/regeltest/votes/m
 await expect("Anna (Besitzerin) löscht Mallorys Stimme", req("anna", "/trips/regeltest/votes/mallory", { method: "DELETE" }), 200);
 log("Stimmen: nur die eigene, lesen nur Mitglieder, löschen nur selbst oder die Besitzerin");
 
+// Selbst eintragen (#571): eigenes Dokument je Mitglied, jede Rolle, nur bekannte Felder
+const self = (uid, who, o) => patch(uid, `/trips/regeltest/self/${who}`, o);
+await expect("Mallory (Zuschauer) trägt Termine und Wohnort ein", self("mallory", "mallory", { a: { "2027-09-03": "yes" }, h: { plz: "44787", ort: "Bochum" }, f: { m: [{ n: "Gisela" }], at: "2027-01-01" } }), 200);
+await expect("Ben liest Mallorys Angaben", req("ben", "/trips/regeltest/self/mallory"), 200);
+await expect("Fremder liest Mallorys Angaben", req("fremd", "/trips/regeltest/self/mallory"), 403);
+await expect("Fremder trägt sich ein", self("fremd", "fremd", { a: {} }), 403);
+await expect("Mallory trägt für Ben ein", self("mallory", "ben", { a: { "2027-09-03": "no" } }), 403);
+await expect("Mallory mit Zusatzfeld", self("mallory", "mallory", { a: {}, rolle: "owner" }), 403);
+await expect("Mallory mit fremdem Feld im Wohnort", self("mallory", "mallory", { h: { plz: "1", iban: "DE00" } }), 403);
+await expect("Mallory mit zu großem Familienvorschlag", self("mallory", "mallory", { f: { m: Array.from({ length: 13 }, (_, i) => ({ n: "K" + i })), at: "x" } }), 403);
+await expect("Ben löscht Mallorys Angaben", req("ben", "/trips/regeltest/self/mallory", { method: "DELETE" }), 403);
+await expect("Anna (Besitzerin) löscht Mallorys Angaben", req("anna", "/trips/regeltest/self/mallory", { method: "DELETE" }), 200);
+log("Selbst eintragen: nur das eigene Dokument, jede Rolle, nur bekannte Felder; lesen nur Mitglieder");
+
 // Gruppenchat: Mitglieder schreiben im eigenen Namen mit Serverzeit, nichts ändern; Bild als data:-Adresse daneben
 const DOCS = `projects/${P}/databases/(default)/documents/trips/regeltest`;
 const chat = (uid, id, o, at = true) => req(uid, ":commit", { method: "POST", body: JSON.stringify({ writes: [{

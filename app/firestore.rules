@@ -154,6 +154,21 @@ service cloud.firestore {
         allow delete: if signedIn() && (uid() == userId || isOwner(tripDoc()));
       }
 
+      // Selbst eintragen (#571): je Mitglied ein Dokument mit eigenen Terminen (a), Wohnort der Familie (h) und
+      // Familienvorschlag (f); jede Rolle, auch „nur ansehen“ und Gäste, nur das eigene; lesen alle Mitglieder.
+      match /self/{userId} {
+        function tripDoc() { return get(/databases/$(database)/documents/trips/$(tripId)).data; }
+        function validSelf(d) {
+          return d.keys().hasOnly(['a', 'h', 'f', 'at'])
+            && (!('a' in d) || (d.a is map && d.a.size() <= 400))
+            && (!('h' in d) || (d.h is map && d.h.keys().hasOnly(['plz', 'cc', 'lat', 'lon', 'ort', 'region'])))
+            && (!('f' in d) || (d.f is map && d.f.keys().hasOnly(['m', 'at']) && d.f.m is list && d.f.m.size() <= 12 && d.f.at is string));
+        }
+        allow read: if isMember(tripDoc());
+        allow create, update: if isMember(tripDoc()) && uid() == userId && validSelf(request.resource.data);
+        allow delete: if signedIn() && (uid() == userId || isOwner(tripDoc()));
+      }
+
       // Gruppenchat: je Nachricht ein Dokument. Lesen und schreiben alle Mitglieder (auch „nur ansehen“ und Gäste),
       // nur im eigenen Namen, nicht ändern; löschen Verfasser (auch nach dem Verlassen der Reise) und Besitzer.
       match /chat/{msgId} {
