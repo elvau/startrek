@@ -77,6 +77,7 @@ Neue Funktionen bekommen Unit-Tests und, wo sinnvoll, einen Schritt in `app/e2e/
 - Fehlerberichte liegen im privaten Repo `elvau/splitandfly-bugs`, Bilder im R2-Speicher des Workers
   (`https://startrek.danielbednorz1990.workers.dev/bug-image/…`). Nichts daraus (Texte, Bilder, E-Mail, Kontokennung)
   in dieses öffentliche Repo, in Commits oder PRs übernehmen; nur „Fehlerbericht #N“ nennen.
-- Buchungsdaten (Ausweis, Reisepass) nur im Konto (`travelDocs/{uid}`, REST ohne Browser-Cache): nie in localStorage,
+- Ausweis- und Passnummern werden nicht gespeichert. Angaben „Nur für dich“ (Geschlecht, Ablauf von Ausweis und Pass,
+  Staatsangehörigkeiten) nur im Konto (`travelDocs/{uid}`, REST ohne Browser-Cache): nie in localStorage,
   Reisen, KI, Such-Dienst oder Fehlermeldungen.
 - Änderungen an erhobenen Daten → `public/datenschutz.html` mitziehen.

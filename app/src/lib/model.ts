@@ -56,22 +56,14 @@ export interface Person {
 }
 
 /**
- * Buchungsdaten einer Person (optional). Liegen nur im Konto (travelDocs/{uid}), nie im Browser, nie in Reisen,
- * nie bei KI, Such-Dienst oder Fehlermeldungen.
+ * Angaben „Nur für dich“ zu einer Person (optional). Liegen nur im Konto (travelDocs/{uid}), nie im Browser, nie in Reisen,
+ * nie bei KI, Such-Dienst oder Fehlermeldungen. Ausweis- und Passnummern, Namen laut Ausweis o. Ä. werden nicht gespeichert.
  */
 export interface TravelDoc {
-  /** Vornamen und Nachname wie im Ausweis, falls abweichend */
-  first?: string;
-  last?: string;
   gender?: "f" | "m" | "x";
-  /** Staatsangehörigkeit, z. B. „deutsch“ */
-  nationality?: string;
-  idNo?: string;
+  /** gültig bis (YYYY-MM-DD) */
   idExpiry?: string;
-  passNo?: string;
   passExpiry?: string;
-  /** Ausstellungsland des Reisepasses */
-  passCountry?: string;
   /** Staatsangehörigkeiten als ISO-2, kommagetrennt („DE,PL“), für Einreise-Hinweise im Browser */
   nats?: string;
   /** „1“: Hinweise zu LGBTQ+-Rechten im Reiseland zeigen (unabhängig vom Geschlecht) */

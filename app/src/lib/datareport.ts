@@ -14,7 +14,7 @@ const L = {
   de: {
     title: "Auskunft über deine gespeicherten Daten", law: "nach Art. 15 DSGVO", made: "Erstellt am", controller: "Verantwortlich",
     toc: "Diese Auskunft enthält alles, was Split&Fly zu deinem Konto speichert. Die vollständige Kopie in maschinenlesbarer Form bekommst du über „Als Datei (JSON) herunterladen“.",
-    s1: "1. Konto (Anmeldung, Google Firebase Authentication)", s2: "2. Gespeicherte Personen, Gruppen und Vorlieben", s3: "3. Buchungsdaten (Ausweis, Reisepass)",
+    s1: "1. Konto (Anmeldung, Google Firebase Authentication)", s2: "2. Gespeicherte Personen, Gruppen und Vorlieben", s3: "3. Angaben „Nur für dich“ (Geschlecht, Ablauf von Ausweis und Pass)",
     s4: "4. Reisen in deinem Konto", s5: "5. Aktionsseiten", s6: "6. Auf diesem Gerät gespeichert (Browser)", s7: "7. Was sonst verarbeitet wird",
     uid: "Konto-ID", email: "E-Mail", name: "Name", providers: "Anmeldung über", verified: "E-Mail bestätigt", created: "Konto angelegt", last: "Letzte Anmeldung",
     yes: "ja", no: "nein", none: "Keine gespeichert.", people: "Personen", groups: "Gruppen", me: "Ich bin", prefs: "Eigene Vorlieben", setup: "Konto eingerichtet am",
@@ -42,7 +42,7 @@ const L = {
   en: {
     title: "Information about your stored data", law: "under Art. 15 GDPR", made: "Created on", controller: "Controller",
     toc: "This report contains everything Split&Fly stores for your account. The complete copy in machine-readable form is available via “Download as file (JSON)”.",
-    s1: "1. Account (sign-in, Google Firebase Authentication)", s2: "2. Saved people, groups and preferences", s3: "3. Booking details (ID card, passport)",
+    s1: "1. Account (sign-in, Google Firebase Authentication)", s2: "2. Saved people, groups and preferences", s3: "3. “Just for you” details (gender, ID and passport expiry)",
     s4: "4. Trips in your account", s5: "5. Campaign pages", s6: "6. Stored on this device (browser)", s7: "7. Other processing",
     uid: "Account ID", email: "Email", name: "Name", providers: "Signed in with", verified: "Email verified", created: "Account created", last: "Last sign-in",
     yes: "yes", no: "no", none: "None stored.", people: "People", groups: "Groups", me: "I am", prefs: "Own preferences", setup: "Account set up on",

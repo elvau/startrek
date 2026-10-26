@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Details einer gespeicherten Person: Geburtsdatum, Wohnort, Buchungsdaten (nur im Konto, erst auf Wunsch geladen) */
+  /* Details einer gespeicherten Person: Geburtsdatum, Wohnort, Angaben „Nur für dich“ (nur im Konto, erst auf Wunsch geladen) */
   import BirthInput from "./BirthInput.svelte";
   import { t, tn } from "../i18n/index.svelte";
   import type { Person, TravelDoc } from "../model";
@@ -51,11 +51,6 @@
         <p class="err">{t("per.docsError")} <button type="button" class="linkbtn" onclick={() => loadDocs()}>{t("per.retry")}</button></p>
       {:else if d}
         <div class="ed-row">
-          <label class="f grow">{t("per.docFirst")}<input bind:value={d.first} placeholder={p.first} autocomplete="off" /></label>
-          <label class="f grow">{t("per.docLast")}<input bind:value={d.last} placeholder={p.last} autocomplete="off" /></label>
-        </div>
-        <p class="muted small">{t("per.docNameHint")}</p>
-        <div class="ed-row">
           <label class="f">{t("per.gender")}
             <select bind:value={d.gender}>
               <option value={undefined}>–</option>
@@ -64,17 +59,13 @@
               <option value="x">{t("per.g.x")}</option>
             </select>
           </label>
-          <label class="f grow">{t("per.nationality")}<input bind:value={d.nationality} placeholder={t("per.nationalityPh")} autocomplete="off" /></label>
         </div>
         <div class="ed-row">
-          <label class="f grow">{t("per.idNo")}<input bind:value={d.idNo} autocomplete="off" spellcheck="false" /></label>
-          <label class="f">{t("per.validUntil")}<input type="date" bind:value={d.idExpiry} /></label>
+          <label class="f">{t("per.idExpiry")}<input type="date" bind:value={d.idExpiry} /></label>
           {#if expired(d.idExpiry)}<span class="err ed-note">{t("per.expired")}</span>{/if}
         </div>
         <div class="ed-row">
-          <label class="f grow">{t("per.passNo")}<input bind:value={d.passNo} autocomplete="off" spellcheck="false" /></label>
-          <label class="f">{t("per.validUntil")}<input type="date" bind:value={d.passExpiry} /></label>
-          <label class="f">{t("per.passCountry")}<input class="sm" bind:value={d.passCountry} autocomplete="off" /></label>
+          <label class="f">{t("per.passExpiry")}<input type="date" bind:value={d.passExpiry} /></label>
           {#if expired(d.passExpiry)}<span class="err ed-note">{t("per.expired")}</span>{/if}
         </div>
         <div class="ed-row">

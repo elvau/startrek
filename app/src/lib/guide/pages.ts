@@ -379,7 +379,7 @@ export const GUIDE: GuidePage[] = [
     ],
     tips: [
       "Ohne Netz kannst du weiterplanen. Die Änderungen werden beim nächsten Online-Gang abgeglichen.",
-      "Buchungsdaten wie Ausweis oder Reisepass liegen nur in deinem Konto, nie in einer Reise und nie bei der KI.",
+      "Ausweis- und Passnummern speichert Split&Fly nicht. Angaben „Nur für dich“ wie das Ablaufdatum deines Reisepasses liegen nur in deinem Konto, nie in einer Reise und nie bei der KI.",
       "In deinem Konto siehst du jederzeit, was Split&Fly über dich speichert, und kannst es ausdrucken oder als Datei laden.",
       "Etwas klappt nicht? Über „Fehler melden“ (Beta) schickst du uns eine Nachricht. Am Handy erreichst du es über die Summe unten rechts.",
       "Am Handy hat jede Reise unten eine Leiste mit allen Kapiteln und der Gesamtsumme. Zwischen den Kapiteln wischst du auch seitlich; die Summe antippen öffnet die Kostenübersicht, „Fehler melden“ und die Links zu Anleitung und Impressum."
