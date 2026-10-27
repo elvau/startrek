@@ -15,10 +15,11 @@
   import Deciders from "./Deciders.svelte";
   import ShareBar from "./ShareBar.svelte";
   import PlanCfg from "./PlanCfg.svelte";
+  import TgCal from "./TgCal.svelte";
   import { calBase, calState, ensureCal, fitWhy, regionLabel } from "../calendarApp.svelte";
   import { defaultCfg, fits, fittingStarts, isWeekend, usefulDays, type DaysCfg } from "../datefit";
   import { getLocalMe, setLocalMe, sharedVoting } from "../polls.svelte";
-  import { addDay, addPoll, applyResult, bestPeriods, cycle, grownUps, missing, newPoll, notDeciding, planDays, planError, setAvail, tally, vote, voters, type Avail, type Period, type PollMode, type Vote } from "../together";
+  import { addDay, addPoll, applyResult, bestPeriods, blockValue, cycle, personIn, grownUps, missing, newPoll, notDeciding, planDays, planError, setAvail, tally, vote, voters, type Avail, type Period, type PollMode, type Vote } from "../together";
 
   const trip = $derived(app.trip);
   const people = $derived(voters(trip));
@@ -144,9 +145,13 @@
     if (!access.readonly) for (const [d, v] of Object.entries(changes)) setAvail(trip, id, d, v);
   }
 
-  /* ---------- Ansicht je Wochenende (#569): Raster oder Termine, auf dem Gerät gemerkt ---------- */
-  let view = $state<"grid" | "blocks">((() => { try { return localStorage.getItem("rk2-tgview") === "blocks" ? "blocks" : "grid"; } catch { return "grid"; } })());
-  function setView(v: "grid" | "blocks") { view = v; try { localStorage.setItem("rk2-tgview", v); } catch { /* egal */ } }
+  /* ---------- Ansicht (#569): Kalender (Vorgabe am Handy), Raster oder je Wochenende, auf dem Gerät gemerkt ---------- */
+  type View = "cal" | "grid" | "blocks";
+  let view = $state<View>((() => {
+    try { const v = localStorage.getItem("rk2-tgview"); if (v === "cal" || v === "grid" || v === "blocks") return v; } catch { /* egal */ }
+    return typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches ? "cal" : "grid";
+  })());
+  function setView(v: View) { view = v; try { localStorage.setItem("rk2-tgview", v); } catch { /* egal */ } }
   /** Termine ohne Überschneidung in zeitlicher Reihenfolge, mit Grund */
   const blocks = $derived.by(() => {
     if (!plan || !starts) return [];
@@ -158,13 +163,9 @@
     }
     return out;
   });
+  const shownView = $derived(view === "blocks" && !(plan?.days === "weekend" && blocks.length) ? "grid" : view);
   let forId = $state("");
   const writer = $derived(mine || (people.some(x => x.id === forId && canTap(x.id)) ? forId : people.find(x => canTap(x.id))?.id || ""));
-  function blockOf(id: string, from: string, to: string): Avail | undefined {
-    const vs = new Set<Avail | undefined>();
-    for (let d = from; d <= to; d = addDay(d, 1)) vs.add(by[id]?.[d]);
-    return vs.size === 1 ? [...vs][0] : undefined;
-  }
   function setBlock(id: string, from: string, to: string, v: Avail | undefined) {
     const ch: Record<string, Avail | undefined> = {};
     for (let d = from; d <= to; d = addDay(d, 1)) ch[d] = v;
@@ -252,29 +253,35 @@
       <button class="linkbtn small tg-cfg-edit" onclick={() => (cfgOpen = !cfgOpen)} aria-expanded={cfgOpen}>{cfgOpen ? t("done") : access.readonly ? t("tg.daysShow") : t("tg.daysEdit")}</button></p>
     {#if cfgOpen}<PlanCfg cfg={plan} {ctx} ro={access.readonly} onextend={() => (plan.to = addDay(plan.to, 182))} />{/if}
     {#if pErr}<p class="warnline small tg-err">{t(pErr === "order" ? "tg.errOrder" : "tg.errNights")}</p>{/if}
-    <p class="muted small">{t("tg.howTo")} <span class="tg-leg"><i class="yes">✓</i> {t("tg.yes")} <i class="maybe">~</i> {t("tg.maybeL")} <i class="no">✕</i> {t("tg.no")}</span></p>
-    {#if plan.days === "weekend" && blocks.length}
-      <div class="seg tg-view" role="group" aria-label={t("tg.view")}>
-        <button type="button" class:on={view === "grid"} aria-pressed={view === "grid"} onclick={() => setView("grid")}>{t("tg.viewGrid")}</button>
-        <button type="button" class:on={view === "blocks"} aria-pressed={view === "blocks"} onclick={() => setView("blocks")}>{t("tg.viewBlocks")}</button>
-      </div>
+    <div class="seg tg-view" role="group" aria-label={t("tg.view")}>
+      {#each [["cal", "tg.viewCal"], ["grid", "tg.viewGrid"], ...(plan.days === "weekend" && blocks.length ? [["blocks", "tg.viewBlocks"] as const] : [])] as const as [v, k] (v)}
+        <button type="button" class:on={shownView === v} aria-pressed={shownView === v} onclick={() => setView(v)}>{t(k)}</button>
+      {/each}
+    </div>
+    {#if shownView === "cal"}<p class="muted small">{t("tg.calHint")}</p>
+    {:else if shownView === "grid"}<p class="muted small">{t("tg.howTo")} <span class="tg-leg"><i class="yes">✓</i> {t("tg.yes")} <i class="maybe">~</i> {t("tg.maybeL")} <i class="no">✕</i> {t("tg.no")}</span></p>{/if}
+    {#if shownView !== "grid" && !mine && people.some(x => canTap(x.id))}
+      <label class="f tg-for">{t("tg.for")}<select value={writer} onchange={e => (forId = e.currentTarget.value)}>{#each people.filter(x => canTap(x.id)) as x (x.id)}<option value={x.id}>{x.name}</option>{/each}</select></label>
     {/if}
-    {#if view === "blocks" && plan.days === "weekend" && blocks.length}
-      <!-- je Termin für alle Tage auf einmal (gleiche Daten wie das Raster) -->
-      {#if !mine}<label class="f tg-for">{t("tg.for")}<select value={forId} onchange={e => (forId = e.currentTarget.value)}>{#each people.filter(x => canTap(x.id)) as x (x.id)}<option value={x.id}>{x.name}</option>{/each}</select></label>{/if}
+    {#if shownView === "cal"}
+      <TgCal {days} {off} {by} {people} {writer} editable={!!writer && canTap(writer)} apply={ch => applyDays(writer, ch)} hol={anyPub}
+        fer={d => ferienRegions.some(r => !!ctx.marks[r]?.[d]?.school)} />
+    {:else if shownView === "blocks"}
+      <!-- je Termin für alle Tage auf einmal (gleiche Daten wie das Raster), darunter wer kann -->
       <div class="tg-blocks">
         {#each blocks as b (b.from)}
           {@const st = blockState(b.from, b.to)}
-          {@const cur = blockOf(writer, b.from, b.to)}
+          {@const cur = blockValue(by[writer], b.from, b.to)}
           <div class="tg-block">
-            <div class="tg-bh"><b>{dayShort(b.from)} – {dayShort(b.to)}</b><span class="muted small">{t("tg.blockSum", { y: st.yes, m: st.maybe })}</span></div>
-            {#if b.why}<span class="small tg-bwhy">{b.why}</span>{/if}
+            <div class="tg-bh"><b>{dayShort(b.from)} – {dayShort(b.to)}</b>
+              <span class="muted small">{t("tg.blockSum", { y: st.yes, m: st.maybe })}{#if cur === "mix"} · <span class="tg-mix">{t("tg.mixed")}</span>{/if}</span>
+              {#if b.why}<span class="small tg-bwhy">{b.why}</span>{/if}</div>
             <div class="tg-bbtn">
               {#each [["yes", "✓", "tg.yes"], ["maybe", "~", "tg.maybeL"], ["no", "✕", "tg.no"]] as const as [v, sg, k] (v)}
-                <button type="button" class="tg-bv {v}" class:on={cur === v} aria-pressed={cur === v} disabled={!writer || !canTap(writer)} onclick={() => setBlock(writer, b.from, b.to, cur === v ? undefined : v)}>{sg} {t(k)}</button>
+                <button type="button" class="tg-bv {v}" class:on={cur === v} aria-pressed={cur === v} aria-label={t(k)} title={t(k)} disabled={!writer || !canTap(writer)} onclick={() => setBlock(writer, b.from, b.to, cur === v ? undefined : v)}>{sg}</button>
               {/each}
             </div>
-            <span class="tg-bar" aria-hidden="true"><i class="y" style="width:{(st.yes / Math.max(1, people.length)) * 100}%"></i><i class="m" style="width:{(st.maybe / Math.max(1, people.length)) * 100}%"></i></span>
+            <div class="tg-bwho">{#each people as x (x.id)}{@const s = personIn(by[x.id], b.from, b.to)}<span class="tg-pw {s}" class:me={x.id === writer} title="{x.name}: {t(s === 'open' ? 'tg.unset' : s === 'maybe' ? 'tg.maybeL' : `tg.${s}`)}">{x.name}</span>{/each}</div>
           </div>
         {/each}
       </div>
@@ -419,19 +426,24 @@
   .tg-view button { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; min-height: 36px; background: var(--paper); color: var(--ink-2); border: 0; cursor: pointer; }
   .tg-view button.on { background: var(--a); color: #fff; }
   .tg-for { max-width: 260px; }
-  .tg-blocks { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
-  .tg-block { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
-  .tg-bh { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .tg-blocks { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .tg-block { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; }
+  .tg-bh { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .tg-bwhy { color: var(--warn); }
-  .tg-bbtn { display: flex; gap: 6px; }
-  .tg-bv { all: unset; box-sizing: border-box; flex: 1; min-height: 44px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: var(--paper-2); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .tg-mix { color: var(--warn); font-weight: 700; }
+  .tg-bbtn { display: flex; gap: 4px; }
+  .tg-bv { all: unset; box-sizing: border-box; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: var(--paper-2); font-size: 16px; font-weight: 700; cursor: pointer; }
+  .tg-bv:focus-visible { outline: 2px solid var(--a); }
+  .tg-bwho { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+  .tg-pw { font-size: 11.5px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--ink-3); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tg-pw.me { font-weight: 700; }
+  .tg-pw.yes { background: color-mix(in srgb, var(--good) 22%, var(--paper)); color: var(--good); border-color: var(--good); }
+  .tg-pw.maybe { background: color-mix(in srgb, var(--warn) 18%, var(--paper)); color: var(--warn); border-color: var(--warn); }
+  .tg-pw.no { background: color-mix(in srgb, #C4452E 16%, var(--paper)); color: #C4452E; border-color: #C4452E; text-decoration: line-through; }
   .tg-bv:disabled { opacity: .5; cursor: default; }
   .tg-bv.yes.on { background: color-mix(in srgb, var(--good) 22%, var(--paper)); color: var(--good); border-color: var(--good); }
   .tg-bv.maybe.on { background: color-mix(in srgb, var(--warn) 18%, var(--paper)); color: var(--warn); border-color: var(--warn); }
   .tg-bv.no.on { background: color-mix(in srgb, #C4452E 16%, var(--paper)); color: #C4452E; border-color: #C4452E; }
-  .tg-bar { display: flex; height: 6px; border-radius: 99px; overflow: hidden; background: var(--line); }
-  .tg-bar .y { background: var(--good); }
-  .tg-bar .m { background: var(--warn); }
   .tg-cfg { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .tg-cfg-edit { padding: 0; }
   .tg-c { all: unset; box-sizing: border-box; flex: none; width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper-2); display: grid; place-items: center; font-size: 13px; cursor: pointer; }
