@@ -3,6 +3,10 @@
  * Schulferien und „schulkindkonform“. Feiertage und Ferien je Ferien-Region der Familien (#570), Daten aus
  * OpenHolidays (holidays.ts). Rein rechnend; die Daten lädt calendarApp.svelte.ts.
  *
+ * „schulkindkonform“ (#584): Es gelten Ferien und Feiertage der Region, die vorgibt (wer die Reise angelegt hat; Familien
+ * ohne Wohnort wie sie). Ohne bekannte Region sind Mo–Fr Schultage. Schultage anderer Familien mit Schulkindern filtern
+ * nicht, sie stehen als Konflikt am Zeitraum.
+ *
  * Ein Zeitraum geht vom Anreise- bis zum Abreisetag (Nächte = Abstand). Der Anreisetag zählt nie als Arbeits- oder
  * Schultag (Abfahrt nach Arbeit bzw. Schule); Urlaubstage sind die Werktage danach bis einschließlich Abreisetag.
  */
@@ -19,6 +23,12 @@ export interface CalCtx {
   regions: Record<string, string[]>;
   /** Regionen von Familien mit Schulkindern */
   kidRegions: string[];
+  /** Region, die vorgibt (#584): die von wem die Reise angelegt hat, sonst die erste bekannte; fehlt: keine bekannt */
+  lead?: string;
+  /** es reisen Schulkinder mit (auch ohne bekannte Region) */
+  kids?: boolean;
+  /** Familien ohne Wohnort, für die die vorgebende Region angenommen wird */
+  assumed?: string[];
   /** je Region: Tag → Feiertag bzw. Schulferien (Name) */
   marks: Record<string, Record<string, DayMark>>;
 }
@@ -34,7 +44,12 @@ export const workday = (c: CalCtx, r: string, d: string) => !isWeekend(d) && !pu
 /** frei für Erwachsene: Wochenende oder Feiertag in irgendeiner Region (regionale Feiertage zählen, #568) */
 const freeAny = (c: CalCtx, d: string) => isWeekend(d) || regionsOf(c).some(r => pub(c, r, d));
 /** Schultag für Kinder einer Region: Werktag ohne Ferien */
-const schoolDay = (c: CalCtx, r: string, d: string) => workday(c, r, d) && !ferien(c, r, d);
+export const schoolDay = (c: CalCtx, r: string, d: string) => workday(c, r, d) && !ferien(c, r, d);
+/** vorgebende Region (#584); ältere Stände ohne lead: erste Region mit Schulkindern */
+export const leadOf = (c: CalCtx) => c.lead ?? c.kidRegions[0];
+/** Schultag nach der vorgebenden Region; ohne Region Mo–Fr */
+const leadSchool = (c: CalCtx, d: string) => { const r = leadOf(c); return r ? schoolDay(c, r, d) : !isWeekend(d); };
+const hasKids = (c: CalCtx) => c.kids ?? c.kidRegions.length > 0;
 
 /** Tage nach dem Anreisetag bis einschließlich Abreisetag */
 function after(from: string, to: string): string[] {
@@ -54,6 +69,8 @@ export interface Fit {
   hols: string[];
   /** Schulferien im Zeitraum (Name je Region) */
   ferien: Record<string, string>;
+  /** schulkindkonform (#584): Schultage nach dem Anreisetag in anderen Regionen mit Schulkindern */
+  clash: Record<string, number>;
 }
 
 /** Passt der Zeitraum zu den Einstellungen? Mit Urlaubstagen, Feiertagen und Ferien für die Anzeige */
@@ -65,14 +82,16 @@ export function fits(from: string, to: string, cfg: DaysCfg, c: CalCtx): Fit {
   const hols = [...new Set(all.flatMap(d => regs.map(r => pub(c, r, d)).filter((x): x is string => !!x)))];
   const fer: Record<string, string> = {};
   for (const r of regs) { const n = all.map(d => ferien(c, r, d)).find(Boolean); if (n) fer[r] = n; }
-  const out = (ok: boolean): Fit => ({ ok, vac, hols, ferien: fer });
+  const clash: Record<string, number> = {};
+  if (cfg.school) for (const r of c.kidRegions) { if (r === leadOf(c)) continue; const n = rest.filter(d => schoolDay(c, r, d)).length; if (n) clash[r] = n; }
+  const out = (ok: boolean): Fit => ({ ok, vac, hols, ferien: fer, clash });
 
   // Schulferien meiden bzw. nur in den Ferien (Regionen mit Ferien-Daten)
   const withFerien = regs.filter(r => Object.values(c.marks[r] || {}).some(m => m.school));
   if (cfg.ferien === "avoid" && all.some(d => withFerien.some(r => ferien(c, r, d)))) return out(false);
   if (cfg.ferien === "only" && (!withFerien.length || !all.every(d => withFerien.every(r => ferien(c, r, d))))) return out(false);
-  // schulkindkonform: nach dem Anreisetag kein Schultag in einer Region mit Schulkindern
-  if (cfg.school && rest.some(d => c.kidRegions.some(r => schoolDay(c, r, d)))) return out(false);
+  // schulkindkonform: nach dem Anreisetag kein Schultag in der vorgebenden Region (andere: Konflikt, #584)
+  if (cfg.school && hasKids(c) && rest.some(d => leadSchool(c, d))) return out(false);
   if (cfg.days !== "weekend") return out(true);
 
   // Wochenenden: nach dem Anreisetag nur freie Tage (Wochenende, Feiertag) …
@@ -83,8 +102,8 @@ export function fits(from: string, to: string, cfg: DaysCfg, c: CalCtx): Fit {
     if (work.length === 1 && rest.some(d => !isWeekend(d) && freeAny(c, d))) return out(true);
   }
   // … oder in den Ferien (schulkindkonform, Ferien nicht gemieden): jeder Starttag, Urlaub für Berufstätige
-  if (cfg.school && cfg.ferien !== "avoid" && c.kidRegions.length && rest.every(d => c.kidRegions.every(r => !schoolDay(c, r, d)))
-    && rest.some(d => c.kidRegions.some(r => ferien(c, r, d)))) return out(true);
+  const lead = leadOf(c);
+  if (cfg.school && cfg.ferien !== "avoid" && hasKids(c) && lead && rest.every(d => !leadSchool(c, d)) && rest.some(d => ferien(c, lead, d))) return out(true);
   return out(false);
 }
 
@@ -101,4 +120,4 @@ export function usefulDays(starts: string[], nights: number): Set<string> {
 }
 
 /** Einstellungen beim Anlegen: schulkindkonform, wenn Schulkinder mitreisen */
-export const defaultCfg = (c: CalCtx | null): DaysCfg => ({ days: "all", ferien: "take", ...(c?.kidRegions.length ? { school: true } : {}) });
+export const defaultCfg = (c: CalCtx | null): DaysCfg => ({ days: "all", ferien: "take", ...(c && hasKids(c) ? { school: true } : {}) });
