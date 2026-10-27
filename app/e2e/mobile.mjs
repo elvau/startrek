@@ -74,6 +74,14 @@ try {
   if (nameW < 90) fail("Reisename in der Kopfzeile zu schmal: " + nameW);
   if (await p.locator("header.top .tm-plus").isVisible()) fail("Kopfzeile: „+“ nimmt dem Reisenamen den Platz");
   log("Kopfzeile in der Reise: Reisename " + Math.round(nameW) + " px breit");
+  // Lasche am Rand: auf der Übersicht nur „weiter“, antippen wechselt zur nächsten Seite, dann auch „zurück“; Anstupser einmal je Gerät
+  if ((await p.locator(".mb-edge.prev").count()) || !(await p.locator(".mb-edge.next").count())) fail("Lasche am Rand der Übersicht");
+  await p.locator(".mb-edge.next").click();
+  await until(async () => (await on()) === "trav" && (await p.locator(".mb-edge.prev").count()) === 1, "Lasche wechselt zur nächsten Seite");
+  await p.locator(".mb-edge.prev").click();
+  await until(async () => (await on()) === "hero", "Lasche zurück zur Übersicht");
+  await until(async () => (await p.evaluate(() => localStorage.getItem("sf-mob-nudged"))) === "1", "Anstupser gemerkt");
+  log("Lasche am Rand zeigt die Nachbarseite und wechselt dorthin; Anstupser einmal je Gerät");
   // Fehler melden in der Reise: nicht schwebend (dort liegt die Leiste), sondern oben in der Kopfzeile
   if (await p.locator(".bug-fab").count()) fail("Fehler melden schwebt noch");
   await p.locator("header.top .top-bug").click();

@@ -2729,6 +2729,8 @@ export const fr: Dict = {
   "cr.open": "Croisière",
   "mob.home": "Aperçu",
   "mob.more": "Plus",
+  "mob.next": "Suivant : {x}",
+  "mob.prev": "Retour à {x}",
   "mob.bar": "Rubriques du voyage",
   "mob.ledger": "Caisse",
   "mob.funds": "Contributions",

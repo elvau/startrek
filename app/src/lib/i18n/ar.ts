@@ -2938,6 +2938,8 @@ export const ar: Dict = {
   "cr.open": "رحلة بحرية",
   "mob.home": "نظرة عامة",
   "mob.more": "المزيد",
+  "mob.next": "التالي: {x}",
+  "mob.prev": "العودة إلى {x}",
   "mob.bar": "أقسام الرحلة",
   "mob.ledger": "الصندوق",
   "mob.funds": "المساهمات",

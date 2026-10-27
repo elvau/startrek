@@ -2729,6 +2729,8 @@ export const en: Dict = {
   "cr.open": "Cruise",
   "mob.home": "Overview",
   "mob.more": "More",
+  "mob.next": "Next: {x}",
+  "mob.prev": "Back to {x}",
   "mob.bar": "Trip sections",
   "mob.ledger": "Kitty",
   "mob.funds": "Contributions",

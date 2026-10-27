@@ -2835,6 +2835,8 @@ export const ru: Dict = {
   "cr.open": "Круиз",
   "mob.home": "Обзор",
   "mob.more": "Ещё",
+  "mob.next": "Дальше: {x}",
+  "mob.prev": "Назад: {x}",
   "mob.bar": "Разделы поездки",
   "mob.ledger": "Касса",
   "mob.funds": "Взносы",
