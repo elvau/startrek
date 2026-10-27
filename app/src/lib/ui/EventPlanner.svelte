@@ -32,7 +32,7 @@
   import { resizeTravelers, rowsAfterResize } from "../placeholders";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
-  import { DEFAULT_H, fits, keepEnd, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, ticketRange, ticketsEur, variants, type Variant } from "../event/plan";
+  import { DEFAULT_H, earlier, fits, keepEnd, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, ticketRange, ticketsEur, variants, type Variant } from "../event/plan";
   import { cityFromAddress, evWhen, searchEventsRemote, sportTag, SPORT_ICON } from "../events/app";
   import { uniqueById } from "../events/search";
   import { noteError } from "../bugs/log";
@@ -251,6 +251,14 @@
         if (fl.status === "fulfilled" && !anyReal(fl.value.offers.filter(o => fits(o, v))) && fq.maxStops === 1) {
           const more = await Promise.allSettled([searchFlights({ ...fq, maxStops: 2 }, signal)]).then(r => r[0]);
           if (more.status === "fulfilled" && anyReal(more.value.offers.filter(o => fits(o, v)))) fl = more;
+        }
+        // Fernziel: Hinflug über Nacht oder mit langem Umstieg landet erst später, dann einen Tag früher abfliegen (#536)
+        if (v.kind === "relaxed" && fl.status === "fulfilled" && !fl.value.offers.some(o => !o.test && fits(o, v))) {
+          const v2 = earlier(v), fq2 = { ...fq, depart: v2.out };
+          for (const stops of [1, 2]) {
+            const alt = await Promise.allSettled([searchFlights({ ...fq2, maxStops: stops }, signal)]).then(r => r[0]);
+            if (alt.status === "fulfilled" && alt.value.offers.some(o => !o.test && fits(o, v2))) { fl = alt; v = v2; break; }
+          }
         }
         const flights = fl.status === "fulfilled" ? fl.value.offers.filter(o => !o.test && fits(o, v)).map(o => rate(trip, o, o.out.from, true)) : [];
         const flight = flights.length ? flights.reduce((a, b) => (b.total < a.total ? b : a)) : null;
