@@ -274,6 +274,12 @@ try {
   await until(async () => (await anna.allInnerTexts()).slice(0, 6).join("") === "✓✓✓✕✕✕", "Ziehen links ✓, rechts ✕");
   await anna.nth(6).click();
   if ((await anna.nth(6).innerText()) !== "✓") fail("Einzelklick schaltet nicht mehr");
+  // erneut ziehen (#574): Start auf schon Markiertem nimmt die Markierung weg, links wie rechts
+  await gp.mouse.move(...await at(0)); await gp.mouse.down(); await gp.mouse.move(...await at(1)); await gp.mouse.move(...await at(2)); await gp.mouse.up();
+  await gp.mouse.move(...await at(3)); await gp.mouse.down({ button: "right" }); await gp.mouse.move(...await at(4)); await gp.mouse.move(...await at(5)); await gp.mouse.up({ button: "right" });
+  await until(async () => (await anna.allInnerTexts()).slice(0, 6).join("") === "", "erneutes Ziehen entfernt ✓ und ✕");
+  await gp.mouse.move(...await at(0)); await gp.mouse.down(); await gp.mouse.move(...await at(1)); await gp.mouse.move(...await at(2)); await gp.mouse.up();
+  await until(async () => (await anna.allInnerTexts()).slice(0, 3).join("") === "✓✓✓", "wieder ✓ gesetzt");
   // Ansicht je Wochenende: Ben sagt für das erste Wochenende „kann“, das Raster zeigt es für alle drei Tage
   await tg.locator(".tg-view button", { hasText: "Wochenenden" }).click();
   await tg.locator(".tg-for select").selectOption({ label: "Ben" });
