@@ -317,6 +317,7 @@ export const GUIDE: GuidePage[] = [
       "Wer über den Link beitritt und „Wer bist du?“ beantwortet, trägt seine Termine und den Wohnort der Familie selbst ein, auch mit „Sieht zu“. Die eigene Familie aus dem Konto geht als Vorschlag an die Planer.",
       "Termine eintragen in der Ansicht „Kalender“ (auf dem Handy die Vorgabe): oben „kann“, „vielleicht“, „kann nicht“ oder „leeren“ wählen, dann Tage antippen oder darüberziehen. Auf dem Handy zum Ziehen seitlich ansetzen, senkrecht scrollt die Seite. Punkte unter dem Tag zeigen, wie viele andere können.",
       "Im „Raster“ siehst du alle Personen auf einmal. Mit gedrückter linker Maustaste ziehen setzt ✓ über mehrere Tage, mit der rechten ✕. In der Ansicht „Wochenenden“ trägst du je Termin mit einem Tipp ein und siehst darunter, wer kann; „gemischt“ heißt, die Tage sind verschieden eingetragen.",
+      "Familien stimmen gemeinsam: Deine Stimmen und Termine zählen automatisch für Erwachsene deiner Familie ohne eigenes Konto. Unter „Zählt auch für“ wählst du jemanden ab. Mit eigenem Konto wählst du oben „Ich stimme ab und trage ein: wie …“. Stimmst du selbst ab, gilt deine Stimme; „wieder wie …“ nimmt sie zurück.",
       "Ferien und Feiertage kommen aus der Ferien-Region jeder Familie. Sie wird aus der PLZ geschätzt und lässt sich in den Familien-Einstellungen ändern."
     ],
     faq: [
@@ -324,6 +325,7 @@ export const GUIDE: GuidePage[] = [
       { q: "Kann ich eine geteilte Reise verlassen?", a: "Ja, im Reisemenü unter „Reise verlassen“. Du siehst die Reise danach nicht mehr. Besitzer können Mitglieder verwalten." },
       { q: "Brauchen die anderen ein Konto?", a: "Zum Mitplanen ja. Das Anmelden geht in wenigen Sekunden mit Google oder per Link in der E-Mail." },
       { q: "Was heißt „schulkindkonform“?", a: "Außer dem Anreisetag (Abfahrt nach der Schule) liegt kein Schultag im Zeitraum. Ein Feiertag zählt nur, wenn er in der Region jeder Familie mit Schulkind gilt. In den Ferien geht jeder Starttag; Berufstätige brauchen dann Urlaubstage, die App zeigt wie viele." },
+      { q: "Ich habe mein Konto erst später verknüpft. Zählt, was meine Familie schon für mich abgestimmt hat?", a: "Ja, bis du entscheidest. Die App fragt einmal: „Weiter wie …“, „Übernehmen und selbst ändern“ oder „Selbst neu abstimmen“." },
       { q: "Wer sieht den Gruppenchat, und kann ich Nachrichten löschen?", a: "Alle, die in der Reise sind. Eigene Nachrichten löschst du mit 🗑 für alle; der Besitzer der Reise kann jede Nachricht löschen. Den Chat gibt es, sobald die Reise mit mindestens einer weiteren Person geteilt ist." }
     ],
     where: "Reise → Teilen, Abstimmungen und 💬 Gruppenchat",

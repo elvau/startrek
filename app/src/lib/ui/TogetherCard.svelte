@@ -8,7 +8,7 @@
   import { access, app } from "../store.svelte";
   import { cloud, cloudSelf, cloudTrip, cloudVotes, saveMySelf } from "../cloud/cloud.svelte";
   import { travelerOf } from "../claims";
-  import { memberState, mergedAvail, selfRows } from "../self";
+  import { availStand, memberState, mergedAvail, selfRows } from "../self";
   import { dateDE, dayShort } from "../format";
   import Help from "./Help.svelte";
   import PollView from "./PollView.svelte";
@@ -16,9 +16,11 @@
   import ShareBar from "./ShareBar.svelte";
   import PlanCfg from "./PlanCfg.svelte";
   import TgCal from "./TgCal.svelte";
+  import FamBar from "./FamBar.svelte";
+  import FamFor from "./FamFor.svelte";
   import { calBase, calState, ensureCal, fitWhy, regionLabel } from "../calendarApp.svelte";
   import { defaultCfg, fits, fittingStarts, isWeekend, usefulDays, type DaysCfg } from "../datefit";
-  import { getLocalMe, setLocalMe, sharedVoting } from "../polls.svelte";
+  import { getLocalMe, pollStand, setLocalMe, sharedVoting } from "../polls.svelte";
   import { addDay, addPoll, applyResult, bestPeriods, blockValue, cycle, personIn, grownUps, missing, newPoll, notDeciding, planDays, planError, setAvail, tally, vote, voters, type Avail, type Period, type PollMode, type Vote } from "../together";
 
   const trip = $derived(app.trip);
@@ -35,10 +37,16 @@
   const mine = $derived(myUid ? travelerOf(trip, myUid, claims)?.id : undefined);
   const by = $derived(mergedAvail(trip, selfs, claims));
   const locked = $derived(selfRows(trip, selfs, claims));
+  // Familie trägt mit ein (#585): Zeile → wessen Zeile sie zeigt
+  const dStand = $derived(availStand(trip, selfs, claims));
   const entered = $derived(people.filter(x => by[x.id] && Object.keys(by[x.id]).length).length);
   const canTap = (id: string) => id === mine || (!access.readonly && !locked.has(id));
   // „Was noch fehlt“ für die eigene Person in einer geteilten Reise
-  const voted = (pid: string) => !!(myUid && Object.keys(cloudVotes.byUid[myUid]?.[pid] || {}).length) || !!(mine && Object.keys(trip.polls?.find(p => p.id === pid)?.votes[mine] || {}).length);
+  const voted = (pid: string) => {
+    const p = trip.polls?.find(x => x.id === pid);
+    // Familie stimmt für mich (#585) zählt mit
+    return !!(myUid && Object.keys(cloudVotes.byUid[myUid]?.[pid] || {}).length) || !!(mine && p && (Object.keys(p.votes[mine] || {}).length || pollStand(p)[mine]));
+  };
   const todo = $derived(mine && myUid ? memberState(trip, myUid, selfs, claims, voted) : null);
   const nameOf = (id: string) => trip.travelers.find(x => x.id === id)?.name || "?";
 
@@ -91,14 +99,7 @@
   const best = $derived(plan ? bestPeriods({ ...trip, avail: { ...plan, by } }, 3, okFn) : []);
   const SIGN: Record<Avail, string> = { yes: "✓", maybe: "~", no: "✕" };
   function tap(id: string, d: string) {
-    if (!canTap(id)) return;
-    const next = cycle(by[id]?.[d]);
-    if (id === mine) {
-      const a = { ...(by[id] || {}) };
-      if (next) a[d] = next; else delete a[d];
-      void saveMySelf(trip.id, { a });
-    }
-    if (!access.readonly) setAvail(trip, id, d, next);
+    applyDays(id, { [d]: cycle(by[id]?.[d]) });
   }
 
   /* ---------- Ziehen mit der Maus (#569): links ✓, rechts ✕, auf schon Markiertem entfernen (#574); einzelner Klick wie bisher ---------- */
@@ -142,7 +143,10 @@
       for (const [d, v] of Object.entries(changes)) { if (v) a[d] = v; else delete a[d]; }
       void saveMySelf(trip.id, { a });
     }
-    if (!access.readonly) for (const [d, v] of Object.entries(changes)) setAvail(trip, id, d, v);
+    if (access.readonly) return;
+    // Zeile wie die Familie (#585): erst übernehmen, dann ändern
+    if (dStand[id] && !trip.avail?.by[id]) for (const [d, v] of Object.entries(by[id] || {})) setAvail(trip, id, d, v);
+    for (const [d, v] of Object.entries(changes)) setAvail(trip, id, d, v);
   }
 
   /* ---------- Ansicht (#569): Kalender (Vorgabe am Handy), Raster oder je Wochenende, auf dem Gerät gemerkt ---------- */
@@ -225,6 +229,7 @@
   {/if}
   <ShareBar />
   <Deciders />
+  <FamBar />
   <h3>📅 {t("tg.title")} <Help k="avail" /></h3>
   {#if !plan}
     <p class="muted small tg-lead">{t("tg.lead")}</p>
@@ -263,6 +268,8 @@
     {#if shownView !== "grid" && !mine && people.some(x => canTap(x.id))}
       <label class="f tg-for">{t("tg.for")}<select value={writer} onchange={e => (forId = e.currentTarget.value)}>{#each people.filter(x => canTap(x.id)) as x (x.id)}<option value={x.id}>{x.name}</option>{/each}</select></label>
     {/if}
+    {#if shownView !== "grid" && writer && dStand[writer]}<p class="muted small tg-like">👪 {t("fam.likeNow", { name: nameOf(dStand[writer]) })}</p>{/if}
+    {#if shownView !== "grid" && writer && writer === mine}<FamFor />{/if}
     {#if shownView === "cal"}
       <TgCal {days} {off} {by} {people} {writer} editable={!!writer && canTap(writer)} apply={ch => applyDays(writer, ch)} hol={anyPub}
         fer={d => ferienRegions.some(r => !!ctx.marks[r]?.[d]?.school)} />
@@ -305,7 +312,7 @@
       </div>
       {#each people as x (x.id)}
         <div class="tg-row" role="row">
-          <span class="tg-name" class:me={x.id === mine} title={locked.has(x.id) && x.id !== mine ? t("self.ownRow", { name: x.name }) : x.name}>{x.name}{#if locked.has(x.id) && x.id !== mine} 🔒{/if}</span>
+          <span class="tg-name" class:me={x.id === mine} class:px={!!dStand[x.id]} title={dStand[x.id] ? `${x.name}: ${t("fam.like", { name: nameOf(dStand[x.id]) })}` : locked.has(x.id) && x.id !== mine ? t("self.ownRow", { name: x.name }) : x.name}>{x.name}{#if dStand[x.id]} 👪{:else if locked.has(x.id) && x.id !== mine} 🔒{/if}</span>
           {#each cols as c (c.d)}
             {#if c.gap !== undefined}<span class="tg-gap" aria-hidden="true"></span>
             {:else}
@@ -407,6 +414,7 @@
   .tg-todo { padding: 8px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--ink); }
   .tg-todo.done { background: var(--good-soft); }
   .tg-name.me { font-weight: 700; }
+  .tg-name.px { font-style: italic; color: var(--ink-2); }
   .tg-leg i, .tg-c { font-style: normal; }
   .tg-grid { overflow-x: auto; display: grid; gap: 2px; padding-bottom: 4px; }
   .tg-row { display: flex; gap: 2px; align-items: center; }
