@@ -68,6 +68,7 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 | Google Flights, Skyscanner | Flüge | – | – |
 | Booking.com | Unterkunft | CJ (beworben 10/2026) | – |
 | Airbnb | Unterkunft | – | – |
+| FeWo-direkt, Hotels.com | Unterkunft (noch nicht in der App) | CJ (zugelassen 10/2026) | – |
 | GetYourGuide | Erlebnisse | CJ (beworben 10/2026; Travelpayouts abgelehnt) | – |
 | Tiqets | Erlebnisse | Travelpayouts | ja (`p=2074`, `campaign_id=89`) |
 | Klook | Erlebnisse | Travelpayouts | ja (`p=4110`, `campaign_id=137`) |
@@ -75,10 +76,12 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 | Tripadvisor | Essen | – | – |
 | KAYAK, CHECK24 | Mietwagen | – | – |
 | DiscoverCars | Mietwagen | Travelpayouts | – |
+| VIP Cars, Carla Car Rental | Mietwagen (noch nicht in der App) | CJ (zugelassen 10/2026) | – |
 | Kiwitaxi | Transfer | Travelpayouts | ja (`p=647`, `campaign_id=1`) |
 | Welcome Pickups | Transfer | Travelpayouts | ja (`p=8919`, `campaign_id=627`) |
 | GetTransfer, Intui.travel | Transfer | Travelpayouts | – |
 | Booking.com Taxi | Transfer | – | – |
+| Suntransfers | Transfer (noch nicht in der App) | CJ (zugelassen 10/2026) | – |
 | Direct Ferries, Ferryhopper | Fähren | direkt (noch nicht beantragt) | – |
 | PaulCamper | Mietcamper | Travelpayouts (20 %, noch nicht beantragt) | – |
 | Roadsurfer | Mietcamper | Awin (beworben 10/2026) | – |
@@ -117,9 +120,11 @@ Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen (`tag
 
 Publisher-Konto für splitandfly.com, beworben 10/2026. Travelpayouts hatte GetYourGuide und Booking.com zum Start
 abgelehnt, deshalb laufen diese über CJ.
-Stand 25.10.2026, **offen:** Booking.com DACH, GetYourGuide INT, Kiwi.com, Fewo-direkt, Vrbo (mit Länderprogrammen),
-Agoda EU, Hotels.com DACH, Expedia DACH, Trip.com, EconomyBookings, AirportRentalCars, Suntransfers, Balearia,
-Omio, World Nomads (nur als Tipp).
+Stand 27.10.2026:
+- **zugelassen** (Willkommens-Mails, Link-IDs noch nicht eingetragen): FeWo-direkt (Expedia Group), Hotels.com EMEA,
+  Suntransfers, VIP Cars, Carla Car Rental
+- **offen:** Booking.com DACH, GetYourGuide INT, Kiwi.com, Vrbo (mit Länderprogrammen), Agoda EU, Hotels.com DACH,
+  Expedia DACH, Trip.com, EconomyBookings, AirportRentalCars, Balearia, Omio, World Nomads (nur als Tipp)
 
 Publisher-ID (PID) `8096976` (öffentlich, steht in jedem CJ-Link), im Verzeichnis als `CJ_PUBLISHER`. Partner über CJ
 bekommen `tag: cj(aid)`: Der Ziel-Link wird über `https://www.anrdoezrs.net/click-8096976-<aid>?url=<Ziel>` geleitet; `aid` ist
