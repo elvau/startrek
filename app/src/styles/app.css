@@ -120,10 +120,11 @@ body[data-ch="transport"] .amb-transport,body[data-ch="attractions"] .amb-attrac
 .walker .leg,.walker .bagh{stroke:currentColor;stroke-width:5;stroke-linecap:round;fill:none}
 .walker .bag{opacity:.7}
 .walker.rtl svg{transform:scaleX(-1)}
-.walker .leg{transform-origin:50% 62%;transform-box:fill-box}
-.walker.go .l1{animation:stride .5s ease-in-out infinite alternate}
-.walker.go .l2{animation:stride .5s ease-in-out infinite alternate-reverse}
-@keyframes stride{from{transform:rotate(-14deg)}to{transform:rotate(14deg)}}
+.walker .leg{transform-origin:50% 0;transform-box:fill-box}
+/* Gehen (#577): Beine pendeln an der Hüfte, das nach vorn schwingende Bein wird kurz angehoben, das andere läuft um eine halbe Runde versetzt */
+.walker.go .leg{animation:stride .8s linear infinite}
+.walker.go .l2{animation-delay:-.4s}
+@keyframes stride{0%{transform:rotate(-26deg)}25%{transform:rotate(0) scaleY(.78)}50%{transform:rotate(26deg)}100%{transform:rotate(-26deg)}}
 .meet{position:absolute;left:50%;bottom:calc(12% + 86px);width:44px;height:44px;translate:-50% 0;color:var(--c-trav);opacity:0;transform:translateY(-16px) scale(.6);transition:opacity .5s ease,transform .6s cubic-bezier(.3,1.6,.5,1)}
 .meet.on{opacity:.8;transform:none}
 .meet svg{width:100%;height:100%;fill:currentColor}
