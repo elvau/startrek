@@ -6,17 +6,22 @@
    */
   import { t } from "../i18n/index.svelte";
   import { access, app } from "../store.svelte";
-  import { circles, grownUps, setDeciders, voters } from "../together";
+  import { circles, familyCircles, grownUps, setDeciders, toggleFamily, voters } from "../together";
 
   const trip = $derived(app.trip);
   const all = $derived(grownUps(trip));
   const inIds = $derived(new Set(voters(trip).map(x => x.id)));
   const groups = $derived(circles(trip));
+  const families = $derived(familyCircles(trip));
   const label = (key: string) => key || t("dec.others");
   let open = $state(false);
   const same = (ids: string[]) => ids.length === inIds.size && ids.every(id => inIds.has(id));
   const summary = $derived(!trip.deciders?.length ? t("dec.all", { n: all.length })
     : groups.find(c => same(c.ids)) ? `${label(groups.find(c => same(c.ids))!.key)} · ${inIds.size}` : t("dec.some", { a: inIds.size, n: all.length }));
+  function toggleFam(ids: string[]) {
+    const next = toggleFamily([...inIds], ids);
+    if (next.length) setDeciders(trip, next);
+  }
   function toggle(id: string) {
     const next = inIds.has(id) ? [...inIds].filter(x => x !== id) : [...inIds, id];
     if (next.length) setDeciders(trip, next);
@@ -37,6 +42,14 @@
         {/each}
         <button class="chip" class:on={!trip.deciders?.length} aria-pressed={!trip.deciders?.length} onclick={() => setDeciders(trip, [])}>{t("dec.allBtn", { n: all.length })}</button>
       </div>
+      {#if families.length}
+        <div class="chips dec-fam">
+          {#each families as c (c.key)}
+            {@const on = c.ids.every(id => inIds.has(id))}
+            <button class="chip" class:on aria-pressed={on} onclick={() => toggleFam(c.ids)}>{c.key} · {c.ids.length}</button>
+          {/each}
+        </div>
+      {/if}
       <div class="chips dec-people">
         {#each all as x (x.id)}
           <button class="chip sm" class:on={inIds.has(x.id)} aria-pressed={inIds.has(x.id)} onclick={() => toggle(x.id)}>{x.name}</button>
