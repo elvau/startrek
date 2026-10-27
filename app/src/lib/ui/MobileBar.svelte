@@ -3,12 +3,13 @@
    * Handy (#530): feste Leiste unten mit allen Seiten der Reise (Übersicht, Kapitel, Tage, Abrechnung) zum Wechseln und
    * rechts der Gesamtsumme. Antippen der Summe öffnet „Mehr“: Fehler melden, Kostenübersicht und Fußzeile (Anleitung,
    * Impressum …). Oben bleibt nur die Kopfzeile.
+   * Am Rand eine schmale Lasche zur nächsten bzw. vorigen Seite: zeigt, dass man seitlich wischen kann.
    */
   import { t } from "../i18n/index.svelte";
   import { calc } from "../store.svelte";
   import { eur } from "../calc";
   import { CHAPTERS } from "../chapters";
-  import { goPage, mob, PAGES } from "../mobile.svelte";
+  import { goPage, mob, PAGES, stepPage } from "../mobile.svelte";
   import { bugDialog } from "../bugs/app.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { FLIGHTS_URL } from "../flights/app";
@@ -19,12 +20,18 @@
   let row = $state<HTMLElement>();
   const label = (k: string) => (k === "hero" ? t("mob.home") : CHAPTERS.find(c => c.k === k)?.label || k);
   const icon = (k: string) => (k === "hero" ? "home" : CHAPTERS.find(c => c.k === k)?.icon || "");
+  const next = $derived(stepPage(mob.page, 1)), prev = $derived(stepPage(mob.page, -1));
   // aktive Seite in der Leiste sichtbar halten (nur die Leiste verschieben)
   $effect(() => {
     const a = row?.querySelector<HTMLElement>(`[data-pg="${mob.page}"]`);
     if (row && a) row.scrollTo({ left: a.offsetLeft - (row.clientWidth - a.offsetWidth) / 2, behavior: "smooth" });
   });
 </script>
+
+{#if !mob.more}
+  {#if prev !== mob.page}<button type="button" class="mb-edge prev" aria-label={t("mob.prev", { x: label(prev) })} onclick={() => goPage(prev)}><span class="ar" aria-hidden="true">‹</span><Icon name={icon(prev)} /></button>{/if}
+  {#if next !== mob.page}<button type="button" class="mb-edge next" aria-label={t("mob.next", { x: label(next) })} onclick={() => goPage(next)}><Icon name={icon(next)} /><span class="ar" aria-hidden="true">›</span></button>{/if}
+{/if}
 
 <nav class="mbar" aria-label={t("mob.bar")}>
   <div class="mb-row" bind:this={row} role="tablist">
@@ -63,4 +70,13 @@
   .mb-tot small { grid-row: 2; font-size: 10.5px; color: var(--ink-2); white-space: nowrap; }
   .mb-tot .up { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 11px; color: var(--ink-2); }
   .mb-acts { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+  /* Lasche am Rand: schmal, halb durchsichtig, mittig zwischen Kopf und Leiste */
+  .mb-edge { position: fixed; z-index: 5; top: calc(var(--mob-top) + (100svh - var(--mob-top) - var(--mob-bar)) / 2 - 28px); width: 20px; height: 56px; padding: 0; border: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 72%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: var(--ink-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; opacity: .75; box-shadow: 0 4px 14px -8px rgba(14, 36, 56, .5); }
+  .mb-edge.next { inset-inline-end: 0; border-inline-end: 0; border-radius: 12px 0 0 12px; }
+  .mb-edge.prev { inset-inline-start: 0; border-inline-start: 0; border-radius: 0 12px 12px 0; }
+  :global([dir="rtl"]) .mb-edge.next { border-radius: 0 12px 12px 0; }
+  :global([dir="rtl"]) .mb-edge.prev { border-radius: 12px 0 0 12px; }
+  :global([dir="rtl"]) .mb-edge .ar { transform: scaleX(-1); }
+  .mb-edge .ar { font-size: 16px; line-height: 1; font-weight: 700; }
+  .mb-edge :global(svg) { width: 12px; height: 12px; }
 </style>
