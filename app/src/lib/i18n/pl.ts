@@ -2835,6 +2835,8 @@ export const pl: Dict = {
   "cr.open": "Rejs",
   "mob.home": "Przegląd",
   "mob.more": "Więcej",
+  "mob.next": "Dalej: {x}",
+  "mob.prev": "Wróć do {x}",
   "mob.bar": "Części podróży",
   "mob.ledger": "Kasa",
   "mob.funds": "Dopłaty",

@@ -2727,6 +2727,8 @@ export const de = {
   "cr.open": "Kreuzfahrt",
   "mob.home": "Übersicht",
   "mob.more": "Mehr",
+  "mob.next": "Weiter zu {x}",
+  "mob.prev": "Zurück zu {x}",
   "mob.bar": "Bereiche der Reise",
   "mob.ledger": "Kasse",
   "mob.funds": "Zuschüsse",
