@@ -8,13 +8,14 @@
   import { cloudTrip } from "../cloud/cloud.svelte";
   import { dateDE } from "../format";
   import { applyResult, dueSoon, maxMiles, mergedVotes, milesLeft, milesOf, missing, pollOpen, tallyMode, VETO, type Poll, type PollMode } from "../together";
-  import { ackNotes, cast, myNotes, myVote, myVoter, remoteVotes, sharedVoting, tripForOption, vetoesNow, whoAsk, whyOf } from "../polls.svelte";
+  import { ackNotes, cast, dropMyVote, myEffective, myFam, myNotes, myProxy, myVote, myVoter, remoteVotes, sharedVoting, tripForOption, vetoesNow, whoAsk, whyOf } from "../polls.svelte";
   import { dir } from "../directory.svelte";
   import { ccOf } from "../geo/places";
   import { applyOption, without } from "../without";
   import { eur } from "../calc";
   import { geo } from "../geo/geo.svelte";
   import VetoDialog from "./VetoDialog.svelte";
+  import FamFor from "./FamFor.svelte";
 
   let { p, onremove }: { p: Poll; onremove: () => void } = $props();
   const trip = $derived(app.trip);
@@ -24,7 +25,12 @@
   const open = $derived(pollOpen(p));
   const soon = $derived(dueSoon(p));
   const me = $derived(myVoter());
-  const mine = $derived(myVote(p) || {});
+  // eigene Stimme, sonst die der Familie (#585)
+  const mine = $derived(myEffective(p) || {});
+  const proxy = $derived(myProxy(p));
+  const fam = $derived(myFam());
+  const likeName = $derived(fam?.cfg.l ? trip.travelers.find(x => x.id === fam.cfg.l)?.name : undefined);
+  const ownVote = $derived(Object.keys(myVote(p) || {}).length > 0);
   const miss = $derived(missing(trip, p, remote));
   const left = $derived(p.mode === "miles" ? milesLeft(p, mine) : 0);
   const ct = $derived(cloudTrip(trip.id));
@@ -100,6 +106,13 @@
   {#if open && sharedVoting() && !me}
     <p class="small pv-who">{t("poll.whoFirst")} <button class="linkbtn" onclick={() => (whoAsk.open = true)}>{t("who.title")}</button></p>
   {/if}
+
+  {#if open && proxy}
+    <p class="small pv-like">👪 {t("fam.likeNow", { name: nameOf(proxy) })}</p>
+  {:else if open && likeName && ownVote && canVote}
+    <p class="small pv-like"><button class="linkbtn pv-again" disabled={busy} onclick={() => dropMyVote(p)}>↩ {t("fam.again", { name: likeName })}</button></p>
+  {/if}
+  {#if open && canVote}<FamFor />{/if}
 
   {#if notes.length}
     <div class="pv-notes" role="status">
@@ -181,5 +194,7 @@
   .pv-notes { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 12%, var(--paper)); font-size: 13.5px; }
   .pv-seen { justify-self: start; padding: 0; }
   .pv-who { color: var(--ink-2); }
+  .pv-like { color: var(--ink-2); }
+  .pv-again { padding: 0; }
   .pv-avoid { grid-column: 1 / -1; justify-self: start; padding: 0; color: #C4452E; text-align: start; }
 </style>

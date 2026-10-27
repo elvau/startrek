@@ -154,15 +154,19 @@ service cloud.firestore {
         allow delete: if signedIn() && (uid() == userId || isOwner(tripDoc()));
       }
 
-      // Selbst eintragen (#571): je Mitglied ein Dokument mit eigenen Terminen (a), Wohnort der Familie (h) und
-      // Familienvorschlag (f); jede Rolle, auch „nur ansehen“ und Gäste, nur das eigene; lesen alle Mitglieder.
+      // Selbst eintragen (#571): je Mitglied ein Dokument mit eigenen Terminen (a), Wohnort der Familie (h),
+      // Familienvorschlag (f) und Familie stimmt mit (x, l, d; #585); jede Rolle, auch „nur ansehen“ und Gäste, nur das eigene; lesen alle Mitglieder.
       match /self/{userId} {
         function tripDoc() { return get(/databases/$(database)/documents/trips/$(tripId)).data; }
         function validSelf(d) {
-          return d.keys().hasOnly(['a', 'h', 'f', 'at'])
+          return d.keys().hasOnly(['a', 'h', 'f', 'x', 'l', 'd', 'at'])
             && (!('a' in d) || (d.a is map && d.a.size() <= 400))
             && (!('h' in d) || (d.h is map && d.h.keys().hasOnly(['plz', 'cc', 'lat', 'lon', 'ort', 'region'])))
-            && (!('f' in d) || (d.f is map && d.f.keys().hasOnly(['m', 'at']) && d.f.m is list && d.f.m.size() <= 12 && d.f.at is string));
+            && (!('f' in d) || (d.f is map && d.f.keys().hasOnly(['m', 'at']) && d.f.m is list && d.f.m.size() <= 12 && d.f.at is string))
+            // Familie stimmt mit (#585): abgewählt, stimmt wie, entschieden
+            && (!('x' in d) || (d.x is list && d.x.size() <= 12))
+            && (!('l' in d) || (d.l is string && d.l.size() <= 40))
+            && (!('d' in d) || d.d is bool);
         }
         allow read: if isMember(tripDoc());
         allow create, update: if isMember(tripDoc()) && uid() == userId && validSelf(request.resource.data);

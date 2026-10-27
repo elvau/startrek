@@ -111,6 +111,10 @@ Suche im privaten Repo elvau/splitandfly-bugs offene Fehlerberichte ohne Label �
    gesucht oder erwartet wurde, was stattdessen zu sehen war.
    Ist unklar, was gemeint ist oder ob es gewollt ist: Labels Kategorie, „from-triage“, „zuständig: Dani“ und
    „entscheidung“, mit einer konkreten Frage im Text.
+   Hat der Bericht ein Bildschirmfoto: ansehen und im Issue unter „Was das Bildschirmfoto zeigt“ in Worten beschreiben,
+   so dass man es ohne Bild versteht: Ansicht bzw. Kapitel, Gerät (Handy/Desktop), geöffnete Fenster, sichtbare Knöpfe,
+   Hinweise und Fehlermeldungen (Texte der App wörtlich), was markiert oder leer ist, was offenbar fehlt. Inhalte der
+   Nutzer nur verallgemeinert (keine Namen, Orte, Daten, Beträge). Das Bild selbst nie verlinken oder einbetten.
 4. Im privaten Ticket Label „triagiert“ setzen, das Issue in elvau/startrek verlinken (neu oder bestehend) und das
    private Ticket schließen. Der weitere Stand steht nur noch im öffentlichen Issue.
 

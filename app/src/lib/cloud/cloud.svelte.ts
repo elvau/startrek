@@ -162,13 +162,15 @@ export async function claimTraveler(tripId: string, c: { t: string; n: string } 
 /** Stimmen der offenen Konto-Reise: Konto → Abstimmung → Möglichkeit → Wert */
 export const cloudVotes = $state({ trip: "", byUid: {} as Record<string, Record<string, Record<string, number>>>,
   /** zu „Ohne mich“ (#439): Konto → Abstimmung → Möglichkeit → Grund, mit Familie */
-  whyByUid: {} as Record<string, Record<string, Record<string, { r?: string; f?: boolean }>>> });
+  whyByUid: {} as Record<string, Record<string, Record<string, { r?: string; f?: boolean }>>>,
+  /** zuletzt gespeichert je Konto (Millisekunden, #585) */
+  atByUid: {} as Record<string, number> });
 let unVotes: Unsubscribe | null = null;
 /** Stimmen der Reise beobachten (nur Konto-Reisen, nur Mitglieder); leer bzw. anderer Kennung: aufhören */
 export async function watchVotes(id: string) {
   if (cloudVotes.trip === id && unVotes) return;
   unVotes?.(); unVotes = null;
-  cloudVotes.trip = id; cloudVotes.byUid = {}; cloudVotes.whyByUid = {};
+  cloudVotes.trip = id; cloudVotes.byUid = {}; cloudVotes.whyByUid = {}; cloudVotes.atByUid = {};
   if (!id || !fbUser || !isCloud(id)) return;
   const f = await load();
   if (cloudVotes.trip !== id) return;
@@ -176,6 +178,7 @@ export async function watchVotes(id: string) {
     if (cloudVotes.trip !== id) return;
     cloudVotes.byUid = Object.fromEntries(Object.entries(by).map(([k, d]) => [k, d.v]));
     cloudVotes.whyByUid = Object.fromEntries(Object.entries(by).map(([k, d]) => [k, d.w || {}]));
+    cloudVotes.atByUid = Object.fromEntries(Object.entries(by).map(([k, d]) => [k, d.t || 0]));
   }, () => { unVotes = null; });
 }
 /** Stimmen einer Konto-Reise einmal lesen (Konto → Abstimmung → Möglichkeit → Wert); ohne Konto oder Fehler: leer */
@@ -188,6 +191,7 @@ export async function saveMyVotes(id: string, v: Record<string, Record<string, n
   if (!fbUser) return;
   cloudVotes.byUid = { ...cloudVotes.byUid, [fbUser.uid]: v };
   cloudVotes.whyByUid = { ...cloudVotes.whyByUid, [fbUser.uid]: w };
+  cloudVotes.atByUid = { ...cloudVotes.atByUid, [fbUser.uid]: Date.now() };
   await (await load()).saveVotes(id, fbUser.uid, v, w);
 }
 
@@ -212,7 +216,11 @@ export async function watchSelf(id: string) {
 export async function saveMySelf(id: string, part: SelfDoc) {
   if (!fbUser) return;
   const u = fbUser.uid;
-  if (cloudSelf.trip === id) cloudSelf.byUid = { ...cloudSelf.byUid, [u]: { ...(cloudSelf.byUid[u] || {}), ...part } };
+  if (cloudSelf.trip === id) {
+    const m: SelfDoc = { ...(cloudSelf.byUid[u] || {}), ...part, t: Date.now() };
+    for (const k of Object.keys(part) as (keyof SelfDoc)[]) if (part[k] === undefined) delete m[k];
+    cloudSelf.byUid = { ...cloudSelf.byUid, [u]: m };
+  }
   await (await load()).saveSelf(id, u, part as Record<string, unknown>);
 }
 

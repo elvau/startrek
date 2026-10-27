@@ -136,9 +136,37 @@ export function planDays(p: Pick<AvailPlan, "from" | "to" | "days">): string[] {
   return Array.from({ length: n + 1 }, (_, i) => addDay(p.from, i));
 }
 
+/** Monatsblatt für „Kalender“ (Handy): Wochen Mo–So, Tage außerhalb des Monats null; ym = „JJJJ-MM“ */
+export function monthWeeks(ym: string): (string | null)[][] {
+  const first = `${ym}-01`;
+  const lead = (new Date(toT(first)).getUTCDay() + 6) % 7;
+  const cells: (string | null)[] = Array(lead).fill(null);
+  for (let d = first; d.slice(0, 7) === ym; d = addDay(d, 1)) cells.push(d);
+  while (cells.length % 7) cells.push(null);
+  return Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
+}
+
+/** Ziehen über Tage: alle Tage zwischen a und b (Reihenfolge egal), ausgelassene (unpassend, außerhalb) nicht */
+export function dayRange(a: string, b: string, skip?: (d: string) => boolean): string[] {
+  const [x, y] = a < b ? [a, b] : [b, a];
+  const out: string[] = [];
+  for (let d = x; d <= y; d = addDay(d, 1)) if (!skip?.(d)) out.push(d);
+  return out;
+}
+
+/** Pinsel (#569): Tag schon so markiert → wieder offen, sonst der Pinsel; „leeren“ = undefined */
+export const brushed = (cur: Avail | undefined, brush: Avail | undefined) => (brush && cur !== brush ? brush : undefined);
+
+/** Eintrag einer Person für einen Termin: einheitlich, „mix“ bei verschiedenen Tagen, undefined = alle offen */
+export function blockValue(m: Record<string, Avail> | undefined, from: string, to: string): Avail | "mix" | undefined {
+  const vs = new Set<Avail | undefined>();
+  for (let d = from; d <= to; d = addDay(d, 1)) vs.add(m?.[d]);
+  return vs.size === 1 ? [...vs][0] : "mix";
+}
+
 /** eine Person in einem Zeitraum (An- bis Abreisetag): kann nicht, wenn ein Tag „kann nicht“ ist; offen, wenn ein Tag ohne Eintrag ist;
  *  sonst vielleicht bei einem „vielleicht“, kann nur, wenn alle Tage „kann“ sind */
-function personIn(m: Record<string, Avail> | undefined, from: string, to: string): Avail | "open" {
+export function personIn(m: Record<string, Avail> | undefined, from: string, to: string): Avail | "open" {
   if (!m || !Object.keys(m).length) return "open";
   let maybe = false, unset = false;
   for (let d = from; d <= to; d = addDay(d, 1)) {

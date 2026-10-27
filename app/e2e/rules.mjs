@@ -104,6 +104,9 @@ log("Stimmen: nur die eigene, lesen nur Mitglieder, löschen nur selbst oder die
 // Selbst eintragen (#571): eigenes Dokument je Mitglied, jede Rolle, nur bekannte Felder
 const self = (uid, who, o) => patch(uid, `/trips/regeltest/self/${who}`, o);
 await expect("Mallory (Zuschauer) trägt Termine und Wohnort ein", self("mallory", "mallory", { a: { "2027-09-03": "yes" }, h: { plz: "44787", ort: "Bochum" }, f: { m: [{ n: "Gisela" }], at: "2027-01-01" } }), 200);
+await expect("Mallory: Familie stimmt mit (zählt nicht für, wie, entschieden)", self("mallory", "mallory", { x: ["p1"], l: "p2", d: true }), 200);
+await expect("Mallory: „wie“ zu lang", self("mallory", "mallory", { l: "x".repeat(41) }), 403);
+await expect("Mallory: „entschieden“ kein Wahrheitswert", self("mallory", "mallory", { d: "ja" }), 403);
 await expect("Ben liest Mallorys Angaben", req("ben", "/trips/regeltest/self/mallory"), 200);
 await expect("Fremder liest Mallorys Angaben", req("fremd", "/trips/regeltest/self/mallory"), 403);
 await expect("Fremder trägt sich ein", self("fremd", "fremd", { a: {} }), 403);
