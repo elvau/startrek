@@ -300,7 +300,7 @@ export const GUIDE: GuidePage[] = [
     ],
     steps: [
       "Melde dich an (mit Google oder per E-Mail-Link). Teilen geht nur mit Konto.",
-      "Öffne in der Reise „Teilen“ und kopiere den Einladungslink.",
+      "Tippe im Kapitel „Wer fährt mit“ unter „Gemeinsam planen“ auf „Teilen und Mitglieder“ (auch oben im Reise-Menü) und kopiere den Einladungslink. Liegt die Reise nur auf dem Gerät, heißt der Knopf „Im Konto speichern und teilen“.",
       "Wähle die Rolle: „Plant mit“ darf bearbeiten, „Sieht zu“ darf nur lesen.",
       "Schick den Link per Nachricht an die Mitreisenden. Wer ihn öffnet, ist dabei.",
       "Für Streitfragen eine Abstimmung starten: Frage und Möglichkeiten eintragen (eine pro Zeile), die Art wählen und optional eine Frist setzen.",

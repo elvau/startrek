@@ -13,6 +13,7 @@
   import Help from "./Help.svelte";
   import PollView from "./PollView.svelte";
   import Deciders from "./Deciders.svelte";
+  import ShareBar from "./ShareBar.svelte";
   import PlanCfg from "./PlanCfg.svelte";
   import { calBase, calState, ensureCal, fitWhy, regionLabel } from "../calendarApp.svelte";
   import { defaultCfg, fits, fittingStarts, isWeekend, usefulDays, type DaysCfg } from "../datefit";
@@ -99,15 +100,17 @@
     if (!access.readonly) setAvail(trip, id, d, next);
   }
 
-  /* ---------- Ziehen mit der Maus (#569): links ✓, rechts ✕; einzelner Klick wie bisher ---------- */
-  let drag = $state<{ id: string; v: Avail; start: string; changes: Record<string, Avail>; moved: boolean } | null>(null);
+  /* ---------- Ziehen mit der Maus (#569): links ✓, rechts ✕, auf schon Markiertem entfernen (#574); einzelner Klick wie bisher ---------- */
+  let drag = $state<{ id: string; v: Avail | undefined; right: boolean; start: string; changes: Record<string, Avail | undefined>; moved: boolean } | null>(null);
   let skipClick = false;
   const fine = typeof matchMedia === "function" && matchMedia("(pointer: fine)").matches;
   const shown = (id: string, d: string) => (drag?.id === id && d in drag.changes ? drag.changes[d] : by[id]?.[d]);
   function dragStart(e: PointerEvent, id: string, d: string) {
     if (e.pointerType !== "mouse" || (e.button !== 0 && e.button !== 2) || !canTap(id) || off(d)) return;
-    drag = { id, v: e.button === 2 ? "no" : "yes", start: d, changes: {}, moved: false };
-    if (e.button === 2) drag.changes[d] = "no";
+    const right = e.button === 2, v: Avail = right ? "no" : "yes";
+    // Startkästchen schon so markiert: Ziehen nimmt die Markierung wieder weg
+    drag = { id, v: by[id]?.[d] === v ? undefined : v, right, start: d, changes: {}, moved: false };
+    if (right) drag.changes[d] = drag.v;
     window.addEventListener("pointerup", dragEnd, { once: true });
   }
   function dragOver(id: string, d: string) {
@@ -120,7 +123,7 @@
   function dragEnd() {
     const g = drag;
     drag = null;
-    if (!g || (!g.moved && g.v === "yes")) return;
+    if (!g || (!g.moved && !g.right)) return;
     // der Klick nach dem Loslassen (nur wenn auf demselben Kästchen) soll nicht noch einmal umschalten
     skipClick = true;
     setTimeout(() => (skipClick = false), 0);
@@ -219,6 +222,7 @@
     {@const open = [todo.dates === false ? t("self.todoDates") : "", todo.polls ? tn("self.todoPolls", todo.polls) : "", !todo.home ? t("self.todoHome") : ""].filter(Boolean)}
     <p class="tg-todo small" class:done={!open.length}>{t("self.you", { name: todo.who.name })} {open.length ? t("self.todo", { list: open.join(" · ") }) : `✓ ${t("self.allDone")}`}</p>
   {/if}
+  <ShareBar />
   <Deciders />
   <h3>📅 {t("tg.title")} <Help k="avail" /></h3>
   {#if !plan}
