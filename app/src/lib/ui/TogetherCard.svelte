@@ -13,6 +13,7 @@
   import Help from "./Help.svelte";
   import PollView from "./PollView.svelte";
   import Deciders from "./Deciders.svelte";
+  import ShareBar from "./ShareBar.svelte";
   import PlanCfg from "./PlanCfg.svelte";
   import { calBase, calState, ensureCal, fitWhy, regionLabel } from "../calendarApp.svelte";
   import { defaultCfg, fits, fittingStarts, isWeekend, usefulDays, type DaysCfg } from "../datefit";
@@ -219,6 +220,7 @@
     {@const open = [todo.dates === false ? t("self.todoDates") : "", todo.polls ? tn("self.todoPolls", todo.polls) : "", !todo.home ? t("self.todoHome") : ""].filter(Boolean)}
     <p class="tg-todo small" class:done={!open.length}>{t("self.you", { name: todo.who.name })} {open.length ? t("self.todo", { list: open.join(" · ") }) : `✓ ${t("self.allDone")}`}</p>
   {/if}
+  <ShareBar />
   <Deciders />
   <h3>📅 {t("tg.title")} <Help k="avail" /></h3>
   {#if !plan}
