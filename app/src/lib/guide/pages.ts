@@ -315,7 +315,8 @@ export const GUIDE: GuidePage[] = [
       "Damit deine Stimme zählt, sag kurz, wer du in der Reise bist. Die App zeigt, wer noch nicht abgestimmt hat.",
       "Im Gruppenchat schreiben alle Mitglieder, auch wer nur zusieht. Die Zahl am 💬-Knopf zeigt neue Nachrichten. Bilder werden verkleinert, Videos und Sprachnachrichten gibt es nicht.",
       "Wer über den Link beitritt und „Wer bist du?“ beantwortet, trägt seine Termine und den Wohnort der Familie selbst ein, auch mit „Sieht zu“. Die eigene Familie aus dem Konto geht als Vorschlag an die Planer.",
-      "Im Raster mit gedrückter linker Maustaste ziehen setzt ✓ über mehrere Tage, mit der rechten ✕. Auf dem Handy gibt es die Ansicht „Wochenenden“: je Termin einmal antippen.",
+      "Termine eintragen in der Ansicht „Kalender“ (auf dem Handy die Vorgabe): oben „kann“, „vielleicht“, „kann nicht“ oder „leeren“ wählen, dann Tage antippen oder darüberziehen. Auf dem Handy zum Ziehen seitlich ansetzen, senkrecht scrollt die Seite. Punkte unter dem Tag zeigen, wie viele andere können.",
+      "Im „Raster“ siehst du alle Personen auf einmal. Mit gedrückter linker Maustaste ziehen setzt ✓ über mehrere Tage, mit der rechten ✕. In der Ansicht „Wochenenden“ trägst du je Termin mit einem Tipp ein und siehst darunter, wer kann; „gemischt“ heißt, die Tage sind verschieden eingetragen.",
       "Ferien und Feiertage kommen aus der Ferien-Region jeder Familie. Sie wird aus der PLZ geschätzt und lässt sich in den Familien-Einstellungen ändern."
     ],
     faq: [
