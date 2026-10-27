@@ -8,6 +8,7 @@
   import { access, app } from "../store.svelte";
   import { cloud, cloudSelf, cloudTrip, cloudVotes, saveMySelf } from "../cloud/cloud.svelte";
   import { travelerOf } from "../claims";
+  import { hhKey, isActive } from "../model";
   import { availStand, memberState, mergedAvail, selfRows } from "../self";
   import { dateDE, dayShort } from "../format";
   import Help from "./Help.svelte";
@@ -19,7 +20,7 @@
   import FamBar from "./FamBar.svelte";
   import FamFor from "./FamFor.svelte";
   import { calBase, calState, ensureCal, fitWhy, regionLabel } from "../calendarApp.svelte";
-  import { defaultCfg, fits, fittingStarts, isWeekend, usefulDays, type DaysCfg } from "../datefit";
+  import { defaultCfg, fits, fittingStarts, isWeekend, schoolDay, usefulDays, type DaysCfg } from "../datefit";
   import { getLocalMe, pollStand, setLocalMe, sharedVoting } from "../polls.svelte";
   import { addDay, addPoll, applyResult, bestPeriods, blockValue, cycle, personIn, grownUps, missing, newPoll, notDeciding, planDays, planError, setAvail, tally, vote, voters, type Avail, type Period, type PollMode, type Vote } from "../together";
 
@@ -56,8 +57,13 @@
   const fErr = $derived(planError(draft.from, draft.to, draft.nights));
   const pErr = $derived(plan ? planError(plan.from, plan.to, plan.nights) : "");
   // Feiertage und Ferien der Familien (#568): sofort mit Regionen, Daten kommen nach
-  $effect(() => { void ensureCal(trip); });
-  const ctx = $derived(calState.ctx ?? calBase(trip));
+  // Ferien gibt vor, wer die Reise angelegt hat (#584): Besitzer der geteilten Reise, sonst die erste Person
+  const leadHh = $derived.by(() => {
+    const o = ct?.owner ? travelerOf(trip, ct.owner, claims) : trip.travelers.find(isActive);
+    return o ? hhKey(o) : undefined;
+  });
+  $effect(() => { void ensureCal(trip, leadHh); });
+  const ctx = $derived(calState.ctx ?? calBase(trip, leadHh));
   function openForm() {
     const today = new Date().toISOString().slice(0, 10);
     const from = trip.from && trip.from > today ? addDay(trip.from, -14) : addDay(today, 21);
@@ -96,7 +102,9 @@
     return out;
   });
   const ferienRegions = $derived(Object.keys(ctx.regions).filter(r => Object.values(ctx.marks[r] || {}).some(m => m.school)));
-  const best = $derived(plan ? bestPeriods({ ...trip, avail: { ...plan, by } }, 3, okFn) : []);
+  // ohne Schultage anderer Familien zuerst (#584), sonst Reihenfolge wie bestPeriods
+  const clashN = (r: Period) => plan?.school ? Object.values(fits(r.from, r.to, plan, ctx).clash).reduce((a, b) => a + b, 0) : 0;
+  const best = $derived(plan ? bestPeriods({ ...trip, avail: { ...plan, by } }, 3, okFn).map((r, i) => ({ r, i, n: clashN(r) })).sort((a, b) => a.n - b.n || a.i - b.i).map(x => x.r) : []);
   const SIGN: Record<Avail, string> = { yes: "✓", maybe: "~", no: "✕" };
   function tap(id: string, d: string) {
     applyDays(id, { [d]: cycle(by[id]?.[d]) });
@@ -297,7 +305,7 @@
       {#each ferienRegions as r (r)}
         <div class="tg-row tg-fer" aria-hidden="true">
           <span class="tg-name">{regionLabel(r)}</span>
-          {#each cols as c (c.d)}{#if c.gap !== undefined}<span class="tg-gap"></span>{:else}<span class="tg-f" class:on={!!ctx.marks[r]?.[c.d]?.school} title={ctx.marks[r]?.[c.d]?.school || ""}></span>{/if}{/each}
+          {#each cols as c (c.d)}{#if c.gap !== undefined}<span class="tg-gap"></span>{:else}{@const sch = !!plan.school && r !== ctx.lead && ctx.kidRegions.includes(r) && schoolDay(ctx, r, c.d)}<span class="tg-f" class:on={!!ctx.marks[r]?.[c.d]?.school} class:sch title={ctx.marks[r]?.[c.d]?.school || (sch ? t("tg.schoolDay") : "")}></span>{/if}{/each}
         </div>
       {/each}
       <div class="tg-row tg-days" role="row">
@@ -428,6 +436,7 @@
   .tg-fer .tg-name { font-size: 10.5px; color: var(--ink-3); }
   .tg-f { flex: none; width: 26px; height: 6px; border-radius: 2px; }
   .tg-f.on { background: #5A7FB8; }
+  .tg-f.sch { background: #C4452E; }
   /* Handy: unpassende Tage ganz weg (kompakt), sonst schmal */
   @media (max-width: 640px) { .tg-c { width: 30px; height: 30px; } .tg-d, .tg-f { width: 30px; } }
   .tg-view { align-self: flex-start; display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }

@@ -54,7 +54,8 @@
     {#if len === 4}<label class="f pc-n">{t("tg.nights")}<input class="n sm" type="number" min="4" max="21" bind:value={cfg.nights} disabled={ro} /></label>{/if}
   {/if}
   <label class="pc-chk"><input type="checkbox" class="pc-school" checked={!!cfg.school} disabled={ro} onchange={e => setSchool(e.currentTarget.checked)} />
-    <span><b>{t("tg.school")}</b> <span class="muted">{t("tg.schoolHint")}</span>{#if kids.length}<br /><span class="muted">{t("tg.schoolKids", { list: kids.join(", ") })}</span>{/if}</span></label>
+    <span><b>{t("tg.school")}</b> <span class="muted">{t("tg.schoolHint")}</span>{#if kids.length}<br /><span class="muted">{t("tg.schoolKids", { list: kids.join(", ") })}</span>{/if}
+      {#if cfg.school}<br /><span class="pc-lead">{ctx.lead ? t("tg.leadR", { r: regionLabel(ctx.lead) }) : t("tg.noRegion")}</span>{/if}</span></label>
   {#if we}
     <label class="pc-chk" class:dim={cfg.school}><input type="checkbox" class="pc-bridges" checked={!!cfg.bridges} disabled={ro || cfg.school} onchange={e => { if (e.currentTarget.checked) cfg.bridges = true; else delete cfg.bridges; }} />
       <span><b>{t("tg.bridges")}</b> <span class="muted">{t("tg.bridgesHint")}</span></span></label>
@@ -67,7 +68,8 @@
       {/each}
     </div>
   </div>
-  <p class="muted small pc-regs">{regs.length ? t("tg.ferRegions", { list: regs.map(([r, hh]) => `${regionLabel(r)} (${hh.join(", ")})`).join(" · ") }) : t("tg.ferNone")}</p>
+  <p class="muted small pc-regs">{regs.length ? t("tg.ferRegions", { list: regs.map(([r, hh]) => `${regionLabel(r)} (${hh.join(", ")})`).join(" · ") }) : t("tg.ferNone")}
+    {#if ctx.lead && ctx.assumed?.length}<br />{t("tg.assumed", { r: regionLabel(ctx.lead), list: ctx.assumed.join(", ") })}{/if}</p>
 
   {#if filtered}
     <div class="pc-prev" aria-live="polite">
@@ -82,6 +84,7 @@
 </div>
 
 <style>
+  .pc-lead { color: var(--ink-2); font-size: 12.5px; }
   .pc { display: flex; flex-direction: column; gap: 10px; }
   .pc p { margin: 0; }
   .pc-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
