@@ -251,6 +251,16 @@ try {
     && (await tg.locator(".tg-others").innerText()).includes("Cleo"), "Cleo entscheidet nicht mit");
   await tg.locator(".dec-quick .chip", { hasText: "Alle Erwachsenen" }).click();
   await until(async () => (await tg.locator(".dec-sum").innerText()).startsWith("Alle Erwachsenen") && (await tg.locator(".tg-row .tg-name", { hasText: "Cleo" }).count()) === 1, "wieder alle");
+  // Schnellwahl je Familie (#576): Umschalten, nicht ersetzen (Start: alle drin)
+  const on = tg.locator(".dec-people .chip.on");
+  await tg.locator(".dec-fam .chip", { hasText: "Hase" }).click();
+  await until(async () => (await on.count()) === 2 && (await tg.locator(".dec-sum").innerText()) === "2 von 3", "Familie Hase raus, Klein bleibt");
+  await tg.locator(".dec-fam .chip", { hasText: "Klein" }).click();
+  await until(async () => (await on.count()) === 2, "letzte Familie lässt sich nicht abwählen");
+  await tg.locator(".dec-fam .chip", { hasText: "Hase" }).click();
+  await until(async () => (await on.count()) === 3, "Familie Hase wieder dazu");
+  await tg.locator(".dec-quick .chip", { hasText: "Alle Erwachsenen" }).click();
+  await until(async () => (await tg.locator(".dec-sum").innerText()).startsWith("Alle Erwachsenen"), "wieder alle nach Familien-Schnellwahl");
   await tg.locator(".dec-edit").click();
   log("Wer entscheidet mit: Abwählen nimmt die Person aus „Termin finden“ (Hinweis „trägt nicht ein“), „Alle Erwachsenen“ stellt zurück");
   // Welche Tage (#568): nur Wochenenden Fr–So im September/Oktober 2027; Raster nur mit diesen Tagen (#569)
