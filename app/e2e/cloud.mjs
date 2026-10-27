@@ -241,6 +241,16 @@ try {
   await ogc.locator(".ai-head .x").click();
   log("Gruppenchat: Zuschauerin schreibt, Zähler bei Anna, Bild verkleinert als JPEG und Link kommen an, kein Video, löschen nur eigene");
 
+  // Teilen direkt in „Gemeinsam planen“: Anna „Teilen und Mitglieder“, Oma (sieht zu) „Mitglieder“
+  await atg.scrollIntoViewIfNeeded();
+  if (!(await atg.locator(".sb-share").innerText()).includes("Teilen und Mitglieder") || !(await otg.locator(".sb-share").innerText()).includes("Mitglieder")) fail("Teilen-Knopf in „Gemeinsam planen“ fehlt");
+  await atg.locator(".sb-share").click();
+  const sd = anna.locator(".modal", { has: anna.locator(".members") });
+  await until(async () => (await sd.innerText().catch(() => "")).includes("Oma"), "Teilen-Fenster mit Mitgliedern");
+  await anna.keyboard.press("Escape");
+  await sd.waitFor({ state: "detached" });
+  log("Teilen: Knopf direkt in „Gemeinsam planen“ öffnet das Fenster mit Link und Mitgliedern");
+
   // Selbst eintragen (#571): Anna startet „Termin finden“; Oma (nur ansehen) trägt ihre Zeile und den Wohnort ihrer Familie selbst ein
   await atg.scrollIntoViewIfNeeded();
   await atg.locator(".tg-open").click();
