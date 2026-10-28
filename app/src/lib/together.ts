@@ -4,7 +4,7 @@
  * gewünschte Zahl an Nächten. Abstimmungen über Termine, Angebote eines Postens oder frei, je Person 👍, egal, 👎.
  * Alles liegt in der Reise (trip.avail, trip.polls), wie die übrigen Reisedaten; Personen sind Kennungen der Reisenden.
  */
-import { AGE, isActive, uid, type Trip } from "./model";
+import { AGE, hhKey, isActive, uid, type Trip } from "./model";
 import type { DaysCfg } from "./datefit";
 
 export type Avail = "yes" | "maybe" | "no";
@@ -99,6 +99,17 @@ export function circles(trip: Trip): Circle[] {
   const rest = all.filter(x => !x.group).map(x => x.id);
   if (out.length && rest.length) out.push({ key: "", ids: rest });
   return out;
+}
+/** Schnellwahl je Familie (Haushalt), nur wenn es mehrere gibt (#576); Namen der Haushalte, Erwachsene je Haushalt */
+export function familyCircles(trip: Trip): Circle[] {
+  const out: Circle[] = [];
+  for (const x of grownUps(trip)) { const k = hhKey(x), c = out.find(c => c.key === k); if (c) c.ids.push(x.id); else out.push({ key: k, ids: [x.id] }); }
+  return out.length > 1 ? out : [];
+}
+/** Familie an- bzw. abwählen (Umschalten, nicht ersetzen): sind schon alle drin, raus (die letzte Person bleibt), sonst dazu */
+export function toggleFamily(current: string[], ids: string[]): string[] {
+  const cur = new Set(current);
+  return ids.every(id => cur.has(id)) ? current.filter(id => !ids.includes(id)) : [...new Set([...current, ...ids])];
 }
 /** Auswahl setzen: alle Erwachsenen (bzw. leer) heißt keine Einschränkung */
 export function setDeciders(trip: Trip, ids: string[]) {
