@@ -59,6 +59,24 @@ describe("Welche Tage (#568)", () => {
     expect(fits("2027-05-12", "2027-05-16", { days: "weekend", bridges: true, school: true }, c).ok).toBe(false);
   });
 
+  it("schulkindkonform (#584): Region des Erstellers gibt vor, Schultage anderer Familien als Konflikt", () => {
+    // NRW gibt vor, Kinder auch in Niedersachsen: Herbstferien NRW passen, Niedersachsen hat dort noch 3 Schultage (Mo–Mi)
+    const c = { ...ctx(["DE-NW", "DE-NI"]), lead: "DE-NW", kids: true };
+    expect(fits("2027-10-08", "2027-10-15", { school: true }, c)).toMatchObject({ ok: true, clash: { "DE-NI": 3 } });
+    // Niedersachsen gibt vor: dieselbe Woche passt nicht
+    expect(fits("2027-10-08", "2027-10-15", { school: true }, { ...c, lead: "DE-NI" }).ok).toBe(false);
+    // außerhalb der Ferien nur Wochenenden
+    expect(fits("2027-09-17", "2027-09-19", { school: true }, c)).toMatchObject({ ok: true, clash: {} });
+    expect(fits("2027-09-20", "2027-09-22", { school: true }, c).ok).toBe(false);
+  });
+
+  it("schulkindkonform ohne bekannte Region: Mo–Fr sind Schultage, nicht mehr alle Tage", () => {
+    const c: CalCtx = { regions: {}, kidRegions: [], marks: {}, kids: true };
+    expect(fits("2027-09-20", "2027-09-22", { school: true }, c).ok).toBe(false);
+    expect(fits("2027-09-17", "2027-09-19", { school: true }, c).ok).toBe(true);
+    expect(defaultCfg(c).school).toBe(true);
+  });
+
   it("passende Starttage und Tage fürs Raster; Vorgabe schulkindkonform mit Schulkindern", () => {
     const days = Array.from({ length: 30 }, (_, i) => addDay("2027-09-01", i));
     const starts = fittingStarts(days, 2, "2027-09-30", { days: "weekend" }, ctx());

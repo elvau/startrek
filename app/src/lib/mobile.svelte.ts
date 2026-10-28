@@ -31,6 +31,8 @@ let recheck = () => {};
 
 /** nach dem Neuladen wieder auf der Seite, die offen war (wie der Scrollstand am Desktop, #255); nur in diesem Tab */
 const PAGE_KEY = "sf-mob-page";
+/** Anstupser schon gezeigt (auf dem Gerät) */
+const NUDGE_KEY = "sf-mob-nudged";
 let tripId = "";
 
 function setPage(p: PageKey) {
@@ -79,7 +81,17 @@ export function attachPager(el: HTMLElement, trip = ""): () => void {
   el.addEventListener("scroll", on, { passive: true });
   if (back && back !== "hero") requestAnimationFrame(() => goPage(back!, false));
   else { el.scrollTo({ left: 0 }); tick(); }
-  return () => { el.removeEventListener("scroll", on); el.removeEventListener("touchstart", touch); if (pager === el) { pager = null; document.body.classList.remove("mob-pager"); } };
+  // einmal je Gerät: die Seiten rucken kurz an, damit man sieht, dass daneben weitere liegen (Stil in mobile.css)
+  let nudge: ReturnType<typeof setTimeout> | undefined;
+  try {
+    if (!localStorage.getItem(NUDGE_KEY)) nudge = setTimeout(() => {
+      el.classList.add("nudge");
+      el.addEventListener("animationend", () => el.classList.remove("nudge"), { once: true });
+      try { localStorage.setItem(NUDGE_KEY, "1"); } catch { /* egal */ }
+    }, 1200);
+  } catch { /* egal */ }
+  return () => {
+    clearTimeout(nudge); el.removeEventListener("scroll", on); el.removeEventListener("touchstart", touch); if (pager === el) { pager = null; document.body.classList.remove("mob-pager"); } };
 }
 
 /** Breite beobachten: Handy-Ansicht an oder aus */

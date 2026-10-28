@@ -9,6 +9,7 @@ import { personAge } from "./people";
 import { holidayPlace } from "./holidays";
 import { travelerOf, type Claims } from "./claims";
 import type { Avail } from "./together";
+import { accounts, stand, type FamCfg } from "./famvote";
 
 export interface SelfHome { plz?: string; cc?: string; lat?: number; lon?: number; ort?: string; region?: string }
 export interface FamMember { n: string; age?: number | null; kind?: "adult" | "child" | "infant" }
@@ -19,6 +20,12 @@ export interface SelfDoc {
   h?: SelfHome;
   /** Vorschlag: die übrigen Mitglieder der eigenen Familie (ohne einen selbst), mit Zeitpunkt (ISO) */
   f?: { m: FamMember[]; at: string };
+  /** Familie stimmt mit (#585): abgewählt (zählt nicht für), stimmt wie, entschieden */
+  x?: string[];
+  l?: string;
+  d?: boolean;
+  /** zuletzt gespeichert (Millisekunden, nur gelesen) */
+  t?: number;
 }
 export type Selfs = Record<string, SelfDoc>;
 
@@ -50,6 +57,12 @@ export function parseSelf(d: Record<string, unknown>): SelfDoc {
     });
     out.f = { m, at: f.at.slice(0, 30) };
   }
+  if (Array.isArray(d.x)) out.x = d.x.filter((v): v is string => typeof v === "string").slice(0, 12).map(v => v.slice(0, 40));
+  const l = str(d.l, 40);
+  if (l) out.l = l;
+  if (d.d === true) out.d = true;
+  const at = d.at as { toMillis?: () => number } | undefined;
+  if (typeof at?.toMillis === "function") out.t = at.toMillis();
   return out;
 }
 
@@ -60,12 +73,25 @@ function owners(trip: Trip, selfs: Selfs, claims: Claims): [string, Traveler, Se
 
 /** Verfügbarkeit mit den selbst eingetragenen Zeilen (die eigene Angabe gewinnt) */
 export function mergedAvail(trip: Trip, selfs: Selfs, claims: Claims): Record<string, Record<string, Avail>> {
+  const by = ownAvail(trip, selfs, claims);
+  // Familie (#585): Zeilen ohne eigene Angaben wie ein Familienmitglied
+  for (const [t, s] of Object.entries(availStand(trip, selfs, claims))) by[t] = { ...by[s] };
+  return by;
+}
+function ownAvail(trip: Trip, selfs: Selfs, claims: Claims): Record<string, Record<string, Avail>> {
   const by = { ...(trip.avail?.by || {}) };
   for (const [, x, s] of owners(trip, selfs, claims)) {
     if (!s.a) continue;
     if (Object.keys(s.a).length) by[x.id] = { ...s.a }; else delete by[x.id];
   }
   return by;
+}
+/** Konten der Reise mit ihren Familien-Einstellungen (#585) */
+export const famAccounts = (trip: Trip, selfs: Selfs, claims: Claims) => accounts(trip, claims, u => selfs[u] as (FamCfg & { t?: number }) | undefined);
+/** Termin finden (#585): wessen Zeile für wen gilt (Ziel → Quelle); eigene Zeile = Einträge oder selbst gepflegt (auch leer) */
+export function availStand(trip: Trip, selfs: Selfs, claims: Claims): Record<string, string> {
+  const by = ownAvail(trip, selfs, claims), self = selfRows(trip, selfs, claims), acct = famAccounts(trip, selfs, claims);
+  return stand(trip, acct, id => self.has(id) || !!(by[id] && Object.keys(by[id]).length), id => acct[id]?.at || 0);
 }
 
 /** Reisende, deren Zeile jemand selbst pflegt (für andere gesperrt) */

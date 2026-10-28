@@ -181,7 +181,8 @@ export function watchSelf(id: string, fn: (byUid: Record<string, Record<string, 
 }
 /** nur die genannten Felder schreiben (ganz ersetzen), die übrigen bleiben */
 export const saveSelf = (id: string, uid: string, part: Record<string, unknown>) =>
-  setDoc(doc(start().db, "trips", id, "self", uid), { ...part, at: serverTimestamp() }, { mergeFields: [...Object.keys(part), "at"] });
+  // undefined: Feld löschen (z. B. eigene Termine verwerfen, #585)
+  setDoc(doc(start().db, "trips", id, "self", uid), { ...Object.fromEntries(Object.entries(part).map(([k, v]) => [k, v === undefined ? deleteField() : v])), at: serverTimestamp() }, { mergeFields: [...Object.keys(part), "at"] });
 
 /* ---------- Gruppenchat: je Nachricht ein Dokument trips/{id}/chat/{msgId} ---------- */
 
@@ -221,11 +222,13 @@ async function ownChat(id: string, uid: string) {
 export type VoteMap = Record<string, Record<string, number>>;
 /** zu „Ohne mich“ (#439): je Abstimmung und Möglichkeit Grund (freiwillig) und „mit Familie“ */
 export type WhyMap = Record<string, Record<string, { r?: string; f?: boolean }>>;
-export interface VoteDoc { v: VoteMap; w?: WhyMap }
+export interface VoteDoc { v: VoteMap; w?: WhyMap; t?: number }
 export function watchVotes(id: string, fn: (byUid: Record<string, VoteDoc>) => void, err: (e: Error) => void): Unsubscribe {
   return onSnapshot(collection(start().db, "trips", id, "votes"), s => fn(Object.fromEntries(s.docs.map(d => {
-    const x = d.data() as Partial<VoteDoc>;
-    return [d.id, { v: x.v || {}, ...(x.w ? { w: x.w } : {}) }];
+    const x = d.data() as Partial<VoteDoc> & { at?: { toMillis?: () => number } };
+    // Zeitpunkt für „zählt auch für“ (#585): bei mehreren Familienmitgliedern gilt die neueste Stimme
+    const t = typeof x.at?.toMillis === "function" ? x.at.toMillis() : undefined;
+    return [d.id, { v: x.v || {}, ...(x.w ? { w: x.w } : {}), ...(t ? { t } : {}) }];
   }))), err);
 }
 /** Stimmen einer Reise einmal lesen (Stand auf der Startseiten-Kachel, #429) */

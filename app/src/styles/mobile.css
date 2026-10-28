@@ -63,3 +63,9 @@ body.mob .pg-hero .hero .total > *{max-width:100%;min-width:0}
 body.mob .top:not(.on-home) .tm-plus{display:none}
 body.mob .top:not(.on-home) .acct .tm-btn .acct-lbl{display:none}
 body.mob .top:not(.on-home) .acct .tm-btn .acct-ico{display:inline}
+/* einmal je Gerät: Seiten rucken kurz an (mobile.svelte.ts), die nächste blitzt am Rand auf */
+body.mob main.pager.nudge > .chapter{animation:pg-nudge 1s ease-in-out}
+[dir="rtl"] body.mob main.pager.nudge > .chapter{animation-name:pg-nudge-rtl}
+@keyframes pg-nudge{0%,100%{transform:none}35%,55%{transform:translateX(-44px)}}
+@keyframes pg-nudge-rtl{0%,100%{transform:none}35%,55%{transform:translateX(44px)}}
+@media (prefers-reduced-motion:reduce){body.mob main.pager.nudge > .chapter{animation:none}}

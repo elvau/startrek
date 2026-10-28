@@ -6,32 +6,41 @@
 import { i18n, tn } from "./i18n/index.svelte";
 import { calendarMarks, holidayPlace, regionName } from "./holidays";
 import { loaded, loadHolidays, loadRegions } from "./holidaysApp.svelte";
-import { hhKey, isActive, type Trip } from "./model";
+import { hhKey, isActive, type Traveler, type Trip } from "./model";
 import { householdRegion } from "./plzRegion";
 import type { CalCtx, Fit } from "./datefit";
 
-/** Schulalter (ungefähr): ab 6 bis 18 */
-const schoolKid = (age?: number | null) => age != null && age >= 6 && age <= 18;
+/** Schulalter (ungefähr): ab 6 bis 18; ohne Alter zählt ein Kind (Platzhalter „Kind 1“) mit, Kleinkinder nicht (#584) */
+const schoolKid = (x: Traveler) => (x.age != null ? x.age >= 6 && x.age <= 18 : x.kind === "child");
 
-/** Regionen und Familien mit Schulkindern, ohne Daten */
-export function calBase(trip: Trip): CalCtx {
-  const regions: Record<string, string[]> = {}, kid = new Set<string>();
-  for (const x of trip.travelers.filter(isActive)) {
+/**
+ * Regionen und Familien mit Schulkindern, ohne Daten. Vorgabe (#584): Region der Familie leadHh (wer die Reise angelegt
+ * hat), sonst die erste bekannte; Familien ohne Wohnort bekommen sie.
+ */
+export function calBase(trip: Trip, leadHh?: string): CalCtx {
+  const act = trip.travelers.filter(isActive);
+  const own = (hh: string) => householdRegion(trip.households?.[hh])?.region;
+  const lead = (leadHh && own(leadHh)) || act.map(x => own(hhKey(x))).find(Boolean);
+  const regions: Record<string, string[]> = {}, kid = new Set<string>(), assumed = new Set<string>();
+  let kids = false;
+  for (const x of act) {
     const hh = hhKey(x);
-    const r = householdRegion(trip.households?.[hh])?.region;
+    if (schoolKid(x)) kids = true;
+    const r = own(hh) || lead;
     if (!r) continue;
+    if (!own(hh)) assumed.add(hh);
     if (!(regions[r] ||= []).includes(hh)) regions[r].push(hh);
-    if (schoolKid(x.age)) kid.add(r);
+    if (schoolKid(x)) kid.add(r);
   }
-  return { regions, kidRegions: [...kid], marks: {} };
+  return { regions, kidRegions: [...kid], marks: {}, ...(lead ? { lead } : {}), kids, ...(assumed.size ? { assumed: [...assumed] } : {}) };
 }
 
 export const calState = $state({ key: "", ctx: null as CalCtx | null, loading: false });
 
 /** Daten für die Reise laden (einmal je Stand der Regionen und Sprache); bis dahin calBase */
-export async function ensureCal(trip: Trip) {
-  const base = calBase(trip);
-  const key = JSON.stringify([base.regions, base.kidRegions, i18n.lang]);
+export async function ensureCal(trip: Trip, leadHh?: string) {
+  const base = calBase(trip, leadHh);
+  const key = JSON.stringify([base.regions, base.kidRegions, base.lead, base.kids, base.assumed, i18n.lang]);
   if (calState.key === key) return;
   void loadRegions();
   calState.key = key; calState.ctx = base; calState.loading = true;
@@ -56,5 +65,7 @@ export function fitWhy(f: Fit, ctx: CalCtx): string {
   const vs = Object.entries(f.vac);
   const same = vs.length === n && new Set(vs.map(([, v]) => v)).size === 1;
   const vac = !vs.length ? "" : same || n < 2 ? tn("tg.vac", vs[0][1]) : vs.map(([r, v]) => `${regionLabel(r)}: ${tn("tg.vac", v)}`).join(", ");
-  return [...f.hols, ...new Set(Object.values(f.ferien)), vac].filter(Boolean).join(" · ");
+  // Schultage anderer Familien (#584)
+  const clash = Object.entries(f.clash || {}).map(([r, k]) => tn("tg.clash", k, { fam: (ctx.regions[r] || []).join(", ") || regionLabel(r) }));
+  return [...f.hols, ...new Set(Object.values(f.ferien)), vac, ...clash].filter(Boolean).join(" · ");
 }

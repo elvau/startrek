@@ -298,8 +298,29 @@ try {
   await tg.locator(".tg-view button", { hasText: "Raster" }).click();
   const ben = tg.locator(".tg-row").filter({ hasText: "Ben" }).locator(".tg-c:not(.x)");
   if ((await ben.allInnerTexts()).slice(0, 3).join("") !== "✓✓✓") fail("Wochenend-Ansicht nicht im Raster");
+  // Kalender (#569, Handy): Cleo zieht „vielleicht“ über das erste Wochenende, antippt ✕ am zweiten Freitag; gleiche Daten wie das Raster
+  await tg.locator(".tg-view button", { hasText: "Kalender" }).click();
+  await tg.locator(".tg-for select").selectOption({ label: "Cleo" });
+  await tg.locator(".tc-b.maybe").click();
+  const calDay = d => tg.locator(`.tc-d[data-d="${d}"]`);
+  const mid = async d => { const b = await calDay(d).boundingBox(); return [b.x + b.width / 2, b.y + b.height / 2]; };
+  await calDay("2027-09-03").scrollIntoViewIfNeeded();
+  await gp.mouse.move(...await mid("2027-09-03")); await gp.mouse.down(); await gp.mouse.move(...await mid("2027-09-04")); await gp.mouse.move(...await mid("2027-09-05")); await gp.mouse.up();
+  await tg.locator(".tc-b.no").click();
+  await calDay("2027-09-10").click();
+  if (!(await calDay("2027-09-04").getAttribute("aria-label")).includes("2 können")) fail("Kalender zeigt nicht, dass Anna und Ben können");
+  if (!(await calDay("2027-09-02").isDisabled())) fail("unpassender Tag im Kalender wählbar");
+  await tg.locator(".tg-view button", { hasText: "Raster" }).click();
+  const cleo = tg.locator(".tg-row").filter({ hasText: "Cleo" }).locator(".tg-c:not(.x)");
+  if ((await cleo.allInnerTexts()).slice(0, 4).join("") !== "~~~✕") fail("Kalender nicht im Raster: " + (await cleo.allInnerTexts()).slice(0, 4).join(""));
+  await tg.locator(".tg-view button", { hasText: "Wochenenden" }).click();
+  await tg.locator(".tg-for select").selectOption({ label: "Anna" });
+  const wk2 = tg.locator(".tg-block").nth(1);
+  // Anna: nur Fr 17.09. ✓ (Einzelklick oben) → drittes Wochenende gemischt; Cleo am zweiten ✕
+  if (!(await wk2.locator(".tg-pw.no", { hasText: "Cleo" }).count())) fail("Wochenenden: Cleo ✕ fehlt");
+  if (!(await tg.locator(".tg-block").nth(2).locator(".tg-mix").count())) fail("Wochenenden: „gemischt“ fehlt");
   await gp.evaluate(() => localStorage.removeItem("rk2-tgview"));
-  log("Welche Tage: nur Wochenenden (9 im Sept./Okt.), Raster nur mit diesen Tagen; Ziehen links ✓, rechts ✕; Ansicht je Wochenende schreibt dieselben Tage");
+  log("Welche Tage: nur Wochenenden (9 im Sept./Okt.), Raster nur mit diesen Tagen; Ziehen links ✓, rechts ✕; Ansicht je Wochenende und Kalender (ziehen mit Pinsel) schreiben dieselben Tage");
 
   // neu anlegen: erst Erklärung und Knopf (sah sonst wie das Reisedatum aus); Bis vor Von oder zu kurz: Hinweis, Loslegen gesperrt
   await tg.locator(".tg-reset").click();

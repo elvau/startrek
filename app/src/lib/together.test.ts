@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { circles, familyCircles, toggleFamily, notDeciding, setDeciders, voters, variantPoll, variantStand, applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, planError, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
+import { blockValue, brushed, dayRange, monthWeeks, personIn, circles, familyCircles, toggleFamily, notDeciding, setDeciders, voters, variantPoll, variantStand, applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, planError, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
 
 const trip = (): Trip => ({
   id: "t", name: "Reise", place: "", country: "", items: [], tiers: {}, settings: DEFAULT_SETTINGS,
@@ -166,6 +166,34 @@ describe("Termin finden: Zeitraum prüfen", () => {
     expect(planError("2026-11-05", "2026-11-10", 7)).toBe("nights");
     expect(planError("2026-11-05", "2026-11-12", 7)).toBe("");
     expect(planError("", "2026-11-12", 7)).toBe("");
+  });
+});
+
+describe("Termin finden: Kalender am Handy", () => {
+  it("Monatsblatt Mo–So mit leeren Feldern davor und danach", () => {
+    const w = monthWeeks("2027-03");
+    expect(w[0]).toEqual(["2027-03-01", "2027-03-02", "2027-03-03", "2027-03-04", "2027-03-05", "2027-03-06", "2027-03-07"]);
+    expect(w.length).toBe(5);
+    expect(w[4]).toEqual(["2027-03-29", "2027-03-30", "2027-03-31", null, null, null, null]);
+    expect(monthWeeks("2027-08")[0].slice(0, 6)).toEqual([null, null, null, null, null, null]);
+    expect(monthWeeks("2027-02").flat().filter(Boolean).length).toBe(28);
+  });
+  it("Ziehen: Tage zwischen Start und Ende in beide Richtungen, unpassende ausgelassen", () => {
+    expect(dayRange("2027-03-07", "2027-03-05")).toEqual(["2027-03-05", "2027-03-06", "2027-03-07"]);
+    expect(dayRange("2027-03-05", "2027-03-13", d => d > "2027-03-07" && d < "2027-03-12")).toEqual(["2027-03-05", "2027-03-06", "2027-03-07", "2027-03-12", "2027-03-13"]);
+  });
+  it("Pinsel: setzt, nimmt Gleiches wieder weg, leeren", () => {
+    expect(brushed(undefined, "yes")).toBe("yes");
+    expect(brushed("no", "yes")).toBe("yes");
+    expect(brushed("yes", "yes")).toBeUndefined();
+    expect(brushed("maybe", undefined)).toBeUndefined();
+  });
+  it("Termin je Person: einheitlich, gemischt oder offen", () => {
+    const m = { "2027-03-05": "yes", "2027-03-06": "yes", "2027-03-07": "maybe" } as const;
+    expect(blockValue(m, "2027-03-05", "2027-03-06")).toBe("yes");
+    expect(blockValue(m, "2027-03-05", "2027-03-07")).toBe("mix");
+    expect(blockValue(m, "2027-03-12", "2027-03-14")).toBeUndefined();
+    expect(personIn(m, "2027-03-05", "2027-03-07")).toBe("maybe");
   });
 });
 
