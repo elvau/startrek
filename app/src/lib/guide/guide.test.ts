@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GUIDE_ART, guideArtSvg } from "./art";
-import { GUIDE, guideSitemapUrls, renderGuideIndex, renderGuidePage } from "./pages";
+import { GUIDE, GUIDE_UPDATED, guideSitemapUrls, guideTitle, renderGuideIndex, renderGuidePage } from "./pages";
 import spots from "./shots/spots.json";
 
 const FILES = Object.keys(import.meta.glob("./shots/*.jpg"));
@@ -53,6 +53,17 @@ describe("Anleitung", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(html).not.toMatch(/NaN|undefined/);
   });
-  it("Sitemap: Übersicht und alle Seiten", () => expect(guideSitemapUrls(GUIDE)).toHaveLength(GUIDE.length + 1));
+  it("Sitemap: Übersicht und alle Seiten mit Änderungsdatum", () => {
+    expect(guideSitemapUrls(GUIDE)).toHaveLength(GUIDE.length + 1);
+    for (const u of guideSitemapUrls(GUIDE)) expect(u.lastmod).toBe(GUIDE_UPDATED);
+    expect(GUIDE_UPDATED <= new Date().toISOString().slice(0, 10)).toBe(true);
+  });
+  it("Titel höchstens 60 Zeichen, „Anleitung“ nicht doppelt", () => {
+    for (const p of GUIDE) expect(guideTitle(p.title).length, p.slug).toBeLessThanOrEqual(60);
+    expect(guideTitle("Erste Reise anlegen")).toBe("Erste Reise anlegen – Anleitung | Split&Fly");
+    const idx = renderGuideIndex(GUIDE).match(/<title>(.+?)<\/title>/)![1];
+    expect(idx.match(/Anleitung/g)).toHaveLength(1);
+    expect(idx.replace(/&amp;/g, "&").length).toBeLessThanOrEqual(60);
+  });
   it("ohne Szene leer", () => expect(guideArtSvg("gibt-es-nicht")).toBe(""));
 });

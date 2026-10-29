@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, planTotal, followEventName, takePlan, ticketsEur, variants, keepEnd } from "./plan";
+import { earlier, eventDays, fits, fixWindow, km, nearestStay, pickStay, pickStayNear, planTotal, followEventName, takePlan, ticketsEur, variants, keepEnd } from "./plan";
 import { calcItem } from "../calc";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
 import type { FlightOffer, OfferLeg } from "../flights/types";
@@ -93,6 +93,17 @@ describe("Reise zu einem Anlass", () => {
     expect(tr.items.map(i => i.cat)).toEqual(["flights", "stay"]);
     expect(tr.items[1]).toMatchObject({ from: "2027-05-15", to: "2027-05-16" });
     expect(tr.detail).toEqual({ flights: true, stay: true });
+  });
+});
+
+describe("Fernziel: Hinflug einen Tag früher (#536)", () => {
+  it("verschiebt Abflug und Nächte, Rückreise bleibt", () => {
+    const relaxed = variants({ name: "Konzert", start: "2027-05-15T20:00" })[1];
+    const e = earlier(relaxed);
+    expect([e.out, e.back, e.nights]).toEqual(["2027-05-13", "2027-05-16", 3]);
+    // Flug ab dem Vortag-des-Vortags, Landung am Vortag, passt jetzt
+    expect(fits(offer(["2027-05-13T18:00", "2027-05-14T09:00"], ["2027-05-16T18:00", "2027-05-16T20:15"]), relaxed)).toBe(false);
+    expect(fits(offer(["2027-05-13T18:00", "2027-05-14T09:00"], ["2027-05-16T18:00", "2027-05-16T20:15"]), e)).toBe(true);
   });
 });
 

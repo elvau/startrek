@@ -53,7 +53,7 @@ const PROVIDERS: Record<string, { name: string; limit?: number; per?: Per }> = {
   "api.openrouteservice.org": { name: "OpenRouteService", limit: 2000, per: "day" }
 };
 
-export const ROUTES = ["flights", "stays", "events", "activities", "agent", "mcp", "mcpkey", "bug", "road", "blocked"] as const;
+export const ROUTES = ["flights", "stays", "events", "activities", "agent", "mcp", "mcpkey", "oauth", "bug", "road", "blocked"] as const;
 
 export function level(share: number | null): Level {
   if (share == null) return "ok";

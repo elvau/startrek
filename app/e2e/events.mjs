@@ -307,6 +307,51 @@ try {
   if (await p.locator(".start .home-trip").count()) fail("Reise vom abgebrochenen Event-Planer bleibt stehen");
   log("Event-Planer ohne übernommenen Vorschlag geschlossen: keine Reise bleibt zurück");
 
+  // Fernziel (#536): am Vortag geht kein Hinflug, einen Tag früher schon; ohne Treffer führt ein Knopf in die Einzelsuche
+  await p.unroute("https://flights.test/flights/search");
+  const farAsked = [];
+  await p.route("https://flights.test/flights/search", async r => {
+    const q = JSON.parse(r.request().postData());
+    farAsked.push(q);
+    const from = q.fromAirports[0], to = q.toAirports[0];
+    // am Vortag geht nichts (Langstrecke, nur wenige Abflugtage), zwei Tage vorher schon
+    const offers = q.depart === "2027-05-13" ? [{ id: `far${q.depart}${q.maxStops}`, source: "kiwi", sourceName: "Kiwi.com", price: 700, currency: "EUR", url: "https://kiwi.com/u/far",
+      out: leg(from, to, "2027-05-13T18:00:00", "2027-05-14T09:00:00"), back: leg(to, from, `${q.ret}T18:00:00`, `${q.ret}T19:15:00`) }] : [];
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers, sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: offers.length, ms: 100 }] }) });
+  });
+  await p.evaluate(() => localStorage.clear());
+  await p.goto(URL);
+  await p.locator(".start .home-event").click();
+  const m6 = p.locator(".modal");
+  await m6.locator(".ev-form").waitFor();
+  await m6.locator(".ev-find input").fill("Arsenal");
+  await m6.locator(".ev-find .btn").click();
+  await m6.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
+  await m6.locator(".ev-form .btn.primary").click();
+  await m6.locator(".ev-card").first().waitFor();
+  if (!farAsked.some(q => q.depart === "2027-05-13" && q.ret === "2027-05-16")) fail("keine Suche mit Abflug einen Tag früher: " + farAsked.map(q => `${q.depart}/${q.maxStops}`));
+  const far = m6.locator(".ev-card", { hasText: "Entspannt" }).filter({ hasText: "18:00" });
+  if (!(await far.count())) fail("Vorschlag ab Vortag-des-Vortags fehlt: " + (await m6.locator(".ev-list").innerText()).replace(/\n+/g, " ").slice(0, 900));
+  await p.keyboard.press("Escape");
+  log("Fernziel: am Vortag kein Hinflug, Nachsuche einen Tag früher liefert den Vorschlag");
+
+  await p.unroute("https://flights.test/flights/search");
+  await p.route("https://flights.test/flights/search", r => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0, ms: 100 }] }) }));
+  await p.evaluate(() => localStorage.clear());
+  await p.goto(URL);
+  await p.locator(".start .home-event").click();
+  const m7 = p.locator(".modal");
+  await m7.locator(".ev-form").waitFor();
+  await m7.locator(".ev-find input").fill("Arsenal");
+  await m7.locator(".ev-find .btn").click();
+  await m7.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
+  await m7.locator(".ev-form .btn.primary").click();
+  await m7.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
+  await m7.locator(".btn", { hasText: "Flug einzeln suchen" }).click();
+  await p.locator(".modal", { hasText: "Flug" }).first().waitFor();
+  if (await p.locator(".ev-form").count()) fail("Event-Planer nach „Flug einzeln suchen“ noch offen");
+  log("Kein Flug: Knopf „Flug einzeln suchen“ öffnet die Flugsuche");
+
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Event-Reise ok");
 } finally { await browser.close(); server.kill(); }

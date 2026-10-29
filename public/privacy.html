@@ -283,9 +283,17 @@
   not stored anywhere. Blocked key IDs are listed in the search service’s settings.
 </p>
 <p>
-  When you use the key, your AI assistant sends requests to my search service. It searches as described in section 6,
+  Chat apps like Claude or ChatGPT connect via OAuth instead: the chat app sends you to Split&amp;Fly, you sign in and
+  approve. For this the search service stores per connection in Firebase (section 5) your account ID, the name the chat
+  app gives for itself, the address it returns to, when you connected, the day of last use and an ID for renewing access.
+  The app reads these entries only through the search service. You see your connections in the account menu under
+  “Connect AI assistant” and can disconnect them there; the entry is then deleted. Connections unused for 90 days or
+  never completed are deleted by the search service itself.
+</p>
+<p>
+  When you use the key or a connection, your AI assistant sends requests to my search service. It searches as described in section 6,
   keeps offers found for a few hours in Cloudflare’s cache (so the assistant can add them to a trip) and counts the
-  searches per key and day (key ID and date, deleted after two days). For trips in your account the search service
+  searches per key or connection and day (ID and date, deleted after two days). For trips in your account the search service
   reads and writes your trips in Firebase (section 5), only those you are a member of, and changes them only with edit
   rights. The assistant receives destination, travel dates, number of travellers by age group and the items with
   prices, no names of travellers and no “Just for you” details.
@@ -293,7 +301,7 @@
 <p>
   What you enter into your assistant and what it retrieves from here is processed by its provider (e.g. Anthropic,
   OpenAI) as your own provider under its terms; I have no influence on this. Legal basis: Art. 6(1)(b) GDPR (you create
-  the key and trigger the requests). Use is voluntary.
+  the key or connect the chat app and trigger the requests). Use is voluntary.
 </p>
 
 <h2>9. Reporting bugs (beta)</h2>

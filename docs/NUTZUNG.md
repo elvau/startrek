@@ -19,7 +19,9 @@ Im Kontomenü erscheint für Admins **„Nutzung & Kontingente“**. Die Ansicht
 - **Inhaltsseiten** (`/reise/…`, #314): Texte und Kosten in `app/src/lib/seo/pages.ts`, beim Zusammenstellen erzeugt
   `scripts/seiten.mjs` die statischen Seiten und trägt sie in die Sitemap ein. Der Knopf „Mit diesen Werten planen“ öffnet
   die App mit `?ziel=…&land=…&gruppe=…` bzw. `&fam=2-2,2-1` (`app/src/lib/plan.ts`). Bild je Seite: Szene in `app/src/lib/seo/art.ts`. Neue Seite: Eintrag in `PAGES` und `ART`,
-  Kosten als Spannen pro Person, Stand (`STAND`) aktuell halten. In der Search Console unter „Leistung“ sehen, welche
+  Kosten als Spannen pro Person, Stand (`STAND`, Datum `UPDATED` bzw. `updated` je Seite für `lastmod`) aktuell halten.
+  Englische Fassung unter `/en/trip-ideas/…` (Texte in `app/src/lib/seo/pages.en.ts`, je Seite Pflicht; per `hreflang`
+  verknüpft). Die Startseite hat in `app/index.html` einen Text für Suchmaschinen und ohne JavaScript, den `main.ts` durch die App ersetzt. In der Search Console unter „Leistung“ sehen, welche
   Seiten Klicks bringen, und danach ausbauen.
 
 Ab 70 % wird ein Balken gelb, ab 90 % rot. Die Grenzen stehen in `app/src/lib/admin/usage.ts`.

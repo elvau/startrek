@@ -20,7 +20,7 @@ mkdirSync(join(out, "anleitung", "img"), { recursive: true });
 for (const f of readdirSync(SHOTS)) if (f.endsWith(".jpg")) copyFileSync(new URL(f, SHOTS), join(out, "anleitung", "img", f));
 const sm = join(out, "sitemap.xml");
 if (existsSync(sm)) {
-  const urls = guideSitemapUrls(GUIDE).map(u => `  <url><loc>${u}</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`).join("\n");
+  const urls = guideSitemapUrls(GUIDE).map(u => `  <url><loc>${u.loc}</loc><lastmod>${u.lastmod}</lastmod></url>`).join("\n");
   writeFileSync(sm, readFileSync(sm, "utf8").replace("</urlset>", `${urls}\n</urlset>`));
 }
 console.log(`Anleitung: ${GUIDE.length} Seiten unter ${out}/anleitung/`);

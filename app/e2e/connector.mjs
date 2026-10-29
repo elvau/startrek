@@ -16,10 +16,12 @@ const fail = m => { throw new Error(m); };
 
 // Kern des Such-Dienstes für Node bündeln (TypeScript, gemeinsamer Code der App)
 const out = await mkdtemp(join(tmpdir(), "mcp-"));
-const b = await rolldown({ input: { mcp: "../worker/src/mcp.ts", firestore: "../worker/src/firestore.ts" }, platform: "neutral", logLevel: "silent" });
+const b = await rolldown({ input: { mcp: "../worker/src/mcp.ts", firestore: "../worker/src/firestore.ts", apikey: "../worker/src/apikey.ts", oauth: "../worker/src/oauth.ts" }, platform: "neutral", logLevel: "silent" });
 await b.write({ dir: out, format: "esm", entryFileNames: "[name].mjs" });
 const { mcpMessage } = await import(join(out, "mcp.mjs"));
 const { tripStore } = await import(join(out, "firestore.mjs"));
+const { seal } = await import(join(out, "apikey.mjs"));
+const { grantStore } = await import(join(out, "oauth.mjs"));
 
 // Nutzer im Auth-Emulator (so meldet sich auch die Test-Anmeldung der App an)
 const sign = await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo", {
@@ -52,6 +54,23 @@ const listed = await tool("list_trips", {});
 if (!listed.trips.some(t => t.id === id && t.role === "owner")) fail("Reise nicht in der Liste: " + JSON.stringify(listed));
 log("Konnektor legt Reise im Konto an (Firestore-REST) und übernimmt einen Flug");
 
+// Verbindungen der Chat-Apps (OAuth, #590) in Firestore: anlegen, nur unverändert ändern, Liste, aufräumen, trennen
+const gs = grantStore({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
+const base = { uid, client: "Claude", host: "claude.ai", at: new Date().toISOString(), used: new Date().toISOString().slice(0, 10), rt: "", code: "c1" };
+await gs.create({ ...base, id: "gA" });
+await gs.create({ ...base, id: "gOld", rt: "r0", used: "2020-01-01" });
+await gs.create({ ...base, id: "gOpen", at: "2020-01-01T00:00:00.000Z" });
+const gA = await gs.get("gA");
+await gs.update(gA, { rt: "r1", code: "" });
+const stale = await gs.update(gA, { rt: "r2" }).then(() => false, e => e.conflict === true);
+if (!stale) fail("Verbindung: Änderung trotz veraltetem Stand");
+if ((await gs.get("gA")).rt !== "r1") fail("Verbindung nicht geändert");
+if ((await gs.list(uid)).length !== 3) fail("Liste der Verbindungen");
+if ((await gs.sweep()) !== 2 || (await gs.get("gOld")) || (await gs.get("gOpen"))) fail("Aufräumen der Verbindungen");
+await gs.remove("gA");
+if (await gs.get("gA")) fail("Trennen");
+log("Verbindungen der Chat-Apps in Firestore: anlegen, ändern mit Versionsprüfung, aufräumen, trennen");
+
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4183", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
 await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
@@ -66,6 +85,21 @@ try {
     keys.push({ auth: r.request().headers()["authorization"] || "", body: JSON.parse(r.request().postData() || "{}") });
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ key: "sf_test.sig", kid: "abc123", trips: true }) });
   });
+  // Chat-Apps per OAuth (#590): Such-Dienst nachgestellt
+  const oauth = [];
+  let grants = [{ id: "g1", client: "Claude", host: "claude.ai", at: "2027-03-30", used: "2027-04-01" }];
+  await p.route("https://flights.test/oauth/**", async r => {
+    const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" };
+    if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
+    const path = new globalThis.URL(r.request().url()).pathname;
+    oauth.push({ path, auth: r.request().headers()["authorization"] || "", body: JSON.parse(r.request().postData() || "{}") });
+    let body = {};
+    if (path === "/oauth/grants") body = { grants };
+    if (path === "/oauth/grants/remove") { grants = grants.filter(g => g.id !== oauth.at(-1).body.id); body = { removed: oauth.at(-1).body.id }; }
+    if (path === "/oauth/approve") body = { redirect: "https://claude.test/cb?code=sfo_x&state=st" };
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
+  });
+  await p.route("https://claude.test/**", r => r.fulfill({ status: 200, contentType: "text/html", body: "<h1>Claude</h1>" }));
   await p.goto(URL);
   await p.locator(".start .home-title").waitFor();
   await p.locator(".tm-btn", { hasText: "Anmelden" }).first().click();
@@ -97,6 +131,17 @@ try {
   await p.evaluate(() => scrollTo(0, 0));
   await p.locator(".top .acct-btn").click();
   await p.locator(".acct-mcp").click();
+  // verbundene Chat-Apps: Liste und Trennen
+  await p.locator(".modal .oauth-conns li", { hasText: "Claude" }).waitFor();
+  if (!(await p.locator(".modal .oauth-conns li", { hasText: "claude.ai" }).count())) fail("Ziel der Verbindung fehlt");
+  if (process.env.SHOTS) await p.locator(".modal").screenshot({ path: `${process.env.SHOTS}/connect-list.png` });
+  await p.locator(".modal .oauth-remove").click();
+  await p.locator(".modal .oauth-none").waitFor();
+  const rm = oauth.find(o => o.path === "/oauth/grants/remove");
+  if (rm?.body.id !== "g1" || !rm.auth.startsWith("Bearer ")) fail("Trennen: " + JSON.stringify(rm));
+  log("Verbundene Chat-Apps im Kontomenü, Trennen");
+  // persönlicher Schlüssel (eingeklappt)
+  await p.locator(".modal .mcp-keys summary").click();
   await p.locator(".modal .mcp-make").click();
   await p.locator(".modal .mcp-key").waitFor();
   if ((await p.locator(".modal .mcp-key").inputValue()) !== "sf_test.sig") fail("Schlüssel nicht angezeigt");
@@ -107,6 +152,26 @@ try {
   if (!keys[0]?.auth.startsWith("Bearer ") || keys[0].body.name !== "Claudia") fail("Schlüssel-Anfrage: " + JSON.stringify(keys[0]));
   if (process.env.SHOTS) await p.locator(".modal").screenshot({ path: `${process.env.SHOTS}/connect.png` });
   log("Schlüssel im Kontomenü erzeugt, mit Adresse, Hinweis für andere Programme und Beispiel Claude Code");
+
+  await p.locator(".modal .x").click();
+
+  // Chat-App leitet zur Zustimmung um (?verbinden=…): Name und Ziel, Erlauben → zurück zur Chat-App mit Code
+  const req = await seal("egal", "req", { k: "k", n: "Claude", h: "claude.ai", r: "https://claude.test/cb", s: "st", p: "p", x: Date.now() + 600_000 });
+  await p.goto(`${URL}?verbinden=${encodeURIComponent(req)}`);
+  await p.locator(".modal .oauth-who", { hasText: "Claude möchte auf dein Split&Fly zugreifen" }).waitFor({ timeout: 15000 });
+  if (!(await p.locator(".modal .oauth-who", { hasText: "claude.ai" }).count())) fail("Ziel fehlt in der Zustimmung");
+  if (new globalThis.URL(p.url()).searchParams.has("verbinden")) fail("Anfrage bleibt in der Adresse");
+  if (process.env.SHOTS) {
+    await p.locator(".modal").screenshot({ path: `${process.env.SHOTS}/consent.png` });
+    await p.setViewportSize({ width: 390, height: 844 });
+    await p.screenshot({ path: `${process.env.SHOTS}/consent-mobile.png` });
+    await p.setViewportSize({ width: 1280, height: 900 });
+  }
+  await p.locator(".modal .oauth-allow").click();
+  await p.waitForURL("https://claude.test/cb?code=sfo_x&state=st", { timeout: 15000 });
+  const ok = oauth.find(o => o.path === "/oauth/approve");
+  if (ok?.body.req !== req || ok.body.allow !== true || !ok.auth.startsWith("Bearer ")) fail("Zustimmung: " + JSON.stringify(ok));
+  log("Zustimmung für Chat-App: Name und Ziel, Erlauben, zurück zur Chat-App");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Konnektor ok");

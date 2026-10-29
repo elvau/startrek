@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { blockValue, brushed, dayRange, monthWeeks, personIn, circles, notDeciding, setDeciders, voters, variantPoll, variantStand, applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, planError, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
+import { blockValue, brushed, dayRange, monthWeeks, personIn, circles, familyCircles, toggleFamily, notDeciding, setDeciders, voters, variantPoll, variantStand, applyResult, bestPeriods, blockedDays, cycle, dueSoon, hitsBlocked, milesLeft, milesOf, missing, newPoll, planError, nextVote, pollOpen, setAvail, tally, tallyMode, vote, VETO } from "./together";
 
 const trip = (): Trip => ({
   id: "t", name: "Reise", place: "", country: "", items: [], tiers: {}, settings: DEFAULT_SETTINGS,
@@ -222,5 +222,14 @@ describe("Wer entscheidet mit (#567)", () => {
   });
   it("Schnellwahl nach Herkunftsgruppe, Rest als Begleitung", () => {
     expect(circles(club())).toEqual([{ key: "Kegelclub", ids: ["a", "b"] }, { key: "", ids: ["c"] }]);
+  });
+  it("Schnellwahl je Familie: Erwachsene je Haushalt, Kinder und Inaktive nicht (#576)", () => {
+    expect(familyCircles(club())).toEqual([{ key: "A", ids: ["a", "c"] }, { key: "B", ids: ["b"] }]);
+    expect(familyCircles({ ...club(), travelers: club().travelers.filter(x => x.household === "A") })).toEqual([]);
+  });
+  it("Familie umschalten: dazu, wenn nicht ganz drin, sonst raus; Rest bleibt (#576)", () => {
+    expect(toggleFamily(["b"], ["a", "c"])).toEqual(["b", "a", "c"]);
+    expect(toggleFamily(["a", "b", "c"], ["a", "c"])).toEqual(["b"]);
+    expect(toggleFamily(["a", "b"], ["a", "c"])).toEqual(["a", "b", "c"]);
   });
 });
