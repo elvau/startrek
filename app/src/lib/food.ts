@@ -38,7 +38,7 @@ export function foodRate(g: GeoData, trip: Trip, k: FoodStyle): { eur: number; n
 }
 
 /** Tage mit gleicher Verpflegung (Rundreise, #596): Stil, Verpflegung der Unterkunft, Tagessatz pro Erwachsenem */
-export interface FoodPart { style: FoodStyle; board?: Board; days: number; eur: number }
+export interface FoodPart { style: FoodStyle; board?: Board; days: number; eur: number; place?: string }
 
 export interface FoodRow {
   hh: string; ids: string[]; days: number; style: FoodStyle; own: boolean; eur: number; note: string; est: boolean;
@@ -66,26 +66,41 @@ export function boardFor(trip: Trip, ids: string[]): Board | undefined {
 }
 
 const boardOf = (it: Item, trip: Trip): Board | undefined => (it.cruise ? "full" : activeOption(it, trip)?.stay?.board);
+/** Ort der Unterkunft (aus der Suche bzw. privat) für den Tagessatz je Station */
+function placeOf(it: Item, trip: Trip): At | undefined {
+  const q = activeOption(it, trip)?.query?.place ? activeOption(it, trip)!.query! : it.private;
+  return q?.place?.trim() ? { place: q.place.trim(), ...(q.country ? { country: q.country } : {}) } : undefined;
+}
+interface At { place: string; country?: string }
+export interface Night { board?: Board; at?: At }
 
 /**
- * Verpflegung je Nacht (#596): die Unterkunft mit Zeitraum, in der die Familie in dieser Nacht schläft; Nächte ohne
- * solche Unterkunft wie bisher nach der ersten Unterkunft ohne Zeitraum mit Verpflegungsangabe.
+ * Je Nacht (#596): die Unterkunft mit Zeitraum, in der die Familie schläft, mit Verpflegung und Ort; Nächte ohne solche
+ * Unterkunft wie bisher nach der ersten Unterkunft ohne Zeitraum mit Verpflegungsangabe (Ort: der der Reise).
  */
-export function boardsByNight(trip: Trip, ids: string[], nights: string[]): (Board | undefined)[] {
-  if (!isDetailed(trip, "stay")) return nights.map(() => undefined);
+export function staysByNight(trip: Trip, ids: string[], nights: string[]): Night[] {
   const stays = trip.items.filter(it => it.cat === "stay" && it.status !== "dropped" && (!it.participants || it.participants.some(id => ids.includes(id))));
   const dated = stays.filter(it => okDate(it.from) && okDate(it.to) && it.to! > it.from!);
-  const rest = stays.filter(it => !dated.includes(it)).map(it => boardOf(it, trip)).find(b => !!b);
-  return nights.map(n => { const s = dated.find(it => it.from!.slice(0, 10) <= n && n < it.to!.slice(0, 10)); return s ? boardOf(s, trip) : rest; });
+  const boards = isDetailed(trip, "stay");
+  const rest = boards ? stays.filter(it => !dated.includes(it)).map(it => boardOf(it, trip)).find(b => !!b) : undefined;
+  return nights.map(n => {
+    const s = dated.find(it => it.from!.slice(0, 10) <= n && n < it.to!.slice(0, 10));
+    const at = s ? placeOf(s, trip) : undefined;
+    const board = boards ? (s ? boardOf(s, trip) : rest) : undefined;
+    return { ...(board ? { board } : {}), ...(at ? { at } : {}) };
+  });
 }
 
-/** „11 Tage Gemischt, 6 Tage Frühstück, 3 Tage Halbpension“ */
-export const partsText = (parts: FoodPart[]) =>
-  parts.map(p => `${tn("n.days", p.days)} ${p.board && p.board !== "self" ? t(`board.${p.board}` as Key) : FOOD_STYLES.find(s => s.k === p.style)!.l}`).join(", ");
+/** „11 Tage Gemischt, 6 Tage Frühstück (Berat), 3 Tage Halbpension“; Orte nur, wenn sie sich unterscheiden */
+export function partsText(parts: FoodPart[]): string {
+  const places = new Set(parts.map(p => p.place || ""));
+  return parts.map(p => `${tn("n.days", p.days)} ${p.board && p.board !== "self" ? t(`board.${p.board}` as Key) : FOOD_STYLES.find(s => s.k === p.style)!.l}${places.size > 1 && p.place ? ` (${p.place})` : ""}`).join(", ");
+}
 
 /**
  * je Familie: Tage vor Ort, sonst Reisetage. An- und Abreisetag zählen je einen halben Tag (man isst dort meist nur
  * einmal), also so viele Tage wie Nächte; ein Tagesausflug ohne Übernachtung zählt einen Tag.
+ * Tagessatz je Nacht nach Verpflegung und Ort der Unterkunft (Rundreise über mehrere Länder), sonst nach dem Ziel der Reise.
  */
 const mealDays = (nights: number) => Math.max(1, nights);
 export function foodPlan(trip: Trip, g: GeoData): FoodRow[] {
@@ -93,8 +108,24 @@ export function foodPlan(trip: Trip, g: GeoData): FoodRow[] {
   const pres = presences(trip);
   const act = trip.travelers.filter(isActive);
   const tripDays = okDate(trip.from) && okDate(trip.to) ? mealDays(nightsList(trip.from, trip.to).length) : 0;
-  const rates = new Map<FoodStyle, ReturnType<typeof foodRate>>();
-  const rateOf = (k: FoodStyle) => { if (!rates.has(k)) rates.set(k, foodRate(g, trip, k)); return rates.get(k)!; };
+  // Ort → Land (Code) und Stadt; ohne erkennbares Land das der Reise
+  const tripCc = ccOf(g, trip.country);
+  const locs = new Map<string, { trip: Trip; label: string }>();
+  const locOf = (at?: At) => {
+    if (!at) return { key: "", trip, label: "" };
+    const k = `${at.place}|${at.country || ""}`;
+    if (!locs.has(k)) {
+      const cc = ccOf(g, at.country) || findCity(g, at.place)?.cc || tripCc;
+      locs.set(k, { trip: { ...trip, place: at.place, country: cc || trip.country }, label: at.place.split(",")[0].trim() });
+    }
+    return { key: k, ...locs.get(k)! };
+  };
+  const rates = new Map<string, ReturnType<typeof foodRate>>();
+  const rateOf = (k: FoodStyle, at?: At) => {
+    const l = locOf(at), key = `${k}|${l.key}`;
+    if (!rates.has(key)) rates.set(key, foodRate(g, l.trip, k));
+    return rates.get(key)!;
+  };
   return [...new Set(act.map(hhKey))].map((hh): FoodRow => {
     const ids = act.filter(t => hhKey(t) === hh).map(t => t.id);
     // Nächte der Familie: die des Längsten vor Ort, sonst die der Reise
@@ -102,23 +133,30 @@ export function foodPlan(trip: Trip, g: GeoData): FoodRow[] {
     const nights = lists.length ? lists.reduce((a, b) => (b.length > a.length ? b : a)) : nightsList(trip.from, trip.to);
     const days = lists.length || tripDays ? mealDays(nights.length) : 0;
     const own = cfg.hh?.[hh];
-    // eigene Wahl der Familie > Verpflegung der Unterkunft (je Nacht) > Stil für alle
-    const boards = own ? [undefined] : nights.length ? boardsByNight(trip, ids, nights) : [boardFor(trip, ids)];
+    // eigene Wahl der Familie > Verpflegung der Unterkunft (je Nacht) > Stil für alle; Ort zählt immer
+    const per: Night[] = nights.length ? staysByNight(trip, ids, nights) : [{ board: boardFor(trip, ids) }];
     const parts: FoodPart[] = [];
-    for (const b of boards) {
+    let est = false;
+    for (const n of per) {
+      const b = own ? undefined : n.board;
       const style = own || (b && BOARD_STYLE[b]) || cfg.style;
       const board = b && b !== "self" ? b : undefined;
-      const p = parts.find(x => x.style === style && x.board === board);
-      if (p) p.days++;
-      else parts.push({ style, board, days: 1, eur: board === "breakfast" ? Math.round(rateOf(style).eur * BREAKFAST) : rateOf(style).eur });
+      const r = rateOf(style, n.at);
+      est ||= r.est;
+      const eur = board === "breakfast" ? Math.round(r.eur * BREAKFAST) : r.eur;
+      const label = locOf(n.at).label || undefined;
+      // gleicher Stil, gleiche Verpflegung und gleicher Satz: ein Teil (Ort nur, wenn überall derselbe)
+      const p = parts.find(x => x.style === style && x.board === board && x.eur === eur);
+      if (p) { p.days++; if (p.place !== label) p.place = undefined; }
+      else parts.push({ style, ...(board ? { board } : {}), days: 1, eur, ...(label ? { place: label } : {}) });
     }
     // eine Verpflegung: alle Tage; sonst die Tage je Teil
     if (parts.length === 1) parts[0].days = days;
     const one = parts.length === 1 ? parts[0] : null;
-    const style = one ? one.style : cfg.style;
+    const style = one ? one.style : own || cfg.style;
     const total = parts.reduce((a, p) => a + p.eur * p.days, 0);
     return {
-      hh, ids, days, style, own: !!own, note: rateOf(style).note, est: parts.some(p => rateOf(p.style).est),
+      hh, ids, days, style, own: !!own, note: rateOf(style).note, est,
       eur: one ? one.eur : Math.round(total / Math.max(1, days)),
       ...(one?.board ? { board: one.board } : {}),
       ...(one ? {} : { parts: parts.sort((a, b) => b.days - a.days) })
@@ -131,7 +169,7 @@ export interface FoodGroup extends Omit<FoodRow, "hh"> { key: string; hhs: strin
 export function foodGroups(rows: FoodRow[]): FoodGroup[] {
   const map = new Map<string, FoodGroup>();
   for (const r of rows) {
-    const k = [r.style, r.eur, r.days, r.board || "", r.own ? "own" : "", (r.parts || []).map(p => `${p.style}:${p.board || ""}:${p.days}`).join(",")].join("|");
+    const k = [r.style, r.eur, r.days, r.board || "", r.own ? "own" : "", (r.parts || []).map(p => `${p.style}:${p.board || ""}:${p.days}:${p.eur}`).join(",")].join("|");
     const g = map.get(k);
     if (g) { g.hhs.push(r.hh); g.ids.push(...r.ids); }
     else { const { hh, ...rest } = r; map.set(k, { ...rest, ids: [...r.ids], key: k, hhs: [hh] }); }

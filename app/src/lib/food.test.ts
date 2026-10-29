@@ -122,5 +122,23 @@ describe("Verpflegung wie im Artefakt", () => {
     const rows = foodPlan(t, g);
     expect(rows.map(r => [r.style, r.board, r.parts])).toEqual([["hb", "half", undefined], ["hb", "half", undefined]]);
   });
+
+  it("Rundreise über mehrere Länder: Tagessatz je Station nach dem Ort der Unterkunft (#596)", () => {
+    const t = { ...trip(), place: "Göteborg", country: "Schweden", households: {} };
+    t.food = { on: true, style: "mix" };
+    const stay = (id: string, from: string, to: string, place: string, country: string) => ({ id, cat: "stay" as const, name: id, status: "chosen" as const, from, to,
+      options: [{ id: id + "o", label: id, price: { mode: "unit" as const, currency: "EUR", unit: 300, basis: "stay" as const }, query: { place, country, checkin: from, checkout: to, adults: 2, childAges: [], rooms: 1 } }] });
+    t.items = [stay("se", "2027-07-18", "2027-07-21", "Göteborg", "Sweden"), stay("no", "2027-07-21", "2027-07-25", "Bergen", "Norway")];
+    const se = foodRate(g, { ...t, country: "SE" }, "mix").eur, no = foodRate(g, { ...t, place: "Bergen", country: "NO" }, "mix").eur;
+    expect(se).not.toBe(no);
+    const [row] = foodPlan(t, g);
+    expect(row.parts).toEqual([{ style: "mix", days: 4, eur: no, place: "Bergen" }, { style: "mix", days: 3, eur: se, place: "Göteborg" }]);
+    expect(row.eur).toBe(Math.round((3 * se + 4 * no) / 7));
+    syncFood(t, g);
+    expect(t.items.find(i => i.auto === "food")!.options[0].detail).toContain("4 Tage Gemischt (Bergen), 3 Tage Gemischt (Göteborg)");
+    // eigener Stil der Familie: Ort zählt trotzdem
+    t.food = { on: true, style: "mix", hh: { Klein: "self" } };
+    expect(foodPlan(t, g)[0].parts?.map(p => [p.style, p.place])).toEqual([["self", "Bergen"], ["self", "Göteborg"]]);
+  });
 });
 
