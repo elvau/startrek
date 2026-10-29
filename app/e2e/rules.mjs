@@ -193,6 +193,9 @@ await expect("Angebotsspeicher lesen", req("anna", "/offers/x"), 403);
 await expect("Angebotsspeicher schreiben", patch("anna", "/offers/x", { data: "{}" }), 403);
 await expect("Eingaben des Angebotsspeichers lesen", req("anna", "/offerInputs/x"), 403);
 log("Angebotsspeicher (#462): App kann weder lesen noch schreiben");
+await expect("Verbindungen der Chat-Apps lesen", req("anna", "/mcpGrants/x"), 403);
+await expect("Verbindungen der Chat-Apps schreiben", patch("anna", "/mcpGrants/x", { uid: "anna" }), 403);
+log("Verbindungen der Chat-Apps (#590): App kann weder lesen noch schreiben");
 
 await req("admin", "/trips/regeltest", { method: "DELETE" });
 await req("admin", "/profiles/anna", { method: "DELETE" });

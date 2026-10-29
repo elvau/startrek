@@ -87,8 +87,7 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
       Stufe 1 (Zuschüsse in der Reise) ist fertig: `Trip.funds`, `applyFunds` in `calc/index.ts`, `FundsCard.svelte`.
 - [ ] → #144. Vergleichen von Reisen und/oder Posten (nächstes großes Feature; KI-Vergleichsreise aus v0.10.0 ist der Einstieg).
 - [x] KI-Konnektor (MCP) Schritt 1 und 2: Suchen und Reisen im Konto mit persönlichem Schlüssel (docs/KONNEKTOR.md).
-- [ ] → #144. KI-Konnektor Schritt 3: OAuth über die Firebase-Anmeldung für Chat-Apps (Claude, ChatGPT). Vor dem offenen Anbieten
-  Partnerbedingungen prüfen (Weitergabe der Suchergebnisse, Affiliate-Links).
+- [x] KI-Konnektor Schritt 3: OAuth für Chat-Apps (Claude, ChatGPT), #590. Vor dem offenen Anbieten Partnerbedingungen prüfen (#591).
 
 - → #147, #144. Flughafentransfer: Partnerprogramme Kiwitaxi, GetTransfer, Intui.travel bei Travelpayouts beantragen (Dani), dann Links mit Partnerkennung; später Preise über deren Schnittstelle statt Richtwert.
 - [ ] Gepflegte Richtwerte (Prüfung 10/2026, `fees.ts`, `flights/addons.ts`), offen bzw. unsicher:

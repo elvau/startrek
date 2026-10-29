@@ -39,6 +39,7 @@ export const IP_LIMITS: Record<string, Window[]> = {
   agent: [{ limit: 15, sec: 3600 }, { limit: 40, sec: 86400 }],
   bug: [{ limit: 10, sec: 3600 }],
   mcpkey: [{ limit: 10, sec: 3600 }],
+  oauth: [{ limit: 30, sec: 3600 }],
   click: [{ limit: 120, sec: 60 }]
 };
 

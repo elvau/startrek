@@ -35,9 +35,10 @@ import { isOverloaded } from "./gemini";
 import { kiCaller, kiModels, kiReady, type KiEnv } from "./ki";
 import { isAdmin, meter, noteClick, noteRoute, usageReport, type UsageEnv } from "./usage";
 import { checkLimit, IP_LIMITS, ipKey, searchWindows, type LimitEnv } from "./ratelimit";
-import { issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
+import { isRevoked, issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
 import { tripStore, type StoreEnv } from "./firestore";
 import { mcpMessage, type Saved } from "./mcp";
+import { grantStore, isOAuthPath, oauth, verifyAccess, wwwAuthenticate, type OAuthDeps } from "./oauth";
 import pkg from "../../app/package.json";
 import { partnerOn } from "../../app/src/lib/partner";
 import { parseRouteQuery, routeOrs, type RoadResult } from "../../app/src/lib/road/ors";
@@ -62,6 +63,8 @@ interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEn
   ORS_KEY?: string;
   /** echte Anfragen an OpenRouteService pro Minute, für alle zusammen (Standard 4; ORS erlaubt 40) */
   ORS_PER_MIN?: string;
+  /** Adresse der App für die Zustimmung bei OAuth (Standard https://splitandfly.com/; lokal für Tests) */
+  APP_URL?: string;
   /** optional: KV-Speicher für das Tageslimit; ohne ihn zählt der Zwischenspeicher je Rechenzentrum */
   AGENT_KV?: KVNamespace;
 }
@@ -85,6 +88,9 @@ export default {
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
     const store = offerStore(env);
     if (store) ctx.waitUntil(store.sweep().then(n => console.log(JSON.stringify({ at: "offers.sweep", deleted: n }))).catch(e => console.log(JSON.stringify({ at: "offers.sweep", error: (e as Error).message }))));
+    // Verbindungen des KI-Konnektors (OAuth): lange nicht genutzte und nie eingelöste löschen
+    const grants = grantStore(env);
+    if (grants) ctx.waitUntil(grants.sweep().then(n => console.log(JSON.stringify({ at: "grants.sweep", deleted: n }))).catch(e => console.log(JSON.stringify({ at: "grants.sweep", error: (e as Error).message }))));
   },
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     // was unerwartet abbricht, kommt trotzdem mit CORS zurück (sonst sieht die App nur „Failed to fetch“)
@@ -110,6 +116,16 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
     const url = new URL(req.url);
     const origin = req.headers.get("origin");
     const h = cors(origin, env);
+    // Anmeldung per OAuth für Chat-Apps (vor OPTIONS: die öffentlichen Adressen erlauben jede Herkunft)
+    if (isOAuthPath(url.pathname)) {
+      if (!env.MCP_KEY_SECRET) return json({ error: "Der KI-Konnektor ist noch nicht eingerichtet" }, 503, h);
+      if (url.pathname === "/oauth/approve" && req.method === "POST") {
+        const block = await overLimit("oauth", req, env, h);
+        if (block) return block;
+        noteRoute(env, "oauth");
+      }
+      return oauth(req, oauthDeps(env, h));
+    }
     if (req.method === "OPTIONS") return new Response(null, { status: h["access-control-allow-origin"] ? 204 : 403, headers: h });
 
     if (url.pathname === "/" || url.pathname === "/health") {
@@ -535,6 +551,14 @@ async function mcpKey(req: Request, env: Env, h: Record<string, string>): Promis
   return json({ key, kid, trips: !!tripStore(env) }, 200, h);
 }
 
+function oauthDeps(env: Env, h: Record<string, string>): OAuthDeps {
+  return {
+    secret: env.MCP_KEY_SECRET!, grants: grantStore(env), appUrl: env.APP_URL || "https://splitandfly.com/", appCors: h, revoked: id => isRevoked(env, id),
+    // nur echte Konten mit bestätigter Adresse, wie beim Schlüssel
+    verifyUser: async token => { if (!token) throw new Error("Bitte anmelden"); const uid = await verifyIdToken(token, env.FIREBASE_PROJECT_ID || "startrek-1b6a7"); requireVerified(token); return uid; }
+  };
+}
+
 /** MCP über HTTP: eine JSON-RPC-Nachricht pro Anfrage, Antwort als JSON (kein Stream) */
 async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const plain = (status: number, msg: string, extra: Record<string, string> = {}) => json({ jsonrpc: "2.0", id: null, error: { code: -32000, message: msg } }, status, extra);
@@ -543,8 +567,10 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
   const origin = req.headers.get("origin");
   if (origin && !cors(origin, env)["access-control-allow-origin"]) return plain(403, "Herkunft nicht erlaubt");
   if (!env.MCP_KEY_SECRET) return plain(503, "Der KI-Konnektor ist noch nicht eingerichtet");
-  const user = await verifyKey(env, (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, ""));
-  if (!user) return plain(401, "Schlüssel fehlt oder ist ungültig", { "www-authenticate": "Bearer" });
+  // persönlicher Schlüssel (sf_…) oder Zugangsschlüssel aus OAuth (sfa_…)
+  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const user = await verifyKey(env, bearer) || await verifyAccess(oauthDeps(env, {}), bearer, p => ctx.waitUntil(p));
+  if (!user) return plain(401, "Schlüssel fehlt oder ist ungültig", { "www-authenticate": wwwAuthenticate(new URL(req.url).origin) });
   let msg: unknown;
   try { msg = await req.json(); } catch { return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, 400, {}); }
   if (Array.isArray(msg)) return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Batch nicht unterstützt" } }, 400, {});

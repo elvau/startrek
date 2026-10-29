@@ -90,6 +90,10 @@ service cloud.firestore {
     match /offerInputs/{inputId} {
       allow read, write: if false;
     }
+    // Verbindungen von Chat-Apps zum KI-Konnektor (OAuth, #590): nur der Such-Dienst; die App fragt über ihn
+    match /mcpGrants/{grantId} {
+      allow read, write: if false;
+    }
 
     match /trips/{tripId} {
       // Nicht vorhandene Reisen dürfen angemeldete Nutzer "lesen" (verrät nur, dass die zufällige ID frei ist);
