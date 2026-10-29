@@ -26,6 +26,9 @@ export function parsePlan(search: string): PlanLink | null {
   return out;
 }
 
+/** Ordner der Reiseideen (wie DIR in seo/pages.ts): Deutsch nur für deutsche Oberfläche, sonst Englisch */
+export const ideasDir = (lang: string) => (lang === "de" ? "reise/" : "en/trip-ideas/");
+
 /** Link aus der Adresse entfernen, damit Neuladen keine zweite Reise anlegt */
 export function stripPlan(url: URL): URL {
   for (const k of ["ziel", "land", "name", "gruppe", "fam", "idee"]) url.searchParams.delete(k);

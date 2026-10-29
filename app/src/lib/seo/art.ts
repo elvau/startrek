@@ -248,11 +248,12 @@ export const ART: Record<string, { alt: string; draw: () => string }> = {
   "kurztrip-wien-freunde-kosten": { alt: "Riesenrad, Stephansdom und Kaffeehaus-Melange in Wien", draw: wien }
 };
 
-/** SVG der Szene; ohne Szene leer */
-export function artSvg(slug: string, cls = "art"): string {
+/** SVG der Szene; ohne Szene leer. alt: Bildbeschreibung in anderer Sprache (englische Reiseideen) */
+export function artSvg(slug: string, cls = "art", alt?: string): string {
   const a = ART[slug];
   if (!a) return "";
-  return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${a.alt.replace(/"/g, "&quot;")}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><title>${a.alt}</title>${a.draw()}</svg>`;
+  const label = alt || a.alt;
+  return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label.replace(/"/g, "&quot;")}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><title>${label}</title>${a.draw()}</svg>`;
 }
 
 /** Bausteine für weitere Szenen (Anleitung, app/src/lib/guide/art.ts): gleicher Zeichenstil, gleiche Farben */

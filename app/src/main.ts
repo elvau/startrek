@@ -22,6 +22,8 @@ await i18nReady();
 // Aktionsseite (…/?aktion=ID): eigene, schlanke Seite ohne Reise und ohne Konto
 const aktion = new URLSearchParams(location.search).get("aktion");
 const target = document.getElementById("app")!;
+// Text der Startseite für Suchmaschinen und ohne JavaScript (index.html) weicht der App
+target.replaceChildren();
 export default aktion
   ? mount((await import("./lib/ui/CampaignPage.svelte")).default, { target, props: { id: aktion } })
   : mount(App, { target });

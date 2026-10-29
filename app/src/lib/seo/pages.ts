@@ -2,8 +2,11 @@
  * Inhaltsseiten für Google (#314, Entscheidung #316): Reiseziele und Anlässe mit Kosten pro Person.
  * Beim Zusammenstellen der Seite (scripts/seiten.mjs) entstehen daraus statische Seiten unter /reise/<slug>/.
  * Texte: KI-Entwurf, von Dani durchgesehen; Kosten sind Richtwerte (Spannen) und keine Angebote.
- * Ohne Importe, damit Node die Datei direkt laden kann.
+ * Englisch unter /en/trip-ideas/<slug>/ (Texte in pages.en.ts), beide Fassungen verweisen per hreflang aufeinander.
+ * Nur Importe ohne weitere Abhängigkeiten (mit .ts), damit Node die Datei direkt laden kann.
  */
+import { EN, STAND_EN } from "./pages.en.ts";
+export { STAND_EN };
 
 /** cat: Bereich des Postens, der daraus in der App entsteht (Reiseidee öffnen, #402) */
 export interface CostRow {
@@ -31,9 +34,13 @@ export interface Page {
   /** Link in die App (siehe app/src/lib/plan.ts) */
   plan: { ziel: string; land: string; name: string; gruppe?: number; fam?: string };
   related: string[];
+  /** zuletzt inhaltlich geändert (JJJJ-MM-TT), sonst UPDATED; für dateModified und lastmod in der Sitemap */
+  updated?: string;
 }
 
 export const STAND = "Oktober 2026";
+/** Datum zu STAND: beim Überarbeiten der Texte mit anheben */
+export const UPDATED = "2026-10-24";
 export const SITE = "https://splitandfly.com";
 
 export const PAGES: Page[] = [
@@ -514,9 +521,56 @@ export const PAGES: Page[] = [
 
 /* ---------- Ausgabe ---------- */
 
+export type Lang = "de" | "en";
+/** Ordner der Reiseideen je Sprache, relativ zur Wurzel der Seite */
+export const DIR: Record<Lang, string> = { de: "reise/", en: "en/trip-ideas/" };
+
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const eur = (n: number) => `${n.toLocaleString("de-DE")} €`;
-const range = (a: number, b: number) => (a === b ? eur(a) : `${a.toLocaleString("de-DE")}–${eur(b)}`);
+const num = (n: number, lang: Lang) => n.toLocaleString(lang === "de" ? "de-DE" : "en-GB");
+const range = (a: number, b: number, lang: Lang = "de") => {
+  const v = a === b ? num(a, lang) : `${num(a, lang)}–${num(b, lang)}`;
+  return lang === "de" ? `${v} €` : `€${v}`;
+};
+
+/** Texte rund um die Seite (HTML, schon maskiert) */
+const UI = {
+  de: {
+    locale: "de_DE", stand: STAND, plan: "Reise planen", ideas: "Reiseideen", ziel: "Reiseziele", anlass: "Anlässe",
+    example: "Beispielrechnung pro Person", total: "Gesamt pro Person", about: "ca.", perPerson: "pro Person",
+    note: `Richtwerte, Stand ${STAND}. Preise schwanken stark nach Saison, Buchungszeitpunkt und Ansprüchen. Keine Angebote.`,
+    cta: "Mit diesen Werten eigene Reise planen",
+    ctaSub: "Kostenlos und ohne Anmeldung: Ziel, Gruppe und diese Kosten sind schon eingetragen, die echten Preise sucht ihr direkt in Split&amp;Fly.",
+    tips: "Tipps", faq: "Häufige Fragen", fair: "Kosten fair aufteilen",
+    fairText: "In Split&amp;Fly tragt ihr Flüge, Unterkunft und Ausgaben ein, sucht Angebote und seht sofort, was jede Person und jede Familie zahlt – auch wenn Kinder weniger zahlen, jemand kürzer bleibt oder nicht bei allem dabei ist. Am Ende zeigt die Abrechnung, wer wem wie viel überweist.",
+    more: "Weitere Reiseideen", claim: "Split&amp;Fly – Gruppenreisen planen und Kosten fair aufteilen. Kostenlos, in 7 Sprachen.",
+    all: "Alle Reiseideen", imprint: ["impressum.html", "Impressum"], privacy: ["datenschutz.html", "Datenschutz"], other: "English",
+    index: {
+      title: "Reiseideen für Gruppen mit Kosten pro Person",
+      description: "Was kosten Gruppenreisen, Junggesellenabschied, Klassenfahrt oder Urlaub mit mehreren Familien? Beispielrechnungen pro Person mit Tipps zum fairen Aufteilen.",
+      h1: "Reiseideen für Gruppen: Was kostet es pro Person?",
+      intro: `Beispielrechnungen für beliebte Ziele und Anlässe – mit Kosten pro Person, Tipps und einem Klick in die eigene Planung. Alle Werte sind Richtwerte (Stand ${STAND}).`,
+      name: "Reiseideen für Gruppen"
+    }
+  },
+  en: {
+    locale: "en_GB", stand: STAND_EN, plan: "Plan a trip", ideas: "Trip ideas", ziel: "Destinations", anlass: "Occasions",
+    example: "Sample budget per person", total: "Total per person", about: "approx.", perPerson: "per person",
+    note: `Guide prices, as of ${STAND_EN}. Prices vary widely by season, booking time and standards. Not offers.`,
+    cta: "Plan your own trip with these figures",
+    ctaSub: "Free and without sign-up: destination, group and these costs are already filled in – you search for real prices directly in Split&amp;Fly.",
+    tips: "Tips", faq: "Frequently asked questions", fair: "Split the costs fairly",
+    fairText: "In Split&amp;Fly you enter flights, accommodation and expenses, search for offers and see straight away what each person and each family pays – even when children pay less, someone stays for fewer nights or isn’t in on everything. At the end, the settlement shows who transfers how much to whom.",
+    more: "More trip ideas", claim: "Split&amp;Fly – plan group trips and split the costs fairly. Free, in 7 languages.",
+    all: "All trip ideas", imprint: ["imprint.html", "Imprint"], privacy: ["privacy.html", "Privacy"], other: "Deutsch",
+    index: {
+      title: "Group trip ideas with cost per person",
+      description: "What do group trips, bachelor parties, school trips or holidays with several families cost? Sample budgets per person with tips on splitting fairly.",
+      h1: "Group trip ideas: how much does it cost per person?",
+      intro: `Sample budgets for popular destinations and occasions – with cost per person, tips and one click into your own planning. All figures are guide prices (as of ${STAND_EN}).`,
+      name: "Group trip ideas"
+    }
+  }
+} as const;
 
 /** Summe auf glatte Zehner: untere Grenze ab-, obere aufrunden */
 export const round10 = (n: number, dir: 1 | -1) => (dir > 0 ? Math.ceil(n / 10) : Math.floor(n / 10)) * 10;
@@ -525,12 +579,26 @@ export function total(p: Page): { from: number; to: number } {
   return p.costs.reduce((s, c) => ({ from: s.from + c.from, to: s.to + c.to }), { from: 0, to: 0 });
 }
 
-/** Link in die App, relativ zur Seite /reise/<slug>/ */
-export function planHref(p: Page): string {
-  const q = new URLSearchParams({ ziel: p.plan.ziel, land: p.plan.land, name: p.plan.name, idee: p.slug });
+/** Seite in der Sprache: Texte aus pages.en.ts, Beträge, slug (App, Bild) und Ziel aus der deutschen Seite */
+export function pageIn(p: Page, lang: Lang): Page {
+  const e = lang === "en" ? EN[p.slug] : undefined;
+  if (!e) return p;
+  return {
+    ...p, title: e.title, description: e.description, h1: e.h1, intro: e.intro, example: e.example, costNote: e.costNote, tips: e.tips, faq: e.faq,
+    costs: p.costs.map((c, i) => ({ ...c, label: e.costs[i].label, note: e.costs[i].note })), plan: { ...p.plan, name: e.name }
+  };
+}
+
+/** Adresse der Seite in der Sprache, relativ zur Wurzel */
+export const pathOf = (p: Page, lang: Lang) => `${DIR[lang]}${lang === "en" ? EN[p.slug].slug : p.slug}/`;
+const updatedOf = (p: Page) => p.updated ?? UPDATED;
+
+/** Link in die App, relativ zur Seite /reise/<slug>/ bzw. /en/trip-ideas/<slug>/ */
+export function planHref(p: Page, lang: Lang = "de"): string {
+  const q = new URLSearchParams({ ziel: p.plan.ziel, land: p.plan.land, name: pageIn(p, lang).plan.name, idee: p.slug });
   if (p.plan.fam) q.set("fam", p.plan.fam);
   else if (p.plan.gruppe) q.set("gruppe", String(p.plan.gruppe));
-  return `../../?${q}`;
+  return `${lang === "de" ? "../../" : "../../../"}?${q}`;
 }
 
 export const CSS = `:root{--ink:#0F1B2D;--mute:#4A5870;--line:#DCE3EE;--bg:#F6F8FC;--card:#fff;--a:#2F6FDB;--link:#2560C4}
@@ -551,26 +619,32 @@ td+td{text-align:right;white-space:nowrap;padding-left:12px}tr.sum td{font-weigh
 @media (max-width:560px){.list a{flex-direction:column;align-items:stretch;gap:10px}.list .thumb{flex:none;width:100%;height:auto;aspect-ratio:5/2}}`;
 
 /** Illustration je Seite (art.ts); von scripts/seiten.mjs hereingereicht, damit diese Datei ohne Importe auskommt */
-export type Art = (slug: string, cls?: string) => string;
+export type Art = (slug: string, cls?: string, alt?: string) => string;
 const noArt: Art = () => "";
 
-function shell(o: { title: string; description: string; path: string; body: string; ld: object[]; root: string }): string {
-  const url = `${SITE}/${o.path}`;
+/** alt: Pfade der Seite in beiden Sprachen (relativ zur Wurzel) für hreflang und den Sprachlink */
+function shell(o: { lang: Lang; title: string; description: string; alt: Record<Lang, string>; body: string; ld: object[]; root: string }): string {
+  const u = UI[o.lang], other: Lang = o.lang === "de" ? "en" : "de";
+  const url = `${SITE}/${o.alt[o.lang]}`;
   return `<!doctype html>
-<html lang="de">
+<html lang="${o.lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(o.title)} | Split&amp;Fly</title>
 <meta name="description" content="${esc(o.description)}">
 <link rel="canonical" href="${url}">
+<link rel="alternate" hreflang="de" href="${SITE}/${o.alt.de}">
+<link rel="alternate" hreflang="en" href="${SITE}/${o.alt.en}">
+<link rel="alternate" hreflang="x-default" href="${SITE}/${o.alt.de}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Split&amp;Fly">
 <meta property="og:title" content="${esc(o.title)}">
 <meta property="og:description" content="${esc(o.description)}">
 <meta property="og:url" content="${url}">
 <meta property="og:image" content="${SITE}/og-image.png">
-<meta property="og:locale" content="de_DE">
+<meta property="og:locale" content="${u.locale}">
+<meta property="og:locale:alternate" content="${UI[other].locale}">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="${o.root}icon.svg" type="image/svg+xml">
 <style>${CSS}</style>
@@ -578,80 +652,89 @@ ${o.ld.map(x => `<script type="application/ld+json">${JSON.stringify(x)}</script
 </head>
 <body>
 <div class="wrap">
-<header><a href="${o.root}"><img src="${o.root}brand/wordmark.svg" alt="Split&amp;Fly" width="140" height="35"></a><a class="cta cta-top" href="${o.root}">Reise planen</a></header>
+<header><a href="${o.root}"><img src="${o.root}brand/wordmark.svg" alt="Split&amp;Fly" width="140" height="35"></a><a class="cta cta-top" href="${o.root}">${u.plan}</a></header>
 ${o.body}
-<footer><p>Split&amp;Fly – Gruppenreisen planen und Kosten fair aufteilen. Kostenlos, in 7 Sprachen.</p>
-<p><a href="${o.root}reise/">Alle Reiseideen</a> · <a href="${o.root}impressum.html">Impressum</a> · <a href="${o.root}datenschutz.html">Datenschutz</a></p></footer>
+<footer><p>${u.claim}</p>
+<p><a href="${o.root}${DIR[o.lang]}">${u.all}</a> · <a href="${o.root}${o.alt[other]}" hreflang="${other}" lang="${other}">${u.other}</a> · <a href="${o.root}${u.imprint[0]}">${u.imprint[1]}</a> · <a href="${o.root}${u.privacy[0]}">${u.privacy[1]}</a></p></footer>
 </div>
 </body>
 </html>
 `;
 }
 
-export function renderPage(p: Page, all: Page[] = PAGES, art: Art = noArt): string {
-  const t = total(p);
-  const rows = p.costs.map(c => `<tr><td>${esc(c.label)}${c.note ? `<br><small>${esc(c.note)}</small>` : ""}</td><td>${range(c.from, c.to)}</td></tr>`).join("\n");
+export function renderPage(p0: Page, all: Page[] = PAGES, art: Art = noArt, lang: Lang = "de"): string {
+  const p = pageIn(p0, lang), u = UI[lang], t = total(p);
+  const rows = p.costs.map(c => `<tr><td>${esc(c.label)}${c.note ? `<br><small>${esc(c.note)}</small>` : ""}</td><td>${range(c.from, c.to, lang)}</td></tr>`).join("\n");
   const rel = p.related.map(s => all.find(x => x.slug === s)).filter((x): x is Page => !!x)
-    .map(x => `<a href="../${x.slug}/">${esc(x.h1)}</a>`).join("\n");
-  const body = `<p class="crumbs"><a href="../">Reiseideen</a> › ${p.kind === "ziel" ? "Reiseziele" : "Anlässe"}</p>
+    .map(x => `<a href="../${pathOf(x, lang).slice(DIR[lang].length)}">${esc(pageIn(x, lang).h1)}</a>`).join("\n");
+  const body = `<p class="crumbs"><a href="../">${u.ideas}</a> › ${p.kind === "ziel" ? u.ziel : u.anlass}</p>
 <h1>${esc(p.h1)}</h1>
-${art(p.slug)}
+${art(p.slug, "art", lang === "en" ? EN[p.slug].alt : undefined)}
 ${p.intro.map(x => `<p>${esc(x)}</p>`).join("\n")}
 <section class="card">
-<h2 style="margin-top:0">Beispielrechnung pro Person</h2>
+<h2 style="margin-top:0">${u.example}</h2>
 <p class="ex">${esc(p.example)}</p>
 <table>
 ${rows}
-<tr class="sum"><td>Gesamt pro Person</td><td>ca. ${range(round10(t.from, -1), round10(t.to, 1))}</td></tr>
+<tr class="sum"><td>${u.total}</td><td>${u.about} ${range(round10(t.from, -1), round10(t.to, 1), lang)}</td></tr>
 </table>
 ${p.costNote ? `<p>${esc(p.costNote)}</p>` : ""}
-<p><small>Richtwerte, Stand ${STAND}. Preise schwanken stark nach Saison, Buchungszeitpunkt und Ansprüchen. Keine Angebote.</small></p>
-<p><a class="cta" href="${planHref(p)}">Mit diesen Werten eigene Reise planen</a><br><small>Kostenlos und ohne Anmeldung: Ziel, Gruppe und diese Kosten sind schon eingetragen, die echten Preise sucht ihr direkt in Split&amp;Fly.</small></p>
+<p><small>${u.note}</small></p>
+<p><a class="cta" href="${planHref(p0, lang)}">${u.cta}</a><br><small>${u.ctaSub}</small></p>
 </section>
-<h2>Tipps</h2>
+<h2>${u.tips}</h2>
 <ul>
 ${p.tips.map(x => `<li>${esc(x)}</li>`).join("\n")}
 </ul>
-<h2>Häufige Fragen</h2>
+<h2>${u.faq}</h2>
 <dl>
 ${p.faq.map(f => `<dt>${esc(f.q)}</dt><dd>${esc(f.a)}</dd>`).join("\n")}
 </dl>
-<h2>Kosten fair aufteilen</h2>
-<p>In Split&amp;Fly tragt ihr Flüge, Unterkunft und Ausgaben ein, sucht Angebote und seht sofort, was jede Person und jede Familie zahlt – auch wenn Kinder weniger zahlen, jemand kürzer bleibt oder nicht bei allem dabei ist. Am Ende zeigt die Abrechnung, wer wem wie viel überweist.</p>
-<h2>Weitere Reiseideen</h2>
+<h2>${u.fair}</h2>
+<p>${u.fairText}</p>
+<h2>${u.more}</h2>
 <div class="rel">
 ${rel}
 </div>`;
+  const path = pathOf(p0, lang);
   const ld = [
-    { "@context": "https://schema.org", "@type": "Article", headline: p.h1, description: p.description, inLanguage: "de", dateModified: "2026-10-12",
+    { "@context": "https://schema.org", "@type": "Article", headline: p.h1, description: p.description, inLanguage: lang, dateModified: updatedOf(p0),
       author: { "@type": "Organization", name: "Split&Fly", url: SITE }, publisher: { "@type": "Organization", name: "Split&Fly", url: SITE }, image: `${SITE}/og-image.png`,
-      mainEntityOfPage: `${SITE}/reise/${p.slug}/` },
+      mainEntityOfPage: `${SITE}/${path}` },
     { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: p.faq.map(f => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
     { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Reiseideen", item: `${SITE}/reise/` },
-      { "@type": "ListItem", position: 2, name: p.h1, item: `${SITE}/reise/${p.slug}/` }] }
+      { "@type": "ListItem", position: 1, name: u.ideas, item: `${SITE}/${DIR[lang]}` },
+      { "@type": "ListItem", position: 2, name: p.h1, item: `${SITE}/${path}` }] }
   ];
-  return shell({ title: p.title, description: p.description, path: `reise/${p.slug}/`, body, ld, root: "../../" });
+  return shell({ lang, title: p.title, description: p.description, alt: { de: pathOf(p0, "de"), en: pathOf(p0, "en") }, body, ld, root: lang === "de" ? "../../" : "../../../" });
 }
 
-export function renderIndex(all: Page[] = PAGES, art: Art = noArt): string {
-  const item = (p: Page) => { const t = total(p); return `<a href="${p.slug}/">${art(p.slug, "thumb")}<div>${esc(p.h1)}<span>ca. ${range(round10(t.from, -1), round10(t.to, 1))} pro Person</span></div></a>`; };
-  const body = `<h1>Reiseideen für Gruppen: Was kostet es pro Person?</h1>
-<p>Beispielrechnungen für beliebte Ziele und Anlässe – mit Kosten pro Person, Tipps und einem Klick in die eigene Planung. Alle Werte sind Richtwerte (Stand ${STAND}).</p>
-<h2>Reiseziele</h2>
+export function renderIndex(all: Page[] = PAGES, art: Art = noArt, lang: Lang = "de"): string {
+  const u = UI[lang];
+  const item = (p0: Page) => {
+    const p = pageIn(p0, lang), t = total(p);
+    return `<a href="${pathOf(p0, lang).slice(DIR[lang].length)}">${art(p0.slug, "thumb", lang === "en" ? EN[p0.slug].alt : undefined)}<div>${esc(p.h1)}<span>${u.about} ${range(round10(t.from, -1), round10(t.to, 1), lang)} ${u.perPerson}</span></div></a>`;
+  };
+  const body = `<h1>${u.index.h1}</h1>
+<p>${u.index.intro}</p>
+<h2>${u.ziel}</h2>
 <div class="list">
 ${all.filter(p => p.kind === "ziel").map(item).join("\n")}
 </div>
-<h2>Anlässe</h2>
+<h2>${u.anlass}</h2>
 <div class="list">
 ${all.filter(p => p.kind === "anlass").map(item).join("\n")}
 </div>`;
-  const ld = [{ "@context": "https://schema.org", "@type": "CollectionPage", name: "Reiseideen für Gruppen", url: `${SITE}/reise/`, inLanguage: "de",
-    hasPart: all.map(p => ({ "@type": "Article", headline: p.h1, url: `${SITE}/reise/${p.slug}/` })) }];
-  return shell({ title: "Reiseideen für Gruppen mit Kosten pro Person", description: "Was kosten Gruppenreisen, Junggesellenabschied, Klassenfahrt oder Urlaub mit mehreren Familien? Beispielrechnungen pro Person mit Tipps zum fairen Aufteilen.", path: "reise/", body, ld, root: "../" });
+  const ld = [{ "@context": "https://schema.org", "@type": "CollectionPage", name: u.index.name, url: `${SITE}/${DIR[lang]}`, inLanguage: lang,
+    hasPart: all.map(p => ({ "@type": "Article", headline: pageIn(p, lang).h1, url: `${SITE}/${pathOf(p, lang)}` })) }];
+  return shell({ lang, title: u.index.title, description: u.index.description, alt: DIR, body, ld, root: lang === "de" ? "../" : "../../" });
 }
 
-/** Einträge für die Sitemap (Übersicht und alle Seiten) */
-export function sitemapUrls(all: Page[] = PAGES): string[] {
-  return [`${SITE}/reise/`, ...all.map(p => `${SITE}/reise/${p.slug}/`)];
+/** Einträge für die Sitemap (Übersicht und alle Seiten, beide Sprachen) mit Datum der letzten Änderung */
+export function sitemapUrls(all: Page[] = PAGES): { loc: string; lastmod: string }[] {
+  const latest = all.map(updatedOf).sort().pop() ?? UPDATED;
+  return (["de", "en"] as const).flatMap(lang => [
+    { loc: `${SITE}/${DIR[lang]}`, lastmod: latest },
+    ...all.map(p => ({ loc: `${SITE}/${pathOf(p, lang)}`, lastmod: updatedOf(p) }))
+  ]);
 }

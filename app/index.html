@@ -29,17 +29,52 @@
   <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
+  <!-- Text der Startseite (#app) nur ohne JavaScript sichtbar; mit JavaScript ersetzt ihn main.ts durch die App -->
+  <script>document.documentElement.classList.add("js")</script>
+  <style>.js #app > .pre{display:none}.pre{max-width:760px;margin:0 auto;padding:24px 16px 48px;font:17px/1.6 system-ui,sans-serif;color:#0F1B2D}.pre a{color:#2560C4}</style>
 </head>
 <body data-ch="hero">
-  <div id="app"></div>
-  <noscript>
-    <h1>Split&amp;Fly – Gruppenreisen planen und Kosten fair aufteilen</h1>
-    <p>Plant eure Reise gemeinsam: Flüge, Unterkünfte, Mietwagen und Erlebnisse suchen und vergleichen, Kosten eintragen
-      und fair aufteilen – pro Person, pro Haushalt und gesamt. Für Familien, Freundesgruppen, Junggesellenabschiede,
-      Klassenfahrten und Vereinsreisen. Kostenlos, in 7 Sprachen.</p>
-    <p>Split&amp;Fly braucht JavaScript. Bitte aktiviere es in deinem Browser.</p>
-    <p><a href="reise/">Reiseideen mit Kosten pro Person</a> · <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a></p>
-  </noscript>
+  <div id="app">
+    <main class="pre">
+      <h1>Split&amp;Fly – Gruppenreisen planen und Kosten fair aufteilen</h1>
+      <p>Plant eure Reise gemeinsam an einem Ort: Flüge, Unterkünfte, Mietwagen und Erlebnisse suchen und vergleichen,
+        Kosten eintragen und fair aufteilen – pro Person, pro Haushalt und gesamt. Für Familien, Freundesgruppen,
+        Junggesellenabschiede, Klassenfahrten und Vereinsreisen. Kostenlos und in 7 Sprachen.</p>
+      <h2>So funktioniert’s</h2>
+      <ol>
+        <li><b>Reise anlegen:</b> allein, zu zweit, mit Familie oder Freunden. Ein Konto braucht ihr erst, wenn ihr auf
+          mehreren Geräten planen oder die Reise mit anderen teilen wollt.</li>
+        <li><b>Reisende und Familien eintragen:</b> Erwachsene und Kinder, wer zusammen zahlt und wer kürzer bleibt.</li>
+        <li><b>Angebote vergleichen:</b> Flüge und Unterkünfte suchen, Varianten nebeneinanderstellen und gemeinsam abstimmen.</li>
+        <li><b>Kosten verfolgen:</b> jeder Posten von der Idee über gewählt und gebucht bis bezahlt.</li>
+        <li><b>Fair abrechnen:</b> Split&amp;Fly zeigt, was jede Person und jede Familie zahlt und wer wem wie viel überweist.</li>
+      </ol>
+      <h2>Was kostet eure Reise pro Person?</h2>
+      <p>Fertig gerechnete Beispiele mit Kosten pro Person, die ihr mit einem Klick als eigene Reise übernehmt:</p>
+      <ul>
+        <li><a href="reise/familienurlaub-mehrere-familien-kosten/">Urlaub mit mehreren Familien</a> und
+          <a href="reise/ferienhaus-daenemark-familien-kosten/">Ferienhaus in Dänemark</a></li>
+        <li><a href="reise/junggesellenabschied-kosten/">Junggesellenabschied</a> und
+          <a href="reise/festival-mit-freunden-kosten/">Festival mit Freunden</a></li>
+        <li><a href="reise/klassenfahrt-berlin-kosten/">Klassenfahrt nach Berlin</a> und
+          <a href="reise/vereinsreise-reisebus-kosten/">Vereinsreise mit dem Reisebus</a></li>
+        <li><a href="reise/gruppenreise-mallorca-kosten/">Gruppenreise nach Mallorca</a> und
+          <a href="reise/skiurlaub-gruppe-oesterreich-kosten/">Skiurlaub in Österreich</a></li>
+      </ul>
+      <p><a href="reise/">Alle Reiseideen</a> · <a href="en/trip-ideas/" hreflang="en" lang="en">Group trip ideas in English</a></p>
+      <h2>Häufige Fragen</h2>
+      <dl>
+        <dt>Kostet Split&amp;Fly etwas?</dt>
+        <dd>Nein, Planen, Vergleichen und Abrechnen sind kostenlos.</dd>
+        <dt>Brauche ich ein Konto?</dt>
+        <dd>Nein, ihr könnt sofort loslegen. Mit Konto plant ihr auf mehreren Geräten und teilt die Reise per Einladungslink.</dd>
+        <dt>Gibt es Split&amp;Fly als App?</dt>
+        <dd>Split&amp;Fly läuft im Browser und lässt sich auf Handy und Computer wie eine App installieren.</dd>
+      </dl>
+      <p><a href="anleitung/">Anleitung Schritt für Schritt</a> · <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a></p>
+    </main>
+  </div>
+  <noscript><p class="pre">Split&amp;Fly braucht JavaScript. Bitte aktiviere es in deinem Browser.</p></noscript>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
