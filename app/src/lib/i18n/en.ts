@@ -1120,6 +1120,7 @@ export const en: Dict = {
   "ev.name": "What?",
   "ev.namePh": "e.g. Arsenal – Bayern",
   "ev.noFlight": "No matching flight",
+  "ev.soloSearch": "Search flights separately",
   "ev.noNight": "No overnight stay",
   "ev.noTrip": "Not a complete trip, cannot be added",
   "ev.noStay": "No accommodation found",
