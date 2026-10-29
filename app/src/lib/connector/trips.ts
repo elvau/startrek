@@ -9,7 +9,8 @@ import { es } from "../i18n/es";
 import { fr } from "../i18n/fr";
 import { pl } from "../i18n/pl";
 import { ru } from "../i18n/ru";
-import { CAT_KEYS, DEFAULT_SETTINGS, isActive, uid, type CatKey, type Item, type Option, type Traveler, type Trip } from "../model";
+import { CAT_KEYS, DEFAULT_SETTINGS, isActive, uid, type CatKey, type Item, type Option, type Person, type Traveler, type Trip } from "../model";
+import { applyPeople } from "../people";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import { plainLink } from "../partner";
 import { locOf } from "../geo/maps";
@@ -46,6 +47,9 @@ export interface NewTrip {
   adults: number;
   /** Alter der Kinder (unter 2: Kleinkind) */
   childAges?: number[];
+  /** echte Reisende aus dem Konto (#595) statt Platzhaltern; people: gespeicherte Personen für Wohnort und Alter */
+  travelers?: Traveler[];
+  people?: Person[];
   lang: string;
 }
 
@@ -70,13 +74,16 @@ export function placeholders(adults: number, childAges: number[], lang: string):
 }
 
 export function newTrip(o: NewTrip): Trip {
-  const travelers = placeholders(Math.max(1, Math.min(20, o.adults)), (o.childAges || []).slice(0, 10), o.lang);
+  const travelers = o.travelers?.length ? o.travelers : placeholders(Math.max(1, Math.min(20, o.adults)), (o.childAges || []).slice(0, 10), o.lang);
   const name = (o.name || "").trim().slice(0, 120) || o.place.trim().slice(0, 120);
-  return {
+  const trip: Trip = {
     id: uid() + uid(), name, autoName: false, place: o.place.trim().slice(0, 80), country: (o.country || "").trim().slice(0, 60),
     ...(o.from ? { from: o.from } : {}), ...(o.to ? { to: o.to } : {}),
     travelers, items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, detail: {}
   };
+  // Wohnort der Familien und Alter zum Reisebeginn wie in der App
+  if (o.people) applyPeople(trip, o.people);
+  return trip;
 }
 
 const at = () => new Date().toISOString();

@@ -1173,6 +1173,7 @@ export const fr: Dict = {
   "oauth.back": "Ensuite, tu reviens sur {host}.",
   "oauth.can": "L'assistant peut :",
   "oauth.canSearch": "chercher des vols, hébergements et événements via Split&Fly",
+  "oauth.canPeople": "connaître tes familles et groupes enregistrés (adultes, âges des enfants, ville, préférences ; sans noms)",
   "oauth.canTrips": "lire tes voyages, en créer et ajouter ou retirer des postes (ce qui est réservé ou payé reste)",
   "oauth.cannot": "Pas : voir les noms des voyageurs, modifier les membres, lire les infos « Rien que pour toi », réserver ou payer",
   "oauth.chatHow": "Dans l'app de chat, ajoute un connecteur personnalisé (MCP) avec cette adresse et choisis « Connecter ». Split&Fly s'ouvre et tu donnes ton accord, sans clé.",

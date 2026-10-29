@@ -1171,6 +1171,7 @@ export const de = {
   "oauth.back": "Danach geht es zurück zu {host}.",
   "oauth.can": "Der Assistent darf:",
   "oauth.canSearch": "Flüge, Unterkünfte und Events über Split&Fly suchen",
+  "oauth.canPeople": "deine gespeicherten Familien und Gruppen kennen (Erwachsene, Kinderalter, Wohnort, Vorlieben; ohne Namen)",
   "oauth.canTrips": "deine Reisen lesen, neue anlegen und Posten hinzufügen oder entfernen (Gebuchtes und Bezahltes bleibt)",
   "oauth.cannot": "Nicht: Namen der Reisenden sehen, Mitglieder ändern, Angaben „Nur für dich“ lesen, buchen oder bezahlen",
   "oauth.chatHow": "In der Chat-App einen eigenen Konnektor (MCP) mit dieser Adresse hinzufügen und „Verbinden“ wählen. Split&Fly öffnet sich, dort stimmst du zu – ganz ohne Schlüssel.",

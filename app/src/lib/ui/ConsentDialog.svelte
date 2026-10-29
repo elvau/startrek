@@ -35,6 +35,7 @@
       <p class="small">{t("oauth.can")}</p>
       <ul class="oauth-list small">
         <li>{t("oauth.canSearch")}</li>
+        <li>{t("oauth.canPeople")}</li>
         <li>{t("oauth.canTrips")}</li>
         <li class="muted">{t("oauth.cannot")}</li>
       </ul>
