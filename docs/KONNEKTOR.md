@@ -11,7 +11,7 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Anzeigename und Datum. Gespeichert wird er nirgends; die App zeigt ihn einmal an, dazu die Adresse, einen Hinweis für andere Programme und als Beispiel den Befehl für Claude Code:
    `claude mcp add --transport http splitandfly https://…/mcp --header "Authorization: Bearer sf_…"`
 2. **Werkzeuge** (`worker/src/mcp.ts`): `search_flights`, `search_stays`, `search_events` (keine Touren: Viator-Inhalte dürfen nicht an fremde Anwendungen);
-   mit Dienstkonto zusätzlich `list_trips`, `get_trip`, `create_trip`, `add_flight`, `add_stay`, `add_cost`, `remove_item`.
+   mit Dienstkonto zusätzlich `get_my_travelers`, `list_trips`, `get_trip`, `create_trip`, `add_flight`, `add_stay`, `add_cost`, `remove_item`.
    Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel (Zwischenspeicher), `add_*` nimmt die Kennung.
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
@@ -21,6 +21,17 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    `created` (eigene Kosten). Neue Reisen mit Platzhaltern („Fuchs Erw. 1“). An den Assistenten gehen keine Namen der Reisenden.
 5. **Grenzen:** Suchen pro Schlüssel und Tag (`MCP_DAILY`, Standard 50) plus die Mengenbegrenzung pro IP.
    Zählung in „Nutzung & Kontingente“ (KI-Konnektor, Konnektor-Schlüssel erzeugt).
+
+## Nachfragen statt raten (#595)
+
+- `get_my_travelers`: Familien aus den gespeicherten Personen (`profiles/{uid}`, Nachname = Familie) als F1, F2 … (eigene zuerst,
+  `you`), mit Erwachsenen, Kinderaltern zum Stichtag (`date`, sonst heute) und Wohnort ohne PLZ; gespeicherte Gruppen mit Name,
+  Familien und eigenen Vorlieben; eigene Vorlieben ohne PLZ (`app/src/lib/connector/people.ts`). Keine Namen von Personen.
+- `create_trip` mit `families` oder `group`: echte Reisende wie „Aus Gruppe hinzufügen“ (Alter zum Reisebeginn, Wohnort der
+  Familie, Herkunft der Gruppe). Ohne beides nur mit `travelersFrom: "user"` und `adults`/`childAges`, sonst Fehler „Do not guess“.
+- Hinweise: erst `get_my_travelers`, Unklares mit 2–4 Optionen und „something else“ nachfragen, Annahmen nennen. Den Weg zum
+  Abflughafen samt Parken und die Verpflegung rechnet die App selbst (nicht als Kosten anlegen).
+- Später: MCP-Elicitation (echte Auswahlknöpfe), sobald die Chat-Apps sie anzeigen und der Server streamen kann.
 
 ## Chat-Apps per OAuth (#590)
 

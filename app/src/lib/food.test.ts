@@ -85,4 +85,60 @@ describe("Verpflegung wie im Artefakt", () => {
     expect(two).toEqual([["Verpflegung (14 Familien)", 14], ["Verpflegung P3", 1]]);
     expect(foodGroups(foodPlan(t, g)).map(x => x.hhs.length)).toEqual([14, 1]);
   });
+
+  it("Rundreise (#596): Verpflegung je Nacht nach der Unterkunft, in der die Familie schläft", () => {
+    const t = trip();
+    t.food = { on: true, style: "mix" };
+    t.detail = { misc: true, stay: true };
+    const stay = (id: string, from: string, to: string, board?: "breakfast" | "half") => ({ id, cat: "stay" as const, name: id, status: "chosen" as const, from, to,
+      options: [{ id: id + "o", label: id, price: { mode: "unit" as const, currency: "EUR", unit: 300, basis: "stay" as const }, stay: board ? { board } : {} }] });
+    // 3 Nächte Apartment ohne Verpflegung, dann 2 Nächte Frühstück, 2 Nächte Halbpension
+    t.items = [stay("apt", "2027-07-18", "2027-07-21"), stay("b&b", "2027-07-21", "2027-07-23", "breakfast"), stay("hp", "2027-07-23", "2027-07-25", "half")];
+    const mix = foodRate(g, t, "mix").eur, hb = foodRate(g, t, "hb").eur;
+    const [klein, hase] = foodPlan(t, g);
+    expect(klein.parts).toEqual([
+      { style: "mix", days: 3, eur: mix },
+      { style: "mix", board: "breakfast", days: 2, eur: Math.round(mix * 0.8) },
+      { style: "hb", board: "half", days: 2, eur: hb }
+    ]);
+    expect(klein).toMatchObject({ days: 7, style: "mix", eur: Math.round((3 * mix + 2 * Math.round(mix * 0.8) + 2 * hb) / 7) });
+    expect(klein.board).toBeUndefined();
+    // Hase erst ab dem 20.: 1 Nacht Apartment, dann wie oben
+    expect(hase.parts?.map(p => [p.board || p.style, p.days])).toEqual([["breakfast", 2], ["half", 2], ["mix", 1]]);
+    syncFood(t, g);
+    expect(t.items.find(i => i.hh === "Klein")!.options[0].detail).toContain("Verpflegung laut Unterkünften: 3 Tage Gemischt, 2 Tage Frühstück, 2 Tage Halbpension");
+    // früher galt die Halbpension des letzten Hotels für die ganze Reise; ohne Angabe überall: eine Verpflegung wie bisher
+    t.items = [stay("apt", "2027-07-18", "2027-07-21"), stay("apt2", "2027-07-21", "2027-07-25")];
+    const one = foodPlan(t, g)[0];
+    expect(one).toMatchObject({ style: "mix", eur: mix, days: 7 });
+    expect(one.parts).toBeUndefined();
+  });
+
+  it("Unterkunft ohne Zeitraum gilt wie bisher für die ganze Reise, Nächte außerhalb datierter Unterkünfte auch", () => {
+    const t = trip();
+    t.food = { on: true, style: "mix" };
+    t.detail = { misc: true, stay: true };
+    t.items = [{ id: "s", cat: "stay", name: "Hotel", status: "chosen", options: [{ id: "o", label: "Hotel", price: { mode: "unit", currency: "EUR", unit: 1000, basis: "stay" }, stay: { board: "half" } }] }];
+    const rows = foodPlan(t, g);
+    expect(rows.map(r => [r.style, r.board, r.parts])).toEqual([["hb", "half", undefined], ["hb", "half", undefined]]);
+  });
+
+  it("Rundreise über mehrere Länder: Tagessatz je Station nach dem Ort der Unterkunft (#596)", () => {
+    const t = { ...trip(), place: "Göteborg", country: "Schweden", households: {} };
+    t.food = { on: true, style: "mix" };
+    const stay = (id: string, from: string, to: string, place: string, country: string) => ({ id, cat: "stay" as const, name: id, status: "chosen" as const, from, to,
+      options: [{ id: id + "o", label: id, price: { mode: "unit" as const, currency: "EUR", unit: 300, basis: "stay" as const }, query: { place, country, checkin: from, checkout: to, adults: 2, childAges: [], rooms: 1 } }] });
+    t.items = [stay("se", "2027-07-18", "2027-07-21", "Göteborg", "Sweden"), stay("no", "2027-07-21", "2027-07-25", "Bergen", "Norway")];
+    const se = foodRate(g, { ...t, country: "SE" }, "mix").eur, no = foodRate(g, { ...t, place: "Bergen", country: "NO" }, "mix").eur;
+    expect(se).not.toBe(no);
+    const [row] = foodPlan(t, g);
+    expect(row.parts).toEqual([{ style: "mix", days: 4, eur: no, place: "Bergen" }, { style: "mix", days: 3, eur: se, place: "Göteborg" }]);
+    expect(row.eur).toBe(Math.round((3 * se + 4 * no) / 7));
+    syncFood(t, g);
+    expect(t.items.find(i => i.auto === "food")!.options[0].detail).toContain("4 Tage Gemischt (Bergen), 3 Tage Gemischt (Göteborg)");
+    // eigener Stil der Familie: Ort zählt trotzdem
+    t.food = { on: true, style: "mix", hh: { Klein: "self" } };
+    expect(foodPlan(t, g)[0].parts?.map(p => [p.style, p.place])).toEqual([["self", "Bergen"], ["self", "Göteborg"]]);
+  });
 });
+

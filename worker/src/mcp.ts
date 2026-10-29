@@ -11,9 +11,10 @@ import { parseEventQuery } from "../../app/src/lib/events/search";
 import type { FlightOffer, FlightQuery, SearchResult } from "../../app/src/lib/flights/types";
 import type { StayOffer, StayQuery, StaySearchResult } from "../../app/src/lib/stays/types";
 import type { EventQuery, EventSearchResult } from "../../app/src/lib/events/types";
-import type { Trip } from "../../app/src/lib/model";
+import type { Directory, Person, Traveler, Trip } from "../../app/src/lib/model";
 import { addCost, addFlight, addStay, isCat, LANGS, newTrip, removeItem, tripSummary } from "../../app/src/lib/connector/trips";
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
+import { travelersFor, travelersView } from "../../app/src/lib/connector/people";
 import type { KeyInfo } from "./apikey";
 
 export interface McpDeps {
@@ -22,6 +23,8 @@ export interface McpDeps {
   events: (q: EventQuery) => Promise<EventSearchResult>;
   /** Reisen im Konto; null: nur Suchen */
   store: TripStore | null;
+  /** gespeicherte Personen, Gruppen und Vorlieben des Kontos (profiles/{uid}); fehlt: keine */
+  profile?: (uid: string) => Promise<Directory | null>;
   /** gefundene Angebote merken (je Schlüssel, einige Stunden) */
   offers: { put: (id: string, v: Saved) => Promise<void>; get: (id: string) => Promise<Saved | null> };
   /** zählt eine Suche mit; Fehlermeldung, wenn das Tageslimit erreicht ist */
@@ -41,7 +44,9 @@ const INSTRUCTIONS = [
   "Split&Fly plans group trips and splits the costs fairly. Use these tools to search real flights, accommodation and events, and to plan trips in the user's Split&Fly account.",
   "Search results have an id; add an offer to a trip with add_flight or add_stay (ids stay valid for a few hours). Prices are totals for all travelers in the given currency.",
   "Split&Fly does not book: each offer has a link to the provider, where the user books. Never ask for passport or ID data.",
-  "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family."
+  "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family.",
+  "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, or train, per household from its settings) and meals; never add these as costs.",
+  "Ask instead of guessing: call get_my_travelers first (families with children's ages, saved groups, preferences). If destination, time frame, who travels, budget or kind of trip are still unclear, ask the user short questions, each with 2-4 concrete options plus 'something else', before creating a trip. Never invent travelers or children's ages; state any remaining assumption explicitly."
 ].join(" ");
 
 const str = (d: string) => ({ type: "string", description: d });
@@ -78,15 +83,23 @@ const SEARCH_TOOLS = [
 ];
 
 const TRIP_TOOLS = [
+  {
+    name: "get_my_travelers", title: "My families and groups",
+    description: "The user's saved families (id, adults, children's ages, home town; no names), saved groups (name, families, group preferences) and travel preferences (airports, budget, styles …). Call this before planning, to know who travels instead of guessing.",
+    inputSchema: { type: "object", properties: { date: str("Ages as of this day, YYYY-MM-DD (default: today; use the trip start)") } }
+  },
   { name: "list_trips", title: "List trips", description: "Trips in the user's Split&Fly account (own and shared).", inputSchema: { type: "object", properties: {} } },
   { name: "get_trip", title: "Show trip", description: "Destination, dates, number of travelers (no names) and all items with id, status and price.", inputSchema: { type: "object", properties: { tripId: str("Trip id") }, required: ["tripId"] } },
   {
     name: "create_trip", title: "Create trip",
-    description: "Create a new trip in the user's account with placeholder travelers (the user can replace them with real people in the app).",
+    description: "Create a new trip in the user's account. Travelers: saved families or a saved group from get_my_travelers (real people, ages as of the trip start), or, only if the user told you who travels, adults and childAges with travelersFrom 'user' (placeholders the user can replace in the app). If you don't know who travels, ask first.",
     inputSchema: { type: "object", properties: {
       place: str("Destination"), country: str("Country"), name: str("Trip name (default: destination)"), from: str("Arrival YYYY-MM-DD"), to: str("Departure YYYY-MM-DD"),
-      adults: int("Adults", 1, 20), childAges: ages, language: lang
-    }, required: ["place", "adults"] }
+      families: { type: "array", items: { type: "string" }, description: "Family ids from get_my_travelers (e.g. [\"F1\"])" },
+      group: str("Name of a saved group from get_my_travelers"),
+      travelersFrom: { type: "string", enum: ["user"], description: "'user': the user told you adults and children's ages in this conversation (only then use adults/childAges)" },
+      adults: int("Adults (with travelersFrom 'user')", 1, 20), childAges: ages, language: lang
+    }, required: ["place"] }
   },
   {
     name: "add_flight", title: "Add flight to trip",
@@ -96,18 +109,18 @@ const TRIP_TOOLS = [
   { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang }, required: ["tripId", "offerId"] } },
   {
     name: "add_cost", title: "Add cost to trip",
-    description: "Add another cost (rental car, tickets, own arrival by car, an estimate) to a trip, in EUR.",
+    description: "Add another cost (rental car, transfers at the destination, tickets, an estimate) to a trip, in EUR. Not for the way to the departure airport or airport parking: the app calculates them for every flight.",
     inputSchema: { type: "object", properties: {
-      tripId: str("Trip id"), category: { type: "string", enum: ["flights", "stay", "transport", "attractions", "misc"], description: "flights, stay, transport (rental car, transfers, own arrival), attractions, misc" },
+      tripId: str("Trip id"), category: { type: "string", enum: ["flights", "stay", "transport", "attractions", "misc"], description: "flights, stay, transport (rental car, transfers, own arrival instead of a flight), attractions, misc" },
       name: str("Short name"), amountEur: { type: "number", description: "Amount in EUR", minimum: 0 },
       perPerson: { type: "boolean", description: "true: amount per person; false (default): total for the group" }, link: str("Optional https link (e.g. ticket shop)"),
-      arrival: { type: "boolean", description: "true if this is the travelers' own arrival (car, train, bus) instead of a flight" }
+      arrival: { type: "boolean", description: "true only if the travelers reach the destination itself without a flight (own car, train, bus all the way); never for the way to the departure airport" }
     }, required: ["tripId", "category", "name", "amountEur"] }
   },
   { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay).", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip") }, required: ["tripId", "itemId"] } }
 ];
 
-const READ_ONLY = new Set(["search_flights", "search_stays", "search_events", "list_trips", "get_trip"]);
+const READ_ONLY = new Set(["search_flights", "search_stays", "search_events", "get_my_travelers", "list_trips", "get_trip"]);
 
 export function toolList(deps: Pick<McpDeps, "store">) {
   return [...SEARCH_TOOLS, ...(deps.store ? TRIP_TOOLS : [])].map(t => ({ ...t, annotations: { readOnlyHint: READ_ONLY.has(t.name), openWorldHint: t.name.startsWith("search_") } }));
@@ -211,6 +224,12 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
   }
   const store = deps.store || fail("Trips are not available");
   switch (name) {
+    case "get_my_travelers": {
+      const d = deps.profile ? await deps.profile(user.uid) : null;
+      const day = typeof a.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(a.date) ? a.date : today;
+      if (!d || (!d.people.length && !d.prefs)) return { families: [], groups: [], note: "Nothing saved in the account yet: ask the user who travels (adults, children's ages)." };
+      return travelersView(d, day);
+    }
     case "list_trips": {
       const list = await store!.list(user.uid);
       return { trips: list.map(r => { const t = parse(r); return { id: r.id, name: r.name, place: t?.place, from: t?.from, to: t?.to, role: roleOf(r, user.uid) }; }) };
@@ -225,8 +244,19 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const day = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
       const from = day(a.from), to = day(a.to);
       if (from && to && to < from) fail("to is before from");
+      // wer reist: aus dem Konto (Familien, Gruppe) oder vom Nutzer genannt; nie geraten (#595)
+      const fromAccount = (Array.isArray(a.families) && a.families.length > 0) || (typeof a.group === "string" && !!a.group.trim());
+      let travelers: Traveler[] | undefined, people: Person[] | undefined;
+      if (fromAccount) {
+        const d = deps.profile ? await deps.profile(user.uid) : null;
+        if (!d) fail("No saved families or groups: ask the user who travels (adults, children's ages) and use travelersFrom 'user'");
+        try { travelers = travelersFor(d!, { families: a.families, group: a.group }, from || today); } catch (e) { fail((e as Error).message); }
+        people = d!.people;
+      } else if (a.travelersFrom !== "user" || !Number.isInteger(a.adults)) {
+        fail("Who travels? Do not guess: call get_my_travelers and pass families or group, or ask the user for adults and children's ages and pass them with travelersFrom 'user'");
+      }
       const adults = Number.isInteger(a.adults) ? a.adults : 1;
-      const trip = newTrip({ name: S(a.name, 120), place, country: S(a.country, 60), from, to, adults, childAges: kids(a.childAges), lang: lng(a.language) });
+      const trip = newTrip({ name: S(a.name, 120), place, country: S(a.country, 60), from, to, adults, childAges: kids(a.childAges), lang: lng(a.language), travelers, people });
       trip.ai = { at: new Date().toISOString() };
       await store!.create(trip.id, trip.name, JSON.stringify(trip), user.uid, user.name || "Claude");
       return { tripId: trip.id, ...tripSummary(trip, "owner") };

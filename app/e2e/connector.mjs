@@ -19,7 +19,7 @@ const out = await mkdtemp(join(tmpdir(), "mcp-"));
 const b = await rolldown({ input: { mcp: "../worker/src/mcp.ts", firestore: "../worker/src/firestore.ts", apikey: "../worker/src/apikey.ts", oauth: "../worker/src/oauth.ts" }, platform: "neutral", logLevel: "silent" });
 await b.write({ dir: out, format: "esm", entryFileNames: "[name].mjs" });
 const { mcpMessage } = await import(join(out, "mcp.mjs"));
-const { tripStore } = await import(join(out, "firestore.mjs"));
+const { tripStore, profileStore } = await import(join(out, "firestore.mjs"));
 const { seal } = await import(join(out, "apikey.mjs"));
 const { grantStore } = await import(join(out, "oauth.mjs"));
 
@@ -46,13 +46,27 @@ async function tool(name, args) {
   return r.result.structuredContent;
 }
 
-const made = await tool("create_trip", { place: "Palma", country: "Spanien", name: "Palma mit Claude", from: "2027-05-07", to: "2027-05-10", adults: 2, childAges: [8] });
+const made = await tool("create_trip", { place: "Palma", country: "Spanien", name: "Palma mit Claude", from: "2027-05-07", to: "2027-05-10", adults: 2, childAges: [8], travelersFrom: "user" });
 const id = made.tripId;
-await tool("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-07", return: "2027-05-10", adults: 2, childAges: [8] });
+await tool("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-07", return: "2027-05-10", adults: 2, childAges: [8], travelersFrom: "user" });
 await tool("add_flight", { tripId: id, offerId: "kiwi:x1" });
 const listed = await tool("list_trips", {});
 if (!listed.trips.some(t => t.id === id && t.role === "owner")) fail("Reise nicht in der Liste: " + JSON.stringify(listed));
 log("Konnektor legt Reise im Konto an (Firestore-REST) und übernimmt einen Flug");
+
+// Familien und Gruppen aus dem Konto (#595): gespeicherte Personen in profiles/{uid}, Reise mit echten Reisenden
+const FS = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
+const dirData = { me: "pc", people: [{ id: "pc", first: "Claudia", last: "Fuchs", age: 41 }, { id: "pk", first: "Tom", last: "Fuchs", age: 6 }], groups: [{ id: "g", name: "Fuchsbau", memberIds: ["pc", "pk"] }], prefs: { airports: ["DUS"], plz: "40210" } };
+await fetch(`${FS}/profiles/${uid}`, { method: "PATCH", headers: { authorization: "Bearer owner", "content-type": "application/json" }, body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify(dirData) } } }) });
+deps.profile = profileStore({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
+const mine = await tool("get_my_travelers", {});
+if (JSON.stringify(mine.families) !== JSON.stringify([{ id: "F1", you: true, adults: 1, childAges: [6] }]) || mine.groups[0]?.name !== "Fuchsbau") fail("get_my_travelers: " + JSON.stringify(mine));
+if (/Claudia|Tom|Fuchs\b|40210/.test(JSON.stringify(mine.families) + JSON.stringify(mine.prefs))) fail("Namen oder PLZ an die KI");
+const fam = await tool("create_trip", { place: "Usedom", group: "Fuchsbau" });
+const famDoc = await (await fetch(`${FS}/trips/${fam.tripId}`, { headers: { authorization: "Bearer owner" } })).json();
+const famTrip = JSON.parse(famDoc.fields.data.stringValue);
+if (famTrip.travelers.map(t => `${t.name}/${t.household}/${t.age}`).join() !== "Claudia/Fuchs/41,Tom/Fuchs/6") fail("Reisende aus der Gruppe: " + JSON.stringify(famTrip.travelers));
+log("Familien und Gruppen aus dem Konto ohne Namen für die KI; Reise aus der Gruppe mit echten Reisenden");
 
 // Verbindungen der Chat-Apps (OAuth, #590) in Firestore: anlegen, nur unverändert ändern, Liste, aufräumen, trennen
 const gs = grantStore({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });

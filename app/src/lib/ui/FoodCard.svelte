@@ -8,7 +8,7 @@
   /* Verpflegung wie im Artefakt: Essensstil für alle oder je Familie, Tagessatz aus den Länderdaten, dazu Restaurants und Supermärkte */
   import { access, app, calc } from "../store.svelte";
   import { eur } from "../calc";
-  import { FOOD_STYLES, foodCfg, foodGroups, foodPlan, syncFood } from "../food";
+  import { FOOD_STYLES, foodCfg, foodGroups, foodPlan, partsText, syncFood } from "../food";
   import { ensureGeo, geo } from "../geo/geo.svelte";
   import { mapsSearchLink } from "../links";
   import PartnerLinks from "./PartnerLinks.svelte";
@@ -60,8 +60,9 @@
       {#each groups as g (g.key)}
         {@const it = app.trip.items.find(i => i.auto === "food" && i.hh === g.key)}
         <li>
-          <div class="food-h"><b title={g.hhs.join(", ")}>{names(g.hhs)}</b><span class="muted small">{FOOD_STYLES.find(s => s.k === g.style)?.l} · {t("food.row", { p: g.ids.length, d: tn("n.days", g.days), a: eur(g.eur), c: eur(Math.round(g.eur * cfg.child / 100)) })}{g.est ? ` (${t("food.est")})` : ""}</span><b class="num">{eur(it ? calc.T.items[it.id]?.net || 0 : 0)}</b></div>
-          {#if g.board}<div class="food-board small">🛏 {t("food.byStay", { b: t(`board.${g.board}` as Key) })}</div>{/if}
+          <div class="food-h"><b title={g.hhs.join(", ")}>{names(g.hhs)}</b><span class="muted small">{FOOD_STYLES.find(s => s.k === g.style)?.l} · {t("food.row", { p: g.ids.length, d: tn("n.days", g.days), a: `${g.parts ? "Ø " : ""}${eur(g.eur)}`, c: eur(Math.round(g.eur * cfg.child / 100)) })}{g.est ? ` (${t("food.est")})` : ""}</span><b class="num">{eur(it ? calc.T.items[it.id]?.net || 0 : 0)}</b></div>
+          {#if g.parts}<div class="food-board small">🛏 {t("food.byStays", { list: partsText(g.parts) })}</div>
+          {:else if g.board}<div class="food-board small">🛏 {t("food.byStay", { b: t(`board.${g.board}` as Key) })}</div>{/if}
           {#if g.own && !access.readonly}<button class="linkbtn small" onclick={() => g.hhs.forEach(h => setHh(h, null))}>{t("food.likeAll")}</button>{/if}
         </li>
       {:else}
