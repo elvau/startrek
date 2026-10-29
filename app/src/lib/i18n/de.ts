@@ -1118,6 +1118,7 @@ export const de = {
   "ev.name": "Was?",
   "ev.namePh": "z. B. Arsenal – Bayern",
   "ev.noFlight": "Kein passender Flug",
+  "ev.soloSearch": "Flug einzeln suchen",
   "ev.noNight": "Ohne Übernachtung",
   "ev.noTrip": "Keine vollständige Reise, nicht übernehmbar",
   "ev.noStay": "Keine Unterkunft gefunden",

@@ -10,6 +10,7 @@
    */
   import { app, deleteTrip, goHome, startTrip, switchTrip } from "../store.svelte";
   import { eventPlanner } from "../event/open.svelte";
+  import { openFlightSearch } from "../flights/open.svelte";
   import { eur } from "../calc";
   import { dayShort, range, time } from "../format";
   import Modal from "./Modal.svelte";
@@ -32,7 +33,7 @@
   import { resizeTravelers, rowsAfterResize } from "../placeholders";
   import { FLIGHTS_URL, flyers, homeGuess, nearestAirports, passengers, rate, searchFlights, worthRetry, type Rated } from "../flights/app";
   import { guests, searchStaysRemote } from "../stays/app";
-  import { DEFAULT_H, fits, keepEnd, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, ticketRange, ticketsEur, variants, type Variant } from "../event/plan";
+  import { DEFAULT_H, earlier, fits, keepEnd, fixWindow, km, nearestStay, pickStayNear, planTotal, followEventName, takePlan, ticketRange, ticketsEur, variants, type Variant } from "../event/plan";
   import { cityFromAddress, evWhen, searchEventsRemote, sportTag, SPORT_ICON } from "../events/app";
   import { uniqueById } from "../events/search";
   import { noteError } from "../bugs/log";
@@ -252,6 +253,14 @@
           const more = await Promise.allSettled([searchFlights({ ...fq, maxStops: 2 }, signal)]).then(r => r[0]);
           if (more.status === "fulfilled" && anyReal(more.value.offers.filter(o => fits(o, v)))) fl = more;
         }
+        // Fernziel: geht am Vortag kein passender Hinflug (Langstrecke, wenige Abflugtage), einen Tag früher suchen (#536)
+        // beide Umstiegs-Stufen gleichzeitig, damit die Suche nicht länger dauert
+        if (v.kind === "relaxed" && fl.status === "fulfilled" && !fl.value.offers.some(o => !o.test && fits(o, v))) {
+          const v2 = earlier(v), fq2 = { ...fq, depart: v2.out };
+          const alts = await Promise.allSettled([1, 2].map(stops => searchFlights({ ...fq2, maxStops: stops }, signal))).then(r => r.flat());
+          const hit = alts.find(a => a.status === "fulfilled" && a.value.offers.some(o => !o.test && fits(o, v2)));
+          if (hit) { fl = hit; v = v2; }
+        }
         const flights = fl.status === "fulfilled" ? fl.value.offers.filter(o => !o.test && fits(o, v)).map(o => rate(trip, o, o.out.from, true)) : [];
         const flight = flights.length ? flights.reduce((a, b) => (b.total < a.total ? b : a)) : null;
         if (v.window && flight) v = fixWindow(v, flight);
@@ -276,6 +285,16 @@
     takePlan(app.trip, r.v, r.flight, stayOf(r), r.stayQ);
     done = true;
     rows = null;
+  }
+
+  /** Kein Flug gefunden: Planer schließen (Reise bleibt) und die Einzel-Flugsuche mit Ziel und Tagen öffnen (#536) */
+  function soloSearch() {
+    if (app.trip.id !== trip.id) switchTrip(trip.id, "Event-Planer");
+    eventPlanner.fresh = false;
+    ctrl?.abort();
+    onclose();
+    const to = trip.place || place.split(",")[0].trim();
+    openFlightSearch({ ...(to ? { to } : {}), ...(date ? { depart: date } : {}), ...(date ? { ret: plusDays(endDate > date ? endDate : date, 1) } : {}) });
   }
 
   /** Schließen: eine nur für den Planer angelegte Reise bleibt ohne übernommenen Vorschlag nicht zurück (#546) */
@@ -376,7 +395,10 @@
   {/if}
 
   {#if rows}
-    {#if !found.length}<p class="warnline">{t("ev.none")}</p>{/if}
+    {#if !found.length}
+      <p class="warnline">{t("ev.none")}</p>
+      <button class="btn" onclick={soloSearch}>✈ {t("ev.soloSearch")}</button>
+    {/if}
     <div class="ev-list">
       {#each found.length ? rows : [] as r (r.v.kind)}
         {@const f = r.flight}

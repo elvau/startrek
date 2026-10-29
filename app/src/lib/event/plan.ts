@@ -103,6 +103,9 @@ export function variants(ev: TripEvent, window?: { from: string; to: string }): 
   return list;
 }
 
+/** Langstrecke: Hinflug einen Tag früher, wenn am Vortag kein passender Flug geht (die Suche verlangt den genauen Abflugtag) */
+export const earlier = (v: Variant): Variant => ({ ...v, out: addDays(v.out, -1), nights: v.nights + 1 });
+
 const nightsBetween = (a: string, b: string) => Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000);
 
 /** Zeitraum-Vorschlag mit gefundenem Flug: Daten und Nächte aus dem Flug */
