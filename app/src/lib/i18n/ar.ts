@@ -1391,6 +1391,7 @@ export const ar: Dict = {
   "fl.searchMissing": "ابحث عن رحلة لهم",
   "follow.label": "مثل {name}",
   "food.byStay": "الوجبات حسب مكان الإقامة: {b}",
+  "food.byStays": "الوجبات حسب أماكن الإقامة: {list}",
   "food.detail": "قيمة إرشادية يوميًا، الأطفال {c} %، الصغار {i} %",
   "food.detailEst": "قيمة إرشادية (تقديرية) يوميًا، الأطفال {c} %، الصغار {i} %",
   "food.est": "تقديري",

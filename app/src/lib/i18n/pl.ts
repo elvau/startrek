@@ -1360,6 +1360,7 @@ export const pl: Dict = {
   "fl.searchMissing": "Szukaj lotu dla nich",
   "follow.label": "jak {name}",
   "food.byStay": "Wyżywienie wg obiektu: {b}",
+  "food.byStays": "Wyżywienie według noclegów: {list}",
   "food.detail": "Wartość orientacyjna na dzień, dzieci {c} %, małe dzieci {i} %",
   "food.detailEst": "Wartość orientacyjna (szacowana) na dzień, dzieci {c} %, małe dzieci {i} %",
   "food.est": "szacunkowo",
