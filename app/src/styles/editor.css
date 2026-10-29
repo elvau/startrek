@@ -853,6 +853,21 @@ body:has(.gc-fab) .ai-note{bottom:calc(142px + env(safe-area-inset-bottom,0px))}
 .mcp-row{display:flex;gap:6px}
 .mcp-key,.mcp-url{flex:1;min-width:0;font:12px ui-monospace,monospace}
 .mcp-cmd{white-space:pre-wrap;word-break:break-all;font:12px/1.5 ui-monospace,monospace;background:var(--line);border-radius:10px;padding:10px 12px;margin:0}
+.mcp h4{margin:6px 0 -4px;font-size:14px}
+.mcp-keys{border-top:1px solid var(--line);padding-top:10px}
+.mcp-keys summary{cursor:pointer;font-weight:600;font-size:14px}
+.mcp-keys>.mcp{margin-top:10px}
+/* Chat-Apps per OAuth (#590): Zustimmung und verbundene Assistenten */
+.oauth-who{display:flex;align-items:center;gap:12px}
+.oauth-who div{display:flex;flex-direction:column;gap:2px}
+.oauth-logo{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--a-soft);color:var(--a);font-weight:800;font-size:18px}
+.oauth-conns .oauth-logo{width:32px;height:32px;border-radius:10px;font-size:15px}
+.oauth-list{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:4px}
+.oauth-btns{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.oauth-conns{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.oauth-conns li{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.oauth-c{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.oauth-c small{overflow-wrap:anywhere}
 
 /* Flug-Kapitel: wer noch keinen Flug und keine Anreise hat */
 .miss-travel{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:13.5px;color:var(--warn);background:var(--warn-soft);border-radius:12px;padding:8px 12px}

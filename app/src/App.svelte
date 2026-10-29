@@ -54,9 +54,10 @@
   import { dir, dirReady } from "./lib/directory.svelte";
   import UsagePanel from "./lib/ui/UsagePanel.svelte";
   import ConnectDialog from "./lib/ui/ConnectDialog.svelte";
+  import ConsentDialog from "./lib/ui/ConsentDialog.svelte";
   import MyDataDialog from "./lib/ui/MyDataDialog.svelte";
   import { myData } from "./lib/mydata.svelte";
-  import { connect } from "./lib/connector/app.svelte";
+  import { connect, consent, readConsent } from "./lib/connector/app.svelte";
   import { admin } from "./lib/admin/app.svelte";
   import { FLIGHTS_URL } from "./lib/flights/app";
   import FlightSearch from "./lib/ui/FlightSearch.svelte";
@@ -97,12 +98,15 @@
 
   // Konto einrichten (#160, #330): erst ausprobieren; nach der Anmeldung einmal je Konto, sobald dessen Stand da ist
   let setupChecked = "";
+  // Chat-App möchte sich verbinden (OAuth, #590): ?verbinden=…
+  readConsent();
   // AGB: Zustimmung aus dem Anmeldefenster ins Konto; ohne Zustimmung zur aktuellen Fassung erst zustimmen (TermsGate)
   $effect(() => { if (cloud.user && dirReady() && !termsAccepted(dir) && !resetting()) takePending(dir); });
   const needTerms = $derived(!!cloud.user && dirReady() && !termsAccepted(dir) && !hasPending() && !resetting());
   $effect(() => {
     const u = cloud.user?.uid;
-    if (!u || setupChecked === u || !dirReady() || !cloud.fresh || needTerms) return;
+    // nicht über der Zustimmung für eine Chat-App
+    if (!u || setupChecked === u || !dirReady() || !cloud.fresh || needTerms || consent.info) return;
     setupChecked = u;
     if (autoAllowed() && shouldAutoStart(dir, !!cloud.user)) setupWizard.open = true;
   });
@@ -347,6 +351,7 @@
 {#if cloud.configured && FLIGHTS_URL}<BugButton fab={!mob.on || app.home} />{/if}
 {#if admin.open && admin.is && cloud.user}<UsagePanel />{/if}
 {#if connect.open && cloud.user}<ConnectDialog />{/if}
+{#if consent.info && !needTerms}<ConsentDialog />{/if}
 {#if myData.open && cloud.user}<MyDataDialog />{/if}
 {#if cloud.showLogin && (!cloud.user || cloud.user.guest)}<LoginDialog />{/if}
 {#if setupWizard.open}<SetupWizard />{/if}

@@ -22,6 +22,32 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
 5. **Grenzen:** Suchen pro Schlüssel und Tag (`MCP_DAILY`, Standard 50) plus die Mengenbegrenzung pro IP.
    Zählung in „Nutzung & Kontingente“ (KI-Konnektor, Konnektor-Schlüssel erzeugt).
 
+## Chat-Apps per OAuth (#590)
+
+Claude.ai, ChatGPT und andere Chat-Apps verbinden sich ohne Schlüssel: Adresse `…/mcp` als eigenen Konnektor eintragen,
+„Verbinden“, bei Split&Fly zustimmen. Umsetzung in `worker/src/oauth.ts` nach der MCP-Spezifikation (OAuth 2.1, PKCE S256,
+dynamische Anmeldung), ohne Bibliothek:
+
+1. `/mcp` ohne gültigen Schlüssel antwortet 401 mit `WWW-Authenticate: Bearer resource_metadata=…`; die Chat-App liest
+   `/.well-known/oauth-protected-resource` und `/.well-known/oauth-authorization-server`.
+2. `POST /oauth/register`: Die Chat-App meldet Name und Rücksprung-Adressen (https, `http://localhost`/`127.0.0.1` oder
+   eigenes Schema wie `cursor:`). Die Kennung `sfc_…` enthält beides signiert, gespeichert wird nichts. Wer ein
+   Geheimnis will (`client_secret_post`/`_basic`), bekommt eines, abgeleitet aus der Kennung; Schutz gibt PKCE.
+3. `GET /oauth/authorize` prüft Kennung, Rücksprung-Adresse und PKCE und leitet zur App: `https://splitandfly.com/?verbinden=…`
+   (signierte Anfrage, 10 Minuten gültig; andere Adresse über `APP_URL`). Die App (`ConsentDialog.svelte`) zeigt Name der
+   Chat-App und Ziel, verlangt ein Konto und schickt „Erlauben“/„Ablehnen“ mit der Firebase-Anmeldung an `POST /oauth/approve`.
+   Die Anfrage merkt sie sich im Sitzungsspeicher, falls die Anmeldung über eine Weiterleitung läuft.
+4. `/oauth/approve` legt die Verbindung an (Firestore `mcpGrants/{id}`: Konto, Name, Ziel, verbunden seit, zuletzt genutzt,
+   Kennung des gültigen Erneuerungsschlüssels) und gibt die Rücksprung-Adresse mit Code `sfo_…` (5 Minuten, einmal) zurück.
+5. `POST /oauth/token`: Code + `code_verifier` → Zugangsschlüssel `sfa_…` (1 Stunde) und Erneuerungsschlüssel `sfr_…`
+   (90 Tage, wechselt bei jeder Erneuerung). `/mcp` nimmt `sf_…` und `sfa_…`; Tageslimit und Angebotsspeicher je Verbindung.
+6. Kontomenü → „KI-Assistent verbinden“: verbundene Chat-Apps (`GET /oauth/grants`) mit „Trennen“ (`POST /oauth/grants/remove`,
+   löscht den Eintrag; Zugang und Erneuerung gelten sofort nicht mehr). Der tägliche Zeitplan löscht Verbindungen, die
+   90 Tage nicht genutzt oder nie eingelöst wurden. Notfall: Verbindungskennung in `MCP_REVOKED`.
+
+Rechte wie beim Schlüssel (Dani, 29.10.2026): suchen und Reisen lesen, anlegen und ergänzen. Ausprobieren in Claude.ai erst
+nach dem Release (Such-Dienst nur von `main`). Vor dem öffentlichen Anbieten: Partnerbedingungen (#591).
+
 ## Einrichten (Cloudflare, Typ Secret)
 
 1. `MCP_KEY_SECRET`: lange Zufallszeichenkette (z. B. 40 Zeichen aus einem Passwortgenerator). Neues Secret = alle
@@ -33,10 +59,12 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
 
 ## Später
 
-- Anmeldung per OAuth über die Firebase-Anmeldung, damit der Konnektor auch in Chat-Apps (Claude, ChatGPT) ohne Schlüssel geht.
-- Vor dem offenen Anbieten: Partnerbedingungen prüfen (Weitergabe der Suchergebnisse, Affiliate-Links).
+- Vor dem offenen Anbieten: Partnerbedingungen prüfen (Weitergabe der Suchergebnisse, Affiliate-Links), #591; danach Eintrag in die
+  Verzeichnisse der Chat-Apps.
 
 ## Tests
 
 - `worker/src/mcp.test.ts`: Schlüssel, Firestore-Werte, Protokoll, Werkzeuge, Rechte, gleichzeitige Änderung, Tageslimit
-- `app/e2e/connector.mjs`: MCP-Kern gegen den Firestore-Emulator, App zeigt die Reise (markiert, live), Schlüssel-Dialog
+- `worker/src/oauth.test.ts`: Beschreibung, Anmeldung der Chat-App, Ablauf mit PKCE, Erneuerung, Trennen, Fehlerfälle
+- `app/e2e/connector.mjs`: MCP-Kern gegen den Firestore-Emulator, App zeigt die Reise (markiert, live), Schlüssel-Dialog,
+  verbundene Chat-Apps (Trennen), Zustimmung (`?verbinden=…`)
