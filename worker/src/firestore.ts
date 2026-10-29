@@ -4,6 +4,8 @@
  * lesen nur Mitglieder, ändern nur Besitzer und Bearbeiter, Mitglieder und Einladung bleiben unangetastet.
  */
 
+import type { Directory } from "../../app/src/lib/model";
+
 export interface StoreEnv {
   /** Dienstkonto als JSON (Secret); fehlt es, kann der Konnektor nur suchen */
   FIREBASE_SERVICE_ACCOUNT?: string;
@@ -148,6 +150,21 @@ export function tripStore(env: StoreEnv, f: typeof fetch = fetch): TripStore | n
         throw e;
       }
     }
+  };
+}
+
+/** gespeicherte Personen, Gruppen und Vorlieben des Kontos (profiles/{uid}, Feld data als JSON, #595); null ohne Dienstkonto */
+export function profileStore(env: StoreEnv, f: typeof fetch = fetch): ((uid: string) => Promise<Directory | null>) | null {
+  const c = fsClient(env, f);
+  if (!c) return null;
+  return async uid => {
+    let doc: { fields?: Record<string, FsValue> };
+    try { doc = await c.call(`${c.base}/profiles/${encodeURIComponent(uid)}`) as never; }
+    catch (e) { if ((e as { status?: number }).status === 404) return null; throw e; }
+    let d: Partial<Directory> | null = null;
+    try { d = JSON.parse(String(fromFs(doc.fields?.data) ?? "null")); } catch {}
+    if (!d || typeof d !== "object") return null;
+    return { ...d, people: Array.isArray(d.people) ? d.people : [], groups: Array.isArray(d.groups) ? d.groups : [] };
   };
 }
 

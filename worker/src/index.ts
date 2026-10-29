@@ -36,7 +36,7 @@ import { kiCaller, kiModels, kiReady, type KiEnv } from "./ki";
 import { isAdmin, meter, noteClick, noteRoute, usageReport, type UsageEnv } from "./usage";
 import { checkLimit, IP_LIMITS, ipKey, searchWindows, type LimitEnv } from "./ratelimit";
 import { isRevoked, issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
-import { tripStore, type StoreEnv } from "./firestore";
+import { profileStore, tripStore, type StoreEnv } from "./firestore";
 import { mcpMessage, type Saved } from "./mcp";
 import { grantStore, isOAuthPath, oauth, verifyAccess, wwwAuthenticate, type OAuthDeps } from "./oauth";
 import pkg from "../../app/package.json";
@@ -585,6 +585,7 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
     stays: async q => real(await searchStays(q, { ...env, FX: await rates(env) }, net)),
     events: q => cachedJson(`events/${encodeURIComponent(JSON.stringify(q))}`, 3600, () => searchEvents(q, env, net, cachedJson), r => r.events.length > 0, ctx),
     store: tripStore(env, net),
+    profile: profileStore(env, net) || undefined,
     offers: {
       put: (id, v) => caches.default.put(offerKey(id), new Response(JSON.stringify(v), { headers: { "cache-control": "max-age=21600" } })),
       get: async id => { const r = await caches.default.match(offerKey(id)); return r ? await r.json() as Saved : null; }

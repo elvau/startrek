@@ -296,7 +296,11 @@
   searches per key or connection and day (ID and date, deleted after two days). For trips in your account the search service
   reads and writes your trips in Firebase (section 5), only those you are a member of, and changes them only with edit
   rights. The assistant receives destination, travel dates, number of travellers by age group and the items with
-  prices, no names of travellers and no “Just for you” details.
+  prices, no names of travellers and no “Just for you” details. If the assistant asks for your saved people (section 5),
+  it receives your families without names (number of adults, children's ages, home town without postcode), the names and
+  make-up of your saved groups and your preferences (without postcode). If it creates a trip with these families or a group,
+  the search service enters the saved people including their names into the trip, like “Add from group” in the app; the
+  names are not sent to the assistant.
 </p>
 <p>
   What you enter into your assistant and what it retrieves from here is processed by its provider (e.g. Anthropic,
