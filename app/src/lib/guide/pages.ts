@@ -36,6 +36,8 @@ export interface GuideShot { img: string; alt: string; caption: string; pins: Re
 export type GuideSpots = Record<string, { w: number; h: number; spots: { key: string; x: number; y: number }[] }>;
 
 export const GUIDE_STAND = "Oktober 2026";
+/** Datum der letzten inhaltlichen Änderung (JJJJ-MM-TT), mit GUIDE_STAND anheben; für lastmod in der Sitemap */
+export const GUIDE_UPDATED = "2026-10-27";
 
 export const GUIDE: GuidePage[] = [
   {
@@ -527,6 +529,12 @@ if(dp){var tot=dp.querySelector("[name=tot]"),kid=dp.querySelector("[name=kid]")
   dp.addEventListener("input",calc);calc()}
 })();`;
 
+/** <title>: „– Anleitung“ nur, solange es mit Split&Fly in 60 Zeichen passt (Google kürzt längere Titel) */
+export function guideTitle(title: string): string {
+  const t = title.includes("Anleitung") || title.length + 24 > 60 ? title : `${title} – Anleitung`;
+  return `${t} | Split&Fly`;
+}
+
 function shell(o: { title: string; description: string; path: string; body: string; ld: object[]; root: string }): string {
   const url = `${SITE}/${o.path}`;
   return `<!doctype html>
@@ -534,7 +542,7 @@ function shell(o: { title: string; description: string; path: string; body: stri
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(o.title)} | Anleitung | Split&amp;Fly</title>
+<title>${esc(guideTitle(o.title))}</title>
 <meta name="description" content="${esc(o.description)}">
 <link rel="canonical" href="${url}">
 <meta property="og:type" content="article">
@@ -646,10 +654,10 @@ ${LEARN.map(([e, a, b]) => `<dt>${e} ${esc(a)}</dt><dd>${esc(b)}</dd>`).join("\n
 <p><a class="cta" href="../">Split&amp;Fly öffnen</a></p>`;
   const ld = [{ "@context": "https://schema.org", "@type": "CollectionPage", name: "Anleitung Split&Fly", url: `${SITE}/anleitung/`, inLanguage: "de",
     hasPart: all.map(p => ({ "@type": "HowTo", name: p.h1, url: `${SITE}/anleitung/${p.slug}/` })) }];
-  return shell({ title: "Anleitung für Split&Fly", description: "Schritt für Schritt: Reise anlegen, Reisende eintragen, Flüge und Unterkünfte vergleichen, Kosten verfolgen, gemeinsam abstimmen und fair abrechnen.", path: "anleitung/", body, ld, root: "../" });
+  return shell({ title: "Anleitung: Gruppenreisen planen, Kosten teilen", description: "Schritt für Schritt: Reise anlegen, Reisende eintragen, Flüge und Unterkünfte vergleichen, Kosten verfolgen, gemeinsam abstimmen und fair abrechnen.", path: "anleitung/", body, ld, root: "../" });
 }
 
-/** Einträge für die Sitemap (Übersicht und alle Seiten) */
-export function guideSitemapUrls(all: GuidePage[] = GUIDE): string[] {
-  return [`${SITE}/anleitung/`, ...all.map(p => `${SITE}/anleitung/${p.slug}/`)];
+/** Einträge für die Sitemap (Übersicht und alle Seiten) mit Datum der letzten Änderung */
+export function guideSitemapUrls(all: GuidePage[] = GUIDE): { loc: string; lastmod: string }[] {
+  return [`${SITE}/anleitung/`, ...all.map(p => `${SITE}/anleitung/${p.slug}/`)].map(loc => ({ loc, lastmod: GUIDE_UPDATED }));
 }

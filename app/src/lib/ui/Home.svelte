@@ -1,5 +1,6 @@
 <script lang="ts">
   import { i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
+  import { ideasDir } from "../plan";
   /*
    * Startseite bei jedem neuen Besuch (ein Neuladen im selben Tab bleibt in der Reise): Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
@@ -24,7 +25,7 @@
   import AiMark from "./AiMark.svelte";
   import TopNav from "./TopNav.svelte";
   import AppFooter from "./AppFooter.svelte";
-  // Reiseideen liegen neben der App (…/startrek/reise/)
+  // Reiseideen liegen neben der App (…/startrek/reise/, Englisch unter …/en/trip-ideas/)
   const BASE = (import.meta.env.BASE_URL as string) || "/";
 
   let picking = $state(false);
@@ -208,7 +209,7 @@
         </button>
       {/if}
       <!-- Reiseideen (Inhaltsseiten /reise/): öffnen eine fertig gerechnete Reise, ersetzen die Beispielreise (#402) -->
-      <a class="home-act home-ideas" href="{BASE}reise/">
+      <a class="home-act home-ideas" href="{BASE}{ideasDir(i18n.lang)}">
         <span class="home-ico" aria-hidden="true">🧭</span><b>{t("home.ideas")}</b><small>{t("home.ideasSub")}</small>
       </a>
     </div>

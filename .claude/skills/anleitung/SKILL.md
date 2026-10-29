@@ -11,7 +11,7 @@ beim Zusammenstellen (`scripts/site.sh`) statische Seiten unter `/anleitung/`. F
 - Nur beschreiben, was die App heute kann. Bezeichnungen wortgleich aus `app/src/lib/i18n/de.ts` (Kapitel „Abheben“, Status „Gewählt“ …). Unklar? Im Code nachsehen, nicht raten.
 - Du-Form, kurze Sätze, Schritte in der Reihenfolge der App. Je Seite: `steps` (mind. 4), `tips` (mind. 3), `faq` (mind. 2), `where` (Ort in der App).
 - Keine Modellnamen, keine Inhalte aus Fehlerberichten, keine Daten aus Konten.
-- Neue Funktion: passende Seite ergänzen oder neue Seite in `GUIDE` und `GUIDE_ART` (Szene und Alt-Text) anlegen, `GUIDE_STAND` anheben.
+- Neue Funktion: passende Seite ergänzen oder neue Seite in `GUIDE` und `GUIDE_ART` (Szene und Alt-Text) anlegen, `GUIDE_STAND` und `GUIDE_UPDATED` (Datum für die Sitemap) anheben.
 - Die Anleitung ist nur Deutsch (wie `/reise/`); der Footer-Link nennt das in den anderen Sprachen.
 
 ## Bilder und Interaktives
