@@ -1360,6 +1360,7 @@ export const ru: Dict = {
   "fl.searchMissing": "Найти перелёт для них",
   "follow.label": "как {name}",
   "food.byStay": "Питание по условиям жилья: {b}",
+  "food.byStays": "Питание по местам проживания: {list}",
   "food.detail": "Ориентир на день, дети {c} %, малыши {i} %",
   "food.detailEst": "Ориентир (оценка) на день, дети {c} %, малыши {i} %",
   "food.est": "оценка",

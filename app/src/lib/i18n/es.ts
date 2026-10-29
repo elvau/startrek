@@ -1328,6 +1328,7 @@ export const es: Dict = {
   "fl.searchMissing": "Buscar vuelo para ellos",
   "follow.label": "como {name}",
   "food.byStay": "Comidas según el alojamiento: {b}",
+  "food.byStays": "Comidas según el alojamiento: {list}",
   "food.detail": "Valor orientativo por día, niños {c} %, niños pequeños {i} %",
   "food.detailEst": "Valor orientativo (estimado) por día, niños {c} %, niños pequeños {i} %",
   "food.est": "estimado",

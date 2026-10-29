@@ -1326,6 +1326,7 @@ export const de = {
   "fl.searchMissing": "Flug für sie suchen",
   "follow.label": "wie {name}",
   "food.byStay": "Verpflegung laut Unterkunft: {b}",
+  "food.byStays": "Verpflegung laut Unterkünften: {list}",
   "food.detail": "Richtwert pro Tag, Kinder {c} %, Kleinkinder {i} %",
   "food.detailEst": "Richtwert (geschätzt) pro Tag, Kinder {c} %, Kleinkinder {i} %",
   "food.est": "geschätzt",
