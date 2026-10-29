@@ -205,6 +205,6 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
     id: trip.id, name: trip.name, place: trip.place, country: trip.country || undefined, from: trip.from, to: trip.to, role,
     travelers: { adults: cnt("adult"), children: cnt("child"), infants: cnt("infant") },
     items, approxTotalEur: total,
-    note: "Approximate total of the items (chosen or cheapest offer), without extraCosts (tourist tax, cleaning, baggage … paid on site or extra; add them when comparing) and without deposits (only blocked, credit card only if how = credit). Exact split per person and meals are calculated in the Split&Fly app."
+    note: "Approximate total of the items (chosen or cheapest offer), without extraCosts (tourist tax, cleaning, baggage … paid on site or extra; add them when comparing) and without deposits (only blocked, credit card only if how = credit). The way to the departure airport and back (car incl. parking or train, per household) and meals are added automatically by the Split&Fly app and are not listed here; do not add them. Exact split per person is calculated in the app."
   };
 }

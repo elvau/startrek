@@ -41,7 +41,8 @@ const INSTRUCTIONS = [
   "Split&Fly plans group trips and splits the costs fairly. Use these tools to search real flights, accommodation and events, and to plan trips in the user's Split&Fly account.",
   "Search results have an id; add an offer to a trip with add_flight or add_stay (ids stay valid for a few hours). Prices are totals for all travelers in the given currency.",
   "Split&Fly does not book: each offer has a link to the provider, where the user books. Never ask for passport or ID data.",
-  "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family."
+  "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family.",
+  "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, or train, per household from its settings) and meals; never add these as costs."
 ].join(" ");
 
 const str = (d: string) => ({ type: "string", description: d });
@@ -96,12 +97,12 @@ const TRIP_TOOLS = [
   { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang }, required: ["tripId", "offerId"] } },
   {
     name: "add_cost", title: "Add cost to trip",
-    description: "Add another cost (rental car, tickets, own arrival by car, an estimate) to a trip, in EUR.",
+    description: "Add another cost (rental car, transfers at the destination, tickets, an estimate) to a trip, in EUR. Not for the way to the departure airport or airport parking: the app calculates them for every flight.",
     inputSchema: { type: "object", properties: {
-      tripId: str("Trip id"), category: { type: "string", enum: ["flights", "stay", "transport", "attractions", "misc"], description: "flights, stay, transport (rental car, transfers, own arrival), attractions, misc" },
+      tripId: str("Trip id"), category: { type: "string", enum: ["flights", "stay", "transport", "attractions", "misc"], description: "flights, stay, transport (rental car, transfers, own arrival instead of a flight), attractions, misc" },
       name: str("Short name"), amountEur: { type: "number", description: "Amount in EUR", minimum: 0 },
       perPerson: { type: "boolean", description: "true: amount per person; false (default): total for the group" }, link: str("Optional https link (e.g. ticket shop)"),
-      arrival: { type: "boolean", description: "true if this is the travelers' own arrival (car, train, bus) instead of a flight" }
+      arrival: { type: "boolean", description: "true only if the travelers reach the destination itself without a flight (own car, train, bus all the way); never for the way to the departure airport" }
     }, required: ["tripId", "category", "name", "amountEur"] }
   },
   { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay).", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip") }, required: ["tripId", "itemId"] } }

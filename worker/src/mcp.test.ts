@@ -90,6 +90,16 @@ describe("KI-Konnektor (MCP)", () => {
     expect(((await mcpMessage(rpc("gibtsnicht"), ME, d)) as any).error.code).toBe(-32601);
   });
 
+  it("sagt der KI, dass die App Anreise zum Flughafen samt Parken selbst rechnet (nicht doppelt anlegen)", async () => {
+    const d = deps();
+    const init = await mcpMessage(rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } }), ME, d) as any;
+    expect(init.result.instructions).toContain("departure airport");
+    const tools = ((await mcpMessage(rpc("tools/list"), ME, d)) as any).result.tools;
+    const cost = tools.find((t: any) => t.name === "add_cost");
+    expect(cost.description).toContain("Not for the way to the departure airport");
+    expect(cost.inputSchema.properties.arrival.description).toContain("never for the way to the departure airport");
+  });
+
   it("sucht, legt eine Reise an, übernimmt Angebote und zeigt sie ohne Namen", async () => {
     const d = deps();
     const fl = await tool(d, "search_flights", { from: ["dus"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 2, childAges: [8] });
