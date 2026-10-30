@@ -42,11 +42,29 @@ export function expediaFlightLink(q: FlightLinkQuery & { toName?: string }): str
   return `${BASE}/Flights-Search?${p}`;
 }
 
-/** Flug + Hotel (Pauschalreise): nur mit Rückflug, Hotel am Ziel für die Reisedauer */
+/** Feld mit Länge (Protobuf, Länge < 128) */
+const field = (tag: number, b: number[]) => [tag, b.length, ...b];
+const bytes = (s: string) => [...s].map(c => c.charCodeAt(0));
+/**
+ * misId der Pauschalsuche: Flugstrecken mit Flughafen und Datum (Protobuf, base64url, mit „~“ vorn).
+ * Expedia legt darin sonst auch eigene Ort-IDs ab; ohne sie sucht es nach Flughafencode (getestet 10/2026).
+ */
+export function expediaMisId(legs: [string, string][]): string {
+  const leg = (ap: string, d: string) => field(0x12, [...field(0x0a, bytes(ap)), ...field(0x2a, bytes(d))]);
+  const msg = [0x01, ...field(0x12, field(0x1a, [0x08, 0x02, 0x12, 0x01, 0x08])), ...field(0x1a, [0x08, 0x01, ...legs.flatMap(([ap, d]) => leg(ap, d))])];
+  return "~" + btoa(String.fromCharCode(...msg)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** Flug + Hotel (Pauschalreise): nur mit Rückflug und Flughafencodes; Hotel am Ziel für die Reisedauer */
 export function expediaPackageLink(q: FlightLinkQuery & { toName?: string }): string | null {
   if (!q.ret) return null;
-  const p = new URLSearchParams({ packageType: "fh", origin: q.from, destination: q.toName || q.to, startDate: q.depart, endDate: q.ret });
+  const iata = (s: string) => /^[A-Za-z]{3}$/.test(s) ? s.toUpperCase() : "";
+  const from = iata(q.from), to = iata(q.to);
+  if (!from || !to) return `${BASE}/Flug-und-Hotel`;
+  const p = new URLSearchParams({ misId: expediaMisId([[from, q.depart], [to, q.ret]]), packageType: "fh", searchProduct: "hotel" });
   guests(p, q.adults, ages(q), 1);
+  p.delete("rooms");
+  for (const [k, v] of [["tripType", "ROUND_TRIP"], ["cabinClass", "COACH"], ["startDate", q.depart], ["endDate", q.ret], ["destination", q.toName || to], ["origin", from], ["originAirportCode", from]]) p.set(k, v);
   return `${BASE}/Hotel-Search?${p}`;
 }
 
