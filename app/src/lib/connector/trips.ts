@@ -345,14 +345,14 @@ export function tripPeople(trip: Trip) {
 
 /** Einstellungen einer Familie, wie der Assistent sie setzt (update_travelers households) */
 export interface HouseholdInput {
-  toAirport?: AccessMode; carpoolWith?: string; cars?: number; parkingFree?: boolean; parkingEur?: number | null; rideEur?: number | null;
+  toAirport?: AccessMode; carpoolWith?: string; cars?: number; fuelMoney?: boolean; parkingFree?: boolean; parkingEur?: number | null; rideEur?: number | null;
   purse?: "joint" | "each"; arrive?: string | null; depart?: string | null;
 }
 
 function householdView(h: Household): HouseholdInput {
   return {
     ...(h.mode ? { toAirport: h.mode } : {}), ...(h.link ? { carpoolWith: h.link } : {}), ...(h.cars ? { cars: h.cars } : {}),
-    ...(h.parking?.off ? { parkingFree: true } : {}), ...(h.parking?.paid != null ? { parkingEur: h.parking.paid } : {}), ...(h.ride ? { rideEur: h.ride } : {}),
+    ...(h.mode === "drop" ? { fuelMoney: !h.dropFree } : {}), ...(h.parking?.off ? { parkingFree: true } : {}), ...(h.parking?.paid != null ? { parkingEur: h.parking.paid } : {}), ...(h.ride ? { rideEur: h.ride } : {}),
     ...(h.kasse ? { purse: h.kasse } : {}), ...(h.arrive ? { arrive: h.arrive } : {}), ...(h.depart ? { depart: h.depart } : {})
   };
 }
@@ -376,6 +376,7 @@ export function setHousehold(trip: Trip, family: string, s: HouseholdInput): str
     h.mode = "with"; h.link = s.carpoolWith;
   }
   if (h.mode === "with" && !h.link) return "toAirport with needs carpoolWith (the family they ride with)";
+  if (s.fuelMoney != null) { if (s.fuelMoney) delete h.dropFree; else h.dropFree = true; }
   if (s.cars != null) h.cars = Math.max(1, Math.min(5, Math.round(s.cars)));
   if (s.parkingFree != null || s.parkingEur !== undefined) {
     const paid = s.parkingEur === undefined ? h.parking?.paid : s.parkingEur ?? undefined;

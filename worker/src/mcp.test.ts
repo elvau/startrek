@@ -262,8 +262,8 @@ describe("KI-Konnektor (MCP)", () => {
     const d = deps();
     const made = await tool(d, "create_trip", { place: "Madeira", from: "2027-05-10", to: "2027-05-17", travelers: [
       { first: "Anna", family: "Klein", age: 40 }, { first: "Ben", family: "Groß", age: 42 }
-    ], households: [{ family: "klein", toAirport: "drop" }] });
-    expect(made.data.families.find((f: any) => f.name === "Klein")).toMatchObject({ toAirport: "drop" });
+    ], households: [{ family: "klein", toAirport: "drop", fuelMoney: false }] });
+    expect(made.data.families.find((f: any) => f.name === "Klein")).toMatchObject({ toAirport: "drop", fuelMoney: false });
     const id = made.data.tripId;
     const u = await tool(d, "update_travelers", { tripId: id, households: [
       { family: "Groß", carpoolWith: "Klein", purse: "each", arrive: "2027-05-11" },

@@ -383,6 +383,15 @@ try {
   await hhHase.locator(".hh-park").selectOption("");
   await along.locator(".bp-park").waitFor();
   log("Parken am Flughafen: Vergleichs-Links, „entfällt“ und „gebucht“ (70 €) je Familie");
+  // gebracht und abgeholt: mit Spritgeld (Kilometerpauschale) oder ohne, wenn der Fahrer umsonst fährt
+  const mode = hhHase.locator('select:has(option[value="drop"])');
+  await mode.selectOption("drop");
+  await along.locator(".bp-acc-l", { hasText: "gebracht & abgeholt: 2 ×" }).waitFor();
+  await hhHase.locator(".hh-fuel").selectOption("no");
+  await along.locator(".bp-acc-l", { hasText: "ohne Spritgeld" }).waitFor();
+  await mode.selectOption("car");
+  await along.locator(".bp-park").waitFor();
+  log("Gebracht und abgeholt: mit Spritgeld oder ohne (Fahrer fährt umsonst)");
   await hhHase.locator(".hh-sum").click();
   log("Anfahrt am Flug antippen: Familie Hase in den Einstellungen aufgeklappt");
 

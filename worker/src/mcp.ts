@@ -105,6 +105,7 @@ const HOUSEHOLDS = {
     toAirport: { type: "string", enum: ["car", "drop", "taxi", "train", "bus", "with"], description: "car: drive and park; drop: someone brings and picks them up (no parking); taxi: ride service; train; bus: group bus of several families; with: rides along with carpoolWith" },
     carpoolWith: str("Family they ride with to the airport (sets toAirport with)"),
     cars: int("Number of cars (car, drop)", 1, 5),
+    fuelMoney: { type: "boolean", description: "drop: false if the driver takes no fuel money (costs nothing); default true (mileage rate for two round trips)" },
     parkingFree: { type: "boolean", description: "true: parking costs nothing (e.g. at friends' place)" },
     parkingEur: { type: ["number", "null"], minimum: 0, description: "Parking already booked: price for all cars; null removes it" },
     rideEur: { type: ["number", "null"], minimum: 0, description: "taxi: price per ride (one way, all cars); null: estimate" },
@@ -118,7 +119,7 @@ const householdsOf = (v: unknown): [string, HouseholdInput][] => (Array.isArray(
   const day = (d: unknown) => (d === null ? null : typeof d === "string" ? d : undefined);
   return [cleanName(x?.family), {
     ...(typeof x?.toAirport === "string" ? { toAirport: x.toAirport } : {}), ...(typeof x?.carpoolWith === "string" ? { carpoolWith: cleanName(x.carpoolWith) } : {}),
-    ...(Number.isInteger(x?.cars) ? { cars: x.cars } : {}), ...(typeof x?.parkingFree === "boolean" ? { parkingFree: x.parkingFree } : {}),
+    ...(Number.isInteger(x?.cars) ? { cars: x.cars } : {}), ...(typeof x?.fuelMoney === "boolean" ? { fuelMoney: x.fuelMoney } : {}), ...(typeof x?.parkingFree === "boolean" ? { parkingFree: x.parkingFree } : {}),
     ...(num(x?.parkingEur) !== undefined ? { parkingEur: num(x.parkingEur) } : {}), ...(num(x?.rideEur) !== undefined ? { rideEur: num(x.rideEur) } : {}),
     ...(x?.purse === "joint" || x?.purse === "each" ? { purse: x.purse } : {}),
     ...(day(x?.arrive) !== undefined ? { arrive: day(x.arrive) } : {}), ...(day(x?.depart) !== undefined ? { depart: day(x.depart) } : {})
