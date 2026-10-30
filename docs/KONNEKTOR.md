@@ -16,7 +16,8 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Aufräumen (#603): Reisen, die die KI angelegt hat, merken sich ihren Stand (`aiSeen`, Prüfsummen der Eckdaten und je Posten).
    Hat der Nutzer sie seitdem in der App geändert, oder stammt die Reise aus der App, ändern/löschen die Werkzeuge nur mit
    `confirm` nach Rückfrage (Fehler nennt die Änderungen). Geteilte Reisen: als Mitglied verlassen, als Besitzer nicht per KI (#604).
-   Vorschläge als Vergleich: `create_trip` mit `compareWith`.
+   Vorschläge als Vergleich: `create_trip` mit `compareWith`, `compareTitle` (Titel für alle Varianten) und `variantName`;
+   vorhandene Reisen mit `update_trip` (`compareWith`, `compareTitle`, `variantName`, `leaveCompare`).
    Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel (Zwischenspeicher), `add_*` nimmt die Kennung.
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
