@@ -134,6 +134,9 @@ describe("Anreise zum Flughafen", () => {
     const t = trip(); t.households!.Klein.mode = "drop";
     const km = roadKm(t.households!.Klein.geo, DUS)!;
     expect(accessFor("Klein", DUS, 2, 8, t).cost).toBeCloseTo(4 * km * 0.3);
+    // Fahrer nimmt kein Spritgeld
+    t.households!.Klein.dropFree = true;
+    expect(accessFor("Klein", DUS, 2, 8, t)).toMatchObject({ cost: 0, total: 0 });
   });
   it("Fahrdienst: zwei Fahrten, eigener Preis oder Richtwert", () => {
     const t = trip(); t.households!.Klein.mode = "taxi";

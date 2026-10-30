@@ -426,6 +426,8 @@ export interface Household {
   cars?: number;
   /** Fahrgemeinschaft: fährt mit diesem Haushalt mit (Kosten nach Personen geteilt) */
   link?: string;
+  /** bringen lassen: der Fahrer nimmt kein Spritgeld (fährt umsonst); fehlt: Kilometerpauschale */
+  dropFree?: boolean;
   /** Fahrdienst/Taxi: Preis je Fahrt für alle Fahrzeuge (leer = Richtwert) */
   ride?: number;
   /** Parken am Abflughafen (#419): entfällt (z. B. kostenlos bei Bekannten) oder gebucht zum Preis für alle Autos; fehlt: Richtwert */

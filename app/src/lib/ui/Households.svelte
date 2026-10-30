@@ -156,7 +156,15 @@
                 </select>
               </label>
             {:else if H.mode === "car" || H.mode === "drop" || !H.mode}
-              <label class="f">{t("hh.cars")}<input class="n" type="number" min="1" max="9" bind:value={H.cars} /></label>
+              {#if H.mode === "drop"}
+                <!-- Spritgeld für den Fahrer: fährt er umsonst, kostet die Anreise nichts -->
+                <label class="f">{t("hh.fuel")}
+                  <select class="hh-fuel" value={H.dropFree ? "no" : "yes"} onchange={e => { if (e.currentTarget.value === "no") H.dropFree = true; else delete H.dropFree; }}>
+                    <option value="yes">{t("hh.fuel.yes")}</option><option value="no">{t("hh.fuel.no")}</option>
+                  </select>
+                </label>
+              {/if}
+              {#if H.mode !== "drop" || !H.dropFree}<label class="f">{t("hh.cars")}<input class="n" type="number" min="1" max="9" bind:value={H.cars} /></label>{/if}
               {#if H.mode !== "drop"}
                 <!-- Parken am Abflughafen (#419): Richtwert, gebucht mit Preis oder entfällt -->
                 <label class="f">{t("hh.park")}
@@ -181,7 +189,7 @@
                 onchange={e => setBus("price", +e.currentTarget.value)} /></label>
             {/if}
           </div>
-          {#if H.mode === "with" || H.mode === "bus" || H.mode === "drop" || H.mode === "taxi" || ridersOf(app.trip, name).length}
+          {#if H.mode === "with" || H.mode === "bus" || (H.mode === "drop" && !H.dropFree) || H.mode === "taxi" || ridersOf(app.trip, name).length}
             <p class="muted ed-note hh-acc-note">{H.mode === "bus" ? t("hh.busInfo", { n: busN, list: bus.hhs.join(", ") }) : H.mode === "with" ? t("hh.poolInfo") : H.mode === "drop" ? t("hh.dropInfo") : H.mode === "taxi" ? t("hh.taxiInfo") : t("hh.poolHost", { list: ridersOf(app.trip, name).join(", ") })}</p>
           {/if}
           <div class="ed-row">
