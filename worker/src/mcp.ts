@@ -13,12 +13,12 @@ import type { StayOffer, StayQuery, StaySearchResult } from "../../app/src/lib/s
 import type { EventQuery, EventSearchResult } from "../../app/src/lib/events/types";
 import type { Directory, Person, Traveler, Trip } from "../../app/src/lib/model";
 import { addCost, addFlight, addStay, aiKnows, aiState, aiWrote, changesSinceAi, isCat, LANGS, newTrip, removeItem, tripSummary, updateTrip } from "../../app/src/lib/connector/trips";
-import { ensureCompare } from "../../app/src/lib/variants";
+import { joinTarget } from "../../app/src/lib/variants";
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
 import { travelersFor, travelersView } from "../../app/src/lib/connector/people";
 import { mergePrefs, prefsFor } from "../../app/src/lib/prefs";
 import { prefsFromAi } from "../../app/src/lib/agent/agent";
-import { STYLES, type Prefs } from "../../app/src/lib/model";
+import { STYLES, uid, type Prefs } from "../../app/src/lib/model";
 import type { KeyInfo } from "./apikey";
 import { ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
 import world from "../../public/world.json";
@@ -60,7 +60,7 @@ const INSTRUCTIONS = [
   "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family.",
   "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, or train, per household from its settings) and meals; never add these as costs.",
   "Searches use the user's saved preferences (own, group, trip) for anything you leave out and always skip countries to avoid; pass tripId to use a trip's preferences, and the result lists appliedPreferences. If the user has none yet, offer to set up a short travel profile by asking about airports, budget, accommodation, meals, travel style and countries to avoid, then save it with save_my_preferences after they confirmed. Wishes for one trip only go to set_trip_preferences.",
-  "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. Put alternatives you propose into one comparison (create_trip with compareWith).",
+  "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. Put alternatives you propose into one comparison (create_trip with compareWith and a compareTitle such as 'Summer holiday 2027', each variant with a short variantName); existing trips join with update_trip.",
   "Ask instead of guessing: call get_my_travelers first (families with children's ages, saved groups, preferences). If destination, time frame, who travels, budget or kind of trip are still unclear, ask the user short questions, each with 2-4 concrete options plus 'something else', before creating a trip. Never invent travelers or children's ages; state any remaining assumption explicitly."
 ].join(" ");
 
@@ -131,14 +131,19 @@ const TRIP_TOOLS = [
       travelersFrom: { type: "string", enum: ["user"], description: "'user': the user told you adults and children's ages in this conversation (only then use adults/childAges)" },
       adults: int("Adults (with travelersFrom 'user')", 1, 20), childAges: ages, language: lang,
       preferences: { type: "object", properties: PREFS, description: "Preferences only for this trip (override the user's and the group's), e.g. holiday home and higher budget this time" },
-      compareWith: str("Trip id: put the new trip into the same comparison as this trip (for 2-3 alternatives you propose)")
+      compareWith: str("Trip id: put the new trip into the same comparison as this trip (for 2-3 alternatives you propose)"),
+      compareTitle: str("Title of the comparison, e.g. 'Summer holiday 2027' (renames it for all variants; without compareWith: starts a comparison other trips can join)"),
+      variantName: str("Short name of this trip within the comparison, e.g. 'Golden Sands' (default: destination)")
     }, required: ["place"] }
   },
   {
     name: "update_trip", title: "Update trip",
-    description: "Change name, destination or dates of a trip instead of creating a new one. If the user changed the trip in the app since you last worked on it (or created it in the app), this fails with the list of changes: ask the user, then repeat with confirm true. Pass confirm true right away only if it is clear from the conversation that you and the user are working on this trip together.",
+    description: "Change name, destination or dates of a trip instead of creating a new one, or put it into a comparison (compareWith), rename the comparison (compareTitle) or its variant (variantName), or take it out (leaveCompare). If the user changed the trip in the app since you last worked on it (or created it in the app), this fails with the list of changes: ask the user, then repeat with confirm true. Pass confirm true right away only if it is clear from the conversation that you and the user are working on this trip together.",
     inputSchema: { type: "object", properties: {
       tripId: str("Trip id"), name: str("New trip name"), place: str("New destination"), country: str("New country"), from: str("New arrival YYYY-MM-DD"), to: str("New departure YYYY-MM-DD"),
+      compareWith: str("Trip id: put this trip and that trip into one comparison (that trip's, else this trip's, else a new one)"),
+      compareTitle: str("New title of the comparison, for all its variants"), variantName: str("Short name of this trip within the comparison"),
+      leaveCompare: { type: "boolean", description: "true: take this trip out of its comparison (nothing is deleted)" },
       confirm: { type: "boolean", description: "true: the user agreed despite changes made in the app" }
     }, required: ["tripId"] }
   },
@@ -335,7 +340,10 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
     case "get_trip": {
       const r = await readable(store!, a.tripId, user.uid);
       const t = parse(r) || fail("Trip data unreadable"), ch = changesSinceAi(t!);
-      return { ...tripSummary(t!, roleOf(r, user.uid)!, deps.partner), byAi: ch != null, ...(ch?.length ? { changedInApp: ch } : {}) };
+      return {
+        ...tripSummary(t!, roleOf(r, user.uid)!, deps.partner), byAi: ch != null, ...(ch?.length ? { changedInApp: ch } : {}),
+        ...(t!.cmp ? { compare: { title: t!.cmp.title, variantName: t!.cmp.label || t!.place || t!.country } } : {})
+      };
     }
     case "create_trip": {
       const place = S(a.place);
@@ -360,13 +368,15 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const tp = a.preferences ? prefsFromAi(a.preferences) : undefined;
       if (tp) trip.prefs = tp;
       aiKnows(trip);
-      // Vorschläge als Vergleich (#428): die andere Reise kommt in einen Vergleich, die neue dazu
-      if (a.compareWith != null) {
-        const cmp = await edit(store!, a.compareWith, user, t => { ensureCompare(t); return { cmp: { id: t.cmp!.id, title: t.cmp!.title } }; }) as { cmp: { id: string; title: string } };
-        trip.cmp = cmp.cmp;
-      }
+      // Vorschläge als Vergleich (#428): die andere Reise kommt in einen Vergleich, die neue dazu; Titel und Name der Variante wählbar
+      const title = S(a.compareTitle, 120), label = S(a.variantName, 60);
+      if (a.compareWith != null) trip.cmp = await joinWith(store!, user, a.compareWith, trip);
+      else if (title) trip.cmp = { id: uid(), title };
+      if (trip.cmp && title) trip.cmp.title = title;
+      if (trip.cmp && label) trip.cmp.label = label;
       await store!.create(trip.id, trip.name, JSON.stringify(trip), user.uid, user.name || "Claude");
-      return { tripId: trip.id, ...tripSummary(trip, "owner") };
+      if (trip.cmp && title && a.compareWith != null) await renameCompare(store!, user, trip.cmp.id, title);
+      return { tripId: trip.id, ...tripSummary(trip, "owner"), ...(trip.cmp ? { compare: trip.cmp.title } : {}) };
     }
     case "add_flight":
     case "add_stay": {
@@ -408,15 +418,33 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
     case "update_trip": {
       const day = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
       const u = { name: S(a.name, 120) || undefined, place: S(a.place) || undefined, country: typeof a.country === "string" ? S(a.country, 60) : undefined, from: day(a.from), to: day(a.to) };
-      if (!Object.values(u).some(v => v != null)) fail("Nothing to change: name, place, country, from or to");
-      return edit(store!, a.tripId, user, t => {
+      const title = S(a.compareTitle, 120), label = S(a.variantName, 60), leave = a.leaveCompare === true;
+      if (!Object.values(u).some(v => v != null) && a.compareWith == null && !title && !label && !leave) fail("Nothing to change: name, place, country, from, to, compareWith, compareTitle, variantName or leaveCompare");
+      if (leave && (a.compareWith != null || title || label)) fail("leaveCompare cannot be combined with compareWith, compareTitle or variantName");
+      if (a.compareWith != null && a.compareWith === a.tripId) fail("compareWith must be another trip");
+      // erst prüfen, dann die andere Reise in den Vergleich nehmen (sonst hinge sie allein drin)
+      const r0 = await readable(store!, a.tripId, user.uid);
+      if (!canEdit(r0, user.uid)) fail("You can only view this trip");
+      const t0 = parse(r0) || fail("Trip data unreadable");
+      if (a.confirm !== true) { const why = needsConfirm(t0!, "change"); if (why) fail(why); }
+      const joined = a.compareWith != null ? await joinWith(store!, user, a.compareWith, t0!) : null;
+      const out = await edit(store!, a.tripId, user, t => {
         if (a.confirm !== true) { const why = needsConfirm(t, "change"); if (why) fail(why); }
         const f = u.from || t.from, to = u.to || t.to;
         if (f && to && to < f) fail("to is before from");
         const off = updateTrip(t, u);
+        if (leave) delete t.cmp;
+        if (joined) t.cmp = t.cmp?.id === joined.id ? t.cmp : { ...joined, ...(t.cmp?.label ? { label: t.cmp.label } : {}) };
+        if (label) { if (!t.cmp) fail("This trip is in no comparison: use compareWith or compareTitle"); t.cmp!.label = label; }
+        if (title && !t.cmp) t.cmp = { id: uid(), title };
         if (a.confirm === true && t.aiSeen) aiKnows(t);
-        return { updated: true, ...(off.length ? { outOfRange: off, note: "These items no longer fit the dates: search again and remove the old ones with remove_item" } : {}) };
-      });
+        return { updated: true, ...(t.cmp ? { compare: title || t.cmp.title } : {}), ...(off.length ? { outOfRange: off, note: "These items no longer fit the dates: search again and remove the old ones with remove_item" } : {}) };
+      }) as { compare?: string };
+      if (title) {
+        const t = parse((await store!.get(String(a.tripId)))!);
+        if (t?.cmp) await renameCompare(store!, user, t.cmp.id, title);
+      }
+      return out;
     }
     case "delete_trip": {
       const r = await readable(store!, a.tripId, user.uid);
@@ -459,6 +487,28 @@ async function readable(store: TripStore, id: unknown, uid: string): Promise<Tri
   const r = await store.get(id as string);
   if (!r || !roleOf(r, uid)) fail("Trip not found");
   return r!;
+}
+
+/**
+ * Vergleich (#428): andere Reise als Ziel; ist sie in keinem Vergleich, beginnt einer (Titel aus dem gemeinsamen
+ * Namensanfang). Gibt Kennung und Titel für die Reise zurück, die dazukommt.
+ */
+async function joinWith(store: TripStore, user: KeyInfo, otherId: unknown, t: Pick<Trip, "cmp" | "name">): Promise<{ id: string; title: string }> {
+  const out = await edit(store, otherId, user, o => {
+    // steckt die Reise schon in einem Vergleich und die andere in keinem, kommt die andere dazu
+    const j = !o.cmp && t.cmp ? { id: t.cmp.id, title: t.cmp.title } : joinTarget(o, t) || { id: o.cmp!.id, title: o.cmp!.title };
+    if (!o.cmp) o.cmp = { ...j };
+    return { cmp: { id: o.cmp.id, title: o.cmp.title } };
+  }) as { cmp: { id: string; title: string } };
+  return out.cmp;
+}
+
+/** Titel eines Vergleichs an allen Varianten, die der Nutzer bearbeiten darf (die App zeigt den Titel der ersten) */
+async function renameCompare(store: TripStore, user: KeyInfo, cid: string, title: string) {
+  for (const r of await store.list(user.uid)) {
+    if (parse(r)?.cmp?.id !== cid || !canEdit(r, user.uid)) continue;
+    await edit(store, r.id, user, x => { if (x.cmp?.id === cid) x.cmp.title = title; return {}; });
+  }
 }
 
 /** Rückfrage nötig, bevor die KI eine Reise ändert oder löscht (#603)? Grund für die KI, sonst null */

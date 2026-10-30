@@ -403,10 +403,40 @@ describe("KI-Konnektor (MCP)", () => {
     expect(two.error).toBe(false);
     const cmp = (id: string) => (JSON.parse((d.store as any).docs.get(id).data) as Trip).cmp;
     expect(cmp(two.data.tripId)?.id).toBe(cmp(one)?.id);
-    expect(cmp(one)?.title).toBe("Sommer Goldstrand");
-    expect((await tool(d, "list_trips", {})).data.trips.map((t: any) => t.compare)).toEqual(["Sommer Goldstrand", "Sommer Goldstrand"]);
+    // Titel wie in der App aus dem gemeinsamen Namensanfang
+    expect(cmp(one)?.title).toBe("Sommer");
+    expect((await tool(d, "list_trips", {})).data.trips.map((t: any) => t.compare)).toEqual(["Sommer", "Sommer"]);
     // die erste Reise bleibt „unverändert seit der KI“
     expect((await tool(d, "get_trip", { tripId: one })).data.changedInApp).toBeUndefined();
     expect((await tool(d, "create_trip", { place: "Side", adults: 2, travelersFrom: "user", compareWith: "gibtsnicht" })).text).toMatch(/not found/);
+
+    // Vergleich selbst benennen, Varianten benennen; Titel gilt für alle Varianten
+    const three = await tool(d, "create_trip", { place: "Side", adults: 2, travelersFrom: "user", compareWith: one, compareTitle: "Sommerurlaub 2027", variantName: "Side am Meer" });
+    expect(three.data.compare).toBe("Sommerurlaub 2027");
+    expect([one, two.data.tripId, three.data.tripId].map(id => cmp(id)?.title)).toEqual(["Sommerurlaub 2027", "Sommerurlaub 2027", "Sommerurlaub 2027"]);
+    expect(cmp(three.data.tripId)?.label).toBe("Side am Meer");
+    expect((await tool(d, "get_trip", { tripId: two.data.tripId })).data.compare).toEqual({ title: "Sommerurlaub 2027", variantName: "Belek" });
+    expect((await tool(d, "update_trip", { tripId: two.data.tripId, compareTitle: "Sommer mit Kind", variantName: "Belek (Türkei)" })).error).toBe(false);
+    expect([one, two.data.tripId, three.data.tripId].map(id => cmp(id)?.title)).toEqual(["Sommer mit Kind", "Sommer mit Kind", "Sommer mit Kind"]);
+    expect(cmp(two.data.tripId)?.label).toBe("Belek (Türkei)");
+
+    // vorhandene Reisen nachträglich zusammen: beide ohne Vergleich → neuer Vergleich mit gemeinsamem Namensanfang
+    const x = (await tool(d, "create_trip", { place: "Rom", name: "Herbst Rom", adults: 2, travelersFrom: "user" })).data.tripId;
+    const y = (await tool(d, "create_trip", { place: "Lissabon", name: "Herbst Lissabon", adults: 2, travelersFrom: "user" })).data.tripId;
+    expect((await tool(d, "update_trip", { tripId: y, compareWith: x })).data.compare).toBe("Herbst");
+    expect(cmp(x)?.id).toBe(cmp(y)?.id);
+    // dazu in einen bestehenden Vergleich, Variante ohne Vergleich benennen geht nicht, herausnehmen
+    expect((await tool(d, "update_trip", { tripId: x, compareWith: one })).data.compare).toBe("Sommer mit Kind");
+    expect(cmp(x)?.id).toBe(cmp(one)?.id);
+    expect((await tool(d, "update_trip", { tripId: x, leaveCompare: true })).error).toBe(false);
+    expect(cmp(x)).toBeUndefined();
+    expect((await tool(d, "update_trip", { tripId: x, variantName: "Rom" })).text).toMatch(/no comparison/);
+    expect((await tool(d, "update_trip", { tripId: x, compareWith: x })).text).toMatch(/another trip/);
+    // nur Titel ohne Vergleich: beginnt einen, dem andere beitreten
+    expect((await tool(d, "update_trip", { tripId: x, compareTitle: "Städtetrips" })).data.compare).toBe("Städtetrips");
+    expect((await tool(d, "update_trip", { tripId: y, compareWith: x })).data.compare).toBe("Städtetrips");
+    // Reise aus der App: auch Vergleich nur nach Rückfrage
+    (d.store as any).docs.set(x, { ...(d.store as any).docs.get(x), data: JSON.stringify({ ...JSON.parse((d.store as any).docs.get(x).data), aiSeen: undefined }) });
+    expect((await tool(d, "update_trip", { tripId: x, variantName: "Roma" })).text).toMatch(/created in the app/);
   });
 });
