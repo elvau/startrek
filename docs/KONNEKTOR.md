@@ -54,6 +54,10 @@ Familien aus einem Gruppenchat zuordnen und Tippfehler korrigieren kann; Persone
 - `update_travelers`: Familie umbenennen (Reisende, Haushalt, Zahlungen, Kasse, Verpflegung, Gruppenbus), Vorname/Familie/Alter
   je Reisendem (Platzhalter mit Vornamen werden echt), Wohnort je Familie, Reisende dazu (gespeicherte nicht doppelt). Rückfrage wie
   `update_trip`. Gespeicherte Personen werden in bestehenden Reisen nicht automatisch umbenannt.
+- `households` (in `create_trip` und `update_travelers`): Einstellungen je Familie wie in der App, nur die genannten Felder:
+  `toAirport` (car, drop = gebracht und abgeholt, taxi, train, bus, with + `carpoolWith`), `cars`, `parkingFree`/`parkingEur`,
+  `rideEur`, `purse` (joint/each = Kasse), `arrive`/`depart` (eigene Anwesenheit; `null` entfernt). Die Kosten rechnet die App.
+  `get_trip` zeigt sie bei den Familien.
 - Wohnort (`home`, `country`): `worker/src/home.ts` sucht PLZ bzw. Ort in den PLZ-Daten der App (`plz.txt`, `plz/<LAND>.txt`
   von `APP_URL`, je Isolate gemerkt), sonst Ort aus der Ortsliste ohne PLZ; unbekannt: Fehler mit Bitte um PLZ.
 - `add_cost` mit `status`, `paidBy` (Familie der Reise; Zahlung für die Kasse, setzt `paid`), `paidAt`, `bookingRef`.
