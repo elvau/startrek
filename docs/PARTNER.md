@@ -101,6 +101,8 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
 - **Viator:** Suche nur auf splitandfly.com, nicht über den KI-Konnektor (siehe `docs/KONNEKTOR.md`).
 - **Expedia DACH (CJ):** Provision Hotel 4 %, Aktivitäten 4 %, Pauschalreise 2 %, Ferienwohnung 2 %, Mietwagen 1,5 %,
   Flug 0 %, Kreuzfahrt 0 %, Bahn 0 %; 7 Tage Cookie; 0 % bei Gutscheincodes, die nicht aus dem Programm kommen.
+  Willkommensrate 1.11.2026–31.1.2027: Hotel, Aktivitäten, Ferienwohnung, Mietwagen je 5 %, Pauschalreise 2,5 %
+  (Flug, Kreuzfahrt 0 %), danach wieder die Sätze oben.
   Flüge trotzdem verlinken (bester Preis vor Provision). Verboten: Bieten auf Expedia-Marken in Suchmaschinen-Werbung,
   Expedia im Domainnamen, iFrames, Pop-ups, Browser-Erweiterungen, Scrapen der Expedia-Seiten, Sub-Affiliates,
   Expedia-Inhalte auf fremden Seiten (daher wie Viator nur auf splitandfly.com, nicht über den KI-Konnektor).
