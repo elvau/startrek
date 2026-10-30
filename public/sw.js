@@ -21,6 +21,8 @@ self.addEventListener("fetch", e => {
   // Teilen-Menü (Reise importieren, #457): Dateien und Text kurz ablegen, die App holt sie gleich ab und löscht sie
   if (req.method === "POST" && url.origin === location.origin && url.pathname === base + "share") { e.respondWith(share(req, base)); return; }
   if (req.method !== "GET" || url.origin !== location.origin || !url.pathname.startsWith(base)) return;
+  // Weiterleitung zu Anbietern (go/?l=…): jeder Link anders, nicht im Speicher sammeln
+  if (url.pathname.startsWith(base + "go/")) return;
   if (url.pathname.startsWith(base + "assets/")) e.respondWith(cacheFirst(req));
   // die App selbst (nicht Datenschutz, Impressum …) unter einem Schlüssel ohne Suchteil (?aktion=…, Login-Links)
   else e.respondWith(networkFirst(req, url.pathname === base || url.pathname === base + "index.html" ? base : req));

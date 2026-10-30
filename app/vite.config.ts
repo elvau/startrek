@@ -7,7 +7,8 @@ export default defineConfig({
   base: process.env.BASE || "/",
   plugins: [svelte()],
   // Firebase liegt in einem eigenen Paket und wird nur mit Konfiguration geladen
-  build: { chunkSizeWarningLimit: 700 },
+  // zweite Seite: Weiterleitung für Links aus dem KI-Konnektor (go/index.html, src/go.ts)
+  build: { chunkSizeWarningLimit: 700, rollupOptions: { input: { main: "index.html", go: "go/index.html" } } },
   // Tests der App und des Such-Dienstes (worker/src)
   test: { include: ["src/**/*.test.ts", "../worker/src/**/*.test.ts"] },
   // Version aus package.json (in der App unten sichtbar), Commit aus GitHub Actions (lokal „dev“) für Fehlermeldungen

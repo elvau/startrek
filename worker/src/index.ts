@@ -39,6 +39,7 @@ import { isRevoked, issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
 import { profilePrefsSaver, profileSaver, profileStore, tripStore, type StoreEnv } from "./firestore";
 import { findHome } from "./home";
 import { mcpMessage, type Saved } from "./mcp";
+import { goLink, openGo } from "./go";
 import { grantStore, isOAuthPath, oauth, verifyAccess, wwwAuthenticate, type OAuthDeps } from "./oauth";
 import pkg from "../../app/package.json";
 import { partnerOn } from "../../app/src/lib/partner";
@@ -340,6 +341,14 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
       return new Response(null, { status: noteClick(env, body) ? 204 : 400, headers: h });
     }
 
+    // Weiterleitung splitandfly.com/go/ (Links aus dem KI-Konnektor): Signatur prüfen, Klick zählen, Ziel zurück
+    if (url.pathname === "/go" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      if (await overLimit("click", req, env, h)) return new Response(null, { status: 429, headers: h });
+      const u = env.MCP_KEY_SECRET ? await openGo(env.MCP_KEY_SECRET, (await req.text()).slice(0, 6000), env) : null;
+      return u ? json({ u }, 200, h) : json({ error: "Link ungültig" }, 400, h);
+    }
+
     if (url.pathname === "/admin/usage" && req.method === "GET") {
       if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
       return admin(req, env, h);
@@ -581,6 +590,7 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
   const ip = req.headers.get("cf-connecting-ip");
   const offerKey = (id: string) => new Request(`https://mcp.splitandfly/offer/${user.kid}/${encodeURIComponent(id)}`);
   const limit = Number(env.MCP_DAILY) || 50;
+  const appUrl = (env.APP_URL || "https://splitandfly.com/").replace(/\/?$/, "/");
   const res = await mcpMessage(msg, user, {
     flights: async q => real(await searchAll(q, { ...env, FX: await rates(env) }, net)),
     stays: async q => real(await searchStays(q, { ...env, FX: await rates(env) }, net)),
@@ -603,7 +613,9 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
       return null;
     },
     version: pkg.version,
-    partner: partnerOn(env)
+    partner: partnerOn(env),
+    appUrl,
+    go: (u, p, c) => goLink(env.MCP_KEY_SECRET!, appUrl, u, p, c)
   });
   if (!res) return new Response(null, { status: 202 });
   return json(res, 200, {});

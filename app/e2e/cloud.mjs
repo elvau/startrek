@@ -94,6 +94,12 @@ try {
   await until(async () => (await names(anna)).includes("Oma*"), "Platzhalter heißt bei Anna „Oma“");
   log("Wer bist du: Oma wählt einen Platzhalter, bei Anna heißt er danach Oma (verknüpft)");
 
+  // Link zur Reise aus dem KI-Konnektor (…/?reise=ID): öffnet die Reise statt der Startseite, Parameter verschwindet
+  await oma.goto(URL + "?reise=" + tripId);
+  await until(async () => (await oma.locator(".hero-in").count()) > 0 && (await oma.locator(".hero-in").textContent()).includes("Mallorca"), "Oma landet über ?reise= in der Reise");
+  if (oma.url().includes("reise=")) fail("?reise= bleibt in der Adresse");
+  log("Link zur Reise (?reise=) öffnet die Reise");
+
   // Gast ohne Konto (#435): AGB nötig, Vorname, dann „Wer bist du?“; Hinweis „Konto anlegen“ behält alles
   const jonas = await person("Jonas");
   await jonas.goto(link);

@@ -144,7 +144,7 @@ export const app = $state({
   /** Vergleichsansicht (#430) statt der Startseite: Kennung des Vergleichs */
   compare: null as string | null,
   /** Startseite: bei jedem neuen Besuch (neuer Tab), außer Einladungslink oder Neuladen in einer offenen Reise */
-  home: !resumed && (typeof location === "undefined" || !location.search.includes("join="))
+  home: !resumed && (typeof location === "undefined" || !/[?&](join|reise)=/.test(location.search))
 });
 // offene Reise für ein Neuladen merken (Scrollstand ergänzt die Oberfläche)
 $effect.root(() => {

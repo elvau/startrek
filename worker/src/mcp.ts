@@ -50,6 +50,10 @@ export interface McpDeps {
   today?: string;
   /** Partner-Links eingeschaltet (sonst Links aus gespeicherten Reisen ohne Partner-Kennung) */
   partner?: boolean;
+  /** Adresse der App mit „/“ am Ende: Link zur Reise (?reise=…) und zur Anleitung */
+  appUrl?: string;
+  /** Anbieter-Link über splitandfly.com/go/ (go.ts); fehlt: Links unverändert */
+  go?: (url: string, partner: string, cat: string) => Promise<string>;
 }
 
 export type Saved = { kind: "flight"; offer: FlightOffer; seats?: number } | { kind: "stay"; offer: StayOffer; q: StayQuery };
@@ -72,7 +76,7 @@ const INSTRUCTIONS = [
   "Ask instead of guessing: call get_my_travelers first (families with names, ages and home town, saved groups, preferences). If destination, time frame, who travels, budget or kind of trip are still unclear, ask the user short questions, each with 2-4 concrete options plus 'something else', before creating a trip. Never invent travelers or children's ages; state any remaining assumption explicitly.",
   "If the user shares a group chat or a list of families, compare it with the saved families and groups: if it matches a saved group, ask whether it is that group; otherwise ask whether to save the new people and the group in their account (save_people, then save_group) or to add them to this trip only (create_trip with travelers). Then create the trip from the group or families, so every family keeps its name and home town (where it starts from).",
   "Correct misspelled names or wrong ages where they are: saved people with save_people, travelers in a trip with update_travelers (saved people are not renamed in existing trips automatically). For a cost that is already booked or paid, pass status, paidBy (the family that paid) and bookingRef to add_cost.",
-  "When you propose or finish a trip, end with a booking table from get_trip: one row per item in booking order (flights first, prices change fastest; then accommodation, then the rest) with number, what, dates, price and the link as a clickable markdown link (items without link: say where to book). The user books row by row and tells you which rows are done; then mark them with mark_booked (booking number and paying family only if the user gives them) and show the table again with a status column."
+  "When you propose or finish a trip, end with a booking table from get_trip: one row per item in booking order (flights first, prices change fastest; then accommodation, then the rest) with number, what, dates, price and the link as a clickable markdown link (items without link: say where to book). The user books row by row and tells you which rows are done; then mark them with mark_booked (booking number and paying family only if the user gives them) and show the table again with a status column. If a result has linkNote, mark the links with * and add the note below. Below the table add the trip's appLink: some providers (e.g. package holidays, tours) can only be shown in the Split&Fly app, not here, so tell the user that the trip in the app has search links to more providers for comparing and booking, the split per family and the booking status; add guideLink as help for booking and marking items. Do not claim offers from providers you did not search."
 ].join(" ");
 
 const str = (d: string) => ({ type: "string", description: d });
@@ -335,9 +339,11 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const top = res.offers.slice(0, SHOWN);
       const seats = fq.adults + fq.children;
       await Promise.all(top.map(o => deps.offers.put(o.id, { kind: "flight", offer: o, seats })));
+      const links = await Promise.all(top.map(o => via(deps, o.url, o.sourceName, "flights")));
       return {
-        offers: top.map(o => ({
-          id: o.id, priceTotal: Math.round(o.price), currency: o.currency, provider: o.sourceName, link: o.url,
+        ...linkNote(deps),
+        offers: top.map((o, i) => ({
+          id: o.id, priceTotal: Math.round(o.price), currency: o.currency, provider: o.sourceName, link: links[i],
           out: `${o.out.from} ${hm(o.out.dep)} → ${o.out.to} ${hm(o.out.arr)}, ${o.out.stops} stop(s), ${o.out.carriers.join("/")}`,
           ...(o.back ? { back: `${o.back.from} ${hm(o.back.dep)} → ${o.back.to} ${hm(o.back.arr)}, ${o.back.stops} stop(s)` } : {})
         })),
@@ -370,9 +376,11 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const want = BOARDS.indexOf(a.board);
       const top = res.offers.filter(o => want < 1 || (!!o.board && BOARDS.indexOf(o.board) >= want)).slice(0, SHOWN);
       await Promise.all(top.map(o => deps.offers.put(o.id, { kind: "stay", offer: o, q: sq })));
+      const links = await Promise.all(top.map(o => via(deps, o.url, o.via || o.sourceName, "stay")));
       return {
-        offers: top.map(o => ({
-          id: o.id, name: o.name, priceTotal: Math.round(o.total), currency: o.currency, provider: o.via || o.sourceName, link: o.url,
+        ...linkNote(deps),
+        offers: top.map((o, i) => ({
+          id: o.id, name: o.name, priceTotal: Math.round(o.total), currency: o.currency, provider: o.via || o.sourceName, link: links[i],
           ...(o.score != null ? { rating: o.score } : {}), ...(o.stars ? { stars: o.stars } : {}), ...(o.place ? { area: o.place } : {}),
           ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {})
         })),
@@ -384,7 +392,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const q = parseEventQuery({ q: S(a.keyword), city: S(a.city), ...(a.from ? { from: a.from, to: a.to || a.from } : {}) });
       if (typeof q === "string") fail(q);
       const res = await deps.events(q as EventQuery);
-      return { events: res.events.slice(0, 15).map(e => ({ name: e.name, start: e.start, venue: e.venue, city: e.city, ...(e.category ? { category: e.category } : {}), link: e.url })) };
+      const top = res.events.slice(0, 15), links = await Promise.all(top.map(e => via(deps, e.url, e.sourceName, "attractions")));
+      return { ...linkNote(deps), events: top.map((e, i) => ({ name: e.name, start: e.start, venue: e.venue, city: e.city, ...(e.category ? { category: e.category } : {}), link: links[i] })) };
     }
   }
   const store = deps.store || fail("Trips are not available");
@@ -408,8 +417,12 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
     case "get_trip": {
       const r = await readable(store!, a.tripId, user.uid);
       const t = parse(r) || fail("Trip data unreadable"), ch = changesSinceAi(t!);
+      const sum = tripSummary(t!, roleOf(r, user.uid)!, deps.partner);
+      // Links über splitandfly.com; Link zur Reise in der App mit weiteren Anbietern und Anleitung (Buchungstabelle)
+      await Promise.all(sum.items.map(async (i: { link?: string; category: string }) => { if (i.link) i.link = await via(deps, i.link, "", i.category); }));
       return {
-        ...tripSummary(t!, roleOf(r, user.uid)!, deps.partner), byAi: ch != null, ...(ch?.length ? { changedInApp: ch } : {}),
+        ...sum, ...(deps.appUrl ? { appLink: `${deps.appUrl}?reise=${encodeURIComponent(r.id)}`, guideLink: `${deps.appUrl}anleitung/kosten/` } : {}), ...linkNote(deps),
+        byAi: ch != null, ...(ch?.length ? { changedInApp: ch } : {}),
         ...(t!.cmp ? { compare: { title: t!.cmp.title, variantName: t!.cmp.label || t!.place || t!.country } } : {})
       };
     }
@@ -641,6 +654,10 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
 }
 
 const STATUS = ["idea", "chosen", "booked", "paid"];
+/** Anbieter-Link über splitandfly.com/go/, sonst unverändert */
+const via = (deps: McpDeps, url: string | undefined, partner: string, cat: string) => (url && deps.go ? deps.go(url, partner, cat) : Promise.resolve(url));
+/** Kennzeichnung: mit Partner-Links ein Hinweis, den der Assistent unter Links und Tabelle setzt */
+const linkNote = (deps: McpDeps) => (deps.partner ? { linkNote: "Links can be partner links (*): Split&Fly may get a commission, the price for the user is the same. Mark links with * and put this note below them." } : {});
 const age = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 120 ? v as number : undefined);
 /** Paare { from, to } zum Umbenennen von Familien */
 const pairs = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 20).map((x: any) => ({ from: cleanName(x?.from), to: cleanName(x?.to) })).filter(x => x.from && x.to);

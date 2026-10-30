@@ -194,6 +194,18 @@ describe("KI-Konnektor (MCP)", () => {
     expect(again[0]).toMatchObject({ status: "booked", bookingRef: "ABC123" });
     expect(again[2]).toMatchObject({ status: "paid", paidEur: 150 });
     expect((await tool(d, "remove_item", { tripId: id, itemId: fl.id })).text).toMatch(/Booked or paid/);
+
+    // mit Weiterleitung und Partner-Links: Links über splitandfly.com, Kennzeichnung, Link zur Reise und Anleitung
+    const d2 = deps({ partner: true, appUrl: "https://splitandfly.com/", go: async (u, p, c) => `https://splitandfly.com/go/?l=${encodeURIComponent(`${p}|${c}|${u}`)}` });
+    (d2 as any).store = d.store;
+    const fs = await tool(d2, "search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 2 });
+    expect(fs.data.offers[0].link).toBe(`https://splitandfly.com/go/?l=${encodeURIComponent("Kiwi.com|flights|https://kiwi.com/x")}`);
+    expect(fs.data.linkNote).toContain("commission");
+    const g2 = (await tool(d2, "get_trip", { tripId: id })).data;
+    expect(g2.items[0].link).toBe(`https://splitandfly.com/go/?l=${encodeURIComponent("|flights|https://kiwi.com/x")}`);
+    expect(g2).toMatchObject({ appLink: `https://splitandfly.com/?reise=${id}`, guideLink: "https://splitandfly.com/anleitung/kosten/" });
+    expect(g2.linkNote).toBeTruthy();
+    expect(got.data.linkNote).toBeUndefined();
   });
 
   it("schützt fremde, nur lesbare und gebuchte Reisen", async () => {

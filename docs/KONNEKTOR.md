@@ -38,6 +38,19 @@ gebucht bzw. bezahlt (mehrere auf einmal, optional Buchungsnummer, zahlende Fami
 `get_trip` gezeigte Angebot gilt als gewählt, Paketteile ziehen mit, bezahlt bleibt bezahlt. Danach ändern nur noch in der App.
 `get_trip` zeigt dazu `bookingRef` und `paidEur`.
 
+Unter die Tabelle setzt der Assistent `appLink` (`…/?reise=ID`, öffnet die Reise in der App, ohne Anmeldung erst Login;
+`readJoinLink` in `app/src/lib/cloud/cloud.svelte.ts`) und `guideLink` (Anleitung „Kosten“): Anbieter, die nicht in fremde
+Anwendungen dürfen (Expedia, Viator), und die Such-Links aus dem Partner-Verzeichnis gibt es nur dort. Der Assistent nennt
+keine Angebote von Anbietern, die er nicht gesucht hat.
+
+**Weiterleitung (Herkunft der Klicks):** Alle Anbieter-Links des Konnektors (Suchen, `get_trip`) laufen über
+`splitandfly.com/go/?l=…` (`app/go/index.html`, `app/src/go.ts`). Das Ziel steht mit Anbieter und Kategorie signiert im
+Link (`seal` mit `MCP_KEY_SECRET`, `worker/src/go.ts`). Die Seite schickt den Link an `POST /go`; der Such-Dienst prüft die
+Signatur, zählt den Klick wie `/click` und gibt das Ziel zurück, die Seite leitet weiter (Herkunft für die Partnerprogramme:
+splitandfly.com). Falsche Signatur: keine Weiterleitung (kein offener Umleiter). Such-Dienst nicht erreichbar: Ziel mit
+Adresse zum Antippen. Der Service Worker lässt `go/` aus. Mit `PARTNER_LINKS=on` bekommen Suchen und `get_trip` einen
+`linkNote`: Links mit * kennzeichnen und den Hinweis (Provision möglich, gleicher Preis) darunter setzen.
+
 ## Nachfragen statt raten (#595)
 
 - `get_my_travelers`: Familien aus den gespeicherten Personen (`profiles/{uid}`, Nachname = Familie) als F1, F2 … (eigene zuerst,
