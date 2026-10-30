@@ -256,6 +256,24 @@ export function removeItem(trip: Trip, id: string): "ok" | "missing" | "fixed" {
   return "ok";
 }
 
+/**
+ * Posten, mit denen neue doppelt sein könnten: Flüge derselben Reisenden (ohne participants: alle) in dieselbe Richtung ab
+ * oder nach demselben Flughafen; Unterkünfte mit überschneidendem Zeitraum. Zubringer (DTM → KTW, dann KTW → AGP) zählen nicht.
+ */
+export function clashes(trip: Trip, added: Item[]): Item[] {
+  const all = trip.travelers.filter(isActive).map(t => t.id);
+  const who = (i: Item) => new Set(i.participants?.length ? i.participants : all);
+  const legs = (i: Item) => i.options.flatMap(o => o.legs || []);
+  const fresh = new Set(added.map(i => i.id));
+  return trip.items.filter(x => !fresh.has(x.id) && x.status !== "dropped" && x.cat === added[0]?.cat && added.some(n => {
+    if (n.cat === "stay") return !!(x.from && x.to && n.from && n.to && x.from < n.to && n.from < x.to);
+    if (n.cat !== "flights") return false;
+    const a = who(x);
+    if (![...who(n)].some(id => a.has(id))) return false;
+    return legs(n).some(l => legs(x).some(m => m.dir === l.dir && (m.from === l.from || m.to === l.to)));
+  }));
+}
+
 export const isCat = (v: unknown): v is CatKey => (CAT_KEYS as unknown[]).includes(v);
 
 /** Betrag eines Postens grob in Euro (gewählte oder günstigste Option); genaue Aufteilung rechnet die App */

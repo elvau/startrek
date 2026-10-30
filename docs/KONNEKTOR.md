@@ -18,7 +18,7 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    `confirm` nach Rückfrage (Fehler nennt die Änderungen). Geteilte Reisen: als Mitglied verlassen, als Besitzer nicht per KI (#604).
    Vorschläge als Vergleich: `create_trip` mit `compareWith`, `compareTitle` (Titel für alle Varianten) und `variantName`;
    vorhandene Reisen mit `update_trip` (`compareWith`, `compareTitle`, `variantName`, `leaveCompare`).
-   Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel in Firestore (`mcpOffers`, Kennung = Prüfwert aus Schlüssel und Angebot; der Cloudflare-Zwischenspeicher gilt nur je Rechenzentrum, Chat-Apps landen oft in verschiedenen), `add_*` nimmt die Kennung. `add_flight` mit `people` (Reisende-IDs) für Zubringer nur eines Teils der Gruppe.
+   Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel in Firestore (`mcpOffers`, Kennung = Prüfwert aus Schlüssel und Angebot; der Cloudflare-Zwischenspeicher gilt nur je Rechenzentrum, Chat-Apps landen oft in verschiedenen), `add_*` nimmt die Kennung. `add_flight` mit `people` (Reisende-IDs) für Zubringer nur eines Teils der Gruppe. `add_flight`/`add_stay` mit `replace` (Posten-ID) tauschen ein Angebot aus (gleiche Rückfrage wie `remove_item`); ohne `replace` warnt das Ergebnis, wenn dieselben Reisenden schon einen Flug auf der Strecke bzw. eine Unterkunft im Zeitraum haben.
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist
