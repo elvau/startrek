@@ -68,6 +68,24 @@ const famTrip = JSON.parse(famDoc.fields.data.stringValue);
 if (famTrip.travelers.map(t => `${t.name}/${t.household}/${t.age}`).join() !== "Claudia/Fuchs/41,Tom/Fuchs/6") fail("Reisende aus der Gruppe: " + JSON.stringify(famTrip.travelers));
 log("Familien und Gruppen aus dem Konto ohne Namen für die KI; Reise aus der Gruppe mit echten Reisenden");
 
+// Aufräumen (#603): Fehlversuch der KI samt Stimmen löschen; geteilte Reise verlassen (die anderen behalten sie)
+const H = { authorization: "Bearer owner", "content-type": "application/json" };
+const tryId = (await tool("create_trip", { place: "Alanya", adults: 2, travelersFrom: "user" })).tripId;
+await fetch(`${FS}/trips/${tryId}/votes/${uid}`, { method: "PATCH", headers: H, body: JSON.stringify({ fields: { v: { stringValue: "x" } } }) });
+await tool("update_trip", { tripId: tryId, name: "Alanya All Inclusive" });
+if ((await tool("delete_trip", { tripId: tryId })).deleted !== tryId) fail("delete_trip");
+if ((await fetch(`${FS}/trips/${tryId}`, { headers: H })).status !== 404 || (await fetch(`${FS}/trips/${tryId}/votes/${uid}`, { headers: H })).status !== 404) fail("Reise oder Stimme nicht gelöscht");
+const v = s => ({ stringValue: s }), m = o => ({ mapValue: { fields: o } });
+await fetch(`${FS}/trips/geteilt`, { method: "PATCH", headers: H, body: JSON.stringify({ fields: {
+  name: v("Geteilt"), data: v(JSON.stringify({ ...famTrip, id: "geteilt" })), owner: v("u2"), memberIds: { arrayValue: { values: [v("u2"), v(uid)] } },
+  members: m({ u2: v("owner"), [uid]: v("editor") }), memberNames: m({ u2: v("Marie"), [uid]: v("Claudia") }), claims: m({ [uid]: m({ t: v("x"), n: v("Claudia") }) })
+} }) });
+if ((await tool("delete_trip", { tripId: "geteilt", confirm: true })).left !== "geteilt") fail("delete_trip auf geteilter Reise");
+const left = (await (await fetch(`${FS}/trips/geteilt`, { headers: H })).json()).fields;
+if (JSON.stringify(left.memberIds) !== JSON.stringify({ arrayValue: { values: [v("u2")] } }) || left.members.mapValue.fields[uid] || left.memberNames.mapValue.fields[uid] || left.claims.mapValue.fields?.[uid])
+  fail("Verlassen: " + JSON.stringify(left));
+log("Aufräumen per KI: eigener Fehlversuch samt Stimmen gelöscht, geteilte Reise verlassen");
+
 // Verbindungen der Chat-Apps (OAuth, #590) in Firestore: anlegen, nur unverändert ändern, Liste, aufräumen, trennen
 const gs = grantStore({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
 const base = { uid, client: "Claude", host: "claude.ai", at: new Date().toISOString(), used: new Date().toISOString().slice(0, 10), rt: "", code: "c1" };
@@ -139,6 +157,8 @@ try {
   const got = await tool("get_trip", { tripId: id });
   if (got.items.length !== 2 || got.approxTotalEur !== 630) fail("Reise für Claude: " + JSON.stringify(got));
   if (JSON.stringify(got).includes("Claudia")) fail("Name in der Reise für Claude");
+  // die App ändert beim Öffnen nichts, was als „in der App geändert“ zählt (#603)
+  if (got.byAi !== true || got.changedInApp) fail("Stand der KI nach dem Öffnen in der App: " + JSON.stringify(got.changedInApp));
   log("Ergänzung von Claude erscheint live in der offenen Reise; get_trip ohne Namen");
 
   // Schlüssel im Kontomenü erzeugen: Anfrage angemeldet, Schlüssel und Befehl für Claude Code

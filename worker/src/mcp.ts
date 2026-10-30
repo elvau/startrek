@@ -12,7 +12,8 @@ import type { FlightOffer, FlightQuery, SearchResult } from "../../app/src/lib/f
 import type { StayOffer, StayQuery, StaySearchResult } from "../../app/src/lib/stays/types";
 import type { EventQuery, EventSearchResult } from "../../app/src/lib/events/types";
 import type { Directory, Person, Traveler, Trip } from "../../app/src/lib/model";
-import { addCost, addFlight, addStay, isCat, LANGS, newTrip, removeItem, tripSummary } from "../../app/src/lib/connector/trips";
+import { addCost, addFlight, addStay, aiKnows, aiState, aiWrote, changesSinceAi, isCat, LANGS, newTrip, removeItem, tripSummary, updateTrip } from "../../app/src/lib/connector/trips";
+import { ensureCompare } from "../../app/src/lib/variants";
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
 import { travelersFor, travelersView } from "../../app/src/lib/connector/people";
 import type { KeyInfo } from "./apikey";
@@ -42,9 +43,9 @@ export type Saved = { kind: "flight"; offer: FlightOffer; seats?: number } | { k
 
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const SHOWN = 8;
-/** Verpflegung aufsteigend (search_stays: board als Mindeststufe) */
 /** Länge des Namens eigener Kosten (add_cost) */
 const NAME_MAX = 120;
+/** Verpflegung aufsteigend (search_stays: board als Mindeststufe) */
 const BOARDS = ["self", "breakfast", "half", "full", "all"];
 
 const INSTRUCTIONS = [
@@ -53,6 +54,7 @@ const INSTRUCTIONS = [
   "Split&Fly does not book: each offer has a link to the provider, where the user books. Never ask for passport or ID data.",
   "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family.",
   "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, or train, per household from its settings) and meals; never add these as costs.",
+  "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. Put alternatives you propose into one comparison (create_trip with compareWith).",
   "Ask instead of guessing: call get_my_travelers first (families with children's ages, saved groups, preferences). If destination, time frame, who travels, budget or kind of trip are still unclear, ask the user short questions, each with 2-4 concrete options plus 'something else', before creating a trip. Never invent travelers or children's ages; state any remaining assumption explicitly."
 ].join(" ");
 
@@ -96,7 +98,7 @@ const TRIP_TOOLS = [
     description: "The user's saved families (id, adults, children's ages, home town; no names), saved groups (name, families, adults and children's ages of the group members, group preferences; a group can hold only part of a family) and travel preferences (airports, budget, styles …). Call this before planning, to know who travels instead of guessing.",
     inputSchema: { type: "object", properties: { date: str("Ages as of this day, YYYY-MM-DD (default: today; use the trip start)") } }
   },
-  { name: "list_trips", title: "List trips", description: "Trips in the user's Split&Fly account (own and shared).", inputSchema: { type: "object", properties: {} } },
+  { name: "list_trips", title: "List trips", description: "Trips in the user's Split&Fly account (own and shared). byAi: created by you (the assistant); changedInApp: changed by the user in the app since; compare: title of the comparison the trip belongs to.", inputSchema: { type: "object", properties: {} } },
   { name: "get_trip", title: "Show trip", description: "Destination, dates, number of travelers (no names) and all items with id, status, price and the chosen offer (e.g. hotel name, board, stars).", inputSchema: { type: "object", properties: { tripId: str("Trip id") }, required: ["tripId"] } },
   {
     name: "create_trip", title: "Create trip",
@@ -106,8 +108,24 @@ const TRIP_TOOLS = [
       families: { type: "array", items: { type: "string" }, description: "Family ids from get_my_travelers (e.g. [\"F1\"])" },
       group: str("Name of a saved group from get_my_travelers"),
       travelersFrom: { type: "string", enum: ["user"], description: "'user': the user told you adults and children's ages in this conversation (only then use adults/childAges)" },
-      adults: int("Adults (with travelersFrom 'user')", 1, 20), childAges: ages, language: lang
+      adults: int("Adults (with travelersFrom 'user')", 1, 20), childAges: ages, language: lang,
+      compareWith: str("Trip id: put the new trip into the same comparison as this trip (for 2-3 alternatives you propose)")
     }, required: ["place"] }
+  },
+  {
+    name: "update_trip", title: "Update trip",
+    description: "Change name, destination or dates of a trip instead of creating a new one. If the user changed the trip in the app since you last worked on it (or created it in the app), this fails with the list of changes: ask the user, then repeat with confirm true. Pass confirm true right away only if it is clear from the conversation that you and the user are working on this trip together.",
+    inputSchema: { type: "object", properties: {
+      tripId: str("Trip id"), name: str("New trip name"), place: str("New destination"), country: str("New country"), from: str("New arrival YYYY-MM-DD"), to: str("New departure YYYY-MM-DD"),
+      confirm: { type: "boolean", description: "true: the user agreed despite changes made in the app" }
+    }, required: ["tripId"] }
+  },
+  {
+    name: "delete_trip", title: "Delete trip",
+    description: "Delete a trip, e.g. a failed attempt of yours. Own trips you created and nobody changed since are deleted directly; otherwise this fails with the reason (changes in the app, created in the app): ask the user and repeat with confirm true only if they explicitly want it deleted. A trip shared with you is left (you are no longer a member), not deleted for the others. Shared trips you own cannot be deleted here (use the app).",
+    inputSchema: { type: "object", properties: {
+      tripId: str("Trip id"), confirm: { type: "boolean", description: "true: the user explicitly wants to delete (or leave) it despite the reason given" }
+    }, required: ["tripId"] }
   },
   {
     name: "add_flight", title: "Add flight to trip",
@@ -126,7 +144,7 @@ const TRIP_TOOLS = [
       estimate: { type: "boolean", description: "true if the amount is an estimate and not a real offer" }
     }, required: ["tripId", "category", "name", "amountEur"] }
   },
-  { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay).", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip") }, required: ["tripId", "itemId"] } }
+  { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay). Items the user added or changed in the app need confirm true after asking the user.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip"), confirm: { type: "boolean", description: "true: the user agreed" } }, required: ["tripId", "itemId"] } }
 ];
 
 const READ_ONLY = new Set(["search_flights", "search_stays", "search_events", "get_my_travelers", "list_trips", "get_trip"]);
@@ -250,11 +268,18 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
     }
     case "list_trips": {
       const list = await store!.list(user.uid);
-      return { trips: list.map(r => { const t = parse(r); return { id: r.id, name: r.name, place: t?.place, from: t?.from, to: t?.to, role: roleOf(r, user.uid) }; }) };
+      return { trips: list.map(r => {
+        const t = parse(r), ch = t ? changesSinceAi(t) : null;
+        return {
+          id: r.id, name: r.name, place: t?.place, from: t?.from, to: t?.to, role: roleOf(r, user.uid),
+          ...(ch ? { byAi: true } : {}), ...(ch?.length ? { changedInApp: true } : {}), ...(t?.cmp ? { compare: t.cmp.title } : {})
+        };
+      }) };
     }
     case "get_trip": {
       const r = await readable(store!, a.tripId, user.uid);
-      return tripSummary(parse(r) || fail("Trip data unreadable"), roleOf(r, user.uid)!, deps.partner);
+      const t = parse(r) || fail("Trip data unreadable"), ch = changesSinceAi(t!);
+      return { ...tripSummary(t!, roleOf(r, user.uid)!, deps.partner), byAi: ch != null, ...(ch?.length ? { changedInApp: ch } : {}) };
     }
     case "create_trip": {
       const place = S(a.place);
@@ -276,6 +301,12 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const adults = Number.isInteger(a.adults) ? a.adults : 1;
       const trip = newTrip({ name: S(a.name, 120), place, country: S(a.country, 60), from, to, adults, childAges: kids(a.childAges), lang: lng(a.language), travelers, people });
       trip.ai = { at: new Date().toISOString() };
+      aiKnows(trip);
+      // Vorschläge als Vergleich (#428): die andere Reise kommt in einen Vergleich, die neue dazu
+      if (a.compareWith != null) {
+        const cmp = await edit(store!, a.compareWith, user, t => { ensureCompare(t); return { cmp: { id: t.cmp!.id, title: t.cmp!.title } }; }) as { cmp: { id: string; title: string } };
+        trip.cmp = cmp.cmp;
+      }
       await store!.create(trip.id, trip.name, JSON.stringify(trip), user.uid, user.name || "Claude");
       return { tripId: trip.id, ...tripSummary(trip, "owner") };
     }
@@ -302,8 +333,42 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
         return { added: it.id, name: it.name };
       });
     }
+    case "update_trip": {
+      const day = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+      const u = { name: S(a.name, 120) || undefined, place: S(a.place) || undefined, country: typeof a.country === "string" ? S(a.country, 60) : undefined, from: day(a.from), to: day(a.to) };
+      if (!Object.values(u).some(v => v != null)) fail("Nothing to change: name, place, country, from or to");
+      return edit(store!, a.tripId, user, t => {
+        if (a.confirm !== true) { const why = needsConfirm(t, "change"); if (why) fail(why); }
+        const f = u.from || t.from, to = u.to || t.to;
+        if (f && to && to < f) fail("to is before from");
+        const off = updateTrip(t, u);
+        if (a.confirm === true && t.aiSeen) aiKnows(t);
+        return { updated: true, ...(off.length ? { outOfRange: off, note: "These items no longer fit the dates: search again and remove the old ones with remove_item" } : {}) };
+      });
+    }
+    case "delete_trip": {
+      const r = await readable(store!, a.tripId, user.uid);
+      const t = parse(r) || fail("Trip data unreadable");
+      const others = Object.keys(r.members).filter(u => u !== user.uid);
+      // geteilte Reisen: nur verlassen; Besitzer übergeben und Löschen für alle folgt mit #604
+      if (roleOf(r, user.uid) !== "owner") {
+        if (a.confirm !== true) fail("This trip was shared with the user: deleting means leaving it (the user loses access, the others keep it). Ask the user, then repeat with confirm true.");
+        await store!.leave(r, user.uid);
+        return { left: r.id };
+      }
+      if (others.length) fail("This trip is shared with others: the user can delete or leave it in the app");
+      if (a.confirm !== true) { const why = needsConfirm(t!, "delete"); if (why) fail(why); }
+      try { await store!.remove(r); } catch (e) { if ((e as { conflict?: boolean }).conflict) fail("The trip was just changed: call get_trip and try again"); throw e; }
+      return { deleted: r.id };
+    }
     case "remove_item":
       return edit(store!, a.tripId, user, t => {
+        const it = t.items.find(i => i.id === a.itemId);
+        if (it && it.status !== "booked" && it.status !== "paid" && a.confirm !== true) {
+          // nur, was die KI angelegt hat und seitdem niemand geändert hat; sonst erst fragen
+          const ch = changesSinceAi(t);
+          if (ch ? ch.some(c => c.id === it.id) : !it.ai) fail(`The user added or changed "${it.name || it.cat}" in the app: ask the user, then repeat with confirm true`);
+        }
         const r = removeItem(t, String(a.itemId || ""));
         if (r === "missing") fail("Item not found");
         if (r === "fixed") fail("Booked or paid items can only be changed in the app");
@@ -324,13 +389,25 @@ async function readable(store: TripStore, id: unknown, uid: string): Promise<Tri
   return r!;
 }
 
+/** Rückfrage nötig, bevor die KI eine Reise ändert oder löscht (#603)? Grund für die KI, sonst null */
+function needsConfirm(t: Trip, what: string): string | null {
+  const ch = changesSinceAi(t);
+  if (ch == null) return `This trip was created in the app, not by you: ask the user whether to ${what} it, then repeat with confirm true.`;
+  if (!ch.length) return null;
+  const list = ch.map(c => (c.id === "meta" ? `${c.name} changed` : `item ${c.what}: ${c.name} (${c.id})`)).join("; ");
+  return `The user changed this trip in the app since you last worked on it (${list}). Tell the user and ask whether to ${what} it anyway, then repeat with confirm true.`;
+}
+
 /** Reise ändern: lesen, ändern, speichern, nur wenn sie inzwischen niemand geändert hat (sonst einmal neu) */
 async function edit(store: TripStore, id: unknown, user: KeyInfo, change: (t: Trip) => object): Promise<object> {
   for (let attempt = 0; ; attempt++) {
     const r = await readable(store, id, user.uid);
     if (!canEdit(r, user.uid)) fail("You can only view this trip");
     const t = parse(r) || fail("Trip data unreadable");
+    const before = aiState(t!);
     const out = change(t!);
+    // Stand der KI fortschreiben; Änderungen aus der App bleiben als geändert stehen
+    aiWrote(t!, before);
     const data = JSON.stringify(t);
     if (data.length >= 900000) fail("Trip is too large");
     try {

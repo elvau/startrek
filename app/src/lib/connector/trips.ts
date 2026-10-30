@@ -163,6 +163,79 @@ function push(trip: Trip, item: Item): Item {
   return item;
 }
 
+/* ---------- Stand der KI (#603): was wurde seitdem in der App geändert? ---------- */
+
+type Seen = NonNullable<Trip["aiSeen"]>;
+function hash(v: unknown): string {
+  const s = JSON.stringify(v);
+  let h = 2166136261;
+  for (let k = 0; k < s.length; k++) { h ^= s.charCodeAt(k); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
+}
+/** nur, was der Nutzer ändert (keine Alter, Kurse, Preisbeobachtung: die schreibt die App selbst) */
+const metaSig = (t: Trip) => hash([t.name, t.place, t.country || "", t.from || "", t.to || "", t.travelers.filter(isActive).map(p => p.id)]);
+const itemSig = (i: Item) => hash([i.cat, i.name || "", i.status, i.chosen || "", i.from || "", i.to || "", i.participants || [], i.options.map(o => [o.id, o.label, o.price])]);
+const own = (t: Trip) => t.items.filter(i => !i.auto);
+const stateOf = (t: Trip): Seen => ({ m: metaSig(t), i: Object.fromEntries(own(t).map(i => [i.id, itemSig(i)])) });
+
+/** als von der KI angelegt markieren bzw. nach Rückfrage den jetzigen Stand übernehmen */
+export function aiKnows(t: Trip) { t.aiSeen = stateOf(t); }
+
+/**
+ * Änderungen seit dem Stand der KI, für die Rückfrage beim Nutzer; null: Reise nicht von der KI angelegt.
+ * Kennung „meta“ für Name, Ziel, Zeitraum, Reisende, sonst die Posten.
+ */
+export function changesSinceAi(t: Trip): { id: string; what: "added" | "changed" | "removed"; name: string }[] | null {
+  const s = t.aiSeen;
+  if (!s) return null;
+  const out: { id: string; what: "added" | "changed" | "removed"; name: string }[] = [];
+  if (metaSig(t) !== s.m) out.push({ id: "meta", what: "changed", name: "name, destination, dates or travelers" });
+  const cur = own(t);
+  for (const i of cur) {
+    const name = i.name || i.options[0]?.label || i.cat;
+    if (!s.i[i.id]) out.push({ id: i.id, what: "added", name });
+    else if (s.i[i.id] !== itemSig(i)) out.push({ id: i.id, what: "changed", name });
+  }
+  for (const id of Object.keys(s.i)) if (!cur.some(i => i.id === id)) out.push({ id, what: "removed", name: id });
+  return out;
+}
+
+/**
+ * Stand fortschreiben nach einer Änderung der KI: was sie gerade geschrieben hat, kennt sie; was der Nutzer vorher
+ * geändert hatte, bleibt als geändert stehen (before: Stand der Reise vor der Änderung der KI)
+ */
+export function aiWrote(t: Trip, before: Seen) {
+  const s = t.aiSeen;
+  if (!s) return;
+  const now = stateOf(t), i: Record<string, string> = {};
+  for (const [id, h] of Object.entries(now.i)) {
+    if (!(id in before.i)) i[id] = h;                      // gerade von der KI angelegt
+    else if (s.i[id] && s.i[id] === before.i[id]) i[id] = h; // unverändert seit der KI
+    else if (s.i[id]) i[id] = s.i[id];                      // in der App geändert: bleibt geändert
+  }
+  for (const id of Object.keys(s.i)) if (!(id in before.i)) i[id] = s.i[id]; // in der App entfernt
+  t.aiSeen = { m: s.m === before.m ? now.m : s.m, i };
+}
+export const aiState = stateOf;
+
+export interface TripChange { name?: string; place?: string; country?: string; from?: string; to?: string }
+
+/** Eckdaten ändern; gibt Flüge und Unterkünfte zurück, die nicht mehr in den Zeitraum passen (bleiben stehen) */
+export function updateTrip(t: Trip, u: TripChange): { id: string; name: string }[] {
+  if (u.name) { t.name = u.name.trim().slice(0, 120); t.autoName = false; }
+  if (u.place) t.place = u.place.trim().slice(0, 80);
+  if (u.country != null) t.country = u.country.trim().slice(0, 60);
+  if (u.from) t.from = u.from;
+  if (u.to) t.to = u.to;
+  const lo = t.from, hi = t.to;
+  if (!lo && !hi) return [];
+  const out = (d?: string) => !!d && ((!!lo && d.slice(0, 10) < lo) || (!!hi && d.slice(0, 10) > hi));
+  return own(t).filter(i => {
+    const o = i.options.find(x => x.id === i.chosen) || i.options[0];
+    return out(i.from) || out(i.to) || (o?.legs || []).some(l => out(l.dep));
+  }).map(i => ({ id: i.id, name: i.name || i.options[0]?.label || i.cat }));
+}
+
 /** Posten entfernen; gebuchte und bezahlte bleiben (die ändert man in der App) */
 export function removeItem(trip: Trip, id: string): "ok" | "missing" | "fixed" {
   const it = trip.items.find(i => i.id === id);

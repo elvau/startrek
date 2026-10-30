@@ -26,6 +26,16 @@ function memStore(): TripStore & { docs: Map<string, TripRecord> } {
       const cur = docs.get(rec.id)!;
       if (cur.updateTime !== rec.updateTime) throw Object.assign(new Error("conflict"), { conflict: true });
       docs.set(rec.id, { ...cur, name, data, updateTime: String(++v) });
+    },
+    remove: async rec => {
+      if (docs.get(rec.id)?.updateTime !== rec.updateTime) throw Object.assign(new Error("conflict"), { conflict: true });
+      docs.delete(rec.id);
+    },
+    leave: async (rec, uid) => {
+      const cur = docs.get(rec.id)!;
+      const members = { ...cur.members };
+      delete members[uid];
+      docs.set(rec.id, { ...cur, members, updateTime: String(++v) });
     }
   };
 }
@@ -149,7 +159,7 @@ describe("KI-Konnektor (MCP)", () => {
     expect(trip.travelers.every(t => t.placeholder)).toBe(true);
 
     const list = await tool(d, "list_trips", {});
-    expect(list.data.trips).toEqual([{ id, name: "Palma", place: "Palma", from: "2027-05-10", to: "2027-05-13", role: "owner" }]);
+    expect(list.data.trips).toEqual([{ id, name: "Palma", place: "Palma", from: "2027-05-10", to: "2027-05-13", role: "owner", byAi: true }]);
 
     const rm = await tool(d, "remove_item", { tripId: id, itemId: got.data.items[2].id });
     expect(rm.error).toBe(false);
@@ -273,5 +283,84 @@ describe("KI-Konnektor (MCP)", () => {
     expect(items[0]).toMatchObject({ name: "Unterkunft in Golden Sands", offer: "Hotel s3", board: "half", stars: 4 });
     expect(items[1].name).toBe(long);
     expect(items[1].offer).toBeUndefined();
+  });
+
+  it("ändert und löscht eigene Reisen, fragt bei Änderungen aus der App nach (#603)", async () => {
+    const d = deps();
+    const store = d.store as ReturnType<typeof memStore>;
+    // in der App ändern: wie ein Speichern der App (ohne den Stand der KI anzufassen)
+    const inApp = (id: string, f: (t: Trip) => void) => {
+      const r = store.docs.get(id)!, t = JSON.parse(r.data) as Trip;
+      f(t);
+      store.docs.set(id, { ...r, data: JSON.stringify(t), updateTime: r.updateTime + "a" });
+    };
+    const mk = async (place = "Alanya") => (await tool(d, "create_trip", { place, from: "2027-08-19", to: "2027-08-29", adults: 2, childAges: [3], travelersFrom: "user" })).data.tripId as string;
+
+    // Fehlversuch der KI: direkt löschen
+    const a = await mk();
+    expect((await tool(d, "list_trips", {})).data.trips[0]).toMatchObject({ id: a, byAi: true });
+    expect((await tool(d, "delete_trip", { tripId: a })).data).toEqual({ deleted: a });
+    expect(store.docs.has(a)).toBe(false);
+
+    // ändern statt neu anlegen; Unterkunft außerhalb des neuen Zeitraums wird gemeldet
+    const b = await mk("Goldstrand");
+    await tool(d, "search_stays", { place: "Goldstrand", checkin: "2027-08-19", checkout: "2027-08-29", adults: 2, childAges: [3] });
+    expect((await tool(d, "add_stay", { tripId: b, offerId: "s1" })).error).toBe(false);
+    const up = await tool(d, "update_trip", { tripId: b, name: "Sommer 2027", from: "2027-08-20", to: "2027-08-30" });
+    expect(up.data).toMatchObject({ updated: true, outOfRange: [{ name: "Unterkunft in Goldstrand" }] });
+    expect(store.docs.get(b)!.name).toBe("Sommer 2027");
+    expect((await tool(d, "update_trip", { tripId: b })).error).toBe(true);
+    expect((await tool(d, "update_trip", { tripId: b, from: "2027-09-10" })).text).toMatch(/before/);
+
+    // in der App geändert: Rückfrage mit Liste, auch nach weiteren Änderungen der KI
+    inApp(b, t => { t.name = "Unser Sommer"; t.items.push({ id: "eigen", cat: "misc", name: "Sonnencreme", status: "idea", options: [] }); });
+    expect((await tool(d, "add_cost", { tripId: b, category: "misc", name: "Eis", amountEur: 20 })).error).toBe(false);
+    expect((await tool(d, "list_trips", {})).data.trips[0]).toMatchObject({ byAi: true, changedInApp: true });
+    const no = await tool(d, "delete_trip", { tripId: b });
+    expect(no.error).toBe(true);
+    expect(no.text).toMatch(/name, destination, dates or travelers changed; item added: Sonnencreme \(eigen\)/);
+    expect(no.text).not.toMatch(/Eis/);
+    expect((await tool(d, "remove_item", { tripId: b, itemId: "eigen" })).text).toMatch(/Sonnencreme/);
+    expect((await tool(d, "get_trip", { tripId: b })).data.changedInApp).toHaveLength(2);
+    // nach Rückfrage: ändern, danach kennt die KI den Stand
+    expect((await tool(d, "update_trip", { tripId: b, to: "2027-08-31", confirm: true })).error).toBe(false);
+    expect((await tool(d, "get_trip", { tripId: b })).data.changedInApp).toBeUndefined();
+    expect((await tool(d, "remove_item", { tripId: b, itemId: "eigen" })).error).toBe(false);
+    expect((await tool(d, "delete_trip", { tripId: b })).data).toEqual({ deleted: b });
+
+    // in der App angelegt: nur nach Rückfrage ändern oder löschen; Posten des Nutzers nur nach Rückfrage entfernen
+    const c = await mk("Belek");
+    inApp(c, t => { delete t.aiSeen; t.items.push({ id: "app", cat: "misc", name: "Kuchen", status: "idea", options: [] }); });
+    expect((await tool(d, "get_trip", { tripId: c })).data.byAi).toBe(false);
+    expect((await tool(d, "update_trip", { tripId: c, name: "x" })).text).toMatch(/created in the app/);
+    expect((await tool(d, "remove_item", { tripId: c, itemId: "app" })).error).toBe(true);
+    expect((await tool(d, "add_cost", { tripId: c, category: "misc", name: "Eis", amountEur: 20 })).error).toBe(false);
+    const eis = JSON.parse(store.docs.get(c)!.data).items.find((i: any) => i.name === "Eis").id;
+    expect((await tool(d, "remove_item", { tripId: c, itemId: eis })).error).toBe(false);
+    expect((await tool(d, "delete_trip", { tripId: c })).text).toMatch(/created in the app/);
+    expect((await tool(d, "delete_trip", { tripId: c, confirm: true })).data).toEqual({ deleted: c });
+
+    // geteilt: als Mitglied nur verlassen (nach Rückfrage), als Besitzer nicht per KI
+    const e = await mk("Side");
+    store.docs.set(e, { ...store.docs.get(e)!, members: { u1: "owner", u2: "editor" } });
+    expect((await tool(d, "delete_trip", { tripId: e })).text).toMatch(/shared with others/);
+    store.docs.set(e, { ...store.docs.get(e)!, owner: "u2", members: { u1: "editor", u2: "owner" } });
+    expect((await tool(d, "delete_trip", { tripId: e })).text).toMatch(/leaving/);
+    expect((await tool(d, "delete_trip", { tripId: e, confirm: true })).data).toEqual({ left: e });
+    expect(store.docs.get(e)!.members).toEqual({ u2: "owner" });
+  });
+
+  it("legt Vorschläge als Vergleich an (#603, #428)", async () => {
+    const d = deps();
+    const one = (await tool(d, "create_trip", { place: "Goldstrand", name: "Sommer Goldstrand", adults: 2, travelersFrom: "user" })).data.tripId;
+    const two = await tool(d, "create_trip", { place: "Belek", name: "Sommer Belek", adults: 2, travelersFrom: "user", compareWith: one });
+    expect(two.error).toBe(false);
+    const cmp = (id: string) => (JSON.parse((d.store as any).docs.get(id).data) as Trip).cmp;
+    expect(cmp(two.data.tripId)?.id).toBe(cmp(one)?.id);
+    expect(cmp(one)?.title).toBe("Sommer Goldstrand");
+    expect((await tool(d, "list_trips", {})).data.trips.map((t: any) => t.compare)).toEqual(["Sommer Goldstrand", "Sommer Goldstrand"]);
+    // die erste Reise bleibt „unverändert seit der KI“
+    expect((await tool(d, "get_trip", { tripId: one })).data.changedInApp).toBeUndefined();
+    expect((await tool(d, "create_trip", { place: "Side", adults: 2, travelersFrom: "user", compareWith: "gibtsnicht" })).text).toMatch(/not found/);
   });
 });

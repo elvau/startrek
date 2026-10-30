@@ -601,6 +601,11 @@ export interface Trip {
   /** vom KI-Assistenten vorgeschlagen (Kennzeichnung in der Übersicht) */
   ai?: { at: string };
   /**
+   * von der KI über den Konnektor angelegt (#603): Stand, den sie zuletzt kannte (Prüfsummen der Eckdaten und je Posten).
+   * Weicht die Reise davon ab, wurde sie in der App geändert; dann ändert oder löscht die KI nur nach Rückfrage.
+   */
+  aiSeen?: { m: string; i: Record<string, string> };
+  /**
    * Variante in einem Vergleich (#428): gleiche Kennung bündelt die Reisen (Startseite, Vergleichsansicht), Titel des
    * Vergleichs und kurzer Name der Variante (fehlt: Ort bzw. Land). In der Reise selbst, damit Mitreisende es auch sehen.
    * chosen: „Diese nehmen“ (ISO, #430); gewählt ist die Variante mit dem jüngsten Zeitpunkt, die anderen sind eingeklappt.
