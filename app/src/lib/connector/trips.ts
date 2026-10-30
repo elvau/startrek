@@ -328,7 +328,7 @@ export function setHome(trip: Trip, family: string, h: Home) {
 }
 
 /**
- * Familie umbenennen (Tippfehler wie „Pauk“ → „Pauck“): Reisende, Einstellungen der Familie, Zahlungen, Kasse, Verpflegung
+ * Familie umbenennen (Tippfehler wie „Brink“ → „Brinck“): Reisende, Einstellungen der Familie, Zahlungen, Kasse, Verpflegung
  * und Gruppenbus. Gibt es die neue Familie schon, kommen die Reisenden dazu (ihre Einstellungen bleiben).
  */
 export function renameFamily(trip: Trip, from: string, to: string): number {
