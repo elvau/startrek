@@ -20,7 +20,8 @@
   import { holidayText, loadRegions } from "../holidaysApp.svelte";
   import type { Regions } from "../holidays";
 
-  let { p, base, onai }: { p: Prefs; base?: Prefs; onai?: () => void } = $props();
+  /** trip: Vorlieben einer Reise (#602), Grundlage sind dann eigene und Gruppe */
+  let { p, base, onai, trip = false }: { p: Prefs; base?: Prefs; onai?: () => void; trip?: boolean } = $props();
   const group = $derived(!!base);
 
   $effect(() => { void loadGeo(geo, []); });
@@ -95,14 +96,16 @@
   let cards = $state<Record<string, HTMLElement>>({});
   const jump = (c: CardId) => cards[c]?.scrollIntoView({ behavior: "smooth", block: "start" });
   /** „wie meine: …“ für Gruppen; v: angezeigter Wert von meinen */
-  const inhText = (v: string | false | undefined | null) => (v ? t("prefs.likeMineV", { v }) : t("prefs.likeMine"));
+  // Reise (#602): „wie sonst“ statt „wie meine“
+  const like = () => (trip ? t("prefs.likeUsual") : t("prefs.likeMine"));
+  const inhText = (v: string | false | undefined | null) => (v ? (trip ? t("prefs.likeUsualV", { v }) : t("prefs.likeMineV", { v })) : like());
 </script>
 
 {#snippet lbl(text: string, k: keyof Prefs | null, mine?: string | false | null)}
   <div class="pv-lbl">
     <span>{text}</span>
     {#if group && k}
-      {#if own(k)}<button type="button" class="pv-reset" onclick={() => (k === "airports" ? resetAps() : resetKey(p, k))}>↺ {t("prefs.likeMine")}</button>
+      {#if own(k)}<button type="button" class="pv-reset" onclick={() => (k === "airports" ? resetAps() : resetKey(p, k))}>↺ {like()}</button>
       {:else}<span class="pv-inh">· {inhText(mine)}</span>{/if}
     {/if}
   </div>
@@ -141,9 +144,9 @@
       <span class="dlabel">{t("prefs.glance")}</span>
       <div class="pv-chips">
         {#each sum as s, i (i)}<button type="button" class="pv-sc" class:grp={s.group} class:inh={group && !s.group} onclick={() => jump(s.card)}>{s.text}</button>
-        {:else}<span class="muted small">{group ? t("prefs.groupHint") : t("prefs.hint")}</span>{/each}
+        {:else}<span class="muted small">{trip ? t("prefs.tripHint") : group ? t("prefs.groupHint") : t("prefs.hint")}</span>{/each}
       </div>
-      {#if group}<p class="pv-legend"><span><i class="lg-chg"></i>{t("prefs.legendChg")}</span><span><i class="lg-inh"></i>{t("prefs.likeMine")}</span></p>{/if}
+      {#if group}<p class="pv-legend"><span><i class="lg-chg"></i>{trip ? t("prefs.legendChgTrip") : t("prefs.legendChg")}</span><span><i class="lg-inh"></i>{like()}</span></p>{/if}
     </div>
     {#if onai}<button type="button" class="pv-ai" onclick={onai}>✨ {t("prefs.aiEdit")}</button>{/if}
   </div>
@@ -257,7 +260,7 @@
 
     {#snippet times()}
       {@render lbl(t("prefs.holidays"), "holidays", base?.holidays ? holidayText(base.holidays, regions, i18n.lang) : null)}
-      <HolidayPicker value={p.holidays} empty={group ? t("prefs.likeMine") : t("prefs.unset")} onchange={v => set("holidays", v)} />
+      <HolidayPicker value={p.holidays} empty={group ? like() : t("prefs.unset")} onchange={v => set("holidays", v)} />
       {#if !group}<div class="pv-seg">{@render chip("📅 " + t("prefs.calHolidays"), p.calHolidays === false ? "" : "on", () => set("calHolidays", p.calHolidays === false ? undefined : false))}</div>{/if}
       {@render lbl(t("prefs.months"), "months", base?.months?.length ? monthsText(base.months) : null)}
       <div class="pv-seg pv-months">
@@ -274,7 +277,7 @@
           </span>
         {/each}
         {#if !group && (p.nightsMin || p.nightsMax)}<button type="button" class="pv-x" onclick={() => { set("nightsMin", undefined); set("nightsMax", undefined); }}>{t("prefs.any")}</button>{/if}
-        {#if group && (own("nightsMin") || own("nightsMax"))}<button type="button" class="pv-reset" onclick={() => { resetKey(p, "nightsMin"); resetKey(p, "nightsMax"); }}>↺ {t("prefs.likeMine")}</button>{/if}
+        {#if group && (own("nightsMin") || own("nightsMax"))}<button type="button" class="pv-reset" onclick={() => { resetKey(p, "nightsMin"); resetKey(p, "nightsMax"); }}>↺ {like()}</button>{/if}
       </div>
     {/snippet}
     {@render card("times", times)}

@@ -1,6 +1,6 @@
 import { localJson } from "./directory.svelte";
 import { describe, expect, it } from "vitest";
-import { agentPrefs, groupFor, mergePrefs, prefsFor, touchesAvoided } from "./prefs";
+import { agentPrefs, basePrefsFor, groupFor, mergePrefs, prefsFor, touchesAvoided } from "./prefs";
 import { DEFAULT_SETTINGS, type Directory, type Trip } from "./model";
 import type { FlightOffer } from "./flights/types";
 
@@ -25,6 +25,13 @@ describe("Vorlieben", () => {
     expect(groupFor(trip([]), dir)).toBeNull();
     expect(prefsFor(trip(["a", "u"]), dir)).toMatchObject({ stayType: "hotel", maxStops: 0, avoid: ["TR"] });
     expect(prefsFor(null, dir).stayType).toBe("all");
+  });
+  it("Vorlieben der Reise (#602) gehen eigenen und Gruppe vor; ohne sie wie bisher", () => {
+    const t = { ...trip(["a", "b"]), prefs: { stayType: "hotel" as const, budget: "high" as const, avoid: ["MA"] } };
+    expect(prefsFor(t, dir)).toMatchObject({ stayType: "hotel", budget: "high", maxStops: 1, avoid: ["TR", "EG", "MA"] });
+    expect(basePrefsFor(t, dir)).toMatchObject({ stayType: "whole" });
+    expect(basePrefsFor(t, dir).budget).toBeUndefined();
+    expect(prefsFor(trip(["a", "b"]), dir)).toEqual(basePrefsFor(trip(["a", "b"]), dir));
   });
   it("Flug über ein gesperrtes Land (Ziel oder Umstieg)", () => {
     const o = { out: { from: "DUS", to: "CAI", route: ["DUS", "IST", "CAI"] } } as unknown as FlightOffer;

@@ -19,7 +19,7 @@ const out = await mkdtemp(join(tmpdir(), "mcp-"));
 const b = await rolldown({ input: { mcp: "../worker/src/mcp.ts", firestore: "../worker/src/firestore.ts", apikey: "../worker/src/apikey.ts", oauth: "../worker/src/oauth.ts" }, platform: "neutral", logLevel: "silent" });
 await b.write({ dir: out, format: "esm", entryFileNames: "[name].mjs" });
 const { mcpMessage } = await import(join(out, "mcp.mjs"));
-const { tripStore, profileStore } = await import(join(out, "firestore.mjs"));
+const { tripStore, profileStore, profilePrefsSaver } = await import(join(out, "firestore.mjs"));
 const { seal } = await import(join(out, "apikey.mjs"));
 const { grantStore } = await import(join(out, "oauth.mjs"));
 
@@ -67,6 +67,17 @@ const famDoc = await (await fetch(`${FS}/trips/${fam.tripId}`, { headers: { auth
 const famTrip = JSON.parse(famDoc.fields.data.stringValue);
 if (famTrip.travelers.map(t => `${t.name}/${t.household}/${t.age}`).join() !== "Claudia/Fuchs/41,Tom/Fuchs/6") fail("Reisende aus der Gruppe: " + JSON.stringify(famTrip.travelers));
 log("Familien und Gruppen aus dem Konto ohne Namen für die KI; Reise aus der Gruppe mit echten Reisenden");
+
+// Vorlieben im Konto speichern (#602): nur die Vorlieben ändern sich, Personen, Gruppen und PLZ bleiben
+deps.savePrefs = profilePrefsSaver({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
+const sv = await tool("save_my_preferences", { budget: "low", board: "half" });
+if (sv.saved.budget !== "low") fail("save_my_preferences: " + JSON.stringify(sv));
+const profDoc = await (await fetch(`${FS}/profiles/${uid}`, { headers: { authorization: "Bearer owner" } })).json();
+const prof = JSON.parse(profDoc.fields.data.stringValue);
+if (prof.prefs.budget !== "low" || prof.prefs.board !== "half" || prof.prefs.plz !== "40210" || prof.people.length !== 2 || prof.groups[0].name !== "Fuchsbau") fail("Konto nach dem Speichern: " + JSON.stringify(prof));
+const fl2 = await tool("search_flights", { to: ["PMI"], depart: "2027-05-07", adults: 1 });
+if (fl2.appliedPreferences?.airports?.join() !== "DUS") fail("Flughafen aus den Vorlieben: " + JSON.stringify(fl2.appliedPreferences));
+log("Vorlieben im Konto gespeichert (Rest bleibt), Suche nimmt den Flughafen aus den Vorlieben");
 
 // Verbindungen der Chat-Apps (OAuth, #590) in Firestore: anlegen, nur unverändert ändern, Liste, aufräumen, trennen
 const gs = grantStore({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });

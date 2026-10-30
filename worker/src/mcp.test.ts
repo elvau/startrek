@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { issueKey, verifyKey } from "./apikey";
 import { fromFs, toFs, type TripRecord, type TripStore } from "./firestore";
 import { mcpMessage, type McpDeps, type Saved } from "./mcp";
-import type { FlightOffer } from "../../app/src/lib/flights/types";
-import type { StayOffer } from "../../app/src/lib/stays/types";
+import type { FlightOffer, FlightQuery } from "../../app/src/lib/flights/types";
+import type { StayOffer, StayQuery } from "../../app/src/lib/stays/types";
 import type { Directory, Trip } from "../../app/src/lib/model";
 
 const leg = (from: string, to: string, dep: string, arr: string) => ({ from, to, dep, arr, minutes: 150, stops: 0, route: [from, to], carriers: ["EW"], flights: ["EW1"] });
@@ -253,4 +253,51 @@ describe("KI-Konnektor (MCP)", () => {
     const empty = deps({ profile: async () => null });
     expect((await tool(empty, "get_my_travelers", {})).data.note).toContain("ask the user");
   });
+
+  it("Vorlieben (#602): Suchen nehmen fehlende Angaben aus Konto, Gruppe und Reise; speichern und je Reise setzen", async () => {
+    let dir: Directory = { people: [], groups: [], prefs: { airports: ["DUS", "CGN"], maxStops: 0, bags: true, avoid: ["TR"], stayType: "whole", plz: "47906" } };
+    const fq: FlightQuery[] = [], sq: StayQuery[] = [];
+    const d = deps({
+      flights: async q => { fq.push(q); return { offers: [flight("f1", 480)], sources: [] }; },
+      stays: async q => { sq.push(q); return { offers: [stay("s1", 600)], sources: [] }; },
+      profile: async () => JSON.parse(JSON.stringify(dir)),
+      savePrefs: async (_uid, change) => { dir = { ...dir, prefs: change(dir.prefs || {}) }; return dir.prefs!; },
+      allowSearch: async () => null
+    });
+    // ohne Abflughafen: aus den Vorlieben, dazu Umstiege, Gepäck, gesperrte Länder
+    const a = await tool(d, "search_flights", { to: ["PMI"], depart: "2027-05-10", adults: 2 });
+    expect(a.error).toBe(false);
+    expect(fq[0]).toMatchObject({ fromAirports: ["DUS", "CGN"], maxStops: 0, bags: true, avoidCountries: ["TR"] });
+    expect(a.data.appliedPreferences).toEqual({ airports: ["DUS", "CGN"], maxStops: 0, bags: true, avoid: ["TR"] });
+    // ausdrücklich angegeben geht vor
+    await tool(d, "search_flights", { from: ["FRA"], to: ["PMI"], depart: "2027-05-10", adults: 2, maxStops: 1 });
+    expect(fq[1]).toMatchObject({ fromAirports: ["FRA"], maxStops: 1, avoidCountries: ["TR"] });
+    // Unterkunft: Art aus den Vorlieben, gesperrtes Land abgelehnt
+    const st = await tool(d, "search_stays", { place: "Palma", country: "Spain", checkin: "2027-05-10", checkout: "2027-05-13", adults: 2 });
+    expect(sq[0].type).toBe("whole");
+    expect(st.data.appliedPreferences).toEqual({ stayType: "whole" });
+    expect((await tool(d, "search_stays", { place: "Antalya", country: "Turkey", checkin: "2027-05-10", checkout: "2027-05-13", adults: 2 })).text).toContain("countries to avoid");
+
+    // Vorlieben je Reise: beim Anlegen und später; gehen den eigenen vor, gelten für Suchen mit tripId
+    const made = await tool(d, "create_trip", { place: "Palma", adults: 2, travelersFrom: "user", preferences: { maxStops: 2, budget: "high", plz: "1" } });
+    const id = made.data.tripId;
+    expect((await tool(d, "get_trip", { tripId: id })).data.preferences).toEqual({ maxStops: 2, budget: "high" });
+    await tool(d, "search_flights", { to: ["PMI"], depart: "2027-05-10", adults: 2, tripId: id });
+    expect(fq[2].maxStops).toBe(2);
+    expect((await tool(d, "set_trip_preferences", { tripId: id, stayType: "hotel" })).data.preferences).toEqual({ maxStops: 2, budget: "high", stayType: "hotel" });
+    expect((await tool(d, "set_trip_preferences", { tripId: id, reset: true })).data.preferences).toBeNull();
+    expect((await tool(d, "get_trip", { tripId: id })).data.preferences).toBeUndefined();
+
+    // eigene Vorlieben speichern: nur gültige Felder, gesperrte Länder kommen dazu, PLZ bleibt im Konto
+    const saved = await tool(d, "save_my_preferences", { budget: "low", board: "half", avoid: ["eg"], minStars: 9 });
+    expect(saved.data.saved).toEqual({ budget: "low", board: "half", avoid: ["EG"] });
+    expect(dir.prefs).toMatchObject({ airports: ["DUS", "CGN"], budget: "low", board: "half", avoid: ["TR", "EG"], plz: "47906" });
+    expect(saved.text).not.toContain("47906");
+    expect((await tool(d, "save_my_preferences", { budget: "riesig" })).error).toBe(true);
+
+    // ohne Flughäfen in den Vorlieben: nachfragen
+    dir = { people: [], groups: [] };
+    expect((await tool(d, "search_flights", { to: ["PMI"], depart: "2027-05-10", adults: 2 })).text).toContain("no home airports");
+  });
 });
+
