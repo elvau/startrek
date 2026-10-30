@@ -223,7 +223,8 @@ describe("KI-Konnektor (MCP)", () => {
       { id: "F1", you: true, adults: 1, childAges: [9, 4], home: "Kempen" },
       { id: "F2", adults: 1, childAges: [] }
     ]);
-    expect(view.data.groups).toEqual([{ name: "Ostsee-Truppe", families: ["F1", "F2"], prefs: { budget: "low" } }]);
+    // Gruppe mit ihren Mitgliedern gezählt (nur ein Teil von F1)
+    expect(view.data.groups).toEqual([{ name: "Ostsee-Truppe", families: ["F1", "F2"], adults: 2, childAges: [4], prefs: { budget: "low" } }]);
     expect(view.data.prefs).toEqual({ airports: ["DUS", "CGN"], styles: ["beach"] });
     // keine Namen, keine Postleitzahl
     expect(view.text).not.toMatch(/Dani|Fenia|Mia|Lars|Klein|Hase|47906/);
@@ -252,5 +253,25 @@ describe("KI-Konnektor (MCP)", () => {
     // leeres Konto: Hinweis statt Liste
     const empty = deps({ profile: async () => null });
     expect((await tool(empty, "get_my_travelers", {})).data.note).toContain("ask the user");
+  });
+
+  it("Unterkünfte nach Verpflegung, Hotelname und Verpflegung in der Reise, lange Kostennamen", async () => {
+    const offers: StayOffer[] = [{ ...stay("s1", 400), board: "self" }, { ...stay("s2", 500) }, { ...stay("s3", 600), board: "half", stars: 4 }, { ...stay("s4", 700), board: "all" }];
+    const d = deps({ stays: async () => ({ offers, sources: [] }) });
+    const q = { place: "Golden Sands", checkin: "2027-08-19", checkout: "2027-08-29", adults: 2, childAges: [3] };
+    expect((await tool(d, "search_stays", q)).data.offers.map((o: any) => [o.id, o.board])).toEqual([["s1", "self"], ["s2", undefined], ["s3", "half"], ["s4", "all"]]);
+    expect((await tool(d, "search_stays", { ...q, board: "half" })).data.offers.map((o: any) => o.id)).toEqual(["s3", "s4"]);
+    expect((await tool(d, "search_stays", { ...q, board: "all" })).data.offers.map((o: any) => o.id)).toEqual(["s4"]);
+
+    const made = await tool(d, "create_trip", { place: "Golden Sands", adults: 2, childAges: [3], travelersFrom: "user" });
+    const id = made.data.tripId;
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s3" })).error).toBe(false);
+    const long = "Ausflug Baltschik und Kap Kaliakra mit Botanischem Garten und Mittagessen am Meer";
+    expect(long.length).toBeGreaterThan(60);
+    expect((await tool(d, "add_cost", { tripId: id, category: "attractions", name: long, amountEur: 120 })).data.name).toBe(long);
+    const items = (await tool(d, "get_trip", { tripId: id })).data.items;
+    expect(items[0]).toMatchObject({ name: "Unterkunft in Golden Sands", offer: "Hotel s3", board: "half", stars: 4 });
+    expect(items[1].name).toBe(long);
+    expect(items[1].offer).toBeUndefined();
   });
 });

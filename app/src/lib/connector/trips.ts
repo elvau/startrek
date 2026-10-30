@@ -197,8 +197,11 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
   const items = trip.items.filter(i => !i.auto).map(i => {
     const o = i.options.find(x => x.id === i.chosen) || i.options[0];
     const eur = itemEur(trip, i);
+    const name = i.name || o?.label || "";
     return {
-      id: i.id, category: i.cat, name: i.name || o?.label || "", status: i.status,
+      id: i.id, category: i.cat, name, status: i.status,
+      // Angebot (z. B. Hotelname) und Verpflegung, sonst sieht Claude bei Unterkünften nur „Unterkunft in …“
+      ...(o?.label && o.label !== name ? { offer: o.label } : {}), ...(o?.stay?.board ? { board: o.stay.board } : {}), ...(o?.stay?.stars ? { stars: o.stay.stars } : {}),
       ...(eur != null ? { eur } : {}), ...(o?.estimate ? { estimate: true } : {}), ...(i.arrival ? { arrival: true } : {}),
       ...(i.from ? { from: i.from, to: i.to } : {}), ...(o?.source?.url ? { link: partner ? o.source.url : plainLink(o.source.url) } : {}),
       ...(i.options.length > 1 ? { offers: i.options.length } : {}),

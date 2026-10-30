@@ -42,6 +42,10 @@ export type Saved = { kind: "flight"; offer: FlightOffer; seats?: number } | { k
 
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const SHOWN = 8;
+/** Verpflegung aufsteigend (search_stays: board als Mindeststufe) */
+/** Länge des Namens eigener Kosten (add_cost) */
+const NAME_MAX = 120;
+const BOARDS = ["self", "breakfast", "half", "full", "all"];
 
 const INSTRUCTIONS = [
   "Split&Fly plans group trips and splits the costs fairly. Use these tools to search real flights, accommodation and events, and to plan trips in the user's Split&Fly account.",
@@ -71,11 +75,12 @@ const SEARCH_TOOLS = [
   },
   {
     name: "search_stays", title: "Search accommodation",
-    description: "Search real accommodation (hotels, apartments) for all travelers. Returns offers with id, total price for the whole stay and booking link.",
+    description: "Search real accommodation (hotels, apartments) for all travelers. Returns offers with id, total price for the whole stay, board (self, breakfast, half, full, all) if known and booking link.",
     inputSchema: { type: "object", properties: {
       place: str("City or region"), country: str("Country (English)"), checkin: str("YYYY-MM-DD"), checkout: str("YYYY-MM-DD"),
       adults: int("Adults", 1, 20), childAges: ages, rooms: int("Rooms (default: one per two adults)", 1, 10),
-      type: { type: "string", enum: ["all", "hotel", "whole"], description: "all, hotel or whole (apartment/house)" }
+      type: { type: "string", enum: ["all", "hotel", "whole"], description: "all, hotel or whole (apartment/house)" },
+      board: { type: "string", enum: ["breakfast", "half", "full", "all"], description: "At least this board: breakfast, half (half board), full (full board), all (all inclusive). Drops offers without board info" }
     }, required: ["place", "checkin", "checkout", "adults"] }
   },
   {
@@ -88,11 +93,11 @@ const SEARCH_TOOLS = [
 const TRIP_TOOLS = [
   {
     name: "get_my_travelers", title: "My families and groups",
-    description: "The user's saved families (id, adults, children's ages, home town; no names), saved groups (name, families, group preferences) and travel preferences (airports, budget, styles …). Call this before planning, to know who travels instead of guessing.",
+    description: "The user's saved families (id, adults, children's ages, home town; no names), saved groups (name, families, adults and children's ages of the group members, group preferences; a group can hold only part of a family) and travel preferences (airports, budget, styles …). Call this before planning, to know who travels instead of guessing.",
     inputSchema: { type: "object", properties: { date: str("Ages as of this day, YYYY-MM-DD (default: today; use the trip start)") } }
   },
   { name: "list_trips", title: "List trips", description: "Trips in the user's Split&Fly account (own and shared).", inputSchema: { type: "object", properties: {} } },
-  { name: "get_trip", title: "Show trip", description: "Destination, dates, number of travelers (no names) and all items with id, status and price.", inputSchema: { type: "object", properties: { tripId: str("Trip id") }, required: ["tripId"] } },
+  { name: "get_trip", title: "Show trip", description: "Destination, dates, number of travelers (no names) and all items with id, status, price and the chosen offer (e.g. hotel name, board, stars).", inputSchema: { type: "object", properties: { tripId: str("Trip id") }, required: ["tripId"] } },
   {
     name: "create_trip", title: "Create trip",
     description: "Create a new trip in the user's account. Travelers: saved families or a saved group from get_my_travelers (real people, ages as of the trip start), or, only if the user told you who travels, adults and childAges with travelersFrom 'user' (placeholders the user can replace in the app). If you don't know who travels, ask first.",
@@ -115,7 +120,7 @@ const TRIP_TOOLS = [
     description: "Add another cost (rental car, transfers at the destination, tickets, an estimate) to a trip, in EUR. Not for the way to the departure airport or airport parking: the app calculates them for every flight.",
     inputSchema: { type: "object", properties: {
       tripId: str("Trip id"), category: { type: "string", enum: ["flights", "stay", "transport", "attractions", "misc"], description: "flights, stay, transport (rental car, transfers, own arrival instead of a flight), attractions, misc" },
-      name: str("Short name"), amountEur: { type: "number", description: "Amount in EUR", minimum: 0 },
+      name: { type: "string", maxLength: NAME_MAX, description: `Short name (max ${NAME_MAX} characters)` }, amountEur: { type: "number", description: "Amount in EUR", minimum: 0 },
       perPerson: { type: "boolean", description: "true: amount per person; false (default): total for the group" }, link: str("Optional https link (e.g. ticket shop)"),
       arrival: { type: "boolean", description: "true only if the travelers reach the destination itself without a flight (own car, train, bus all the way); never for the way to the departure airport" },
       estimate: { type: "boolean", description: "true if the amount is an estimate and not a real offer" }
@@ -215,7 +220,9 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const sq = q as StayQuery;
       if (sq.checkin < today) fail("Date is in the past");
       const res = await deps.stays(sq);
-      const top = res.offers.slice(0, SHOWN);
+      // Verpflegung als Mindeststufe; die Anbieter filtern nicht danach, darum hier
+      const want = BOARDS.indexOf(a.board);
+      const top = res.offers.filter(o => want < 1 || (!!o.board && BOARDS.indexOf(o.board) >= want)).slice(0, SHOWN);
       await Promise.all(top.map(o => deps.offers.put(o.id, { kind: "stay", offer: o, q: sq })));
       return {
         offers: top.map(o => ({
@@ -223,7 +230,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
           ...(o.score != null ? { rating: o.score } : {}), ...(o.stars ? { stars: o.stars } : {}), ...(o.place ? { area: o.place } : {}),
           ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {})
         })),
-        ...(top.length ? {} : { note: "No accommodation found" })
+        ...(top.length ? {} : { note: want > 0 && res.offers.length ? "No accommodation with this board found: try a lower board or without board" : "No accommodation found" })
       };
     }
     case "search_events": {
@@ -287,7 +294,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       });
     }
     case "add_cost": {
-      const n = S(a.name, 60), eur = Number(a.amountEur);
+      const n = S(a.name, NAME_MAX), eur = Number(a.amountEur);
       if (!n || !isCat(a.category) || !isFinite(eur) || eur < 0 || eur > 100000) fail("category, name and amountEur (0-100000) are required");
       const link = typeof a.link === "string" && /^https:\/\/[^\s]{4,300}$/.test(a.link) ? a.link : undefined;
       return edit(store!, a.tripId, user, t => {

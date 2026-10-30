@@ -8,7 +8,7 @@ import { uid, type Directory, type Person, type Prefs, type Traveler } from "../
 import { personAge } from "../people";
 
 export interface FamilyView { id: string; you?: boolean; adults: number; childAges: number[]; unknownAges?: number; home?: string }
-export interface GroupView { name: string; families: string[]; prefs?: Partial<Prefs> }
+export interface GroupView { name: string; families: string[]; adults: number; childAges: number[]; unknownAges?: number; prefs?: Partial<Prefs> }
 export interface TravelersView { families: FamilyView[]; groups: GroupView[]; prefs?: Partial<Prefs>; ageDay: string }
 
 const MAX_FAMILIES = 30;
@@ -35,6 +35,17 @@ function families(d: Directory): { id: string; key: string; people: Person[] }[]
   return keys.slice(0, MAX_FAMILIES).map((key, i) => ({ id: `F${i + 1}`, key, people: byKey.get(key)! }));
 }
 
+/** Erwachsene (ab 18, unbekanntes Alter zählt mit) und Kinderalter einer Liste von Personen */
+function counts(people: Person[], day: string) {
+  const ages = people.map(p => personAge(p, day));
+  const unknown = ages.filter(a => a == null).length;
+  return {
+    adults: ages.filter(a => a != null && a >= 18).length + unknown,
+    childAges: ages.filter((a): a is number => a != null && a < 18).sort((a, b) => b - a),
+    ...(unknown ? { unknownAges: unknown } : {})
+  };
+}
+
 export function travelersView(d: Directory, day: string): TravelersView {
   const fams = families(d);
   const mine = d.me ? d.people.find(p => p.id === d.me) : undefined;
@@ -42,20 +53,18 @@ export function travelersView(d: Directory, day: string): TravelersView {
   return {
     ageDay: day,
     families: fams.map(f => {
-      const ages = f.people.map(p => personAge(p, day));
       const home = f.people.find(p => p.home?.ort)?.home;
-      const unknown = ages.filter(a => a == null).length;
       return {
         id: f.id, ...(mine && f.people.includes(mine) ? { you: true } : {}),
-        adults: ages.filter(a => a != null && a >= 18).length + unknown,
-        childAges: ages.filter((a): a is number => a != null && a < 18).sort((a, b) => b - a),
-        ...(unknown ? { unknownAges: unknown } : {}),
+        ...counts(f.people, day),
         ...(home ? { home: [home.ort, home.cc && home.cc !== "DE" ? home.cc : ""].filter(Boolean).join(", ") } : {})
       };
     }),
+    // Gruppe mit ihren eigenen Mitgliedern gezählt: oft nur ein Teil einer Familie (sonst passt create_trip nicht zur Anzeige)
     groups: d.groups.filter(g => g.name.trim()).slice(0, 30).map(g => ({
       name: g.name.trim().slice(0, 60),
       families: [...new Set(g.memberIds.map(famOf).filter((x): x is string => !!x))],
+      ...counts(g.memberIds.map(id => d.people.find(p => p.id === id)).filter((p): p is Person => !!p), day),
       ...(cleanPrefs(g.prefs) ? { prefs: cleanPrefs(g.prefs) } : {})
     })),
     ...(cleanPrefs(d.prefs) ? { prefs: cleanPrefs(d.prefs) } : {})
