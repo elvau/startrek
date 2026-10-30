@@ -75,6 +75,16 @@ function cheapest(h: any, wantBreakfast: boolean, wantFree: boolean): { total: n
   return best;
 }
 
+/**
+ * Hotel auf der eigenen Buchungsseite (White Label, z. B. hotels.splitandfly.com): Aufbau wie deren Hotelseite (10/2026),
+ * Personen je Zimmer als occupancies (JSON, base64) mit Alter der Kinder
+ */
+export function bookingUrl(link: string, hotelId: string, q: Pick<StayQuery, "checkin" | "checkout" | "adults" | "childAges" | "rooms" | "currency">): string {
+  const occ = occupancies(q);
+  const p = new URLSearchParams({ checkin: q.checkin, checkout: q.checkout, rooms: String(occ.length), adults: String(q.adults), occupancies: btoa(JSON.stringify(occ)), currency: q.currency || "EUR" });
+  return `${link.replace(/\/$/, "")}/hotels/${encodeURIComponent(hotelId)}?${p}`;
+}
+
 /** Hotels am Ort und Preise zusammenführen; link: eigene Buchungsseite (White Label), falls eingerichtet */
 export function fromLite(hotels: any[], rates: any[], q: StayQuery, link?: string): StayOffer[] {
   const meta = new Map(hotels.map(h => [h.id, h]));
@@ -84,7 +94,7 @@ export function fromLite(hotels: any[], rates: any[], q: StayQuery, link?: strin
     const c = cheapest(r, must.includes("breakfast"), must.includes("freeCancel"));
     if (!h || !c) return null;
     const facts = c.free ? ["Kostenlos stornierbar"] : [];
-    const url = link ? `${link.replace(/\/$/, "")}/hotels/${encodeURIComponent(r.hotelId)}?checkin=${q.checkin}&checkout=${q.checkout}&adults=${q.adults}${q.childAges.length ? `&children=${q.childAges.join(",")}` : ""}` : undefined;
+    const url = link ? bookingUrl(link, r.hotelId, q) : undefined;
     return {
       id: "liteapi:" + r.hotelId, source: "liteapi", sourceName: "liteAPI", name: h.name || "?", total: Math.round(c.total), currency: c.currency,
       ...(url ? { url } : {}),

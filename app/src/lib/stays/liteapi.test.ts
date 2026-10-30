@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boardOfLite, fromLite, liteFits, occupancies, searchLite } from "./liteapi";
+import { boardOfLite, bookingUrl, fromLite, liteFits, occupancies, searchLite } from "./liteapi";
 import type { StayQuery } from "./types";
 
 const q: StayQuery = { place: "Palma", cc: "ES", checkin: "2027-08-12", checkout: "2027-08-19", adults: 3, childAges: [8, 5], rooms: 2, type: "all", currency: "EUR" };
@@ -45,7 +45,16 @@ describe("liteAPI", () => {
     expect(l[0].freeCancel).toBe(true);
   });
   it("Link zur eigenen Buchungsseite, falls eingerichtet", () => {
-    expect(fromLite(HOTELS, RATES, q, "https://buchen.example/")[0].url).toBe("https://buchen.example/hotels/lp1?checkin=2027-08-12&checkout=2027-08-19&adults=3&children=8,5");
+    const u = new URL(fromLite(HOTELS, RATES, q, "https://buchen.example/")[0].url!);
+    expect(u.origin + u.pathname).toBe("https://buchen.example/hotels/lp1");
+    const { occupancies: occ, ...rest } = Object.fromEntries(u.searchParams);
+    expect(rest).toEqual({ checkin: "2027-08-12", checkout: "2027-08-19", rooms: String(occupancies(q).length), adults: "3", currency: "EUR" });
+    expect(JSON.parse(atob(occ))).toEqual(occupancies(q));
+  });
+  it("Buchungsseite wie hotels.splitandfly.com: 2 Erwachsene ohne Kinder wie im echten Link (10/2026)", () => {
+    const u = new URL(bookingUrl("https://hotels.splitandfly.com", "lp3b941", { checkin: "2026-11-18", checkout: "2026-11-22", adults: 2, childAges: [], rooms: 1 }));
+    expect(u.searchParams.get("occupancies")).toBe("W3siYWR1bHRzIjoyLCJjaGlsZHJlbiI6W119XQ==");
+    expect(u.pathname).toBe("/hotels/lp3b941");
   });
   it("zwei Schritte: Hotels am Ort, dann Preise für diese Hotels; Schlüssel im Kopf", async () => {
     const calls: { url: string; key: string; body?: unknown }[] = [];
