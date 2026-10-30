@@ -232,6 +232,32 @@ describe("KI-Konnektor (MCP)", () => {
     expect(fl.map(i => i.options[0].price.unit)).toEqual([480, 520]);
   });
 
+  it("warnt bei doppeltem Flug oder Hotel für dieselben Reisenden und ersetzt mit replace", async () => {
+    const d = deps();
+    const id = (await tool(d, "create_trip", { place: "Madeira", from: "2027-05-10", to: "2027-05-13", adults: 3, travelersFrom: "user" })).data.tripId;
+    await tool(d, "search_flights", { from: ["DUS"], to: ["FNC"], depart: "2027-05-10", return: "2027-05-13", adults: 3 });
+    const a = await tool(d, "add_flight", { tripId: id, offerId: "f1" });
+    expect(a.data.warning).toBeUndefined();
+    const b = await tool(d, "add_flight", { tripId: id, offerId: "f2", travelers: 3 });
+    expect(b.data.warning).toMatch(new RegExp(a.data.added[0]));
+    const c = await tool(d, "add_flight", { tripId: id, offerId: "f2", replace: b.data.added[0] });
+    expect(c.data).toMatchObject({ replaced: b.data.added[0] });
+    await tool(d, "remove_item", { tripId: id, itemId: a.data.added[0] });
+    await tool(d, "search_stays", { place: "Funchal", checkin: "2027-05-10", checkout: "2027-05-13", adults: 3 });
+    const s1 = await tool(d, "add_stay", { tripId: id, offerId: "s1" });
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: "gibtsnicht" })).text).toMatch(/not found/);
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: c.data.added[0] })).text).toMatch(/accommodation item/);
+    const s2 = await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: s1.data.added });
+    expect(s2.data.warning).toBeUndefined();
+    const t: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(t.items.map(i => i.id)).toEqual([c.data.added[0], s2.data.added]);
+    // in der App geänderter Posten: erst nach Rückfrage ersetzen, vorher bleibt alles wie es war
+    t.items[1].name = "Hotel am Meer"; (d.store as any).docs.get(id).data = JSON.stringify(t);
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: s2.data.added })).text).toMatch(/confirm true/);
+    expect(JSON.parse((d.store as any).docs.get(id).data).items).toHaveLength(2);
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: s2.data.added, confirm: true })).data.replaced).toBe(s2.data.added);
+  });
+
   it("Platzhalter: Jugendliche heißen Kind, zahlen aber Erwachsenentarif", async () => {
     const d = deps();
     const made = await tool(d, "create_trip", { place: "Málaga", adults: 1, childAges: [16, 8, 1], travelersFrom: "user" });

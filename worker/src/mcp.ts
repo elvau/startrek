@@ -13,8 +13,8 @@ import { parseEventQuery } from "../../app/src/lib/events/search";
 import type { FlightOffer, FlightQuery, SearchResult } from "../../app/src/lib/flights/types";
 import type { StayOffer, StayQuery, StaySearchResult } from "../../app/src/lib/stays/types";
 import type { EventQuery, EventSearchResult } from "../../app/src/lib/events/types";
-import { hhKey, type Directory, type Person, type Status, type Traveler, type Trip } from "../../app/src/lib/model";
-import { addCost, addFlight, addStay, aiKnows, aiState, aiWrote, changesSinceAi, changeTraveler, isCat, LANGS, newTrip, removeItem, renameFamily, setHome, tripPeople, tripSummary, updateTrip } from "../../app/src/lib/connector/trips";
+import { hhKey, type Directory, type Item, type Person, type Status, type Traveler, type Trip } from "../../app/src/lib/model";
+import { addCost, addFlight, addStay, aiKnows, clashes, aiState, aiWrote, changesSinceAi, changeTraveler, isCat, LANGS, newTrip, removeItem, renameFamily, setHome, tripPeople, tripSummary, updateTrip } from "../../app/src/lib/connector/trips";
 import { joinTarget } from "../../app/src/lib/variants";
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
 import { cleanName, saveGroup, savePeople, travelerColor, travelersFor, travelersView, type PersonInput } from "../../app/src/lib/connector/people";
@@ -68,7 +68,7 @@ const INSTRUCTIONS = [
   "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family.",
   "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, or train, per household from its settings) and meals; never add these as costs.",
   "Searches use the user's saved preferences (own, group, trip) for anything you leave out and always skip countries to avoid; pass tripId to use a trip's preferences, and the result lists appliedPreferences. If the user has none yet, offer to set up a short travel profile by asking about airports, budget, accommodation, meals, travel style and countries to avoid, then save it with save_my_preferences after they confirmed. Wishes for one trip only go to set_trip_preferences.",
-  "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. Put alternatives you propose into one comparison (create_trip with compareWith and a compareTitle such as 'Summer holiday 2027', each variant with a short variantName); existing trips join with update_trip.",
+  "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. When you swap a flight or accommodation for another offer, pass replace with the old item id, so the trip does not count both. Put alternatives you propose into one comparison (create_trip with compareWith and a compareTitle such as 'Summer holiday 2027', each variant with a short variantName); existing trips join with update_trip.",
   "Ask instead of guessing: call get_my_travelers first (families with names, ages and home town, saved groups, preferences). If destination, time frame, who travels, budget or kind of trip are still unclear, ask the user short questions, each with 2-4 concrete options plus 'something else', before creating a trip. Never invent travelers or children's ages; state any remaining assumption explicitly.",
   "If the user shares a group chat or a list of families, compare it with the saved families and groups: if it matches a saved group, ask whether it is that group; otherwise ask whether to save the new people and the group in their account (save_people, then save_group) or to add them to this trip only (create_trip with travelers). Then create the trip from the group or families, so every family keeps its name and home town (where it starts from).",
   "Correct misspelled names or wrong ages where they are: saved people with save_people, travelers in a trip with update_travelers (saved people are not renamed in existing trips automatically). For a cost that is already booked or paid, pass status, paidBy (the family that paid) and bookingRef to add_cost."
@@ -95,6 +95,12 @@ const PREFS = {
 const NEW_TRAVELERS = {
   type: "array", description: "Travelers the user named who are not saved (only in this trip)",
   items: { type: "object", properties: { first: str("First name"), family: str("Family the costs are shared in, usually the family name; children with another surname who belong to this family get the same family"), age: int("Age at the trip start (children always with age)", 0, 120), home: str("Home town, ideally with postal code, e.g. \"47906 Kempen\" (where the family starts from)"), country: str("Country of the home town, ISO-2 (default DE)") }, required: ["first", "family"] }
+};
+
+/** add_flight/add_stay: altes Angebot gleich ersetzen statt doppelt in der Reise */
+const REPLACE = {
+  replace: str("Item id from get_trip that this offer replaces (removed in the same step; booked or paid items stay)"),
+  confirm: { type: "boolean", description: "true: the user agreed to replace an item they added or changed in the app" }
 };
 
 const SEARCH_TOOLS = [
@@ -173,14 +179,15 @@ const TRIP_TOOLS = [
   },
   {
     name: "add_flight", title: "Add flight to trip",
-    description: "Add a flight offer from search_flights to a trip. people: exactly these travelers take this flight (ids from get_trip or create_trip), e.g. a feeder flight for one person and then the onward flight for everyone. Without people: if the offer was searched for fewer seats than the trip has travelers, or travelers is given, it is added for that many travelers without a flight yet. Either way split into bookings of the searched seat count (one item per booking). Use several offers to put parts of the group on different flights.",
+    description: "Add a flight offer from search_flights to a trip. To swap a flight, pass replace with the old item id; if the same travelers already have a flight on this route, the result has a warning (remove the old one or use replace). people: exactly these travelers take this flight (ids from get_trip or create_trip), e.g. a feeder flight for one person and then the onward flight for everyone. Without people: if the offer was searched for fewer seats than the trip has travelers, or travelers is given, it is added for that many travelers without a flight yet. Either way split into bookings of the searched seat count (one item per booking). Use several offers to put parts of the group on different flights.",
     inputSchema: { type: "object", properties: {
       tripId: str("Trip id"), offerId: str("Offer id from search_flights"),
       people: { type: "array", items: { type: "string" }, description: "Traveler ids from get_trip or create_trip who take this flight (default: all without a flight)" },
-      travelers: int("How many travelers take this flight, without people (default: all without a flight)", 1, 30), language: lang
+      travelers: int("How many travelers take this flight, without people (default: all without a flight)", 1, 30), language: lang,
+      ...REPLACE
     }, required: ["tripId", "offerId"] }
   },
-  { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang }, required: ["tripId", "offerId"] } },
+  { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip. To swap an accommodation for a cheaper or better one, pass replace with the old item id; otherwise both stay in the trip and count.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang, ...REPLACE }, required: ["tripId", "offerId"] } },
   {
     name: "add_cost", title: "Add cost to trip",
     description: "Add another cost (rental car, transfers at the destination, tickets, an accommodation the user already booked, an estimate) to a trip, in EUR. Already booked or paid: pass status, the booking number and paidBy (family name in the trip that paid; the app then settles the costs between the families). Not for the way to the departure airport or airport parking: the app calculates them for every flight.",
@@ -502,6 +509,18 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const saved = typeof a.offerId === "string" ? await deps.offers.get(a.offerId) : null;
       if (!saved || saved.kind !== (name === "add_flight" ? "flight" : "stay")) fail("Offer not found or expired: search again and use an id from the results");
       return edit(store!, a.tripId, user, t => {
+        // zu ersetzender Posten: vorher prüfen, damit bei Fehler nichts hinzukommt
+        const old = a.replace != null ? t.items.find(i => i.id === a.replace) || fail("Item to replace not found: use an id from get_trip") : undefined;
+        if (old) {
+          if (old!.cat !== (saved!.kind === "flight" ? "flights" : "stay")) fail(`replace must be a ${saved!.kind === "flight" ? "flight" : "accommodation"} item`);
+          if (old!.status === "booked" || old!.status === "paid") fail("Booked or paid items can only be changed in the app");
+          if (a.confirm !== true) dropCheck(t, old!);
+        }
+        const done = (items: Item[], out: object) => {
+          if (old) removeItem(t, old.id);
+          const dup = clashes(t, items);
+          return { ...out, ...(old ? { replaced: old.id } : {}), ...(dup.length ? { warning: `Already in the trip for the same travelers: ${dup.map(i => `${i.name || i.cat} (${i.id})`).join(", ")}. Both count in the total: remove the old one with remove_item, or next time pass replace.` } : {}) };
+        };
         if (saved!.kind === "flight") {
           const travelers = Number.isInteger(a.travelers) && a.travelers >= 1 ? a.travelers : undefined;
           // bestimmte Reisende (Zubringer nur für einen Teil der Gruppe)
@@ -509,10 +528,10 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
           for (const id of ids || []) if (!t.travelers.some(x => x.id === id && x.active !== false)) fail(`Unknown traveler "${id}": use ids from get_trip`);
           const seats = saved!.seats || (ids ? ids.length : 0);
           const items = addFlight(t, saved!.offer, lng(a.language), seats ? { seats, travelers, ids } : undefined);
-          return { added: items.map(i => i.id), bookings: items.length, name: items[0]?.name };
+          return done(items, { added: items.map(i => i.id), bookings: items.length, name: items[0]?.name });
         }
         const it = addStay(t, saved!.offer, (saved as { q: StayQuery }).q, lng(a.language));
-        return { added: it.id, name: it.name };
+        return done([it], { added: it.id, name: it.name });
       });
     }
     case "add_cost": {
@@ -598,11 +617,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
     case "remove_item":
       return edit(store!, a.tripId, user, t => {
         const it = t.items.find(i => i.id === a.itemId);
-        if (it && it.status !== "booked" && it.status !== "paid" && a.confirm !== true) {
-          // nur, was die KI angelegt hat und seitdem niemand geändert hat; sonst erst fragen
-          const ch = changesSinceAi(t);
-          if (ch ? ch.some(c => c.id === it.id) : !it.ai) fail(`The user added or changed "${it.name || it.cat}" in the app: ask the user, then repeat with confirm true`);
-        }
+        if (it && it.status !== "booked" && it.status !== "paid" && a.confirm !== true) dropCheck(t, it);
         const r = removeItem(t, String(a.itemId || ""));
         if (r === "missing") fail("Item not found");
         if (r === "fixed") fail("Booked or paid items can only be changed in the app");
@@ -616,6 +631,11 @@ const STATUS = ["idea", "chosen", "booked", "paid"];
 const age = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 120 ? v as number : undefined);
 /** Paare { from, to } zum Umbenennen von Familien */
 const pairs = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 20).map((x: any) => ({ from: cleanName(x?.from), to: cleanName(x?.to) })).filter(x => x.from && x.to);
+/** Entfernen ohne Rückfrage nur, was die KI angelegt hat und seitdem niemand geändert hat */
+function dropCheck(t: Trip, it: Item) {
+  const ch = changesSinceAi(t);
+  if (ch ? ch.some(c => c.id === it.id) : !it.ai) fail(`The user added or changed "${it.name || it.cat}" in the app: ask the user, then repeat with confirm true`);
+}
 /** Fehler aus den Hilfsfunktionen als Hinweis an den Assistenten */
 function guard<T>(f: () => T): T {
   try { return f(); } catch (e) { if (e instanceof ToolError) throw e; return fail((e as Error).message); }
