@@ -90,6 +90,20 @@ describe("KI-Konnektor (MCP)", () => {
     expect(((await mcpMessage(rpc("gibtsnicht"), ME, d)) as any).error.code).toBe(-32601);
   });
 
+  it("gibt der Unterkunftssuche Ländercode und Koordinaten mit (#593)", async () => {
+    let got: any;
+    const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });
+    await tool(d, "search_stays", { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2 });
+    expect(got).toMatchObject({ cc: "ES", country: "Spain" });
+    expect(typeof got.lat).toBe("number");
+    expect(typeof got.lon).toBe("number");
+    // Ort mit deutschem Land und ohne Land
+    await tool(d, "search_stays", { place: "Split", country: "Kroatien", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2 });
+    expect(got).toMatchObject({ cc: "HR", country: "Croatia" });
+    await tool(d, "search_stays", { place: "Nirgendwo-Dorf", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2 });
+    expect(got.cc).toBeUndefined();
+  });
+
   it("sagt der KI, dass die App Anreise zum Flughafen samt Parken selbst rechnet (nicht doppelt anlegen)", async () => {
     const d = deps();
     const init = await mcpMessage(rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } }), ME, d) as any;
