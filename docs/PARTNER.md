@@ -36,6 +36,8 @@ Jeder Klick auf einen Anbieter-Link (`ExtLink` mit `track`) meldet nebenher Part
 (`POST /click`, `app/src/lib/partners/click.ts`), der sie je Tag in Analytics Engine zählt (`noteClick` in
 `worker/src/usage.ts`), ohne IP, Konto oder Reise. Auswertung: Admin-Ansicht im Kontomenü, Abschnitt „Klicks auf
 Anbieter-Links“ (letzte 7 Tage). Der Link öffnet sofort, das Zählen läuft nebenher.
+Links aus dem KI-Konnektor laufen über `splitandfly.com/go/` und werden dort gezählt (Herkunft splitandfly.com wie in der
+App, siehe `docs/KONNEKTOR.md`, „Weiterleitung“). In CJ und Awin trotzdem „KI-Assistent“ als Werbemethode angeben, falls verlangt.
 
 ## Travelpayouts-Links
 

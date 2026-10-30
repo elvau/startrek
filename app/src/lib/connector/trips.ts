@@ -274,6 +274,29 @@ export function clashes(trip: Trip, added: Item[]): Item[] {
   }));
 }
 
+export interface Booked { status: "booked" | "paid"; ref?: string; paidBy?: string; paidAt?: string; amountEur?: number }
+
+/**
+ * nach der Buchung über den Link: Posten gebucht bzw. bezahlt. Das gezeigte Angebot (gewählt, sonst das erste) gilt als
+ * gewählt, Teile desselben Pakets ziehen mit; bezahlt bleibt bezahlt. Zahlung ohne Betrag: der offene Rest.
+ */
+export function markBooked(trip: Trip, id: string, b: Booked): Item | "missing" | "dropped" {
+  const it = trip.items.find(i => i.id === id && !i.auto);
+  if (!it) return "missing";
+  if (it.status === "dropped") return "dropped";
+  if (it.options.length > 1 && !it.chosen) it.chosen = it.options[0].id;
+  const status: Status = it.status === "paid" ? "paid" : b.status;
+  const pk = it.options.find(o => o.pkg)?.pkg?.id;
+  for (const x of trip.items) if (x === it || (pk && x.status !== "dropped" && x.options.some(o => o.pkg?.id === pk))) x.status = status;
+  if (b.ref) it.booking = { ...it.booking, ref: b.ref };
+  if (b.paidBy) {
+    const paid = (it.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+    const amount = Math.round((b.amountEur ?? Math.max(0, (itemEur(trip, it) || 0) - paid)) * 100) / 100;
+    if (amount > 0) it.payments = [...(it.payments || []), { amount, by: b.paidBy, at: b.paidAt || day() }];
+  }
+  return it;
+}
+
 export const isCat = (v: unknown): v is CatKey => (CAT_KEYS as unknown[]).includes(v);
 
 /** Betrag eines Postens grob in Euro (gewählte oder günstigste Option); genaue Aufteilung rechnet die App */
@@ -306,6 +329,7 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
       ...(eur != null ? { eur } : {}), ...(o?.estimate ? { estimate: true } : {}), ...(i.arrival ? { arrival: true } : {}),
       ...(i.from ? { from: i.from, to: i.to } : {}), ...(o?.source?.url ? { link: partner ? o.source.url : plainLink(o.source.url) } : {}),
       ...(i.options.length > 1 ? { offers: i.options.length } : {}),
+      ...(i.booking?.ref ? { bookingRef: i.booking.ref } : {}), ...(i.payments?.length ? { paidEur: Math.round(i.payments.reduce((s, p) => s + (p.amount || 0), 0)) } : {}),
       // Nebenkosten (nicht enthalten, nicht weggeklickt) und Kaution: die genaue Summe rechnet die App
       ...(o?.extras?.some(x => !x.off && x.pay !== "included") ? { extraCosts: o.extras.filter(x => !x.off && x.pay !== "included").map(x => ({ kind: x.kind, amount: x.amount, per: x.basis, pay: x.pay, ...(x.est ? { estimate: true } : {}) })) } : {}),
       ...(o?.deposit?.amount ? { deposit: { amount: o.deposit.amount, currency: o.price.currency, ...(o.deposit.how ? { how: o.deposit.how } : {}) } } : {})
