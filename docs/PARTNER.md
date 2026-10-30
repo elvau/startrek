@@ -107,7 +107,8 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
   Deeplinks laut Bedingungen über den Deeplink-Generator, erzeugte Links nicht verändern; ob selbst gebaute
   Such-Links über CJ (`?url=`) zulässig sind, bei expediadach@cj.com angefragt (30.10.2026, Antwort offen). Der Link
   15261175 ist bei CJ für Deep Linking freigegeben, Test mit Hotelsuche kam mit `cjevent` auf expedia.de an.
-  Such-Links: `app/src/lib/partners/expedia.ts`; Flug + Hotel steht bei den Flug-Anbietern (nur mit Rückflug). Bei Nutzung der Marke Markenhinweis
+  Such-Links: `app/src/lib/partners/expedia.ts`; Flug + Hotel steht bei den Flug-Anbietern (nur mit Rückflug), braucht
+  `misId` (Strecken mit Flughafen und Datum, ohne Expedia-Ort-IDs gebaut, getestet 10/2026). Hotel und Flug getestet. Bei Nutzung der Marke Markenhinweis
   („EXPEDIA ist eine Marke von Expedia, Inc.“) unten auf der Seite bzw. im Impressum.
   Link-IDs (CJ → Links, Advertiser 5289015): mit Deep Linking „Städtetrips für Erkundungslustige [DE]“ 15261175 und
   „Hello Sunshine! [DE]“ 15261078 (Text-Links); ohne Deep Linking DE_Hotel 13852993, DE_Flight+Hotel 13853176,

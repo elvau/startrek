@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { expediaMisId } from "./expedia";
 import { parkQuery } from "./park";
 import { AWIN_PUBLISHER, CJ_PUBLISHER, PARTNERS, cj, partnerLink, partnersOf, sponsoredAny, type PartnerId } from ".";
 
@@ -166,7 +167,14 @@ describe("Expedia DACH über CJ (Link-ID 15261175)", () => {
     expect(partnerLink("expediaPackage", { ...fl, ret: undefined }, true)).toBeNull();
     const u = new URL(partnerLink("expediaPackage", { ...fl, toName: "Split" }, false)!.url);
     expect(u.pathname).toBe("/Hotel-Search");
-    expect(Object.fromEntries(u.searchParams)).toEqual({ packageType: "fh", origin: "DUS", destination: "Split", startDate: "2027-07-18", endDate: "2027-07-29", rooms: "1", adults: "2" });
+    const { misId, ...rest } = Object.fromEntries(u.searchParams);
+    expect(rest).toEqual({ packageType: "fh", searchProduct: "hotel", adults: "2", tripType: "ROUND_TRIP", cabinClass: "COACH", startDate: "2027-07-18", endDate: "2027-07-29", destination: "Split", origin: "DUS", originAirportCode: "DUS" });
+    expect(misId).toBe(expediaMisId([["DUS", "2027-07-18"], ["SPU", "2027-07-29"]]));
+    // ohne Flughafencodes: Startseite Flug + Hotel
+    expect(partnerLink("expediaPackage", { ...fl, to: "Split" }, false)!.url).toBe("https://www.expedia.de/Flug-und-Hotel");
+  });
+  it("misId wie von Expedia getestet (DUS 10.05. → BCN 14.05.2027)", () => {
+    expect(expediaMisId([["DUS", "2027-05-10"], ["BCN", "2027-05-14"]])).toBe("~ARIHGgUIAhIBCBooCAESEQoDRFVTKgoyMDI3LTA1LTEwEhEKA0JDTioKMjAyNy0wNS0xNA");
   });
   it("Mietwagen: Flughafen und Zeiten (12 h mit AM/PM), sonst nur Ort, ohne Ort kein Link", () => {
     const u = new URL(partnerLink("expediaCars", { w: cw, place: "Palma" }, false)!.url);
