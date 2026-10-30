@@ -38,7 +38,7 @@
   import { kmText, nearest, tripSpots } from "../geo/spots";
   import type { SourceStatus } from "../flights/types";
   import PartnerLinks from "./PartnerLinks.svelte";
-  import { partnersOf } from "../partners";
+  import { partnersOf, sponsoredAny } from "../partners";
   import { petsAlong } from "../pets";
   import { hasCoords, locText, mapsUrl } from "../geo/maps";
   import MapView, { type MapPoint } from "./MapView.svelte";
@@ -470,6 +470,7 @@
       {@const pets = petsAlong(trip, who.map(x => x.t.id))}
       {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), ...(pets ? { pets } : {}) }}
       <p class="muted small fs-direct">{t("search.direct")} <PartnerLinks ids={partnersOf("stay")} q={lq} /></p>
+      {#if sponsoredAny(partnersOf("stay"), lq, partner.on)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
       <BrokerNote />
       {#if pets}<p class="muted small st-pets">🐾 {t("pet.stayHint")}</p>{/if}
     {/if}

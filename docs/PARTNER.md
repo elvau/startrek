@@ -67,6 +67,7 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 |---|---|---|---|
 | Google Flights, Skyscanner | Flüge | – | – |
 | Booking.com | Unterkunft | CJ (beworben 10/2026) | – |
+| Expedia (Hotel, Flug, Flug + Hotel, Mietwagen, Erlebnisse) | Unterkunft, Flüge, Mietwagen, Erlebnisse | CJ | ja (Link-ID `15261175`) |
 | Airbnb | Unterkunft | – | – |
 | GetYourGuide | Erlebnisse | CJ (beworben 10/2026; Travelpayouts abgelehnt) | – |
 | Tiqets | Erlebnisse | Travelpayouts | ja (`p=2074`, `campaign_id=89`) |
@@ -104,7 +105,9 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
   Expedia im Domainnamen, iFrames, Pop-ups, Browser-Erweiterungen, Scrapen der Expedia-Seiten, Sub-Affiliates,
   Expedia-Inhalte auf fremden Seiten (daher wie Viator nur auf splitandfly.com, nicht über den KI-Konnektor).
   Deeplinks laut Bedingungen über den Deeplink-Generator, erzeugte Links nicht verändern; ob selbst gebaute
-  Such-Links über CJ (`?url=`) zulässig sind, bei expediadach@cj.com angefragt (30.10.2026, Antwort offen). Bei Nutzung der Marke Markenhinweis
+  Such-Links über CJ (`?url=`) zulässig sind, bei expediadach@cj.com angefragt (30.10.2026, Antwort offen). Der Link
+  15261175 ist bei CJ für Deep Linking freigegeben, Test mit Hotelsuche kam mit `cjevent` auf expedia.de an.
+  Such-Links: `app/src/lib/partners/expedia.ts`; Flug + Hotel steht bei den Flug-Anbietern (nur mit Rückflug). Bei Nutzung der Marke Markenhinweis
   („EXPEDIA ist eine Marke von Expedia, Inc.“) unten auf der Seite bzw. im Impressum.
   Link-IDs (CJ → Links, Advertiser 5289015): mit Deep Linking „Städtetrips für Erkundungslustige [DE]“ 15261175 und
   „Hello Sunshine! [DE]“ 15261078 (Text-Links); ohne Deep Linking DE_Hotel 13852993, DE_Flight+Hotel 13853176,
@@ -138,5 +141,5 @@ Stand 30.10.2026 (in Klammern die Advertiser-ID, nicht die Link-ID):
 Publisher-ID (PID) `8096976` (öffentlich, steht in jedem CJ-Link), im Verzeichnis als `CJ_PUBLISHER`. Partner über CJ
 bekommen `tag: cj(aid)`: Der Ziel-Link wird über `https://www.anrdoezrs.net/click-8096976-<aid>?url=<Ziel>` geleitet; `aid` ist
 die Link-ID eines Text-Links des Programms (CJ-Konto → Links, nach der Freischaltung). Mit der ersten Kennung CJ in
-`public/datenschutz.html` und im Impressum nennen. Kiwi.com: Buchungslinks der Flugsuche (`bookingUrl` aus
+`public/datenschutz.html` und im Impressum nennen (erledigt mit Expedia, 10/2026). Kiwi.com: Buchungslinks der Flugsuche (`bookingUrl` aus
 `app/src/lib/flights/kiwi.ts`) über CJ leiten, falls Deeplinks erlaubt sind.

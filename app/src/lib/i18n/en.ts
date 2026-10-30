@@ -1426,6 +1426,7 @@ export const en: Dict = {
   "fs.flightsPrice": "Flights {v}",
   "fs.from": "from {ap}",
   "fs.googleFlights": "Google Flights",
+  "fs.expediaPackage": "Expedia flight + hotel",
   "fs.hasFlight": "has a flight",
   "fs.homeAt": "home approx. {t}",
   "fs.homeAtEnd": "Return home at the end ({list})",

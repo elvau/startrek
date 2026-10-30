@@ -9,7 +9,8 @@
   import { CAR_CLASSES, CLASS_KEYS, QUICK_DAYS, quickOf, quickRange, rentalDays, setRental, type CarClass } from "../carclass";
   import DateRange from "./DateRange.svelte";
   import PartnerLinks from "./PartnerLinks.svelte";
-  import { partnersOf } from "../partners";
+  import { partnersOf, sponsoredAny } from "../partners";
+  import { partner } from "../partnerState.svelte";
 
   let { item }: { item: Item } = $props();
   const w = $derived(carWindow(app.trip));
@@ -57,6 +58,7 @@
         {:else}{t("car.realNote")}{/if}
       </p>
       <p class="muted small rp-links">{t("car.compare")} <PartnerLinks ids={partnersOf("car")} q={{ w: linkW, place: app.trip.place || "" }} /></p>
+      {#if sponsoredAny(partnersOf("car"), { w: linkW, place: app.trip.place || "" }, partner.on)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
     {/if}
   </div>
 {/if}

@@ -77,6 +77,8 @@ try {
   log("Zeitraum mit zwei Tipps im Kalender: 18.–25.07., 7 Nächte");
   if (!(await m.locator("p", { hasText: "7 Nächte" }).count())) fail("Nächte nicht angezeigt");
   const bk = await m.locator(".fs-direct a", { hasText: "Booking.com" }).getAttribute("href");
+  const ex = await m.locator(".fs-direct a", { hasText: "Expedia" }).getAttribute("href");
+  if (!/expedia\.de\/Hotel-Search\?destination=/.test(decodeURIComponent(ex || ""))) fail("Expedia-Link: " + ex);
   if (!bk.includes("ss=Split") || !bk.includes("checkin=2027-07-18") || !bk.includes("checkout=2027-07-25")) fail("Booking-Link: " + bk);
   log("Direkt-Link zu Booking.com mit Ort und Daten");
   // Klick wird nebenher gezählt: nur Partner und Kategorie, der Link öffnet trotzdem

@@ -1493,6 +1493,7 @@ export const ar: Dict = {
   "fs.flightsPrice": "الرحلات {v}",
   "fs.from": "من {ap}",
   "fs.googleFlights": "رحلات Google",
+  "fs.expediaPackage": "Expedia طيران + فندق",
   "fs.hasFlight": "لديه رحلة",
   "fs.homeAt": "في المنزل حوالي {t}",
   "fs.homeAtEnd": "العودة إلى المنزل في النهاية ({list})",

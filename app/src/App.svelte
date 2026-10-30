@@ -285,6 +285,7 @@
             <PartnerLinks ids={partnersOf("car")} q={{ w: cw, place: evWin.city }} />
             {#if cw}<br />{t(cw.ap ? "car.when" : "car.whenTrip", { a: `${cw.ap ? `${cw.ap} ` : ""}${cw.pick.slice(8, 10)}.${cw.pick.slice(5, 7)}. ${cw.pick.slice(11, 16)}`, b: `${cw.drop.slice(8, 10)}.${cw.drop.slice(5, 7)}. ${cw.drop.slice(11, 16)}`, d: tn("n.days", cw.days) })}{/if}
           </p>
+          {#if sponsoredAny(partnersOf("car"), { w: cw, place: evWin.city }, partner.on)}<p class="search-row muted small">* {t("fs.partnerNote")}</p>{/if}
         {:else if ch.k === "misc"}
           <!-- Reiseversicherung: neutrale Schätzung (keine Beratung), Links zu Anbietern -->
           {#if !access.readonly}<div class="search-row"><button class="btn ins-add" onclick={addInsurance}>🛡 {t("ins.add")}</button></div>{/if}

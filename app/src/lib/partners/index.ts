@@ -7,6 +7,7 @@
 import { kayakCarLink, type CarWindow } from "../extras";
 import type { Key } from "../i18n/types";
 import { clickId } from "./click";
+import { expediaActivityLink, expediaCarLink, expediaFlightLink, expediaHotelLink, expediaPackageLink } from "./expedia";
 import {
   airbnbLink, bookingLink, getYourGuideLink, googleFlightsLink, klookLink, skyscannerLink, tiqetsLink, tripadvisorRestaurantsLink, viatorLink,
   type ActivityLinkQuery, type FlightLinkQuery, type StayLinkQuery
@@ -77,25 +78,33 @@ export const awin = (mid: number) => (url: string) =>
 export const CJ_PUBLISHER = "8096976";
 /** CJ: Ziel-Link über anrdoezrs.net weiterleiten; aid = Link-ID des Programms (aus „Links“ im CJ-Konto), url = Zielseite */
 export const cj = (aid: number) => (url: string) => `https://www.anrdoezrs.net/click-${CJ_PUBLISHER}-${aid}?${new URLSearchParams({ url })}`;
+/** Expedia DACH über CJ: Text-Link mit Deep Linking („Städtetrips für Erkundungslustige [DE]“), trägt jede expedia.de-Seite */
+const EXPEDIA = cj(15261175);
 
 export const PARTNERS = {
   /* Flüge */
   googleFlights: p<FlightPartnerQuery>({ name: "Google Flights", nameKey: "fs.googleFlights", cat: "flight", link: q => googleFlightsLink({ ...q, from: q.fromName || q.from, to: q.toName || q.to }) }),
   skyscanner: p<FlightPartnerQuery>({ name: "Skyscanner", cat: "flight", link: q => skyscannerLink(q) }),
+  expediaFlights: p<FlightPartnerQuery>({ name: "Expedia", cat: "flight", net: "cj", link: expediaFlightLink, tag: EXPEDIA }),
+  /* Pauschalreise (Flug + Hotel) bei den Flügen, nur mit Rückflug */
+  expediaPackage: p<FlightPartnerQuery>({ name: "Expedia Flug + Hotel", nameKey: "fs.expediaPackage", cat: "flight", net: "cj", link: expediaPackageLink, tag: EXPEDIA }),
   /* Unterkünfte */
   booking: p<StayLinkQuery>({ name: "Booking.com", cat: "stay", net: "cj", link: bookingLink }),
   airbnb: p<StayLinkQuery>({ name: "Airbnb", cat: "stay", link: airbnbLink }),
+  expediaHotels: p<StayLinkQuery>({ name: "Expedia", cat: "stay", net: "cj", link: expediaHotelLink, tag: EXPEDIA }),
   /* Erlebnisse */
   getYourGuide: p<ActivityLinkQuery>({ name: "GetYourGuide", cat: "activity", net: "cj", link: getYourGuideLink }),
   viator: p<ActivityLinkQuery>({ name: "Viator", cat: "activity", net: "direct", link: viatorLink, tag: params(VIATOR_PARTNER) }),
   tiqets: p<ActivityLinkQuery>({ name: "Tiqets", cat: "activity", net: "travelpayouts", link: tiqetsLink, tag: tp(2074, 89) }),
   klook: p<ActivityLinkQuery>({ name: "Klook", cat: "activity", net: "travelpayouts", link: klookLink, tag: tp(4110, 137) }),
+  expediaActivities: p<ActivityLinkQuery>({ name: "Expedia", cat: "activity", net: "cj", link: expediaActivityLink, tag: EXPEDIA }),
   /* Essen */
   tripadvisor: p<string>({ name: "Tripadvisor", cat: "food", link: tripadvisorRestaurantsLink }),
   /* Mietwagen: KAYAK mit Ort und Zeiten, die anderen zum Vergleichen */
   kayakCars: p<CarLinkQuery>({ name: "KAYAK", cat: "car", link: q => (q.w ? kayakCarLink(q.w, q.place) : null) }),
   check24Cars: p<CarLinkQuery>({ name: "CHECK24", cat: "car", link: home("https://www.check24.de/mietwagen/") }),
   discoverCars: p<CarLinkQuery>({ name: "DiscoverCars", cat: "car", net: "travelpayouts", link: home("https://www.discovercars.com/de") }),
+  expediaCars: p<CarLinkQuery>({ name: "Expedia", cat: "car", net: "cj", link: expediaCarLink, tag: EXPEDIA }),
   /* Flughafentransfer */
   kiwitaxi: p<void>({ name: "Kiwitaxi", cat: "transfer", net: "travelpayouts", link: home("https://kiwitaxi.com/de"), tag: tp(647, 1) }),
   getTransfer: p<void>({ name: "GetTransfer", cat: "transfer", net: "travelpayouts", link: home("https://gettransfer.com/de") }),
