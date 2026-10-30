@@ -1424,6 +1424,7 @@ export const de = {
   "fs.flightsPrice": "Flüge {v}",
   "fs.from": "ab {ap}",
   "fs.googleFlights": "Google Flüge",
+  "fs.expediaPackage": "Expedia Flug + Hotel",
   "fs.hasFlight": "hat Flug",
   "fs.homeAt": "zuhause ca. {t}",
   "fs.homeAtEnd": "Am Ende zurück nach Hause ({list})",

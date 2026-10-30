@@ -1460,6 +1460,7 @@ export const ru: Dict = {
   "fs.flightsPrice": "Перелёты {v}",
   "fs.from": "из {ap}",
   "fs.googleFlights": "Google Авиабилеты",
+  "fs.expediaPackage": "Expedia перелёт + отель",
   "fs.hasFlight": "есть рейс",
   "fs.homeAt": "дома около {t}",
   "fs.homeAtEnd": "В конце вернуться домой ({list})",

@@ -36,7 +36,8 @@
   import type { FlightScope } from "../flights/open.svelte";
   import PartnerLinks from "./PartnerLinks.svelte";
   import ExtLink from "./ExtLink.svelte";
-  import { partnersOf } from "../partners";
+  import { partnersOf, sponsoredAny } from "../partners";
+  import { partner } from "../partnerState.svelte";
   import type { FlightOffer, FlightQuery, OfferLeg, SourceStatus } from "../flights/types";
   import { applyFilter, arrivalGap, dayCells, noFilter, sortFlights, type FlightSort, type SyncRef } from "../flights/filter";
   import { arrivals } from "../stays/presence";
@@ -598,7 +599,9 @@
       {@const d0 = toLoc ?? resolveLoc(airportData, to, cc)}
       {@const o0 = originLoc(aps[0])}
       {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: kind === "oneway" ? undefined : mode === "flex" ? rTo || undefined : ret || undefined, ...split.q }}
-      <p class="muted small fs-direct">{t("fs.directFrom", { ap: aps[0] })} <PartnerLinks ids={partnersOf("flight")} q={{ ...lq, ...(o0?.kind === "city" ? { fromName: o0.city } : {}), ...(d0 && d0.kind !== "airport" ? { toName: d0.city } : {}) }} /></p>
+      {@const fq = { ...lq, ...(o0?.kind === "city" ? { fromName: o0.city } : {}), ...(d0 && d0.kind !== "airport" ? { toName: d0.city } : {}) }}
+      <p class="muted small fs-direct">{t("fs.directFrom", { ap: aps[0] })} <PartnerLinks ids={partnersOf("flight")} q={fq} /></p>
+      {#if sponsoredAny(partnersOf("flight"), fq, partner.on)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
     {/if}
   </form>
 
