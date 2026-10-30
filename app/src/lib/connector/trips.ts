@@ -64,11 +64,12 @@ export function placeholders(adults: number, childAges: number[], lang: string):
   for (let k = 1; k <= adults; k++) out.push(mk(tr(lang, "ph.adult", { a, k }), "adult"));
   let c = 0, i = 0, ad = adults;
   for (const age of childAges) {
-    // Altersklassen wie in der App: ab adultAge erwachsen, ab childAge Kind, darunter Kleinkind
+    // Preisstufe aus dem Alter wie in der App (ab adultAge Erwachsenentarif); Jugendliche heißen trotzdem Kind und
+    // zählen nicht als Erwachsene der Gruppe (z. B. Fahrer)
     const k = ageClassOf(age);
-    if (k === "adult") out.push(mk(tr(lang, "ph.adult", { a, k: ++ad }), "adult", age));
-    else if (k === "child") out.push(mk(tr(lang, "ph.child", { a, k: ++c }), "child", age));
-    else out.push(mk(tr(lang, "ph.infant", { a, k: ++i }), "infant", age));
+    if (age >= 18) out.push(mk(tr(lang, "ph.adult", { a, k: ++ad }), "adult", age));
+    else if (k === "infant") out.push(mk(tr(lang, "ph.infant", { a, k: ++i }), "infant", age));
+    else out.push(mk(tr(lang, "ph.child", { a, k: ++c }), "child", age));
   }
   return out;
 }
@@ -93,9 +94,10 @@ const day = () => new Date().toISOString().slice(0, 10);
 /**
  * Flug aus der Suche als Posten. Ohne seats: Gesamtpreis für alle, gleich verteilt. Mit seats (so viele Plätze hatte
  * die Suche): für `travelers` Reisende, die noch keinen eigenen Flug haben, in Buchungen zu höchstens `seats` Plätzen,
- * je Buchung ein Posten mit ihren Reisenden und Preis pro Platz mal Personen.
+ * je Buchung ein Posten mit ihren Reisenden und Preis pro Platz mal Personen. Mit ids genau diese Reisenden (z. B. Zubringer
+ * nur für die Mutter), auch wenn sie schon einen anderen Flug haben.
  */
-export function addFlight(trip: Trip, o: FlightOffer, lang: string, split?: { seats: number; travelers?: number }): Item[] {
+export function addFlight(trip: Trip, o: FlightOffer, lang: string, split?: { seats: number; travelers?: number; ids?: string[] }): Item[] {
   const stops = o.out.stops ? trn(lang, "n.stops", o.out.stops) : tr(lang, "fs.th.direct");
   const opt = (unit: number): Option => ({
     id: uid(),
@@ -110,10 +112,10 @@ export function addFlight(trip: Trip, o: FlightOffer, lang: string, split?: { se
   const taken = new Set(trip.items.filter(i => i.cat === "flights" && i.participants).flatMap(i => i.participants!));
   const free = trip.travelers.filter(p => isActive(p) && ageClassOf(p.age, p.kind) !== "infant" && !taken.has(p.id)).map(p => p.id);
   const seats = split ? Math.max(1, split.seats) : 0;
-  if (!split || (seats >= free.length && (split.travelers ?? free.length) >= free.length && !taken.size)) {
+  if (!split || (!split.ids && seats >= free.length && (split.travelers ?? free.length) >= free.length && !taken.size)) {
     return [push(trip, { id: uid(), cat: "flights", status: "idea", options: [opt(o.price)], ai: { at: at(), kind: "suggested" }, name })];
   }
-  const ids = free.slice(0, Math.max(1, split.travelers ?? free.length));
+  const ids = split.ids || free.slice(0, Math.max(1, split.travelers ?? free.length));
   const per = o.price / seats, out: Item[] = [], n = Math.ceil(ids.length / seats);
   for (let i = 0; i < ids.length; i += seats) {
     const part = ids.slice(i, i + seats);
@@ -292,10 +294,11 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
     };
   });
   const cnt = (k: string) => act.filter(t => ageClassOf(t.age, t.kind) === k).length;
+  const teens = act.filter(t => t.age != null && t.age < 18 && ageClassOf(t.age) === "adult").length;
   const total = items.reduce((s, i) => s + (i.status !== "dropped" && "eur" in i ? (i.eur as number) : 0), 0);
   return {
     id: trip.id, name: trip.name, place: trip.place, country: trip.country || undefined, from: trip.from, to: trip.to, role,
-    travelers: { adults: cnt("adult"), children: cnt("child"), infants: cnt("infant") }, ...tripPeople(trip),
+    travelers: { adults: cnt("adult"), children: cnt("child"), infants: cnt("infant"), ...(teens ? { teens, note: "Teens (12-17) pay adult fares and are counted in adults" } : {}) }, ...tripPeople(trip),
     items, approxTotalEur: total, ...(trip.prefs && Object.keys(trip.prefs).length ? { preferences: trip.prefs } : {}),
     note: "Approximate total of the items (chosen or cheapest offer), without extraCosts (tourist tax, cleaning, baggage … paid on site or extra; add them when comparing) and without deposits (only blocked, credit card only if how = credit). The way to the departure airport and back (car incl. parking or train, per household) and meals are added automatically by the Split&Fly app and are not listed here; do not add them. Exact split per person is calculated in the app."
   };

@@ -1,7 +1,7 @@
 /* Läuft mit den Tests der App (cd app && npx vitest run) */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it } from "vitest";
-import { offerStore } from "./offers";
+import { mcpOfferStore, offerStore } from "./offers";
 import type { ImportedOffer } from "../../app/src/lib/import/ai";
 
 /** nachgestellter Firestore-Emulator: commit schreibt, GET liest */
@@ -57,5 +57,18 @@ describe("Angebotsspeicher im Such-Dienst (#462)", () => {
     expect(await s.sweep(new Date("2026-10-25T00:00:00Z"))).toBe(2);
     expect(docs.size).toBe(2);
     expect(await s.find(req, "2026-10-25")).not.toBeNull();
+  });
+  it("Suchergebnisse des Konnektors: je Schlüssel, über Rechenzentren hinweg, mit Ablauf und Aufräumen", async () => {
+    const { f, docs } = fakeFs();
+    const s = mcpOfferStore<{ kind: string; n: number }>(env, f, 6)!;
+    await s.put("k1", [["a/1", { kind: "flight", n: 1 }], ["b", { kind: "stay", n: 2 }]]);
+    expect(docs.size).toBe(2);
+    expect([...docs.keys()].every(k => /\/mcpOffers\/[0-9a-f]{64}$/.test(k))).toBe(true);
+    expect(await s.get("k1", "a/1")).toEqual({ kind: "flight", n: 1 });
+    expect(await s.get("k2", "a/1")).toBeNull();
+    expect(await s.get("k1", "c")).toBeNull();
+    expect(await offerStore(env, f)!.sweep(new Date(Date.now() + 7 * 3600_000))).toBe(2);
+    expect(await s.get("k1", "b")).toBeNull();
+    expect(mcpOfferStore({})).toBeNull();
   });
 });
