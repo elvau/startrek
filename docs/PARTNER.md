@@ -101,6 +101,8 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
 - **Viator:** Suche nur auf splitandfly.com, nicht über den KI-Konnektor (siehe `docs/KONNEKTOR.md`).
 - **Expedia DACH (CJ):** Provision Hotel 4 %, Aktivitäten 4 %, Pauschalreise 2 %, Ferienwohnung 2 %, Mietwagen 1,5 %,
   Flug 0 %, Kreuzfahrt 0 %, Bahn 0 %; 7 Tage Cookie; 0 % bei Gutscheincodes, die nicht aus dem Programm kommen.
+  Willkommensrate 1.11.2026–31.1.2027: Hotel, Aktivitäten, Ferienwohnung, Mietwagen je 5 %, Pauschalreise 2,5 %
+  (Flug, Kreuzfahrt 0 %), danach wieder die Sätze oben.
   Flüge trotzdem verlinken (bester Preis vor Provision). Verboten: Bieten auf Expedia-Marken in Suchmaschinen-Werbung,
   Expedia im Domainnamen, iFrames, Pop-ups, Browser-Erweiterungen, Scrapen der Expedia-Seiten, Sub-Affiliates,
   Expedia-Inhalte auf fremden Seiten (daher wie Viator nur auf splitandfly.com, nicht über den KI-Konnektor).
@@ -108,7 +110,7 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
   Such-Links über CJ (`?url=`) zulässig sind, bei expediadach@cj.com angefragt (30.10.2026, Antwort offen). Der Link
   15261175 ist bei CJ für Deep Linking freigegeben, Test mit Hotelsuche kam mit `cjevent` auf expedia.de an.
   Such-Links: `app/src/lib/partners/expedia.ts`; Flug + Hotel steht bei den Flug-Anbietern (nur mit Rückflug), braucht
-  `misId` (Strecken mit Flughafen und Datum, ohne Expedia-Ort-IDs gebaut, getestet 10/2026). Hotel und Flug getestet. Bei Nutzung der Marke Markenhinweis
+  `misId` (Strecken mit Flughafen und Datum, ohne Expedia-Ort-IDs gebaut). Alle fünf Such-Links auf expedia.de getestet (30.10.2026). Bei Nutzung der Marke Markenhinweis
   („EXPEDIA ist eine Marke von Expedia, Inc.“) unten auf der Seite bzw. im Impressum.
   Link-IDs (CJ → Links, Advertiser 5289015): mit Deep Linking „Städtetrips für Erkundungslustige [DE]“ 15261175 und
   „Hello Sunshine! [DE]“ 15261078 (Text-Links); ohne Deep Linking DE_Hotel 13852993, DE_Flight+Hotel 13853176,
