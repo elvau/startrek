@@ -9,7 +9,7 @@ import { es } from "../i18n/es";
 import { fr } from "../i18n/fr";
 import { pl } from "../i18n/pl";
 import { ru } from "../i18n/ru";
-import { CAT_KEYS, DEFAULT_SETTINGS, hhKey, isActive, uid, type CatKey, type Item, type Option, type Person, type Status, type Traveler, type Trip } from "../model";
+import { ACCESS_MODES, CAT_KEYS, DEFAULT_SETTINGS, hhKey, type AccessMode, type Household, isActive, uid, type CatKey, type Item, type Option, type Person, type Status, type Traveler, type Trip } from "../model";
 import { applyPeople } from "../people";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import { plainLink } from "../partner";
@@ -336,8 +336,65 @@ export function tripPeople(trip: Trip) {
       id: t.id, first: t.name, family: hhKey(t), ...(t.age != null ? { age: t.age } : { kind: ageClassOf(t.age, t.kind) }),
       ...(t.placeholder ? { placeholder: true } : {}), ...(t.personId ? { saved: t.personId } : {})
     })),
-    families: [...new Set(act.map(hhKey))].map(name => { const home = homeOf(trip.households?.[name]); return { name, ...(home ? { home } : {}) }; })
+    families: [...new Set(act.map(hhKey))].map(name => {
+      const h = trip.households?.[name], home = homeOf(h);
+      return { name, ...(home ? { home } : {}), ...(h ? householdView(h) : {}) };
+    })
   };
+}
+
+/** Einstellungen einer Familie, wie der Assistent sie setzt (update_travelers households) */
+export interface HouseholdInput {
+  toAirport?: AccessMode; carpoolWith?: string; cars?: number; parkingFree?: boolean; parkingEur?: number | null; rideEur?: number | null;
+  purse?: "joint" | "each"; arrive?: string | null; depart?: string | null;
+}
+
+function householdView(h: Household): HouseholdInput {
+  return {
+    ...(h.mode ? { toAirport: h.mode } : {}), ...(h.link ? { carpoolWith: h.link } : {}), ...(h.cars ? { cars: h.cars } : {}),
+    ...(h.parking?.off ? { parkingFree: true } : {}), ...(h.parking?.paid != null ? { parkingEur: h.parking.paid } : {}), ...(h.ride ? { rideEur: h.ride } : {}),
+    ...(h.kasse ? { purse: h.kasse } : {}), ...(h.arrive ? { arrive: h.arrive } : {}), ...(h.depart ? { depart: h.depart } : {})
+  };
+}
+
+/**
+ * Anreise zum Flughafen, Kasse und eigene Anwesenheit einer Familie wie in den Familien-Einstellungen der App.
+ * Gibt einen Fehlertext zurück, sonst null. null bei Beträgen und Tagen: Angabe entfernen.
+ */
+export function setHousehold(trip: Trip, family: string, s: HouseholdInput): string | null {
+  const fams = new Set(trip.travelers.filter(isActive).map(hhKey));
+  if (!fams.has(family)) return `Unknown family "${family}" in this trip: use a family name from get_trip`;
+  trip.households ||= {};
+  const h: Household = { ...(trip.households[family] || {}) };
+  if (s.toAirport != null) {
+    if (!ACCESS_MODES.includes(s.toAirport)) return `toAirport must be one of ${ACCESS_MODES.join(", ")}`;
+    h.mode = s.toAirport;
+    if (s.toAirport !== "with") delete h.link;
+  }
+  if (s.carpoolWith != null) {
+    if (!fams.has(s.carpoolWith) || s.carpoolWith === family) return `carpoolWith must be another family in this trip`;
+    h.mode = "with"; h.link = s.carpoolWith;
+  }
+  if (h.mode === "with" && !h.link) return "toAirport with needs carpoolWith (the family they ride with)";
+  if (s.cars != null) h.cars = Math.max(1, Math.min(5, Math.round(s.cars)));
+  if (s.parkingFree != null || s.parkingEur !== undefined) {
+    const paid = s.parkingEur === undefined ? h.parking?.paid : s.parkingEur ?? undefined;
+    const off = s.parkingFree ?? (s.parkingEur != null ? false : h.parking?.off);
+    h.parking = { ...(off ? { off: true } : {}), ...(paid != null && !off ? { paid: Math.max(0, paid) } : {}) };
+    if (!h.parking.off && h.parking.paid == null) delete h.parking;
+  }
+  if (s.rideEur !== undefined) { if (s.rideEur == null) delete h.ride; else h.ride = Math.max(0, s.rideEur); }
+  if (s.purse) h.kasse = s.purse;
+  for (const k of ["arrive", "depart"] as const) {
+    const v = s[k];
+    if (v === undefined) continue;
+    if (v == null) { delete h[k]; continue; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return `${k} must be YYYY-MM-DD`;
+    h[k] = v;
+  }
+  if (h.arrive && h.depart && h.depart < h.arrive) return "depart is before arrive";
+  trip.households[family] = h;
+  return null;
 }
 
 /** Wohnort einer Familie in der Reise (Anfahrt zum Flughafen, Startort) */

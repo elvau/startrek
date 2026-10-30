@@ -258,6 +258,31 @@ describe("KI-Konnektor (MCP)", () => {
     expect((await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: s2.data.added, confirm: true })).data.replaced).toBe(s2.data.added);
   });
 
+  it("Anreise zum Flughafen, Parken, Kasse und Anwesenheit je Familie übernehmen", async () => {
+    const d = deps();
+    const made = await tool(d, "create_trip", { place: "Madeira", from: "2027-05-10", to: "2027-05-17", travelers: [
+      { first: "Anna", family: "Klein", age: 40 }, { first: "Ben", family: "Groß", age: 42 }
+    ], households: [{ family: "klein", toAirport: "drop" }] });
+    expect(made.data.families.find((f: any) => f.name === "Klein")).toMatchObject({ toAirport: "drop" });
+    const id = made.data.tripId;
+    const u = await tool(d, "update_travelers", { tripId: id, households: [
+      { family: "Groß", carpoolWith: "Klein", purse: "each", arrive: "2027-05-11" },
+      { family: "Klein", toAirport: "car", cars: 2, parkingEur: 89 }
+    ] });
+    expect(u.error).toBe(false);
+    const t: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(t.households).toMatchObject({ Klein: { mode: "car", cars: 2, parking: { paid: 89 } }, "Groß": { mode: "with", link: "Klein", kasse: "each", arrive: "2027-05-11" } });
+    await tool(d, "update_travelers", { tripId: id, households: [{ family: "Klein", parkingFree: true }, { family: "Groß", toAirport: "train", arrive: null }] });
+    const t2: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(t2.households!.Klein.parking).toEqual({ off: true });
+    expect(t2.households!["Groß"]).toMatchObject({ mode: "train" });
+    expect(t2.households!["Groß"].link).toBeUndefined();
+    expect(t2.households!["Groß"].arrive).toBeUndefined();
+    expect((await tool(d, "update_travelers", { tripId: id, households: [{ family: "Meier", toAirport: "car" }] })).text).toMatch(/Unknown family/);
+    expect((await tool(d, "update_travelers", { tripId: id, households: [{ family: "Klein", carpoolWith: "Klein" }] })).text).toMatch(/another family/);
+    expect((await tool(d, "update_travelers", { tripId: id, households: [{ family: "Klein", toAirport: "with" }] })).text).toMatch(/carpoolWith/);
+  });
+
   it("Platzhalter: Jugendliche heißen Kind, zahlen aber Erwachsenentarif", async () => {
     const d = deps();
     const made = await tool(d, "create_trip", { place: "Málaga", adults: 1, childAges: [16, 8, 1], travelersFrom: "user" });
