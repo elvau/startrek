@@ -84,7 +84,7 @@
       <!-- Handy in der Reise: Fehler melden hier statt als schwebender Knopf (dort liegt die Leiste) -->
       {#if !home && mob.on && cloud.configured && FLIGHTS_URL}<button class="tbtn top-bug" onclick={() => (bugDialog.open = true)} aria-label={t("bug.title")} title={t("bug.open")}><span aria-hidden="true">🐞</span></button>{/if}
       <span class="top-wide"><GroupsButton /></span>
-      <span class="top-wide"><PrefsButton /></span>
+      <span class="top-wide"><PrefsButton inTrip={!home && !access.readonly} /></span>
       <Account compact />
       <button class="tbtn top-wide" onclick={toggleTheme} aria-label={t("nav.theme")} title={t("nav.theme")}><Icon name="moon" size={18} /></button>
       <span class="top-wide"><LangSelect short /></span>
@@ -107,4 +107,4 @@
   </div>
 </header>
 {#if groups}<GroupsDialog onclose={() => (groups = false)} />{/if}
-{#if prefs}<PrefsDialog onclose={() => (prefs = false)} />{/if}
+{#if prefs}<PrefsDialog inTrip={!home && !access.readonly} onclose={() => (prefs = false)} />{/if}

@@ -565,6 +565,8 @@ export interface Trip {
   home?: string;
   /** „Zuhause während der Reise“ (#323) für diese Reise ein- bzw. ausgeschaltet; fehlt: aus den Vorlieben */
   homeCare?: boolean;
+  /** Vorlieben nur für diese Reise (#602): gehen den eigenen und denen der Gruppe vor */
+  prefs?: Prefs;
   event?: TripEvent;
   /** eigene Bezugspunkte für Entfernungen (z. B. Partylocation, Stadion), #441 */
   refs?: { id: string; name: string; lat: number; lon: number }[];
@@ -600,6 +602,11 @@ export interface Trip {
   watch?: TripWatch;
   /** vom KI-Assistenten vorgeschlagen (Kennzeichnung in der Übersicht) */
   ai?: { at: string };
+  /**
+   * von der KI über den Konnektor angelegt (#603): Stand, den sie zuletzt kannte (Prüfsummen der Eckdaten und je Posten).
+   * Weicht die Reise davon ab, wurde sie in der App geändert; dann ändert oder löscht die KI nur nach Rückfrage.
+   */
+  aiSeen?: { m: string; i: Record<string, string> };
   /**
    * Variante in einem Vergleich (#428): gleiche Kennung bündelt die Reisen (Startseite, Vergleichsansicht), Titel des
    * Vergleichs und kurzer Name der Variante (fehlt: Ort bzw. Land). In der Reise selbst, damit Mitreisende es auch sehen.

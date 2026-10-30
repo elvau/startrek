@@ -11,7 +11,12 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Anzeigename und Datum. Gespeichert wird er nirgends; die App zeigt ihn einmal an, dazu die Adresse, einen Hinweis für andere Programme und als Beispiel den Befehl für Claude Code:
    `claude mcp add --transport http splitandfly https://…/mcp --header "Authorization: Bearer sf_…"`
 2. **Werkzeuge** (`worker/src/mcp.ts`): `search_flights`, `search_stays`, `search_events` (keine Touren: Viator-Inhalte dürfen nicht an fremde Anwendungen);
-   mit Dienstkonto zusätzlich `get_my_travelers`, `list_trips`, `get_trip`, `create_trip`, `add_flight`, `add_stay`, `add_cost`, `remove_item`.
+   mit Dienstkonto zusätzlich `get_my_travelers`, `list_trips`, `get_trip`, `create_trip`, `update_trip`, `delete_trip`, `add_flight`, `add_stay`, `add_cost`, `remove_item`,
+   `save_my_preferences`, `set_trip_preferences`.
+   Aufräumen (#603): Reisen, die die KI angelegt hat, merken sich ihren Stand (`aiSeen`, Prüfsummen der Eckdaten und je Posten).
+   Hat der Nutzer sie seitdem in der App geändert, oder stammt die Reise aus der App, ändern/löschen die Werkzeuge nur mit
+   `confirm` nach Rückfrage (Fehler nennt die Änderungen). Geteilte Reisen: als Mitglied verlassen, als Besitzer nicht per KI (#604).
+   Vorschläge als Vergleich: `create_trip` mit `compareWith`.
    Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel (Zwischenspeicher), `add_*` nimmt die Kennung.
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
@@ -32,6 +37,17 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
 - Hinweise: erst `get_my_travelers`, Unklares mit 2–4 Optionen und „something else“ nachfragen, Annahmen nennen. Den Weg zum
   Abflughafen samt Parken und die Verpflegung rechnet die App selbst (nicht als Kosten anlegen).
 - Später: MCP-Elicitation (echte Auswahlknöpfe), sobald die Chat-Apps sie anzeigen und der Server streamen kann.
+
+## Vorlieben (#602)
+
+- Suchen nehmen fehlende Angaben aus `prefsFor` (eigene, Gruppe der Reise, Reise; `tripId` für eine Reise): Abflughäfen,
+  Umstiege, Gepäck, Flugzeit, Unterkunftsart, Sterne; gesperrte Länder immer (Flüge filtern, Unterkunft im Land abgelehnt).
+  Die Antwort nennt `appliedPreferences`; ausdrückliche Angaben gehen vor.
+- `save_my_preferences`: geprüft wie beim KI-Planer (`prefsFromAi`), zusammengeführt mit den bisherigen (`mergePrefs`, gesperrte
+  Länder kommen dazu), gespeichert in `profiles/{uid}` mit Versionsprüfung (`profilePrefsSaver`, Rest des Stands bleibt).
+  Beschreibung: nur nach Bestätigung im Chat (Dani, 30.10.).
+- `set_trip_preferences` bzw. `create_trip` mit `preferences`: `trip.prefs`, in der App unter Reise-Einstellungen →
+  „Vorlieben für diese Reise“ bzw. Vorlieben → Reiter „Diese Reise“; gelten auch für die Suchen der App in dieser Reise.
 
 ## Chat-Apps per OAuth (#590)
 

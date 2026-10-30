@@ -11,22 +11,38 @@
   import PrefsEditor from "./PrefsEditor.svelte";
   import { restartSetup, setupWizard } from "../setup/app.svelte";
   import { diffCount } from "../prefsView";
+  import { basePrefsFor } from "../prefs";
+  import { app } from "../store.svelte";
+  import { untrack } from "svelte";
 
-  let { onclose }: { onclose: () => void } = $props();
+  /** inTrip: in einer Reise geöffnet (bearbeitbar) → Reiter „Diese Reise“ (#602); start: gleich dort */
+  let { onclose, inTrip = false, start }: { onclose: () => void; inTrip?: boolean; start?: "trip" } = $props();
   dir.prefs ||= {};
-  let tab = $state<string>("me");
-  const cur = $derived(tab === "me" ? null : dir.groups.find(g => g.id === tab) || null);
+  // Start-Reiter nur beim Öffnen
+  const startTrip = untrack(() => inTrip && start === "trip");
+  let tab = $state<string>(startTrip ? "trip" : "me");
+  if (startTrip) app.trip.prefs ||= {};
+  const cur = $derived(tab === "me" || tab === "trip" ? null : dir.groups.find(g => g.id === tab) || null);
+  const tripN = $derived(inTrip && app.trip.prefs ? diffCount(app.trip.prefs, basePrefsFor(app.trip, dir)) : 0);
+  function showTrip() { app.trip.prefs ||= {}; tab = "trip"; }
+  // leere Vorlieben der Reise nicht stehen lassen
+  function close() { if (inTrip && app.trip.prefs && !Object.keys(app.trip.prefs).length) delete app.trip.prefs; onclose(); }
   function show(id: string) {
     const g = dir.groups.find(x => x.id === id);
     if (g) g.prefs ||= {};
     tab = id;
   }
-  const ai = () => { onclose(); setupWizard.open = true; };
+  const ai = () => { close(); setupWizard.open = true; };
 </script>
 
-<Modal title={t("prefs.title")} {onclose} wide>
+<Modal title={t("prefs.title")} onclose={close} wide>
   <div class="prefs-d">
     <div class="pv-tabs" role="tablist">
+      {#if inTrip}
+        <button type="button" role="tab" class="pv-tab pv-trip" class:on={tab === "trip"} aria-selected={tab === "trip"} onclick={showTrip}>
+          🧳 {t("prefs.trip")}{#if tripN}<span class="pv-n">{t("prefs.diffN", { n: tripN })}</span>{/if}
+        </button>
+      {/if}
       <button type="button" role="tab" class="pv-tab" class:on={tab === "me"} aria-selected={tab === "me"} onclick={() => (tab = "me")}>👤 {t("prefs.mine")}</button>
       {#each dir.groups as g (g.id)}
         {@const n = g.prefs ? diffCount(g.prefs, dir.prefs || {}) : 0}
@@ -36,7 +52,10 @@
       {/each}
       <Help k="prefs" />
     </div>
-    {#if tab === "me"}
+    {#if tab === "trip" && app.trip.prefs}
+      {#key "trip"}<PrefsEditor p={app.trip.prefs} base={basePrefsFor(app.trip, dir)} trip onai={ai} />{/key}
+      {#if tripN}<p class="small"><button type="button" class="linkbtn pv-trip-reset" onclick={() => (app.trip.prefs = {})}>↺ {t("prefs.tripReset")}</button></p>{/if}
+    {:else if tab === "me"}
       {#if dir.prefs}{#key "me"}<PrefsEditor p={dir.prefs} onai={ai} />{/key}{/if}
     {:else if cur?.prefs}
       {#key cur.id}<PrefsEditor p={cur.prefs} base={dir.prefs || {}} onai={ai} />{/key}

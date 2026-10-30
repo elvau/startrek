@@ -19,7 +19,7 @@ const out = await mkdtemp(join(tmpdir(), "mcp-"));
 const b = await rolldown({ input: { mcp: "../worker/src/mcp.ts", firestore: "../worker/src/firestore.ts", apikey: "../worker/src/apikey.ts", oauth: "../worker/src/oauth.ts" }, platform: "neutral", logLevel: "silent" });
 await b.write({ dir: out, format: "esm", entryFileNames: "[name].mjs" });
 const { mcpMessage } = await import(join(out, "mcp.mjs"));
-const { tripStore, profileStore } = await import(join(out, "firestore.mjs"));
+const { tripStore, profileStore, profilePrefsSaver } = await import(join(out, "firestore.mjs"));
 const { seal } = await import(join(out, "apikey.mjs"));
 const { grantStore } = await import(join(out, "oauth.mjs"));
 
@@ -67,6 +67,35 @@ const famDoc = await (await fetch(`${FS}/trips/${fam.tripId}`, { headers: { auth
 const famTrip = JSON.parse(famDoc.fields.data.stringValue);
 if (famTrip.travelers.map(t => `${t.name}/${t.household}/${t.age}`).join() !== "Claudia/Fuchs/41,Tom/Fuchs/6") fail("Reisende aus der Gruppe: " + JSON.stringify(famTrip.travelers));
 log("Familien und Gruppen aus dem Konto ohne Namen für die KI; Reise aus der Gruppe mit echten Reisenden");
+
+// Vorlieben im Konto speichern (#602): nur die Vorlieben ändern sich, Personen, Gruppen und PLZ bleiben
+deps.savePrefs = profilePrefsSaver({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
+const sv = await tool("save_my_preferences", { budget: "low", board: "half" });
+if (sv.saved.budget !== "low") fail("save_my_preferences: " + JSON.stringify(sv));
+const profDoc = await (await fetch(`${FS}/profiles/${uid}`, { headers: { authorization: "Bearer owner" } })).json();
+const prof = JSON.parse(profDoc.fields.data.stringValue);
+if (prof.prefs.budget !== "low" || prof.prefs.board !== "half" || prof.prefs.plz !== "40210" || prof.people.length !== 2 || prof.groups[0].name !== "Fuchsbau") fail("Konto nach dem Speichern: " + JSON.stringify(prof));
+const fl2 = await tool("search_flights", { to: ["PMI"], depart: "2027-05-07", adults: 1 });
+if (fl2.appliedPreferences?.airports?.join() !== "DUS") fail("Flughafen aus den Vorlieben: " + JSON.stringify(fl2.appliedPreferences));
+log("Vorlieben im Konto gespeichert (Rest bleibt), Suche nimmt den Flughafen aus den Vorlieben");
+
+// Aufräumen (#603): Fehlversuch der KI samt Stimmen löschen; geteilte Reise verlassen (die anderen behalten sie)
+const H = { authorization: "Bearer owner", "content-type": "application/json" };
+const tryId = (await tool("create_trip", { place: "Alanya", adults: 2, travelersFrom: "user" })).tripId;
+await fetch(`${FS}/trips/${tryId}/votes/${uid}`, { method: "PATCH", headers: H, body: JSON.stringify({ fields: { v: { stringValue: "x" } } }) });
+await tool("update_trip", { tripId: tryId, name: "Alanya All Inclusive" });
+if ((await tool("delete_trip", { tripId: tryId })).deleted !== tryId) fail("delete_trip");
+if ((await fetch(`${FS}/trips/${tryId}`, { headers: H })).status !== 404 || (await fetch(`${FS}/trips/${tryId}/votes/${uid}`, { headers: H })).status !== 404) fail("Reise oder Stimme nicht gelöscht");
+const v = s => ({ stringValue: s }), m = o => ({ mapValue: { fields: o } });
+await fetch(`${FS}/trips/geteilt`, { method: "PATCH", headers: H, body: JSON.stringify({ fields: {
+  name: v("Geteilt"), data: v(JSON.stringify({ ...famTrip, id: "geteilt" })), owner: v("u2"), memberIds: { arrayValue: { values: [v("u2"), v(uid)] } },
+  members: m({ u2: v("owner"), [uid]: v("editor") }), memberNames: m({ u2: v("Marie"), [uid]: v("Claudia") }), claims: m({ [uid]: m({ t: v("x"), n: v("Claudia") }) })
+} }) });
+if ((await tool("delete_trip", { tripId: "geteilt", confirm: true })).left !== "geteilt") fail("delete_trip auf geteilter Reise");
+const left = (await (await fetch(`${FS}/trips/geteilt`, { headers: H })).json()).fields;
+if (JSON.stringify(left.memberIds) !== JSON.stringify({ arrayValue: { values: [v("u2")] } }) || left.members.mapValue.fields[uid] || left.memberNames.mapValue.fields[uid] || left.claims.mapValue.fields?.[uid])
+  fail("Verlassen: " + JSON.stringify(left));
+log("Aufräumen per KI: eigener Fehlversuch samt Stimmen gelöscht, geteilte Reise verlassen");
 
 // Verbindungen der Chat-Apps (OAuth, #590) in Firestore: anlegen, nur unverändert ändern, Liste, aufräumen, trennen
 const gs = grantStore({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
@@ -139,6 +168,8 @@ try {
   const got = await tool("get_trip", { tripId: id });
   if (got.items.length !== 2 || got.approxTotalEur !== 630) fail("Reise für Claude: " + JSON.stringify(got));
   if (JSON.stringify(got).includes("Claudia")) fail("Name in der Reise für Claude");
+  // die App ändert beim Öffnen nichts, was als „in der App geändert“ zählt (#603)
+  if (got.byAi !== true || got.changedInApp) fail("Stand der KI nach dem Öffnen in der App: " + JSON.stringify(got.changedInApp));
   log("Ergänzung von Claude erscheint live in der offenen Reise; get_trip ohne Namen");
 
   // Schlüssel im Kontomenü erzeugen: Anfrage angemeldet, Schlüssel und Befehl für Claude Code

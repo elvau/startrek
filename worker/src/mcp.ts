@@ -12,9 +12,13 @@ import type { FlightOffer, FlightQuery, SearchResult } from "../../app/src/lib/f
 import type { StayOffer, StayQuery, StaySearchResult } from "../../app/src/lib/stays/types";
 import type { EventQuery, EventSearchResult } from "../../app/src/lib/events/types";
 import type { Directory, Person, Traveler, Trip } from "../../app/src/lib/model";
-import { addCost, addFlight, addStay, isCat, LANGS, newTrip, removeItem, tripSummary } from "../../app/src/lib/connector/trips";
+import { addCost, addFlight, addStay, aiKnows, aiState, aiWrote, changesSinceAi, isCat, LANGS, newTrip, removeItem, tripSummary, updateTrip } from "../../app/src/lib/connector/trips";
+import { ensureCompare } from "../../app/src/lib/variants";
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
 import { travelersFor, travelersView } from "../../app/src/lib/connector/people";
+import { mergePrefs, prefsFor } from "../../app/src/lib/prefs";
+import { prefsFromAi } from "../../app/src/lib/agent/agent";
+import { STYLES, type Prefs } from "../../app/src/lib/model";
 import type { KeyInfo } from "./apikey";
 import { ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
 import world from "../../public/world.json";
@@ -28,6 +32,8 @@ export interface McpDeps {
   store: TripStore | null;
   /** gespeicherte Personen, Gruppen und Vorlieben des Kontos (profiles/{uid}); fehlt: keine */
   profile?: (uid: string) => Promise<Directory | null>;
+  /** eigene Vorlieben im Konto ändern (#602): liest, ändert, speichert nur unverändert; gibt die neuen zurück */
+  savePrefs?: (uid: string, change: (cur: Prefs) => Prefs) => Promise<Prefs>;
   /** gefundene Angebote merken (je Schlüssel, einige Stunden) */
   offers: { put: (id: string, v: Saved) => Promise<void>; get: (id: string) => Promise<Saved | null> };
   /** zählt eine Suche mit; Fehlermeldung, wenn das Tageslimit erreicht ist */
@@ -42,6 +48,10 @@ export type Saved = { kind: "flight"; offer: FlightOffer; seats?: number } | { k
 
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const SHOWN = 8;
+/** Länge des Namens eigener Kosten (add_cost) */
+const NAME_MAX = 120;
+/** Verpflegung aufsteigend (search_stays: board als Mindeststufe) */
+const BOARDS = ["self", "breakfast", "half", "full", "all"];
 
 const INSTRUCTIONS = [
   "Split&Fly plans group trips and splits the costs fairly. Use these tools to search real flights, accommodation and events, and to plan trips in the user's Split&Fly account.",
@@ -49,6 +59,8 @@ const INSTRUCTIONS = [
   "Split&Fly does not book: each offer has a link to the provider, where the user books. Never ask for passport or ID data.",
   "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family.",
   "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, or train, per household from its settings) and meals; never add these as costs.",
+  "Searches use the user's saved preferences (own, group, trip) for anything you leave out and always skip countries to avoid; pass tripId to use a trip's preferences, and the result lists appliedPreferences. If the user has none yet, offer to set up a short travel profile by asking about airports, budget, accommodation, meals, travel style and countries to avoid, then save it with save_my_preferences after they confirmed. Wishes for one trip only go to set_trip_preferences.",
+  "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. Put alternatives you propose into one comparison (create_trip with compareWith).",
   "Ask instead of guessing: call get_my_travelers first (families with children's ages, saved groups, preferences). If destination, time frame, who travels, budget or kind of trip are still unclear, ask the user short questions, each with 2-4 concrete options plus 'something else', before creating a trip. Never invent travelers or children's ages; state any remaining assumption explicitly."
 ].join(" ");
 
@@ -56,26 +68,42 @@ const str = (d: string) => ({ type: "string", description: d });
 const int = (d: string, min: number, max: number) => ({ type: "integer", description: d, minimum: min, maximum: max });
 const ages = { type: "array", items: { type: "integer", minimum: 0, maximum: 17 }, description: "Ages of the children (0-17), one per child" };
 const lang = { type: "string", enum: LANGS, description: "Language for item names in the app (default de)" };
+/** Vorlieben wie beim KI-Planer (prefsFromAi prüft die Werte) */
+const PREFS = {
+  airports: { type: "array", items: { type: "string" }, description: "Home airports, IATA codes (1-4)" },
+  maxStops: int("Maximum stops per direction", 0, 2), bags: { type: "boolean", description: "Checked bag per person" },
+  maxHours: int("Longest flight time per direction in hours", 1, 48),
+  stayType: { type: "string", enum: ["all", "hotel", "whole"], description: "Accommodation: all, hotel or whole (apartment/house)" },
+  minStars: int("Minimum hotel stars", 1, 5), board: { type: "string", enum: ["self", "breakfast", "half", "full", "all"], description: "Meals: self catering, breakfast, half board, full board, all inclusive" },
+  styles: { type: "array", items: { type: "string", enum: STYLES }, description: "Travel styles" },
+  budget: { type: "string", enum: ["low", "mid", "high"] }, months: { type: "array", items: { type: "integer", minimum: 1, maximum: 12 }, description: "Usual travel months" },
+  nightsMin: int("Usual trip length, nights from", 1, 60), nightsMax: int("Usual trip length, nights up to", 1, 60),
+  pet: { type: "boolean", description: "Travels with a pet" }, stepFree: { type: "boolean", description: "Needs step-free access" },
+  diet: { type: "string", enum: ["veg", "vegan"] }, avoid: { type: "array", items: { type: "string" }, description: "Countries never to travel to or via (ISO-2 codes)" }
+};
 
 const SEARCH_TOOLS = [
   {
     name: "search_flights", title: "Search flights",
-    description: "Search real round-trip or one-way flights. A booking holds at most 9 seats; for bigger groups (or cheaper fares) search 2 seats and add the offer with add_flight and travelers, which splits the group into bookings. Returns the cheapest offers with id, total price for the searched seats and booking link.",
+    description: "Search real round-trip or one-way flights. Departure airports, stops, bags, flight time and countries to avoid default to the user's preferences (appliedPreferences in the result). A booking holds at most 9 seats; for bigger groups (or cheaper fares) search 2 seats and add the offer with add_flight and travelers, which splits the group into bookings. Returns the cheapest offers with id, total price for the searched seats and booking link.",
     inputSchema: { type: "object", properties: {
       from: { type: "array", items: { type: "string" }, description: "IATA codes of departure airports (1-3), e.g. [\"DUS\",\"CGN\"]" },
       to: { type: "array", items: { type: "string" }, description: "IATA codes of destination airports (1-3)" },
       depart: str("Outbound date YYYY-MM-DD"), return: str("Return date YYYY-MM-DD (omit for one-way)"),
-      adults: int("Adults in this booking (max 9)", 1, 9), childAges: ages, maxStops: int("Maximum stops per direction (default 1)", 0, 2),
-      bags: { type: "boolean", description: "Include a checked bag per person" }
-    }, required: ["from", "to", "depart", "adults"] }
+      adults: int("Adults in this booking (max 9)", 1, 9), childAges: ages, maxStops: int("Maximum stops per direction (default: preferences, else 1)", 0, 2),
+      bags: { type: "boolean", description: "Include a checked bag per person (default: preferences)" }, maxHours: int("Longest flight time per direction in hours (default: preferences)", 1, 48),
+      tripId: str("Use this trip's preferences (default: the user's own)")
+    }, required: ["to", "depart", "adults"] }
   },
   {
     name: "search_stays", title: "Search accommodation",
-    description: "Search real accommodation (hotels, apartments) for all travelers. Returns offers with id, total price for the whole stay and booking link.",
+    description: "Search real accommodation (hotels, apartments) for all travelers. Accommodation type and stars default to the user's preferences; countries to avoid are refused. Returns offers with id, total price for the whole stay, board (self, breakfast, half, full, all) if known and booking link.",
     inputSchema: { type: "object", properties: {
       place: str("City or region"), country: str("Country (English)"), checkin: str("YYYY-MM-DD"), checkout: str("YYYY-MM-DD"),
       adults: int("Adults", 1, 20), childAges: ages, rooms: int("Rooms (default: one per two adults)", 1, 10),
-      type: { type: "string", enum: ["all", "hotel", "whole"], description: "all, hotel or whole (apartment/house)" }
+      type: { type: "string", enum: ["all", "hotel", "whole"], description: "all, hotel or whole (apartment/house); default: preferences" },
+      minStars: int("Minimum hotel stars (default: preferences)", 1, 5), tripId: str("Use this trip's preferences (default: the user's own)"),
+      board: { type: "string", enum: ["breakfast", "half", "full", "all"], description: "At least this board: breakfast, half (half board), full (full board), all (all inclusive). Drops offers without board info" }
     }, required: ["place", "checkin", "checkout", "adults"] }
   },
   {
@@ -88,11 +116,11 @@ const SEARCH_TOOLS = [
 const TRIP_TOOLS = [
   {
     name: "get_my_travelers", title: "My families and groups",
-    description: "The user's saved families (id, adults, children's ages, home town; no names), saved groups (name, families, group preferences) and travel preferences (airports, budget, styles …). Call this before planning, to know who travels instead of guessing.",
+    description: "The user's saved families (id, adults, children's ages, home town; no names), saved groups (name, families, adults and children's ages of the group members, group preferences; a group can hold only part of a family) and travel preferences (airports, budget, styles …). Call this before planning, to know who travels instead of guessing.",
     inputSchema: { type: "object", properties: { date: str("Ages as of this day, YYYY-MM-DD (default: today; use the trip start)") } }
   },
-  { name: "list_trips", title: "List trips", description: "Trips in the user's Split&Fly account (own and shared).", inputSchema: { type: "object", properties: {} } },
-  { name: "get_trip", title: "Show trip", description: "Destination, dates, number of travelers (no names) and all items with id, status and price.", inputSchema: { type: "object", properties: { tripId: str("Trip id") }, required: ["tripId"] } },
+  { name: "list_trips", title: "List trips", description: "Trips in the user's Split&Fly account (own and shared). byAi: created by you (the assistant); changedInApp: changed by the user in the app since; compare: title of the comparison the trip belongs to.", inputSchema: { type: "object", properties: {} } },
+  { name: "get_trip", title: "Show trip", description: "Destination, dates, number of travelers (no names) and all items with id, status, price and the chosen offer (e.g. hotel name, board, stars).", inputSchema: { type: "object", properties: { tripId: str("Trip id") }, required: ["tripId"] } },
   {
     name: "create_trip", title: "Create trip",
     description: "Create a new trip in the user's account. Travelers: saved families or a saved group from get_my_travelers (real people, ages as of the trip start), or, only if the user told you who travels, adults and childAges with travelersFrom 'user' (placeholders the user can replace in the app). If you don't know who travels, ask first.",
@@ -101,8 +129,25 @@ const TRIP_TOOLS = [
       families: { type: "array", items: { type: "string" }, description: "Family ids from get_my_travelers (e.g. [\"F1\"])" },
       group: str("Name of a saved group from get_my_travelers"),
       travelersFrom: { type: "string", enum: ["user"], description: "'user': the user told you adults and children's ages in this conversation (only then use adults/childAges)" },
-      adults: int("Adults (with travelersFrom 'user')", 1, 20), childAges: ages, language: lang
+      adults: int("Adults (with travelersFrom 'user')", 1, 20), childAges: ages, language: lang,
+      preferences: { type: "object", properties: PREFS, description: "Preferences only for this trip (override the user's and the group's), e.g. holiday home and higher budget this time" },
+      compareWith: str("Trip id: put the new trip into the same comparison as this trip (for 2-3 alternatives you propose)")
     }, required: ["place"] }
+  },
+  {
+    name: "update_trip", title: "Update trip",
+    description: "Change name, destination or dates of a trip instead of creating a new one. If the user changed the trip in the app since you last worked on it (or created it in the app), this fails with the list of changes: ask the user, then repeat with confirm true. Pass confirm true right away only if it is clear from the conversation that you and the user are working on this trip together.",
+    inputSchema: { type: "object", properties: {
+      tripId: str("Trip id"), name: str("New trip name"), place: str("New destination"), country: str("New country"), from: str("New arrival YYYY-MM-DD"), to: str("New departure YYYY-MM-DD"),
+      confirm: { type: "boolean", description: "true: the user agreed despite changes made in the app" }
+    }, required: ["tripId"] }
+  },
+  {
+    name: "delete_trip", title: "Delete trip",
+    description: "Delete a trip, e.g. a failed attempt of yours. Own trips you created and nobody changed since are deleted directly; otherwise this fails with the reason (changes in the app, created in the app): ask the user and repeat with confirm true only if they explicitly want it deleted. A trip shared with you is left (you are no longer a member), not deleted for the others. Shared trips you own cannot be deleted here (use the app).",
+    inputSchema: { type: "object", properties: {
+      tripId: str("Trip id"), confirm: { type: "boolean", description: "true: the user explicitly wants to delete (or leave) it despite the reason given" }
+    }, required: ["tripId"] }
   },
   {
     name: "add_flight", title: "Add flight to trip",
@@ -115,13 +160,23 @@ const TRIP_TOOLS = [
     description: "Add another cost (rental car, transfers at the destination, tickets, an estimate) to a trip, in EUR. Not for the way to the departure airport or airport parking: the app calculates them for every flight.",
     inputSchema: { type: "object", properties: {
       tripId: str("Trip id"), category: { type: "string", enum: ["flights", "stay", "transport", "attractions", "misc"], description: "flights, stay, transport (rental car, transfers, own arrival instead of a flight), attractions, misc" },
-      name: str("Short name"), amountEur: { type: "number", description: "Amount in EUR", minimum: 0 },
+      name: { type: "string", maxLength: NAME_MAX, description: `Short name (max ${NAME_MAX} characters)` }, amountEur: { type: "number", description: "Amount in EUR", minimum: 0 },
       perPerson: { type: "boolean", description: "true: amount per person; false (default): total for the group" }, link: str("Optional https link (e.g. ticket shop)"),
       arrival: { type: "boolean", description: "true only if the travelers reach the destination itself without a flight (own car, train, bus all the way); never for the way to the departure airport" },
       estimate: { type: "boolean", description: "true if the amount is an estimate and not a real offer" }
     }, required: ["tripId", "category", "name", "amountEur"] }
   },
-  { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay).", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip") }, required: ["tripId", "itemId"] } }
+  {
+    name: "save_my_preferences", title: "Save my travel preferences",
+    description: "Save the user's lasting travel preferences in their Split&Fly account (replaces the given fields, keeps the others; countries to avoid are added). Only after you summarized them and the user confirmed in this conversation. Not for wishes that only concern one trip (use set_trip_preferences).",
+    inputSchema: { type: "object", properties: PREFS }
+  },
+  {
+    name: "set_trip_preferences", title: "Set preferences for one trip",
+    description: "Preferences only for this trip; they override the user's and the group's for searches in this trip (also in the app). reset: back to the usual preferences.",
+    inputSchema: { type: "object", properties: { tripId: str("Trip id"), ...PREFS, reset: { type: "boolean", description: "Remove this trip's own preferences" } }, required: ["tripId"] }
+  },
+  { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay). Items the user added or changed in the app need confirm true after asking the user.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip"), confirm: { type: "boolean", description: "true: the user agreed" } }, required: ["tripId", "itemId"] } }
 ];
 
 const READ_ONLY = new Set(["search_flights", "search_stays", "search_events", "get_my_travelers", "list_trips", "get_trip"]);
@@ -179,11 +234,26 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
   if (name.startsWith("search_")) { const no = await deps.allowSearch(); if (no) fail(no); }
   switch (name) {
     case "search_flights": {
-      const from = codes(a.from), to = codes(a.to), ch = kids(a.childAges);
+      // fehlende Angaben aus den Vorlieben (#602); gesperrte Länder immer
+      const pf = await searchPrefs(a.tripId, user, deps);
+      const applied: Prefs = {};
+      const own = codes(a.from), to = codes(a.to), ch = kids(a.childAges);
+      const from = own.length ? own : codes(pf.airports || []);
+      if (!from.length) fail("from is required: the user has no home airports in their preferences (ask them)");
+      if (!own.length) applied.airports = from;
+      const pick = <K extends "maxStops" | "bags" | "maxHours">(k: K, given: unknown, ok: boolean) => {
+        if (ok) return given as Prefs[K];
+        if (pf[k] != null) applied[k] = pf[k];
+        return pf[k];
+      };
+      const maxStops = pick("maxStops", a.maxStops, Number.isInteger(a.maxStops)) ?? 1;
+      const bags = pick("bags", a.bags, typeof a.bags === "boolean") ?? false;
+      const maxHours = pick("maxHours", a.maxHours, Number.isInteger(a.maxHours));
+      if (pf.avoid?.length) applied.avoid = pf.avoid;
       const q = parseQuery({
         from: from[0], fromAirports: from, to: to[0], toAirports: to, depart: a.depart, ...(a.return ? { ret: a.return } : {}),
         adults: a.adults, children: ch.filter(x => x >= 2).length, infants: ch.filter(x => x < 2).length,
-        maxStops: Number.isInteger(a.maxStops) ? a.maxStops : 1, bags: a.bags === true, currency: "EUR"
+        maxStops, bags, ...(maxHours ? { maxHours } : {}), ...(pf.avoid?.length ? { avoidCountries: pf.avoid } : {}), currency: "EUR"
       });
       if (typeof q === "string") fail(q);
       const fq = q as FlightQuery;
@@ -198,24 +268,34 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
           out: `${o.out.from} ${hm(o.out.dep)} → ${o.out.to} ${hm(o.out.arr)}, ${o.out.stops} stop(s), ${o.out.carriers.join("/")}`,
           ...(o.back ? { back: `${o.back.from} ${hm(o.back.dep)} → ${o.back.to} ${hm(o.back.arr)}, ${o.back.stops} stop(s)` } : {})
         })),
+        ...(Object.keys(applied).length ? { appliedPreferences: applied } : {}),
         ...(top.length ? {} : { note: "No flights found" })
       };
     }
     case "search_stays": {
+      const pf = await searchPrefs(a.tripId, user, deps);
+      const applied: Prefs = {};
       const adults = a.adults;
       const cc = ccOf(GEO, S(a.country, 60));
       const sp = searchParts(GEO, S(a.place), cc);
       const kcc = ccOf(GEO, sp.country) || cc;
+      if (kcc && pf.avoid?.includes(kcc)) fail(`${kcc} is in the user's countries to avoid: suggest another destination`);
+      const type = typeof a.type === "string" ? a.type : pf.stayType || "all";
+      if (typeof a.type !== "string" && pf.stayType) applied.stayType = pf.stayType;
+      const minStars = Number.isInteger(a.minStars) ? a.minStars : pf.minStars;
+      if (!Number.isInteger(a.minStars) && pf.minStars) applied.minStars = pf.minStars;
       const city = findCity(GEO, sp.place, kcc);
       const q = parseStayQuery({
         place: sp.place, country: sp.country || a.country, ...(kcc ? { cc: kcc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin: a.checkin, checkout: a.checkout, adults, childAges: kids(a.childAges),
-        rooms: Number.isInteger(a.rooms) ? a.rooms : Math.max(1, Math.ceil((Number(adults) || 1) / 2)), type: a.type || "all", currency: "EUR"
+        rooms: Number.isInteger(a.rooms) ? a.rooms : Math.max(1, Math.ceil((Number(adults) || 1) / 2)), type, ...(minStars ? { minStars } : {}), currency: "EUR"
       });
       if (typeof q === "string") fail(q);
       const sq = q as StayQuery;
       if (sq.checkin < today) fail("Date is in the past");
       const res = await deps.stays(sq);
-      const top = res.offers.slice(0, SHOWN);
+      // Verpflegung als Mindeststufe; die Anbieter filtern nicht danach, darum hier
+      const want = BOARDS.indexOf(a.board);
+      const top = res.offers.filter(o => want < 1 || (!!o.board && BOARDS.indexOf(o.board) >= want)).slice(0, SHOWN);
       await Promise.all(top.map(o => deps.offers.put(o.id, { kind: "stay", offer: o, q: sq })));
       return {
         offers: top.map(o => ({
@@ -223,7 +303,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
           ...(o.score != null ? { rating: o.score } : {}), ...(o.stars ? { stars: o.stars } : {}), ...(o.place ? { area: o.place } : {}),
           ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {})
         })),
-        ...(top.length ? {} : { note: "No accommodation found" })
+        ...(Object.keys(applied).length ? { appliedPreferences: applied } : {}),
+        ...(top.length ? {} : { note: want > 0 && res.offers.length ? "No accommodation with this board found: try a lower board or without board" : "No accommodation found" })
       };
     }
     case "search_events": {
@@ -243,11 +324,18 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
     }
     case "list_trips": {
       const list = await store!.list(user.uid);
-      return { trips: list.map(r => { const t = parse(r); return { id: r.id, name: r.name, place: t?.place, from: t?.from, to: t?.to, role: roleOf(r, user.uid) }; }) };
+      return { trips: list.map(r => {
+        const t = parse(r), ch = t ? changesSinceAi(t) : null;
+        return {
+          id: r.id, name: r.name, place: t?.place, from: t?.from, to: t?.to, role: roleOf(r, user.uid),
+          ...(ch ? { byAi: true } : {}), ...(ch?.length ? { changedInApp: true } : {}), ...(t?.cmp ? { compare: t.cmp.title } : {})
+        };
+      }) };
     }
     case "get_trip": {
       const r = await readable(store!, a.tripId, user.uid);
-      return tripSummary(parse(r) || fail("Trip data unreadable"), roleOf(r, user.uid)!, deps.partner);
+      const t = parse(r) || fail("Trip data unreadable"), ch = changesSinceAi(t!);
+      return { ...tripSummary(t!, roleOf(r, user.uid)!, deps.partner), byAi: ch != null, ...(ch?.length ? { changedInApp: ch } : {}) };
     }
     case "create_trip": {
       const place = S(a.place);
@@ -269,6 +357,14 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const adults = Number.isInteger(a.adults) ? a.adults : 1;
       const trip = newTrip({ name: S(a.name, 120), place, country: S(a.country, 60), from, to, adults, childAges: kids(a.childAges), lang: lng(a.language), travelers, people });
       trip.ai = { at: new Date().toISOString() };
+      const tp = a.preferences ? prefsFromAi(a.preferences) : undefined;
+      if (tp) trip.prefs = tp;
+      aiKnows(trip);
+      // Vorschläge als Vergleich (#428): die andere Reise kommt in einen Vergleich, die neue dazu
+      if (a.compareWith != null) {
+        const cmp = await edit(store!, a.compareWith, user, t => { ensureCompare(t); return { cmp: { id: t.cmp!.id, title: t.cmp!.title } }; }) as { cmp: { id: string; title: string } };
+        trip.cmp = cmp.cmp;
+      }
       await store!.create(trip.id, trip.name, JSON.stringify(trip), user.uid, user.name || "Claude");
       return { tripId: trip.id, ...tripSummary(trip, "owner") };
     }
@@ -287,7 +383,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       });
     }
     case "add_cost": {
-      const n = S(a.name, 60), eur = Number(a.amountEur);
+      const n = S(a.name, NAME_MAX), eur = Number(a.amountEur);
       if (!n || !isCat(a.category) || !isFinite(eur) || eur < 0 || eur > 100000) fail("category, name and amountEur (0-100000) are required");
       const link = typeof a.link === "string" && /^https:\/\/[^\s]{4,300}$/.test(a.link) ? a.link : undefined;
       return edit(store!, a.tripId, user, t => {
@@ -295,8 +391,56 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
         return { added: it.id, name: it.name };
       });
     }
+    case "save_my_preferences": {
+      const p = prefsFromAi(a) || fail("No valid preferences given");
+      if (!deps.savePrefs) fail("Saving preferences is not available");
+      const next = await deps.savePrefs!(user.uid, cur => mergePrefs(cur, p!));
+      const { plz: _plz, plzCc: _cc, ...shown } = next;
+      return { saved: p, preferences: shown };
+    }
+    case "set_trip_preferences":
+      return edit(store!, a.tripId, user, t => {
+        if (a.reset === true) { delete t.prefs; return { preferences: null }; }
+        const p = prefsFromAi(a) || fail("No valid preferences given");
+        t.prefs = mergePrefs(t.prefs, p!);
+        return { preferences: t.prefs };
+      });
+    case "update_trip": {
+      const day = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+      const u = { name: S(a.name, 120) || undefined, place: S(a.place) || undefined, country: typeof a.country === "string" ? S(a.country, 60) : undefined, from: day(a.from), to: day(a.to) };
+      if (!Object.values(u).some(v => v != null)) fail("Nothing to change: name, place, country, from or to");
+      return edit(store!, a.tripId, user, t => {
+        if (a.confirm !== true) { const why = needsConfirm(t, "change"); if (why) fail(why); }
+        const f = u.from || t.from, to = u.to || t.to;
+        if (f && to && to < f) fail("to is before from");
+        const off = updateTrip(t, u);
+        if (a.confirm === true && t.aiSeen) aiKnows(t);
+        return { updated: true, ...(off.length ? { outOfRange: off, note: "These items no longer fit the dates: search again and remove the old ones with remove_item" } : {}) };
+      });
+    }
+    case "delete_trip": {
+      const r = await readable(store!, a.tripId, user.uid);
+      const t = parse(r) || fail("Trip data unreadable");
+      const others = Object.keys(r.members).filter(u => u !== user.uid);
+      // geteilte Reisen: nur verlassen; Besitzer übergeben und Löschen für alle folgt mit #604
+      if (roleOf(r, user.uid) !== "owner") {
+        if (a.confirm !== true) fail("This trip was shared with the user: deleting means leaving it (the user loses access, the others keep it). Ask the user, then repeat with confirm true.");
+        await store!.leave(r, user.uid);
+        return { left: r.id };
+      }
+      if (others.length) fail("This trip is shared with others: the user can delete or leave it in the app");
+      if (a.confirm !== true) { const why = needsConfirm(t!, "delete"); if (why) fail(why); }
+      try { await store!.remove(r); } catch (e) { if ((e as { conflict?: boolean }).conflict) fail("The trip was just changed: call get_trip and try again"); throw e; }
+      return { deleted: r.id };
+    }
     case "remove_item":
       return edit(store!, a.tripId, user, t => {
+        const it = t.items.find(i => i.id === a.itemId);
+        if (it && it.status !== "booked" && it.status !== "paid" && a.confirm !== true) {
+          // nur, was die KI angelegt hat und seitdem niemand geändert hat; sonst erst fragen
+          const ch = changesSinceAi(t);
+          if (ch ? ch.some(c => c.id === it.id) : !it.ai) fail(`The user added or changed "${it.name || it.cat}" in the app: ask the user, then repeat with confirm true`);
+        }
         const r = removeItem(t, String(a.itemId || ""));
         if (r === "missing") fail("Item not found");
         if (r === "fixed") fail("Booked or paid items can only be changed in the app");
@@ -317,13 +461,25 @@ async function readable(store: TripStore, id: unknown, uid: string): Promise<Tri
   return r!;
 }
 
+/** Rückfrage nötig, bevor die KI eine Reise ändert oder löscht (#603)? Grund für die KI, sonst null */
+function needsConfirm(t: Trip, what: string): string | null {
+  const ch = changesSinceAi(t);
+  if (ch == null) return `This trip was created in the app, not by you: ask the user whether to ${what} it, then repeat with confirm true.`;
+  if (!ch.length) return null;
+  const list = ch.map(c => (c.id === "meta" ? `${c.name} changed` : `item ${c.what}: ${c.name} (${c.id})`)).join("; ");
+  return `The user changed this trip in the app since you last worked on it (${list}). Tell the user and ask whether to ${what} it anyway, then repeat with confirm true.`;
+}
+
 /** Reise ändern: lesen, ändern, speichern, nur wenn sie inzwischen niemand geändert hat (sonst einmal neu) */
 async function edit(store: TripStore, id: unknown, user: KeyInfo, change: (t: Trip) => object): Promise<object> {
   for (let attempt = 0; ; attempt++) {
     const r = await readable(store, id, user.uid);
     if (!canEdit(r, user.uid)) fail("You can only view this trip");
     const t = parse(r) || fail("Trip data unreadable");
+    const before = aiState(t!);
     const out = change(t!);
+    // Stand der KI fortschreiben; Änderungen aus der App bleiben als geändert stehen
+    aiWrote(t!, before);
     const data = JSON.stringify(t);
     if (data.length >= 900000) fail("Trip is too large");
     try {
@@ -333,4 +489,11 @@ async function edit(store: TripStore, id: unknown, user: KeyInfo, change: (t: Tr
       if (!(e as { conflict?: boolean }).conflict || attempt) throw e;
     }
   }
+}
+
+/** Vorlieben für eine Suche: eigene, Gruppe der Reise, Reise (#602) */
+async function searchPrefs(tripId: unknown, user: KeyInfo, deps: McpDeps): Promise<Prefs> {
+  const d = deps.profile ? await deps.profile(user.uid).catch(() => null) : null;
+  const trip = tripId != null && tripId !== "" && deps.store ? parse(await readable(deps.store, tripId, user.uid)) : null;
+  return prefsFor(trip, d || { people: [], groups: [] });
 }

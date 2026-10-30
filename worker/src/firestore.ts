@@ -4,7 +4,7 @@
  * lesen nur Mitglieder, ändern nur Besitzer und Bearbeiter, Mitglieder und Einladung bleiben unangetastet.
  */
 
-import type { Directory } from "../../app/src/lib/model";
+import type { Directory, Prefs } from "../../app/src/lib/model";
 
 export interface StoreEnv {
   /** Dienstkonto als JSON (Secret); fehlt es, kann der Konnektor nur suchen */
@@ -14,7 +14,7 @@ export interface StoreEnv {
   FIRESTORE_EMULATOR?: string;
 }
 
-export interface TripRecord { id: string; name: string; data: string; owner: string; members: Record<string, string>; updateTime: string }
+export interface TripRecord { id: string; name: string; data: string; owner: string; members: Record<string, string>; updateTime: string; memberIds?: string[] }
 
 export interface TripStore {
   list(uid: string): Promise<TripRecord[]>;
@@ -22,6 +22,10 @@ export interface TripStore {
   create(id: string, name: string, data: string, uid: string, displayName: string): Promise<void>;
   /** nur, wenn die Reise seit dem Lesen nicht geändert wurde (sonst Fehler „conflict“) */
   update(rec: TripRecord, name: string, data: string, uid: string): Promise<void>;
+  /** Reise samt Stimmen, Selbsteintragen und Chat löschen (wie die App), nur wenn seit dem Lesen unverändert (#603) */
+  remove(rec: TripRecord): Promise<void>;
+  /** Reise verlassen: nur sich selbst aus den Mitgliedern nehmen, samt eigener Zuordnung (wie die App) */
+  leave(rec: TripRecord, uid: string): Promise<void>;
 }
 
 /* ---------- Werte im Firestore-Format ---------- */
@@ -53,7 +57,8 @@ function record(doc: { name: string; fields?: Record<string, FsValue>; updateTim
   const f = doc.fields || {};
   return {
     id: doc.name.split("/").pop()!, name: String(fromFs(f.name) ?? ""), data: String(fromFs(f.data) ?? ""), owner: String(fromFs(f.owner) ?? ""),
-    members: (fromFs(f.members) as Record<string, string>) || {}, updateTime: doc.updateTime
+    members: (fromFs(f.members) as Record<string, string>) || {}, updateTime: doc.updateTime,
+    ...(Array.isArray(fromFs(f.memberIds)) ? { memberIds: fromFs(f.memberIds) as string[] } : {})
   };
 }
 
@@ -146,12 +151,53 @@ export function tripStore(env: StoreEnv, f: typeof fetch = fetch): TripStore | n
           }] })
         });
       } catch (e) {
-        if ((e as { code?: string }).code === "FAILED_PRECONDITION") throw Object.assign(new Error("conflict"), { conflict: true });
-        throw e;
+        throw conflict(e);
+      }
+    },
+    async remove(rec) {
+      // Unterdokumente zuerst sammeln, dann alles in einem Schreibvorgang (Reise nur, wenn unverändert)
+      const subs: string[] = [];
+      for (const sub of ["votes", "self", "chat", "chatImg"]) {
+        let page = "";
+        do {
+          const r = await call(`${base}/trips/${encodeURIComponent(rec.id)}/${sub}?pageSize=300&mask.fieldPaths=__name__${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`) as { documents?: { name: string }[]; nextPageToken?: string };
+          subs.push(...(r.documents || []).map(d => d.name));
+          page = r.nextPageToken || "";
+        } while (page);
+      }
+      const trip = { delete: docName(rec.id), currentDocument: { updateTime: rec.updateTime } };
+      try {
+        for (let i = 0; i < subs.length; i += 400) {
+          const rest = subs.length - i <= 400;
+          await call(`${base}:commit`, { method: "POST", body: JSON.stringify({ writes: [...subs.slice(i, i + 400).map(n => ({ delete: n })), ...(rest ? [trip] : [])] }) });
+        }
+        if (!subs.length) await call(`${base}:commit`, { method: "POST", body: JSON.stringify({ writes: [trip] }) });
+      } catch (e) {
+        throw conflict(e);
+      }
+    },
+    async leave(rec, uid) {
+      const ids = (rec.memberIds || Object.keys(rec.members)).filter(x => x !== uid);
+      const q = (f: string) => `${f}.\`${uid.replace(/[`\\]/g, "\\$&")}\``;
+      try {
+        await call(`${base}:commit`, {
+          method: "POST",
+          body: JSON.stringify({ writes: [{
+            // Pfade in der Maske ohne Wert werden gelöscht
+            update: { name: docName(rec.id), fields: { memberIds: toFs(ids) } },
+            updateMask: { fieldPaths: ["memberIds", q("members"), q("memberNames"), q("claims")] },
+            currentDocument: { updateTime: rec.updateTime }
+          }] })
+        });
+      } catch (e) {
+        throw conflict(e);
       }
     }
   };
 }
+
+/** Firestore „FAILED_PRECONDITION“: Reise wurde inzwischen geändert */
+const conflict = (e: unknown) => ((e as { code?: string }).code === "FAILED_PRECONDITION" ? Object.assign(new Error("conflict"), { conflict: true }) : e);
 
 /** gespeicherte Personen, Gruppen und Vorlieben des Kontos (profiles/{uid}, Feld data als JSON, #595); null ohne Dienstkonto */
 export function profileStore(env: StoreEnv, f: typeof fetch = fetch): ((uid: string) => Promise<Directory | null>) | null {
@@ -165,6 +211,43 @@ export function profileStore(env: StoreEnv, f: typeof fetch = fetch): ((uid: str
     try { d = JSON.parse(String(fromFs(doc.fields?.data) ?? "null")); } catch {}
     if (!d || typeof d !== "object") return null;
     return { ...d, people: Array.isArray(d.people) ? d.people : [], groups: Array.isArray(d.groups) ? d.groups : [] };
+  };
+}
+
+/**
+ * Eigene Vorlieben im Konto ändern (#602): Stand lesen, Vorlieben ändern, nur speichern, wenn ihn inzwischen niemand
+ * geändert hat (sonst einmal neu). Alles andere im Stand (Personen, Gruppen, AGB …) bleibt, wie es ist.
+ */
+export function profilePrefsSaver(env: StoreEnv, f: typeof fetch = fetch): ((uid: string, change: (cur: Prefs) => Prefs) => Promise<Prefs>) | null {
+  const c = fsClient(env, f);
+  if (!c) return null;
+  const { root, base, call } = c;
+  return async (uid, change) => {
+    for (let attempt = 0; ; attempt++) {
+      type Doc = { fields?: Record<string, FsValue>; updateTime?: string };
+      let doc: Doc | null = null;
+      try { doc = await call(`${base}/profiles/${encodeURIComponent(uid)}`) as Doc; }
+      catch (e) { if ((e as { status?: number }).status !== 404) throw e; }
+      let d: Partial<Directory> = {};
+      try { d = JSON.parse(String(fromFs(doc?.fields?.data) ?? "{}")) || {}; } catch {}
+      const prefs = change(d.prefs || {});
+      const next = { people: [], groups: [], ...d, prefs };
+      try {
+        await call(`${base}:commit`, {
+          method: "POST",
+          body: JSON.stringify({ writes: [{
+            update: { name: `${root}/profiles/${uid}`, fields: { data: toFs(JSON.stringify(next)) } },
+            updateMask: { fieldPaths: ["data"] },
+            currentDocument: doc?.updateTime ? { updateTime: doc.updateTime } : { exists: false },
+            updateTransforms: [{ fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" }]
+          }] })
+        });
+        return prefs;
+      } catch (e) {
+        const code = (e as { code?: string }).code;
+        if (attempt || (code !== "FAILED_PRECONDITION" && code !== "ALREADY_EXISTS")) throw e;
+      }
+    }
   };
 }
 
