@@ -117,9 +117,12 @@ Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen (`tag
 
 Publisher-Konto für splitandfly.com, beworben 10/2026. Travelpayouts hatte GetYourGuide und Booking.com zum Start
 abgelehnt, deshalb laufen diese über CJ.
-Stand 25.10.2026, **offen:** Booking.com DACH, GetYourGuide INT, Kiwi.com, Fewo-direkt, Vrbo (mit Länderprogrammen),
-Agoda EU, Hotels.com DACH, Expedia DACH, Trip.com, EconomyBookings, AirportRentalCars, Suntransfers, Balearia,
-Omio, World Nomads (nur als Tipp).
+Stand 30.10.2026 (in Klammern die Advertiser-ID, nicht die Link-ID):
+- **zugelassen:** Expedia DACH (5289015; Hotels, Flüge, Pauschalreisen, Mietwagen, Aktivitäten; 0 % Provision bei
+  Gutscheincodes), Hotels.com DACH (5275606), Fewo-direkt (2691623), Suntransfers (4727627), Carla Car Rental (7466061),
+  VIP Cars Global (7819955)
+- **offen:** Booking.com DACH, GetYourGuide INT, Kiwi.com, Vrbo (mit Länderprogrammen), Agoda EU, Trip.com,
+  EconomyBookings, AirportRentalCars, Balearia, Omio, World Nomads (nur als Tipp)
 
 Publisher-ID (PID) `8096976` (öffentlich, steht in jedem CJ-Link), im Verzeichnis als `CJ_PUBLISHER`. Partner über CJ
 bekommen `tag: cj(aid)`: Der Ziel-Link wird über `https://www.anrdoezrs.net/click-8096976-<aid>?url=<Ziel>` geleitet; `aid` ist
