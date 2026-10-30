@@ -48,7 +48,7 @@ function deps(over: Partial<McpDeps> = {}) {
     stays: async () => ({ offers: [stay("s1", 600)], sources: [] }),
     events: async () => ({ events: [{ id: "e1", source: "tm", sourceName: "Ticketmaster", name: "Konzert", start: "2027-05-11T20:00", city: "Palma", url: "https://tm/x" }], sources: [] }),
     store: memStore(),
-    offers: { put: async (id, v) => { saved.set(id, JSON.parse(JSON.stringify(v))); }, get: async id => saved.get(id) || null },
+    offers: { put: async list => { for (const [id, v] of list) saved.set(id, JSON.parse(JSON.stringify(v))); }, get: async id => saved.get(id) || null },
     allowSearch: async () => (++searches > 3 ? "Daily limit reached" : null),
     version: "0.0.0", today: "2027-04-01",
     ...over
@@ -166,6 +166,48 @@ describe("KI-Konnektor (MCP)", () => {
     expect((await tool(d, "get_trip", { tripId: id })).data.items).toHaveLength(2);
   });
 
+  it("Buchungstabelle: Links in get_trip, Posten nach der Buchung als gebucht bzw. bezahlt markieren", async () => {
+    const d = deps();
+    const init = await mcpMessage(rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } }), ME, d) as any;
+    expect(init.result.instructions).toContain("booking table");
+    await tool(d, "search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 2 });
+    const id = (await tool(d, "create_trip", { place: "Palma", from: "2027-05-10", to: "2027-05-13", adults: 2, travelersFrom: "user" })).data.tripId;
+    await tool(d, "add_flight", { tripId: id, offerId: "f1" });
+    await tool(d, "add_flight", { tripId: id, offerId: "f2", travelers: 2 });
+    await tool(d, "add_cost", { tripId: id, category: "transport", name: "Mietwagen", amountEur: 150 });
+    const got = await tool(d, "get_trip", { tripId: id });
+    const [fl, , car] = got.data.items;
+    expect(fl.link).toBe("https://kiwi.com/x");
+    const fam = got.data.families[0].name;
+
+    expect((await tool(d, "mark_booked", { tripId: id, items: [{ itemId: "nix" }] })).text).toContain("not found");
+    expect((await tool(d, "mark_booked", { tripId: id, items: [{ itemId: fl.id, paidBy: "Meyer" }] })).text).toContain("Unknown family");
+    expect((await tool(d, "mark_booked", { tripId: id, items: [{ itemId: fl.id, status: "booked", paidBy: fam }] })).text).toContain("needs status paid");
+    const m = await tool(d, "mark_booked", { tripId: id, items: [{ itemId: fl.id, bookingRef: "ABC123" }, { itemId: car.id, paidBy: fam, paidAt: "2027-04-02" }] });
+    expect(m.data.marked.map((x: any) => x.status)).toEqual(["booked", "paid"]);
+    const trip: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(trip.items[0]).toMatchObject({ status: "booked", booking: { ref: "ABC123" } });
+    expect(trip.items[2].payments).toEqual([{ amount: 150, by: fam, at: "2027-04-02" }]);
+    // bezahlt bleibt bezahlt; get_trip zeigt Buchungsnummer und Bezahltes
+    await tool(d, "mark_booked", { tripId: id, items: [{ itemId: car.id }] });
+    const again = (await tool(d, "get_trip", { tripId: id })).data.items;
+    expect(again[0]).toMatchObject({ status: "booked", bookingRef: "ABC123" });
+    expect(again[2]).toMatchObject({ status: "paid", paidEur: 150 });
+    expect((await tool(d, "remove_item", { tripId: id, itemId: fl.id })).text).toMatch(/Booked or paid/);
+
+    // mit Weiterleitung und Partner-Links: Links über splitandfly.com, Kennzeichnung, Link zur Reise und Anleitung
+    const d2 = deps({ partner: true, appUrl: "https://splitandfly.com/", go: async (u, p, c) => `https://splitandfly.com/go/?l=${encodeURIComponent(`${p}|${c}|${u}`)}` });
+    (d2 as any).store = d.store;
+    const fs = await tool(d2, "search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 2 });
+    expect(fs.data.offers[0].link).toBe(`https://splitandfly.com/go/?l=${encodeURIComponent("Kiwi.com|flights|https://kiwi.com/x")}`);
+    expect(fs.data.linkNote).toContain("commission");
+    const g2 = (await tool(d2, "get_trip", { tripId: id })).data;
+    expect(g2.items[0].link).toBe(`https://splitandfly.com/go/?l=${encodeURIComponent("|flights|https://kiwi.com/x")}`);
+    expect(g2).toMatchObject({ appLink: `https://splitandfly.com/?reise=${id}`, guideLink: "https://splitandfly.com/anleitung/kosten/" });
+    expect(g2.linkNote).toBeTruthy();
+    expect(got.data.linkNote).toBeUndefined();
+  });
+
   it("schützt fremde, nur lesbare und gebuchte Reisen", async () => {
     const d = deps();
     const store = d.store as ReturnType<typeof memStore>;
@@ -213,6 +255,83 @@ describe("KI-Konnektor (MCP)", () => {
     expect(fl.map(i => i.participants?.length)).toEqual([2, 2, 2, 2, 2]);
     expect(new Set(fl.flatMap(i => i.participants)).size).toBe(10);
     expect(fl.map(i => i.options[0].price.unit)).toEqual([480, 480, 480, 520, 520]);
+  });
+
+  it("Zubringer nur für einen Teil der Gruppe (people), danach Weiterflug für alle", async () => {
+    const d = deps({ today: "2026-10-30" });
+    const made = await tool(d, "create_trip", { place: "Málaga", from: "2027-01-17", to: "2027-01-29", travelers: [
+      { first: "Katarzyna", family: "Kronik", age: 50 }, { first: "Lena", family: "Kronik", age: 16 }, { first: "Nina", family: "Kronik", age: 14 }, { first: "Leon", family: "Kronik", age: 13 }
+    ] });
+    const id = made.data.tripId, ids = made.data.people.map((p: any) => p.id) as string[];
+    expect(made.data.travelers).toMatchObject({ adults: 4, children: 0, teens: 3 });
+    await tool(d, "search_flights", { from: ["DTM"], to: ["KTW"], depart: "2027-01-17", return: "2027-01-29", adults: 1 });
+    expect((await tool(d, "add_flight", { tripId: id, offerId: "f1", people: [ids[0]] })).data.bookings).toBe(1);
+    await tool(d, "search_flights", { from: ["KTW"], to: ["AGP"], depart: "2027-01-18", return: "2027-01-28", adults: 1, childAges: [16, 14, 13] });
+    expect((await tool(d, "add_flight", { tripId: id, offerId: "f2", people: ids })).data.bookings).toBe(1);
+    expect((await tool(d, "add_flight", { tripId: id, offerId: "f2", people: ["gibtsnicht"] })).text).toMatch(/Unknown traveler/);
+    const fl = (JSON.parse((d.store as any).docs.get(id).data) as Trip).items.filter(i => i.cat === "flights");
+    expect(fl.map(i => i.participants)).toEqual([[ids[0]], ids]);
+    expect(fl.map(i => i.options[0].price.unit)).toEqual([480, 520]);
+  });
+
+  it("warnt bei doppeltem Flug oder Hotel für dieselben Reisenden und ersetzt mit replace", async () => {
+    const d = deps();
+    const id = (await tool(d, "create_trip", { place: "Madeira", from: "2027-05-10", to: "2027-05-13", adults: 3, travelersFrom: "user" })).data.tripId;
+    await tool(d, "search_flights", { from: ["DUS"], to: ["FNC"], depart: "2027-05-10", return: "2027-05-13", adults: 3 });
+    const a = await tool(d, "add_flight", { tripId: id, offerId: "f1" });
+    expect(a.data.warning).toBeUndefined();
+    const b = await tool(d, "add_flight", { tripId: id, offerId: "f2", travelers: 3 });
+    expect(b.data.warning).toMatch(new RegExp(a.data.added[0]));
+    const c = await tool(d, "add_flight", { tripId: id, offerId: "f2", replace: b.data.added[0] });
+    expect(c.data).toMatchObject({ replaced: b.data.added[0] });
+    await tool(d, "remove_item", { tripId: id, itemId: a.data.added[0] });
+    await tool(d, "search_stays", { place: "Funchal", checkin: "2027-05-10", checkout: "2027-05-13", adults: 3 });
+    const s1 = await tool(d, "add_stay", { tripId: id, offerId: "s1" });
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: "gibtsnicht" })).text).toMatch(/not found/);
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: c.data.added[0] })).text).toMatch(/accommodation item/);
+    const s2 = await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: s1.data.added });
+    expect(s2.data.warning).toBeUndefined();
+    const t: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(t.items.map(i => i.id)).toEqual([c.data.added[0], s2.data.added]);
+    // in der App geänderter Posten: erst nach Rückfrage ersetzen, vorher bleibt alles wie es war
+    t.items[1].name = "Hotel am Meer"; (d.store as any).docs.get(id).data = JSON.stringify(t);
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: s2.data.added })).text).toMatch(/confirm true/);
+    expect(JSON.parse((d.store as any).docs.get(id).data).items).toHaveLength(2);
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1", replace: s2.data.added, confirm: true })).data.replaced).toBe(s2.data.added);
+  });
+
+  it("Anreise zum Flughafen, Parken, Kasse und Anwesenheit je Familie übernehmen", async () => {
+    const d = deps();
+    const made = await tool(d, "create_trip", { place: "Madeira", from: "2027-05-10", to: "2027-05-17", travelers: [
+      { first: "Anna", family: "Klein", age: 40 }, { first: "Ben", family: "Groß", age: 42 }
+    ], households: [{ family: "klein", toAirport: "drop", fuelMoney: false }] });
+    expect(made.data.families.find((f: any) => f.name === "Klein")).toMatchObject({ toAirport: "drop", fuelMoney: false });
+    const id = made.data.tripId;
+    const u = await tool(d, "update_travelers", { tripId: id, households: [
+      { family: "Groß", carpoolWith: "Klein", purse: "each", arrive: "2027-05-11" },
+      { family: "Klein", toAirport: "car", cars: 2, parkingEur: 89 }
+    ] });
+    expect(u.error).toBe(false);
+    const t: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(t.households).toMatchObject({ Klein: { mode: "car", cars: 2, parking: { paid: 89 } }, "Groß": { mode: "with", link: "Klein", kasse: "each", arrive: "2027-05-11" } });
+    await tool(d, "update_travelers", { tripId: id, households: [{ family: "Klein", parkingFree: true }, { family: "Groß", toAirport: "train", arrive: null }] });
+    const t2: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(t2.households!.Klein.parking).toEqual({ off: true });
+    expect(t2.households!["Groß"]).toMatchObject({ mode: "train" });
+    expect(t2.households!["Groß"].link).toBeUndefined();
+    expect(t2.households!["Groß"].arrive).toBeUndefined();
+    expect((await tool(d, "update_travelers", { tripId: id, households: [{ family: "Meier", toAirport: "car" }] })).text).toMatch(/Unknown family/);
+    expect((await tool(d, "update_travelers", { tripId: id, households: [{ family: "Klein", carpoolWith: "Klein" }] })).text).toMatch(/another family/);
+    expect((await tool(d, "update_travelers", { tripId: id, households: [{ family: "Klein", toAirport: "with" }] })).text).toMatch(/carpoolWith/);
+  });
+
+  it("Platzhalter: Jugendliche heißen Kind, zahlen aber Erwachsenentarif", async () => {
+    const d = deps();
+    const made = await tool(d, "create_trip", { place: "Málaga", adults: 1, childAges: [16, 8, 1], travelersFrom: "user" });
+    expect(made.data.people.map((p: any) => p.first)).toEqual(["Fuchs Erw. 1", "Fuchs Kind 1", "Fuchs Kind 2", "Fuchs Kleinkind 1"]);
+    expect(made.data.travelers).toMatchObject({ adults: 2, children: 1, infants: 1, teens: 1 });
+    const t: Trip = JSON.parse((d.store as any).docs.get(made.data.tripId).data);
+    expect(t.travelers.map(x => x.kind)).toEqual(["adult", "child", "child", "infant"]);
   });
 
   it("Familien und Gruppen aus dem Konto: mit Namen und PLZ sehen, echte Reisende anlegen, nie raten (#595, #608)", async () => {

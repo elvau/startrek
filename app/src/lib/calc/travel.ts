@@ -173,7 +173,7 @@ export function accessFor(name: string, ap: Airport, persons: number, days: numb
   }
   const cars = Math.max(1, h.cars || 1, Math.ceil(group / SEATS));
   const carsTxt = cars > 1 ? ` ${t("acc.withCars", { n: cars })}` : "";
-  if (h.mode === "drop") return share(4 * km * kc * cars, t("acc.drop", { km: Math.round(km), cars: carsTxt }));
+  if (h.mode === "drop") return h.dropFree ? share(0, t("acc.dropFree")) : share(4 * km * kc * cars, t("acc.drop", { km: Math.round(km), cars: carsTxt }));
   const pk = parkOf(h, ap.park, days, cars);
   const a = { km: Math.round(km), cars: carsTxt, days: tn("n.days", days) };
   return share(2 * km * kc * cars + pk.v, t(h.parking?.off ? "acc.carNoPark" : pk.booked ? "acc.carParkBooked" : "acc.car", a), pk);

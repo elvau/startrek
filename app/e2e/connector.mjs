@@ -35,7 +35,7 @@ const deps = {
   flights: async () => ({ offers: [{ id: "kiwi:x1", source: "kiwi", sourceName: "Kiwi.com", price: 480, currency: "EUR", url: "https://kiwi.com/u/x1", out: leg("DUS", "PMI", "2027-05-07T08:00", "2027-05-07T10:30"), back: leg("PMI", "DUS", "2027-05-10T18:00", "2027-05-10T20:30") }], sources: [] }),
   stays: async () => ({ offers: [], sources: [] }), events: async () => ({ events: [], sources: [] }), activities: async () => ({ activities: [], sources: [] }),
   store: tripStore({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" }),
-  offers: { put: async (id, v) => { saved.set(id, v); }, get: async id => saved.get(id) || null },
+  offers: { put: async list => { for (const [id, v] of list) saved.set(id, v); }, get: async id => saved.get(id) || null },
   allowSearch: async () => null, version: "test", today: "2027-04-01"
 };
 const user = { uid, kid: "k1", name: "Claudia", at: "2027-04-01" };

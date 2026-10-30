@@ -307,8 +307,9 @@
 </p>
 <p>
   Nutzt ihr Schlüssel oder Verbindung, schickt euer KI-Assistent Anfragen an meinen Such-Dienst. Dieser sucht wie in Abschnitt 6, merkt
-  sich gefundene Angebote einige Stunden im Zwischenspeicher von Cloudflare (damit der Assistent sie in eine Reise übernehmen
-  kann) und zählt die Suchen pro Schlüssel bzw. Verbindung und Tag (Kennung und Datum, nach zwei Tagen gelöscht). Für Reisen im
+  sich gefundene Angebote (Flug- und Unterkunftsdaten, Zahl und Alter der Reisenden der Suche, ohne Namen) sechs Stunden in Firebase
+  (Abschnitt 5), unter einem Prüfwert aus Schlüssel und Angebot (damit der Assistent sie in eine Reise übernehmen kann; danach
+  täglich gelöscht) und zählt die Suchen pro Schlüssel bzw. Verbindung und Tag (Kennung und Datum, nach zwei Tagen gelöscht). Für Reisen im
   Konto liest und schreibt der Such-Dienst eure Reisen in Firebase (Abschnitt 5), nur solche, in denen ihr Mitglied
   seid, und ändern nur mit Bearbeitungsrecht. An den Assistenten gehen Ziel, Reisedaten, die Reisenden mit Vorname, Familienname
   und Alter, der Wohnort der Familien mit Postleitzahl (damit er zuordnen kann, wer von wo losfährt) und die Posten mit Preisen,
@@ -322,7 +323,10 @@
   der App. Für Kosten, die schon bezahlt sind, trägt er ein, welche Familie bezahlt hat, und die Buchungsnummer. Bestätigt ihr
   ihm im Gespräch eure Vorlieben, speichert der Such-Dienst sie in eurem Konto (nur bekannte Angaben wie in der App, keine
   Postleitzahl); Vorlieben für eine einzelne Reise speichert er in der Reise. Bei Suchen nimmt der Such-Dienst fehlende
-  Angaben aus euren Vorlieben bzw. denen der Gruppe und der Reise.
+  Angaben aus euren Vorlieben bzw. denen der Gruppe und der Reise. Sagt ihr ihm, was ihr gebucht habt, setzt er diese Posten
+  auf gebucht bzw. bezahlt (mit Buchungsnummer und zahlender Familie, wenn ihr sie nennt). Links zu Anbietern, die der
+  Assistent zeigt, führen über splitandfly.com/go/: Die Seite fragt den Such-Dienst, ob der Link echt ist, der zählt den Klick
+  wie in der App (nur Anbieter und Kategorie, ohne Konto, IP-Adresse oder Reise), dann geht es zum Anbieter.
 </p>
 <p>
   Was ihr in euren Assistenten eingebt und was er von hier abruft, verarbeitet dessen Anbieter (z. B. Anthropic, OpenAI) als euer eigener Anbieter nach

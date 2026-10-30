@@ -37,7 +37,7 @@ export type GuideSpots = Record<string, { w: number; h: number; spots: { key: st
 
 export const GUIDE_STAND = "Oktober 2026";
 /** Datum der letzten inhaltlichen Änderung (JJJJ-MM-TT), mit GUIDE_STAND anheben; für lastmod in der Sitemap */
-export const GUIDE_UPDATED = "2026-10-27";
+export const GUIDE_UPDATED = "2026-10-30";
 
 export const GUIDE: GuidePage[] = [
   {
@@ -96,7 +96,7 @@ export const GUIDE: GuidePage[] = [
     tips: [
       "Im Konto kannst du Personen und Gruppen einmal anlegen (zum Beispiel „Familie“ und „Kegelclub“) und für jede neue Reise wiederverwenden. Eine Person darf in mehreren Gruppen sein.",
       "Personen in einer Reise sind eine Kopie. Änderst du die Gruppe später, ändern sich bestehende Reisen nicht.",
-      "Bei der Anreise zum Flughafen gibt es mehrere Wege: eigenes Auto, Bahn, Fahrgemeinschaft, bringen und abholen lassen, Fahrdienst oder Gruppenbus. Die Kosten teilen sich nach Personen.",
+      "Bei der Anreise zum Flughafen gibt es mehrere Wege: eigenes Auto, Bahn, Fahrgemeinschaft, bringen und abholen lassen, Fahrdienst oder Gruppenbus. Die Kosten teilen sich nach Personen. Wer euch bringt und umsonst fährt: bei „Spritgeld für den Fahrer“ „nein, fährt umsonst“ wählen, dann kostet die Anreise nichts.",
       "Für jeden Posten kannst du einzelne Personen ausschließen, zum Beispiel wenn Oma beim Freizeitpark nicht mitgeht."
     ],
     faq: [

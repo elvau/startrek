@@ -265,13 +265,20 @@ export async function dropClaim(tripId: string, uid: string) { await (await load
 function readJoinLink() {
   const u = new URL(location.href);
   const j = u.searchParams.get("join");
-  if (!j) return;
-  const [id, key, role] = j.split(".");
-  if (id && key && (role === "editor" || role === "viewer")) {
+  const [id, key, role] = (j || "").split(".");
+  if (j && id && key && (role === "editor" || role === "viewer")) {
     cloud.join = { id, key, role };
     if (configured) cloud.showLogin = true;
   }
+  // Link zur Reise (…/?reise=ID, aus dem KI-Konnektor): öffnet sie, sobald sie in der Liste ist; ohne Konto erst anmelden
+  const r = u.searchParams.get("reise");
+  if (r && /^[\w-]{1,64}$/.test(r)) {
+    cloud.joined = r;
+    if (configured) cloud.showLogin = true;
+  }
+  if (!j && !r) return;
   u.searchParams.delete("join");
+  u.searchParams.delete("reise");
   history.replaceState(null, "", u);
 }
 

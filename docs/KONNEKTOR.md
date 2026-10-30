@@ -11,14 +11,14 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Anzeigename und Datum. Gespeichert wird er nirgends; die App zeigt ihn einmal an, dazu die Adresse, einen Hinweis für andere Programme und als Beispiel den Befehl für Claude Code:
    `claude mcp add --transport http splitandfly https://…/mcp --header "Authorization: Bearer sf_…"`
 2. **Werkzeuge** (`worker/src/mcp.ts`): `search_flights`, `search_stays`, `search_events` (keine Touren: Viator-Inhalte dürfen nicht an fremde Anwendungen);
-   mit Dienstkonto zusätzlich `get_my_travelers`, `list_trips`, `get_trip`, `create_trip`, `update_trip`, `delete_trip`, `add_flight`, `add_stay`, `add_cost`, `remove_item`,
+   mit Dienstkonto zusätzlich `get_my_travelers`, `list_trips`, `get_trip`, `create_trip`, `update_trip`, `delete_trip`, `add_flight`, `add_stay`, `add_cost`, `mark_booked`, `remove_item`,
    `update_travelers`, `save_people`, `save_group`, `save_my_preferences`, `set_trip_preferences`.
    Aufräumen (#603): Reisen, die die KI angelegt hat, merken sich ihren Stand (`aiSeen`, Prüfsummen der Eckdaten und je Posten).
    Hat der Nutzer sie seitdem in der App geändert, oder stammt die Reise aus der App, ändern/löschen die Werkzeuge nur mit
    `confirm` nach Rückfrage (Fehler nennt die Änderungen). Geteilte Reisen: als Mitglied verlassen, als Besitzer nicht per KI (#604).
    Vorschläge als Vergleich: `create_trip` mit `compareWith`, `compareTitle` (Titel für alle Varianten) und `variantName`;
    vorhandene Reisen mit `update_trip` (`compareWith`, `compareTitle`, `variantName`, `leaveCompare`).
-   Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel (Zwischenspeicher), `add_*` nimmt die Kennung.
+   Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel in Firestore (`mcpOffers`, Kennung = Prüfwert aus Schlüssel und Angebot; der Cloudflare-Zwischenspeicher gilt nur je Rechenzentrum, Chat-Apps landen oft in verschiedenen), `add_*` nimmt die Kennung. `add_flight` mit `people` (Reisende-IDs) für Zubringer nur eines Teils der Gruppe. `add_flight`/`add_stay` mit `replace` (Posten-ID) tauschen ein Angebot aus (gleiche Rückfrage wie `remove_item`); ohne `replace` warnt das Ergebnis, wenn dieselben Reisenden schon einen Flug auf der Strecke bzw. eine Unterkunft im Zeitraum haben.
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist
@@ -28,6 +28,28 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Vorname, Familie, Alter und Wohnort mit PLZ (#608), nie Geburtsdaten oder Angaben „Nur für dich“.
 5. **Grenzen:** Suchen pro Schlüssel und Tag (`MCP_DAILY`, Standard 50) plus die Mengenbegrenzung pro IP.
    Zählung in „Nutzung & Kontingente“ (KI-Konnektor, Konnektor-Schlüssel erzeugt).
+
+## Buchungstabelle
+
+Split&Fly bucht nicht selbst. Schlägt der Assistent eine Reise vor, endet er mit einer Tabelle aus `get_trip` (Hinweis in den
+Server-Anweisungen): je Posten Nummer, was, Daten, Preis und Link zum Anbieter, in Buchungsreihenfolge (Flüge zuerst, dann
+Unterkunft, dann der Rest). Der Nutzer bucht Zeile für Zeile und sagt, was erledigt ist; `mark_booked` setzt die Posten auf
+gebucht bzw. bezahlt (mehrere auf einmal, optional Buchungsnummer, zahlende Familie, Betrag, sonst der offene Rest). Das in
+`get_trip` gezeigte Angebot gilt als gewählt, Paketteile ziehen mit, bezahlt bleibt bezahlt. Danach ändern nur noch in der App.
+`get_trip` zeigt dazu `bookingRef` und `paidEur`.
+
+Unter die Tabelle setzt der Assistent `appLink` (`…/?reise=ID`, öffnet die Reise in der App, ohne Anmeldung erst Login;
+`readJoinLink` in `app/src/lib/cloud/cloud.svelte.ts`) und `guideLink` (Anleitung „Kosten“): Anbieter, die nicht in fremde
+Anwendungen dürfen (Expedia, Viator), und die Such-Links aus dem Partner-Verzeichnis gibt es nur dort. Der Assistent nennt
+keine Angebote von Anbietern, die er nicht gesucht hat.
+
+**Weiterleitung (Herkunft der Klicks):** Alle Anbieter-Links des Konnektors (Suchen, `get_trip`) laufen über
+`splitandfly.com/go/?l=…` (`app/go/index.html`, `app/src/go.ts`). Das Ziel steht mit Anbieter und Kategorie signiert im
+Link (`seal` mit `MCP_KEY_SECRET`, `worker/src/go.ts`). Die Seite schickt den Link an `POST /go`; der Such-Dienst prüft die
+Signatur, zählt den Klick wie `/click` und gibt das Ziel zurück, die Seite leitet weiter (Herkunft für die Partnerprogramme:
+splitandfly.com). Falsche Signatur: keine Weiterleitung (kein offener Umleiter). Such-Dienst nicht erreichbar: Ziel mit
+Adresse zum Antippen. Der Service Worker lässt `go/` aus. Mit `PARTNER_LINKS=on` bekommen Suchen und `get_trip` einen
+`linkNote`: Links mit * kennzeichnen und den Hinweis (Provision möglich, gleicher Preis) darunter setzen.
 
 ## Nachfragen statt raten (#595)
 
@@ -54,6 +76,11 @@ Familien aus einem Gruppenchat zuordnen und Tippfehler korrigieren kann; Persone
 - `update_travelers`: Familie umbenennen (Reisende, Haushalt, Zahlungen, Kasse, Verpflegung, Gruppenbus), Vorname/Familie/Alter
   je Reisendem (Platzhalter mit Vornamen werden echt), Wohnort je Familie, Reisende dazu (gespeicherte nicht doppelt). Rückfrage wie
   `update_trip`. Gespeicherte Personen werden in bestehenden Reisen nicht automatisch umbenannt.
+- `households` (in `create_trip` und `update_travelers`): Einstellungen je Familie wie in der App, nur die genannten Felder:
+  `toAirport` (car, drop = gebracht und abgeholt, taxi, train, bus, with + `carpoolWith`), `fuelMoney` (drop: false = Fahrer
+  fährt umsonst, `dropFree`), `cars`, `parkingFree`/`parkingEur`,
+  `rideEur`, `purse` (joint/each = Kasse), `arrive`/`depart` (eigene Anwesenheit; `null` entfernt). Die Kosten rechnet die App.
+  `get_trip` zeigt sie bei den Familien.
 - Wohnort (`home`, `country`): `worker/src/home.ts` sucht PLZ bzw. Ort in den PLZ-Daten der App (`plz.txt`, `plz/<LAND>.txt`
   von `APP_URL`, je Isolate gemerkt), sonst Ort aus der Ortsliste ohne PLZ; unbekannt: Fehler mit Bitte um PLZ.
 - `add_cost` mit `status`, `paidBy` (Familie der Reise; Zahlung für die Kasse, setzt `paid`), `paidAt`, `bookingRef`.

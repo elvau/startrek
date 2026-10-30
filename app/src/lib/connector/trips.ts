@@ -9,7 +9,7 @@ import { es } from "../i18n/es";
 import { fr } from "../i18n/fr";
 import { pl } from "../i18n/pl";
 import { ru } from "../i18n/ru";
-import { CAT_KEYS, DEFAULT_SETTINGS, hhKey, isActive, uid, type CatKey, type Item, type Option, type Person, type Status, type Traveler, type Trip } from "../model";
+import { ACCESS_MODES, CAT_KEYS, DEFAULT_SETTINGS, hhKey, type AccessMode, type Household, isActive, uid, type CatKey, type Item, type Option, type Person, type Status, type Traveler, type Trip } from "../model";
 import { applyPeople } from "../people";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import { plainLink } from "../partner";
@@ -64,11 +64,12 @@ export function placeholders(adults: number, childAges: number[], lang: string):
   for (let k = 1; k <= adults; k++) out.push(mk(tr(lang, "ph.adult", { a, k }), "adult"));
   let c = 0, i = 0, ad = adults;
   for (const age of childAges) {
-    // Altersklassen wie in der App: ab adultAge erwachsen, ab childAge Kind, darunter Kleinkind
+    // Preisstufe aus dem Alter wie in der App (ab adultAge Erwachsenentarif); Jugendliche heißen trotzdem Kind und
+    // zählen nicht als Erwachsene der Gruppe (z. B. Fahrer)
     const k = ageClassOf(age);
-    if (k === "adult") out.push(mk(tr(lang, "ph.adult", { a, k: ++ad }), "adult", age));
-    else if (k === "child") out.push(mk(tr(lang, "ph.child", { a, k: ++c }), "child", age));
-    else out.push(mk(tr(lang, "ph.infant", { a, k: ++i }), "infant", age));
+    if (age >= 18) out.push(mk(tr(lang, "ph.adult", { a, k: ++ad }), "adult", age));
+    else if (k === "infant") out.push(mk(tr(lang, "ph.infant", { a, k: ++i }), "infant", age));
+    else out.push(mk(tr(lang, "ph.child", { a, k: ++c }), "child", age));
   }
   return out;
 }
@@ -93,9 +94,10 @@ const day = () => new Date().toISOString().slice(0, 10);
 /**
  * Flug aus der Suche als Posten. Ohne seats: Gesamtpreis für alle, gleich verteilt. Mit seats (so viele Plätze hatte
  * die Suche): für `travelers` Reisende, die noch keinen eigenen Flug haben, in Buchungen zu höchstens `seats` Plätzen,
- * je Buchung ein Posten mit ihren Reisenden und Preis pro Platz mal Personen.
+ * je Buchung ein Posten mit ihren Reisenden und Preis pro Platz mal Personen. Mit ids genau diese Reisenden (z. B. Zubringer
+ * nur für die Mutter), auch wenn sie schon einen anderen Flug haben.
  */
-export function addFlight(trip: Trip, o: FlightOffer, lang: string, split?: { seats: number; travelers?: number }): Item[] {
+export function addFlight(trip: Trip, o: FlightOffer, lang: string, split?: { seats: number; travelers?: number; ids?: string[] }): Item[] {
   const stops = o.out.stops ? trn(lang, "n.stops", o.out.stops) : tr(lang, "fs.th.direct");
   const opt = (unit: number): Option => ({
     id: uid(),
@@ -110,10 +112,10 @@ export function addFlight(trip: Trip, o: FlightOffer, lang: string, split?: { se
   const taken = new Set(trip.items.filter(i => i.cat === "flights" && i.participants).flatMap(i => i.participants!));
   const free = trip.travelers.filter(p => isActive(p) && ageClassOf(p.age, p.kind) !== "infant" && !taken.has(p.id)).map(p => p.id);
   const seats = split ? Math.max(1, split.seats) : 0;
-  if (!split || (seats >= free.length && (split.travelers ?? free.length) >= free.length && !taken.size)) {
+  if (!split || (!split.ids && seats >= free.length && (split.travelers ?? free.length) >= free.length && !taken.size)) {
     return [push(trip, { id: uid(), cat: "flights", status: "idea", options: [opt(o.price)], ai: { at: at(), kind: "suggested" }, name })];
   }
-  const ids = free.slice(0, Math.max(1, split.travelers ?? free.length));
+  const ids = split.ids || free.slice(0, Math.max(1, split.travelers ?? free.length));
   const per = o.price / seats, out: Item[] = [], n = Math.ceil(ids.length / seats);
   for (let i = 0; i < ids.length; i += seats) {
     const part = ids.slice(i, i + seats);
@@ -254,6 +256,47 @@ export function removeItem(trip: Trip, id: string): "ok" | "missing" | "fixed" {
   return "ok";
 }
 
+/**
+ * Posten, mit denen neue doppelt sein könnten: Flüge derselben Reisenden (ohne participants: alle) in dieselbe Richtung ab
+ * oder nach demselben Flughafen; Unterkünfte mit überschneidendem Zeitraum. Zubringer (DTM → KTW, dann KTW → AGP) zählen nicht.
+ */
+export function clashes(trip: Trip, added: Item[]): Item[] {
+  const all = trip.travelers.filter(isActive).map(t => t.id);
+  const who = (i: Item) => new Set(i.participants?.length ? i.participants : all);
+  const legs = (i: Item) => i.options.flatMap(o => o.legs || []);
+  const fresh = new Set(added.map(i => i.id));
+  return trip.items.filter(x => !fresh.has(x.id) && x.status !== "dropped" && x.cat === added[0]?.cat && added.some(n => {
+    if (n.cat === "stay") return !!(x.from && x.to && n.from && n.to && x.from < n.to && n.from < x.to);
+    if (n.cat !== "flights") return false;
+    const a = who(x);
+    if (![...who(n)].some(id => a.has(id))) return false;
+    return legs(n).some(l => legs(x).some(m => m.dir === l.dir && (m.from === l.from || m.to === l.to)));
+  }));
+}
+
+export interface Booked { status: "booked" | "paid"; ref?: string; paidBy?: string; paidAt?: string; amountEur?: number }
+
+/**
+ * nach der Buchung über den Link: Posten gebucht bzw. bezahlt. Das gezeigte Angebot (gewählt, sonst das erste) gilt als
+ * gewählt, Teile desselben Pakets ziehen mit; bezahlt bleibt bezahlt. Zahlung ohne Betrag: der offene Rest.
+ */
+export function markBooked(trip: Trip, id: string, b: Booked): Item | "missing" | "dropped" {
+  const it = trip.items.find(i => i.id === id && !i.auto);
+  if (!it) return "missing";
+  if (it.status === "dropped") return "dropped";
+  if (it.options.length > 1 && !it.chosen) it.chosen = it.options[0].id;
+  const status: Status = it.status === "paid" ? "paid" : b.status;
+  const pk = it.options.find(o => o.pkg)?.pkg?.id;
+  for (const x of trip.items) if (x === it || (pk && x.status !== "dropped" && x.options.some(o => o.pkg?.id === pk))) x.status = status;
+  if (b.ref) it.booking = { ...it.booking, ref: b.ref };
+  if (b.paidBy) {
+    const paid = (it.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+    const amount = Math.round((b.amountEur ?? Math.max(0, (itemEur(trip, it) || 0) - paid)) * 100) / 100;
+    if (amount > 0) it.payments = [...(it.payments || []), { amount, by: b.paidBy, at: b.paidAt || day() }];
+  }
+  return it;
+}
+
 export const isCat = (v: unknown): v is CatKey => (CAT_KEYS as unknown[]).includes(v);
 
 /** Betrag eines Postens grob in Euro (gewählte oder günstigste Option); genaue Aufteilung rechnet die App */
@@ -286,16 +329,18 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
       ...(eur != null ? { eur } : {}), ...(o?.estimate ? { estimate: true } : {}), ...(i.arrival ? { arrival: true } : {}),
       ...(i.from ? { from: i.from, to: i.to } : {}), ...(o?.source?.url ? { link: partner ? o.source.url : plainLink(o.source.url) } : {}),
       ...(i.options.length > 1 ? { offers: i.options.length } : {}),
+      ...(i.booking?.ref ? { bookingRef: i.booking.ref } : {}), ...(i.payments?.length ? { paidEur: Math.round(i.payments.reduce((s, p) => s + (p.amount || 0), 0)) } : {}),
       // Nebenkosten (nicht enthalten, nicht weggeklickt) und Kaution: die genaue Summe rechnet die App
       ...(o?.extras?.some(x => !x.off && x.pay !== "included") ? { extraCosts: o.extras.filter(x => !x.off && x.pay !== "included").map(x => ({ kind: x.kind, amount: x.amount, per: x.basis, pay: x.pay, ...(x.est ? { estimate: true } : {}) })) } : {}),
       ...(o?.deposit?.amount ? { deposit: { amount: o.deposit.amount, currency: o.price.currency, ...(o.deposit.how ? { how: o.deposit.how } : {}) } } : {})
     };
   });
   const cnt = (k: string) => act.filter(t => ageClassOf(t.age, t.kind) === k).length;
+  const teens = act.filter(t => t.age != null && t.age < 18 && ageClassOf(t.age) === "adult").length;
   const total = items.reduce((s, i) => s + (i.status !== "dropped" && "eur" in i ? (i.eur as number) : 0), 0);
   return {
     id: trip.id, name: trip.name, place: trip.place, country: trip.country || undefined, from: trip.from, to: trip.to, role,
-    travelers: { adults: cnt("adult"), children: cnt("child"), infants: cnt("infant") }, ...tripPeople(trip),
+    travelers: { adults: cnt("adult"), children: cnt("child"), infants: cnt("infant"), ...(teens ? { teens, note: "Teens (12-17) pay adult fares and are counted in adults" } : {}) }, ...tripPeople(trip),
     items, approxTotalEur: total, ...(trip.prefs && Object.keys(trip.prefs).length ? { preferences: trip.prefs } : {}),
     note: "Approximate total of the items (chosen or cheapest offer), without extraCosts (tourist tax, cleaning, baggage … paid on site or extra; add them when comparing) and without deposits (only blocked, credit card only if how = credit). The way to the departure airport and back (car incl. parking or train, per household) and meals are added automatically by the Split&Fly app and are not listed here; do not add them. Exact split per person is calculated in the app."
   };
@@ -315,8 +360,66 @@ export function tripPeople(trip: Trip) {
       id: t.id, first: t.name, family: hhKey(t), ...(t.age != null ? { age: t.age } : { kind: ageClassOf(t.age, t.kind) }),
       ...(t.placeholder ? { placeholder: true } : {}), ...(t.personId ? { saved: t.personId } : {})
     })),
-    families: [...new Set(act.map(hhKey))].map(name => { const home = homeOf(trip.households?.[name]); return { name, ...(home ? { home } : {}) }; })
+    families: [...new Set(act.map(hhKey))].map(name => {
+      const h = trip.households?.[name], home = homeOf(h);
+      return { name, ...(home ? { home } : {}), ...(h ? householdView(h) : {}) };
+    })
   };
+}
+
+/** Einstellungen einer Familie, wie der Assistent sie setzt (update_travelers households) */
+export interface HouseholdInput {
+  toAirport?: AccessMode; carpoolWith?: string; cars?: number; fuelMoney?: boolean; parkingFree?: boolean; parkingEur?: number | null; rideEur?: number | null;
+  purse?: "joint" | "each"; arrive?: string | null; depart?: string | null;
+}
+
+function householdView(h: Household): HouseholdInput {
+  return {
+    ...(h.mode ? { toAirport: h.mode } : {}), ...(h.link ? { carpoolWith: h.link } : {}), ...(h.cars ? { cars: h.cars } : {}),
+    ...(h.mode === "drop" ? { fuelMoney: !h.dropFree } : {}), ...(h.parking?.off ? { parkingFree: true } : {}), ...(h.parking?.paid != null ? { parkingEur: h.parking.paid } : {}), ...(h.ride ? { rideEur: h.ride } : {}),
+    ...(h.kasse ? { purse: h.kasse } : {}), ...(h.arrive ? { arrive: h.arrive } : {}), ...(h.depart ? { depart: h.depart } : {})
+  };
+}
+
+/**
+ * Anreise zum Flughafen, Kasse und eigene Anwesenheit einer Familie wie in den Familien-Einstellungen der App.
+ * Gibt einen Fehlertext zurück, sonst null. null bei Beträgen und Tagen: Angabe entfernen.
+ */
+export function setHousehold(trip: Trip, family: string, s: HouseholdInput): string | null {
+  const fams = new Set(trip.travelers.filter(isActive).map(hhKey));
+  if (!fams.has(family)) return `Unknown family "${family}" in this trip: use a family name from get_trip`;
+  trip.households ||= {};
+  const h: Household = { ...(trip.households[family] || {}) };
+  if (s.toAirport != null) {
+    if (!ACCESS_MODES.includes(s.toAirport)) return `toAirport must be one of ${ACCESS_MODES.join(", ")}`;
+    h.mode = s.toAirport;
+    if (s.toAirport !== "with") delete h.link;
+  }
+  if (s.carpoolWith != null) {
+    if (!fams.has(s.carpoolWith) || s.carpoolWith === family) return `carpoolWith must be another family in this trip`;
+    h.mode = "with"; h.link = s.carpoolWith;
+  }
+  if (h.mode === "with" && !h.link) return "toAirport with needs carpoolWith (the family they ride with)";
+  if (s.fuelMoney != null) { if (s.fuelMoney) delete h.dropFree; else h.dropFree = true; }
+  if (s.cars != null) h.cars = Math.max(1, Math.min(5, Math.round(s.cars)));
+  if (s.parkingFree != null || s.parkingEur !== undefined) {
+    const paid = s.parkingEur === undefined ? h.parking?.paid : s.parkingEur ?? undefined;
+    const off = s.parkingFree ?? (s.parkingEur != null ? false : h.parking?.off);
+    h.parking = { ...(off ? { off: true } : {}), ...(paid != null && !off ? { paid: Math.max(0, paid) } : {}) };
+    if (!h.parking.off && h.parking.paid == null) delete h.parking;
+  }
+  if (s.rideEur !== undefined) { if (s.rideEur == null) delete h.ride; else h.ride = Math.max(0, s.rideEur); }
+  if (s.purse) h.kasse = s.purse;
+  for (const k of ["arrive", "depart"] as const) {
+    const v = s[k];
+    if (v === undefined) continue;
+    if (v == null) { delete h[k]; continue; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return `${k} must be YYYY-MM-DD`;
+    h[k] = v;
+  }
+  if (h.arrive && h.depart && h.depart < h.arrive) return "depart is before arrive";
+  trip.households[family] = h;
+  return null;
 }
 
 /** Wohnort einer Familie in der Reise (Anfahrt zum Flughafen, Startort) */
