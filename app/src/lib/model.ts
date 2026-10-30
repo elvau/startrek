@@ -565,6 +565,8 @@ export interface Trip {
   home?: string;
   /** „Zuhause während der Reise“ (#323) für diese Reise ein- bzw. ausgeschaltet; fehlt: aus den Vorlieben */
   homeCare?: boolean;
+  /** Vorlieben nur für diese Reise (#602): gehen den eigenen und denen der Gruppe vor */
+  prefs?: Prefs;
   event?: TripEvent;
   /** eigene Bezugspunkte für Entfernungen (z. B. Partylocation, Stadion), #441 */
   refs?: { id: string; name: string; lat: number; lon: number }[];

@@ -1,6 +1,7 @@
 /*
- * Vorlieben: eigene (im Konto) und je Gruppe. Eine Reise nimmt die eigenen Vorlieben und darüber die der kleinsten
- * gespeicherten Gruppe, in der alle ihre gespeicherten Personen stecken. Gesperrte Länder werden zusammengelegt.
+ * Vorlieben: eigene (im Konto), je Gruppe und je Reise. Eine Reise nimmt die eigenen Vorlieben, darüber die der kleinsten
+ * gespeicherten Gruppe, in der alle ihre gespeicherten Personen stecken, darüber ihre eigenen (#602). Gesperrte Länder
+ * werden zusammengelegt.
  */
 import type { Directory, Group, Prefs, Trip } from "./model";
 import type { FlightOffer } from "./flights/types";
@@ -21,7 +22,10 @@ export function groupFor(trip: Trip, dir: Directory): Group | null {
   return dir.groups.filter(g => ids.every(id => g.memberIds.includes(id))).sort((a, b) => a.memberIds.length - b.memberIds.length)[0] || null;
 }
 
-export const prefsFor = (trip: Trip | null, dir: Directory): Prefs => mergePrefs(dir.prefs, trip ? groupFor(trip, dir)?.prefs : undefined);
+/** Vorlieben ohne die der Reise selbst: eigene, darüber die der Gruppe */
+export const basePrefsFor = (trip: Trip | null, dir: Directory): Prefs => mergePrefs(dir.prefs, trip ? groupFor(trip, dir)?.prefs : undefined);
+/** Vorlieben einer Reise: eigene, Gruppe, darüber die der Reise (#602) */
+export const prefsFor = (trip: Trip | null, dir: Directory): Prefs => mergePrefs(basePrefsFor(trip, dir), trip?.prefs);
 
 /** Wohnort der Person „Ich“ (für die KI auf der Startseite) */
 export const myHome = (dir: Directory) => (dir.me ? dir.people.find(p => p.id === dir.me)?.home : undefined);

@@ -97,6 +97,37 @@ try {
   await a.keyboard.press("Escape");
   log("Name aus Ziel und Zeitraum:", tname, "· leere Startreise weggeräumt");
 
+  // Vorlieben nur für diese Reise (#602): aus den Reise-Einstellungen, Reiter „Diese Reise“, abweichend und zurück
+  await a.locator(".top-edit").click();
+  if (!(await a.locator(".trip-ed .te-prefs").innerText()).includes("wie sonst")) fail("Reise-Vorlieben: Ausgangslage");
+  await a.locator(".trip-ed .te-prefs-edit").click();
+  const tp = a.locator(".modal", { hasText: "Meine Vorlieben" });
+  await tp.locator(".pv-tab.on", { hasText: "Diese Reise" }).waitFor();
+  await tp.locator('.pv.group [data-card="stay"] .pv-c', { hasText: "Halbpension" }).click();
+  await tp.locator(".pv-tab", { hasText: "Diese Reise" }).locator(".pv-n", { hasText: "1 abweichend" }).waitFor();
+  if (process.env.SHOTS) await tp.screenshot({ path: `${process.env.SHOTS}/trip-prefs.png` });
+  await tp.locator(".modal-h .x").click();
+  await until(async () => (await a.locator(".trip-ed .te-prefs").innerText()).includes("1 abweichend"), "Zähler in den Reise-Einstellungen");
+  await a.locator(".trip-ed .te-prefs-edit").click();
+  await tp.locator(".pv-trip-reset").click();
+  await tp.locator(".modal-h .x").click();
+  await until(async () => (await a.locator(".trip-ed .te-prefs").innerText()).includes("wie sonst"), "Reise-Vorlieben zurückgesetzt");
+  await a.locator(".trip-ed .btn", { hasText: "Fertig" }).click();
+  if (process.env.SHOTS) {
+    // Handy: über das Menü „⋯“, Reiter „Diese Reise“
+    await a.setViewportSize({ width: 390, height: 844 });
+    await a.locator(".top-more .tbtn").click();
+    await a.locator(".top-pop .tm-act", { hasText: "Vorlieben" }).click();
+    await tp.locator(".pv-tab", { hasText: "Diese Reise" }).click();
+    await tp.locator('.pv.group [data-card="stay"] .pv-c', { hasText: "Halbpension" }).click();
+    await a.waitForTimeout(400);
+    await a.screenshot({ path: `${process.env.SHOTS}/trip-prefs-mobile.png` });
+    await tp.locator(".pv-trip-reset").click();
+    await tp.locator(".modal-h .x").click();
+    await a.setViewportSize({ width: 1280, height: 900 });
+  }
+  log("Vorlieben für diese Reise: Halbpension abweichend (Zähler), zurück auf „wie sonst“");
+
   // Umbenennen direkt an der Überschrift: eigener Name steht groß, Ort wandert in die Zeile darunter
   await a.locator(".hero h1.h1-name").click();
   await a.keyboard.press("ControlOrMeta+a");

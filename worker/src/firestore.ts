@@ -4,7 +4,7 @@
  * lesen nur Mitglieder, ändern nur Besitzer und Bearbeiter, Mitglieder und Einladung bleiben unangetastet.
  */
 
-import type { Directory } from "../../app/src/lib/model";
+import type { Directory, Prefs } from "../../app/src/lib/model";
 
 export interface StoreEnv {
   /** Dienstkonto als JSON (Secret); fehlt es, kann der Konnektor nur suchen */
@@ -165,6 +165,43 @@ export function profileStore(env: StoreEnv, f: typeof fetch = fetch): ((uid: str
     try { d = JSON.parse(String(fromFs(doc.fields?.data) ?? "null")); } catch {}
     if (!d || typeof d !== "object") return null;
     return { ...d, people: Array.isArray(d.people) ? d.people : [], groups: Array.isArray(d.groups) ? d.groups : [] };
+  };
+}
+
+/**
+ * Eigene Vorlieben im Konto ändern (#602): Stand lesen, Vorlieben ändern, nur speichern, wenn ihn inzwischen niemand
+ * geändert hat (sonst einmal neu). Alles andere im Stand (Personen, Gruppen, AGB …) bleibt, wie es ist.
+ */
+export function profilePrefsSaver(env: StoreEnv, f: typeof fetch = fetch): ((uid: string, change: (cur: Prefs) => Prefs) => Promise<Prefs>) | null {
+  const c = fsClient(env, f);
+  if (!c) return null;
+  const { root, base, call } = c;
+  return async (uid, change) => {
+    for (let attempt = 0; ; attempt++) {
+      type Doc = { fields?: Record<string, FsValue>; updateTime?: string };
+      let doc: Doc | null = null;
+      try { doc = await call(`${base}/profiles/${encodeURIComponent(uid)}`) as Doc; }
+      catch (e) { if ((e as { status?: number }).status !== 404) throw e; }
+      let d: Partial<Directory> = {};
+      try { d = JSON.parse(String(fromFs(doc?.fields?.data) ?? "{}")) || {}; } catch {}
+      const prefs = change(d.prefs || {});
+      const next = { people: [], groups: [], ...d, prefs };
+      try {
+        await call(`${base}:commit`, {
+          method: "POST",
+          body: JSON.stringify({ writes: [{
+            update: { name: `${root}/profiles/${uid}`, fields: { data: toFs(JSON.stringify(next)) } },
+            updateMask: { fieldPaths: ["data"] },
+            currentDocument: doc?.updateTime ? { updateTime: doc.updateTime } : { exists: false },
+            updateTransforms: [{ fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" }]
+          }] })
+        });
+        return prefs;
+      } catch (e) {
+        const code = (e as { code?: string }).code;
+        if (attempt || (code !== "FAILED_PRECONDITION" && code !== "ALREADY_EXISTS")) throw e;
+      }
+    }
   };
 }
 
