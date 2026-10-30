@@ -179,7 +179,8 @@ EZB um (`app/src/lib/fx.ts`, einmal am Tag geholt, 12 Stunden zwischengespeicher
   nach Hinterlegen einer Karte; Provision je Buchung). Zwei Schritte: Hotels am Ort (`/data/hotels`, Name, Lage, Sterne,
   Foto), dann Preise (`/hotels/rates`). Nur Hotels; bei „Ganze Unterkunft“ oder Pool/Küche/Klima/Parkplatz als Pflicht
   bleibt liteAPI still. Braucht das Land als Code (die App schickt `cc`). Optional `LITEAPI_LINK` (Text): Adresse der
-  eigenen liteAPI-Buchungsseite (White Label) für „Beim Anbieter“. Code: `app/src/lib/stays/liteapi.ts`.
+  eigenen liteAPI-Buchungsseite (White Label, live: `https://hotels.splitandfly.com`) für „Beim Anbieter“; Hotel-Links mit
+  `occupancies` (Personen je Zimmer, JSON base64) wie deren Hotelseite. Code: `app/src/lib/stays/liteapi.ts`.
 
 Die Suche fragt alle gleichzeitig, führt gleiche Unterkünfte zusammen (gleicher Name, gleiche Lage,
 die günstigere bleibt) und liefert Gesamtpreise für den ganzen Aufenthalt.
