@@ -114,7 +114,9 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
   („EXPEDIA ist eine Marke von Expedia, Inc.“) unten auf der Seite bzw. im Impressum.
   Link-IDs (CJ → Links, Advertiser 5289015): mit Deep Linking „Städtetrips für Erkundungslustige [DE]“ 15261175 und
   „Hello Sunshine! [DE]“ 15261078 (Text-Links); ohne Deep Linking DE_Hotel 13852993, DE_Flight+Hotel 13853176,
-  AT_Home 13853200. Außerdem „Search APIs-DE“ 13991274 und „Deeplink Builder DE“ 13904715 (SmartLinks, noch ansehen).
+  AT_Home 13853200. Außerdem „Search APIs-DE“ 13991274 und „Deeplink Builder DE“ 13904715 (SmartLinks; „Search APIs“ führt nur auf die
+  Startseite, keine Schnittstelle). expedia.de hat keine Kreuzfahrten (Reiter: Unterkünfte, Flüge, Mietwagen,
+  Reisepakete, Aktivitäten). XAP-API von Expedia Group: neue Anträge pausiert (30.10.2026, #610).
 - **Reiseversicherung:** nur als Tipp verlinken, keine Beratung und kein Tarifvergleich (sonst Erlaubnis nach § 34d GewO nötig).
 
 ## Awin
