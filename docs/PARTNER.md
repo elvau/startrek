@@ -104,7 +104,7 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
   Expedia im Domainnamen, iFrames, Pop-ups, Browser-Erweiterungen, Scrapen der Expedia-Seiten, Sub-Affiliates,
   Expedia-Inhalte auf fremden Seiten (daher wie Viator nur auf splitandfly.com, nicht über den KI-Konnektor).
   Deeplinks laut Bedingungen über den Deeplink-Generator, erzeugte Links nicht verändern; ob selbst gebaute
-  Such-Links über CJ (`?url=`) zulässig sind, bei expediadach@cj.com erfragen. Bei Nutzung der Marke Markenhinweis
+  Such-Links über CJ (`?url=`) zulässig sind, bei expediadach@cj.com angefragt (30.10.2026, Antwort offen). Bei Nutzung der Marke Markenhinweis
   („EXPEDIA ist eine Marke von Expedia, Inc.“) unten auf der Seite bzw. im Impressum.
 - **Reiseversicherung:** nur als Tipp verlinken, keine Beratung und kein Tarifvergleich (sonst Erlaubnis nach § 34d GewO nötig).
 
