@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import trivago from "./trivago.fixture.json";
 import booking from "./booking.fixture.json";
-import { boardOf, bookingArgs, bookingMarket, trivagoMarket, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs } from "./providers";
+import { boardOf, bookingArgs, bookingMarket, trivagoMarket, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs, trivagoTool } from "./providers";
 import { configuredStays, mergeStays, parseStayQuery, searchStays, STAY_PROVIDERS } from "./search";
 import { centerKm, keepStays, sortStays } from "./sort";
 import { activeMins, defaultStayQuery, effectiveSources, sourceNotWired, guests, staysHidden, stayToOption, takeStay } from "./app";
@@ -37,6 +37,29 @@ describe("Unterkunftssuche: Anbieter", () => {
     expect(l[0].facts).toEqual(["Küche", "Parkplatz", "Klimaanlage", "Waschmaschine"]);
     expect(l[1]).toMatchObject({ name: "Central Square Heritage Hotel", total: 1476, stars: 4, reviews: 1889, via: "CHECK24" });
     expect(l[0].stars).toBeUndefined();
+  });
+  it("Trivago, Format mit Angeboten je Haus (#600): günstigstes Angebot mit Anbieter, Link, Verpflegung und Stornierung", () => {
+    const deal = (advertiser: string, stay: string, ...attrs: string[]) => ({ advertiser, price_per_night: "1€", price_per_stay: stay, currency: "EUR", deal_url: `https://www.trivago.de/x?${advertiser}`, price_attributes: attrs.map(id => ({ id, name: id })) });
+    const data = { accommodations: [
+      { accommodation_id: "100-37116", accommodation_name: "Hotel Amic Horizonte", hotel_rating: 3, review_rating: "7.5", review_count: "8950", top_amenities: "Klimaanlage, Fitnessraum", latitude: 39.55, longitude: 2.62, distance: "Palma de Mallorca, 2,9 km bis Zentrum",
+        deals: [deal("Tui.com", "510€", "breakfastIncluded"), deal("Expedia", "355€", "roomOnly", "nonRefundable"), deal("Hotelwebseite", "383€", "roomOnly")] },
+      { accommodation_id: "100-1456711", accommodation_name: "Hotel Hostal Cuba", hotel_rating: 4, review_rating: "8.5", review_count: "3981", top_amenities: "Klimaanlage",
+        deals: [deal("Tui.com", "658€", "breakfastIncluded"), deal("Super.com", "604€", "breakfastIncluded", "freeCancellation"), deal("Hotelwebseite", "1.689€", "roomOnly")] },
+      { accommodation_id: "100-1", accommodation_name: "Ohne Preis", deals: [] }
+    ] };
+    const l = fromTrivago(data);
+    expect(l).toHaveLength(2);
+    expect(l[0]).toMatchObject({ id: "trivago:100-37116", name: "Hotel Amic Horizonte", total: 355, via: "Expedia", url: "https://www.trivago.de/x?Expedia", board: "self", score: 7.5, reviews: 8950, stars: 3 });
+    expect(l[0].freeCancel).toBeUndefined();
+    expect(l[1]).toMatchObject({ total: 604, via: "Super.com", board: "breakfast", freeCancel: true });
+  });
+  it("Trivago: mit Mittelpunkt des Orts die Umkreissuche, sonst nach Namen (#600)", () => {
+    expect(trivagoTool(q)).toBe("trivago-accommodation-search");
+    const near = { ...q, lat: 39.57, lon: 2.65 };
+    expect(trivagoTool(near)).toBe("trivago-accommodation-radius-search");
+    const args = trivagoArgs(near);
+    expect(args).toMatchObject({ latitude: 39.57, longitude: 2.65, arrival: "2027-07-18" });
+    expect(args).not.toHaveProperty("query");
   });
   it("Trivago: Art der Unterkunft (mit Küche = ganze Unterkunft, mit Sternen = Hotel)", () => {
     expect(fromTrivago(trivago, { type: "whole" }).map(o => o.name)).toEqual(["Nennolina", "Ferienwohnung Klara"]);

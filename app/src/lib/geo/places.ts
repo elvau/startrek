@@ -169,12 +169,12 @@ export const travelHours = (km: number) => (km <= 100 ? 0.4 + km / 70 : 0.6 + km
 /* ---------- Laden (einmal pro Sitzung, Orte nur für das gebrauchte Land) ---------- */
 
 /** Daten liegen neben der App (world.json, packs.json, places/) */
-const base = () => (import.meta.env?.BASE_URL as string | undefined) || "/";
+const base = () => ((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL) || "/";
 const bucket = (cc: string) => ((cc.charCodeAt(0) * 31 + cc.charCodeAt(1)) % 16).toString(16);
 const cache: { core?: Promise<void>; buckets: Record<string, Promise<void>> } = { buckets: {} };
 
 export async function loadGeo(g: GeoData, ccs: string[], fetchFn: typeof fetch = fetch): Promise<void> {
-  const json = (u: string) => fetchFn(base() + u).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  const json = (u: string): Promise<any> => fetchFn(base() + u).then(r => (r.ok ? r.json() : null)).catch(() => null);
   cache.core ??= Promise.all([json("world.json"), json("packs.json")]).then(([w, p]) => {
     if (w?.countries) g.world = w.countries;
     if (p) g.packs = p;

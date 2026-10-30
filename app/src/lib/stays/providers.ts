@@ -95,9 +95,13 @@ export async function searchBooking(q: StayQuery, url: string, f: typeof fetch =
 
 /* ---------- Trivago (vergleicht viele Portale, z. B. Airbnb, CHECK24, Booking.com) ---------- */
 
+/** mit Mittelpunkt des Orts die Umkreissuche (empfiehlt Trivago für Städte, liefert deutlich mehr), sonst nach Namen (#600) */
+const trivagoNear = (q: StayQuery) => Number.isFinite(q.lat) && Number.isFinite(q.lon);
+export const trivagoTool = (q: StayQuery) => (trivagoNear(q) ? "trivago-accommodation-radius-search" : "trivago-accommodation-search");
+
 export function trivagoArgs(q: StayQuery) {
   return {
-    query: q.place, arrival: q.checkin, departure: q.checkout,
+    ...(trivagoNear(q) ? { latitude: q.lat, longitude: q.lon } : { query: q.place }), arrival: q.checkin, departure: q.checkout,
     adults: q.adults, children: q.childAges.length, ...(q.childAges.length ? { children_ages: q.childAges.join("-") } : {}),
     rooms: Math.min(q.rooms, q.adults), ...trivagoMarket(q), currency: q.currency || "EUR",
     ...trivagoFilters(q)
@@ -134,17 +138,31 @@ function trivagoFilters(q: StayQuery) {
   };
 }
 
+/** Verpflegung laut Merkmalen eines Angebots (price_attributes) */
+const DEAL_BOARD: Record<string, StayOffer["board"]> = { roomOnly: "self", breakfastIncluded: "breakfast", halfBoard: "half", fullBoard: "full", allInclusive: "all" };
+
+/** Angebote je Haus (Format seit 10/2026, #600): das günstigste, mit Anbieter, Link und Verpflegung */
+function cheapestDeal(a: any): { total: number; via?: string; url?: string; currency?: string; board?: StayOffer["board"]; freeCancel?: boolean } | null {
+  const deals = (Array.isArray(a.deals) ? a.deals : []).map((d: any) => ({ d, total: priceNum(d.price_per_stay) })).filter((x: { total: number }) => x.total > 0);
+  if (!deals.length) return null;
+  const { d, total } = deals.reduce((m: { total: number }, x: { total: number }) => (x.total < m.total ? x : m));
+  const ids: string[] = (Array.isArray(d.price_attributes) ? d.price_attributes : []).map((x: any) => String(x?.id || ""));
+  const board = ids.map(id => DEAL_BOARD[id]).find(b => !!b);
+  return { total, via: d.advertiser || undefined, url: d.deal_url || undefined, currency: d.currency || undefined, ...(board ? { board } : {}), ...(ids.includes("freeCancellation") ? { freeCancel: true } : {}) };
+}
+
 export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[] {
   return (data?.accommodations || []).map((a: any) => {
     const amen = String(a.top_amenities || "").split(/,\s*/).filter(Boolean);
+    const deal = cheapestDeal(a);
     // Trivago kennt keinen Filter nach Art: ganze Unterkunft = mit Küche, Hotel = mit Sternen
     const kind = amen.some(x => /küche|kitchen/i.test(x)) ? "whole" : a.hotel_rating > 0 ? "hotel" : undefined;
     const o: StayOffer & { kind?: string } = {
-      id: "trivago:" + a.accommodation_id, source: "trivago", sourceName: "Trivago", via: a.advertisers || undefined,
-      name: a.accommodation_name || "?", total: priceNum(a.price_per_stay), currency: a.currency || "EUR", url: a.accommodation_url,
+      id: "trivago:" + a.accommodation_id, source: "trivago", sourceName: "Trivago", via: deal?.via || a.advertisers || undefined,
+      name: a.accommodation_name || "?", total: deal ? deal.total : priceNum(a.price_per_stay), currency: deal?.currency || a.currency || "EUR", url: deal?.url || a.accommodation_url,
       score: num(a.review_rating), reviews: num(priceNum(a.review_count)), stars: num(a.hotel_rating) || undefined,
       place: a.distance || a.country_city || undefined, lat: num(a.latitude), lon: num(a.longitude), image: a.main_image || undefined,
-      facts: factsOf(amen), board: boardOf(amen, a.accommodation_name), kind
+      facts: factsOf(amen), board: deal?.board || boardOf(amen, a.accommodation_name), kind, ...(deal?.freeCancel ? { freeCancel: true } : {})
     };
     return o;
   }).filter((o: StayOffer & { kind?: string }) => o.total > 0 && !(q?.type === "whole" && o.kind === "hotel") && !(q?.type === "hotel" && o.kind === "whole"))
@@ -156,8 +174,8 @@ export async function searchTrivago(q: StayQuery, url = TRIVAGO_MCP, f: typeof f
   // auftaucht, hat Frühstück dabei (live: Welikehotel Triton Beach, sonst als „unbekannt“ übernommen)
   const withBreakfast = !(q.must || []).includes("breakfast") && q.type !== "whole";
   const [all, bf] = await Promise.all([
-    callTool(url, "trivago-accommodation-search", trivagoArgs(q), "Trivago", f),
-    withBreakfast ? callTool(url, "trivago-accommodation-search", trivagoArgs({ ...q, must: [...(q.must || []), "breakfast"] }), "Trivago", f).catch(() => null) : null
+    callTool(url, trivagoTool(q), trivagoArgs(q), "Trivago", f),
+    withBreakfast ? callTool(url, trivagoTool(q), trivagoArgs({ ...q, must: [...(q.must || []), "breakfast"] }), "Trivago", f).catch(() => null) : null
   ]);
   return markBreakfast(fromTrivago(all, q), bf ? fromTrivago(bf, q) : (q.must || []).includes("breakfast") ? "all" : []);
 }

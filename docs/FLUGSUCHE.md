@@ -166,7 +166,10 @@ EZB um (`app/src/lib/fx.ts`, einmal am Tag geholt, 12 Stunden zwischengespeicher
 ## Unterkünfte
 
 - **Trivago** vergleicht viele Portale (Airbnb, CHECK24, Booking.com, Hotelseiten …) und läuft über den
-  öffentlichen MCP-Server `https://mcp.trivago.com/mcp` (andere Adresse: Variable `TRIVAGO_MCP_URL`).
+  öffentlichen MCP-Server `https://mcp.trivago.com/mcp` (andere Adresse: Variable `TRIVAGO_MCP_URL`). Mit Mittelpunkt
+  des Orts (`lat`/`lon`) die Umkreissuche `trivago-accommodation-radius-search` (empfiehlt Trivago für Städte), sonst
+  `trivago-accommodation-search` mit dem Namen. Seit 10/2026 stehen Preis, Anbieter und Link je Haus in `deals[]`
+  (#600); übernommen wird das günstigste Angebot samt Verpflegung (`price_attributes`) und kostenloser Stornierung.
 - **Booking.com** wird erst gefragt, wenn die Adresse seines MCP-Servers eingetragen ist:
   Cloudflare-Dashboard → **Workers & Pages → startrek → Settings → Variables and Secrets → Add**,
   Typ „Text“, Name `BOOKING_MCP_URL`. Bis dahin zeigt die Suche „Booking.com: noch nicht eingerichtet“.
@@ -185,7 +188,8 @@ Filter (Pool, Frühstück inklusive, Küche, Klimaanlage, Parkplatz, kostenlos s
 gehen an beide Anbieter (Trivago `filters`/`hotel_rating`/`review_rating`, Booking.com `facilities`/`meal_plan`/
 `star_rating`/`minimum_review_score`); Sterne und Bewertung prüfen Such-Dienst und App zusätzlich selbst.
 Sortieren: Preis, Bewertung, Nähe Zentrum (aus „x km bis Zentrum“) und, mit Kindern, „Für Familien“
-(Pool, Familienzimmer, Küche, Strand, Bewertung). Trivago nennt keine Verpflegung je Zimmer, nur einzelne Merkmale.
+(Pool, Familienzimmer, Küche, Strand, Bewertung). Trivago nennt die Verpflegung je Angebot (Frühstück, Halb-/Vollpension,
+nur Zimmer); ältere Antworten ohne `deals` nur über einzelne Merkmale.
 
 ## Lokal ausprobieren
 

@@ -16,6 +16,9 @@ import { addCost, addFlight, addStay, isCat, LANGS, newTrip, removeItem, tripSum
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
 import { travelersFor, travelersView } from "../../app/src/lib/connector/people";
 import type { KeyInfo } from "./apikey";
+import { ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
+import world from "../../public/world.json";
+import packs from "../../public/packs.json";
 
 export interface McpDeps {
   flights: (q: FlightQuery) => Promise<SearchResult>;
@@ -114,7 +117,8 @@ const TRIP_TOOLS = [
       tripId: str("Trip id"), category: { type: "string", enum: ["flights", "stay", "transport", "attractions", "misc"], description: "flights, stay, transport (rental car, transfers, own arrival instead of a flight), attractions, misc" },
       name: str("Short name"), amountEur: { type: "number", description: "Amount in EUR", minimum: 0 },
       perPerson: { type: "boolean", description: "true: amount per person; false (default): total for the group" }, link: str("Optional https link (e.g. ticket shop)"),
-      arrival: { type: "boolean", description: "true only if the travelers reach the destination itself without a flight (own car, train, bus all the way); never for the way to the departure airport" }
+      arrival: { type: "boolean", description: "true only if the travelers reach the destination itself without a flight (own car, train, bus all the way); never for the way to the departure airport" },
+      estimate: { type: "boolean", description: "true if the amount is an estimate and not a real offer" }
     }, required: ["tripId", "category", "name", "amountEur"] }
   },
   { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay).", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip") }, required: ["tripId", "itemId"] } }
@@ -167,6 +171,9 @@ const kids = (v: unknown) => (Array.isArray(v) ? v.filter(a => Number.isInteger(
 const lng = (v: unknown) => (typeof v === "string" && LANGS.includes(v) ? v : "de");
 const hm = (iso: string) => iso.slice(0, 16).replace("T", " ");
 
+// Orte und Länder wie in der App (ohne die kleinen Orte): Ländercode und Mittelpunkt für die Unterkunftssuche (#593)
+const GEO: GeoData = { world: (world as any).countries, packs: packs as any, places: {} };
+
 async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Promise<object> {
   const today = deps.today || new Date().toISOString().slice(0, 10);
   if (name.startsWith("search_")) { const no = await deps.allowSearch(); if (no) fail(no); }
@@ -196,8 +203,12 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
     }
     case "search_stays": {
       const adults = a.adults;
+      const cc = ccOf(GEO, S(a.country, 60));
+      const sp = searchParts(GEO, S(a.place), cc);
+      const kcc = ccOf(GEO, sp.country) || cc;
+      const city = findCity(GEO, sp.place, kcc);
       const q = parseStayQuery({
-        place: a.place, country: a.country, checkin: a.checkin, checkout: a.checkout, adults, childAges: kids(a.childAges),
+        place: sp.place, country: sp.country || a.country, ...(kcc ? { cc: kcc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin: a.checkin, checkout: a.checkout, adults, childAges: kids(a.childAges),
         rooms: Number.isInteger(a.rooms) ? a.rooms : Math.max(1, Math.ceil((Number(adults) || 1) / 2)), type: a.type || "all", currency: "EUR"
       });
       if (typeof q === "string") fail(q);
@@ -280,7 +291,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       if (!n || !isCat(a.category) || !isFinite(eur) || eur < 0 || eur > 100000) fail("category, name and amountEur (0-100000) are required");
       const link = typeof a.link === "string" && /^https:\/\/[^\s]{4,300}$/.test(a.link) ? a.link : undefined;
       return edit(store!, a.tripId, user, t => {
-        const it = addCost(t, { cat: a.category, name: n, eur: Math.round(eur * 100) / 100, perPerson: a.perPerson === true, url: link, arrival: a.arrival === true });
+        const it = addCost(t, { cat: a.category, name: n, eur: Math.round(eur * 100) / 100, perPerson: a.perPerson === true, url: link, arrival: a.arrival === true, estimate: a.estimate === true });
         return { added: it.id, name: it.name };
       });
     }
