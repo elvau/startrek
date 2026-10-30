@@ -18,7 +18,7 @@ import { parseSetupRequest, setupFromGemini, setupPayload } from "../../app/src/
 import { importFromAi, importPayload, offerUsable, parseImportRequest } from "../../app/src/lib/import/ai";
 import { cruiseKey, cruisePayload, cruisesFromAi, parseCruiseQuery, type CruiseHit } from "../../app/src/lib/cruises/search";
 import { fetchPage } from "./page";
-import { offerStore } from "./offers";
+import { mcpOfferStore, offerStore } from "./offers";
 import { parseEventQuery, searchEvents } from "../../app/src/lib/events/search";
 import type { EventEnv } from "../../app/src/lib/events/types";
 import { blockedResult, parseActivityQuery, searchActivities, viatorBlock } from "../../app/src/lib/activities/search";
@@ -579,6 +579,7 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
 
   const net = meter(env);
   const ip = req.headers.get("cf-connecting-ip");
+  const kept = mcpOfferStore<Saved>(env, net);
   const offerKey = (id: string) => new Request(`https://mcp.splitandfly/offer/${user.kid}/${encodeURIComponent(id)}`);
   const limit = Number(env.MCP_DAILY) || 50;
   const res = await mcpMessage(msg, user, {
@@ -590,8 +591,9 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
     savePrefs: profilePrefsSaver(env, net) || undefined,
     saveProfile: profileSaver(env, net) || undefined,
     home: (text, cc) => findHome(text, cc, (env.APP_URL || "https://splitandfly.com/").replace(/\/?$/, "/"), net),
-    offers: {
-      put: (id, v) => caches.default.put(offerKey(id), new Response(JSON.stringify(v), { headers: { "cache-control": "max-age=21600" } })),
+    // Firestore, damit Suche und Übernahme in verschiedenen Rechenzentren laufen können; ohne Dienstkonto nur lokal
+    offers: kept ? { put: list => kept.put(user.kid, list), get: id => kept.get(user.kid, id) } : {
+      put: async list => { await Promise.all(list.map(([id, v]) => caches.default.put(offerKey(id), new Response(JSON.stringify(v), { headers: { "cache-control": "max-age=21600" } })))); },
       get: async id => { const r = await caches.default.match(offerKey(id)); return r ? await r.json() as Saved : null; }
     },
     allowSearch: async () => {

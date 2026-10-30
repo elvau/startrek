@@ -48,7 +48,7 @@ function deps(over: Partial<McpDeps> = {}) {
     stays: async () => ({ offers: [stay("s1", 600)], sources: [] }),
     events: async () => ({ events: [{ id: "e1", source: "tm", sourceName: "Ticketmaster", name: "Konzert", start: "2027-05-11T20:00", city: "Palma", url: "https://tm/x" }], sources: [] }),
     store: memStore(),
-    offers: { put: async (id, v) => { saved.set(id, JSON.parse(JSON.stringify(v))); }, get: async id => saved.get(id) || null },
+    offers: { put: async list => { for (const [id, v] of list) saved.set(id, JSON.parse(JSON.stringify(v))); }, get: async id => saved.get(id) || null },
     allowSearch: async () => (++searches > 3 ? "Daily limit reached" : null),
     version: "0.0.0", today: "2027-04-01",
     ...over
@@ -213,6 +213,32 @@ describe("KI-Konnektor (MCP)", () => {
     expect(fl.map(i => i.participants?.length)).toEqual([2, 2, 2, 2, 2]);
     expect(new Set(fl.flatMap(i => i.participants)).size).toBe(10);
     expect(fl.map(i => i.options[0].price.unit)).toEqual([480, 480, 480, 520, 520]);
+  });
+
+  it("Zubringer nur für einen Teil der Gruppe (people), danach Weiterflug für alle", async () => {
+    const d = deps({ today: "2026-10-30" });
+    const made = await tool(d, "create_trip", { place: "Málaga", from: "2027-01-17", to: "2027-01-29", travelers: [
+      { first: "Katarzyna", family: "Kronik", age: 50 }, { first: "Lena", family: "Kronik", age: 16 }, { first: "Nina", family: "Kronik", age: 14 }, { first: "Leon", family: "Kronik", age: 13 }
+    ] });
+    const id = made.data.tripId, ids = made.data.people.map((p: any) => p.id) as string[];
+    expect(made.data.travelers).toMatchObject({ adults: 4, children: 0, teens: 3 });
+    await tool(d, "search_flights", { from: ["DTM"], to: ["KTW"], depart: "2027-01-17", return: "2027-01-29", adults: 1 });
+    expect((await tool(d, "add_flight", { tripId: id, offerId: "f1", people: [ids[0]] })).data.bookings).toBe(1);
+    await tool(d, "search_flights", { from: ["KTW"], to: ["AGP"], depart: "2027-01-18", return: "2027-01-28", adults: 1, childAges: [16, 14, 13] });
+    expect((await tool(d, "add_flight", { tripId: id, offerId: "f2", people: ids })).data.bookings).toBe(1);
+    expect((await tool(d, "add_flight", { tripId: id, offerId: "f2", people: ["gibtsnicht"] })).text).toMatch(/Unknown traveler/);
+    const fl = (JSON.parse((d.store as any).docs.get(id).data) as Trip).items.filter(i => i.cat === "flights");
+    expect(fl.map(i => i.participants)).toEqual([[ids[0]], ids]);
+    expect(fl.map(i => i.options[0].price.unit)).toEqual([480, 520]);
+  });
+
+  it("Platzhalter: Jugendliche heißen Kind, zahlen aber Erwachsenentarif", async () => {
+    const d = deps();
+    const made = await tool(d, "create_trip", { place: "Málaga", adults: 1, childAges: [16, 8, 1], travelersFrom: "user" });
+    expect(made.data.people.map((p: any) => p.first)).toEqual(["Fuchs Erw. 1", "Fuchs Kind 1", "Fuchs Kind 2", "Fuchs Kleinkind 1"]);
+    expect(made.data.travelers).toMatchObject({ adults: 2, children: 1, infants: 1, teens: 1 });
+    const t: Trip = JSON.parse((d.store as any).docs.get(made.data.tripId).data);
+    expect(t.travelers.map(x => x.kind)).toEqual(["adult", "child", "child", "infant"]);
   });
 
   it("Familien und Gruppen aus dem Konto: mit Namen und PLZ sehen, echte Reisende anlegen, nie raten (#595, #608)", async () => {

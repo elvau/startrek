@@ -36,7 +36,7 @@ export function offerStore(env: StoreEnv, f: typeof fetch = fetch): OfferStore |
     },
     async sweep(now = new Date()) {
       let n = 0;
-      for (const col of ["offers", "offerInputs"]) {
+      for (const col of ["offers", "offerInputs", "mcpOffers"]) {
         const rows = await c.call(`${c.base}:runQuery`, {
           method: "POST",
           body: JSON.stringify({ structuredQuery: { from: [{ collectionId: col }], where: { fieldFilter: { field: { fieldPath: "expiresAt" }, op: "LESS_THAN", value: { timestampValue: now.toISOString() } } }, limit: 300 } })
@@ -60,6 +60,40 @@ export function offerStore(env: StoreEnv, f: typeof fetch = fetch): OfferStore |
           { update: { name: `${c.root}/offerInputs/${ik}`, fields: { ...fields({ offer: ok, until }), expiresAt } } }
         ] })
       });
+    }
+  };
+}
+
+/**
+ * Suchergebnisse des KI-Konnektors für add_flight/add_stay: einige Stunden je Schlüssel bzw. Verbindung, in Firestore
+ * (Sammlung mcpOffers). Der Zwischenspeicher von Cloudflare gilt nur im eigenen Rechenzentrum; Suche und Übernahme laufen
+ * bei Chat-Apps oft über verschiedene, dann fehlte das Angebot („Offer not found“). Kennung: Prüfwert aus Schlüssel und
+ * Angebot, kein Bezug zum Konto lesbar. Aufgeräumt wird mit sweep oben.
+ */
+export interface KeyedStore<T> { put(key: string, list: [string, T][]): Promise<void>; get(key: string, id: string): Promise<T | null> }
+
+export function mcpOfferStore<T>(env: StoreEnv, f: typeof fetch = fetch, hours = 6): KeyedStore<T> | null {
+  const c = fsClient(env, f);
+  if (!c) return null;
+  const name = async (key: string, id: string) => {
+    const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${key}\n${id}`)));
+    return [...d].map(b => b.toString(16).padStart(2, "0")).join("");
+  };
+  return {
+    async put(key, list) {
+      if (!list.length) return;
+      const expiresAt = { timestampValue: new Date(Date.now() + hours * 3600_000).toISOString() };
+      const writes = await Promise.all(list.map(async ([id, v]) => ({ update: { name: `${c.root}/mcpOffers/${await name(key, id)}`, fields: { ...fields({ data: JSON.stringify(v) }), expiresAt } } })));
+      await c.call(`${c.base}:commit`, { method: "POST", body: JSON.stringify({ writes }) });
+    },
+    async get(key, id) {
+      let doc: { fields?: Record<string, Record<string, unknown>> };
+      try { doc = await c.call(`${c.base}/mcpOffers/${await name(key, id)}`) as never; }
+      catch (e) { if ((e as { status?: number }).status === 404) return null; throw e; }
+      const until = String(doc.fields?.expiresAt?.timestampValue || "");
+      const d = read(doc);
+      if (!until || until < new Date().toISOString() || typeof d.data !== "string") return null;
+      return JSON.parse(d.data) as T;
     }
   };
 }

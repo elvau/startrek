@@ -42,8 +42,8 @@ export interface McpDeps {
   saveProfile?: <R>(uid: string, change: (d: Directory) => R) => Promise<R>;
   /** Wohnort aus Text („47906 Kempen“) und Land; fehlt: nur Orte aus der Ortsliste */
   home?: (text: string, cc: string) => Promise<HomeHit | null>;
-  /** gefundene Angebote merken (je Schlüssel, einige Stunden) */
-  offers: { put: (id: string, v: Saved) => Promise<void>; get: (id: string) => Promise<Saved | null> };
+  /** gefundene Angebote merken (je Schlüssel, einige Stunden; alle einer Suche auf einmal) */
+  offers: { put: (list: [string, Saved][]) => Promise<void>; get: (id: string) => Promise<Saved | null> };
   /** zählt eine Suche mit; Fehlermeldung, wenn das Tageslimit erreicht ist */
   allowSearch: () => Promise<string | null>;
   version: string;
@@ -94,7 +94,7 @@ const PREFS = {
 
 const NEW_TRAVELERS = {
   type: "array", description: "Travelers the user named who are not saved (only in this trip)",
-  items: { type: "object", properties: { first: str("First name"), family: str("Family name"), age: int("Age at the trip start", 0, 120), home: str("Home town, ideally with postal code, e.g. \"47906 Kempen\" (where the family starts from)"), country: str("Country of the home town, ISO-2 (default DE)") }, required: ["first", "family"] }
+  items: { type: "object", properties: { first: str("First name"), family: str("Family the costs are shared in, usually the family name; children with another surname who belong to this family get the same family"), age: int("Age at the trip start (children always with age)", 0, 120), home: str("Home town, ideally with postal code, e.g. \"47906 Kempen\" (where the family starts from)"), country: str("Country of the home town, ISO-2 (default DE)") }, required: ["first", "family"] }
 };
 
 const SEARCH_TOOLS = [
@@ -138,7 +138,7 @@ const TRIP_TOOLS = [
   { name: "get_trip", title: "Show trip", description: "Destination, dates, travelers (number per age class; each with id, first name, family and age), families with home town, and all items with id, status, price and the chosen offer (e.g. hotel name, board, stars).", inputSchema: { type: "object", properties: { tripId: str("Trip id") }, required: ["tripId"] } },
   {
     name: "create_trip", title: "Create trip",
-    description: "Create a new trip in the user's account. Travelers: saved families, a saved group or single saved people from get_my_travelers (real people, ages as of the trip start, home town of their family), plus travelers the user named who are not saved (first name, family name, age, home town; only in this trip), all combinable. Only if the user gave just numbers: adults and childAges with travelersFrom 'user' (placeholders the user can replace). If you don't know who travels, ask first.",
+    description: "Create a new trip in the user's account. Travelers: saved families, a saved group or single saved people from get_my_travelers (real people, ages as of the trip start, home town of their family), plus travelers the user named who are not saved (first name, family name, age, home town; only in this trip), all combinable. If the user gave names, always pass them as travelers (never adults/childAges placeholders). Only if the user gave just numbers: adults and childAges with travelersFrom 'user' (placeholders the user can replace). If you don't know who travels, ask first.",
     inputSchema: { type: "object", properties: {
       place: str("Destination"), country: str("Country"), name: str("Trip name (default: destination)"), from: str("Arrival YYYY-MM-DD"), to: str("Departure YYYY-MM-DD"),
       families: { type: "array", items: { type: "string" }, description: "Family ids from get_my_travelers (e.g. [\"F1\"])" },
@@ -173,8 +173,12 @@ const TRIP_TOOLS = [
   },
   {
     name: "add_flight", title: "Add flight to trip",
-    description: "Add a flight offer from search_flights to a trip. If the offer was searched for fewer seats than the trip has travelers, or travelers is given, it is added for that many travelers without a flight yet, split into bookings of the searched seat count (one item per booking). Use several offers to put parts of the group on different flights.",
-    inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_flights"), travelers: int("How many travelers take this flight (default: all without a flight)", 1, 30), language: lang }, required: ["tripId", "offerId"] }
+    description: "Add a flight offer from search_flights to a trip. people: exactly these travelers take this flight (ids from get_trip or create_trip), e.g. a feeder flight for one person and then the onward flight for everyone. Without people: if the offer was searched for fewer seats than the trip has travelers, or travelers is given, it is added for that many travelers without a flight yet. Either way split into bookings of the searched seat count (one item per booking). Use several offers to put parts of the group on different flights.",
+    inputSchema: { type: "object", properties: {
+      tripId: str("Trip id"), offerId: str("Offer id from search_flights"),
+      people: { type: "array", items: { type: "string" }, description: "Traveler ids from get_trip or create_trip who take this flight (default: all without a flight)" },
+      travelers: int("How many travelers take this flight, without people (default: all without a flight)", 1, 30), language: lang
+    }, required: ["tripId", "offerId"] }
   },
   { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang }, required: ["tripId", "offerId"] } },
   {
@@ -319,7 +323,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const res = await deps.flights(fq);
       const top = res.offers.slice(0, SHOWN);
       const seats = fq.adults + fq.children;
-      await Promise.all(top.map(o => deps.offers.put(o.id, { kind: "flight", offer: o, seats })));
+      await deps.offers.put(top.map(o => [o.id, { kind: "flight", offer: o, seats }]));
       return {
         offers: top.map(o => ({
           id: o.id, priceTotal: Math.round(o.price), currency: o.currency, provider: o.sourceName, link: o.url,
@@ -354,7 +358,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       // Verpflegung als Mindeststufe; die Anbieter filtern nicht danach, darum hier
       const want = BOARDS.indexOf(a.board);
       const top = res.offers.filter(o => want < 1 || (!!o.board && BOARDS.indexOf(o.board) >= want)).slice(0, SHOWN);
-      await Promise.all(top.map(o => deps.offers.put(o.id, { kind: "stay", offer: o, q: sq })));
+      await deps.offers.put(top.map(o => [o.id, { kind: "stay", offer: o, q: sq }]));
       return {
         offers: top.map(o => ({
           id: o.id, name: o.name, priceTotal: Math.round(o.total), currency: o.currency, provider: o.via || o.sourceName, link: o.url,
@@ -500,7 +504,11 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       return edit(store!, a.tripId, user, t => {
         if (saved!.kind === "flight") {
           const travelers = Number.isInteger(a.travelers) && a.travelers >= 1 ? a.travelers : undefined;
-          const items = addFlight(t, saved!.offer, lng(a.language), saved!.seats ? { seats: saved!.seats, travelers } : undefined);
+          // bestimmte Reisende (Zubringer nur für einen Teil der Gruppe)
+          const ids = Array.isArray(a.people) && a.people.length ? [...new Set(a.people.map(String))] as string[] : undefined;
+          for (const id of ids || []) if (!t.travelers.some(x => x.id === id && x.active !== false)) fail(`Unknown traveler "${id}": use ids from get_trip`);
+          const seats = saved!.seats || (ids ? ids.length : 0);
+          const items = addFlight(t, saved!.offer, lng(a.language), seats ? { seats, travelers, ids } : undefined);
           return { added: items.map(i => i.id), bookings: items.length, name: items[0]?.name };
         }
         const it = addStay(t, saved!.offer, (saved as { q: StayQuery }).q, lng(a.language));
