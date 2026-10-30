@@ -12,7 +12,7 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    `claude mcp add --transport http splitandfly https://…/mcp --header "Authorization: Bearer sf_…"`
 2. **Werkzeuge** (`worker/src/mcp.ts`): `search_flights`, `search_stays`, `search_events` (keine Touren: Viator-Inhalte dürfen nicht an fremde Anwendungen);
    mit Dienstkonto zusätzlich `get_my_travelers`, `list_trips`, `get_trip`, `create_trip`, `update_trip`, `delete_trip`, `add_flight`, `add_stay`, `add_cost`, `remove_item`,
-   `save_my_preferences`, `set_trip_preferences`.
+   `update_travelers`, `save_people`, `save_group`, `save_my_preferences`, `set_trip_preferences`.
    Aufräumen (#603): Reisen, die die KI angelegt hat, merken sich ihren Stand (`aiSeen`, Prüfsummen der Eckdaten und je Posten).
    Hat der Nutzer sie seitdem in der App geändert, oder stammt die Reise aus der App, ändern/löschen die Werkzeuge nur mit
    `confirm` nach Rückfrage (Fehler nennt die Änderungen). Geteilte Reisen: als Mitglied verlassen, als Besitzer nicht per KI (#604).
@@ -24,20 +24,41 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist
    (sonst einmal neu lesen). Die App bekommt Änderungen live über ihre Beobachtung der Reise.
 4. **Posten** (`app/src/lib/connector/trips.ts`, ohne Svelte): wie in der App, markiert `ai: suggested` (Angebot) bzw.
-   `created` (eigene Kosten). Neue Reisen mit Platzhaltern („Fuchs Erw. 1“). An den Assistenten gehen keine Namen der Reisenden.
+   `created` (eigene Kosten). Reisende aus dem Konto, vom Nutzer genannt oder als Platzhalter („Fuchs Erw. 1“). Der Assistent sieht
+   Vorname, Familie, Alter und Wohnort mit PLZ (#608), nie Geburtsdaten oder Angaben „Nur für dich“.
 5. **Grenzen:** Suchen pro Schlüssel und Tag (`MCP_DAILY`, Standard 50) plus die Mengenbegrenzung pro IP.
    Zählung in „Nutzung & Kontingente“ (KI-Konnektor, Konnektor-Schlüssel erzeugt).
 
 ## Nachfragen statt raten (#595)
 
 - `get_my_travelers`: Familien aus den gespeicherten Personen (`profiles/{uid}`, Nachname = Familie) als F1, F2 … (eigene zuerst,
-  `you`), mit Erwachsenen, Kinderaltern zum Stichtag (`date`, sonst heute) und Wohnort ohne PLZ; gespeicherte Gruppen mit Name,
-  Familien und eigenen Vorlieben; eigene Vorlieben ohne PLZ (`app/src/lib/connector/people.ts`). Keine Namen von Personen.
+  `you`), mit Familienname, Mitgliedern (Kennung, Vorname, Alter), Erwachsenen, Kinderaltern zum Stichtag (`date`, sonst heute)
+  und Wohnort mit PLZ; gespeicherte Gruppen mit Name, Mitgliedern, Familien (`partOf`: nur teilweise drin) und eigenen Vorlieben;
+  eigene Vorlieben (`app/src/lib/connector/people.ts`).
 - `create_trip` mit `families` oder `group`: echte Reisende wie „Aus Gruppe hinzufügen“ (Alter zum Reisebeginn, Wohnort der
   Familie, Herkunft der Gruppe). Ohne beides nur mit `travelersFrom: "user"` und `adults`/`childAges`, sonst Fehler „Do not guess“.
 - Hinweise: erst `get_my_travelers`, Unklares mit 2–4 Optionen und „something else“ nachfragen, Annahmen nennen. Den Weg zum
   Abflughafen samt Parken und die Verpflegung rechnet die App selbst (nicht als Kosten anlegen).
 - Später: MCP-Elicitation (echte Auswahlknöpfe), sobald die Chat-Apps sie anzeigen und der Server streamen kann.
+
+## Gruppenchat, Namen und Bezahltes (#608)
+
+Entscheidung Dani (30.10.2026): Der Assistent sieht Vor- und Nachnamen, Alter (nie das Geburtsdatum) und Wohnort mit PLZ, damit er
+Familien aus einem Gruppenchat zuordnen und Tippfehler korrigieren kann; Personen und Gruppen im Konto legt er nach Rückfrage an.
+
+- `save_people`: Personen anlegen (Vor- und Nachname; gleicher Name = vorhandene Person) bzw. mit Kennung ändern, `renameFamily`
+  für alle mit dem Nachnamen. Alter nur ohne Geburtsdatum (sonst Hinweis, ändern in der App). Löschen nur in der App.
+- `save_group`: Gruppe nach Name anlegen bzw. ändern (`members`, `add`, `remove` als Personen- oder Familienkennung, `newName`).
+  Gespeichert über `profileSaver` (`worker/src/firestore.ts`, mit Versionsprüfung, Rest des Stands bleibt).
+- `create_trip`: `families`, `group`, `people` (Personen) und `travelers` (genannt, nur in dieser Reise, mit `home`) kombinierbar.
+- `update_travelers`: Familie umbenennen (Reisende, Haushalt, Zahlungen, Kasse, Verpflegung, Gruppenbus), Vorname/Familie/Alter
+  je Reisendem (Platzhalter mit Vornamen werden echt), Wohnort je Familie, Reisende dazu (gespeicherte nicht doppelt). Rückfrage wie
+  `update_trip`. Gespeicherte Personen werden in bestehenden Reisen nicht automatisch umbenannt.
+- Wohnort (`home`, `country`): `worker/src/home.ts` sucht PLZ bzw. Ort in den PLZ-Daten der App (`plz.txt`, `plz/<LAND>.txt`
+  von `APP_URL`, je Isolate gemerkt), sonst Ort aus der Ortsliste ohne PLZ; unbekannt: Fehler mit Bitte um PLZ.
+- `add_cost` mit `status`, `paidBy` (Familie der Reise; Zahlung für die Kasse, setzt `paid`), `paidAt`, `bookingRef`.
+- Hinweis an den Assistenten: Gruppenchat mit den gespeicherten Gruppen vergleichen, bekannte Gruppe nachfragen, sonst fragen, ob
+  neu speichern oder nur für die Reise.
 
 ## Vorlieben (#602)
 
@@ -93,6 +114,7 @@ nach dem Release (Such-Dienst nur von `main`). Vor dem öffentlichen Anbieten: P
 ## Tests
 
 - `worker/src/mcp.test.ts`: Schlüssel, Firestore-Werte, Protokoll, Werkzeuge, Rechte, gleichzeitige Änderung, Tageslimit
+- `worker/src/home.test.ts`: Wohnort aus PLZ, Ort und Land
 - `worker/src/oauth.test.ts`: Beschreibung, Anmeldung der Chat-App, Ablauf mit PKCE, Erneuerung, Trennen, Fehlerfälle
 - `app/e2e/connector.mjs`: MCP-Kern gegen den Firestore-Emulator, App zeigt die Reise (markiert, live), Schlüssel-Dialog,
   verbundene Chat-Apps (Trennen), Zustimmung (`?verbinden=…`)

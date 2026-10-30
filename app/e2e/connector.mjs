@@ -19,7 +19,7 @@ const out = await mkdtemp(join(tmpdir(), "mcp-"));
 const b = await rolldown({ input: { mcp: "../worker/src/mcp.ts", firestore: "../worker/src/firestore.ts", apikey: "../worker/src/apikey.ts", oauth: "../worker/src/oauth.ts" }, platform: "neutral", logLevel: "silent" });
 await b.write({ dir: out, format: "esm", entryFileNames: "[name].mjs" });
 const { mcpMessage } = await import(join(out, "mcp.mjs"));
-const { tripStore, profileStore, profilePrefsSaver } = await import(join(out, "firestore.mjs"));
+const { tripStore, profileStore, profilePrefsSaver, profileSaver } = await import(join(out, "firestore.mjs"));
 const { seal } = await import(join(out, "apikey.mjs"));
 const { grantStore } = await import(join(out, "oauth.mjs"));
 
@@ -60,13 +60,12 @@ const dirData = { me: "pc", people: [{ id: "pc", first: "Claudia", last: "Fuchs"
 await fetch(`${FS}/profiles/${uid}`, { method: "PATCH", headers: { authorization: "Bearer owner", "content-type": "application/json" }, body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify(dirData) } } }) });
 deps.profile = profileStore({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
 const mine = await tool("get_my_travelers", {});
-if (JSON.stringify(mine.families) !== JSON.stringify([{ id: "F1", you: true, adults: 1, childAges: [6] }]) || mine.groups[0]?.name !== "Fuchsbau") fail("get_my_travelers: " + JSON.stringify(mine));
-if (/Claudia|Tom|Fuchs\b|40210/.test(JSON.stringify(mine.families) + JSON.stringify(mine.prefs))) fail("Namen oder PLZ an die KI");
+if (JSON.stringify(mine.families) !== JSON.stringify([{ id: "F1", name: "Fuchs", you: true, members: [{ id: "pc", first: "Claudia", age: 41 }, { id: "pk", first: "Tom", age: 6 }], adults: 1, childAges: [6] }]) || mine.groups[0]?.name !== "Fuchsbau") fail("get_my_travelers: " + JSON.stringify(mine));
 const fam = await tool("create_trip", { place: "Usedom", group: "Fuchsbau" });
 const famDoc = await (await fetch(`${FS}/trips/${fam.tripId}`, { headers: { authorization: "Bearer owner" } })).json();
 const famTrip = JSON.parse(famDoc.fields.data.stringValue);
 if (famTrip.travelers.map(t => `${t.name}/${t.household}/${t.age}`).join() !== "Claudia/Fuchs/41,Tom/Fuchs/6") fail("Reisende aus der Gruppe: " + JSON.stringify(famTrip.travelers));
-log("Familien und Gruppen aus dem Konto ohne Namen für die KI; Reise aus der Gruppe mit echten Reisenden");
+log("Familien und Gruppen aus dem Konto mit Namen für die KI; Reise aus der Gruppe mit echten Reisenden");
 
 // Vorlieben im Konto speichern (#602): nur die Vorlieben ändern sich, Personen, Gruppen und PLZ bleiben
 deps.savePrefs = profilePrefsSaver({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
@@ -78,6 +77,20 @@ if (prof.prefs.budget !== "low" || prof.prefs.board !== "half" || prof.prefs.plz
 const fl2 = await tool("search_flights", { to: ["PMI"], depart: "2027-05-07", adults: 1 });
 if (fl2.appliedPreferences?.airports?.join() !== "DUS") fail("Flughafen aus den Vorlieben: " + JSON.stringify(fl2.appliedPreferences));
 log("Vorlieben im Konto gespeichert (Rest bleibt), Suche nimmt den Flughafen aus den Vorlieben");
+
+// Gruppenchat (#608): Personen und Gruppe im Konto speichern (Rest bleibt), Tippfehler korrigieren
+deps.saveProfile = profileSaver({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
+const sp = await tool("save_people", { people: [{ first: "Mela", last: "Pauk", age: 35, home: "Düsseldorf" }, { first: "Quin", last: "Pauk", age: 1 }] });
+await tool("save_people", { renameFamily: [{ from: "Pauk", to: "Pauck" }], people: [{ id: sp.saved[1].id, first: "Quinn" }] });
+await tool("save_group", { name: "Ferienhaus", members: ["F1", "F2"] });
+const prof2 = JSON.parse((await (await fetch(`${FS}/profiles/${uid}`, { headers: { authorization: "Bearer owner" } })).json()).fields.data.stringValue);
+if (prof2.people.map(x => `${x.first} ${x.last}`).join() !== "Claudia Fuchs,Tom Fuchs,Mela Pauck,Quinn Pauck" || prof2.people[2].home?.ort !== "Düsseldorf" || prof2.groups.map(g => `${g.name}:${g.memberIds.length}`).join() !== "Fuchsbau:2,Ferienhaus:4" || prof2.prefs.budget !== "low") fail("Konto nach Personen und Gruppe: " + JSON.stringify(prof2));
+const fh = await tool("create_trip", { place: "Molbergen", group: "Ferienhaus", travelers: [{ first: "Felix", family: "Mertens", age: 35 }] });
+const pk = fh.people.find(x => x.first === "Mela");
+await tool("update_travelers", { tripId: fh.tripId, change: [{ id: pk.id, first: "Melanie" }], renameFamily: [{ from: "Mertens", to: "Merten" }] });
+const fhTrip = JSON.parse((await (await fetch(`${FS}/trips/${fh.tripId}`, { headers: { authorization: "Bearer owner" } })).json()).fields.data.stringValue);
+if (fhTrip.travelers.map(t => `${t.name}/${t.household}`).join() !== "Claudia/Fuchs,Tom/Fuchs,Melanie/Pauck,Quinn/Pauck,Felix/Merten" || fhTrip.households?.Pauck?.geo?.ort !== "Düsseldorf") fail("Reise aus dem Gruppenchat: " + JSON.stringify(fhTrip.travelers));
+log("Gruppenchat: Personen und Gruppe im Konto gespeichert, Reise mit Familien und Wohnort, Namen korrigiert");
 
 // Aufräumen (#603): Fehlversuch der KI samt Stimmen löschen; geteilte Reise verlassen (die anderen behalten sie)
 const H = { authorization: "Bearer owner", "content-type": "application/json" };
@@ -167,10 +180,10 @@ try {
   await p.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).locator(".aif", { hasText: "Von der KI erstellt" }).waitFor({ timeout: 15000 });
   const got = await tool("get_trip", { tripId: id });
   if (got.items.length !== 2 || got.approxTotalEur !== 630) fail("Reise für Claude: " + JSON.stringify(got));
-  if (JSON.stringify(got).includes("Claudia")) fail("Name in der Reise für Claude");
+  if (got.people.length !== 3 || !got.people.every(x => x.placeholder)) fail("Platzhalter in der Reise für Claude: " + JSON.stringify(got.people));
   // die App ändert beim Öffnen nichts, was als „in der App geändert“ zählt (#603)
   if (got.byAi !== true || got.changedInApp) fail("Stand der KI nach dem Öffnen in der App: " + JSON.stringify(got.changedInApp));
-  log("Ergänzung von Claude erscheint live in der offenen Reise; get_trip ohne Namen");
+  log("Ergänzung von Claude erscheint live in der offenen Reise; get_trip mit Platzhaltern");
 
   // Schlüssel im Kontomenü erzeugen: Anfrage angemeldet, Schlüssel und Befehl für Claude Code
   await p.evaluate(() => scrollTo(0, 0));
