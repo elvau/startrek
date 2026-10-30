@@ -143,13 +143,14 @@ export function addStay(trip: Trip, o: StayOffer, q: StayQuery, lang: string): I
   return push(trip, item);
 }
 
-export interface Cost { cat: CatKey; name: string; eur: number; perPerson?: boolean; url?: string; arrival?: boolean }
+export interface Cost { cat: CatKey; name: string; eur: number; perPerson?: boolean; url?: string; arrival?: boolean; estimate?: boolean }
 
 /** eigener Kostenposten (Mietwagen, Tickets, Schätzung): für alle oder pro Person */
 export function addCost(trip: Trip, c: Cost): Item {
   const opt: Option = {
     id: uid(), label: "",
     price: c.perPerson ? { mode: "person", currency: "EUR", adult: c.eur } : { mode: "unit", currency: "EUR", unit: c.eur },
+    ...(c.estimate ? { estimate: true } : {}),
     ...(c.url ? { source: { name: new URL(c.url).hostname, at: day(), url: c.url } } : {})
   };
   return push(trip, { id: uid(), cat: c.cat, name: c.name, status: "idea", options: [opt], ai: { at: at(), kind: "created" }, ...(c.arrival ? { arrival: true } : {}) });

@@ -104,6 +104,16 @@ describe("KI-Konnektor (MCP)", () => {
     expect(got.cc).toBeUndefined();
   });
 
+  it("markiert geschätzte Kosten als Schätzung (#594)", async () => {
+    const d = deps();
+    const id = (await tool(d, "create_trip", { place: "Palma", from: "2027-05-10", to: "2027-05-13", adults: 2, travelersFrom: "user" })).data.tripId;
+    await tool(d, "add_cost", { tripId: id, category: "stay", name: "Unterkunft", amountEur: 500, estimate: true });
+    await tool(d, "add_cost", { tripId: id, category: "transport", name: "Mietwagen", amountEur: 150 });
+    const trip: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(trip.items[0].options[0].estimate).toBe(true);
+    expect(trip.items[1].options[0].estimate).toBeUndefined();
+  });
+
   it("sagt der KI, dass die App Anreise zum Flughafen samt Parken selbst rechnet (nicht doppelt anlegen)", async () => {
     const d = deps();
     const init = await mcpMessage(rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } }), ME, d) as any;
