@@ -166,6 +166,36 @@ describe("KI-Konnektor (MCP)", () => {
     expect((await tool(d, "get_trip", { tripId: id })).data.items).toHaveLength(2);
   });
 
+  it("Buchungstabelle: Links in get_trip, Posten nach der Buchung als gebucht bzw. bezahlt markieren", async () => {
+    const d = deps();
+    const init = await mcpMessage(rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } }), ME, d) as any;
+    expect(init.result.instructions).toContain("booking table");
+    await tool(d, "search_flights", { from: ["DUS"], to: ["PMI"], depart: "2027-05-10", return: "2027-05-13", adults: 2 });
+    const id = (await tool(d, "create_trip", { place: "Palma", from: "2027-05-10", to: "2027-05-13", adults: 2, travelersFrom: "user" })).data.tripId;
+    await tool(d, "add_flight", { tripId: id, offerId: "f1" });
+    await tool(d, "add_flight", { tripId: id, offerId: "f2", travelers: 2 });
+    await tool(d, "add_cost", { tripId: id, category: "transport", name: "Mietwagen", amountEur: 150 });
+    const got = await tool(d, "get_trip", { tripId: id });
+    const [fl, , car] = got.data.items;
+    expect(fl.link).toBe("https://kiwi.com/x");
+    const fam = got.data.families[0].name;
+
+    expect((await tool(d, "mark_booked", { tripId: id, items: [{ itemId: "nix" }] })).text).toContain("not found");
+    expect((await tool(d, "mark_booked", { tripId: id, items: [{ itemId: fl.id, paidBy: "Meyer" }] })).text).toContain("Unknown family");
+    expect((await tool(d, "mark_booked", { tripId: id, items: [{ itemId: fl.id, status: "booked", paidBy: fam }] })).text).toContain("needs status paid");
+    const m = await tool(d, "mark_booked", { tripId: id, items: [{ itemId: fl.id, bookingRef: "ABC123" }, { itemId: car.id, paidBy: fam, paidAt: "2027-04-02" }] });
+    expect(m.data.marked.map((x: any) => x.status)).toEqual(["booked", "paid"]);
+    const trip: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(trip.items[0]).toMatchObject({ status: "booked", booking: { ref: "ABC123" } });
+    expect(trip.items[2].payments).toEqual([{ amount: 150, by: fam, at: "2027-04-02" }]);
+    // bezahlt bleibt bezahlt; get_trip zeigt Buchungsnummer und Bezahltes
+    await tool(d, "mark_booked", { tripId: id, items: [{ itemId: car.id }] });
+    const again = (await tool(d, "get_trip", { tripId: id })).data.items;
+    expect(again[0]).toMatchObject({ status: "booked", bookingRef: "ABC123" });
+    expect(again[2]).toMatchObject({ status: "paid", paidEur: 150 });
+    expect((await tool(d, "remove_item", { tripId: id, itemId: fl.id })).text).toMatch(/Booked or paid/);
+  });
+
   it("schützt fremde, nur lesbare und gebuchte Reisen", async () => {
     const d = deps();
     const store = d.store as ReturnType<typeof memStore>;

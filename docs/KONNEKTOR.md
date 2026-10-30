@@ -11,7 +11,7 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Anzeigename und Datum. Gespeichert wird er nirgends; die App zeigt ihn einmal an, dazu die Adresse, einen Hinweis für andere Programme und als Beispiel den Befehl für Claude Code:
    `claude mcp add --transport http splitandfly https://…/mcp --header "Authorization: Bearer sf_…"`
 2. **Werkzeuge** (`worker/src/mcp.ts`): `search_flights`, `search_stays`, `search_events` (keine Touren: Viator-Inhalte dürfen nicht an fremde Anwendungen);
-   mit Dienstkonto zusätzlich `get_my_travelers`, `list_trips`, `get_trip`, `create_trip`, `update_trip`, `delete_trip`, `add_flight`, `add_stay`, `add_cost`, `remove_item`,
+   mit Dienstkonto zusätzlich `get_my_travelers`, `list_trips`, `get_trip`, `create_trip`, `update_trip`, `delete_trip`, `add_flight`, `add_stay`, `add_cost`, `mark_booked`, `remove_item`,
    `update_travelers`, `save_people`, `save_group`, `save_my_preferences`, `set_trip_preferences`.
    Aufräumen (#603): Reisen, die die KI angelegt hat, merken sich ihren Stand (`aiSeen`, Prüfsummen der Eckdaten und je Posten).
    Hat der Nutzer sie seitdem in der App geändert, oder stammt die Reise aus der App, ändern/löschen die Werkzeuge nur mit
@@ -28,6 +28,15 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Vorname, Familie, Alter und Wohnort mit PLZ (#608), nie Geburtsdaten oder Angaben „Nur für dich“.
 5. **Grenzen:** Suchen pro Schlüssel und Tag (`MCP_DAILY`, Standard 50) plus die Mengenbegrenzung pro IP.
    Zählung in „Nutzung & Kontingente“ (KI-Konnektor, Konnektor-Schlüssel erzeugt).
+
+## Buchungstabelle
+
+Split&Fly bucht nicht selbst. Schlägt der Assistent eine Reise vor, endet er mit einer Tabelle aus `get_trip` (Hinweis in den
+Server-Anweisungen): je Posten Nummer, was, Daten, Preis und Link zum Anbieter, in Buchungsreihenfolge (Flüge zuerst, dann
+Unterkunft, dann der Rest). Der Nutzer bucht Zeile für Zeile und sagt, was erledigt ist; `mark_booked` setzt die Posten auf
+gebucht bzw. bezahlt (mehrere auf einmal, optional Buchungsnummer, zahlende Familie, Betrag, sonst der offene Rest). Das in
+`get_trip` gezeigte Angebot gilt als gewählt, Paketteile ziehen mit, bezahlt bleibt bezahlt. Danach ändern nur noch in der App.
+`get_trip` zeigt dazu `bookingRef` und `paidEur`.
 
 ## Nachfragen statt raten (#595)
 
