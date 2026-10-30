@@ -16,6 +16,9 @@ import { addCost, addFlight, addStay, isCat, LANGS, newTrip, removeItem, tripSum
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
 import { travelersFor, travelersView } from "../../app/src/lib/connector/people";
 import type { KeyInfo } from "./apikey";
+import { ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
+import world from "../../public/world.json";
+import packs from "../../public/packs.json";
 
 export interface McpDeps {
   flights: (q: FlightQuery) => Promise<SearchResult>;
@@ -168,6 +171,9 @@ const kids = (v: unknown) => (Array.isArray(v) ? v.filter(a => Number.isInteger(
 const lng = (v: unknown) => (typeof v === "string" && LANGS.includes(v) ? v : "de");
 const hm = (iso: string) => iso.slice(0, 16).replace("T", " ");
 
+// Orte und Länder wie in der App (ohne die kleinen Orte): Ländercode und Mittelpunkt für die Unterkunftssuche (#593)
+const GEO: GeoData = { world: (world as any).countries, packs: packs as any, places: {} };
+
 async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Promise<object> {
   const today = deps.today || new Date().toISOString().slice(0, 10);
   if (name.startsWith("search_")) { const no = await deps.allowSearch(); if (no) fail(no); }
@@ -197,8 +203,12 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
     }
     case "search_stays": {
       const adults = a.adults;
+      const cc = ccOf(GEO, S(a.country, 60));
+      const sp = searchParts(GEO, S(a.place), cc);
+      const kcc = ccOf(GEO, sp.country) || cc;
+      const city = findCity(GEO, sp.place, kcc);
       const q = parseStayQuery({
-        place: a.place, country: a.country, checkin: a.checkin, checkout: a.checkout, adults, childAges: kids(a.childAges),
+        place: sp.place, country: sp.country || a.country, ...(kcc ? { cc: kcc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin: a.checkin, checkout: a.checkout, adults, childAges: kids(a.childAges),
         rooms: Number.isInteger(a.rooms) ? a.rooms : Math.max(1, Math.ceil((Number(adults) || 1) / 2)), type: a.type || "all", currency: "EUR"
       });
       if (typeof q === "string") fail(q);
