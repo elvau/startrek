@@ -45,8 +45,9 @@ Merkliste für Dani und Claude. Erledigtes streichen, Neues unten anfügen.
 - [ ] **KI-Konnektor (MCP) einschalten** → #147. (docs/KONNEKTOR.md): in Cloudflare zwei Secrets anlegen: `MCP_KEY_SECRET`
       (lange Zufallszeichenkette) und `FIREBASE_SERVICE_ACCOUNT` (Firebase-Konsole → Projekteinstellungen → Dienstkonten →
       neuen privaten Schlüssel generieren, JSON-Inhalt als Wert, Datei danach löschen). Wirkt nach dem nächsten Release.
-- [ ] **Duffel und liteAPI einschalten** → #147. (docs/FLUGSUCHE.md): auf app.duffel.com und liteapi.travel anmelden, in Cloudflare
-      die Secrets `DUFFEL_TOKEN` und `LITEAPI_KEY` anlegen (erst die Test-Schlüssel, nach dem Ausprobieren die echten).
+- [ ] **Duffel einschalten** → #147. (docs/FLUGSUCHE.md): auf app.duffel.com anmelden, in Cloudflare das Secret `DUFFEL_TOKEN`
+      anlegen (erst der Test-Schlüssel, nach dem Ausprobieren der echte). liteAPI ist seit 30.10.2026 live (Produktivschlüssel,
+      Buchungsseite hotels.splitandfly.com als `LITEAPI_LINK`, Nuitée als Verkäufer).
       Code ist fertig (Release nötig, der Such-Dienst kommt nur von main).
 - [ ] **Mehr Unterkunftsanbieter (#144):** → #147. Ohne Partnerfreigabe gibt es keine brauchbare Schnittstelle (Booking.com und Expedia
       bieten ihre KI-Schnittstellen nur mit Anmeldung im Browser an, Hotellook/Travelpayouts ist seit 10/2025 geschlossen,
