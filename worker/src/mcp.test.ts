@@ -215,7 +215,7 @@ describe("KI-Konnektor (MCP)", () => {
     expect(fl.map(i => i.options[0].price.unit)).toEqual([480, 480, 480, 520, 520]);
   });
 
-  it("Familien und Gruppen aus dem Konto: ohne Namen sehen, echte Reisende anlegen, nie raten (#595)", async () => {
+  it("Familien und Gruppen aus dem Konto: mit Namen und PLZ sehen, echte Reisende anlegen, nie raten (#595, #608)", async () => {
     const dir: Directory = {
       me: "p1",
       people: [
@@ -230,14 +230,14 @@ describe("KI-Konnektor (MCP)", () => {
     const d = deps({ profile: async uid => (uid === ME.uid ? JSON.parse(JSON.stringify(dir)) : null) });
     const view = await tool(d, "get_my_travelers", { date: "2027-08-09" });
     expect(view.data.families).toEqual([
-      { id: "F1", you: true, adults: 1, childAges: [9, 4], home: "Kempen" },
-      { id: "F2", adults: 1, childAges: [] }
+      { id: "F1", name: "Klein", you: true, members: [{ id: "p1", first: "Dani", age: 37 }, { id: "p2", first: "Fenia", age: 4 }, { id: "p3", first: "Mia", age: 9 }], adults: 1, childAges: [9, 4], home: "47906 Kempen" },
+      { id: "F2", name: "Hase", members: [{ id: "p4", first: "Lars", age: 40 }], adults: 1, childAges: [] }
     ]);
-    // Gruppe mit ihren Mitgliedern gezählt (nur ein Teil von F1)
-    expect(view.data.groups).toEqual([{ name: "Ostsee-Truppe", families: ["F1", "F2"], adults: 2, childAges: [4], prefs: { budget: "low" } }]);
+    // Gruppe mit ihren Mitgliedern gezählt (nur ein Teil von F1: partOf)
+    expect(view.data.groups).toEqual([{ name: "Ostsee-Truppe", members: ["p1", "p2", "p4"], families: ["F1", "F2"], partOf: ["F1"], adults: 2, childAges: [4], prefs: { budget: "low" } }]);
     expect(view.data.prefs).toEqual({ airports: ["DUS", "CGN"], styles: ["beach"] });
-    // keine Namen, keine Postleitzahl
-    expect(view.text).not.toMatch(/Dani|Fenia|Mia|Lars|Klein|Hase|47906/);
+    // Alter statt Geburtsdatum
+    expect(view.text).not.toMatch(/1990|2023-06/);
 
     // ohne Angabe, wer reist: Fehler mit der Bitte nachzufragen
     const guess = await tool(d, "create_trip", { place: "Tirana", adults: 2, childAges: [9, 7, 3] });
@@ -252,7 +252,10 @@ describe("KI-Konnektor (MCP)", () => {
     const trip = JSON.parse((await d.store!.get(made.data.tripId))!.data) as Trip;
     expect(trip.travelers.map(t => [t.personId, t.household, t.age])).toEqual([["p1", "Klein", 37], ["p2", "Klein", 4], ["p3", "Klein", 9]]);
     expect(trip.households?.Klein?.geo?.ort).toBe("Kempen");
-    expect((await tool(d, "get_trip", { tripId: made.data.tripId })).text).not.toMatch(/Dani|Fenia|Mia|Klein|47906|Kempen/);
+    const shown = await tool(d, "get_trip", { tripId: made.data.tripId });
+    expect(shown.data.people.map((p: any) => [p.first, p.family, p.age, p.saved])).toEqual([["Dani", "Klein", 37, "p1"], ["Fenia", "Klein", 4, "p2"], ["Mia", "Klein", 9, "p3"]]);
+    expect(shown.data.families).toEqual([{ name: "Klein", home: "47906 Kempen" }]);
+    expect(shown.text).not.toMatch(/1990/);
 
     // Gruppe: nur ihre Mitglieder, mit Herkunft der Gruppe
     const grp = await tool(d, "create_trip", { place: "Usedom", group: "ostsee-truppe" });
@@ -263,6 +266,94 @@ describe("KI-Konnektor (MCP)", () => {
     // leeres Konto: Hinweis statt Liste
     const empty = deps({ profile: async () => null });
     expect((await tool(empty, "get_my_travelers", {})).data.note).toContain("ask the user");
+  });
+
+  it("Gruppenchat (#608): Personen und Gruppe speichern, Reise mit Familien und Startorten, Namen korrigieren, bezahlte Kosten", async () => {
+    let dir: Directory = {
+      me: "p1",
+      people: [
+        { id: "p1", first: "Dani", last: "Klein", birth: "1990-03-01", home: { plz: "47906", ort: "Kempen", lat: 51.36, lon: 6.42 } },
+        { id: "p2", first: "Mia", last: "Klein", age: 9 }
+      ],
+      groups: []
+    };
+    const homes: Record<string, { plz: string; ort: string; lat: number; lon: number }> = {
+      kempen: { plz: "47906", ort: "Kempen", lat: 51.364, lon: 6.419 }, wuppertal: { plz: "42103", ort: "Wuppertal", lat: 51.256, lon: 7.148 }
+    };
+    const d = deps({
+      profile: async () => JSON.parse(JSON.stringify(dir)),
+      saveProfile: async (_uid, change) => { const next = JSON.parse(JSON.stringify(dir)); const r = change(next); dir = next; return r; },
+      home: async text => homes[text.replace(/^\d+\s+/, "").toLowerCase()] || null
+    });
+    // neue Personen mit Tippfehler, Wohnort per Ort; doppelt genannt wird nicht doppelt angelegt
+    const saved = await tool(d, "save_people", { people: [
+      { first: "Nora", last: "Brink", age: 35, home: "Kempen" }, { first: "Jon", last: "Brink", age: 1, home: "Kempen" },
+      { first: "Ida", last: "Wald", age: 36, home: "Wuppertal" }, { first: "Ida", last: "Wald", age: 36 }
+    ] });
+    expect(saved.error).toBe(false);
+    expect(dir.people).toHaveLength(5);
+    expect(dir.people.find(p => p.first === "Ida")?.home).toMatchObject({ plz: "42103", ort: "Wuppertal" });
+    expect((await tool(d, "save_people", { people: [{ first: "X", last: "Y", home: "Atlantis" }] })).text).toContain("postal code");
+    expect((await tool(d, "save_people", { people: [{ first: "Nur" }] })).text).toContain("first and last name");
+    // Alter aus Geburtsdatum bleibt
+    const birth = await tool(d, "save_people", { people: [{ id: "p1", age: 20 }] });
+    expect(birth.data.notes[0]).toContain("birth date");
+    expect(dir.people[0].age).toBeUndefined();
+
+    // Gruppe aus Familie und einzelnen Personen; ändern und umbenennen
+    const jon = dir.people.find(p => p.first === "Jon")!.id;
+    const g = await tool(d, "save_group", { name: "Ferienhaus", members: ["F1", ...dir.people.filter(p => p.last !== "Klein" && p.id !== jon).map(p => p.id)] });
+    expect(g.data).toMatchObject({ created: true, group: { name: "Ferienhaus", adults: 3, childAges: [9], partOf: ["F2"] } });
+    expect((await tool(d, "save_group", { name: "ferienhaus", add: ["F2"] })).data.group.partOf).toBeUndefined();
+    expect((await tool(d, "save_group", { name: "Leer" })).text).toContain("needs members");
+    expect((await tool(d, "save_group", { name: "Ferienhaus", add: ["p9"] })).text).toContain("Unknown person");
+
+    // Reise aus der Gruppe plus eine nicht gespeicherte Familie mit Startort
+    const made = await tool(d, "create_trip", { place: "Hümmling", from: "2027-05-05", to: "2027-05-10", group: "Ferienhaus", travelers: [
+      { first: "Ole", family: "Berger", age: 35, home: "47906 Kempen" }, { first: "Ella", family: "Berger", age: 3 }
+    ] });
+    expect(made.error).toBe(false);
+    const id = made.data.tripId;
+    expect(made.data.families).toEqual([
+      { name: "Klein", home: "47906 Kempen" }, { name: "Brink", home: "47906 Kempen" }, { name: "Wald", home: "42103 Wuppertal" }, { name: "Berger", home: "47906 Kempen" }
+    ]);
+    expect(made.data.travelers).toEqual({ adults: 4, children: 2, infants: 1 });
+
+    // bezahlte Buchung: Zahler ist eine Familie der Reise, mit Buchungsnummer
+    expect((await tool(d, "add_cost", { tripId: id, category: "stay", name: "Ferienhaus", amountEur: 1606, paidBy: "Meyer" })).text).toContain("Unknown family");
+    expect((await tool(d, "add_cost", { tripId: id, category: "stay", name: "Ferienhaus", amountEur: 1606, paidBy: "wald", perPerson: true })).error).toBe(true);
+    const paid = await tool(d, "add_cost", { tripId: id, category: "stay", name: "Ferienhaus", amountEur: 1606, paidBy: "wald", paidAt: "2026-10-20", bookingRef: "123" });
+    expect(paid.data.status).toBe("paid");
+    let trip = JSON.parse((await d.store!.get(id))!.data) as Trip;
+    expect(trip.items[0]).toMatchObject({ status: "paid", booking: { ref: "123" }, payments: [{ amount: 1606, by: "Wald", at: "2026-10-20" }] });
+    expect((await tool(d, "add_cost", { tripId: id, category: "misc", name: "X", amountEur: 1, status: "gebucht" })).error).toBe(true);
+
+    // Tippfehler korrigieren: Familie (mit Zahlung) und Vorname; Wohnort ändern; Reisende dazu
+    const q = made.data.people.find((p: any) => p.first === "Jon").id;
+    const up = await tool(d, "update_travelers", { tripId: id, renameFamily: [{ from: "Brink", to: "Brinck" }, { from: "Wald", to: "Waldner" }], change: [{ id: q, first: "John" }], homes: [{ family: "Berger", home: "Wuppertal" }], add: { travelers: [{ first: "Lina", family: "Berger", age: 5 }] } });
+    expect(up.error).toBe(false);
+    expect(up.data.families).toContainEqual({ name: "Berger", home: "42103 Wuppertal" });
+    trip = JSON.parse((await d.store!.get(id))!.data) as Trip;
+    expect(trip.travelers.filter(t => t.household === "Brinck").map(t => t.name)).toEqual(["Nora", "John"]);
+    expect(trip.households?.Waldner?.geo?.ort).toBe("Wuppertal");
+    expect(trip.households?.Wald).toBeUndefined();
+    expect(trip.items[0].payments?.[0].by).toBe("Waldner");
+    expect(trip.travelers.filter(t => t.household === "Berger").map(t => t.name)).toEqual(["Ole", "Ella", "Lina"]);
+    expect((await tool(d, "update_travelers", { tripId: id, change: [{ id: "nix", first: "A" }] })).text).toContain("Unknown traveler");
+    expect((await tool(d, "update_travelers", { tripId: id })).text).toContain("Nothing to change");
+    // gespeicherte Personen bleiben, bis sie selbst geändert werden; Familie im Konto umbenennen
+    await tool(d, "save_people", { renameFamily: [{ from: "brink", to: "Brinck" }], people: [{ id: jon, first: "John" }] });
+    expect(dir.people.filter(p => p.last === "Brinck").map(p => p.first)).toEqual(["Nora", "John"]);
+    // gespeicherte Personen nicht doppelt in die Reise
+    const again = await tool(d, "update_travelers", { tripId: id, add: { group: "Ferienhaus" } });
+    expect(again.data.people).toHaveLength(8);
+
+    // Platzhalter werden mit Vornamen echt
+    const ph = await tool(d, "create_trip", { place: "Palma", adults: 2, travelersFrom: "user" });
+    const ids = ph.data.people.map((p: any) => p.id);
+    const named = await tool(d, "update_travelers", { tripId: ph.data.tripId, change: [{ id: ids[0], first: "Rosa", family: "Berger", age: 37 }] });
+    expect(named.data.people[0]).toEqual({ id: ids[0], first: "Rosa", family: "Berger", age: 37 });
+    expect(named.data.people[1].placeholder).toBe(true);
   });
 
   it("Vorlieben (#602): Suchen nehmen fehlende Angaben aus Konto, Gruppe und Reise; speichern und je Reise setzen", async () => {

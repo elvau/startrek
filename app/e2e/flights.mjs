@@ -213,6 +213,8 @@ try {
   const sky = await m.locator(".fs-direct a", { hasText: "Skyscanner" }).getAttribute("href");
   if (!/\/flights\/[a-z]{3}\/spu\/270718\/270729\//.test(sky)) fail("Skyscanner-Link: " + sky);
   if (!(await m.locator(".fs-direct a", { hasText: "Google Flüge" }).count())) fail("Google-Flüge-Link fehlt");
+  const exp = await m.locator(".fs-direct a", { hasText: "Expedia Flug + Hotel" }).getAttribute("href");
+  if (!/expedia\.de\/Hotel-Search\?misId=~.*&packageType=fh&.*originAirportCode=DUS/.test(decodeURIComponent(exp || ""))) fail("Expedia Flug + Hotel: " + exp);
   await m.locator(".fs-form .btn.primary").click();
   await m.locator(".fs-res").first().waitFor();
   const f = asked.at(-1);

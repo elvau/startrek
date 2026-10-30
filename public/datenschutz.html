@@ -310,13 +310,17 @@
   sich gefundene Angebote einige Stunden im Zwischenspeicher von Cloudflare (damit der Assistent sie in eine Reise übernehmen
   kann) und zählt die Suchen pro Schlüssel bzw. Verbindung und Tag (Kennung und Datum, nach zwei Tagen gelöscht). Für Reisen im
   Konto liest und schreibt der Such-Dienst eure Reisen in Firebase (Abschnitt 5), nur solche, in denen ihr Mitglied
-  seid, und ändern nur mit Bearbeitungsrecht. An den Assistenten gehen Ziel, Reisedaten, Anzahl der Reisenden nach Altersklasse
-  und die Posten mit Preisen, keine Namen der Reisenden und keine Angaben „Nur für dich“. Fragt der Assistent nach euren
-  gespeicherten Personen (Abschnitt 5), bekommt er eure Familien ohne Namen (Anzahl Erwachsene, Alter der Kinder, Wohnort
-  ohne Postleitzahl), die Namen und Zusammensetzung eurer gespeicherten Gruppen und eure Vorlieben (ohne Postleitzahl). Legt
-  er eine Reise mit diesen Familien oder einer Gruppe an, trägt der Such-Dienst die gespeicherten Personen samt Namen in die
-  Reise ein, wie „Aus Gruppe hinzufügen“ in der App; an den Assistenten gehen die Namen dabei nicht. Bestätigt ihr ihm im
-  Gespräch eure Vorlieben, speichert der Such-Dienst sie in eurem Konto (nur bekannte Angaben wie in der App, keine
+  seid, und ändern nur mit Bearbeitungsrecht. An den Assistenten gehen Ziel, Reisedaten, die Reisenden mit Vorname, Familienname
+  und Alter, der Wohnort der Familien mit Postleitzahl (damit er zuordnen kann, wer von wo losfährt) und die Posten mit Preisen,
+  keine Geburtsdaten und keine Angaben „Nur für dich“. Fragt der Assistent nach euren gespeicherten Personen (Abschnitt 5),
+  bekommt er sie ebenso (Vorname, Familienname, Alter statt Geburtsdatum, Wohnort mit Postleitzahl), dazu Namen und
+  Zusammensetzung eurer gespeicherten Gruppen und eure Vorlieben. Legt er eine Reise mit diesen Familien oder einer Gruppe an,
+  trägt der Such-Dienst die gespeicherten Personen in die Reise ein, wie „Aus Gruppe hinzufügen“ in der App. Nennt ihr ihm im
+  Gespräch Mitreisende (z. B. aus einem Gruppenchat) und bestätigt es, legt der Such-Dienst sie mit Vorname, Familienname,
+  Alter und Wohnort in der Reise bzw. als gespeicherte Personen und Gruppe in eurem Konto an oder korrigiert diese Angaben;
+  löschen könnt ihr gespeicherte Personen nur in der App. Den Wohnort ermittelt der Such-Dienst aus den Postleitzahl-Daten
+  der App. Für Kosten, die schon bezahlt sind, trägt er ein, welche Familie bezahlt hat, und die Buchungsnummer. Bestätigt ihr
+  ihm im Gespräch eure Vorlieben, speichert der Such-Dienst sie in eurem Konto (nur bekannte Angaben wie in der App, keine
   Postleitzahl); Vorlieben für eine einzelne Reise speichert er in der Reise. Bei Suchen nimmt der Such-Dienst fehlende
   Angaben aus euren Vorlieben bzw. denen der Gruppe und der Reise.
 </p>
@@ -347,11 +351,11 @@
 
 <h2>10. Links zu Anbietern und Partner-Links</h2>
 <p>
-  Links wie „Beim Anbieter ↗“, Booking.com, Airbnb, Google Flüge, Skyscanner, GetYourGuide, Viator, Tiqets, Klook, Google Maps
+  Links wie „Beim Anbieter ↗“, Booking.com, Airbnb, Expedia, Google Flüge, Skyscanner, GetYourGuide, Viator, Tiqets, Klook, Google Maps
   oder Tripadvisor öffnen die Seite des Anbieters. Erst dann erhält dieser Anbieter Daten von euch (z. B. IP-Adresse)
   und es gilt dessen Datenschutzerklärung. Links, die in der App mit „Partner*“ gekennzeichnet sind, enthalten meine
   Partner-Kennung, damit der Anbieter eine Buchung mir zuordnen kann; dafür
-  setzt der Anbieter bzw. das Partnernetzwerk (Travelpayouts, Awin, Viator) auf seiner eigenen Seite ggf. Cookies; Partner-Links über Travelpayouts bzw. Awin laufen dazu kurz über deren Weiterleitung (tp.media bzw. awin1.com). Ich
+  setzt der Anbieter bzw. das Partnernetzwerk (Travelpayouts, Awin, CJ, Viator) auf seiner eigenen Seite ggf. Cookies; Partner-Links über Travelpayouts, Awin bzw. CJ laufen dazu kurz über deren Weiterleitung (tp.media, awin1.com bzw. anrdoezrs.net). Ich
   erfahre dabei nicht, wer gebucht hat, sondern nur, dass und wofür eine Provision anfällt.
 </p>
 <p>

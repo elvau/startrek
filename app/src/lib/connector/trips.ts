@@ -9,7 +9,7 @@ import { es } from "../i18n/es";
 import { fr } from "../i18n/fr";
 import { pl } from "../i18n/pl";
 import { ru } from "../i18n/ru";
-import { CAT_KEYS, DEFAULT_SETTINGS, isActive, uid, type CatKey, type Item, type Option, type Person, type Traveler, type Trip } from "../model";
+import { CAT_KEYS, DEFAULT_SETTINGS, hhKey, isActive, uid, type CatKey, type Item, type Option, type Person, type Status, type Traveler, type Trip } from "../model";
 import { applyPeople } from "../people";
 import type { FlightOffer, OfferLeg } from "../flights/types";
 import { plainLink } from "../partner";
@@ -143,7 +143,11 @@ export function addStay(trip: Trip, o: StayOffer, q: StayQuery, lang: string): I
   return push(trip, item);
 }
 
-export interface Cost { cat: CatKey; name: string; eur: number; perPerson?: boolean; url?: string; arrival?: boolean; estimate?: boolean }
+export interface Cost {
+  cat: CatKey; name: string; eur: number; perPerson?: boolean; url?: string; arrival?: boolean; estimate?: boolean;
+  /** schon gewählt, gebucht oder bezahlt (fehlt: Idee); bezahlt von dieser Familie (Kasse) mit Datum, Buchungsnummer */
+  status?: Status; paidBy?: string; paidAt?: string; bookingRef?: string;
+}
 
 /** eigener Kostenposten (Mietwagen, Tickets, Schätzung): für alle oder pro Person */
 export function addCost(trip: Trip, c: Cost): Item {
@@ -153,7 +157,11 @@ export function addCost(trip: Trip, c: Cost): Item {
     ...(c.estimate ? { estimate: true } : {}),
     ...(c.url ? { source: { name: new URL(c.url).hostname, at: day(), url: c.url } } : {})
   };
-  return push(trip, { id: uid(), cat: c.cat, name: c.name, status: "idea", options: [opt], ai: { at: at(), kind: "created" }, ...(c.arrival ? { arrival: true } : {}) });
+  return push(trip, {
+    id: uid(), cat: c.cat, name: c.name, status: c.status || "idea", options: [opt], ai: { at: at(), kind: "created" }, ...(c.arrival ? { arrival: true } : {}),
+    ...(c.bookingRef ? { booking: { ref: c.bookingRef } } : {}),
+    ...(c.paidBy ? { payments: [{ amount: c.eur, by: c.paidBy, at: c.paidAt || day() }] } : {})
+  });
 }
 
 function push(trip: Trip, item: Item): Item {
@@ -264,7 +272,7 @@ function itemEur(trip: Trip, it: Item): number | null {
   return Math.round(ch >= 0 ? val(it.options[ch]) ?? Math.min(...opts) : Math.min(...opts));
 }
 
-/** Reise für Claude: ohne Namen der Reisenden (nur Altersklassen), Posten mit Kennung, Status und Betrag */
+/** Reise für den Assistenten: Reisende (Vorname, Familie, Alter, Wohnort der Familie, #608), Posten mit Kennung, Status und Betrag */
 export function tripSummary(trip: Trip, role: string, partner = false) {
   const act = trip.travelers.filter(isActive);
   const items = trip.items.filter(i => !i.auto).map(i => {
@@ -287,8 +295,71 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
   const total = items.reduce((s, i) => s + (i.status !== "dropped" && "eur" in i ? (i.eur as number) : 0), 0);
   return {
     id: trip.id, name: trip.name, place: trip.place, country: trip.country || undefined, from: trip.from, to: trip.to, role,
-    travelers: { adults: cnt("adult"), children: cnt("child"), infants: cnt("infant") },
+    travelers: { adults: cnt("adult"), children: cnt("child"), infants: cnt("infant") }, ...tripPeople(trip),
     items, approxTotalEur: total, ...(trip.prefs && Object.keys(trip.prefs).length ? { preferences: trip.prefs } : {}),
     note: "Approximate total of the items (chosen or cheapest offer), without extraCosts (tourist tax, cleaning, baggage … paid on site or extra; add them when comparing) and without deposits (only blocked, credit card only if how = credit). The way to the departure airport and back (car incl. parking or train, per household) and meals are added automatically by the Split&Fly app and are not listed here; do not add them. Exact split per person is calculated in the app."
   };
+}
+
+/* ---------- Reisende einer Reise (Namen, Familien, Wohnorte), #608 ---------- */
+
+type Home = NonNullable<Person["home"]>;
+const homeOf = (h: { plz?: string; geo?: { ort: string }; cc?: string } | undefined) =>
+  h?.geo?.ort ? [[h.plz, h.geo.ort].filter(Boolean).join(" "), h.cc && h.cc !== "DE" ? h.cc : ""].filter(Boolean).join(", ") : undefined;
+
+/** Reisende für den Assistenten: Kennung, Vorname, Familie, Alter bzw. Altersklasse; Familien mit Wohnort */
+export function tripPeople(trip: Trip) {
+  const act = trip.travelers.filter(isActive);
+  return {
+    people: act.map(t => ({
+      id: t.id, first: t.name, family: hhKey(t), ...(t.age != null ? { age: t.age } : { kind: ageClassOf(t.age, t.kind) }),
+      ...(t.placeholder ? { placeholder: true } : {}), ...(t.personId ? { saved: t.personId } : {})
+    })),
+    families: [...new Set(act.map(hhKey))].map(name => { const home = homeOf(trip.households?.[name]); return { name, ...(home ? { home } : {}) }; })
+  };
+}
+
+/** Wohnort einer Familie in der Reise (Anfahrt zum Flughafen, Startort) */
+export function setHome(trip: Trip, family: string, h: Home) {
+  trip.households ||= {};
+  const cur = trip.households[family] || {};
+  trip.households[family] = { ...cur, plz: h.plz, geo: { lat: h.lat, lon: h.lon, ort: h.ort }, ...(h.cc && h.cc !== "DE" ? { cc: h.cc } : {}) };
+  if (!h.cc || h.cc === "DE") delete trip.households[family].cc;
+}
+
+/**
+ * Familie umbenennen (Tippfehler wie „Brink“ → „Brinck“): Reisende, Einstellungen der Familie, Zahlungen, Kasse, Verpflegung
+ * und Gruppenbus. Gibt es die neue Familie schon, kommen die Reisenden dazu (ihre Einstellungen bleiben).
+ */
+export function renameFamily(trip: Trip, from: string, to: string): number {
+  const f = from.trim(), n = to.trim();
+  const hit = trip.travelers.filter(t => hhKey(t) === f);
+  if (!hit.length || !n || n === f) return hit.length;
+  const re = (k: string) => (k === f ? n : k);
+  for (const t of hit) t.household = n;
+  if (trip.households?.[f]) {
+    if (!trip.households[n]) trip.households[n] = trip.households[f];
+    delete trip.households[f];
+  }
+  for (const h of Object.values(trip.households || {})) if (h.link) h.link = re(h.link);
+  for (const i of trip.items) {
+    for (const p of i.payments || []) if (p.by) p.by = re(p.by);
+    if (i.hh && i.hh !== "*") i.hh = i.hh.split("|").map(re).join("|");
+  }
+  for (const e of trip.expenses || []) { e.by = re(e.by); if (e.for) e.for = e.for.map(re); }
+  for (const x of trip.transfers || []) { x.from = re(x.from); x.to = re(x.to); }
+  if (trip.bus?.from) trip.bus.from = re(trip.bus.from);
+  if (trip.food?.hh?.[f]) { trip.food.hh[n] ??= trip.food.hh[f]; delete trip.food.hh[f]; }
+  return hit.length;
+}
+
+/** Vorname, Familie bzw. Alter eines Reisenden ändern; Platzhalter werden mit Vornamen zu echten Reisenden */
+export function changeTraveler(trip: Trip, c: { id: string; first?: string; family?: string; age?: number }): boolean {
+  const t = trip.travelers.find(x => x.id === c.id);
+  if (!t) return false;
+  if (c.first) t.name = c.first;
+  if (c.family) t.household = c.family;
+  if (c.age != null) { t.age = c.age; t.kind = undefined; }
+  if (c.first) t.placeholder = undefined;
+  return true;
 }

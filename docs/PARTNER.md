@@ -67,6 +67,7 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 |---|---|---|---|
 | Google Flights, Skyscanner | Flüge | – | – |
 | Booking.com | Unterkunft | CJ (beworben 10/2026) | – |
+| Expedia (Hotel, Flug, Flug + Hotel, Mietwagen, Erlebnisse) | Unterkunft, Flüge, Mietwagen, Erlebnisse | CJ | ja (Link-ID `15261175`) |
 | Airbnb | Unterkunft | – | – |
 | GetYourGuide | Erlebnisse | CJ (beworben 10/2026; Travelpayouts abgelehnt) | – |
 | Tiqets | Erlebnisse | Travelpayouts | ja (`p=2074`, `campaign_id=89`) |
@@ -98,6 +99,22 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
 ## Bedingungen
 
 - **Viator:** Suche nur auf splitandfly.com, nicht über den KI-Konnektor (siehe `docs/KONNEKTOR.md`).
+- **Expedia DACH (CJ):** Provision Hotel 4 %, Aktivitäten 4 %, Pauschalreise 2 %, Ferienwohnung 2 %, Mietwagen 1,5 %,
+  Flug 0 %, Kreuzfahrt 0 %, Bahn 0 %; 7 Tage Cookie; 0 % bei Gutscheincodes, die nicht aus dem Programm kommen.
+  Willkommensrate 1.11.2026–31.1.2027: Hotel, Aktivitäten, Ferienwohnung, Mietwagen je 5 %, Pauschalreise 2,5 %
+  (Flug, Kreuzfahrt 0 %), danach wieder die Sätze oben.
+  Flüge trotzdem verlinken (bester Preis vor Provision). Verboten: Bieten auf Expedia-Marken in Suchmaschinen-Werbung,
+  Expedia im Domainnamen, iFrames, Pop-ups, Browser-Erweiterungen, Scrapen der Expedia-Seiten, Sub-Affiliates,
+  Expedia-Inhalte auf fremden Seiten (daher wie Viator nur auf splitandfly.com, nicht über den KI-Konnektor).
+  Deeplinks laut Bedingungen über den Deeplink-Generator, erzeugte Links nicht verändern; ob selbst gebaute
+  Such-Links über CJ (`?url=`) zulässig sind, bei expediadach@cj.com angefragt (30.10.2026, Antwort offen). Der Link
+  15261175 ist bei CJ für Deep Linking freigegeben, Test mit Hotelsuche kam mit `cjevent` auf expedia.de an.
+  Such-Links: `app/src/lib/partners/expedia.ts`; Flug + Hotel steht bei den Flug-Anbietern (nur mit Rückflug), braucht
+  `misId` (Strecken mit Flughafen und Datum, ohne Expedia-Ort-IDs gebaut). Alle fünf Such-Links auf expedia.de getestet (30.10.2026). Bei Nutzung der Marke Markenhinweis
+  („EXPEDIA ist eine Marke von Expedia, Inc.“) unten auf der Seite bzw. im Impressum.
+  Link-IDs (CJ → Links, Advertiser 5289015): mit Deep Linking „Städtetrips für Erkundungslustige [DE]“ 15261175 und
+  „Hello Sunshine! [DE]“ 15261078 (Text-Links); ohne Deep Linking DE_Hotel 13852993, DE_Flight+Hotel 13853176,
+  AT_Home 13853200. Außerdem „Search APIs-DE“ 13991274 und „Deeplink Builder DE“ 13904715 (SmartLinks, noch ansehen).
 - **Reiseversicherung:** nur als Tipp verlinken, keine Beratung und kein Tarifvergleich (sonst Erlaubnis nach § 34d GewO nötig).
 
 ## Awin
@@ -117,12 +134,15 @@ Nach der Freischaltung je Programm die Advertiser-ID (`awinmid`) eintragen (`tag
 
 Publisher-Konto für splitandfly.com, beworben 10/2026. Travelpayouts hatte GetYourGuide und Booking.com zum Start
 abgelehnt, deshalb laufen diese über CJ.
-Stand 25.10.2026, **offen:** Booking.com DACH, GetYourGuide INT, Kiwi.com, Fewo-direkt, Vrbo (mit Länderprogrammen),
-Agoda EU, Hotels.com DACH, Expedia DACH, Trip.com, EconomyBookings, AirportRentalCars, Suntransfers, Balearia,
-Omio, World Nomads (nur als Tipp).
+Stand 30.10.2026 (in Klammern die Advertiser-ID, nicht die Link-ID):
+- **zugelassen:** Expedia DACH (5289015; Hotels, Flüge, Pauschalreisen, Mietwagen, Aktivitäten; 0 % Provision bei
+  Gutscheincodes), Hotels.com DACH (5275606), Fewo-direkt (2691623), Suntransfers (4727627), Carla Car Rental (7466061),
+  VIP Cars Global (7819955)
+- **offen:** Booking.com DACH, GetYourGuide INT, Kiwi.com, Vrbo (mit Länderprogrammen), Agoda EU, Trip.com,
+  EconomyBookings, AirportRentalCars, Balearia, Omio, World Nomads (nur als Tipp)
 
 Publisher-ID (PID) `8096976` (öffentlich, steht in jedem CJ-Link), im Verzeichnis als `CJ_PUBLISHER`. Partner über CJ
 bekommen `tag: cj(aid)`: Der Ziel-Link wird über `https://www.anrdoezrs.net/click-8096976-<aid>?url=<Ziel>` geleitet; `aid` ist
 die Link-ID eines Text-Links des Programms (CJ-Konto → Links, nach der Freischaltung). Mit der ersten Kennung CJ in
-`public/datenschutz.html` und im Impressum nennen. Kiwi.com: Buchungslinks der Flugsuche (`bookingUrl` aus
+`public/datenschutz.html` und im Impressum nennen (erledigt mit Expedia, 10/2026). Kiwi.com: Buchungslinks der Flugsuche (`bookingUrl` aus
 `app/src/lib/flights/kiwi.ts`) über CJ leiten, falls Deeplinks erlaubt sind.

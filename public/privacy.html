@@ -297,12 +297,16 @@
   keeps offers found for a few hours in Cloudflare’s cache (so the assistant can add them to a trip) and counts the
   searches per key or connection and day (ID and date, deleted after two days). For trips in your account the search service
   reads and writes your trips in Firebase (section 5), only those you are a member of, and changes them only with edit
-  rights. The assistant receives destination, travel dates, number of travellers by age group and the items with
-  prices, no names of travellers and no “Just for you” details. If the assistant asks for your saved people (section 5),
-  it receives your families without names (number of adults, children's ages, home town without postcode), the names and
-  make-up of your saved groups and your preferences (without postcode). If it creates a trip with these families or a group,
-  the search service enters the saved people including their names into the trip, like “Add from group” in the app; the
-  names are not sent to the assistant. If you confirm your preferences to it in the conversation, the search service
+  rights. The assistant receives destination, travel dates, the travellers with first name, family name and age, the
+  families' home town with postcode (so it can tell who starts from where) and the items with prices, no dates of birth
+  and no “Just for you” details. If the assistant asks for your saved people (section 5), it receives them in the same way
+  (first name, family name, age instead of date of birth, home town with postcode), plus the names and make-up of your saved
+  groups and your preferences. If it creates a trip with these families or a group, the search service enters the saved
+  people into the trip, like “Add from group” in the app. If you name fellow travellers to it in the conversation (e.g. from a
+  group chat) and confirm, the search service adds them with first name, family name, age and home town to the trip or as
+  saved people and a group to your account, or corrects these details; saved people can only be deleted in the app. The home
+  town is looked up in the app's postcode data. For costs already paid it records which family paid and the booking number.
+  If you confirm your preferences to it in the conversation, the search service
   saves them in your account (only known fields as in the app, no postcode); preferences for a single trip are saved in
   the trip. For searches the search service takes missing details from your preferences or those of the group and the trip.
 </p>
@@ -332,11 +336,11 @@
 
 <h2>10. Links to providers and partner links</h2>
 <p>
-  Links such as “At the provider ↗”, Booking.com, Airbnb, Google Flights, Skyscanner, GetYourGuide, Viator, Tiqets, Klook,
+  Links such as “At the provider ↗”, Booking.com, Airbnb, Expedia, Google Flights, Skyscanner, GetYourGuide, Viator, Tiqets, Klook,
   Google Maps or Tripadvisor open the provider’s page. Only then does that provider receive data from you (e.g. IP
   address), and its privacy policy applies. Links marked “Partner*” in the app contain my partner ID so the provider can
-  attribute a booking to me; for this the provider or the partner network (Travelpayouts, Awin, Viator) may set cookies on its
-  own site; partner links via Travelpayouts or Awin briefly pass through their redirect (tp.media or awin1.com). I do not learn who booked, only that and for what a commission is due.
+  attribute a booking to me; for this the provider or the partner network (Travelpayouts, Awin, CJ, Viator) may set cookies on its
+  own site; partner links via Travelpayouts, Awin or CJ briefly pass through their redirect (tp.media, awin1.com or anrdoezrs.net). I do not learn who booked, only that and for what a commission is due.
 </p>
 <p>
   When you tap a link to a provider, the app only tells my search service which provider and which kind of link it was

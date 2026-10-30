@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { expediaMisId } from "./expedia";
 import { parkQuery } from "./park";
 import { AWIN_PUBLISHER, CJ_PUBLISHER, PARTNERS, cj, partnerLink, partnersOf, sponsoredAny, type PartnerId } from ".";
 
@@ -57,13 +58,15 @@ describe("Partner-Verzeichnis", () => {
   it("Hinweis zum Sternchen nur, wenn ein Partner-Link dabei ist", () => {
     expect(sponsoredAny(partnersOf("activity"), act, true)).toBe(true);
     expect(sponsoredAny(partnersOf("activity"), act, false)).toBe(false);
-    expect(sponsoredAny(partnersOf("car"), Q.car, true)).toBe(false);
+    expect(sponsoredAny(partnersOf("car"), Q.car, true)).toBe(true);
+    expect(sponsoredAny(["kayakCars", "check24Cars"], Q.car, true)).toBe(false);
   });
 
   it("Kategorien in der Reihenfolge des Verzeichnisses", () => {
-    expect(partnersOf("activity")).toEqual(["getYourGuide", "viator", "tiqets", "klook"]);
-    expect(partnersOf("stay")).toEqual(["booking", "airbnb"]);
-    expect(partnersOf("car")).toEqual(["kayakCars", "check24Cars", "discoverCars"]);
+    expect(partnersOf("activity")).toEqual(["getYourGuide", "viator", "tiqets", "klook", "expediaActivities"]);
+    expect(partnersOf("stay")).toEqual(["booking", "airbnb", "expediaHotels"]);
+    expect(partnersOf("car")).toEqual(["kayakCars", "check24Cars", "discoverCars", "expediaCars"]);
+    expect(partnersOf("flight")).toEqual(["googleFlights", "skyscanner", "expediaFlights", "expediaPackage"]);
     expect(partnersOf("transfer")).toHaveLength(5);
     expect(partnersOf("insurance")).toHaveLength(4);
   });
@@ -128,5 +131,61 @@ describe("Awin-Programme mit Kennung (10/2026)", () => {
       expect(off.url).not.toContain("awin1.com");
       expect(off.sponsored).toBe(false);
     }
+  });
+});
+
+describe("Expedia DACH über CJ (Link-ID 15261175)", () => {
+  const E = ["expediaFlights", "expediaPackage", "expediaHotels", "expediaActivities", "expediaCars"] as const;
+  it("mit Partner-Links über anrdoezrs.net, Ziel auf expedia.de; ohne direkt", () => {
+    for (const id of E) {
+      const on = partnerLink(id, Q[PARTNERS[id].cat] as never, true)!;
+      const u = new URL(on.url);
+      expect(u.origin + u.pathname, id).toBe(`https://www.anrdoezrs.net/click-${CJ_PUBLISHER}-15261175`);
+      expect(new URL(u.searchParams.get("url")!).origin, id).toBe("https://www.expedia.de");
+      expect(on.sponsored, id).toBe(true);
+      const off = partnerLink(id, Q[PARTNERS[id].cat] as never, false)!;
+      expect(off.url.startsWith("https://www.expedia.de/"), id).toBe(true);
+      expect(off.sponsored, id).toBe(false);
+    }
+  });
+  it("Hotel: Ziel, Zeitraum, Erwachsene je Zimmer, Kinder mit Alter, Haustiere", () => {
+    const u = new URL(partnerLink("expediaHotels", stay, false)!.url);
+    expect(u.pathname).toBe("/Hotel-Search");
+    expect(Object.fromEntries(u.searchParams)).toEqual({ destination: "Trogir, Croatia", startDate: "2027-07-18", endDate: "2027-07-25", rooms: "1", adults: "2", children: "1_8" });
+    const two = new URL(partnerLink("expediaHotels", { ...stay, adults: 5, childAges: [8, 3], rooms: 2, pets: true }, false)!.url).searchParams;
+    expect([two.get("rooms"), two.get("adults"), two.get("children"), two.get("amenities")]).toEqual(["2", "3,2", "1_8,2_3", "PETS"]);
+  });
+  it("Flug: Hin- und Rückflug mit Datum TT.MM.JJJJ, Kinder und Babys mit Alter", () => {
+    const u = new URL(partnerLink("expediaFlights", { ...fl, children: 1, infants: 1 }, false)!.url).searchParams;
+    expect([u.get("trip"), u.get("leg1"), u.get("leg2"), u.get("passengers")]).toEqual([
+      "roundtrip", "from:DUS,to:SPU,departure:18.07.2027TANYT", "from:SPU,to:DUS,departure:29.07.2027TANYT", "adults:2,children:2[8;1],infantinlap:N"
+    ]);
+    const one = new URL(partnerLink("expediaFlights", { ...fl, ret: undefined }, false)!.url).searchParams;
+    expect([one.get("trip"), one.get("leg2"), one.get("passengers")]).toEqual(["oneway", null, "adults:2,children:0,infantinlap:N"]);
+  });
+  it("Flug + Hotel: nur mit Rückflug, Ziel als Name, wenn bekannt", () => {
+    expect(partnerLink("expediaPackage", { ...fl, ret: undefined }, true)).toBeNull();
+    const u = new URL(partnerLink("expediaPackage", { ...fl, toName: "Split" }, false)!.url);
+    expect(u.pathname).toBe("/Hotel-Search");
+    const { misId, ...rest } = Object.fromEntries(u.searchParams);
+    expect(rest).toEqual({ packageType: "fh", searchProduct: "hotel", adults: "2", tripType: "ROUND_TRIP", cabinClass: "COACH", startDate: "2027-07-18", endDate: "2027-07-29", destination: "Split", origin: "DUS", originAirportCode: "DUS" });
+    expect(misId).toBe(expediaMisId([["DUS", "2027-07-18"], ["SPU", "2027-07-29"]]));
+    // ohne Flughafencodes: Startseite Flug + Hotel
+    expect(partnerLink("expediaPackage", { ...fl, to: "Split" }, false)!.url).toBe("https://www.expedia.de/Flug-und-Hotel");
+  });
+  it("misId wie von Expedia getestet (DUS 10.05. → BCN 14.05.2027)", () => {
+    expect(expediaMisId([["DUS", "2027-05-10"], ["BCN", "2027-05-14"]])).toBe("~ARIHGgUIAhIBCBooCAESEQoDRFVTKgoyMDI3LTA1LTEwEhEKA0JDTioKMjAyNy0wNS0xNA");
+  });
+  it("Mietwagen: Flughafen und Zeiten (12 h mit AM/PM), sonst nur Ort, ohne Ort kein Link", () => {
+    const u = new URL(partnerLink("expediaCars", { w: cw, place: "Palma" }, false)!.url);
+    expect(u.pathname).toBe("/carsearch");
+    expect(Object.fromEntries(u.searchParams)).toEqual({ locn: "PMI", date1: "15.10.2026", time1: "0100PM", date2: "19.10.2026", time2: "0400PM" });
+    expect(new URL(partnerLink("expediaCars", { w: { ...cw, pick: "2026-10-15T00:30", drop: "2026-10-19T09:00", dropAp: "IBZ" }, place: "" }, false)!.url).searchParams.toString())
+      .toBe("locn=PMI&loc2=IBZ&date1=15.10.2026&time1=1230AM&date2=19.10.2026&time2=0900AM");
+    expect(partnerLink("expediaCars", { w: null, place: "Palma" }, false)!.url).toBe("https://www.expedia.de/carsearch?locn=Palma");
+    expect(partnerLink("expediaCars", { w: null, place: "" }, false)).toBeNull();
+  });
+  it("Aktivitäten: Ort und Zeitraum", () => {
+    expect(partnerLink("expediaActivities", act, false)!.url).toBe("https://www.expedia.de/things-to-do/search?location=Split&startDate=2027-07-18&endDate=2027-07-29");
   });
 });
