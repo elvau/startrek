@@ -98,6 +98,14 @@ Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Diens
 ## Bedingungen
 
 - **Viator:** Suche nur auf splitandfly.com, nicht über den KI-Konnektor (siehe `docs/KONNEKTOR.md`).
+- **Expedia DACH (CJ):** Provision Hotel 4 %, Aktivitäten 4 %, Pauschalreise 2 %, Ferienwohnung 2 %, Mietwagen 1,5 %,
+  Flug 0 %, Kreuzfahrt 0 %, Bahn 0 %; 7 Tage Cookie; 0 % bei Gutscheincodes, die nicht aus dem Programm kommen.
+  Flüge trotzdem verlinken (bester Preis vor Provision). Verboten: Bieten auf Expedia-Marken in Suchmaschinen-Werbung,
+  Expedia im Domainnamen, iFrames, Pop-ups, Browser-Erweiterungen, Scrapen der Expedia-Seiten, Sub-Affiliates,
+  Expedia-Inhalte auf fremden Seiten (daher wie Viator nur auf splitandfly.com, nicht über den KI-Konnektor).
+  Deeplinks laut Bedingungen über den Deeplink-Generator, erzeugte Links nicht verändern; ob selbst gebaute
+  Such-Links über CJ (`?url=`) zulässig sind, bei expediadach@cj.com erfragen. Bei Nutzung der Marke Markenhinweis
+  („EXPEDIA ist eine Marke von Expedia, Inc.“) unten auf der Seite bzw. im Impressum.
 - **Reiseversicherung:** nur als Tipp verlinken, keine Beratung und kein Tarifvergleich (sonst Erlaubnis nach § 34d GewO nötig).
 
 ## Awin
