@@ -80,16 +80,16 @@ log("Vorlieben im Konto gespeichert (Rest bleibt), Suche nimmt den Flughafen aus
 
 // Gruppenchat (#608): Personen und Gruppe im Konto speichern (Rest bleibt), Tippfehler korrigieren
 deps.saveProfile = profileSaver({ FIRESTORE_EMULATOR: "http://127.0.0.1:8080", FIREBASE_PROJECT_ID: "demo-reisekasse" });
-const sp = await tool("save_people", { people: [{ first: "Mela", last: "Pauk", age: 35, home: "Düsseldorf" }, { first: "Quin", last: "Pauk", age: 1 }] });
-await tool("save_people", { renameFamily: [{ from: "Pauk", to: "Pauck" }], people: [{ id: sp.saved[1].id, first: "Quinn" }] });
+const sp = await tool("save_people", { people: [{ first: "Nori", last: "Brink", age: 35, home: "Düsseldorf" }, { first: "Jon", last: "Brink", age: 1 }] });
+await tool("save_people", { renameFamily: [{ from: "Brink", to: "Brinck" }], people: [{ id: sp.saved[1].id, first: "John" }] });
 await tool("save_group", { name: "Ferienhaus", members: ["F1", "F2"] });
 const prof2 = JSON.parse((await (await fetch(`${FS}/profiles/${uid}`, { headers: { authorization: "Bearer owner" } })).json()).fields.data.stringValue);
-if (prof2.people.map(x => `${x.first} ${x.last}`).join() !== "Claudia Fuchs,Tom Fuchs,Mela Pauck,Quinn Pauck" || prof2.people[2].home?.ort !== "Düsseldorf" || prof2.groups.map(g => `${g.name}:${g.memberIds.length}`).join() !== "Fuchsbau:2,Ferienhaus:4" || prof2.prefs.budget !== "low") fail("Konto nach Personen und Gruppe: " + JSON.stringify(prof2));
-const fh = await tool("create_trip", { place: "Molbergen", group: "Ferienhaus", travelers: [{ first: "Felix", family: "Mertens", age: 35 }] });
-const pk = fh.people.find(x => x.first === "Mela");
-await tool("update_travelers", { tripId: fh.tripId, change: [{ id: pk.id, first: "Melanie" }], renameFamily: [{ from: "Mertens", to: "Merten" }] });
+if (prof2.people.map(x => `${x.first} ${x.last}`).join() !== "Claudia Fuchs,Tom Fuchs,Nori Brinck,John Brinck" || prof2.people[2].home?.ort !== "Düsseldorf" || prof2.groups.map(g => `${g.name}:${g.memberIds.length}`).join() !== "Fuchsbau:2,Ferienhaus:4" || prof2.prefs.budget !== "low") fail("Konto nach Personen und Gruppe: " + JSON.stringify(prof2));
+const fh = await tool("create_trip", { place: "Hümmling", group: "Ferienhaus", travelers: [{ first: "Ole", family: "Berger", age: 35 }] });
+const pk = fh.people.find(x => x.first === "Nori");
+await tool("update_travelers", { tripId: fh.tripId, change: [{ id: pk.id, first: "Nora" }], renameFamily: [{ from: "Berger", to: "Berg" }] });
 const fhTrip = JSON.parse((await (await fetch(`${FS}/trips/${fh.tripId}`, { headers: { authorization: "Bearer owner" } })).json()).fields.data.stringValue);
-if (fhTrip.travelers.map(t => `${t.name}/${t.household}`).join() !== "Claudia/Fuchs,Tom/Fuchs,Melanie/Pauck,Quinn/Pauck,Felix/Merten" || fhTrip.households?.Pauck?.geo?.ort !== "Düsseldorf") fail("Reise aus dem Gruppenchat: " + JSON.stringify(fhTrip.travelers));
+if (fhTrip.travelers.map(t => `${t.name}/${t.household}`).join() !== "Claudia/Fuchs,Tom/Fuchs,Nora/Brinck,John/Brinck,Ole/Berg" || fhTrip.households?.Brinck?.geo?.ort !== "Düsseldorf") fail("Reise aus dem Gruppenchat: " + JSON.stringify(fhTrip.travelers));
 log("Gruppenchat: Personen und Gruppe im Konto gespeichert, Reise mit Familien und Wohnort, Namen korrigiert");
 
 // Aufräumen (#603): Fehlversuch der KI samt Stimmen löschen; geteilte Reise verlassen (die anderen behalten sie)
@@ -102,7 +102,7 @@ if ((await fetch(`${FS}/trips/${tryId}`, { headers: H })).status !== 404 || (awa
 const v = s => ({ stringValue: s }), m = o => ({ mapValue: { fields: o } });
 await fetch(`${FS}/trips/geteilt`, { method: "PATCH", headers: H, body: JSON.stringify({ fields: {
   name: v("Geteilt"), data: v(JSON.stringify({ ...famTrip, id: "geteilt" })), owner: v("u2"), memberIds: { arrayValue: { values: [v("u2"), v(uid)] } },
-  members: m({ u2: v("owner"), [uid]: v("editor") }), memberNames: m({ u2: v("Marie"), [uid]: v("Claudia") }), claims: m({ [uid]: m({ t: v("x"), n: v("Claudia") }) })
+  members: m({ u2: v("owner"), [uid]: v("editor") }), memberNames: m({ u2: v("Ella"), [uid]: v("Claudia") }), claims: m({ [uid]: m({ t: v("x"), n: v("Claudia") }) })
 } }) });
 if ((await tool("delete_trip", { tripId: "geteilt", confirm: true })).left !== "geteilt") fail("delete_trip auf geteilter Reise");
 const left = (await (await fetch(`${FS}/trips/geteilt`, { headers: H })).json()).fields;

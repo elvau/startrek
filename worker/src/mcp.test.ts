@@ -287,12 +287,12 @@ describe("KI-Konnektor (MCP)", () => {
     });
     // neue Personen mit Tippfehler, Wohnort per Ort; doppelt genannt wird nicht doppelt angelegt
     const saved = await tool(d, "save_people", { people: [
-      { first: "Melanie", last: "Pauk", age: 35, home: "Kempen" }, { first: "Quin", last: "Pauk", age: 1, home: "Kempen" },
-      { first: "Johanna", last: "Wiese", age: 36, home: "Wuppertal" }, { first: "Johanna", last: "Wiese", age: 36 }
+      { first: "Nora", last: "Brink", age: 35, home: "Kempen" }, { first: "Jon", last: "Brink", age: 1, home: "Kempen" },
+      { first: "Ida", last: "Wald", age: 36, home: "Wuppertal" }, { first: "Ida", last: "Wald", age: 36 }
     ] });
     expect(saved.error).toBe(false);
     expect(dir.people).toHaveLength(5);
-    expect(dir.people.find(p => p.first === "Johanna")?.home).toMatchObject({ plz: "42103", ort: "Wuppertal" });
+    expect(dir.people.find(p => p.first === "Ida")?.home).toMatchObject({ plz: "42103", ort: "Wuppertal" });
     expect((await tool(d, "save_people", { people: [{ first: "X", last: "Y", home: "Atlantis" }] })).text).toContain("postal code");
     expect((await tool(d, "save_people", { people: [{ first: "Nur" }] })).text).toContain("first and last name");
     // Alter aus Geburtsdatum bleibt
@@ -301,49 +301,49 @@ describe("KI-Konnektor (MCP)", () => {
     expect(dir.people[0].age).toBeUndefined();
 
     // Gruppe aus Familie und einzelnen Personen; ändern und umbenennen
-    const quin = dir.people.find(p => p.first === "Quin")!.id;
-    const g = await tool(d, "save_group", { name: "Ferienhaus", members: ["F1", ...dir.people.filter(p => p.last !== "Klein" && p.id !== quin).map(p => p.id)] });
+    const jon = dir.people.find(p => p.first === "Jon")!.id;
+    const g = await tool(d, "save_group", { name: "Ferienhaus", members: ["F1", ...dir.people.filter(p => p.last !== "Klein" && p.id !== jon).map(p => p.id)] });
     expect(g.data).toMatchObject({ created: true, group: { name: "Ferienhaus", adults: 3, childAges: [9], partOf: ["F2"] } });
     expect((await tool(d, "save_group", { name: "ferienhaus", add: ["F2"] })).data.group.partOf).toBeUndefined();
     expect((await tool(d, "save_group", { name: "Leer" })).text).toContain("needs members");
     expect((await tool(d, "save_group", { name: "Ferienhaus", add: ["p9"] })).text).toContain("Unknown person");
 
     // Reise aus der Gruppe plus eine nicht gespeicherte Familie mit Startort
-    const made = await tool(d, "create_trip", { place: "Molbergen", from: "2027-05-05", to: "2027-05-10", group: "Ferienhaus", travelers: [
-      { first: "Felix", family: "Mertens", age: 35, home: "47906 Kempen" }, { first: "Marie", family: "Mertens", age: 3 }
+    const made = await tool(d, "create_trip", { place: "Hümmling", from: "2027-05-05", to: "2027-05-10", group: "Ferienhaus", travelers: [
+      { first: "Ole", family: "Berger", age: 35, home: "47906 Kempen" }, { first: "Ella", family: "Berger", age: 3 }
     ] });
     expect(made.error).toBe(false);
     const id = made.data.tripId;
     expect(made.data.families).toEqual([
-      { name: "Klein", home: "47906 Kempen" }, { name: "Pauk", home: "47906 Kempen" }, { name: "Wiese", home: "42103 Wuppertal" }, { name: "Mertens", home: "47906 Kempen" }
+      { name: "Klein", home: "47906 Kempen" }, { name: "Brink", home: "47906 Kempen" }, { name: "Wald", home: "42103 Wuppertal" }, { name: "Berger", home: "47906 Kempen" }
     ]);
     expect(made.data.travelers).toEqual({ adults: 4, children: 2, infants: 1 });
 
     // bezahlte Buchung: Zahler ist eine Familie der Reise, mit Buchungsnummer
     expect((await tool(d, "add_cost", { tripId: id, category: "stay", name: "Ferienhaus", amountEur: 1606, paidBy: "Meyer" })).text).toContain("Unknown family");
-    expect((await tool(d, "add_cost", { tripId: id, category: "stay", name: "Ferienhaus", amountEur: 1606, paidBy: "wiese", perPerson: true })).error).toBe(true);
-    const paid = await tool(d, "add_cost", { tripId: id, category: "stay", name: "Ferienhaus", amountEur: 1606, paidBy: "wiese", paidAt: "2026-10-20", bookingRef: "123" });
+    expect((await tool(d, "add_cost", { tripId: id, category: "stay", name: "Ferienhaus", amountEur: 1606, paidBy: "wald", perPerson: true })).error).toBe(true);
+    const paid = await tool(d, "add_cost", { tripId: id, category: "stay", name: "Ferienhaus", amountEur: 1606, paidBy: "wald", paidAt: "2026-10-20", bookingRef: "123" });
     expect(paid.data.status).toBe("paid");
     let trip = JSON.parse((await d.store!.get(id))!.data) as Trip;
-    expect(trip.items[0]).toMatchObject({ status: "paid", booking: { ref: "123" }, payments: [{ amount: 1606, by: "Wiese", at: "2026-10-20" }] });
+    expect(trip.items[0]).toMatchObject({ status: "paid", booking: { ref: "123" }, payments: [{ amount: 1606, by: "Wald", at: "2026-10-20" }] });
     expect((await tool(d, "add_cost", { tripId: id, category: "misc", name: "X", amountEur: 1, status: "gebucht" })).error).toBe(true);
 
     // Tippfehler korrigieren: Familie (mit Zahlung) und Vorname; Wohnort ändern; Reisende dazu
-    const q = made.data.people.find((p: any) => p.first === "Quin").id;
-    const up = await tool(d, "update_travelers", { tripId: id, renameFamily: [{ from: "Pauk", to: "Pauck" }, { from: "Wiese", to: "Wiesner" }], change: [{ id: q, first: "Quinn" }], homes: [{ family: "Mertens", home: "Wuppertal" }], add: { travelers: [{ first: "Lea", family: "Mertens", age: 5 }] } });
+    const q = made.data.people.find((p: any) => p.first === "Jon").id;
+    const up = await tool(d, "update_travelers", { tripId: id, renameFamily: [{ from: "Brink", to: "Brinck" }, { from: "Wald", to: "Waldner" }], change: [{ id: q, first: "John" }], homes: [{ family: "Berger", home: "Wuppertal" }], add: { travelers: [{ first: "Lina", family: "Berger", age: 5 }] } });
     expect(up.error).toBe(false);
-    expect(up.data.families).toContainEqual({ name: "Mertens", home: "42103 Wuppertal" });
+    expect(up.data.families).toContainEqual({ name: "Berger", home: "42103 Wuppertal" });
     trip = JSON.parse((await d.store!.get(id))!.data) as Trip;
-    expect(trip.travelers.filter(t => t.household === "Pauck").map(t => t.name)).toEqual(["Melanie", "Quinn"]);
-    expect(trip.households?.Wiesner?.geo?.ort).toBe("Wuppertal");
-    expect(trip.households?.Wiese).toBeUndefined();
-    expect(trip.items[0].payments?.[0].by).toBe("Wiesner");
-    expect(trip.travelers.filter(t => t.household === "Mertens").map(t => t.name)).toEqual(["Felix", "Marie", "Lea"]);
+    expect(trip.travelers.filter(t => t.household === "Brinck").map(t => t.name)).toEqual(["Nora", "John"]);
+    expect(trip.households?.Waldner?.geo?.ort).toBe("Wuppertal");
+    expect(trip.households?.Wald).toBeUndefined();
+    expect(trip.items[0].payments?.[0].by).toBe("Waldner");
+    expect(trip.travelers.filter(t => t.household === "Berger").map(t => t.name)).toEqual(["Ole", "Ella", "Lina"]);
     expect((await tool(d, "update_travelers", { tripId: id, change: [{ id: "nix", first: "A" }] })).text).toContain("Unknown traveler");
     expect((await tool(d, "update_travelers", { tripId: id })).text).toContain("Nothing to change");
     // gespeicherte Personen bleiben, bis sie selbst geändert werden; Familie im Konto umbenennen
-    await tool(d, "save_people", { renameFamily: [{ from: "pauk", to: "Pauck" }], people: [{ id: quin, first: "Quinn" }] });
-    expect(dir.people.filter(p => p.last === "Pauck").map(p => p.first)).toEqual(["Melanie", "Quinn"]);
+    await tool(d, "save_people", { renameFamily: [{ from: "brink", to: "Brinck" }], people: [{ id: jon, first: "John" }] });
+    expect(dir.people.filter(p => p.last === "Brinck").map(p => p.first)).toEqual(["Nora", "John"]);
     // gespeicherte Personen nicht doppelt in die Reise
     const again = await tool(d, "update_travelers", { tripId: id, add: { group: "Ferienhaus" } });
     expect(again.data.people).toHaveLength(8);
@@ -351,8 +351,8 @@ describe("KI-Konnektor (MCP)", () => {
     // Platzhalter werden mit Vornamen echt
     const ph = await tool(d, "create_trip", { place: "Palma", adults: 2, travelersFrom: "user" });
     const ids = ph.data.people.map((p: any) => p.id);
-    const named = await tool(d, "update_travelers", { tripId: ph.data.tripId, change: [{ id: ids[0], first: "Viola", family: "Mertens", age: 37 }] });
-    expect(named.data.people[0]).toEqual({ id: ids[0], first: "Viola", family: "Mertens", age: 37 });
+    const named = await tool(d, "update_travelers", { tripId: ph.data.tripId, change: [{ id: ids[0], first: "Rosa", family: "Berger", age: 37 }] });
+    expect(named.data.people[0]).toEqual({ id: ids[0], first: "Rosa", family: "Berger", age: 37 });
     expect(named.data.people[1].placeholder).toBe(true);
   });
 
