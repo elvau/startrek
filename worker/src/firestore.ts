@@ -215,10 +215,10 @@ export function profileStore(env: StoreEnv, f: typeof fetch = fetch): ((uid: str
 }
 
 /**
- * Eigene Vorlieben im Konto ändern (#602): Stand lesen, Vorlieben ändern, nur speichern, wenn ihn inzwischen niemand
- * geändert hat (sonst einmal neu). Alles andere im Stand (Personen, Gruppen, AGB …) bleibt, wie es ist.
+ * Stand des Kontos ändern (Vorlieben #602, Personen und Gruppen #608): lesen, ändern, nur speichern, wenn ihn inzwischen
+ * niemand geändert hat (sonst einmal neu). Was die Änderung nicht anfasst (AGB, Einrichtung …), bleibt, wie es ist.
  */
-export function profilePrefsSaver(env: StoreEnv, f: typeof fetch = fetch): ((uid: string, change: (cur: Prefs) => Prefs) => Promise<Prefs>) | null {
+export function profileSaver(env: StoreEnv, f: typeof fetch = fetch): (<R>(uid: string, change: (d: Directory) => R) => Promise<R>) | null {
   const c = fsClient(env, f);
   if (!c) return null;
   const { root, base, call } = c;
@@ -230,8 +230,8 @@ export function profilePrefsSaver(env: StoreEnv, f: typeof fetch = fetch): ((uid
       catch (e) { if ((e as { status?: number }).status !== 404) throw e; }
       let d: Partial<Directory> = {};
       try { d = JSON.parse(String(fromFs(doc?.fields?.data) ?? "{}")) || {}; } catch {}
-      const prefs = change(d.prefs || {});
-      const next = { people: [], groups: [], ...d, prefs };
+      const next = { ...d, people: Array.isArray(d.people) ? d.people : [], groups: Array.isArray(d.groups) ? d.groups : [] } as Directory;
+      const out = change(next);
       try {
         await call(`${base}:commit`, {
           method: "POST",
@@ -242,13 +242,19 @@ export function profilePrefsSaver(env: StoreEnv, f: typeof fetch = fetch): ((uid
             updateTransforms: [{ fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" }]
           }] })
         });
-        return prefs;
+        return out;
       } catch (e) {
         const code = (e as { code?: string }).code;
         if (attempt || (code !== "FAILED_PRECONDITION" && code !== "ALREADY_EXISTS")) throw e;
       }
     }
   };
+}
+
+/** eigene Vorlieben im Konto ändern (#602); alles andere im Stand bleibt */
+export function profilePrefsSaver(env: StoreEnv, f: typeof fetch = fetch): ((uid: string, change: (cur: Prefs) => Prefs) => Promise<Prefs>) | null {
+  const save = profileSaver(env, f);
+  return save && ((uid, change) => save(uid, d => (d.prefs = change(d.prefs || {}))));
 }
 
 /** Rolle des Nutzers in der Reise (owner, editor, viewer) oder null */

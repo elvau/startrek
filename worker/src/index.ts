@@ -36,7 +36,8 @@ import { kiCaller, kiModels, kiReady, type KiEnv } from "./ki";
 import { isAdmin, meter, noteClick, noteRoute, usageReport, type UsageEnv } from "./usage";
 import { checkLimit, IP_LIMITS, ipKey, searchWindows, type LimitEnv } from "./ratelimit";
 import { isRevoked, issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
-import { profilePrefsSaver, profileStore, tripStore, type StoreEnv } from "./firestore";
+import { profilePrefsSaver, profileSaver, profileStore, tripStore, type StoreEnv } from "./firestore";
+import { findHome } from "./home";
 import { mcpMessage, type Saved } from "./mcp";
 import { grantStore, isOAuthPath, oauth, verifyAccess, wwwAuthenticate, type OAuthDeps } from "./oauth";
 import pkg from "../../app/package.json";
@@ -587,6 +588,8 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
     store: tripStore(env, net),
     profile: profileStore(env, net) || undefined,
     savePrefs: profilePrefsSaver(env, net) || undefined,
+    saveProfile: profileSaver(env, net) || undefined,
+    home: (text, cc) => findHome(text, cc, (env.APP_URL || "https://splitandfly.com/").replace(/\/?$/, "/"), net),
     offers: {
       put: (id, v) => caches.default.put(offerKey(id), new Response(JSON.stringify(v), { headers: { "cache-control": "max-age=21600" } })),
       get: async id => { const r = await caches.default.match(offerKey(id)); return r ? await r.json() as Saved : null; }

@@ -4,6 +4,8 @@
  * Anmeldung mit persönlichem Schlüssel (apikey.ts). Gesucht wird mit unseren Suchen; Angebote merkt sich der
  * Such-Dienst einige Stunden, damit der Assistent sie per Kennung in eine Reise übernehmen kann. Gebucht wird beim Anbieter
  * über den Link des Angebots. Angaben „Nur für dich“ (travelDocs) gibt es hier nicht.
+ * Namen, Alter (nie Geburtsdatum) und Wohnort mit PLZ der Reisenden sieht der Assistent, damit er Familien zuordnen und
+ * Tippfehler korrigieren kann; Personen und Gruppen im Konto legt er nach Rückfrage an und ändert sie (#608).
  */
 import { parseQuery } from "../../app/src/lib/flights/search";
 import { parseStayQuery } from "../../app/src/lib/stays/search";
@@ -11,11 +13,13 @@ import { parseEventQuery } from "../../app/src/lib/events/search";
 import type { FlightOffer, FlightQuery, SearchResult } from "../../app/src/lib/flights/types";
 import type { StayOffer, StayQuery, StaySearchResult } from "../../app/src/lib/stays/types";
 import type { EventQuery, EventSearchResult } from "../../app/src/lib/events/types";
-import type { Directory, Person, Traveler, Trip } from "../../app/src/lib/model";
-import { addCost, addFlight, addStay, aiKnows, aiState, aiWrote, changesSinceAi, isCat, LANGS, newTrip, removeItem, tripSummary, updateTrip } from "../../app/src/lib/connector/trips";
+import { hhKey, uid, type Directory, type Person, type Status, type Traveler, type Trip } from "../../app/src/lib/model";
+import { addCost, addFlight, addStay, aiKnows, aiState, aiWrote, changesSinceAi, changeTraveler, isCat, LANGS, newTrip, removeItem, renameFamily, setHome, tripPeople, tripSummary, updateTrip } from "../../app/src/lib/connector/trips";
 import { ensureCompare } from "../../app/src/lib/variants";
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
-import { travelersFor, travelersView } from "../../app/src/lib/connector/people";
+import { cleanName, saveGroup, savePeople, travelerColor, travelersFor, travelersView, type PersonInput } from "../../app/src/lib/connector/people";
+import { applyPeople } from "../../app/src/lib/people";
+import type { HomeHit } from "./home";
 import { mergePrefs, prefsFor } from "../../app/src/lib/prefs";
 import { prefsFromAi } from "../../app/src/lib/agent/agent";
 import { STYLES, type Prefs } from "../../app/src/lib/model";
@@ -34,6 +38,10 @@ export interface McpDeps {
   profile?: (uid: string) => Promise<Directory | null>;
   /** eigene Vorlieben im Konto ändern (#602): liest, ändert, speichert nur unverändert; gibt die neuen zurück */
   savePrefs?: (uid: string, change: (cur: Prefs) => Prefs) => Promise<Prefs>;
+  /** Personen und Gruppen im Konto ändern (#608): liest, ändert, speichert nur unverändert; gibt zurück, was change liefert */
+  saveProfile?: <R>(uid: string, change: (d: Directory) => R) => Promise<R>;
+  /** Wohnort aus Text („47906 Kempen“) und Land; fehlt: nur Orte aus der Ortsliste */
+  home?: (text: string, cc: string) => Promise<HomeHit | null>;
   /** gefundene Angebote merken (je Schlüssel, einige Stunden) */
   offers: { put: (id: string, v: Saved) => Promise<void>; get: (id: string) => Promise<Saved | null> };
   /** zählt eine Suche mit; Fehlermeldung, wenn das Tageslimit erreicht ist */
@@ -61,7 +69,9 @@ const INSTRUCTIONS = [
   "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, or train, per household from its settings) and meals; never add these as costs.",
   "Searches use the user's saved preferences (own, group, trip) for anything you leave out and always skip countries to avoid; pass tripId to use a trip's preferences, and the result lists appliedPreferences. If the user has none yet, offer to set up a short travel profile by asking about airports, budget, accommodation, meals, travel style and countries to avoid, then save it with save_my_preferences after they confirmed. Wishes for one trip only go to set_trip_preferences.",
   "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. Put alternatives you propose into one comparison (create_trip with compareWith).",
-  "Ask instead of guessing: call get_my_travelers first (families with children's ages, saved groups, preferences). If destination, time frame, who travels, budget or kind of trip are still unclear, ask the user short questions, each with 2-4 concrete options plus 'something else', before creating a trip. Never invent travelers or children's ages; state any remaining assumption explicitly."
+  "Ask instead of guessing: call get_my_travelers first (families with names, ages and home town, saved groups, preferences). If destination, time frame, who travels, budget or kind of trip are still unclear, ask the user short questions, each with 2-4 concrete options plus 'something else', before creating a trip. Never invent travelers or children's ages; state any remaining assumption explicitly.",
+  "If the user shares a group chat or a list of families, compare it with the saved families and groups: if it matches a saved group, ask whether it is that group; otherwise ask whether to save the new people and the group in their account (save_people, then save_group) or to add them to this trip only (create_trip with travelers). Then create the trip from the group or families, so every family keeps its name and home town (where it starts from).",
+  "Correct misspelled names or wrong ages where they are: saved people with save_people, travelers in a trip with update_travelers (saved people are not renamed in existing trips automatically). For a cost that is already booked or paid, pass status, paidBy (the family that paid) and bookingRef to add_cost."
 ].join(" ");
 
 const str = (d: string) => ({ type: "string", description: d });
@@ -80,6 +90,11 @@ const PREFS = {
   nightsMin: int("Usual trip length, nights from", 1, 60), nightsMax: int("Usual trip length, nights up to", 1, 60),
   pet: { type: "boolean", description: "Travels with a pet" }, stepFree: { type: "boolean", description: "Needs step-free access" },
   diet: { type: "string", enum: ["veg", "vegan"] }, avoid: { type: "array", items: { type: "string" }, description: "Countries never to travel to or via (ISO-2 codes)" }
+};
+
+const NEW_TRAVELERS = {
+  type: "array", description: "Travelers the user named who are not saved (only in this trip)",
+  items: { type: "object", properties: { first: str("First name"), family: str("Family name"), age: int("Age at the trip start", 0, 120), home: str("Home town, ideally with postal code, e.g. \"47906 Kempen\" (where the family starts from)"), country: str("Country of the home town, ISO-2 (default DE)") }, required: ["first", "family"] }
 };
 
 const SEARCH_TOOLS = [
@@ -116,18 +131,20 @@ const SEARCH_TOOLS = [
 const TRIP_TOOLS = [
   {
     name: "get_my_travelers", title: "My families and groups",
-    description: "The user's saved families (id, adults, children's ages, home town; no names), saved groups (name, families, adults and children's ages of the group members, group preferences; a group can hold only part of a family) and travel preferences (airports, budget, styles …). Call this before planning, to know who travels instead of guessing.",
+    description: "The user's saved families (id, family name, members with id, first name and age, home town with postal code), saved groups (name, member ids, families, adults and children's ages of the group members, group preferences; a group holds only its own members, partOf lists families of which only some members are in the group, e.g. only the adults) and travel preferences (airports, budget, styles …). Call this before planning, to know who travels instead of guessing.",
     inputSchema: { type: "object", properties: { date: str("Ages as of this day, YYYY-MM-DD (default: today; use the trip start)") } }
   },
   { name: "list_trips", title: "List trips", description: "Trips in the user's Split&Fly account (own and shared). byAi: created by you (the assistant); changedInApp: changed by the user in the app since; compare: title of the comparison the trip belongs to.", inputSchema: { type: "object", properties: {} } },
-  { name: "get_trip", title: "Show trip", description: "Destination, dates, number of travelers (no names) and all items with id, status, price and the chosen offer (e.g. hotel name, board, stars).", inputSchema: { type: "object", properties: { tripId: str("Trip id") }, required: ["tripId"] } },
+  { name: "get_trip", title: "Show trip", description: "Destination, dates, travelers (number per age class; each with id, first name, family and age), families with home town, and all items with id, status, price and the chosen offer (e.g. hotel name, board, stars).", inputSchema: { type: "object", properties: { tripId: str("Trip id") }, required: ["tripId"] } },
   {
     name: "create_trip", title: "Create trip",
-    description: "Create a new trip in the user's account. Travelers: saved families or a saved group from get_my_travelers (real people, ages as of the trip start), or, only if the user told you who travels, adults and childAges with travelersFrom 'user' (placeholders the user can replace in the app). If you don't know who travels, ask first.",
+    description: "Create a new trip in the user's account. Travelers: saved families, a saved group or single saved people from get_my_travelers (real people, ages as of the trip start, home town of their family), plus travelers the user named who are not saved (first name, family name, age, home town; only in this trip), all combinable. Only if the user gave just numbers: adults and childAges with travelersFrom 'user' (placeholders the user can replace). If you don't know who travels, ask first.",
     inputSchema: { type: "object", properties: {
       place: str("Destination"), country: str("Country"), name: str("Trip name (default: destination)"), from: str("Arrival YYYY-MM-DD"), to: str("Departure YYYY-MM-DD"),
       families: { type: "array", items: { type: "string" }, description: "Family ids from get_my_travelers (e.g. [\"F1\"])" },
       group: str("Name of a saved group from get_my_travelers"),
+      people: { type: "array", items: { type: "string" }, description: "Member ids of single saved people from get_my_travelers" },
+      travelers: NEW_TRAVELERS,
       travelersFrom: { type: "string", enum: ["user"], description: "'user': the user told you adults and children's ages in this conversation (only then use adults/childAges)" },
       adults: int("Adults (with travelersFrom 'user')", 1, 20), childAges: ages, language: lang,
       preferences: { type: "object", properties: PREFS, description: "Preferences only for this trip (override the user's and the group's), e.g. holiday home and higher budget this time" },
@@ -157,13 +174,16 @@ const TRIP_TOOLS = [
   { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang }, required: ["tripId", "offerId"] } },
   {
     name: "add_cost", title: "Add cost to trip",
-    description: "Add another cost (rental car, transfers at the destination, tickets, an estimate) to a trip, in EUR. Not for the way to the departure airport or airport parking: the app calculates them for every flight.",
+    description: "Add another cost (rental car, transfers at the destination, tickets, an accommodation the user already booked, an estimate) to a trip, in EUR. Already booked or paid: pass status, the booking number and paidBy (family name in the trip that paid; the app then settles the costs between the families). Not for the way to the departure airport or airport parking: the app calculates them for every flight.",
     inputSchema: { type: "object", properties: {
       tripId: str("Trip id"), category: { type: "string", enum: ["flights", "stay", "transport", "attractions", "misc"], description: "flights, stay, transport (rental car, transfers, own arrival instead of a flight), attractions, misc" },
       name: { type: "string", maxLength: NAME_MAX, description: `Short name (max ${NAME_MAX} characters)` }, amountEur: { type: "number", description: "Amount in EUR", minimum: 0 },
       perPerson: { type: "boolean", description: "true: amount per person; false (default): total for the group" }, link: str("Optional https link (e.g. ticket shop)"),
       arrival: { type: "boolean", description: "true only if the travelers reach the destination itself without a flight (own car, train, bus all the way); never for the way to the departure airport" },
-      estimate: { type: "boolean", description: "true if the amount is an estimate and not a real offer" }
+      estimate: { type: "boolean", description: "true if the amount is an estimate and not a real offer" },
+      status: { type: "string", enum: ["idea", "chosen", "booked", "paid"], description: "idea (default), chosen, booked or paid; booked and paid items can afterwards only be changed in the app" },
+      paidBy: str("Family name (as in get_trip) that paid the whole amount; sets status paid"), paidAt: str("Payment date YYYY-MM-DD (default today)"),
+      bookingRef: str("Booking number")
     }, required: ["tripId", "category", "name", "amountEur"] }
   },
   {
@@ -175,6 +195,39 @@ const TRIP_TOOLS = [
     name: "set_trip_preferences", title: "Set preferences for one trip",
     description: "Preferences only for this trip; they override the user's and the group's for searches in this trip (also in the app). reset: back to the usual preferences.",
     inputSchema: { type: "object", properties: { tripId: str("Trip id"), ...PREFS, reset: { type: "boolean", description: "Remove this trip's own preferences" } }, required: ["tripId"] }
+  },
+  {
+    name: "update_travelers", title: "Update travelers of a trip",
+    description: "Correct the travelers of a trip: rename a family (all its travelers, payments and settings), change first name, family or age of a traveler (ids from get_trip; a placeholder with a first name becomes a real traveler), set a family's home town (where it starts from), add saved families, a group, saved people or new travelers. Saved people in the account stay as they are (use save_people). Same confirm rule as update_trip.",
+    inputSchema: { type: "object", properties: {
+      tripId: str("Trip id"),
+      renameFamily: { type: "array", items: { type: "object", properties: { from: str("Family name in the trip"), to: str("New family name") }, required: ["from", "to"] } },
+      change: { type: "array", items: { type: "object", properties: { id: str("Traveler id from get_trip"), first: str("First name"), family: str("Family name"), age: int("Age at the trip start", 0, 120) }, required: ["id"] } },
+      homes: { type: "array", items: { type: "object", properties: { family: str("Family name in the trip"), home: str("Home town, ideally with postal code, e.g. \"47906 Kempen\" (where the family starts from)"), country: str("Country of the home town, ISO-2 (default DE)") }, required: ["family", "home"] } },
+      add: { type: "object", properties: {
+        families: { type: "array", items: { type: "string" }, description: "Family ids from get_my_travelers" }, group: str("Saved group name"),
+        people: { type: "array", items: { type: "string" }, description: "Member ids from get_my_travelers" }, travelers: NEW_TRAVELERS
+      } },
+      confirm: { type: "boolean", description: "true: the user agreed despite changes made in the app" }
+    }, required: ["tripId"] }
+  },
+  {
+    name: "save_people", title: "Save people in my account",
+    description: "Create or correct saved people in the user's account (like the people list in the app): without id new (first and last name; an existing person with the same name is updated instead), with id change only the given fields; renameFamily renames all saved people of a family. Age only for people without a birth date (a birth date stays and only the app changes it). Only after the user confirmed in this conversation. Deleting people is only possible in the app.",
+    inputSchema: { type: "object", properties: {
+      people: { type: "array", items: { type: "object", properties: { id: str("Member id from get_my_travelers (to change)"), first: str("First name"), last: str("Family name"), age: int("Age today", 0, 120), home: str("Home town, ideally with postal code, e.g. \"47906 Kempen\" (where the family starts from)"), country: str("Country of the home town, ISO-2 (default DE)") } } },
+      renameFamily: { type: "array", items: { type: "object", properties: { from: str("Family name"), to: str("New family name") }, required: ["from", "to"] } }
+    } }
+  },
+  {
+    name: "save_group", title: "Save a group in my account",
+    description: "Create or change a saved group (e.g. friends you travel with): name of an existing group (case-insensitive) or a new one, members to set, add or remove as member ids or family ids (F1 = the whole family), optional newName. Create missing people first with save_people. Only after the user confirmed in this conversation.",
+    inputSchema: { type: "object", properties: {
+      name: str("Group name"), newName: str("New name"),
+      members: { type: "array", items: { type: "string" }, description: "Replace the members: member or family ids" },
+      add: { type: "array", items: { type: "string" }, description: "Add member or family ids" },
+      remove: { type: "array", items: { type: "string" }, description: "Remove member or family ids" }
+    }, required: ["name"] }
   },
   { name: "remove_item", title: "Remove item", description: "Remove an item from a trip (booked or paid items stay). Items the user added or changed in the app need confirm true after asking the user.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), itemId: str("Item id from get_trip"), confirm: { type: "boolean", description: "true: the user agreed" } }, required: ["tripId", "itemId"] } }
 ];
@@ -343,19 +396,23 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const day = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
       const from = day(a.from), to = day(a.to);
       if (from && to && to < from) fail("to is before from");
-      // wer reist: aus dem Konto (Familien, Gruppe) oder vom Nutzer genannt; nie geraten (#595)
-      const fromAccount = (Array.isArray(a.families) && a.families.length > 0) || (typeof a.group === "string" && !!a.group.trim());
-      let travelers: Traveler[] | undefined, people: Person[] | undefined;
+      // wer reist: aus dem Konto (Familien, Gruppe, Personen), vom Nutzer genannt (#608) oder nur gezählt; nie geraten (#595)
+      const fromAccount = (Array.isArray(a.families) && a.families.length > 0) || (typeof a.group === "string" && !!a.group.trim()) || (Array.isArray(a.people) && a.people.length > 0);
+      const named = await newTravelers(a.travelers, deps);
+      let travelers: Traveler[] = [], people: Person[] | undefined;
       if (fromAccount) {
         const d = deps.profile ? await deps.profile(user.uid) : null;
         if (!d) fail("No saved families or groups: ask the user who travels (adults, children's ages) and use travelersFrom 'user'");
-        try { travelers = travelersFor(d!, { families: a.families, group: a.group }, from || today); } catch (e) { fail((e as Error).message); }
+        travelers = guard(() => travelersFor(d!, { families: a.families, group: a.group, people: a.people }, from || today));
         people = d!.people;
-      } else if (a.travelersFrom !== "user" || !Number.isInteger(a.adults)) {
-        fail("Who travels? Do not guess: call get_my_travelers and pass families or group, or ask the user for adults and children's ages and pass them with travelersFrom 'user'");
+      }
+      travelers.push(...named.list.map((n, i) => n.traveler(travelers.length + i)));
+      if (!travelers.length && (a.travelersFrom !== "user" || !Number.isInteger(a.adults))) {
+        fail("Who travels? Do not guess: call get_my_travelers and pass families, group or people, pass the travelers the user named, or ask the user for adults and children's ages and pass them with travelersFrom 'user'");
       }
       const adults = Number.isInteger(a.adults) ? a.adults : 1;
       const trip = newTrip({ name: S(a.name, 120), place, country: S(a.country, 60), from, to, adults, childAges: kids(a.childAges), lang: lng(a.language), travelers, people });
+      for (const [fam, h] of named.homes) setHome(trip, fam, h);
       trip.ai = { at: new Date().toISOString() };
       const tp = a.preferences ? prefsFromAi(a.preferences) : undefined;
       if (tp) trip.prefs = tp;
@@ -367,6 +424,64 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       }
       await store!.create(trip.id, trip.name, JSON.stringify(trip), user.uid, user.name || "Claude");
       return { tripId: trip.id, ...tripSummary(trip, "owner") };
+    }
+    case "update_travelers": {
+      const renames = pairs(a.renameFamily);
+      const changes = (Array.isArray(a.change) ? a.change : []).slice(0, 40).map((c: any) => ({
+        id: String(c?.id || ""), first: cleanName(c?.first) || undefined, family: cleanName(c?.family) || undefined, age: age(c?.age)
+      }));
+      const homes: [string, HomeHit][] = [];
+      for (const h of (Array.isArray(a.homes) ? a.homes : []).slice(0, 20)) homes.push([cleanName(h?.family), await homeOf(h?.home, h?.country, deps)]);
+      const add = a.add && typeof a.add === "object" ? a.add : {};
+      const named = await newTravelers(add.travelers, deps);
+      const fromAccount = (Array.isArray(add.families) && add.families.length > 0) || (typeof add.group === "string" && !!add.group.trim()) || (Array.isArray(add.people) && add.people.length > 0);
+      const d = fromAccount ? (deps.profile ? await deps.profile(user.uid) : null) || fail("No saved families or groups in the account") : null;
+      if (!renames.length && !changes.length && !homes.length && !named.list.length && !d) fail("Nothing to change: renameFamily, change, homes or add");
+      return edit(store!, a.tripId, user, t => {
+        if (a.confirm !== true) { const why = needsConfirm(t, "change"); if (why) fail(why); }
+        for (const r of renames) if (!renameFamily(t, r.from, r.to)) fail(`Unknown family "${r.from}" in this trip: use a family name from get_trip`);
+        for (const c of changes) if (!changeTraveler(t, c)) fail(`Unknown traveler "${c.id}": use ids from get_trip`);
+        if (d) {
+          const known = new Set(t.travelers.map(x => x.personId).filter(Boolean));
+          const more = guard(() => travelersFor(d, add, t.from || today, t.travelers.length)).filter(x => !known.has(x.personId));
+          t.travelers.push(...more);
+          applyPeople(t, d.people, today);
+        }
+        t.travelers.push(...named.list.map((n, i) => n.traveler(t.travelers.length + i)));
+        if (t.travelers.length > 40) fail("Too many travelers");
+        for (const [fam, h] of [...homes, ...named.homes]) {
+          const k = t.travelers.map(hhKey).find(x => x.toLowerCase() === fam.toLowerCase()) || fail(`Unknown family "${fam}" in this trip: use a family name from get_trip`);
+          setHome(t, k!, h);
+        }
+        if (a.confirm === true && t.aiSeen) aiKnows(t);
+        return tripPeople(t);
+      });
+    }
+    case "save_people": {
+      if (!deps.saveProfile) fail("Saving people is not available");
+      const list: PersonInput[] = [];
+      for (const x of (Array.isArray(a.people) ? a.people : []).slice(0, 40)) {
+        list.push({
+          ...(typeof x?.id === "string" ? { id: x.id } : {}), first: cleanName(x?.first), last: cleanName(x?.last), ...(age(x?.age) != null ? { age: age(x?.age) } : {}),
+          ...(x?.home ? { home: await homeOf(x.home, x.country, deps) } : {})
+        });
+      }
+      const renames = pairs(a.renameFamily);
+      if (!list.length && !renames.length) fail("Nothing to save: people or renameFamily");
+      const res = await deps.saveProfile!(user.uid, d => guard(() => savePeople(d, list, renames, today)));
+      return {
+        saved: res.saved.map(p => ({ id: p.id, first: p.first, last: p.last })), ...(res.notes.length ? { notes: res.notes } : {}),
+        note: "Saved in the account. Existing trips keep their travelers: correct them with update_travelers. Call get_my_travelers for the families with ids."
+      };
+    }
+    case "save_group": {
+      if (!deps.saveProfile) fail("Saving groups is not available");
+      const list = (v: unknown) => (Array.isArray(v) ? v.slice(0, 60).map(String) : undefined);
+      const res = await deps.saveProfile!(user.uid, d => {
+        const r = guard(() => saveGroup(d, { name: S(a.name, 60), newName: S(a.newName, 60), members: list(a.members), add: list(a.add), remove: list(a.remove) }));
+        return { created: r.created, view: travelersView(d, today).groups.find(g => g.name === r.group.name.trim().slice(0, 60)) };
+      });
+      return { ...(res.created ? { created: true } : { updated: true }), group: res.view };
     }
     case "add_flight":
     case "add_stay": {
@@ -386,9 +501,20 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const n = S(a.name, NAME_MAX), eur = Number(a.amountEur);
       if (!n || !isCat(a.category) || !isFinite(eur) || eur < 0 || eur > 100000) fail("category, name and amountEur (0-100000) are required");
       const link = typeof a.link === "string" && /^https:\/\/[^\s]{4,300}$/.test(a.link) ? a.link : undefined;
+      // schon gebucht oder bezahlt (#608): Status, Zahler (Familie der Reise), Buchungsnummer
+      const paidBy = S(a.paidBy, 60);
+      const status: Status = paidBy ? "paid" : STATUS.includes(a.status) ? a.status : "idea";
+      if (a.status != null && !STATUS.includes(a.status)) fail("status must be idea, chosen, booked or paid");
+      if (paidBy && a.status != null && a.status !== "paid") fail("paidBy needs status paid");
+      if (paidBy && a.perPerson === true) fail("paidBy needs the total amount (perPerson false)");
+      const paidAt = typeof a.paidAt === "string" && /^\d{4}-\d{2}-\d{2}$/.test(a.paidAt) ? a.paidAt : undefined;
       return edit(store!, a.tripId, user, t => {
-        const it = addCost(t, { cat: a.category, name: n, eur: Math.round(eur * 100) / 100, perPerson: a.perPerson === true, url: link, arrival: a.arrival === true, estimate: a.estimate === true });
-        return { added: it.id, name: it.name };
+        const by = paidBy ? t.travelers.filter(x => x.active !== false).map(hhKey).find(k => k.toLowerCase() === paidBy.toLowerCase()) || fail(`Unknown family "${paidBy}" in this trip: use a family name from get_trip`) : undefined;
+        const it = addCost(t, {
+          cat: a.category, name: n, eur: Math.round(eur * 100) / 100, perPerson: a.perPerson === true, url: link, arrival: a.arrival === true, estimate: a.estimate === true,
+          status, ...(by ? { paidBy: by, paidAt } : {}), ...(S(a.bookingRef, 40) ? { bookingRef: S(a.bookingRef, 40) } : {})
+        });
+        return { added: it.id, name: it.name, status: it.status };
       });
     }
     case "save_my_preferences": {
@@ -448,6 +574,39 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       });
   }
   return fail("Unknown tool");
+}
+
+const STATUS = ["idea", "chosen", "booked", "paid"];
+const age = (v: unknown) => (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 120 ? v as number : undefined);
+/** Paare { from, to } zum Umbenennen von Familien */
+const pairs = (v: unknown) => (Array.isArray(v) ? v : []).slice(0, 20).map((x: any) => ({ from: cleanName(x?.from), to: cleanName(x?.to) })).filter(x => x.from && x.to);
+/** Fehler aus den Hilfsfunktionen als Hinweis an den Assistenten */
+function guard<T>(f: () => T): T {
+  try { return f(); } catch (e) { if (e instanceof ToolError) throw e; return fail((e as Error).message); }
+}
+
+/** Wohnort aus Text und Land (#608); unbekannt: Fehler mit Bitte um Postleitzahl */
+async function homeOf(text: unknown, country: unknown, deps: McpDeps): Promise<HomeHit> {
+  const v = S(text);
+  const cc = typeof country === "string" && /^[a-z]{2}$/i.test(country.trim()) ? country.trim().toUpperCase() : "DE";
+  if (!v) return fail("home is empty");
+  // Postleitzahlen der App, sonst Ort aus der Ortsliste (ohne PLZ)
+  const hit = deps.home ? await deps.home(v, cc).catch(() => null) : null;
+  const x = hit ? null : findCity(GEO, v.replace(/^\S*\d\S*\s+/, ""), cc);
+  const c = hit || (x ? { plz: "", ort: x.name, lat: x.lat, lon: x.lon, ...(cc !== "DE" ? { cc } : {}) } : null);
+  return c || fail(`Unknown home town "${v}" (${cc}): ask the user for the postal code, e.g. "47906 Kempen"`);
+}
+
+/** vom Nutzer genannte Reisende, die nicht gespeichert sind (#608): Reisende und Wohnorte je Familie */
+async function newTravelers(v: unknown, deps: McpDeps) {
+  const list: { traveler: (i: number) => Traveler }[] = [], homes: [string, HomeHit][] = [];
+  for (const x of (Array.isArray(v) ? v : []).slice(0, 30) as any[]) {
+    const first = cleanName(x?.first), family = cleanName(x?.family), a = age(x?.age);
+    if (!first || !family) fail("Each traveler needs first and family name");
+    list.push({ traveler: i => ({ id: uid(), name: first, household: family, ...(a != null ? { age: a } : {}), color: travelerColor(i) }) });
+    if (x?.home && !homes.some(([f]) => f === family)) homes.push([family, await homeOf(x.home, x.country, deps)]);
+  }
+  return { list, homes };
 }
 
 function parse(r: TripRecord): Trip | null {
