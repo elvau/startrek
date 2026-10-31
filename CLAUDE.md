@@ -73,6 +73,10 @@ Neue Funktionen bekommen Unit-Tests und, wo sinnvoll, einen Schritt in `app/e2e/
   `git commit --author="Split&Fly KI · Feature <336432604+daniel-ai-coder@users.noreply.github.com>"`.
   Committer bleibt Claude (`noreply@anthropic.com`), sonst ist der Commit nicht signiert.
 
+## Begriffe Partner
+**Suchtreffer** = wir fragen eine Schnittstelle ab, Angebote in unserer App; **Suchlink** = Link zur Suche beim Anbieter
+(vorausgefüllt oder nur Startseite 🏠). Unabhängig davon **mit Provision** (Partnerkennung) oder **neutral**. Details: `docs/PARTNER.md`.
+
 ## Datenschutz (streng)
 - Fehlerberichte liegen im privaten Repo `elvau/splitandfly-bugs`, Bilder im R2-Speicher des Workers
   (`https://startrek.danielbednorz1990.workers.dev/bug-image/…`). Nichts daraus (Texte, Bilder, E-Mail, Kontokennung)

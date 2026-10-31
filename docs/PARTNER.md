@@ -5,6 +5,23 @@ Die Oberfläche zeigt sie über `app/src/lib/ui/PartnerLinks.svelte`; Links von 
 Übersicht in der App: Admin-Ansicht im Kontomenü, Abschnitt „Partner (Verzeichnis)“ mit Kategorie, Netzwerk, Status
 der Kennung (aktiv, hinterlegt bei ausgeschaltetem Schalter, neutral, ausgeblendet) und Klicks der letzten 7 Tage.
 
+## Begriffe: Suchtreffer und Suchlink
+
+Zwei Dinge, die oft unter „Partner“ vermischt werden:
+
+| | neutral | mit Provision |
+|---|---|---|
+| **Suchtreffer** (wir fragen eine Schnittstelle ab, Angebote erscheinen in unserer App) | Kiwi, Trivago, Duffel, Ticketmaster, football-data | Travelpayouts/Aviasales, liteAPI, Viator |
+| **Suchlink** (Link zur Suche beim Anbieter, gesucht wird dort) | Google Flights, Skyscanner, Booking.com (bis zur Freigabe), Airbnb, KAYAK … | Expedia, Tiqets, Klook, Kiwitaxi, Welcome Pickups, Parken und Fliegen, Yesim, Airalo |
+
+- **Suchlink** gibt es in zwei Formen (`fill` am Link, abgeleitet aus dem Verzeichnis): **vorausgefüllt** (`search`, mit Ort,
+  Datum, Personen) oder **nur Startseite** (`home`, Link über `home(…)`; in der App mit 🏠 gekennzeichnet).
+- **Mit Provision / neutral** ist davon unabhängig: Partnerkennung (`tag`) und Schalter `PARTNER_LINKS` (siehe unten).
+- Mehr Auswahl in der App bringen nur neue Suchtreffer; Freischaltungen bei CJ/Awin machen aus neutralen Suchlinks solche mit Provision.
+- „🔎 Bei anderen Anbietern suchen“ (#619, `app/src/lib/ui/ProviderDialog.svelte`) bündelt die Suchlinks von Flug- und
+  Unterkunftssuche (vorausgefüllt und nur Startseite getrennt, Rückweg „Angebot übernehmen“ / „Selbst eintragen“); bei null
+  Treffern öffnet es sich von selbst.
+
 ## Grundsatz: bester Preis vor Provision
 
 Split&Fly soll jedem die beste Reise zeigen, nicht die mit der höchsten Provision.
