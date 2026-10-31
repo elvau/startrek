@@ -5,6 +5,7 @@
  * angelegt, Unsicheres als „bitte prüfen“ markiert. Nur Unterkunft, Flug „Brauchen wir nicht“: Anreise mit der Bahn
  * aus dem Wohnort geschätzt (#475). Unterkunft importieren in die offene Reise, weiterer Fund als Rückfrage (#615).
  * Reise um Import erweitern mit Abweichungen, „Ja, hier übernehmen“ und „Andere Reise wählen“ (#616).
+ * Änderungsansicht je Posten und Rückgängig (#617).
  * Start: npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/import.mjs"
  */
 import { chromium } from "playwright";
@@ -59,6 +60,15 @@ const RENT = {
   confidence: { place: 1, dates: 1, people: 1, price: 1 }
 };
 
+// Reise um Import erweitern mit Änderungsansicht (#617): Buchung zur Barcelona-Reise, Flug teurer, dazu ein Hotel
+const BOOKING = {
+  kind: "other", title: "Buchung Barcelona", provider: "Reiseportal", place: "Barcelona", country: "ES", from: "2027-03-01", to: "2027-03-05",
+  adults: 2, price: { currency: "EUR" },
+  flights: { legs: [{ dir: "out", from: "DUS", to: "BCN", dep: "2027-03-01T09:00", carrier: "Vueling" }, { dir: "back", from: "BCN", to: "DUS", dep: "2027-03-05T18:00", carrier: "Vueling" }], price: 310 },
+  stay: { name: "Hotel Rambla", price: 480 },
+  confidence: { place: 1, dates: 1, people: 1, price: 1, flights: 1, stay: 1 }
+};
+
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4186", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
 await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
@@ -74,6 +84,7 @@ try {
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
     // aus dem Angebotsspeicher (#462): schon geprüft, gültig bis
     if (body.text?.includes("Ferienpark")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: PARK, remaining: 6 }) });
+    if (body.text?.includes("Buchung Barcelona")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: BOOKING, remaining: 3 }) });
     if (body.text?.includes("Lissabon")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: RENT, remaining: 4 }) });
     if (body.text?.includes("Elbblick")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: HOTEL, remaining: 5 }) });
     if (body.text?.includes("Flugdeal")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: DEAL, cached: true, until: "2026-11-03", remaining: 7 }) });
@@ -383,10 +394,16 @@ try {
   await shot(rentDlg, "7-passt-nicht");
   await rentDlg.locator(".imp-fit-yes").click();
   const finish = async d => {
-    await until(async () => !(await d.count()) || (await d.locator(".imp-create").count()), "übernommen oder Übersicht");
-    if (await d.count()) {
+    await until(async () => !(await d.count()) || (await d.locator(".imp-create").count()) || (await d.locator(".imp-diff").count()), "übernommen, Übersicht oder Änderungen");
+    if (await d.count() && await d.locator(".imp-create").count()) {
       while (await d.locator(".rev-q").count()) await d.locator(".rev-q").first().locator(".chip").first().click();
       await d.locator(".imp-create").click();
+      await until(async () => !(await d.count()) || (await d.locator(".imp-diff").count()), "übernommen oder Änderungen");
+    }
+    // Änderungsansicht (#617): Vorschlag übernehmen (nichts gelöscht)
+    if (await d.count() && await d.locator(".imp-diff").count()) {
+      if (await d.locator('.imp-diff-row[data-kind="missing"] .chip.on[data-c="delete"]').count()) fail("Löschen vorgewählt");
+      await d.locator(".imp-diff-go").click();
     }
     await until(async () => !(await d.count()), "Import-Fenster zu");
   };
@@ -409,6 +426,38 @@ try {
   await finish(rentDlg);
   await until(async () => (await readCur())?.items?.some(i => i.name === "Mietwagen"), "Mietwagen in Barcelona");
   log("Andere Reise gewählt: Wechsel, neuer Abgleich, Mietwagen in der gewählten Reise");
+
+  // 14. Reise um Import erweitern (#617): Änderungsansicht je Posten, Flug ersetzen, Hotel neu, dann Rückgängig
+  const bcnBefore = await readCur();
+  await p.locator(".tm-btn").first().click();
+  await p.locator(".tm-import").click();
+  const bd = p.locator(".modal", { hasText: "Reise um Import erweitern" });
+  await bd.locator(".imp-src .chip", { hasText: "Text" }).click();
+  await bd.locator("textarea").fill("Buchung Barcelona");
+  await bd.locator(".imp-go").click();
+  await until(async () => (await bd.locator(".imp-diff").count()) || (await bd.locator(".imp-create").count()), "Änderungsansicht oder Übersicht");
+  if (!(await bd.locator(".imp-diff").count())) {
+    while (await bd.locator(".rev-q").count()) await bd.locator(".rev-q").first().locator(".chip").first().click();
+    await bd.locator(".imp-create").click();
+  }
+  await bd.locator(".imp-diff").waitFor();
+  const fRow = bd.locator('.imp-diff-row[data-kind="replace"]');
+  await fRow.waitFor();
+  if ((await fRow.locator(".chip.on").getAttribute("data-c")) !== "both") fail("Ersetzt nicht mit „Beide behalten“ vorbelegt");
+  await bd.locator('.imp-diff-row[data-kind="new"]', { hasText: "Hotel Rambla" }).waitFor();
+  await shot(bd, "9-aenderungen");
+  await fRow.locator('.chip[data-c="replace"]').click();
+  await bd.locator(".imp-diff-go").click();
+  await until(async () => !(await bd.count()), "Import-Fenster zu");
+  let bcn = null;
+  await until(async () => { bcn = await readCur(); return bcn?.items?.some(i => i.name === "Hotel Rambla"); }, "Hotel Rambla in der Reise");
+  const fl = bcn.items.find(i => i.cat === "flights");
+  if (fl.options.length !== 1 || !fl.options[0].label.includes("Vueling")) fail("Flug nicht ersetzt: " + JSON.stringify(fl.options.map(o => o.label)));
+  if (bcn.items.length !== bcnBefore.items.length + 1) fail("Posten: vorher " + bcnBefore.items.length + ", nachher " + bcn.items.length);
+  await p.locator(".imp-undo-btn").click();
+  await until(async () => !((await readCur())?.items?.some(i => i.name === "Hotel Rambla")), "Rückgängig");
+  if ((await readCur()).items.find(i => i.cat === "flights").options[0].label.includes("Vueling")) fail("Flug nach Rückgängig noch ersetzt");
+  log("Reise um Import erweitern: Änderungsansicht (ersetzt, neu), Flug ersetzt, Hotel neu, Rückgängig stellt den Stand davor her");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Import ok");

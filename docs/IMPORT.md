@@ -101,7 +101,7 @@ Je nach Ort ein eigener Knopf, der nur das übernimmt, was dorthin gehört (`app
 | Einstieg | Knopf | übernimmt |
 |---|---|---|
 | Neue Reise | Importieren | ganze Reise mit allen Posten |
-| Reise-Menü | 📥 Reise um Import erweitern | alle Posten in die offene Reise (Änderungsansicht: #617) |
+| Reise-Menü | 📥 Reise um Import erweitern | alle Posten in die offene Reise, mit Änderungsansicht (#617) |
 | Kapitel Abheben, Unterkunft, Erlebnisse, Transport | 📥 Flug / Unterkunft / Tour / Transport importieren | nur Teile des Kapitels |
 | Flug- bzw. Unterkunftssuche | „Woanders gefunden? 📥 Angebot übernehmen“ | aus der Suche eines Postens: als weiteres Angebot an diesen Posten |
 
@@ -114,6 +114,11 @@ Je nach Ort ein eigener Knopf, der nur das übernimmt, was dorthin gehört (`app
   übernehmen“, „Andere Reise wählen“ (passende zuerst, Reise wechselt, neuer Abgleich) und „Neue Reise daraus“. Übernommen
   wird trotzdem; die Posten tragen „bitte prüfen“ mit Grund (`checkWhy`), bis jemand „Geprüft“ antippt. Personen werden nie
   hochgerechnet.
+- **Änderungsansicht (#617, `app/src/lib/import/diff.ts`):** „Reise um Import erweitern“ rechnet den Import erst auf einer
+  Kopie und vergleicht je Posten: *neu* (übernehmen/weglassen), *ergänzt* (passender Posten ohne bzw. mit gleichem Preis:
+  übernehmen/behalten), *ersetzt* (anderer Preis: ersetzen/beide behalten/alt behalten, Standard beide), *nicht im Angebot*
+  (Posten derselben Kapitel: behalten/löschen, Standard behalten). Zuordnung über Kategorie und Strecke, Name oder
+  Zeitraum; Pakete als ein Posten. Nur Neues: ohne Ansicht. Danach 20 Sekunden „↶ Rückgängig“ (Stand der Reise davor).
 - **Teilen am Handy:** geteilte Inhalte gehen in die zuletzt geöffnete Reise (mit Abgleich), mit „Stattdessen neue Reise“;
   ohne echte Reise (leer, nur ansehen) wie bisher „Neue Reise → Importieren“.
 
