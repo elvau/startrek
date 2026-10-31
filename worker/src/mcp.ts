@@ -27,6 +27,22 @@ import type { KeyInfo } from "./apikey";
 import { bucket, ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
 import world from "../../public/world.json";
 import packs from "../../public/packs.json";
+import p0 from "../../public/places/p0.json";
+import p1 from "../../public/places/p1.json";
+import p2 from "../../public/places/p2.json";
+import p3 from "../../public/places/p3.json";
+import p4 from "../../public/places/p4.json";
+import p5 from "../../public/places/p5.json";
+import p6 from "../../public/places/p6.json";
+import p7 from "../../public/places/p7.json";
+import p8 from "../../public/places/p8.json";
+import p9 from "../../public/places/p9.json";
+import pa from "../../public/places/pa.json";
+import pb from "../../public/places/pb.json";
+import pc from "../../public/places/pc.json";
+import pd from "../../public/places/pd.json";
+import pe from "../../public/places/pe.json";
+import pf from "../../public/places/pf.json";
 
 export interface McpDeps {
   flights: (q: FlightQuery) => Promise<SearchResult>;
@@ -357,12 +373,12 @@ const hm = (iso: string) => iso.slice(0, 16).replace("T", " ");
 const GEO: GeoData = { world: (world as any).countries, packs: packs as any, places: {} };
 
 // Kleine Orte (public/places) je Teil nur bei Bedarf laden
-const PLACES: Record<string, () => Promise<{ default: unknown }>> = Object.fromEntries("0123456789abcdef".split("").map(b => [b, () => import(`../../public/places/p${b}.json`)]));
+const PLACES: Record<string, unknown> = { 0: p0, 1: p1, 2: p2, 3: p3, 4: p4, 5: p5, 6: p6, 7: p7, 8: p8, 9: p9, a: pa, b: pb, c: pc, d: pd, e: pe, f: pf };
 const placesLoaded = new Set<string>();
 async function loadPlaces(cc: string | null): Promise<void> {
   const bs = cc ? [bucket(cc)] : Object.keys(PLACES);
   await Promise.all(bs.filter(b => !placesLoaded.has(b)).map(async b => {
-    Object.assign(GEO.places, (await PLACES[b]()).default);
+    Object.assign(GEO.places, PLACES[b]);
     placesLoaded.add(b);
   }));
 }
