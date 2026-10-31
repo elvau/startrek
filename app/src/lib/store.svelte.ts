@@ -81,7 +81,7 @@ function emptyTrip(o: NewOpts = {}): Trip {
 }
 
 /** Noch nichts eingetragen: so eine Reise verschwindet, sobald man woanders hinwechselt */
-function pristine(t: Trip): boolean {
+export function pristine(t: Trip): boolean {
   // höchstens das anonyme Reh vom Start, sonst nichts eingetragen
   const onlySolo = t.travelers.length <= 1 && t.travelers.every(x => x.placeholder);
   return onlySolo && !t.items.some(i => !i.auto) && !t.lines?.length && !Object.values(t.simple || {}).some(Boolean) && !t.from

@@ -92,7 +92,7 @@
   <PkgBand {item} />
   <WatchBadge {item} />
   {#if item.ai}<div class="aif"><AiMark /> {t(`ai.mark.${item.ai.kind}` as Key)}
-    {#if item.check}<span class="aif-check">⚠ {t("imp.check")}</span>{#if !access.readonly}<button class="linkbtn aif-ok" onclick={() => (item.check = undefined)}>{t("imp.checked")}</button>{/if}{/if}</div>{/if}
+    {#if item.check}<span class="aif-check">⚠ {t("imp.check")}{#if item.checkWhy?.length}: {item.checkWhy.join(" · ")}{/if}</span>{#if !access.readonly}<button class="linkbtn aif-ok" onclick={() => { item.check = undefined; item.checkWhy = undefined; }}>{t("imp.checked")}</button>{/if}{/if}</div>{/if}
   {#if editing}<ItemEditor {item} />{/if}
   {/if}
 </article>

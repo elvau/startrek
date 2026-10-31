@@ -2,7 +2,7 @@
   import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
   import { onMount, untrack } from "svelte";
   import { entryCurrency, loadRates } from "./lib/currency.svelte";
-  import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed, goHome } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed, goHome, pristine } from "./lib/store.svelte";
   import { saveView } from "./lib/resume";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
@@ -41,7 +41,7 @@
   import { openImport } from "./lib/import/open.svelte";
   import CruiseDialog from "./lib/ui/CruiseDialog.svelte";
   import { cruiseDlg, openCruise } from "./lib/cruises/open.svelte";
-  import { takeShared } from "./lib/import/share.svelte";
+  import { shareIn, takeShared } from "./lib/import/share.svelte";
   import CompareView from "./lib/ui/CompareView.svelte";
   import AppFooter from "./lib/ui/AppFooter.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
@@ -127,7 +127,13 @@
   // …/?info öffnet „Neues & Ausblick“
   onMount(applyInfoLink);
   // Teilen-Menü (?share=1, #457): Startseite mit „Neue Reise → Importieren“
-  onMount(() => { void takeShared().then(ok => { if (ok) goHome(); }); });
+  // Teilen-Menü (#616): in die zuletzt geöffnete Reise, sonst (keine Reise, nur ansehen) wie bisher „Neue Reise → Importieren“
+  onMount(() => { void takeShared().then(ok => {
+    if (!ok) return;
+    const sh = shareIn.v;
+    if (sh && !pristine(app.trip) && access.role !== "viewer" && cloud.configured) { shareIn.v = null; openImport("all", undefined, sh); }
+    else goHome();
+  }); });
   onMount(() => {
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
     applyDocument();
