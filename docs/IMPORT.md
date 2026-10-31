@@ -117,6 +117,18 @@ Je nach Ort ein eigener Knopf, der nur das übernimmt, was dorthin gehört (`app
 - **Teilen am Handy:** geteilte Inhalte gehen in die zuletzt geöffnete Reise (mit Abgleich), mit „Stattdessen neue Reise“;
   ohne echte Reise (leer, nur ansehen) wie bisher „Neue Reise → Importieren“.
 
+## Gesamtpaket (#618)
+
+Hat eine Reise ein Paket (nicht aufgebrochen), steht das Kapitel **„Gesamtpaket“** (`pkg`) an der Stelle von „Abheben“ und
+„Unterkunft“ (`app/src/lib/chapterVis.ts`, `PackageCard.svelte`). Je Paket eine Karte: Name, Gesamtpreis mit Nebenkosten,
+pro Person, Farben der enthaltenen Kapitel gemischt, darin die Teile als normale Karten (Band mit Aufbrechen und Vergleich
+wie bisher). Darunter **Ergänzungen** (Flug- und Unterkunftsposten außerhalb eines Pakets, z. B. Nachzügler), Knöpfe
+„Flug hinzufügen“, „Unterkunft hinzufügen“, „Weiteres Paket“. Paket-Teile im Transport (Transfer) stehen im Paket, der
+übrige Transport im Kapitel Transport. Datenmodell unverändert (Kategorie und Paket-Kennung je Posten); nur die Anzeige
+ordnet zu. Ohne Paket fehlt „Abheben“, wenn die Reise nicht fliegt (Camper, Anreise ohne Flug, „Kein Flug nötig“ =
+`trip.chapters.flights = false`) und nichts darin steht; „Doch fliegen? Flug hinzufügen“ im Transport setzt
+`chapters.flights = true`. Navigation, Leiste und Pager am Handy folgen den sichtbaren Kapiteln (`chapterVis.svelte.ts`).
+
 ## Importierte Preise, Links und Pakete
 
 Angebotspreise sind oft rabattiert oder nur beim Anbieter zu haben; dieselben Flüge bzw. Unterkünfte findet unsere Suche

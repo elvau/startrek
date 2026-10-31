@@ -2,7 +2,7 @@
   import { t, type Key } from "../i18n/index.svelte";
   /*
    * Pauschalreise in die offene Reise (#188): entweder per KI importieren oder von Hand (Anbieter, Preis für alle,
-   * was enthalten ist). Flug, Unterkunft und Transfer erscheinen danach in ihren Kapiteln.
+   * was enthalten ist). Flug, Unterkunft und Transfer erscheinen danach zusammen im Kapitel „Gesamtpaket“ (#618).
    */
   import { app } from "../store.svelte";
   import { cloud } from "../cloud/cloud.svelte";

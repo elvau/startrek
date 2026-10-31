@@ -4,23 +4,24 @@
  * Desktop bleibt eine lange Seite.
  * Sprünge per scrollIntoView (Posten zeigen, Suche übernehmen) funktionieren weiter: sie scrollen den Pager mit.
  */
-import { CHAPTERS, type ChapterKey } from "./chapters";
+import type { ChapterKey } from "./chapters";
+import { shown } from "./chapterVis.svelte";
 import { view } from "./scroll.svelte";
 
 /** bis zu dieser Breite gilt die Handy-Ansicht */
 export const MOB_MAX = 760;
 export type PageKey = "hero" | ChapterKey;
-/** Seiten in der Reihenfolge des Pagers */
-export const PAGES: PageKey[] = ["hero", ...CHAPTERS.map(c => c.k)];
+/** Seiten in der Reihenfolge des Pagers: Übersicht und die sichtbaren Kapitel (#618) */
+export const pages = (): PageKey[] => ["hero", ...shown.keys];
 
 /** openItem: am Handy aufgeklappter Posten (#531), immer höchstens einer */
 export const mob = $state<{ on: boolean; page: PageKey; more: boolean; openItem: string }>({ on: false, page: "hero", more: false, openItem: "" });
 
 /** nächste bzw. vorige Seite (für Tastatur und Tests); am Rand bleibt es */
-export const stepPage = (p: PageKey, d: 1 | -1): PageKey => PAGES[Math.max(0, Math.min(PAGES.length - 1, PAGES.indexOf(p) + d))];
+export const stepPage = (p: PageKey, d: 1 | -1): PageKey => { const ps = pages(); return ps[Math.max(0, Math.min(ps.length - 1, ps.indexOf(p) + d))]; };
 
 /** Seite aus der Lage des Pagers: Breite einer Seite = Breite des Pagers (rechts nach links: scrollLeft ist negativ) */
-export const pageAt = (scrollLeft: number, width: number, keys: PageKey[] = PAGES): PageKey =>
+export const pageAt = (scrollLeft: number, width: number, keys: PageKey[] = pages()): PageKey =>
   keys[Math.max(0, Math.min(keys.length - 1, Math.round(Math.abs(scrollLeft) / Math.max(1, width))))];
 
 let pager: HTMLElement | null = null;
@@ -64,7 +65,7 @@ export function attachPager(el: HTMLElement, trip = ""): () => void {
   tripId = trip;
   mob.page = "hero";
   let back: PageKey | null = null;
-  try { const v = JSON.parse(sessionStorage.getItem(PAGE_KEY) || "null"); if (v?.id === trip && PAGES.includes(v.page)) back = v.page; } catch { /* egal */ }
+  try { const v = JSON.parse(sessionStorage.getItem(PAGE_KEY) || "null"); if (v?.id === trip && pages().includes(v.page)) back = v.page; } catch { /* egal */ }
   let raf = 0;
   const keys = () => [...el.children].map(c => (c as HTMLElement).dataset.ch as PageKey).filter(Boolean);
   const tick = () => {

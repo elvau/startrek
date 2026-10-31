@@ -230,7 +230,15 @@ try {
   const mainCard = p.locator("article.card:has(.pkgb)", { hasText: "Unterkunft (Pauschalreise)" }).first();
   await mainCard.locator(".pkgb-incl", { hasText: "✈ Flug" }).waitFor();
   const partCard = p.locator("article.card:has(.pkgb)", { hasText: "Flug (Pauschalreise)" }).first();
-  await partCard.locator(".pkgb-go", { hasText: "1.200" }).waitFor();
+  // Gesamtpaket (#618): ein Kapitel statt Abheben und Unterkunft, Paketkarte mit Gesamtpreis, Teile darin
+  const pkgc = p.locator("#pkg .pkgc");
+  // Gesamtpreis mit Nebenkosten (Anreise zum Flughafen), pro Person, Paketpreis 1.200 € am Teil
+  await pkgc.locator(".pkgc-total").waitFor();
+  await pkgc.locator(".pkgc-pp").waitFor();
+  if (!(await pkgc.textContent()).includes("1.200")) fail("Paketpreis 1.200 € fehlt im Gesamtpaket");
+  if (await p.locator("#flights").count() || await p.locator("#stay").count()) fail("Abheben bzw. Unterkunft neben dem Gesamtpaket");
+  if (!(await pkgc.locator("article.card", { hasText: "Flug (Pauschalreise)" }).count())) fail("Flug nicht im Gesamtpaket");
+  await shot(p.locator("#pkg"), "8-gesamtpaket");
   await mainCard.click();
   await mainCard.locator('[data-s="booked"]').click();
   await until(async () => {
@@ -252,10 +260,18 @@ try {
   await partCard.locator(".pkgb.warn .pkgb-break").waitFor();
   await partCard.locator(".pkgb-break").click();
   await mainCard.locator(".pkgb-pill", { hasText: "Paket aufgelöst" }).waitFor();
+  // aufgebrochen: wieder einzeln in Abheben und Unterkunft
+  await p.locator("#stay article.card", { hasText: "Unterkunft (Pauschalreise)" }).first().waitFor();
+  if (await p.locator("#pkg").count()) fail("Gesamtpaket nach dem Aufbrechen");
   await mainCard.locator(".pkgb-restore").click();
   await mainCard.locator(".pkgb-pill", { hasText: "Pauschalreise" }).waitFor();
   await partCard.locator(".pkgb-pill", { hasText: "im Paket" }).waitFor();
-  log("Paket: eigenes Angebot am Flug → teilweise ersetzt, aufgebrochen, wiederhergestellt");
+  await p.locator("#pkg .pkgc").waitFor();
+  // Nachzügler (#618): „Flug hinzufügen“ im Gesamtpaket öffnet die Flugsuche
+  await p.locator("#pkg .pkg-add-flight").click();
+  await p.locator(".modal", { hasText: "Flüge suchen" }).first().waitFor();
+  await p.keyboard.press("Escape");
+  log("Paket: eigenes Angebot am Flug → teilweise ersetzt, aufgebrochen (wieder Abheben und Unterkunft), wiederhergestellt (Gesamtpaket)");
 
   // 10. nur Unterkunft (#475): Flug „Brauchen wir nicht“ fragt nach der Anreise (Auto vorgewählt), Wohnort, Bahn → Posten
   await reloadHome(p);
@@ -336,6 +352,18 @@ try {
   if (after.items.some(i => i.cat === "flights")) fail("Flug übernommen, obwohl nicht angehakt");
   await p.locator("article.card", { hasText: "Hotel Elbblick" }).first().locator("text=nicht live geprüft").waitFor();
   log("Unterkunft importieren: in die offene Reise, nur die Unterkunft, Flug als Rückfrage nicht angehakt, Reise unverändert");
+
+  // 11b. Anreise mit der Bahn, kein Flug (#618): kein Kapitel Abheben; „Doch fliegen? Flug hinzufügen“ bringt es zurück
+  if (await p.locator("#flights").count()) fail("Abheben bei Reise ohne Flug");
+  if (await p.locator('.nav a[data-ch="flights"]').count()) fail("Abheben in der Navigation");
+  await p.locator("#transport .fl-add-back").click();
+  const fsd = p.locator(".modal", { hasText: "Flüge suchen" }).first();
+  await fsd.waitFor();
+  await p.keyboard.press("Escape");
+  await p.locator("#flights").waitFor();
+  await p.locator("#flights .fl-none").click();
+  await until(async () => !(await p.locator("#flights").count()), "Abheben wieder ausgeblendet");
+  log("Ohne Flug: Abheben ausgeblendet, „Flug hinzufügen“ bringt es zurück, „Kein Flug nötig“ blendet es aus");
 
   // 12. Reise um Import erweitern (#616): passt nicht (Zeitraum, Land, Personen) → Hinweise, „Ja, hier übernehmen“, Hinweis am Posten
   const readCur = () => p.evaluate(() => JSON.parse(localStorage.getItem(`rk2-t:${localStorage.getItem("rk2-current")}`) || "null"));

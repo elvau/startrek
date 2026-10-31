@@ -14,7 +14,10 @@
   import { cloudTrip } from "./lib/cloud/cloud.svelte";
   import { claimable } from "./lib/claims";
   import { eur } from "./lib/calc";
-  import { CHAPTERS, CAT_CHAPTERS, PLAN, SPLIT } from "./lib/chapters";
+  import { CHAPTERS, CAT_CHAPTERS, PKG, PLAN, SPLIT } from "./lib/chapters";
+  import { activePkgs, pkgItems, visibleChapters } from "./lib/chapterVis";
+  import { shown } from "./lib/chapterVis.svelte";
+  import PackageCard from "./lib/ui/PackageCard.svelte";
   import DayPlan from "./lib/ui/DayPlan.svelte";
   import { dayRange } from "./lib/itinerary";
   import { initScroll } from "./lib/scroll.svelte";
@@ -116,6 +119,13 @@
   let mapOpen = $state<"stay" | "attractions" | null>(null);
   // Pauschalreise eintragen (#188), aus den Kapiteln Flug und Unterkunft
   let pkgOpen = $state(false);
+  // sichtbare Kapitel (#618): Gesamtpaket statt Abheben und Unterkunft, Abheben ohne Flug ausgeblendet
+  const pkgIds = $derived(activePkgs(app.trip));
+  const inPkg = $derived(pkgItems(app.trip));
+  const vis = $derived(visibleChapters(app.trip));
+  $effect(() => { shown.keys = vis.map(c => c.k); });
+  const num = (k: string) => vis.findIndex(c => c.k === k) + 1;
+  const netOf = (ids: Iterable<string>) => { let s = 0; for (const id of ids) s += calc.T.items[id]?.net || 0; return s; };
   // Handy (#530): main ist der Pager mit einer Seite je Kapitel
   let mainEl = $state<HTMLElement>();
   $effect(() => { if (mob.on && mainEl) { const id = app.trip.id; return untrack(() => attachPager(mainEl!, id)); } });
@@ -240,17 +250,40 @@
       {#if app.trip.travelers.length > 1}<article class="card tg-card" id="together" use:reveal><TogetherCard /></article>{/if}
     </Chapter>
 
-    {#each CAT_CHAPTERS as ch, i (ch.k)}
-      {@const items = app.trip.items.filter(x => x.cat === ch.k)}
+    <!-- Gesamtpaket (#618): statt „Abheben“ und „Unterkunft“, Pakete mit ihren Teilen, darunter Ergänzungen -->
+    {#if pkgIds.length}
+      {@const extras = app.trip.items.filter(x => (x.cat === "flights" || x.cat === "stay") && !inPkg.has(x.id))}
+      <Chapter ch={PKG} n={num("pkg")} sum={eur(netOf([...inPkg, ...extras.map(x => x.id)]))} sub={PKG.sub}>
+        {#if !access.readonly}
+          <div class="search-row">
+            <button class="btn pkg-add-flight" onclick={() => openFlightSearch()}>✈ {t("pkg.addFlight")}</button>
+            <button class="btn pkg-add-stay" onclick={() => openStaySearch()}>🛏 {t("pkg.addStay")}</button>
+            <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.addPkg")}</button>
+            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("all")}>📥 {t("imp.title.all")}</button>{/if}
+          </div>
+        {/if}
+        {#each pkgIds as id (id)}<PackageCard {id} />{/each}
+        {#if extras.length}
+          <h3 class="pkg-extras">{t("pkg.extras")} <small class="muted">{t("pkg.extrasHint")}</small></h3>
+          {#each extras as item (item.id)}<ItemCard {item} icon={item.cat === "flights" ? "plane" : "bed"} />{/each}
+        {/if}
+        {#if app.trip.items.some(x => x.cat === "stay")}<article class="card plan-card" use:reveal><PresencePlan /></article>{/if}
+      </Chapter>
+    {/if}
+
+    {#each CAT_CHAPTERS.filter(c => vis.some(v => v.k === c.k)) as ch (ch.k)}
+      {@const items = app.trip.items.filter(x => x.cat === ch.k && !inPkg.has(x.id))}
       {@const det = isDetailed(app.trip, ch.k)}
-      <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn && det ? tn("n.nights", nn) : ch.sub}
+      <Chapter {ch} n={num(ch.k)} sum={eur(calc.T.byCat[ch.k] - netOf([...inPkg].filter(id => app.trip.items.find(x => x.id === id)?.cat === ch.k)))} sub={ch.k === "stay" && nn && det ? tn("n.nights", nn) : ch.sub}
         onadd={access.readonly || !det ? undefined : () => addItem(ch.k)}
         onreset={items.length ? () => { if (confirm(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button>
             <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button>
-            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("flights")}>📥 {t("imp.title.flights")}</button>{/if}</div>
+            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("flights")}>📥 {t("imp.title.flights")}</button>{/if}
+            <!-- ohne Flug (#618): Kapitel ausblenden, „Flug hinzufügen“ im Transport bringt es zurück -->
+            {#if !items.some(x => !x.auto) && !app.trip.simple?.flights}<button class="linkbtn fl-none" onclick={() => (app.trip.chapters = { ...(app.trip.chapters || {}), flights: false })}>{t("fl.notNeeded")}</button>{/if}</div>
           {@const miss = withoutTravel(app.trip)}
           {#if miss.length}
             <p class="search-row miss-travel">⚠ {t("fl.missing", { who: miss.slice(0, 6).map(x => x.name).join(", ") + (miss.length > 6 ? ` +${miss.length - 6}` : "") })}
@@ -290,6 +323,9 @@
           <RoadCosts city={evWin.city} />
           <GroundOptions city={evWin.city} />
           <TransferOptions city={evWin.city} />
+          {#if !access.readonly && !pkgIds.length && !vis.some(v => v.k === "flights")}
+            <p class="search-row small fl-back">✈ {t("fl.backQ")} <button class="linkbtn fl-add-back" onclick={() => { app.trip.chapters = { ...(app.trip.chapters || {}), flights: true }; openFlightSearch(); }}>{t("pkg.addFlight")}</button></p>
+          {/if}
           {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.addTrip")} <small class="car-day">{t("car.perDay", { v: eur(carDay) })}</small></button>
             {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("transport")}>📥 {t("imp.title.transport")}</button>{/if}</div>{/if}
           <p class="search-row muted small fs-direct car-links">{t("car.compare")}
@@ -333,11 +369,11 @@
     {/each}
 
     <!-- Tagesplan: was an welchem Tag passiert (keine Kosten) -->
-    <Chapter ch={PLAN} n={CHAPTERS.length - 1} sum={String(dayRange(app.trip).length)} sub={t("ch.plan.sub")}>
+    <Chapter ch={PLAN} n={num("plan")} sum={String(dayRange(app.trip).length)} sub={t("ch.plan.sub")}>
       <DayPlan />
     </Chapter>
 
-    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.due)} sub={hhLabel}>
+    <Chapter ch={SPLIT} n={num("split")} sum={eur(calc.T.due)} sub={hhLabel}>
       <Split />
     </Chapter>
   </main>

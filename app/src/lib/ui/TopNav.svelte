@@ -8,6 +8,7 @@
   import LangSelect from "./LangSelect.svelte";
   import CurrencySelect from "./CurrencySelect.svelte";
   import { CHAPTERS } from "../chapters";
+  import { shown } from "../chapterVis.svelte";
   import { view } from "../scroll.svelte";
   import Icon from "./Icon.svelte";
   import TripMenu from "./TripMenu.svelte";
@@ -74,7 +75,7 @@
     {:else}
       <nav class="nav" class:shown={view.scrolled} bind:this={nav} aria-label={t("nav.chapters")}>
         <span class="pill" style:left="{pill.left}px" style:width="{pill.width}px" style:opacity={pill.show ? 1 : 0}></span>
-        {#each CHAPTERS as c (c.k)}
+        {#each CHAPTERS.filter(c => shown.keys.includes(c.k)) as c (c.k)}
           <a href="#{c.k}" data-ch={c.k} class:on={view.active === c.k} tabindex={view.scrolled ? 0 : -1}><Icon name={c.icon} />{c.label}</a>
         {/each}
       </nav>
