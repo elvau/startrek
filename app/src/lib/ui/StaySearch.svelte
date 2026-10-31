@@ -11,9 +11,10 @@
    * Booking.com und Trivago gleichzeitig, zusammengeführt nach Preis.
    * Treffer kommen als Angebote in einen Unterkunft-Posten, Preis für den ganzen Aufenthalt.
    */
-  import { access, app } from "../store.svelte";
+  import { access, addItem, app } from "../store.svelte";
+  import ProviderDialog from "./ProviderDialog.svelte";
   import { activeOption, eur, money } from "../calc";
-  import { dateDE, dayShort, nights, time } from "../format";
+  import { dateDE, dayShort, nights, range, time } from "../format";
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
   import { dir } from "../directory.svelte";
@@ -169,6 +170,23 @@
   }
 
   let busy = $state(false);
+  // Suchlinks (#619): Ort, Daten, Gäste für die Anbieter (Formular und „Bei anderen Anbietern suchen“)
+  const stayLq = $derived.by(() => {
+    if (!place.trim() || nn <= 0) return null;
+    const pets = petsAlong(trip, who.map(x => x.t.id));
+    return { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), ...(pets ? { pets } : {}) };
+  });
+  const provSummary = $derived(stayLq ? [place.trim(), range(checkin, checkout), tn("n.guests", who.length)].join(" · ") : "");
+  // „Bei anderen Anbietern suchen“: auf Klick; bei null Treffern einmal je Suche von selbst, mit Erklärung
+  let prov = $state(false), provEmpty = $state(false);
+  let provFor: unknown = null;
+  $effect(() => {
+    const l = list;
+    if (!l || l.length || busy || !stayLq || provFor === l) return;
+    provFor = l; provEmpty = true; prov = true;
+  });
+  const provTake = () => { prov = false; onclose(); openImport("stay", item?.id); };
+  const provHand = () => { prov = false; onclose(); if (item) app.editing = item.id; else addItem("stay"); };
   let error = $state("");
   let list = $state<StayOffer[] | null>(null);
   let sources = $state<SourceStatus[]>([]);
@@ -468,9 +486,9 @@
     {#if partial.length}<p class="small st-partial"><span aria-hidden="true">⚠️</span> {t("stay.partial", { list: partial.map(x => t("st.partialOf", { name: x.t.name, a: x.nights, b: nn })).join(", ") })}</p>{/if}
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
     <button class="btn primary" class:busy disabled={busy || !FLIGHTS_URL}>{busy ? t("st.busy", { src: SOURCES.filter(s => eff.includes(s.id)).map(s => s.name).join(` ${t("and")} `) }) : t("st.searchBtn")}</button>
-    {#if place.trim() && nn > 0}
-      {@const pets = petsAlong(trip, who.map(x => x.t.id))}
-      {@const lq = { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), ...(pets ? { pets } : {}) }}
+    {#if stayLq}
+      {@const pets = stayLq.pets}
+      {@const lq = stayLq}
       <p class="muted small fs-direct">{t("search.direct")} <PartnerLinks ids={partnersOf("stay")} q={lq} /></p>
       {#if sponsoredAny(partnersOf("stay"), lq, partner.on)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
       <BrokerNote />
@@ -540,8 +558,11 @@
         <p class="warnline">{t("st.notWiredHint")} <button type="button" class="btn sm" onclick={allSources}>{t("st.allSources")}</button></p>
       {/if}
     {/if}
+    <!-- Bei anderen Anbietern suchen (#619): am Ende der Treffer -->
+    {#if stayLq && !busy}<div class="prov-card"><b>{t("prov.q")}</b> <button type="button" class="btn prov-open" onclick={() => { provEmpty = false; prov = true; }}>🔎 {t("prov.title")}</button></div>{/if}
   {/if}
 </Modal>
+{#if prov && stayLq}<ProviderDialog cat="stay" q={stayLq} summary={provSummary} empty={provEmpty} onclose={() => (prov = false)} ontake={access.readonly ? undefined : provTake} onhand={access.readonly ? undefined : provHand} />{/if}
 
 <style>
   .st-camper { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--paper-2); }

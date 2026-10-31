@@ -131,7 +131,8 @@ export const GUIDE: GuidePage[] = [
     tips: [
       "Die Anreise zum Flughafen steht beim Haushalt (Kapitel „Wer fährt mit“) und fließt in den Preis ein: Ein weiter entfernter, günstiger Flughafen ist nicht automatisch der billigste.",
       "Der Preis trägt das Datum seiner Abfrage („Preis vom …“). Preise ändern sich, prüfe vor dem Buchen noch einmal beim Anbieter.",
-      "Ein Flug mit Zeiten füllt die Anwesenheit im Tagesplan: So weiß die App, wann wer wo ist."
+      "Ein Flug mit Zeiten füllt die Anwesenheit im Tagesplan: So weiß die App, wann wer wo ist.",
+      "Nichts Passendes gefunden? „🔎 Bei anderen Anbietern suchen“ zeigt Anbieter, bei denen deine Suche schon eingetragen ist, und solche, bei denen du nur auf der Startseite landest (🏠). Findet die Suche gar nichts, öffnet sich das Fenster von selbst. Gefunden? „📥 Angebot übernehmen“ bringt es zurück in die Reise."
     ],
     faq: [
       { q: "Kann ich in Split&Fly Flüge buchen?", a: "Nein. Split&Fly sucht und vergleicht. Zum Buchen führt dich ein Link zum Anbieter. Den Status der Buchung hältst du danach im Posten fest." },

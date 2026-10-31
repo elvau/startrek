@@ -10,10 +10,11 @@
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
    * feste Daten (± Tage) oder flexibler Zeitraum mit „spätestens zuhause“ und Nächten per Schieberegler.
    */
-  import { access, app, calc } from "../store.svelte";
+  import { access, addItem, app, calc } from "../store.svelte";
+  import ProviderDialog from "./ProviderDialog.svelte";
   import { eur, money } from "../calc";
   import { airportsOf } from "../calc/travel";
-  import { dayShort, nights, time } from "../format";
+  import { dayShort, nights, range, time } from "../format";
   import Modal from "./Modal.svelte";
   import { showItem } from "./showItem";
   import { dir } from "../directory.svelte";
@@ -209,6 +210,25 @@
   let bookSize = $state<number | null>(null);
   const split = $derived(splitPax(pax, bookSize ?? (seats >= SPLIT_FROM ? BOOKING_SIZE : MAX_PAX)));
   const qBags = $derived(split.bookings > 1 ? Math.min(2 * split.size, Math.ceil(bags / split.bookings)) : bags);
+  // Suchlinks (#619): Suche mit Ort, Datum und Personen für die Anbieter (Formular und „Bei anderen Anbietern suchen“)
+  const fqLink = $derived.by(() => {
+    if (kind === "round" || !to.trim() || !aps.length || !(mode === "flex" ? rFrom : out)) return null;
+    const d0 = toLoc ?? resolveLoc(airportData, to, cc);
+    const o0 = originLoc(aps[0]);
+    const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: kind === "oneway" ? undefined : mode === "flex" ? rTo || undefined : ret || undefined, ...split.q };
+    return { ...lq, ...(o0?.kind === "city" ? { fromName: o0.city } : {}), ...(d0 && d0.kind !== "airport" ? { toName: d0.city } : {}) };
+  });
+  const provSummary = $derived(fqLink ? [`${fqLink.fromName || fqLink.from} → ${fqLink.toName || fqLink.to}`, fqLink.ret ? range(fqLink.depart, fqLink.ret) : dayShort(fqLink.depart), t("persShort", { n })].join(" · ") : "");
+  // „Bei anderen Anbietern suchen“: auf Klick; bei null Treffern einmal je Suche von selbst, mit Erklärung
+  let prov = $state(false), provEmpty = $state(false);
+  let provFor: unknown = null;
+  $effect(() => {
+    const l = list;
+    if (!l || l.length || busy || rounds || !fqLink || provFor === l) return;
+    provFor = l; provEmpty = true; prov = true;
+  });
+  const provTake = () => { prov = false; onclose(); openImport("flights", item?.id); };
+  const provHand = () => { prov = false; onclose(); if (item) app.editing = item.id; else addItem("flights"); };
   const splitInfo = $derived(split.bookings > 1 ? { size: split.size, note: t("fs.split.note", { n: split.bookings, k: split.size }) } : undefined);
   const searchAll = (q: FlightQuery, signal?: AbortSignal) => { const f = split.factor; return searchFlights(q, signal).then(r => scaleResult(r, f)); };
 
@@ -596,11 +616,8 @@
     <p class="fs-facts small"><span><span aria-hidden="true">👥</span> {people}{who ? ` · ${[...new Set(flyers(trip, who).map(hhKey))].join(", ")}` : ""}</span>{#if aps.length && kind !== "round"}<span><span aria-hidden="true">🛫</span> {aps.join(", ")}</span>{/if}</p>
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
     <button class="btn primary" class:busy disabled={busy || !FLIGHTS_URL}>{busy ? `${t("fs.busy")} ${progress}` : kind === "round" ? t("fs.roundBtn") : aps.length > 1 ? t("fs.compareN", { n: aps.length }) : t("fs.searchBtn")}</button>
-    {#if kind !== "round" && to.trim() && aps.length && (mode === "flex" ? rFrom : out)}
-      {@const d0 = toLoc ?? resolveLoc(airportData, to, cc)}
-      {@const o0 = originLoc(aps[0])}
-      {@const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: kind === "oneway" ? undefined : mode === "flex" ? rTo || undefined : ret || undefined, ...split.q }}
-      {@const fq = { ...lq, ...(o0?.kind === "city" ? { fromName: o0.city } : {}), ...(d0 && d0.kind !== "airport" ? { toName: d0.city } : {}) }}
+    {#if fqLink}
+      {@const fq = fqLink}
       <p class="muted small fs-direct">{t("fs.directFrom", { ap: aps[0] })} <PartnerLinks ids={partnersOf("flight")} q={fq} /></p>
       {#if sponsoredAny(partnersOf("flight"), fq, partner.on)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
     {/if}
@@ -799,5 +816,8 @@
       <!-- Airlines verkaufen meist erst rund 11 Monate im Voraus: dann nicht „gibt es nicht“, sondern „noch nicht“ -->
       {#if farOut}<p class="warnline fs-farout">{t("fs.farOut")}</p>{/if}
     {/if}
+    <!-- Bei anderen Anbietern suchen (#619): am Ende der Treffer -->
+    {#if fqLink && !busy}<div class="prov-card"><b>{t("prov.q")}</b> <button type="button" class="btn prov-open" onclick={() => { provEmpty = false; prov = true; }}>🔎 {t("prov.title")}</button></div>{/if}
   {/if}
 </Modal>
+{#if prov && fqLink}<ProviderDialog cat="flight" q={fqLink} summary={provSummary} empty={provEmpty} onclose={() => (prov = false)} ontake={access.readonly ? undefined : provTake} onhand={access.readonly ? undefined : provHand} />{/if}

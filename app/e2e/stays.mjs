@@ -195,15 +195,30 @@ try {
   await more(m);
   await m.locator(".st-filters .chip", { hasText: "Pool" }).click();
   log("Filter gemerkt");
+  // keine Treffer (#619): „Bei anderen Anbietern suchen“ öffnet sich von selbst, mit Erklärung, vorausgefüllt und Startseite getrennt
+  const provDlg = () => p.locator(".modal:has(.prov)");
+  const closeProv = async () => { await provDlg().locator(".prov-empty").waitFor(); await provDlg().locator(".x").click(); await provDlg().waitFor({ state: "detached" }); };
   // leeres Ergebnis bei aktiven Mindestwerten: Hinweis mit den Werten, „Ohne Mindestwerte suchen“ wiederholt die Suche ohne sie
   emptyNext = true;
   await m.locator(".fs-form .btn.primary").click();
+  {
+    const pd = provDlg();
+    await pd.locator(".prov-empty").waitFor();
+    const n = await pd.locator('.prov-list[data-fill="search"] a').count();
+    if (n < 2 || !(await pd.locator('.prov-list[data-fill="search"] a', { hasText: "Booking.com" }).count())) fail("vorausgefüllte Suchlinks fehlen: " + n);
+    if (!(await pd.locator(".prov-we").textContent()).includes("Split")) fail("übernommene Angaben fehlen");
+    await pd.locator(".prov-take, .prov-hand").first().waitFor();
+    if (process.env.SHOTS) await pd.screenshot({ path: `${process.env.SHOTS}/anbieter.png` });
+    await closeProv();
+    log("Keine Treffer: „Bei anderen Anbietern suchen“ von selbst, mit Erklärung, vorausgefüllten Suchlinks und Rückweg");
+  }
   const warn = m.locator(".warnline", { hasText: "Aktive Mindestwerte" });
   await warn.waitFor();
   if (!(await warn.textContent()).includes("ab 7,0")) fail("Hinweis Mindestwerte: " + await warn.textContent());
   // leere Antwort mit nicht angebundener Quelle: Hinweis, „Mit allen Quellen suchen“ wiederholt die Suche
   notWired = true;
   await m.locator(".fs-form .btn.primary").click();
+  await closeProv();
   const nw = m.locator(".warnline", { hasText: "noch nicht angebunden" });
   await nw.waitFor();
   const askedBefore = asked.length;
@@ -214,6 +229,7 @@ try {
   log("Leeres Ergebnis mit nicht angebundener Quelle: Hinweis, „Mit allen Quellen suchen“ wiederholt die Suche");
   emptyNext = true;
   await m.locator(".fs-form .btn.primary").click();
+  await closeProv();
   await warn.waitFor();
   emptyNext = false;
   await warn.locator(".btn", { hasText: "Ohne Mindestwerte suchen" }).click();
