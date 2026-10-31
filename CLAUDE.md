@@ -1,7 +1,7 @@
 # Split&Fly – Hinweise für Claude
 
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
-Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer mit Gemini, Fehlermeldungen), Daten und
+Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer und KI-Import mit Claude Haiku, ersatzweise Gemini, Fehlermeldungen), Daten und
 Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, PARTNER, NEBENKOSTEN, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste, IMPORT = KI-Import und Realitätscheck (Konzept),
 `claude2claude.md` = Einrichtung der Routinen, ABLAUF = Planung in Epics/Features).
 
@@ -72,6 +72,10 @@ Neue Funktionen bekommen Unit-Tests und, wo sinnvoll, einen Schritt in `app/e2e/
 - Autor der Commits ist das Bot-Konto `daniel-ai-coder`, je Rolle im Namen (Feature, Bugfix, Review, Sprachen, Daten, Pflege):
   `git commit --author="Split&Fly KI · Feature <336432604+daniel-ai-coder@users.noreply.github.com>"`.
   Committer bleibt Claude (`noreply@anthropic.com`), sonst ist der Commit nicht signiert.
+
+## Begriffe Partner
+**Suchtreffer** = wir fragen eine Schnittstelle ab, Angebote in unserer App; **Suchlink** = Link zur Suche beim Anbieter
+(vorausgefüllt oder nur Startseite 🏠). Unabhängig davon **mit Provision** (Partnerkennung) oder **neutral**. Details: `docs/PARTNER.md`.
 
 ## Datenschutz (streng)
 - Fehlerberichte liegen im privaten Repo `elvau/splitandfly-bugs`, Bilder im R2-Speicher des Workers

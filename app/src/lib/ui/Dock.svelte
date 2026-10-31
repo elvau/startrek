@@ -10,7 +10,7 @@
   let { onopen }: { onopen: () => void } = $props();
 
   const ch = $derived(CHAPTERS.find(c => c.k === view.active) || CHAPTERS[0]);
-  const val = $derived(ch.k === "plan" ? tn("n.days", dayRange(app.trip).length) : ch.k === "trav" ? tn("n.persons", calc.T.active) : ch.k === "split" ? (Object.keys(calc.T.byHousehold).length > 1 && Object.keys(calc.T.byHousehold).length === calc.T.active ? tn("n.persons", calc.T.active) : tn("n.families", Object.keys(calc.T.byHousehold).length)) : eur(calc.T.byCat[ch.k]));
+  const val = $derived(ch.k === "plan" ? tn("n.days", dayRange(app.trip).length) : ch.k === "trav" ? tn("n.persons", calc.T.active) : ch.k === "split" ? (Object.keys(calc.T.byHousehold).length > 1 && Object.keys(calc.T.byHousehold).length === calc.T.active ? tn("n.persons", calc.T.active) : tn("n.families", Object.keys(calc.T.byHousehold).length)) : eur(ch.k === "pkg" ? calc.T.byCat.flights + calc.T.byCat.stay : calc.T.byCat[ch.k]));
 </script>
 
 <button class="dock" onclick={onopen} aria-label={t("dock.open", { total: eur(calc.T.total) })}>

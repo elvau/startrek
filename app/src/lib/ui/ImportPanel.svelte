@@ -7,8 +7,20 @@
    * Realitätscheck (#461, check): dieselben Schritte, danach nur der Bericht an einem Entwurf; „Als Reise übernehmen“
    * legt die Reise erst dann an. Paket (#188, into): in die offene Reise, ohne eine neue anzulegen.
    * Ohne Flug (#475): Anreise als Posten, sobald Wohnort und Ziel (Ortsdaten) bekannt sind.
+   * Import je Einstieg (#615, into mit scope): nur die Teile des Kapitels; weitere Funde als Rückfrage zum Anhaken.
+   * Mit itemId kommen die Angebote an diesen Posten statt als neuer Posten.
+   * Abgleich mit der Reise (#616, into): passen Zeitraum, Land, Personen nicht, erst „Ist das die richtige Reise?“
+   * (hier übernehmen, andere Reise, neue Reise); übernommen wird trotzdem, die Hinweise bleiben am Posten.
+   * Reise um Import erweitern (#617, diff): Änderungen je Posten (neu, ergänzt, ersetzt, nicht im Angebot) zum Auswählen;
+   * nur Neues: direkt. Danach kurz „Rückgängig“.
    */
-  import { app, draftTrip, startTrip } from "../store.svelte";
+  import { access, allTrips, app, calc, draftTrip, startTrip, switchTrip, tripFor } from "../store.svelte";
+  import { fitOf, type FitIssue } from "../import/fit";
+  import { applyDiff, diffImport, needsReview, type DiffChoice, type DiffRow } from "../import/diff";
+  import { importUndo } from "../import/open.svelte";
+  import { eur, totals } from "../calc";
+  import { countryName } from "../geo/locations";
+  import { dateDE, monthYear, range } from "../format";
   import RealityReport from "./RealityReport.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { IMPORT_FILES_MAX } from "../import/ai";
@@ -31,14 +43,56 @@
   import { openExplore } from "../activities/open.svelte";
   import type { Item, Traveler, Trip } from "../model";
   import { SRC_ICON } from "../import/icons";
+  import { mergeInto, packagePriced, pickParts, preselectMore, splitScope, type ImportScope, type OfferPart } from "../import/scope";
 
-  let { onclose, travelers, peopleKnown = false, check = false, into = false, onitems, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; onitems?: (items: Item[]) => void; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
+  let { onclose, travelers, peopleKnown = false, check = false, into = false, scope = "all", itemId, diff = false, onitems, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; scope?: ImportScope; itemId?: string; diff?: boolean; onitems?: (items: Item[]) => void; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
   // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
   let found = $state<ImportedOffer | null>(null);
   // schon geprüft (Angebotsspeicher, #462): gültig bis
   let cachedUntil = $state("");
   // danach (#459): was fehlt noch? Auswahl je fehlendem Baustein
-  let stage = $state<"review" | "parts" | "report">("review");
+  let stage = $state<"fit" | "more" | "diff" | "review" | "parts" | "report">("review");
+  // Änderungsansicht (#617): Entwurf der Reise mit dem Import, Zeilen je Posten
+  let draftT = $state<Trip | null>(null);
+  let rows = $state<DiffRow[]>([]);
+  const KIND_ICO = { new: "+", fill: "~", replace: "↔", missing: "−" } as const;
+  const choiceKey = (r: DiffRow, c: DiffChoice): Key => (c === "keep" && r.kind === "replace" ? "imp.diff.c.keepOld" : `imp.diff.c.${c}` as Key);
+  const rowName = (r: DiffRow) => (r.id.startsWith("pkg:") ? `📦 ${t("pkg.title")}` : r.target?.name || r.items[0]?.name || t("imp.offer"));
+  const rowOffer = (r: DiffRow) => r.items.flatMap(i => i.options).map(o => o.label).filter(Boolean).join(", ");
+  const afterTotal = $derived.by(() => {
+    if (stage !== "diff") return 0;
+    const c = JSON.parse(JSON.stringify(app.trip)) as Trip;
+    applyDiff(c, $state.snapshot(rows) as DiffRow[]);
+    return totals(c).total;
+  });
+  // Abgleich mit der Reise (#616): Angebot wie ausgelesen, Abweichungen, Auswahl einer anderen Reise
+  let raw = $state<ImportedOffer | null>(null);
+  let issues = $state<FitIssue[]>([]);
+  let choosing = $state(false), waitTrip = $state<string | null>(null);
+  const targetWho = () => (itemId ? app.trip.items.find(i => i.id === itemId)?.participants : undefined);
+  const fitLabel: Record<FitIssue["k"], Key> = { dates: "imp.f.dates", country: "imp.fit.country", people: "imp.f.people" };
+  const fitVal = (i: FitIssue, v: string) => {
+    if (i.k === "country") return countryName(v);
+    if (i.k === "people") return v;
+    const [a, b] = v.split("|");
+    return b ? range(a, b) : dateDE(a);
+  };
+  const fitText = (i: FitIssue) => t("imp.fit.row", { what: t(fitLabel[i.k]), a: fitVal(i, i.offer), b: fitVal(i, i.trip) });
+  // andere Reisen zum Auswählen: die eigenen bzw. mit Schreibrecht, passende zuerst
+  const others = $derived.by(() => {
+    if (!choosing || !raw) return [];
+    const o = raw;
+    return allTrips().filter(m => m.id !== app.trip.id && m.role !== "viewer").map(m => {
+      const tr = tripFor(m.id);
+      return { m, n: tr ? fitOf(tr, o).length : 9 };
+    }).sort((a, b) => a.n - b.n).slice(0, 12);
+  });
+  // Import je Einstieg (#615): Teile im Kapitel und weitere Funde, angehakt = mit übernehmen
+  let inScope = $state<OfferPart[]>([]), more = $state<OfferPart[]>([]), picked = $state<OfferPart[]>([]);
+  const PART_KEY: Record<OfferPart, Key> = { flights: "imp.f.flights", stay: "imp.f.stay", cruise: "imp.f.cruise", transfer: "imp.f.transfer", rental: "imp.kind.rental", offer: "imp.kind.other" };
+  // Preis gilt nur für das ganze Paket: Hinweis bei der Rückfrage
+  const packagePrice = $derived(!!found && packagePriced(found));
+  const PART_ICO: Record<OfferPart, string> = { flights: "✈", stay: "🛏", cruise: "🚢", transfer: "🚌", rental: "🚗", offer: "🎟" };
   // Realitätscheck: Entwurf der Reise, nicht gespeichert
   let draft = $state<Trip | null>(null);
   let choices = $state<Choices>({});
@@ -115,12 +169,14 @@
       const res = await askImport({ prepared, text, url }, ctrl.signal);
       const offer = res.offer;
       cachedUntil = res.until || "";
-      // alles sicher erkannt: gleich anlegen, sonst erst die Übersicht
       found = offer;
+      raw = offer;
       choices = defaultChoices(offer);
-      // alles sicher erkannt: Übersicht überspringen
-      if (reviewOf(offer, new Set(), peopleKnown || into).direct) next();
-      else stage = "review";
+      if (into && !check) {
+        issues = fitOf(app.trip, offer, targetWho());
+        if (issues.length) { choosing = false; stage = "fit"; return; }
+      }
+      afterFit();
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       err = (e as Error).message;
@@ -128,13 +184,89 @@
       if (e instanceof ImportError && e.needScreenshot) src = "file";
     } finally { busy = false; slow = false; clearTimeout(later); }
   }
+  /** nach dem Abgleich: Teile des Kapitels und weitere Funde (#615), dann Übersicht */
+  function afterFit() {
+    const offer = found;
+    if (!offer) return;
+    if (into && scope !== "all") {
+      const sp = splitScope(offer, scope);
+      if (!sp.inScope.length && !sp.more.length) { found = null; err = t("imp.nothing"); return; }
+      inScope = sp.inScope; more = sp.more; picked = preselectMore(offer, scope);
+      if (more.length) { stage = "more"; return; }
+    }
+    review();
+  }
+  /** andere Reise gewählt: wechseln, warten bis sie geladen ist, dann neu abgleichen */
+  function pickTrip(id: string) {
+    choosing = false;
+    waitTrip = id;
+    switchTrip(id, "Import");
+  }
+  $effect(() => {
+    if (!waitTrip || app.trip.id !== waitTrip || access.loading || !raw) return;
+    waitTrip = null;
+    found = raw;
+    issues = fitOf(app.trip, raw);
+    if (!issues.length) afterFit();
+  });
+  /** „Neue Reise daraus“: das ganze Angebot als neue Reise, wie unter „Neue Reise → Importieren“ */
+  function asNewTrip() {
+    if (!raw) return;
+    startTrip(travelers?.());
+    const items = importToTrip(app.trip, raw);
+    onitems?.(items);
+    onclose();
+  }
+  /** alles sicher erkannt: Übersicht überspringen */
+  function review() {
+    if (!found) return;
+    if (reviewOf(found, new Set(), peopleKnown || into).direct) next();
+    else stage = "review";
+  }
+  /** Rückfrage „Habe auch das gefunden“ (#615): nur die Teile des Kapitels und die angehakten */
+  function takeMore() {
+    if (!found) return;
+    found = pickParts(found, [...inScope, ...picked]);
+    review();
+  }
+  const togglePart = (x: OfferPart) => (picked = picked.includes(x) ? picked.filter(y => y !== x) : [...picked, x]);
   /** nach der Übersicht: fehlt etwas, erst „Was fehlt noch?“, sonst anlegen */
   function next() {
     if (!found) return;
     if (check) { const d = draftTrip(); importToTrip(d, found); draft = d; stage = "report"; return; }
     // Paket in die offene Reise (#188): Ziel, Daten, Name bleiben, kein „Was fehlt noch?“
-    if (into) { const items = importToTrip(app.trip, found, undefined, true); onitems?.(items); onclose(); return; }
+    if (into && diff) {
+      // erst auf einer Kopie: was ändert sich je Posten?
+      const d = JSON.parse(JSON.stringify($state.snapshot(app.trip))) as Trip;
+      const made = importToTrip(d, $state.snapshot(found) as ImportedOffer, undefined, true);
+      if (issues.length) for (const it of made) { it.check = true; it.checkWhy = issues.map(fitText); }
+      draftT = d;
+      rows = diffImport(app.trip, made);
+      if (needsReview(rows)) { stage = "diff"; return; }
+      takeDiff();
+      return;
+    }
+    if (into) {
+      const items = mergeInto(app.trip, importToTrip(app.trip, found, undefined, true), itemId);
+      // Abweichungen zur Reise (#616): Hinweis bleibt am Posten, bis jemand „Geprüft“ antippt
+      if (issues.length) for (const it of items) { it.check = true; it.checkWhy = issues.map(fitText); }
+      onitems?.(items); onclose(); return;
+    }
     if (hasMissing(found)) stage = "parts"; else create();
+  }
+  /** gewählte Änderungen in die Reise (#617); Stand davor für „Rückgängig“ */
+  function takeDiff() {
+    if (!draftT) return;
+    importUndo.snap = JSON.stringify($state.snapshot(app.trip));
+    importUndo.tripId = app.trip.id;
+    importUndo.at = Date.now();
+    const d = draftT;
+    // was der Import an der Reise selbst ergänzt hat (nur leere Angaben, keep): Ziel, Daten, Reisende, Angebot
+    for (const k of ["place", "country", "from", "to", "travelers", "detail", "offer"] as const)
+      if (JSON.stringify(d[k]) !== JSON.stringify(app.trip[k])) (app.trip as unknown as Record<string, unknown>)[k] = d[k];
+    const items = applyDiff(app.trip, $state.snapshot(rows) as DiffRow[]);
+    onitems?.(items);
+    onclose();
   }
   function create() {
     if (!found) return;
@@ -171,10 +303,70 @@
     <RealityReport trip={draft} preview ontake={create} />
   {:else if found && stage === "parts"}
     <ImportParts offer={found} bind:choices bind:home {askHome} oncreate={create} onback={() => (stage = "review")} />
+  {:else if waitTrip}
+    <SearchLoading kind="import" cards={0} sub={t("imp.fit.loading")} />
+  {:else if found && stage === "fit"}
+    <div class="imp-fit">
+      <p class="imp-lead"><b>⚠ {t("imp.fit.q", { name: app.trip.name || app.trip.place || t("trip.untitled") })}</b></p>
+      <ul class="imp-fit-list">{#each issues as i (i.k)}<li data-k={i.k}>{fitText(i)}</li>{/each}</ul>
+      <p class="muted small">{t("imp.fit.still")}</p>
+      {#if choosing}
+        <ul class="imp-fit-trips">
+          {#each others as x (x.m.id)}
+            <li><button type="button" class="imp-fit-trip" onclick={() => pickTrip(x.m.id)}>
+              <b>{x.m.name || x.m.place || t("trip.untitled")}{#if x.n === 0} <span class="imp-fit-ok">✓ {t("imp.fit.fits")}</span>{/if}</b>
+              <small>{[x.m.place, x.m.from ? monthYear(x.m.from) : ""].filter(Boolean).join(" · ")}</small>
+            </button></li>
+          {:else}<li class="muted small">{t("imp.fit.noOther")}</li>{/each}
+        </ul>
+      {/if}
+      <div class="ed-foot imp-fit-acts">
+        <button type="button" class="btn imp-fit-new" onclick={asNewTrip}>+ {t("imp.fit.new")}</button>
+        <button type="button" class="btn imp-fit-other" aria-expanded={choosing} onclick={() => (choosing = !choosing)}>{t("imp.fit.other")}</button>
+        <button type="button" class="btn primary imp-fit-yes" onclick={afterFit}>{t("imp.fit.yes")}</button>
+      </div>
+    </div>
+  {:else if found && stage === "diff"}
+    <div class="imp-diff">
+      <p class="imp-lead">{t("imp.diff.lead")}</p>
+      <ul class="imp-diff-list">
+        {#each rows as r (r.id)}
+          <li data-kind={r.kind} class="imp-diff-row">
+            <div class="imp-diff-top">
+              <span class="imp-diff-k k-{r.kind}">{KIND_ICO[r.kind]} {t(`imp.diff.${r.kind}` as Key)}</span>
+              <b class="imp-diff-name">{rowName(r)}</b>
+              {#if r.target && (r.target.status === "booked" || r.target.status === "paid")}<span class="imp-diff-booked">{t("imp.diff.booked")}</span>{/if}
+              <span class="imp-diff-p">{#if r.before !== undefined && r.after !== undefined && r.before !== r.after}{eur(r.before)} → <b>{eur(r.after)}</b>{:else if r.after !== undefined}{eur(r.after)}{:else if r.before !== undefined}{eur(r.before)}{/if}</span>
+            </div>
+            <div class="chips imp-diff-c" role="group" aria-label={rowName(r)}>
+              {#each r.choices as c (c)}<button type="button" class="chip" class:on={r.choice === c} aria-pressed={r.choice === c} data-c={c} onclick={() => (r.choice = c)}>{t(choiceKey(r, c))}</button>{/each}
+            </div>
+            {#if rowOffer(r) || r.target}
+              <details class="small imp-diff-d"><summary>{t("imp.diff.details")}</summary>
+                {#if r.target}<p>{t("imp.diff.now", { x: r.target.options.map(o => o.label).filter(Boolean).join(", ") || r.target.name })}</p>{/if}
+                {#if rowOffer(r)}<p>{t("imp.diff.offer", { x: rowOffer(r) })}</p>{/if}
+              </details>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+      <p class="small imp-diff-total">{t("imp.diff.total", { a: eur(calc.T.total), b: eur(afterTotal) })}</p>
+      <div class="ed-foot"><button type="button" class="btn" onclick={() => (found = null)}>{t("imp.rev.back")}</button><button type="button" class="btn primary imp-diff-go" onclick={takeDiff}>{t("imp.diff.go")}</button></div>
+    </div>
+  {:else if found && stage === "more"}
+    <div class="imp-more">
+      <p class="imp-lead">{inScope.length ? t("imp.more.lead") : t("imp.more.none", { what: t(`imp.scope.${scope}` as Key) })}</p>
+      <ul class="imp-more-list">
+        {#each inScope as x (x)}<li><label><input type="checkbox" checked disabled /> <span aria-hidden="true">{PART_ICO[x]}</span> {t(PART_KEY[x])}</label></li>{/each}
+        {#each more as x (x)}<li data-part={x}><label><input type="checkbox" checked={picked.includes(x)} onchange={() => togglePart(x)} /> <span aria-hidden="true">{PART_ICO[x]}</span> {t(PART_KEY[x])} <span class="muted small">{t("imp.more.also")}</span></label></li>{/each}
+      </ul>
+      {#if packagePrice}<p class="small imp-note">{t("imp.more.pkg")}</p>{/if}
+      <div class="ed-foot"><button type="button" class="btn" onclick={() => (found = null)}>{t("imp.rev.back")}</button><button type="button" class="btn primary imp-more-go" disabled={!inScope.length && !picked.length} onclick={takeMore}>{t("imp.more.go")}</button></div>
+    </div>
   {:else if found}
-    <ImportReview bind:offer={found} {cachedUntil} peopleKnown={peopleKnown || into} oncreate={next} onback={() => (found = null)} />
+    <ImportReview bind:offer={found} {cachedUntil} peopleKnown={peopleKnown || into} {into} oncreate={next} onback={() => (found = null)} />
   {:else}
-    <p class="imp-lead">{t(check ? "real.lead" : "imp.lead")}</p>
+    <p class="imp-lead">{check ? t("real.lead") : into && scope !== "all" ? t("imp.leadScope", { what: t(`imp.scope.${scope}` as Key) }) : into ? t("imp.leadInto") : t("imp.lead")}</p>
     <div class="chips imp-src">
       {#each SRCS as s (s)}<button type="button" class="chip" class:on={src === s} aria-pressed={src === s} onclick={() => (s === "paste" ? void paste() : (src = s))}><span aria-hidden="true">{SRC_ICON[s]}</span> {t(`imp.src.${s}` as Key)}</button>{/each}
     </div>
@@ -199,7 +391,7 @@
     <details class="small imp-priv"><summary><span aria-hidden="true">🔒</span> {t("imp.privacyT")}</summary><p>{t("imp.privacy")}</p></details>
     {#if busy}<SearchLoading kind="import" cards={0} sub={slow ? `${t("imp.wait")} ${t("imp.waitLong")}` : t("imp.wait")} />{/if}
     {#if err}<p class="err small" role="alert">{err}{#if retryable} <button type="button" class="btn small imp-retry" disabled={busy} onclick={go}>{t("imp.retry")}</button>{/if}</p>{/if}
-    <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" class:busy disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
+    <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" class:busy disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : into ? "imp.goInto" : "imp.go")}</button></div>
   {/if}
 </div>
 
@@ -219,4 +411,25 @@
   .imp-priv { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--paper-2); color: var(--ink-2); }
   .imp-priv summary { cursor: pointer; font-weight: 600; min-height: 28px; display: flex; align-items: center; gap: 6px; }
   .imp-priv p { margin: 6px 0 0; }
+  .imp-more, .imp-fit, .imp-diff { display: flex; flex-direction: column; gap: 12px; }
+  .imp-diff-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .imp-diff-row { padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); display: flex; flex-direction: column; gap: 8px; }
+  .imp-diff-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .imp-diff-k { font-size: 12.5px; font-weight: 800; border-radius: 99px; padding: 2px 9px; background: var(--paper-2); color: var(--ink-2); }
+  .imp-diff-k.k-new { background: var(--good-soft); color: var(--good); }
+  .imp-diff-k.k-replace { background: var(--warn-soft); color: var(--warn); }
+  .imp-diff-k.k-fill { background: var(--idea-soft); color: var(--idea); }
+  .imp-diff-name { min-width: 0; }
+  .imp-diff-booked { font-size: 12px; font-weight: 700; color: var(--good); }
+  .imp-diff-p { margin-inline-start: auto; }
+  .imp-diff-d p { margin: 4px 0 0; color: var(--ink-2); }
+  .imp-diff-d summary { cursor: pointer; min-height: 28px; display: flex; align-items: center; color: var(--ink-2); }
+  .imp-diff-total { margin: 0; font-weight: 700; text-align: end; }
+  .imp-fit-list { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 4px; }
+  .imp-fit-trips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto; }
+  .imp-fit-trip { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); font: inherit; text-align: start; color: var(--ink); }
+  .imp-fit-ok { color: var(--ok, var(--a)); font-weight: 600; font-size: 13px; }
+  .imp-fit-acts { flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .imp-more-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .imp-more-list label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); cursor: pointer; }
 </style>

@@ -172,7 +172,13 @@ try {
   await m.locator("label.fs-time input").fill("17:00");
   await m.locator(".fs-form .btn.primary").click();
   await m.locator("p", { hasText: "aussortiert, weil ihr zu spät zuhause wärt" }).waitFor();
-  log("Spätestens 17:00 zuhause: Verbindungen mit Landung 16:25 aussortiert");
+  // keine Treffer (#619): „Bei anderen Anbietern suchen“ öffnet sich von selbst, mit Erklärung und vorausgefüllten Suchlinks
+  const pd = p.locator(".modal:has(.prov)");
+  await pd.locator(".prov-empty").waitFor();
+  if (!(await pd.locator('.prov-list[data-fill="search"] a', { hasText: "Skyscanner" }).count())) fail("Skyscanner fehlt bei den vorausgefüllten Suchlinks");
+  await pd.locator(".x").click();
+  await pd.waitFor({ state: "detached" });
+  log("Spätestens 17:00 zuhause: Verbindungen mit Landung 16:25 aussortiert, „Bei anderen Anbietern suchen“ von selbst");
 
   // Stadt mit mehreren Flughäfen: Ziel Tokio (alle), dazu Abflug London (alle Londoner Flughäfen)
   const dest = m.locator("label.f", { hasText: "Nach" }).locator("input");

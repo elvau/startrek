@@ -52,7 +52,8 @@ export function parkenUndFliegenLink(q?: ParkLinkQuery): string {
 
 const p = <Q>(e: Partner<Q>) => e;
 /** Startseite des Anbieters, ohne vorausgefüllte Angaben */
-const home = (url: string) => () => url;
+/** nur die Startseite (Suchlink ohne vorausgefüllte Angaben, #619): als solche gekennzeichnet */
+const home = (url: string) => Object.assign(() => url, { home: true as const });
 /** Parameter setzen (Partnerkennung im Link) */
 const params = (kv: Record<string, string>) => (url: string) => {
   try {
@@ -154,6 +155,8 @@ export interface PartnerHref {
   url: string;
   /** mit Partnerkennung: als Partner-Link kennzeichnen (rel="sponsored", Hinweis) */
   sponsored: boolean;
+  /** Suchlink (#619): search = vorausgefüllte Suche beim Anbieter, home = nur Startseite (Angaben dort selbst eingeben) */
+  fill: "search" | "home";
 }
 
 /** Link zu einem Partner; on: Partner-Links an (Schalter im Such-Dienst). null: Partner aus oder Angaben reichen nicht */
@@ -163,7 +166,7 @@ export function partnerLink<K extends PartnerId>(id: K, q: PartnerQuery<K>, on: 
   const url = e.link(q);
   if (!url) return null;
   const sponsored = on && !!e.tag;
-  return { id, cat: e.cat, name: e.name, ...(e.nameKey ? { nameKey: e.nameKey } : {}), url: sponsored ? e.tag!(url) : url, sponsored };
+  return { id, cat: e.cat, name: e.name, ...(e.nameKey ? { nameKey: e.nameKey } : {}), url: sponsored ? e.tag!(url) : url, sponsored, fill: fillOf(id) };
 }
 
 /** Verzeichnis für die Admin-Ansicht: je Partner Kennung der Klickzählung, ob eine Partnerkennung hinterlegt ist, ob ausgeblendet */
@@ -175,6 +178,9 @@ export const partnerList = () => (Object.keys(PARTNERS) as PartnerId[]).map(id =
 /** Anzeigenamen nach Kennung der Klickzählung (getYourGuide → getyourguide), für die Admin-Ansicht */
 export const clickNames = (): Record<string, string> =>
   Object.fromEntries((Object.keys(PARTNERS) as PartnerId[]).map(id => [clickId(id), PARTNERS[id].name]));
+
+/** vorausgefüllte Suche oder nur Startseite (#619), aus dem Verzeichnis abgeleitet (Link über home()) */
+export const fillOf = (id: PartnerId): "search" | "home" => ((PARTNERS[id].link as { home?: true }).home ? "home" : "search");
 
 /** Partner einer Kategorie in der Reihenfolge des Verzeichnisses */
 export const partnersOf = (cat: PartnerCat) => (Object.keys(PARTNERS) as PartnerId[]).filter(id => PARTNERS[id].cat === cat);

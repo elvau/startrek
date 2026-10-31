@@ -2,7 +2,7 @@
   import { applyDocument, t, tn, type Key } from "./lib/i18n/index.svelte";
   import { onMount, untrack } from "svelte";
   import { entryCurrency, loadRates } from "./lib/currency.svelte";
-  import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed, goHome } from "./lib/store.svelte";
+  import { access, app, calc, addItem, discardDetails, resetting, resumeScroll, setDetailed, goHome, pristine } from "./lib/store.svelte";
   import { saveView } from "./lib/resume";
   import { isDetailed } from "./lib/model";
   import SimpleCard from "./lib/ui/SimpleCard.svelte";
@@ -14,7 +14,10 @@
   import { cloudTrip } from "./lib/cloud/cloud.svelte";
   import { claimable } from "./lib/claims";
   import { eur } from "./lib/calc";
-  import { CHAPTERS, CAT_CHAPTERS, PLAN, SPLIT } from "./lib/chapters";
+  import { CHAPTERS, CAT_CHAPTERS, PKG, PLAN, SPLIT } from "./lib/chapters";
+  import { activePkgs, pkgItems, visibleChapters } from "./lib/chapterVis";
+  import { shown } from "./lib/chapterVis.svelte";
+  import PackageCard from "./lib/ui/PackageCard.svelte";
   import DayPlan from "./lib/ui/DayPlan.svelte";
   import { dayRange } from "./lib/itinerary";
   import { initScroll } from "./lib/scroll.svelte";
@@ -37,9 +40,11 @@
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
   import PackageDialog from "./lib/ui/PackageDialog.svelte";
+  import ImportDialog from "./lib/ui/ImportDialog.svelte";
+  import { openImport } from "./lib/import/open.svelte";
   import CruiseDialog from "./lib/ui/CruiseDialog.svelte";
   import { cruiseDlg, openCruise } from "./lib/cruises/open.svelte";
-  import { takeShared } from "./lib/import/share.svelte";
+  import { shareIn, takeShared } from "./lib/import/share.svelte";
   import CompareView from "./lib/ui/CompareView.svelte";
   import AppFooter from "./lib/ui/AppFooter.svelte";
   import AgentChat from "./lib/ui/AgentChat.svelte";
@@ -114,6 +119,13 @@
   let mapOpen = $state<"stay" | "attractions" | null>(null);
   // Pauschalreise eintragen (#188), aus den Kapiteln Flug und Unterkunft
   let pkgOpen = $state(false);
+  // sichtbare Kapitel (#618): Gesamtpaket statt Abheben und Unterkunft, Abheben ohne Flug ausgeblendet
+  const pkgIds = $derived(activePkgs(app.trip));
+  const inPkg = $derived(pkgItems(app.trip));
+  const vis = $derived(visibleChapters(app.trip));
+  $effect(() => { shown.keys = vis.map(c => c.k); });
+  const num = (k: string) => vis.findIndex(c => c.k === k) + 1;
+  const netOf = (ids: Iterable<string>) => { let s = 0; for (const id of ids) s += calc.T.items[id]?.net || 0; return s; };
   // Handy (#530): main ist der Pager mit einer Seite je Kapitel
   let mainEl = $state<HTMLElement>();
   $effect(() => { if (mob.on && mainEl) { const id = app.trip.id; return untrack(() => attachPager(mainEl!, id)); } });
@@ -125,7 +137,13 @@
   // …/?info öffnet „Neues & Ausblick“
   onMount(applyInfoLink);
   // Teilen-Menü (?share=1, #457): Startseite mit „Neue Reise → Importieren“
-  onMount(() => { void takeShared().then(ok => { if (ok) goHome(); }); });
+  // Teilen-Menü (#616): in die zuletzt geöffnete Reise, sonst (keine Reise, nur ansehen) wie bisher „Neue Reise → Importieren“
+  onMount(() => { void takeShared().then(ok => {
+    if (!ok) return;
+    const sh = shareIn.v;
+    if (sh && !pristine(app.trip) && access.role !== "viewer" && cloud.configured) { shareIn.v = null; openImport("all", undefined, sh); }
+    else goHome();
+  }); });
   onMount(() => {
     try { const th = localStorage.getItem("rk-theme"); if (th) document.documentElement.dataset.theme = th; } catch {}
     applyDocument();
@@ -232,16 +250,40 @@
       {#if app.trip.travelers.length > 1}<article class="card tg-card" id="together" use:reveal><TogetherCard /></article>{/if}
     </Chapter>
 
-    {#each CAT_CHAPTERS as ch, i (ch.k)}
-      {@const items = app.trip.items.filter(x => x.cat === ch.k)}
+    <!-- Gesamtpaket (#618): statt „Abheben“ und „Unterkunft“, Pakete mit ihren Teilen, darunter Ergänzungen -->
+    {#if pkgIds.length}
+      {@const extras = app.trip.items.filter(x => (x.cat === "flights" || x.cat === "stay") && !inPkg.has(x.id))}
+      <Chapter ch={PKG} n={num("pkg")} sum={eur(netOf([...inPkg, ...extras.map(x => x.id)]))} sub={PKG.sub}>
+        {#if !access.readonly}
+          <div class="search-row">
+            <button class="btn pkg-add-flight" onclick={() => openFlightSearch()}>✈ {t("pkg.addFlight")}</button>
+            <button class="btn pkg-add-stay" onclick={() => openStaySearch()}>🛏 {t("pkg.addStay")}</button>
+            <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.addPkg")}</button>
+            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("all")}>📥 {t("imp.title.all")}</button>{/if}
+          </div>
+        {/if}
+        {#each pkgIds as id (id)}<PackageCard {id} />{/each}
+        {#if extras.length}
+          <h3 class="pkg-extras">{t("pkg.extras")} <small class="muted">{t("pkg.extrasHint")}</small></h3>
+          {#each extras as item (item.id)}<ItemCard {item} icon={item.cat === "flights" ? "plane" : "bed"} />{/each}
+        {/if}
+        {#if app.trip.items.some(x => x.cat === "stay")}<article class="card plan-card" use:reveal><PresencePlan /></article>{/if}
+      </Chapter>
+    {/if}
+
+    {#each CAT_CHAPTERS.filter(c => vis.some(v => v.k === c.k)) as ch (ch.k)}
+      {@const items = app.trip.items.filter(x => x.cat === ch.k && !inPkg.has(x.id))}
       {@const det = isDetailed(app.trip, ch.k)}
-      <Chapter {ch} n={i + 2} sum={eur(calc.T.byCat[ch.k])} sub={ch.k === "stay" && nn && det ? tn("n.nights", nn) : ch.sub}
+      <Chapter {ch} n={num(ch.k)} sum={eur(calc.T.byCat[ch.k] - netOf([...inPkg].filter(id => app.trip.items.find(x => x.id === id)?.cat === ch.k)))} sub={ch.k === "stay" && nn && det ? tn("n.nights", nn) : ch.sub}
         onadd={access.readonly || !det ? undefined : () => addItem(ch.k)}
         onreset={items.length ? () => { if (confirm(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button>
-            <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button></div>
+            <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button>
+            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("flights")}>📥 {t("imp.title.flights")}</button>{/if}
+            <!-- ohne Flug (#618): Kapitel ausblenden, „Flug hinzufügen“ im Transport bringt es zurück -->
+            {#if !items.some(x => !x.auto) && !app.trip.simple?.flights}<button class="linkbtn fl-none" onclick={() => (app.trip.chapters = { ...(app.trip.chapters || {}), flights: false })}>{t("fl.notNeeded")}</button>{/if}</div>
           {@const miss = withoutTravel(app.trip)}
           {#if miss.length}
             <p class="search-row miss-travel">⚠ {t("fl.missing", { who: miss.slice(0, 6).map(x => x.name).join(", ") + (miss.length > 6 ? ` +${miss.length - 6}` : "") })}
@@ -261,6 +303,7 @@
               {#if evWin.city && FLIGHTS_URL}<button class="btn primary xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>{/if}
               {#if evWin.city && FLIGHTS_URL}<button class="btn xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>{/if}
               <button class="btn att-ev" class:primary={!evWin.city} onclick={openEventPlanner}>🏟 {app.trip.event ? t("ev.change") : t("ev.btn")}</button>
+              {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("attractions")}>📥 {t("imp.title.attractions")}</button>{/if}
               <button class="btn tm-open" aria-expanded={mapOpen === "attractions"} onclick={() => (mapOpen = mapOpen === "attractions" ? null : "attractions")}>🗺 {t("tmap.open")}</button>
             </div>
             {#if mapOpen === "attractions"}<TripMap onclose={() => (mapOpen = null)} />{/if}
@@ -280,7 +323,11 @@
           <RoadCosts city={evWin.city} />
           <GroundOptions city={evWin.city} />
           <TransferOptions city={evWin.city} />
-          {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.addTrip")} <small class="car-day">{t("car.perDay", { v: eur(carDay) })}</small></button></div>{/if}
+          {#if !access.readonly && !pkgIds.length && !vis.some(v => v.k === "flights")}
+            <p class="search-row small fl-back">✈ {t("fl.backQ")} <button class="linkbtn fl-add-back" onclick={() => { app.trip.chapters = { ...(app.trip.chapters || {}), flights: true }; openFlightSearch(); }}>{t("pkg.addFlight")}</button></p>
+          {/if}
+          {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.addTrip")} <small class="car-day">{t("car.perDay", { v: eur(carDay) })}</small></button>
+            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("transport")}>📥 {t("imp.title.transport")}</button>{/if}</div>{/if}
           <p class="search-row muted small fs-direct car-links">{t("car.compare")}
             <PartnerLinks ids={partnersOf("car")} q={{ w: cw, place: evWin.city }} />
             {#if cw}<br />{t(cw.ap ? "car.when" : "car.whenTrip", { a: `${cw.ap ? `${cw.ap} ` : ""}${cw.pick.slice(8, 10)}.${cw.pick.slice(5, 7)}. ${cw.pick.slice(11, 16)}`, b: `${cw.drop.slice(8, 10)}.${cw.drop.slice(5, 7)}. ${cw.drop.slice(11, 16)}`, d: tn("n.days", cw.days) })}{/if}
@@ -297,6 +344,7 @@
           {#if app.trip.camper}<p class="search-row small st-camper">⛺ {t("camp.stayHint", { ch: t("ch.transport.label") })} <button class="linkbtn" onclick={toCamper}>{t("camp.toStations")}</button></p>{/if}
           <div class="search-row"><button class="btn st-open" class:primary={!app.trip.camper} onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
             <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button>
+            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("stay")}>📥 {t("imp.title.stay")}</button>{/if}
             <button class="btn priv-open" title={t("priv.searchHint")} onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
             <button class="btn cr-open" title={t("cs.title")} onclick={() => openCruise()}>🚢 {t("cr.open")}</button>
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
@@ -321,11 +369,11 @@
     {/each}
 
     <!-- Tagesplan: was an welchem Tag passiert (keine Kosten) -->
-    <Chapter ch={PLAN} n={CHAPTERS.length - 1} sum={String(dayRange(app.trip).length)} sub={t("ch.plan.sub")}>
+    <Chapter ch={PLAN} n={num("plan")} sum={String(dayRange(app.trip).length)} sub={t("ch.plan.sub")}>
       <DayPlan />
     </Chapter>
 
-    <Chapter ch={SPLIT} n={CHAPTERS.length} sum={eur(calc.T.due)} sub={hhLabel}>
+    <Chapter ch={SPLIT} n={num("split")} sum={eur(calc.T.due)} sub={hhLabel}>
       <Split />
     </Chapter>
   </main>
@@ -359,6 +407,7 @@
 {#if showWho || (whoAsk.open && !!cloud.user && !!whoCt)}<WhoAmI onclose={whoClose} />{/if}
 <!-- Flug- und Unterkunftssuche im eigenen Fenster (aus Kapitel, Posten und Plan); danach ist man wieder dort -->
 {#if pkgOpen}<PackageDialog onclose={() => (pkgOpen = false)} />{/if}
+<ImportDialog />
 {#if cruiseDlg.open}<CruiseDialog onclose={() => (cruiseDlg.open = false)} onhand={addCruise} />{/if}
 {#if flightSearch.open}{#key flightSearch.scope}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/key}{/if}
 {#if staySearch.open}{#key staySearch.scope}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}

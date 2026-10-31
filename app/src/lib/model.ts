@@ -381,6 +381,8 @@ export interface Item {
   ai?: AiMark;
   /** Import (#458): Angaben nur abgeleitet oder geraten, „bitte prüfen“ bis jemand „Geprüft“ antippt */
   check?: boolean;
+  /** Abgleich mit der Reise (#616): warum prüfen (z. B. „Angebot für 2 Personen, die Reise hat 8“), weg mit „Geprüft“ */
+  checkWhy?: string[];
   /** Tagesplan: an diesem Tag (JJJJ-MM-TT, optional mit Uhrzeit JJJJ-MM-TTTHH:MM) */
   day?: string;
   /** Unterkunft privat bzw. schon vorhanden (#233): Ort, ohne Suche und Beobachtung; Kosten optional */
@@ -630,6 +632,8 @@ export interface Trip {
   ferry?: Record<string, string>;
   /** Roadtrip mit dem Camper (fehlt: Auto): eigener oder gemieteter, über 3,5 t */
   camper?: { own?: boolean; heavy?: boolean };
+  /** Kapitel ein- bzw. ausblenden (#618): true = zeigen (z. B. nach „Flug hinzufügen“), false = „Kein Flug nötig“ */
+  chapters?: Partial<Record<CatKey, boolean>>;
   /** Termin finden (#174): wer wann kann, siehe together.ts */
   avail?: import("./together").AvailPlan;
   /** Abstimmungen (#175) */

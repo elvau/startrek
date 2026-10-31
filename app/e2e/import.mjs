@@ -3,7 +3,9 @@
  * der Such-Dienst nicht lesen kann (Bitte um Screenshot), dann Screenshot und CSV-Liste auslesen (Such-Dienst
  * nachgestellt), Übersicht mit Sicherheit je Angabe und Rückfrage (#458), Reise mit Flug, Unterkunft und Transfer
  * angelegt, Unsicheres als „bitte prüfen“ markiert. Nur Unterkunft, Flug „Brauchen wir nicht“: Anreise mit der Bahn
- * aus dem Wohnort geschätzt (#475).
+ * aus dem Wohnort geschätzt (#475). Unterkunft importieren in die offene Reise, weiterer Fund als Rückfrage (#615).
+ * Reise um Import erweitern mit Abweichungen, „Ja, hier übernehmen“ und „Andere Reise wählen“ (#616).
+ * Änderungsansicht je Posten und Rückgängig (#617).
  * Start: npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/import.mjs"
  */
 import { chromium } from "playwright";
@@ -43,6 +45,30 @@ const PARK = {
   confidence: { place: 1, dates: 1, people: 0.5, price: 1, stay: 1 }
 };
 
+// Unterkunft importieren in die offene Reise (#615): Hotel mit eigenem Preis, im selben Screenshot ein Flug
+const HOTEL = {
+  kind: "stay", title: "Elbblick-Deal", provider: "Hotelseite", place: "Hamburg", country: "DE", from: "2027-05-05", to: "2027-05-10",
+  adults: 2, childAges: [6, 1], price: { total: 300, currency: "EUR" }, stay: { name: "Hotel Elbblick", price: 300 },
+  flights: { legs: [{ dir: "out", from: "MUC", to: "HAM", dep: "2027-05-05T08:00" }], price: 120 },
+  confidence: { place: 1, dates: 1, people: 1, price: 1, stay: 1, flights: 1 }
+};
+
+// Abgleich mit der Reise (#616): Mietwagen in Portugal, anderer Zeitraum, zwei Personen
+const RENT = {
+  kind: "rental", title: "Mietwagen Lissabon", provider: "Autovermieter", place: "Lissabon", country: "PT", from: "2027-08-01", to: "2027-08-08",
+  adults: 2, price: { total: 250, currency: "EUR" }, rental: { company: "Sixt", car: "Kombi", price: 250 },
+  confidence: { place: 1, dates: 1, people: 1, price: 1 }
+};
+
+// Reise um Import erweitern mit Änderungsansicht (#617): Buchung zur Barcelona-Reise, Flug teurer, dazu ein Hotel
+const BOOKING = {
+  kind: "other", title: "Buchung Barcelona", provider: "Reiseportal", place: "Barcelona", country: "ES", from: "2027-03-01", to: "2027-03-05",
+  adults: 2, price: { currency: "EUR" },
+  flights: { legs: [{ dir: "out", from: "DUS", to: "BCN", dep: "2027-03-01T09:00", carrier: "Vueling" }, { dir: "back", from: "BCN", to: "DUS", dep: "2027-03-05T18:00", carrier: "Vueling" }], price: 310 },
+  stay: { name: "Hotel Rambla", price: 480 },
+  confidence: { place: 1, dates: 1, people: 1, price: 1, flights: 1, stay: 1 }
+};
+
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4186", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
 await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
@@ -58,6 +84,9 @@ try {
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
     // aus dem Angebotsspeicher (#462): schon geprüft, gültig bis
     if (body.text?.includes("Ferienpark")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: PARK, remaining: 6 }) });
+    if (body.text?.includes("Buchung Barcelona")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: BOOKING, remaining: 3 }) });
+    if (body.text?.includes("Lissabon")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: RENT, remaining: 4 }) });
+    if (body.text?.includes("Elbblick")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: HOTEL, remaining: 5 }) });
     if (body.text?.includes("Flugdeal")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: DEAL, cached: true, until: "2026-11-03", remaining: 7 }) });
     if (body.url && !body.files.length) return r.fulfill({ status: 422, contentType: "application/json", headers: cors, body: JSON.stringify({ error: "Seite lässt sich nicht lesen", needScreenshot: true, remaining: 10 }) });
     return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: OFFER, remaining: 8 }) });
@@ -212,7 +241,15 @@ try {
   const mainCard = p.locator("article.card:has(.pkgb)", { hasText: "Unterkunft (Pauschalreise)" }).first();
   await mainCard.locator(".pkgb-incl", { hasText: "✈ Flug" }).waitFor();
   const partCard = p.locator("article.card:has(.pkgb)", { hasText: "Flug (Pauschalreise)" }).first();
-  await partCard.locator(".pkgb-go", { hasText: "1.200" }).waitFor();
+  // Gesamtpaket (#618): ein Kapitel statt Abheben und Unterkunft, Paketkarte mit Gesamtpreis, Teile darin
+  const pkgc = p.locator("#pkg .pkgc");
+  // Gesamtpreis mit Nebenkosten (Anreise zum Flughafen), pro Person, Paketpreis 1.200 € am Teil
+  await pkgc.locator(".pkgc-total").waitFor();
+  await pkgc.locator(".pkgc-pp").waitFor();
+  if (!(await pkgc.textContent()).includes("1.200")) fail("Paketpreis 1.200 € fehlt im Gesamtpaket");
+  if (await p.locator("#flights").count() || await p.locator("#stay").count()) fail("Abheben bzw. Unterkunft neben dem Gesamtpaket");
+  if (!(await pkgc.locator("article.card", { hasText: "Flug (Pauschalreise)" }).count())) fail("Flug nicht im Gesamtpaket");
+  await shot(p.locator("#pkg"), "8-gesamtpaket");
   await mainCard.click();
   await mainCard.locator('[data-s="booked"]').click();
   await until(async () => {
@@ -234,10 +271,18 @@ try {
   await partCard.locator(".pkgb.warn .pkgb-break").waitFor();
   await partCard.locator(".pkgb-break").click();
   await mainCard.locator(".pkgb-pill", { hasText: "Paket aufgelöst" }).waitFor();
+  // aufgebrochen: wieder einzeln in Abheben und Unterkunft
+  await p.locator("#stay article.card", { hasText: "Unterkunft (Pauschalreise)" }).first().waitFor();
+  if (await p.locator("#pkg").count()) fail("Gesamtpaket nach dem Aufbrechen");
   await mainCard.locator(".pkgb-restore").click();
   await mainCard.locator(".pkgb-pill", { hasText: "Pauschalreise" }).waitFor();
   await partCard.locator(".pkgb-pill", { hasText: "im Paket" }).waitFor();
-  log("Paket: eigenes Angebot am Flug → teilweise ersetzt, aufgebrochen, wiederhergestellt");
+  await p.locator("#pkg .pkgc").waitFor();
+  // Nachzügler (#618): „Flug hinzufügen“ im Gesamtpaket öffnet die Flugsuche
+  await p.locator("#pkg .pkg-add-flight").click();
+  await p.locator(".modal", { hasText: "Flüge suchen" }).first().waitFor();
+  await p.keyboard.press("Escape");
+  log("Paket: eigenes Angebot am Flug → teilweise ersetzt, aufgebrochen (wieder Abheben und Unterkunft), wiederhergestellt (Gesamtpaket)");
 
   // 10. nur Unterkunft (#475): Flug „Brauchen wir nicht“ fragt nach der Anreise (Auto vorgewählt), Wohnort, Bahn → Posten
   await reloadHome(p);
@@ -285,6 +330,134 @@ try {
     if (park.travelers.map(x => x.kind).join() !== "adult,adult,child,infant") fail("Personen: " + park.travelers.map(x => x.kind));
   }
   log("Nur Unterkunft: Personen-Rückfrage mit 2 vorbelegt, Kind und Kleinkind ergänzt, Flug nicht nötig, Anreise mit der Bahn aus dem Wohnort geschätzt");
+
+  // 11. Unterkunft importieren (#615): im Kapitel Unterkunft, nur die Unterkunft; der Flug im Screenshot ist eine Rückfrage
+  const before = park;
+  await p.locator("#stay .imp-open").click();
+  const id = p.locator(".modal", { hasText: "Unterkunft importieren" });
+  await id.locator(".imp-lead", { hasText: "Unterkunft" }).waitFor();
+  await id.locator(".imp-src .chip", { hasText: "Text" }).click();
+  await id.locator("textarea").fill("Hotel Elbblick, 5 Nächte");
+  await id.locator(".imp-go", { hasText: "Auslesen und übernehmen" }).click();
+  const more = id.locator('.imp-more-list li[data-part="flights"]');
+  await more.waitFor();
+  if (await more.locator("input").isChecked()) fail("weiterer Fund (Flug) vorab angehakt");
+  await shot(id, "6-auch-gefunden");
+  await id.locator(".imp-more-go").click();
+  await until(async () => !(await id.count()) || (await id.locator(".imp-create").count()), "übernommen oder Übersicht");
+  if (await id.count()) {
+    // Rückfragen (z. B. Verpflegung) mit der ersten Antwort beantworten; Personen fragt der Import in eine Reise nicht
+    if (await id.locator(".rev-q", { hasText: "Wie viele Personen" }).count()) fail("Personen-Rückfrage beim Import in die Reise");
+    while (await id.locator(".rev-q").count()) await id.locator(".rev-q").first().locator(".chip").first().click();
+    await id.locator(".imp-create", { hasText: "Übernehmen" }).click();
+  }
+  await until(async () => !(await id.count()), "Import-Fenster zu");
+  let after = null;
+  await until(async () => {
+    after = await p.evaluate(() => JSON.parse(localStorage.getItem(`rk2-t:${localStorage.getItem("rk2-current")}`) || "null"));
+    return after?.items?.some(i => i.name === "Hotel Elbblick");
+  }, "Hotel Elbblick in der Reise");
+  if (after.id !== before.id) fail("neue Reise angelegt statt in die offene");
+  if (after.name !== before.name || after.place !== before.place || after.from !== before.from) fail("Reise verändert: " + JSON.stringify([after.name, after.place, after.from]));
+  if (after.travelers.length !== before.travelers.length) fail("Reisende verändert");
+  if (after.items.some(i => i.cat === "flights")) fail("Flug übernommen, obwohl nicht angehakt");
+  await p.locator("article.card", { hasText: "Hotel Elbblick" }).first().locator("text=nicht live geprüft").waitFor();
+  log("Unterkunft importieren: in die offene Reise, nur die Unterkunft, Flug als Rückfrage nicht angehakt, Reise unverändert");
+
+  // 11b. Anreise mit der Bahn, kein Flug (#618): kein Kapitel Abheben; „Doch fliegen? Flug hinzufügen“ bringt es zurück
+  if (await p.locator("#flights").count()) fail("Abheben bei Reise ohne Flug");
+  if (await p.locator('.nav a[data-ch="flights"]').count()) fail("Abheben in der Navigation");
+  await p.locator("#transport .fl-add-back").click();
+  const fsd = p.locator(".modal", { hasText: "Flüge suchen" }).first();
+  await fsd.waitFor();
+  await p.keyboard.press("Escape");
+  await p.locator("#flights").waitFor();
+  await p.locator("#flights .fl-none").click();
+  await until(async () => !(await p.locator("#flights").count()), "Abheben wieder ausgeblendet");
+  log("Ohne Flug: Abheben ausgeblendet, „Flug hinzufügen“ bringt es zurück, „Kein Flug nötig“ blendet es aus");
+
+  // 12. Reise um Import erweitern (#616): passt nicht (Zeitraum, Land, Personen) → Hinweise, „Ja, hier übernehmen“, Hinweis am Posten
+  const readCur = () => p.evaluate(() => JSON.parse(localStorage.getItem(`rk2-t:${localStorage.getItem("rk2-current")}`) || "null"));
+  const runRent = async () => {
+    await p.locator(".tm-btn").first().click();
+    await p.locator(".tm-import").click();
+    const d = p.locator(".modal", { hasText: "Reise um Import erweitern" });
+    await d.locator(".imp-src .chip", { hasText: "Text" }).click();
+    await d.locator("textarea").fill("Mietwagen Lissabon");
+    await d.locator(".imp-go").click();
+    await d.locator(".imp-fit").waitFor();
+    return d;
+  };
+  let rentDlg = await runRent();
+  for (const k of ["dates", "country", "people"]) await rentDlg.locator(`.imp-fit-list li[data-k="${k}"]`).waitFor();
+  if (!(await rentDlg.locator('.imp-fit-list li[data-k="people"]').textContent()).includes("Angebot 2, Reise 4")) fail("Personen-Hinweis: " + await rentDlg.locator('.imp-fit-list li[data-k="people"]').textContent());
+  await shot(rentDlg, "7-passt-nicht");
+  await rentDlg.locator(".imp-fit-yes").click();
+  const finish = async d => {
+    await until(async () => !(await d.count()) || (await d.locator(".imp-create").count()) || (await d.locator(".imp-diff").count()), "übernommen, Übersicht oder Änderungen");
+    if (await d.count() && await d.locator(".imp-create").count()) {
+      while (await d.locator(".rev-q").count()) await d.locator(".rev-q").first().locator(".chip").first().click();
+      await d.locator(".imp-create").click();
+      await until(async () => !(await d.count()) || (await d.locator(".imp-diff").count()), "übernommen oder Änderungen");
+    }
+    // Änderungsansicht (#617): Vorschlag übernehmen (nichts gelöscht)
+    if (await d.count() && await d.locator(".imp-diff").count()) {
+      if (await d.locator('.imp-diff-row[data-kind="missing"] .chip.on[data-c="delete"]').count()) fail("Löschen vorgewählt");
+      await d.locator(".imp-diff-go").click();
+    }
+    await until(async () => !(await d.count()), "Import-Fenster zu");
+  };
+  await finish(rentDlg);
+  let tr = null;
+  await until(async () => { tr = await readCur(); return tr?.items?.some(i => i.name === "Mietwagen"); }, "Mietwagen in der Reise");
+  const rent = tr.items.find(i => i.name === "Mietwagen");
+  if (tr.id !== before.id || !rent.check || rent.checkWhy?.length !== 3) fail("Mietwagen ohne Hinweise bzw. in anderer Reise: " + JSON.stringify(rent));
+  await p.locator("article.card .aif-check", { hasText: "Personen: Angebot 2, Reise 4" }).first().waitFor();
+  log("Reise um Import erweitern: Zeitraum, Land, Personen passen nicht, trotzdem übernommen, Hinweis am Posten");
+
+  // 13. dasselbe Angebot, „Andere Reise wählen“: Reise wechselt, Abgleich dort, Mietwagen landet in der gewählten Reise
+  rentDlg = await runRent();
+  await rentDlg.locator(".imp-fit-other").click();
+  await rentDlg.locator(".imp-fit-trip", { hasText: "Barcelona im März" }).click();
+  await until(async () => (await readCur())?.name === "Barcelona im März", "Reise gewechselt");
+  await rentDlg.locator(".imp-fit-yes").waitFor();
+  if (!(await rentDlg.locator(".imp-lead").first().textContent()).includes("Barcelona im März")) fail("Abgleich nicht für die gewählte Reise");
+  await rentDlg.locator(".imp-fit-yes").click();
+  await finish(rentDlg);
+  await until(async () => (await readCur())?.items?.some(i => i.name === "Mietwagen"), "Mietwagen in Barcelona");
+  log("Andere Reise gewählt: Wechsel, neuer Abgleich, Mietwagen in der gewählten Reise");
+
+  // 14. Reise um Import erweitern (#617): Änderungsansicht je Posten, Flug ersetzen, Hotel neu, dann Rückgängig
+  const bcnBefore = await readCur();
+  await p.locator(".tm-btn").first().click();
+  await p.locator(".tm-import").click();
+  const bd = p.locator(".modal", { hasText: "Reise um Import erweitern" });
+  await bd.locator(".imp-src .chip", { hasText: "Text" }).click();
+  await bd.locator("textarea").fill("Buchung Barcelona");
+  await bd.locator(".imp-go").click();
+  await until(async () => (await bd.locator(".imp-diff").count()) || (await bd.locator(".imp-create").count()), "Änderungsansicht oder Übersicht");
+  if (!(await bd.locator(".imp-diff").count())) {
+    while (await bd.locator(".rev-q").count()) await bd.locator(".rev-q").first().locator(".chip").first().click();
+    await bd.locator(".imp-create").click();
+  }
+  await bd.locator(".imp-diff").waitFor();
+  const fRow = bd.locator('.imp-diff-row[data-kind="replace"]');
+  await fRow.waitFor();
+  if ((await fRow.locator(".chip.on").getAttribute("data-c")) !== "both") fail("Ersetzt nicht mit „Beide behalten“ vorbelegt");
+  await bd.locator('.imp-diff-row[data-kind="new"]', { hasText: "Hotel Rambla" }).waitFor();
+  await shot(bd, "9-aenderungen");
+  await fRow.locator('.chip[data-c="replace"]').click();
+  await bd.locator(".imp-diff-go").click();
+  await until(async () => !(await bd.count()), "Import-Fenster zu");
+  let bcn = null;
+  await until(async () => { bcn = await readCur(); return bcn?.items?.some(i => i.name === "Hotel Rambla"); }, "Hotel Rambla in der Reise");
+  const fl = bcn.items.find(i => i.cat === "flights");
+  if (fl.options.length !== 1 || !fl.options[0].label.includes("Vueling")) fail("Flug nicht ersetzt: " + JSON.stringify(fl.options.map(o => o.label)));
+  if (bcn.items.length !== bcnBefore.items.length + 1) fail("Posten: vorher " + bcnBefore.items.length + ", nachher " + bcn.items.length);
+  await p.locator(".imp-undo-btn").click();
+  await until(async () => !((await readCur())?.items?.some(i => i.name === "Hotel Rambla")), "Rückgängig");
+  if ((await readCur()).items.find(i => i.cat === "flights").options[0].label.includes("Vueling")) fail("Flug nach Rückgängig noch ersetzt");
+  log("Reise um Import erweitern: Änderungsansicht (ersetzt, neu), Flug ersetzt, Hotel neu, Rückgängig stellt den Stand davor her");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Import ok");

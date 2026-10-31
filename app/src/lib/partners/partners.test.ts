@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { expediaMisId } from "./expedia";
 import { parkQuery } from "./park";
-import { AWIN_PUBLISHER, CJ_PUBLISHER, PARTNERS, cj, partnerLink, partnersOf, sponsoredAny, type PartnerId } from ".";
+import { AWIN_PUBLISHER, CJ_PUBLISHER, PARTNERS, cj, fillOf, partnerLink, partnersOf, sponsoredAny, type PartnerId } from ".";
 
 const stay = { place: "Trogir", country: "Croatia", checkin: "2027-07-18", checkout: "2027-07-25", adults: 2, childAges: [8], rooms: 1 };
 const fl = { from: "DUS", to: "SPU", depart: "2027-07-18", ret: "2027-07-29", adults: 2, children: 0, infants: 0 };
@@ -187,5 +187,20 @@ describe("Expedia DACH über CJ (Link-ID 15261175)", () => {
   });
   it("Aktivitäten: Ort und Zeitraum", () => {
     expect(partnerLink("expediaActivities", act, false)!.url).toBe("https://www.expedia.de/things-to-do/search?location=Split&startDate=2027-07-18&endDate=2027-07-29");
+  });
+});
+
+describe("Suchlinks: vorausgefüllt oder nur Startseite (#619)", () => {
+  it("aus dem Verzeichnis abgeleitet (home())", () => {
+    expect(fillOf("googleFlights")).toBe("search");
+    expect(fillOf("booking")).toBe("search");
+    expect(fillOf("kiwitaxi")).toBe("home");
+    expect(fillOf("check24Cars")).toBe("home");
+    expect(partnerLink("kiwitaxi", undefined as never, true)!.fill).toBe("home");
+  });
+  it("Flüge und Unterkünfte haben vorausgefüllte Suchen, Fähren nur Startseiten", () => {
+    expect(partnersOf("flight").every(id => fillOf(id) === "search")).toBe(true);
+    expect(partnersOf("stay").every(id => fillOf(id) === "search")).toBe(true);
+    expect(partnersOf("ferry").every(id => fillOf(id) === "home")).toBe(true);
   });
 });

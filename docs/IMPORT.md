@@ -94,6 +94,46 @@ Nutzt die bestehende Suche (Flüge, Unterkünfte, Events, Transport). Mit jedem 
 - Weniger wählen als enthalten: ohne Abzug rechnen (Hotels erstatten selten).
 - Essen vor Ort je Tag nach Stufe aus den vorhandenen Richtwerten (Preisniveau des Ziels), nicht aus festen Beträgen.
 
+## Import je Einstieg (#615, Epic #614)
+
+Je nach Ort ein eigener Knopf, der nur das übernimmt, was dorthin gehört (`app/src/lib/import/scope.ts`, `ImportDialog.svelte`):
+
+| Einstieg | Knopf | übernimmt |
+|---|---|---|
+| Neue Reise | Importieren | ganze Reise mit allen Posten |
+| Reise-Menü | 📥 Reise um Import erweitern | alle Posten in die offene Reise, mit Änderungsansicht (#617) |
+| Kapitel Abheben, Unterkunft, Erlebnisse, Transport | 📥 Flug / Unterkunft / Tour / Transport importieren | nur Teile des Kapitels |
+| Flug- bzw. Unterkunftssuche | „Woanders gefunden? 📥 Angebot übernehmen“ | aus der Suche eines Postens: als weiteres Angebot an diesen Posten |
+
+- In eine bestehende Reise (`importToTrip(…, keep)`): Ziel, Daten und Name nur, wenn leer; Reisende nur bei einer leeren Reise
+  (Platzhalter); die Reise wird nicht als von der KI angelegt markiert, „Essen einrechnen“ bleibt.
+- Findet die KI mehr als das Kapitel: Rückfrage „Im Angebot steckt noch mehr“ zum Anhaken, Standard nicht angehakt. Vorab
+  angehakt, wenn der Preis nur fürs ganze Paket gilt (`packagePriced`) oder im Kapitel nichts gefunden wurde.
+- **Abgleich mit der Reise (#616, `app/src/lib/import/fit.ts`):** Zeitraum (ein Tag Spielraum), Land, Personenzahl (je Posten
+  dessen Mitreisende). Fehlende Angaben zählen nicht. Bei Abweichung „Passt das Angebot zur Reise …?“ mit „Ja, hier
+  übernehmen“, „Andere Reise wählen“ (passende zuerst, Reise wechselt, neuer Abgleich) und „Neue Reise daraus“. Übernommen
+  wird trotzdem; die Posten tragen „bitte prüfen“ mit Grund (`checkWhy`), bis jemand „Geprüft“ antippt. Personen werden nie
+  hochgerechnet.
+- **Änderungsansicht (#617, `app/src/lib/import/diff.ts`):** „Reise um Import erweitern“ rechnet den Import erst auf einer
+  Kopie und vergleicht je Posten: *neu* (übernehmen/weglassen), *ergänzt* (passender Posten ohne bzw. mit gleichem Preis:
+  übernehmen/behalten), *ersetzt* (anderer Preis: ersetzen/beide behalten/alt behalten, Standard beide), *nicht im Angebot*
+  (Posten derselben Kapitel: behalten/löschen, Standard behalten). Zuordnung über Kategorie und Strecke, Name oder
+  Zeitraum; Pakete als ein Posten. Nur Neues: ohne Ansicht. Danach 20 Sekunden „↶ Rückgängig“ (Stand der Reise davor).
+- **Teilen am Handy:** geteilte Inhalte gehen in die zuletzt geöffnete Reise (mit Abgleich), mit „Stattdessen neue Reise“;
+  ohne echte Reise (leer, nur ansehen) wie bisher „Neue Reise → Importieren“.
+
+## Gesamtpaket (#618)
+
+Hat eine Reise ein Paket (nicht aufgebrochen), steht das Kapitel **„Gesamtpaket“** (`pkg`) an der Stelle von „Abheben“ und
+„Unterkunft“ (`app/src/lib/chapterVis.ts`, `PackageCard.svelte`). Je Paket eine Karte: Name, Gesamtpreis mit Nebenkosten,
+pro Person, Farben der enthaltenen Kapitel gemischt, darin die Teile als normale Karten (Band mit Aufbrechen und Vergleich
+wie bisher). Darunter **Ergänzungen** (Flug- und Unterkunftsposten außerhalb eines Pakets, z. B. Nachzügler), Knöpfe
+„Flug hinzufügen“, „Unterkunft hinzufügen“, „Weiteres Paket“. Paket-Teile im Transport (Transfer) stehen im Paket, der
+übrige Transport im Kapitel Transport. Datenmodell unverändert (Kategorie und Paket-Kennung je Posten); nur die Anzeige
+ordnet zu. Ohne Paket fehlt „Abheben“, wenn die Reise nicht fliegt (Camper, Anreise ohne Flug, „Kein Flug nötig“ =
+`trip.chapters.flights = false`) und nichts darin steht; „Doch fliegen? Flug hinzufügen“ im Transport setzt
+`chapters.flights = true`. Navigation, Leiste und Pager am Handy folgen den sichtbaren Kapiteln (`chapterVis.svelte.ts`).
+
 ## Importierte Preise, Links und Pakete
 
 Angebotspreise sind oft rabattiert oder nur beim Anbieter zu haben; dieselben Flüge bzw. Unterkünfte findet unsere Suche

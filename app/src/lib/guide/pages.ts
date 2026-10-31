@@ -37,7 +37,7 @@ export type GuideSpots = Record<string, { w: number; h: number; spots: { key: st
 
 export const GUIDE_STAND = "Oktober 2026";
 /** Datum der letzten inhaltlichen Änderung (JJJJ-MM-TT), mit GUIDE_STAND anheben; für lastmod in der Sitemap */
-export const GUIDE_UPDATED = "2026-10-30";
+export const GUIDE_UPDATED = "2026-10-31";
 
 export const GUIDE: GuidePage[] = [
   {
@@ -131,7 +131,8 @@ export const GUIDE: GuidePage[] = [
     tips: [
       "Die Anreise zum Flughafen steht beim Haushalt (Kapitel „Wer fährt mit“) und fließt in den Preis ein: Ein weiter entfernter, günstiger Flughafen ist nicht automatisch der billigste.",
       "Der Preis trägt das Datum seiner Abfrage („Preis vom …“). Preise ändern sich, prüfe vor dem Buchen noch einmal beim Anbieter.",
-      "Ein Flug mit Zeiten füllt die Anwesenheit im Tagesplan: So weiß die App, wann wer wo ist."
+      "Ein Flug mit Zeiten füllt die Anwesenheit im Tagesplan: So weiß die App, wann wer wo ist.",
+      "Nichts Passendes gefunden? „🔎 Bei anderen Anbietern suchen“ zeigt Anbieter, bei denen deine Suche schon eingetragen ist, und solche, bei denen du nur auf der Startseite landest (🏠). Findet die Suche gar nichts, öffnet sich das Fenster von selbst. Gefunden? „📥 Angebot übernehmen“ bringt es zurück in die Reise."
     ],
     faq: [
       { q: "Kann ich in Split&Fly Flüge buchen?", a: "Nein. Split&Fly sucht und vergleicht. Zum Buchen führt dich ein Link zum Anbieter. Den Status der Buchung hältst du danach im Posten fest." },
@@ -163,7 +164,9 @@ export const GUIDE: GuidePage[] = [
       "Wähle ein Angebot. Der Tagesplan zeigt dann, ob jede Nacht abgedeckt ist."
     ],
     tips: [
-      "Pauschalreise? Mit „📦 Paket“ trägst du sie von Hand ein oder importierst das Angebot. Der Paketpreis steht an der Unterkunft, der Flug erscheint im Kapitel Flüge als „im Paket“, der Status gilt für beides. Mit „⇆ einzeln suchen“ vergleichst du das Paket mit Flug und Hotel einzeln.",
+      "Pauschalreise? Mit „📦 Paket“ trägst du sie von Hand ein oder importierst das Angebot. Danach steht statt „Abheben“ und „Unterkunft“ das Kapitel „Gesamtpaket“: eine Karte mit Gesamtpreis und Preis pro Person, darin Flug, Unterkunft und Transfer. Der Status gilt für alle Teile. Mit „⇆ einzeln suchen“ vergleichst du das Paket mit Flug und Hotel einzeln, „Aufbrechen“ macht wieder einzelne Posten.",
+      "Nachzügler oder zwei Nächte woanders? Im Gesamtpaket „✈ Flug hinzufügen“ bzw. „🛏 Unterkunft hinzufügen“. Das steht dann unter „Ergänzungen“ mit eigenem Preis, nicht im Paketpreis.",
+      "Reise ohne Flug (Auto, Bahn, Camper)? Dann fehlt das Kapitel „Abheben“. Mit „Kein Flug nötig“ blendest du es selbst aus, „Doch fliegen? Flug hinzufügen“ im Kapitel Transport bringt es zurück.",
       "Der Tagesplan warnt, wenn Nächte ohne Unterkunft sind oder doppelt gebucht wurden.",
       "Nach der Landung ohne Anschluss kannst du direkt „Unterkunft am Flughafen suchen“. Für eine Unterkunft, die du schon hast, gibt es „🏠 Privat“.",
       "Wo die Suche es weiß, siehst du „kostenlos stornierbar“. Für die Buchung gehst du zum Anbieter.",
@@ -350,6 +353,7 @@ export const GUIDE: GuidePage[] = [
       "Mit KI planen (Beta): Beschreibe deine Wunschreise in ein paar Sätzen. Die KI schlägt Ziele und Varianten vor, die du prüfst und übernimmst.",
       "Zu einem Event (🎟): Bei Spiel, Konzert oder Festival planst du die Reise passend zum Termin.",
       "Angebot importieren (mit Konto): Unter „Neue Reise“ auf „Importieren“ tippen und ein Angebot, eine Buchung oder eine Teilnehmerliste einwerfen, als Datei (Screenshot, Foto, PDF, Word, CSV oder Excel), als Text oder als Link. Mit „Auslesen und Reise anlegen“ entsteht daraus eine Reise mit Flug, Unterkunft und Reisenden.",
+      "In eine Reise importieren (mit Konto): In den Kapiteln stehen „📥 Flug importieren“, „📥 Unterkunft importieren“, „📥 Tour importieren“ und „📥 Transport importieren“. Übernommen wird nur, was ins Kapitel gehört; Ziel, Daten und Reisende bleiben. Findet die App im Angebot noch mehr, fragt sie, ob das mit soll. Das ganze Angebot holst du über das Reise-Menü mit „📥 Reise um Import erweitern“: Die App zeigt je Posten, was neu ist, was ergänzt oder ersetzt wird und was im Angebot fehlt, und du wählst Übernehmen, Beide behalten, Ersetzen oder Löschen. Danach kannst du kurz „↶ Rückgängig“ antippen.",
       "Realitätscheck (mit Konto): Auf der Startseite „🔍 Realitätscheck“ öffnen und ein Angebot einwerfen. Du siehst, was es pro Kopf wirklich kostet, als Spanne mit allen Annahmen. Es wird keine Reise angelegt, bis du „Als Reise übernehmen“ antippst. Für eine offene Reise findest du den Realitätscheck im Reise-Menü.",
       "Die Vorschläge landen als Reise bei dir. Von da an bearbeitest du alles wie gewohnt."
     ],
@@ -358,7 +362,8 @@ export const GUIDE: GuidePage[] = [
       "Persönliche Daten wie Name, Geschlecht, Staatsangehörigkeit und Geburtsdatum gehen nicht an die KI.",
       "Die KI-Vorbefüllung zählt als eine der KI-Anfragen pro Tag und ist optional.",
       "Prüfe KI-Vorschläge wie jede Schätzung: Preise sind Richtwerte, keine Angebote.",
-      "Am Handy kannst du ein Angebot auch über das Teilen-Menü an Split&Fly senden, wenn die App installiert ist.",
+      "Am Handy kannst du ein Angebot auch über das Teilen-Menü an Split&Fly senden, wenn die App installiert ist. Es kommt in die zuletzt geöffnete Reise; mit „Stattdessen neue Reise“ legst du eine neue an.",
+      "Passt ein Angebot nicht zur Reise (Zeitraum, Land oder Personenzahl), fragt die App „Passt das Angebot zur Reise …?“. Du übernimmst es hier, wählst eine andere Reise oder machst eine neue Reise daraus. Der Hinweis bleibt am Posten mit „bitte prüfen“.",
       "Lässt sich ein Link nicht auslesen, mach einen Screenshot vom Angebot oder kopiere den Text hinein.",
       "Beim Import zeigt die App, wie sicher jede Angabe erkannt ist, und fragt bei Unsicherem kurz nach. Was nur abgeleitet ist, steht in der Reise mit „bitte prüfen“, bis du „Geprüft“ antippst.",
       "Fehlt im Angebot etwas (Unterkunft, Transfer, Mietwagen, Ausflüge), fragt „Was fehlt noch?“ nach: Suchen, Schätzen oder Brauchen wir nicht."
@@ -366,9 +371,10 @@ export const GUIDE: GuidePage[] = [
     faq: [
       { q: "Ist die KI-Planung kostenlos?", a: "Ja, sie ist als Beta enthalten. Pro Tag gibt es eine begrenzte Zahl an Anfragen." },
       { q: "Sind die Reiseideen Angebote?", a: "Nein. Es sind Richtwerte mit Spannen pro Person. Echte Preise ermittelst du danach in deiner eigenen Reise." },
+      { q: "Warum ist beim Import der Flug schon angehakt, obwohl ich nur die Unterkunft wollte?", a: "Weil der Preis im Angebot nur für das ganze Paket gilt. Einzeln stünde ein Teil mit dem Paketpreis da und der andere ohne Preis. Du kannst den Haken trotzdem entfernen." },
       { q: "Werden meine Dateien beim Import gespeichert?", a: "Nein. Sie werden nur ausgelesen. Aus Teilnehmerlisten übernimmt die App Namen und Alter als Reisende. Lade keine Ausweis- oder Passdaten hoch." }
     ],
-    where: "Startseite → Reiseideen, Mit KI planen, Zu einem Event; Neue Reise → Importieren",
+    where: "Startseite → Reiseideen, Mit KI planen, Zu einem Event; Neue Reise → Importieren; in der Reise: Kapitel → 📥 … importieren, Reise-Menü → Reise um Import erweitern",
     emoji: "✨",
     shots: [{ img: "home", alt: "Startseite mit den Abkürzungen Zu einem Event, Mit KI planen und Reiseideen", caption: "Drei Abkürzungen auf der Startseite.", pins: {
       event: "🎟 Zu einem Event: Spiel, Konzert oder Festival, die Reise passend zum Termin.",
