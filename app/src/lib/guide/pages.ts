@@ -163,7 +163,9 @@ export const GUIDE: GuidePage[] = [
       "Wähle ein Angebot. Der Tagesplan zeigt dann, ob jede Nacht abgedeckt ist."
     ],
     tips: [
-      "Pauschalreise? Mit „📦 Paket“ trägst du sie von Hand ein oder importierst das Angebot. Der Paketpreis steht an der Unterkunft, der Flug erscheint im Kapitel Flüge als „im Paket“, der Status gilt für beides. Mit „⇆ einzeln suchen“ vergleichst du das Paket mit Flug und Hotel einzeln.",
+      "Pauschalreise? Mit „📦 Paket“ trägst du sie von Hand ein oder importierst das Angebot. Danach steht statt „Abheben“ und „Unterkunft“ das Kapitel „Gesamtpaket“: eine Karte mit Gesamtpreis und Preis pro Person, darin Flug, Unterkunft und Transfer. Der Status gilt für alle Teile. Mit „⇆ einzeln suchen“ vergleichst du das Paket mit Flug und Hotel einzeln, „Aufbrechen“ macht wieder einzelne Posten.",
+      "Nachzügler oder zwei Nächte woanders? Im Gesamtpaket „✈ Flug hinzufügen“ bzw. „🛏 Unterkunft hinzufügen“. Das steht dann unter „Ergänzungen“ mit eigenem Preis, nicht im Paketpreis.",
+      "Reise ohne Flug (Auto, Bahn, Camper)? Dann fehlt das Kapitel „Abheben“. Mit „Kein Flug nötig“ blendest du es selbst aus, „Doch fliegen? Flug hinzufügen“ im Kapitel Transport bringt es zurück.",
       "Der Tagesplan warnt, wenn Nächte ohne Unterkunft sind oder doppelt gebucht wurden.",
       "Nach der Landung ohne Anschluss kannst du direkt „Unterkunft am Flughafen suchen“. Für eine Unterkunft, die du schon hast, gibt es „🏠 Privat“.",
       "Wo die Suche es weiß, siehst du „kostenlos stornierbar“. Für die Buchung gehst du zum Anbieter.",

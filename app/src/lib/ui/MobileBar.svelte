@@ -9,7 +9,7 @@
   import { calc } from "../store.svelte";
   import { eur } from "../calc";
   import { CHAPTERS } from "../chapters";
-  import { goPage, mob, PAGES, stepPage } from "../mobile.svelte";
+  import { goPage, mob, pages, stepPage } from "../mobile.svelte";
   import { bugDialog } from "../bugs/app.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { FLIGHTS_URL } from "../flights/app";
@@ -35,7 +35,7 @@
 
 <nav class="mbar" aria-label={t("mob.bar")}>
   <div class="mb-row" bind:this={row} role="tablist">
-    {#each PAGES as k (k)}
+    {#each pages() as k (k)}
       <button type="button" role="tab" class="mb" class:on={mob.page === k} aria-selected={mob.page === k} data-pg={k} onclick={() => { mob.more = false; goPage(k); }}>
         <Icon name={icon(k)} /><span>{label(k)}</span>
       </button>

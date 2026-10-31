@@ -64,7 +64,8 @@
   /** leer: Suche öffnen (falls möglich); befüllt: zum ersten Posten scrollen, sonst ins Kapitel */
   function go(chapter: string, first?: Item, open?: () => void) {
     if (!first && open && !access.readonly && FLIGHTS_URL) { open(); return; }
-    const el = (first && document.querySelector(`[data-item="${first.id}"]`)) || document.getElementById(chapter);
+    // Reise mit Paket (#618): Flug und Unterkunft stehen im Gesamtpaket
+    const el = (first && document.querySelector(`[data-item="${first.id}"]`)) || document.getElementById(chapter) || document.getElementById("pkg");
     el?.scrollIntoView({ behavior: "smooth", block: first ? "center" : "start" });
   }
   // „Sonstige Kosten“ ohne Posten (einfacher Modus): erstes Kapitel mit Betrag

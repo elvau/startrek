@@ -14,6 +14,8 @@
   --c-transport:#1F8A70; --c-transport-s:#DDF3EC;
   --c-attractions:#D08A12;  --c-attractions-s:#FCF0D6;
   --c-misc:#7A5AC8; --c-misc-s:#EEE8FA;
+  /* Gesamtpaket (#618): zwischen Flug und Unterkunft */
+  --c-pkg:#6B5BD2; --c-pkg-s:#ECE9FB;
   --a:var(--c-flights); --a-soft:var(--c-flights-s);
   color-scheme:light;
 }
@@ -25,6 +27,7 @@
     --glass:rgba(22,30,42,.72); --glass-line:rgba(255,255,255,.08);
     --c-trav:#F08F63; --c-trav-s:#3A2419; --c-flights:#7FAEF5; --c-flights-s:#1B2A45; --c-stay:#EB86B1; --c-stay-s:#3A1E2B;
     --c-transport:#5FCBA9; --c-transport-s:#15322A; --c-attractions:#F0B84E; --c-attractions-s:#372A12; --c-misc:#B39BF0; --c-misc-s:#2A2240;
+    --c-pkg:#AEA2F2; --c-pkg-s:#262143;
     color-scheme:dark;
   }
 }
@@ -35,9 +38,11 @@
   --glass:rgba(22,30,42,.72); --glass-line:rgba(255,255,255,.08);
   --c-trav:#F08F63; --c-trav-s:#3A2419; --c-flights:#7FAEF5; --c-flights-s:#1B2A45; --c-stay:#EB86B1; --c-stay-s:#3A1E2B;
   --c-transport:#5FCBA9; --c-transport-s:#15322A; --c-attractions:#F0B84E; --c-attractions-s:#372A12; --c-misc:#B39BF0; --c-misc-s:#2A2240;
+  --c-pkg:#AEA2F2; --c-pkg-s:#262143;
   color-scheme:dark;
 }
 body[data-ch="trav"]{--a:var(--c-trav);--a-soft:var(--c-trav-s)}
+body[data-ch="pkg"]{--a:var(--c-pkg);--a-soft:var(--c-pkg-s)}
 body[data-ch="flights"]{--a:var(--c-flights);--a-soft:var(--c-flights-s)}
 body[data-ch="stay"]{--a:var(--c-stay);--a-soft:var(--c-stay-s)}
 body[data-ch="transport"]{--a:var(--c-transport);--a-soft:var(--c-transport-s)}

@@ -3,6 +3,7 @@
  * in ihren Kapiteln, ihre Angebote tragen dieselbe Paket-Kennung. Der Paketpreis steht am Angebot der Unterkunft
  * (main), die anderen Teile kosten 0 € („im Paket“). So rechnen Anwesenheit, Karte, Nebenkosten und Aufteilung wie
  * bei einzelnen Posten. Der Status gilt für alle Teile gemeinsam. Paket aufbrechen und Vergleich: #460.
+ * Anzeige (#618): Solange das Paket gilt, stehen die Teile zusammen im Kapitel „Gesamtpaket“ (chapterVis.ts).
  */
 import { t, type Key } from "./i18n/index.svelte";
 import { noPrice, uid, type CatKey, type Item, type Option, type Status, type Trip } from "./model";
