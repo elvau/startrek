@@ -94,6 +94,23 @@ Nutzt die bestehende Suche (Flüge, Unterkünfte, Events, Transport). Mit jedem 
 - Weniger wählen als enthalten: ohne Abzug rechnen (Hotels erstatten selten).
 - Essen vor Ort je Tag nach Stufe aus den vorhandenen Richtwerten (Preisniveau des Ziels), nicht aus festen Beträgen.
 
+## Import je Einstieg (#615, Epic #614)
+
+Je nach Ort ein eigener Knopf, der nur das übernimmt, was dorthin gehört (`app/src/lib/import/scope.ts`, `ImportDialog.svelte`):
+
+| Einstieg | Knopf | übernimmt |
+|---|---|---|
+| Neue Reise | Importieren | ganze Reise mit allen Posten |
+| Reise-Menü | 📥 Reise um Import erweitern | alle Posten in die offene Reise (Änderungsansicht: #617) |
+| Kapitel Abheben, Unterkunft, Erlebnisse, Transport | 📥 Flug / Unterkunft / Tour / Transport importieren | nur Teile des Kapitels |
+| Flug- bzw. Unterkunftssuche | „Woanders gefunden? 📥 Angebot übernehmen“ | aus der Suche eines Postens: als weiteres Angebot an diesen Posten |
+
+- In eine bestehende Reise (`importToTrip(…, keep)`): Ziel, Daten und Name nur, wenn leer; Reisende nur bei einer leeren Reise
+  (Platzhalter); die Reise wird nicht als von der KI angelegt markiert, „Essen einrechnen“ bleibt.
+- Findet die KI mehr als das Kapitel: Rückfrage „Im Angebot steckt noch mehr“ zum Anhaken, Standard nicht angehakt. Vorab
+  angehakt, wenn der Preis nur fürs ganze Paket gilt (`packagePriced`) oder im Kapitel nichts gefunden wurde.
+- Abgleich mit der Reise (Zeitraum, Ort, Personen) und „Ist das die richtige Reise?“: #616.
+
 ## Importierte Preise, Links und Pakete
 
 Angebotspreise sind oft rabattiert oder nur beim Anbieter zu haben; dieselben Flüge bzw. Unterkünfte findet unsere Suche

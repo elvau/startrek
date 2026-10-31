@@ -11,6 +11,7 @@
   import NewTripDialog from "./NewTripDialog.svelte";
   import ReportDialog from "./ReportDialog.svelte";
   import RealityDialog from "./RealityDialog.svelte";
+  import { openImport } from "../import/open.svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
   let open = $state(false);
@@ -66,6 +67,8 @@
     <div class="tm-acts">
       <button class="tm-act tm-report" onclick={() => { report = true; open = false; }}>📄 {t("rep.btn")}</button>
       <button class="tm-act tm-reality" onclick={() => { reality = true; open = false; }}>🔍 {t("real.title")}</button>
+      <!-- Reise um Import erweitern (#615): Angebot oder Buchung in diese Reise -->
+      {#if cloud.configured && !access.readonly}<button class="tm-act tm-import" onclick={() => act(() => openImport("all"))}>📥 {t("imp.title.all")}</button>{/if}
       <button class="tm-act" onclick={() => act(duplicateTrip)}>{t("tm.copy")}</button>
       <!-- Variante im selben Vergleich (#428); herausnehmen macht sie wieder zu einer normalen Reise -->
       {#if !access.readonly}<button class="tm-act tm-variant" onclick={() => act(addVariant)}>⇆ {t("tm.variant")}</button>{/if}

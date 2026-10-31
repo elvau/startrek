@@ -7,6 +7,8 @@
    * Realitätscheck (#461, check): dieselben Schritte, danach nur der Bericht an einem Entwurf; „Als Reise übernehmen“
    * legt die Reise erst dann an. Paket (#188, into): in die offene Reise, ohne eine neue anzulegen.
    * Ohne Flug (#475): Anreise als Posten, sobald Wohnort und Ziel (Ortsdaten) bekannt sind.
+   * Import je Einstieg (#615, into mit scope): nur die Teile des Kapitels; weitere Funde als Rückfrage zum Anhaken.
+   * Mit itemId kommen die Angebote an diesen Posten statt als neuer Posten.
    */
   import { app, draftTrip, startTrip } from "../store.svelte";
   import RealityReport from "./RealityReport.svelte";
@@ -31,14 +33,21 @@
   import { openExplore } from "../activities/open.svelte";
   import type { Item, Traveler, Trip } from "../model";
   import { SRC_ICON } from "../import/icons";
+  import { mergeInto, packagePriced, pickParts, preselectMore, splitScope, type ImportScope, type OfferPart } from "../import/scope";
 
-  let { onclose, travelers, peopleKnown = false, check = false, into = false, onitems, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; onitems?: (items: Item[]) => void; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
+  let { onclose, travelers, peopleKnown = false, check = false, into = false, scope = "all", itemId, onitems, shared = [], sharedText = "", sharedUrl = "" }: { onclose: () => void; travelers?: () => Traveler[] | undefined; peopleKnown?: boolean; check?: boolean; into?: boolean; scope?: ImportScope; itemId?: string; onitems?: (items: Item[]) => void; shared?: File[]; sharedText?: string; sharedUrl?: string } = $props();
   // ausgelesen, noch nicht angelegt: Übersicht mit Sicherheit und Rückfragen (#458)
   let found = $state<ImportedOffer | null>(null);
   // schon geprüft (Angebotsspeicher, #462): gültig bis
   let cachedUntil = $state("");
   // danach (#459): was fehlt noch? Auswahl je fehlendem Baustein
-  let stage = $state<"review" | "parts" | "report">("review");
+  let stage = $state<"more" | "review" | "parts" | "report">("review");
+  // Import je Einstieg (#615): Teile im Kapitel und weitere Funde, angehakt = mit übernehmen
+  let inScope = $state<OfferPart[]>([]), more = $state<OfferPart[]>([]), picked = $state<OfferPart[]>([]);
+  const PART_KEY: Record<OfferPart, Key> = { flights: "imp.f.flights", stay: "imp.f.stay", cruise: "imp.f.cruise", transfer: "imp.f.transfer", rental: "imp.kind.rental", offer: "imp.kind.other" };
+  // Preis gilt nur für das ganze Paket: Hinweis bei der Rückfrage
+  const packagePrice = $derived(!!found && packagePriced(found));
+  const PART_ICO: Record<OfferPart, string> = { flights: "✈", stay: "🛏", cruise: "🚢", transfer: "🚌", rental: "🚗", offer: "🎟" };
   // Realitätscheck: Entwurf der Reise, nicht gespeichert
   let draft = $state<Trip | null>(null);
   let choices = $state<Choices>({});
@@ -118,9 +127,13 @@
       // alles sicher erkannt: gleich anlegen, sonst erst die Übersicht
       found = offer;
       choices = defaultChoices(offer);
-      // alles sicher erkannt: Übersicht überspringen
-      if (reviewOf(offer, new Set(), peopleKnown || into).direct) next();
-      else stage = "review";
+      if (into && scope !== "all") {
+        const sp = splitScope(offer, scope);
+        if (!sp.inScope.length && !sp.more.length) { found = null; err = t("imp.nothing"); return; }
+        inScope = sp.inScope; more = sp.more; picked = preselectMore(offer, scope);
+        if (more.length) { stage = "more"; return; }
+      }
+      review();
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       err = (e as Error).message;
@@ -128,12 +141,25 @@
       if (e instanceof ImportError && e.needScreenshot) src = "file";
     } finally { busy = false; slow = false; clearTimeout(later); }
   }
+  /** alles sicher erkannt: Übersicht überspringen */
+  function review() {
+    if (!found) return;
+    if (reviewOf(found, new Set(), peopleKnown || into).direct) next();
+    else stage = "review";
+  }
+  /** Rückfrage „Habe auch das gefunden“ (#615): nur die Teile des Kapitels und die angehakten */
+  function takeMore() {
+    if (!found) return;
+    found = pickParts(found, [...inScope, ...picked]);
+    review();
+  }
+  const togglePart = (x: OfferPart) => (picked = picked.includes(x) ? picked.filter(y => y !== x) : [...picked, x]);
   /** nach der Übersicht: fehlt etwas, erst „Was fehlt noch?“, sonst anlegen */
   function next() {
     if (!found) return;
     if (check) { const d = draftTrip(); importToTrip(d, found); draft = d; stage = "report"; return; }
     // Paket in die offene Reise (#188): Ziel, Daten, Name bleiben, kein „Was fehlt noch?“
-    if (into) { const items = importToTrip(app.trip, found, undefined, true); onitems?.(items); onclose(); return; }
+    if (into) { const items = mergeInto(app.trip, importToTrip(app.trip, found, undefined, true), itemId); onitems?.(items); onclose(); return; }
     if (hasMissing(found)) stage = "parts"; else create();
   }
   function create() {
@@ -171,10 +197,20 @@
     <RealityReport trip={draft} preview ontake={create} />
   {:else if found && stage === "parts"}
     <ImportParts offer={found} bind:choices bind:home {askHome} oncreate={create} onback={() => (stage = "review")} />
+  {:else if found && stage === "more"}
+    <div class="imp-more">
+      <p class="imp-lead">{inScope.length ? t("imp.more.lead") : t("imp.more.none", { what: t(`imp.scope.${scope}` as Key) })}</p>
+      <ul class="imp-more-list">
+        {#each inScope as x (x)}<li><label><input type="checkbox" checked disabled /> <span aria-hidden="true">{PART_ICO[x]}</span> {t(PART_KEY[x])}</label></li>{/each}
+        {#each more as x (x)}<li data-part={x}><label><input type="checkbox" checked={picked.includes(x)} onchange={() => togglePart(x)} /> <span aria-hidden="true">{PART_ICO[x]}</span> {t(PART_KEY[x])} <span class="muted small">{t("imp.more.also")}</span></label></li>{/each}
+      </ul>
+      {#if packagePrice}<p class="small imp-note">{t("imp.more.pkg")}</p>{/if}
+      <div class="ed-foot"><button type="button" class="btn" onclick={() => (found = null)}>{t("imp.rev.back")}</button><button type="button" class="btn primary imp-more-go" disabled={!inScope.length && !picked.length} onclick={takeMore}>{t("imp.more.go")}</button></div>
+    </div>
   {:else if found}
-    <ImportReview bind:offer={found} {cachedUntil} peopleKnown={peopleKnown || into} oncreate={next} onback={() => (found = null)} />
+    <ImportReview bind:offer={found} {cachedUntil} peopleKnown={peopleKnown || into} {into} oncreate={next} onback={() => (found = null)} />
   {:else}
-    <p class="imp-lead">{t(check ? "real.lead" : "imp.lead")}</p>
+    <p class="imp-lead">{check ? t("real.lead") : into && scope !== "all" ? t("imp.leadScope", { what: t(`imp.scope.${scope}` as Key) }) : into ? t("imp.leadInto") : t("imp.lead")}</p>
     <div class="chips imp-src">
       {#each SRCS as s (s)}<button type="button" class="chip" class:on={src === s} aria-pressed={src === s} onclick={() => (s === "paste" ? void paste() : (src = s))}><span aria-hidden="true">{SRC_ICON[s]}</span> {t(`imp.src.${s}` as Key)}</button>{/each}
     </div>
@@ -199,7 +235,7 @@
     <details class="small imp-priv"><summary><span aria-hidden="true">🔒</span> {t("imp.privacyT")}</summary><p>{t("imp.privacy")}</p></details>
     {#if busy}<SearchLoading kind="import" cards={0} sub={slow ? `${t("imp.wait")} ${t("imp.waitLong")}` : t("imp.wait")} />{/if}
     {#if err}<p class="err small" role="alert">{err}{#if retryable} <button type="button" class="btn small imp-retry" disabled={busy} onclick={go}>{t("imp.retry")}</button>{/if}</p>{/if}
-    <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" class:busy disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : "imp.go")}</button></div>
+    <div class="ed-foot"><span class="muted small" aria-live="polite">{busy ? t("imp.busy") : ""}</span><button type="button" class="btn primary imp-go" class:busy disabled={!ready || busy} onclick={go}>{busy ? t("imp.busy") : t(check ? "real.go" : into ? "imp.goInto" : "imp.go")}</button></div>
   {/if}
 </div>
 
@@ -219,4 +255,7 @@
   .imp-priv { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--paper-2); color: var(--ink-2); }
   .imp-priv summary { cursor: pointer; font-weight: 600; min-height: 28px; display: flex; align-items: center; gap: 6px; }
   .imp-priv p { margin: 6px 0 0; }
+  .imp-more { display: flex; flex-direction: column; gap: 12px; }
+  .imp-more-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .imp-more-list label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); cursor: pointer; }
 </style>

@@ -15,7 +15,7 @@
   import { ANSWERS, DUNNO, answer, partyOf, reviewOf, setParty, suggestParty, type Level, type Party, type QuestionId } from "../import/review";
   import { clampCount } from "../count";
 
-  let { offer = $bindable(), peopleKnown = false, cachedUntil = "", oncreate, onback }: { offer: ImportedOffer; peopleKnown?: boolean; cachedUntil?: string; oncreate: () => void; onback: () => void } = $props();
+  let { offer = $bindable(), peopleKnown = false, cachedUntil = "", into = false, oncreate, onback }: { offer: ImportedOffer; peopleKnown?: boolean; cachedUntil?: string; into?: boolean; oncreate: () => void; onback: () => void } = $props();
   let answered = $state<QuestionId[]>([]);
   let editing = $state<ConfKey | null>(null);
   const r = $derived(reviewOf(offer, new Set(answered), peopleKnown));
@@ -133,7 +133,7 @@
     {/each}
   </ul>
   <p class="muted small">{t("imp.rev.later")}</p>
-  <div class="ed-foot"><button type="button" class="btn" onclick={onback}>{t("imp.rev.back")}</button><button type="button" class="btn primary imp-create" disabled={r.questions.length > 0} onclick={oncreate}>{t("imp.rev.create")}</button></div>
+  <div class="ed-foot"><button type="button" class="btn" onclick={onback}>{t("imp.rev.back")}</button><button type="button" class="btn primary imp-create" disabled={r.questions.length > 0} onclick={oncreate}>{t(into ? "imp.rev.take" : "imp.rev.create")}</button></div>
 </div>
 
 <style>
