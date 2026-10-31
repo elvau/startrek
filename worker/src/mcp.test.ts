@@ -114,6 +114,18 @@ describe("KI-Konnektor (MCP)", () => {
     expect(got.cc).toBeUndefined();
   });
 
+  it("findet kleine Orte und ignoriert Gemeinde oder Insel nach dem Komma (#622)", async () => {
+    let got: any;
+    const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });
+    for (const place of ["Cala Ratjada", "Cala Rajada", "Cala Rajada, Capdepera", "Cala Ratjada, Mallorca"]) {
+      await tool(d, "search_stays", { place, country: "Spanien", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2 });
+      expect(got, place).toMatchObject({ place: "Cala Ratjada", country: "Spain", cc: "ES", lat: 39.712, lon: 3.463 });
+    }
+    // ohne Land: kleine Orte aller Länder werden gefunden
+    await tool(d, "search_stays", { place: "Cala Rajada, Capdepera", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2 });
+    expect(got).toMatchObject({ cc: "ES", lat: 39.712 });
+  });
+
   it("markiert geschätzte Kosten als Schätzung (#594)", async () => {
     const d = deps();
     const id = (await tool(d, "create_trip", { place: "Palma", from: "2027-05-10", to: "2027-05-13", adults: 2, travelersFrom: "user" })).data.tripId;
