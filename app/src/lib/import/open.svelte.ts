@@ -16,3 +16,6 @@ export function openImport(scope: ImportScope, itemId?: string, shared?: Shared)
   importIn.target = { scope, ...(itemId ? { itemId } : {}), ...(shared ? { shared } : {}) };
   importIn.open = true;
 }
+
+/** Rückgängig nach „Reise um Import erweitern“ (#617): Stand der Reise davor, kurz anbieten */
+export const importUndo = $state<{ snap: string; tripId: string; at: number }>({ snap: "", tripId: "", at: 0 });
