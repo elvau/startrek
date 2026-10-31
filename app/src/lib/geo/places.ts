@@ -159,7 +159,8 @@ export function searchParts(g: GeoData, place: string, cc?: string | null): { pl
   const gk = given ? ccOf(g, given) : null;
   const c = findCity(g, name, gk || cc);
   const k = c?.cc || gk || cc;
-  const land = (gk ? g.world.find(w => w.k === gk)?.en : given) || (k ? g.world.find(w => w.k === k)?.en : undefined);
+  // Teil nach dem Komma nur als Land, wenn er eins ist (nicht Gemeinde, Insel oder Region wie „Mallorca“)
+  const land = k ? g.world.find(w => w.k === k)?.en : undefined;
   return { place: c?.en || name, ...(land ? { country: land } : {}) };
 }
 
@@ -170,7 +171,7 @@ export const travelHours = (km: number) => (km <= 100 ? 0.4 + km / 70 : 0.6 + km
 
 /** Daten liegen neben der App (world.json, packs.json, places/) */
 const base = () => ((import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL) || "/";
-const bucket = (cc: string) => ((cc.charCodeAt(0) * 31 + cc.charCodeAt(1)) % 16).toString(16);
+export const bucket = (cc: string) => ((cc.charCodeAt(0) * 31 + cc.charCodeAt(1)) % 16).toString(16);
 const cache: { core?: Promise<void>; buckets: Record<string, Promise<void>> } = { buckets: {} };
 
 export async function loadGeo(g: GeoData, ccs: string[], fetchFn: typeof fetch = fetch): Promise<void> {
