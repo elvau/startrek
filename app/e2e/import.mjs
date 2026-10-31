@@ -3,7 +3,7 @@
  * der Such-Dienst nicht lesen kann (Bitte um Screenshot), dann Screenshot und CSV-Liste auslesen (Such-Dienst
  * nachgestellt), Übersicht mit Sicherheit je Angabe und Rückfrage (#458), Reise mit Flug, Unterkunft und Transfer
  * angelegt, Unsicheres als „bitte prüfen“ markiert. Nur Unterkunft, Flug „Brauchen wir nicht“: Anreise mit der Bahn
- * aus dem Wohnort geschätzt (#475).
+ * aus dem Wohnort geschätzt (#475). Unterkunft importieren in die offene Reise, weiterer Fund als Rückfrage (#615).
  * Start: npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/import.mjs"
  */
 import { chromium } from "playwright";
@@ -43,6 +43,14 @@ const PARK = {
   confidence: { place: 1, dates: 1, people: 0.5, price: 1, stay: 1 }
 };
 
+// Unterkunft importieren in die offene Reise (#615): Hotel mit eigenem Preis, im selben Screenshot ein Flug
+const HOTEL = {
+  kind: "stay", title: "Elbblick-Deal", provider: "Hotelseite", place: "Hamburg", country: "DE", from: "2027-05-05", to: "2027-05-10",
+  adults: 2, price: { total: 300, currency: "EUR" }, stay: { name: "Hotel Elbblick", price: 300 },
+  flights: { legs: [{ dir: "out", from: "MUC", to: "HAM", dep: "2027-05-05T08:00" }], price: 120 },
+  confidence: { place: 1, dates: 1, people: 1, price: 1, stay: 1, flights: 1 }
+};
+
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4186", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
 await new Promise(r => setTimeout(r, 2500));
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
@@ -58,6 +66,7 @@ try {
     asked.push({ auth: r.request().headers()["authorization"] || "", body });
     // aus dem Angebotsspeicher (#462): schon geprüft, gültig bis
     if (body.text?.includes("Ferienpark")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: PARK, remaining: 6 }) });
+    if (body.text?.includes("Elbblick")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: HOTEL, remaining: 5 }) });
     if (body.text?.includes("Flugdeal")) return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: DEAL, cached: true, until: "2026-11-03", remaining: 7 }) });
     if (body.url && !body.files.length) return r.fulfill({ status: 422, contentType: "application/json", headers: cors, body: JSON.stringify({ error: "Seite lässt sich nicht lesen", needScreenshot: true, remaining: 10 }) });
     return r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offer: OFFER, remaining: 8 }) });
@@ -285,6 +294,39 @@ try {
     if (park.travelers.map(x => x.kind).join() !== "adult,adult,child,infant") fail("Personen: " + park.travelers.map(x => x.kind));
   }
   log("Nur Unterkunft: Personen-Rückfrage mit 2 vorbelegt, Kind und Kleinkind ergänzt, Flug nicht nötig, Anreise mit der Bahn aus dem Wohnort geschätzt");
+
+  // 11. Unterkunft importieren (#615): im Kapitel Unterkunft, nur die Unterkunft; der Flug im Screenshot ist eine Rückfrage
+  const before = park;
+  await p.locator("#stay .imp-open").click();
+  const id = p.locator(".modal", { hasText: "Unterkunft importieren" });
+  await id.locator(".imp-lead", { hasText: "Unterkunft" }).waitFor();
+  await id.locator(".imp-src .chip", { hasText: "Text" }).click();
+  await id.locator("textarea").fill("Hotel Elbblick, 5 Nächte");
+  await id.locator(".imp-go", { hasText: "Auslesen und übernehmen" }).click();
+  const more = id.locator('.imp-more-list li[data-part="flights"]');
+  await more.waitFor();
+  if (await more.locator("input").isChecked()) fail("weiterer Fund (Flug) vorab angehakt");
+  await shot(id, "6-auch-gefunden");
+  await id.locator(".imp-more-go").click();
+  await until(async () => !(await id.count()) || (await id.locator(".imp-create").count()), "übernommen oder Übersicht");
+  if (await id.count()) {
+    // Rückfragen (z. B. Verpflegung) mit der ersten Antwort beantworten; Personen fragt der Import in eine Reise nicht
+    if (await id.locator(".rev-q", { hasText: "Wie viele Personen" }).count()) fail("Personen-Rückfrage beim Import in die Reise");
+    while (await id.locator(".rev-q").count()) await id.locator(".rev-q").first().locator(".chip").first().click();
+    await id.locator(".imp-create", { hasText: "Übernehmen" }).click();
+  }
+  await until(async () => !(await id.count()), "Import-Fenster zu");
+  let after = null;
+  await until(async () => {
+    after = await p.evaluate(() => JSON.parse(localStorage.getItem(`rk2-t:${localStorage.getItem("rk2-current")}`) || "null"));
+    return after?.items?.some(i => i.name === "Hotel Elbblick");
+  }, "Hotel Elbblick in der Reise");
+  if (after.id !== before.id) fail("neue Reise angelegt statt in die offene");
+  if (after.name !== before.name || after.place !== before.place || after.from !== before.from) fail("Reise verändert: " + JSON.stringify([after.name, after.place, after.from]));
+  if (after.travelers.length !== before.travelers.length) fail("Reisende verändert");
+  if (after.items.some(i => i.cat === "flights")) fail("Flug übernommen, obwohl nicht angehakt");
+  await p.locator("article.card", { hasText: "Hotel Elbblick" }).first().locator("text=nicht live geprüft").waitFor();
+  log("Unterkunft importieren: in die offene Reise, nur die Unterkunft, Flug als Rückfrage nicht angehakt, Reise unverändert");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Import ok");

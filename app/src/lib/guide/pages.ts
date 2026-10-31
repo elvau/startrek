@@ -37,7 +37,7 @@ export type GuideSpots = Record<string, { w: number; h: number; spots: { key: st
 
 export const GUIDE_STAND = "Oktober 2026";
 /** Datum der letzten inhaltlichen Änderung (JJJJ-MM-TT), mit GUIDE_STAND anheben; für lastmod in der Sitemap */
-export const GUIDE_UPDATED = "2026-10-30";
+export const GUIDE_UPDATED = "2026-10-31";
 
 export const GUIDE: GuidePage[] = [
   {
@@ -350,6 +350,7 @@ export const GUIDE: GuidePage[] = [
       "Mit KI planen (Beta): Beschreibe deine Wunschreise in ein paar Sätzen. Die KI schlägt Ziele und Varianten vor, die du prüfst und übernimmst.",
       "Zu einem Event (🎟): Bei Spiel, Konzert oder Festival planst du die Reise passend zum Termin.",
       "Angebot importieren (mit Konto): Unter „Neue Reise“ auf „Importieren“ tippen und ein Angebot, eine Buchung oder eine Teilnehmerliste einwerfen, als Datei (Screenshot, Foto, PDF, Word, CSV oder Excel), als Text oder als Link. Mit „Auslesen und Reise anlegen“ entsteht daraus eine Reise mit Flug, Unterkunft und Reisenden.",
+      "In eine Reise importieren (mit Konto): In den Kapiteln stehen „📥 Flug importieren“, „📥 Unterkunft importieren“, „📥 Tour importieren“ und „📥 Transport importieren“. Übernommen wird nur, was ins Kapitel gehört; Ziel, Daten und Reisende bleiben. Findet die App im Angebot noch mehr, fragt sie, ob das mit soll. Das ganze Angebot holst du über das Reise-Menü mit „📥 Reise um Import erweitern“.",
       "Realitätscheck (mit Konto): Auf der Startseite „🔍 Realitätscheck“ öffnen und ein Angebot einwerfen. Du siehst, was es pro Kopf wirklich kostet, als Spanne mit allen Annahmen. Es wird keine Reise angelegt, bis du „Als Reise übernehmen“ antippst. Für eine offene Reise findest du den Realitätscheck im Reise-Menü.",
       "Die Vorschläge landen als Reise bei dir. Von da an bearbeitest du alles wie gewohnt."
     ],
@@ -366,9 +367,10 @@ export const GUIDE: GuidePage[] = [
     faq: [
       { q: "Ist die KI-Planung kostenlos?", a: "Ja, sie ist als Beta enthalten. Pro Tag gibt es eine begrenzte Zahl an Anfragen." },
       { q: "Sind die Reiseideen Angebote?", a: "Nein. Es sind Richtwerte mit Spannen pro Person. Echte Preise ermittelst du danach in deiner eigenen Reise." },
+      { q: "Warum ist beim Import der Flug schon angehakt, obwohl ich nur die Unterkunft wollte?", a: "Weil der Preis im Angebot nur für das ganze Paket gilt. Einzeln stünde ein Teil mit dem Paketpreis da und der andere ohne Preis. Du kannst den Haken trotzdem entfernen." },
       { q: "Werden meine Dateien beim Import gespeichert?", a: "Nein. Sie werden nur ausgelesen. Aus Teilnehmerlisten übernimmt die App Namen und Alter als Reisende. Lade keine Ausweis- oder Passdaten hoch." }
     ],
-    where: "Startseite → Reiseideen, Mit KI planen, Zu einem Event; Neue Reise → Importieren",
+    where: "Startseite → Reiseideen, Mit KI planen, Zu einem Event; Neue Reise → Importieren; in der Reise: Kapitel → 📥 … importieren, Reise-Menü → Reise um Import erweitern",
     emoji: "✨",
     shots: [{ img: "home", alt: "Startseite mit den Abkürzungen Zu einem Event, Mit KI planen und Reiseideen", caption: "Drei Abkürzungen auf der Startseite.", pins: {
       event: "🎟 Zu einem Event: Spiel, Konzert oder Festival, die Reise passend zum Termin.",

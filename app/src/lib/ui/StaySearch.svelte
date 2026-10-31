@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { openImport } from "../import/open.svelte";
+  import { cloud } from "../cloud/cloud.svelte";
   import { netMessage, showError, isNetText } from "../neterror";
   import SearchLoading from "./SearchLoading.svelte";
   import { arrow, autoName, locale, t, tn } from "../i18n/index.svelte";
@@ -9,7 +11,7 @@
    * Booking.com und Trivago gleichzeitig, zusammengeführt nach Preis.
    * Treffer kommen als Angebote in einen Unterkunft-Posten, Preis für den ganzen Aufenthalt.
    */
-  import { app } from "../store.svelte";
+  import { access, app } from "../store.svelte";
   import { activeOption, eur, money } from "../calc";
   import { dateDE, dayShort, nights, time } from "../format";
   import Modal from "./Modal.svelte";
@@ -474,6 +476,8 @@
       <BrokerNote />
       {#if pets}<p class="muted small st-pets">🐾 {t("pet.stayHint")}</p>{/if}
     {/if}
+    <!-- Angebot von woanders (#615): per Import in die Reise bzw. an diesen Posten -->
+    {#if cloud.configured && !access.readonly}<p class="muted small imp-take">{t("imp.foundElse")} <button type="button" class="linkbtn imp-take-btn" onclick={() => { onclose(); openImport("stay", item?.id); }}>📥 {t("imp.take")}</button></p>{/if}
   </form>
 
   {#if error}<p class="err small">{error}{#if isNetText(error)} <button type="button" class="linkbtn" onclick={() => search()}>{t("net.retry")}</button>{/if}</p>{/if}

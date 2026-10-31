@@ -187,7 +187,10 @@ export function importToTrip(trip: Trip, o: ImportedOffer, at = new Date().toISO
     at, kind: o.kind, items: items.map(i => i.id),
     ...(o.provider ? { provider: o.provider } : {}), ...(o.url ? { url: o.url } : {}), ...(o.price ? { price: { ...o.price } } : {}), ...(o.validUntil ? { validUntil: o.validUntil } : {})
   };
-  trip.ai = { at };
-  trip.food = { ...(trip.food || {}), on: true };
+  // in eine bestehende Reise (#615): Reise bleibt, wie sie ist (nicht als von der KI angelegt, Essen unverändert)
+  if (!keep) {
+    trip.ai = { at };
+    trip.food = { ...(trip.food || {}), on: true };
+  }
   return items;
 }

@@ -37,6 +37,8 @@
   import Split from "./lib/ui/Split.svelte";
   import Home from "./lib/ui/Home.svelte";
   import PackageDialog from "./lib/ui/PackageDialog.svelte";
+  import ImportDialog from "./lib/ui/ImportDialog.svelte";
+  import { openImport } from "./lib/import/open.svelte";
   import CruiseDialog from "./lib/ui/CruiseDialog.svelte";
   import { cruiseDlg, openCruise } from "./lib/cruises/open.svelte";
   import { takeShared } from "./lib/import/share.svelte";
@@ -241,7 +243,8 @@
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button>
-            <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button></div>
+            <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button>
+            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("flights")}>📥 {t("imp.title.flights")}</button>{/if}</div>
           {@const miss = withoutTravel(app.trip)}
           {#if miss.length}
             <p class="search-row miss-travel">⚠ {t("fl.missing", { who: miss.slice(0, 6).map(x => x.name).join(", ") + (miss.length > 6 ? ` +${miss.length - 6}` : "") })}
@@ -261,6 +264,7 @@
               {#if evWin.city && FLIGHTS_URL}<button class="btn primary xp-open-tours" onclick={() => openExplore("tours")}>🎡 {t("xp.tours")}</button>{/if}
               {#if evWin.city && FLIGHTS_URL}<button class="btn xp-open" onclick={() => openExplore("events")}>🎟 {t("xp.events")}</button>{/if}
               <button class="btn att-ev" class:primary={!evWin.city} onclick={openEventPlanner}>🏟 {app.trip.event ? t("ev.change") : t("ev.btn")}</button>
+              {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("attractions")}>📥 {t("imp.title.attractions")}</button>{/if}
               <button class="btn tm-open" aria-expanded={mapOpen === "attractions"} onclick={() => (mapOpen = mapOpen === "attractions" ? null : "attractions")}>🗺 {t("tmap.open")}</button>
             </div>
             {#if mapOpen === "attractions"}<TripMap onclose={() => (mapOpen = null)} />{/if}
@@ -280,7 +284,8 @@
           <RoadCosts city={evWin.city} />
           <GroundOptions city={evWin.city} />
           <TransferOptions city={evWin.city} />
-          {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.addTrip")} <small class="car-day">{t("car.perDay", { v: eur(carDay) })}</small></button></div>{/if}
+          {#if !access.readonly}<div class="search-row"><button class="btn primary car-add" onclick={addCar}>🚗 {t("car.addTrip")} <small class="car-day">{t("car.perDay", { v: eur(carDay) })}</small></button>
+            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("transport")}>📥 {t("imp.title.transport")}</button>{/if}</div>{/if}
           <p class="search-row muted small fs-direct car-links">{t("car.compare")}
             <PartnerLinks ids={partnersOf("car")} q={{ w: cw, place: evWin.city }} />
             {#if cw}<br />{t(cw.ap ? "car.when" : "car.whenTrip", { a: `${cw.ap ? `${cw.ap} ` : ""}${cw.pick.slice(8, 10)}.${cw.pick.slice(5, 7)}. ${cw.pick.slice(11, 16)}`, b: `${cw.drop.slice(8, 10)}.${cw.drop.slice(5, 7)}. ${cw.drop.slice(11, 16)}`, d: tn("n.days", cw.days) })}{/if}
@@ -297,6 +302,7 @@
           {#if app.trip.camper}<p class="search-row small st-camper">⛺ {t("camp.stayHint", { ch: t("ch.transport.label") })} <button class="linkbtn" onclick={toCamper}>{t("camp.toStations")}</button></p>{/if}
           <div class="search-row"><button class="btn st-open" class:primary={!app.trip.camper} onclick={() => openStaySearch()}>🛏 {t("st.open")}</button>
             <button class="btn pkg-open" onclick={() => (pkgOpen = true)}>📦 {t("pkg.btn")}</button>
+            {#if cloud.configured}<button class="btn imp-open" onclick={() => openImport("stay")}>📥 {t("imp.title.stay")}</button>{/if}
             <button class="btn priv-open" title={t("priv.searchHint")} onclick={() => openPrivStay()}>🏠 {t("priv.open")}</button>
             <button class="btn cr-open" title={t("cs.title")} onclick={() => openCruise()}>🚢 {t("cr.open")}</button>
             <button class="btn tm-open" aria-expanded={mapOpen === "stay"} onclick={() => (mapOpen = mapOpen === "stay" ? null : "stay")}>🗺 {t("tmap.open")}</button></div>
@@ -359,6 +365,7 @@
 {#if showWho || (whoAsk.open && !!cloud.user && !!whoCt)}<WhoAmI onclose={whoClose} />{/if}
 <!-- Flug- und Unterkunftssuche im eigenen Fenster (aus Kapitel, Posten und Plan); danach ist man wieder dort -->
 {#if pkgOpen}<PackageDialog onclose={() => (pkgOpen = false)} />{/if}
+<ImportDialog />
 {#if cruiseDlg.open}<CruiseDialog onclose={() => (cruiseDlg.open = false)} onhand={addCruise} />{/if}
 {#if flightSearch.open}{#key flightSearch.scope}<FlightSearch scope={flightSearch.scope} onclose={() => (flightSearch.open = false)} />{/key}{/if}
 {#if staySearch.open}{#key staySearch.scope}<StaySearch scope={staySearch.scope} onclose={() => (staySearch.open = false)} />{/key}{/if}

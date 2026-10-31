@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { openImport } from "../import/open.svelte";
   import { netMessage, showError, isNetText } from "../neterror";
   import SearchLoading from "./SearchLoading.svelte";
   import { blockedDays, hitsBlocked } from "../together";
@@ -9,7 +10,7 @@
    * Flüge suchen (wie im Artefakt): mehrere Abflughäfen einzeln abfragen und vergleichen, Anfahrt einrechnen,
    * feste Daten (± Tage) oder flexibler Zeitraum mit „spätestens zuhause“ und Nächten per Schieberegler.
    */
-  import { app, calc } from "../store.svelte";
+  import { access, app, calc } from "../store.svelte";
   import { eur, money } from "../calc";
   import { airportsOf } from "../calc/travel";
   import { dayShort, nights, time } from "../format";
@@ -603,6 +604,8 @@
       <p class="muted small fs-direct">{t("fs.directFrom", { ap: aps[0] })} <PartnerLinks ids={partnersOf("flight")} q={fq} /></p>
       {#if sponsoredAny(partnersOf("flight"), fq, partner.on)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
     {/if}
+    <!-- Angebot von woanders (#615): per Import in die Reise bzw. an diesen Posten -->
+    {#if cloud.configured && !access.readonly}<p class="muted small imp-take">{t("imp.foundElse")} <button type="button" class="linkbtn imp-take-btn" onclick={() => { onclose(); openImport("flights", item?.id); }}>📥 {t("imp.take")}</button></p>{/if}
   </form>
 
   {#if error}<p class="err small">{error}{#if isNetText(error)} <button type="button" class="linkbtn" onclick={() => search()}>{t("net.retry")}</button>{/if}</p>{/if}
