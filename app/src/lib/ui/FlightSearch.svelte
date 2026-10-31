@@ -218,7 +218,7 @@
     const lq = { from: o0?.kind === "city" ? o0.airports[0] : aps[0], to: d0 ? d0.airports[0] : to.trim(), depart: mode === "flex" ? rFrom : out, ret: kind === "oneway" ? undefined : mode === "flex" ? rTo || undefined : ret || undefined, ...split.q };
     return { ...lq, ...(o0?.kind === "city" ? { fromName: o0.city } : {}), ...(d0 && d0.kind !== "airport" ? { toName: d0.city } : {}) };
   });
-  const provSummary = $derived(fqLink ? [`${fqLink.fromName || fqLink.from} → ${fqLink.toName || fqLink.to}`, fqLink.ret ? range(fqLink.depart, fqLink.ret) : dayShort(fqLink.depart), t("persShort", { n })].join(" · ") : "");
+  const provSummary = $derived(fqLink ? [`${fqLink.fromName || fqLink.from} ${arrow()} ${fqLink.toName || fqLink.to}`, fqLink.ret ? range(fqLink.depart, fqLink.ret) : dayShort(fqLink.depart), t("persShort", { n })].join(" · ") : "");
   // „Bei anderen Anbietern suchen“: auf Klick; bei null Treffern einmal je Suche von selbst, mit Erklärung
   let prov = $state(false), provEmpty = $state(false);
   let provFor: unknown = null;
