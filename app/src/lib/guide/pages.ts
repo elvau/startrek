@@ -359,7 +359,8 @@ export const GUIDE: GuidePage[] = [
       "Persönliche Daten wie Name, Geschlecht, Staatsangehörigkeit und Geburtsdatum gehen nicht an die KI.",
       "Die KI-Vorbefüllung zählt als eine der KI-Anfragen pro Tag und ist optional.",
       "Prüfe KI-Vorschläge wie jede Schätzung: Preise sind Richtwerte, keine Angebote.",
-      "Am Handy kannst du ein Angebot auch über das Teilen-Menü an Split&Fly senden, wenn die App installiert ist.",
+      "Am Handy kannst du ein Angebot auch über das Teilen-Menü an Split&Fly senden, wenn die App installiert ist. Es kommt in die zuletzt geöffnete Reise; mit „Stattdessen neue Reise“ legst du eine neue an.",
+      "Passt ein Angebot nicht zur Reise (Zeitraum, Land oder Personenzahl), fragt die App „Passt das Angebot zur Reise …?“. Du übernimmst es hier, wählst eine andere Reise oder machst eine neue Reise daraus. Der Hinweis bleibt am Posten mit „bitte prüfen“.",
       "Lässt sich ein Link nicht auslesen, mach einen Screenshot vom Angebot oder kopiere den Text hinein.",
       "Beim Import zeigt die App, wie sicher jede Angabe erkannt ist, und fragt bei Unsicherem kurz nach. Was nur abgeleitet ist, steht in der Reise mit „bitte prüfen“, bis du „Geprüft“ antippst.",
       "Fehlt im Angebot etwas (Unterkunft, Transfer, Mietwagen, Ausflüge), fragt „Was fehlt noch?“ nach: Suchen, Schätzen oder Brauchen wir nicht."

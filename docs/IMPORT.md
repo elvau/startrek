@@ -109,7 +109,13 @@ Je nach Ort ein eigener Knopf, der nur das übernimmt, was dorthin gehört (`app
   (Platzhalter); die Reise wird nicht als von der KI angelegt markiert, „Essen einrechnen“ bleibt.
 - Findet die KI mehr als das Kapitel: Rückfrage „Im Angebot steckt noch mehr“ zum Anhaken, Standard nicht angehakt. Vorab
   angehakt, wenn der Preis nur fürs ganze Paket gilt (`packagePriced`) oder im Kapitel nichts gefunden wurde.
-- Abgleich mit der Reise (Zeitraum, Ort, Personen) und „Ist das die richtige Reise?“: #616.
+- **Abgleich mit der Reise (#616, `app/src/lib/import/fit.ts`):** Zeitraum (ein Tag Spielraum), Land, Personenzahl (je Posten
+  dessen Mitreisende). Fehlende Angaben zählen nicht. Bei Abweichung „Passt das Angebot zur Reise …?“ mit „Ja, hier
+  übernehmen“, „Andere Reise wählen“ (passende zuerst, Reise wechselt, neuer Abgleich) und „Neue Reise daraus“. Übernommen
+  wird trotzdem; die Posten tragen „bitte prüfen“ mit Grund (`checkWhy`), bis jemand „Geprüft“ antippt. Personen werden nie
+  hochgerechnet.
+- **Teilen am Handy:** geteilte Inhalte gehen in die zuletzt geöffnete Reise (mit Abgleich), mit „Stattdessen neue Reise“;
+  ohne echte Reise (leer, nur ansehen) wie bisher „Neue Reise → Importieren“.
 
 ## Importierte Preise, Links und Pakete
 

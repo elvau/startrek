@@ -9,8 +9,13 @@
    * Ohne Flug (#475): Anreise als Posten, sobald Wohnort und Ziel (Ortsdaten) bekannt sind.
    * Import je Einstieg (#615, into mit scope): nur die Teile des Kapitels; weitere Funde als Rückfrage zum Anhaken.
    * Mit itemId kommen die Angebote an diesen Posten statt als neuer Posten.
+   * Abgleich mit der Reise (#616, into): passen Zeitraum, Land, Personen nicht, erst „Ist das die richtige Reise?“
+   * (hier übernehmen, andere Reise, neue Reise); übernommen wird trotzdem, die Hinweise bleiben am Posten.
    */
-  import { app, draftTrip, startTrip } from "../store.svelte";
+  import { access, allTrips, app, draftTrip, startTrip, switchTrip, tripFor } from "../store.svelte";
+  import { fitOf, type FitIssue } from "../import/fit";
+  import { countryName } from "../geo/locations";
+  import { dateDE, monthYear, range } from "../format";
   import RealityReport from "./RealityReport.svelte";
   import { cloud } from "../cloud/cloud.svelte";
   import { IMPORT_FILES_MAX } from "../import/ai";
@@ -41,7 +46,29 @@
   // schon geprüft (Angebotsspeicher, #462): gültig bis
   let cachedUntil = $state("");
   // danach (#459): was fehlt noch? Auswahl je fehlendem Baustein
-  let stage = $state<"more" | "review" | "parts" | "report">("review");
+  let stage = $state<"fit" | "more" | "review" | "parts" | "report">("review");
+  // Abgleich mit der Reise (#616): Angebot wie ausgelesen, Abweichungen, Auswahl einer anderen Reise
+  let raw = $state<ImportedOffer | null>(null);
+  let issues = $state<FitIssue[]>([]);
+  let choosing = $state(false), waitTrip = $state<string | null>(null);
+  const targetWho = () => (itemId ? app.trip.items.find(i => i.id === itemId)?.participants : undefined);
+  const fitLabel: Record<FitIssue["k"], Key> = { dates: "imp.f.dates", country: "imp.fit.country", people: "imp.f.people" };
+  const fitVal = (i: FitIssue, v: string) => {
+    if (i.k === "country") return countryName(v);
+    if (i.k === "people") return v;
+    const [a, b] = v.split("|");
+    return b ? range(a, b) : dateDE(a);
+  };
+  const fitText = (i: FitIssue) => t("imp.fit.row", { what: t(fitLabel[i.k]), a: fitVal(i, i.offer), b: fitVal(i, i.trip) });
+  // andere Reisen zum Auswählen: die eigenen bzw. mit Schreibrecht, passende zuerst
+  const others = $derived.by(() => {
+    if (!choosing || !raw) return [];
+    const o = raw;
+    return allTrips().filter(m => m.id !== app.trip.id && m.role !== "viewer").map(m => {
+      const tr = tripFor(m.id);
+      return { m, n: tr ? fitOf(tr, o).length : 9 };
+    }).sort((a, b) => a.n - b.n).slice(0, 12);
+  });
   // Import je Einstieg (#615): Teile im Kapitel und weitere Funde, angehakt = mit übernehmen
   let inScope = $state<OfferPart[]>([]), more = $state<OfferPart[]>([]), picked = $state<OfferPart[]>([]);
   const PART_KEY: Record<OfferPart, Key> = { flights: "imp.f.flights", stay: "imp.f.stay", cruise: "imp.f.cruise", transfer: "imp.f.transfer", rental: "imp.kind.rental", offer: "imp.kind.other" };
@@ -124,22 +151,53 @@
       const res = await askImport({ prepared, text, url }, ctrl.signal);
       const offer = res.offer;
       cachedUntil = res.until || "";
-      // alles sicher erkannt: gleich anlegen, sonst erst die Übersicht
       found = offer;
+      raw = offer;
       choices = defaultChoices(offer);
-      if (into && scope !== "all") {
-        const sp = splitScope(offer, scope);
-        if (!sp.inScope.length && !sp.more.length) { found = null; err = t("imp.nothing"); return; }
-        inScope = sp.inScope; more = sp.more; picked = preselectMore(offer, scope);
-        if (more.length) { stage = "more"; return; }
+      if (into && !check) {
+        issues = fitOf(app.trip, offer, targetWho());
+        if (issues.length) { choosing = false; stage = "fit"; return; }
       }
-      review();
+      afterFit();
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       err = (e as Error).message;
       retryable = e instanceof ImportError && e.overloaded;
       if (e instanceof ImportError && e.needScreenshot) src = "file";
     } finally { busy = false; slow = false; clearTimeout(later); }
+  }
+  /** nach dem Abgleich: Teile des Kapitels und weitere Funde (#615), dann Übersicht */
+  function afterFit() {
+    const offer = found;
+    if (!offer) return;
+    if (into && scope !== "all") {
+      const sp = splitScope(offer, scope);
+      if (!sp.inScope.length && !sp.more.length) { found = null; err = t("imp.nothing"); return; }
+      inScope = sp.inScope; more = sp.more; picked = preselectMore(offer, scope);
+      if (more.length) { stage = "more"; return; }
+    }
+    review();
+  }
+  /** andere Reise gewählt: wechseln, warten bis sie geladen ist, dann neu abgleichen */
+  function pickTrip(id: string) {
+    choosing = false;
+    waitTrip = id;
+    switchTrip(id, "Import");
+  }
+  $effect(() => {
+    if (!waitTrip || app.trip.id !== waitTrip || access.loading || !raw) return;
+    waitTrip = null;
+    found = raw;
+    issues = fitOf(app.trip, raw);
+    if (!issues.length) afterFit();
+  });
+  /** „Neue Reise daraus“: das ganze Angebot als neue Reise, wie unter „Neue Reise → Importieren“ */
+  function asNewTrip() {
+    if (!raw) return;
+    startTrip(travelers?.());
+    const items = importToTrip(app.trip, raw);
+    onitems?.(items);
+    onclose();
   }
   /** alles sicher erkannt: Übersicht überspringen */
   function review() {
@@ -159,7 +217,12 @@
     if (!found) return;
     if (check) { const d = draftTrip(); importToTrip(d, found); draft = d; stage = "report"; return; }
     // Paket in die offene Reise (#188): Ziel, Daten, Name bleiben, kein „Was fehlt noch?“
-    if (into) { const items = mergeInto(app.trip, importToTrip(app.trip, found, undefined, true), itemId); onitems?.(items); onclose(); return; }
+    if (into) {
+      const items = mergeInto(app.trip, importToTrip(app.trip, found, undefined, true), itemId);
+      // Abweichungen zur Reise (#616): Hinweis bleibt am Posten, bis jemand „Geprüft“ antippt
+      if (issues.length) for (const it of items) { it.check = true; it.checkWhy = issues.map(fitText); }
+      onitems?.(items); onclose(); return;
+    }
     if (hasMissing(found)) stage = "parts"; else create();
   }
   function create() {
@@ -197,6 +260,29 @@
     <RealityReport trip={draft} preview ontake={create} />
   {:else if found && stage === "parts"}
     <ImportParts offer={found} bind:choices bind:home {askHome} oncreate={create} onback={() => (stage = "review")} />
+  {:else if waitTrip}
+    <SearchLoading kind="import" cards={0} sub={t("imp.fit.loading")} />
+  {:else if found && stage === "fit"}
+    <div class="imp-fit">
+      <p class="imp-lead"><b>⚠ {t("imp.fit.q", { name: app.trip.name || app.trip.place || t("trip.untitled") })}</b></p>
+      <ul class="imp-fit-list">{#each issues as i (i.k)}<li data-k={i.k}>{fitText(i)}</li>{/each}</ul>
+      <p class="muted small">{t("imp.fit.still")}</p>
+      {#if choosing}
+        <ul class="imp-fit-trips">
+          {#each others as x (x.m.id)}
+            <li><button type="button" class="imp-fit-trip" onclick={() => pickTrip(x.m.id)}>
+              <b>{x.m.name || x.m.place || t("trip.untitled")}{#if x.n === 0} <span class="imp-fit-ok">✓ {t("imp.fit.fits")}</span>{/if}</b>
+              <small>{[x.m.place, x.m.from ? monthYear(x.m.from) : ""].filter(Boolean).join(" · ")}</small>
+            </button></li>
+          {:else}<li class="muted small">{t("imp.fit.noOther")}</li>{/each}
+        </ul>
+      {/if}
+      <div class="ed-foot imp-fit-acts">
+        <button type="button" class="btn imp-fit-new" onclick={asNewTrip}>+ {t("imp.fit.new")}</button>
+        <button type="button" class="btn imp-fit-other" aria-expanded={choosing} onclick={() => (choosing = !choosing)}>{t("imp.fit.other")}</button>
+        <button type="button" class="btn primary imp-fit-yes" onclick={afterFit}>{t("imp.fit.yes")}</button>
+      </div>
+    </div>
   {:else if found && stage === "more"}
     <div class="imp-more">
       <p class="imp-lead">{inScope.length ? t("imp.more.lead") : t("imp.more.none", { what: t(`imp.scope.${scope}` as Key) })}</p>
@@ -255,7 +341,12 @@
   .imp-priv { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--paper-2); color: var(--ink-2); }
   .imp-priv summary { cursor: pointer; font-weight: 600; min-height: 28px; display: flex; align-items: center; gap: 6px; }
   .imp-priv p { margin: 6px 0 0; }
-  .imp-more { display: flex; flex-direction: column; gap: 12px; }
+  .imp-more, .imp-fit { display: flex; flex-direction: column; gap: 12px; }
+  .imp-fit-list { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 4px; }
+  .imp-fit-trips { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto; }
+  .imp-fit-trip { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); font: inherit; text-align: start; color: var(--ink); }
+  .imp-fit-ok { color: var(--ok, var(--a)); font-weight: 600; font-size: 13px; }
+  .imp-fit-acts { flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
   .imp-more-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
   .imp-more-list label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); cursor: pointer; }
 </style>
