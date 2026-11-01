@@ -171,6 +171,28 @@ try {
   const h1 = await p.locator(".pg-hero h1").boundingBox();
   if (!h1 || h1.x < 0 || h1.x > 390 || h1.y < 0 || h1.y > 844) fail("Übersicht der neuen Reise nicht zu sehen");
   log("Reisewechsel am Handy: Übersicht mit Inhalt, jede Seite von oben, Hintergrund der Übersicht (#612)");
+  // Kapitelköpfe (#631): in ru und ar ragt auf keiner Seite etwas über den Rand, bei 390 und 320 px Breite
+  for (const lang of ["ru", "ar"]) for (const width of [390, 320]) {
+    await p.setViewportSize({ width, height: 844 });
+    await p.evaluate(l => localStorage.setItem("rk-lang", l), lang);
+    await p.reload();
+    await p.locator(".mbar").waitFor();
+    const pages = await p.locator(".mbar [data-pg]").evaluateAll(els => els.map(e => e.getAttribute("data-pg")));
+    for (const pg of pages) {
+      await p.locator(`.mbar [data-pg="${pg}"]`).click();
+      await until(async () => (await on()) === pg, `${lang} ${width}: Leiste ${pg}`);
+      // relativ zum Kapitel (der Pager scrollt seitlich); Kopf darf nicht breiter sein als das Kapitel
+      const over = await p.evaluate(pg => {
+        const ch = document.querySelector(`main.pager > [data-ch="${pg}"]`);
+        const c = ch?.getBoundingClientRect(); if (!c) return ["Kapitel fehlt"];
+        return [...ch.querySelectorAll(".ch-head *")]
+          .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > c.right + 1 || r.left < c.left - 1); }).map(e => e.className || e.tagName);
+      }, pg);
+      if (over.length) fail(`Kapitelkopf ${pg} (${lang}, ${width} px) ragt über den Rand: ` + over.join(", "));
+    }
+  }
+  await p.evaluate(() => localStorage.removeItem("rk-lang"));
+  log("Kapitelköpfe in ru und ar bei 390 und 320 px ohne Überlauf (#631)");
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Handy: Pager mit 9 Seiten, Wischen, Leiste unten mit allen Seiten und Gesamtsumme (öffnet Mehr), Kachel springt ins Kapitel, kein langes Scrollen");
   console.log("\nHandy-Ansicht: alles in Ordnung");

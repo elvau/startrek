@@ -207,9 +207,9 @@ body.scrolled .hint{pointer-events:none}
 .ch-mode{display:flex;align-items:center;gap:2px}
 .ch-t small{display:block;font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--cc)}
 .ch-t h2{font-size:clamp(30px,5vw,44px);font-weight:800;line-height:1.05}
-.ch-sum{text-align:end}
+.ch-sum{text-align:end;min-width:0}
 .ch-sum b{display:block;font:800 26px "Bricolage Grotesque Variable",sans-serif}
-.ch-sum span{font-size:12.5px;color:var(--ink-2)}
+.ch-sum span{display:block;font-size:12.5px;color:var(--ink-2);overflow-wrap:anywhere}
 @media (max-width:560px){
   .ch-head{gap:10px}
   .ch-ico{width:48px;height:48px;border-radius:15px}
