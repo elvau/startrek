@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import world from "../../../../public/world.json";
 import packs from "../../../../public/packs.json";
 import places from "../../../../public/places/pa.json";
+import placesPe from "../../../../public/places/pe.json";
 import { airportOf, capitalOf, ccOf, cityForAirport, findCity, placesNear, searchParts, suggestCities, type GeoData } from "./places";
 
 // echte Daten des Artefakts (public/ im Hauptordner)
 const g = { world: world.countries, packs, places } as unknown as GeoData;
+const ge = { world: world.countries, packs, places: { ...places, ...placesPe } } as unknown as GeoData;
 
 describe("Orte und Flughäfen", () => {
   it("Hauptstadt eines Landes (Event nur mit Land, z. B. Sabah FK)", () => {
@@ -42,6 +44,16 @@ describe("Orte und Flughäfen", () => {
     expect(searchParts(g, "Plitvicer Seen", "HR")).toEqual({ place: "Plitvice Lakes", country: "Croatia" });
     expect(searchParts(g, "Trogir", "HR")).toEqual({ place: "Trogir", country: "Croatia" });
     expect(searchParts(g, "Irgendwo, Spain", "HR")).toEqual({ place: "Irgendwo", country: "Spain" });
+  });
+  it("Cala Ratjada ist ein eigener Ort, Teil nach dem Komma nur als Land (#622)", () => {
+    for (const q of ["Cala Ratjada", "Cala Rajada", "Cala Rajada, Capdepera", "Cala Ratjada, Mallorca"]) {
+      const c = findCity(ge, q, "ES");
+      expect(c, q).toMatchObject({ name: "Cala Rajada", lat: 39.712, lon: 3.463 });
+      const sp = searchParts(ge, q, "ES");
+      expect(sp, q).toEqual({ place: "Cala Ratjada", country: "Spain" });
+    }
+    expect(findCity(ge, "Cala Millor", "ES")?.name).toBe("Cala Millor");
+    expect(searchParts(ge, "Cala Rajada, Mallorca")).toEqual({ place: "Cala Ratjada", country: "Spain" });
   });
   it("Stadtsuche: deutsch oder englisch, Länder der Reise zuerst, mit Land", () => {
     const cu = suggestCities(g, "Cuz");

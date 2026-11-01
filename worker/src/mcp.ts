@@ -24,9 +24,25 @@ import { mergePrefs, prefsFor } from "../../app/src/lib/prefs";
 import { prefsFromAi } from "../../app/src/lib/agent/agent";
 import { STYLES, uid, type Prefs } from "../../app/src/lib/model";
 import type { KeyInfo } from "./apikey";
-import { ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
+import { bucket, ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
 import world from "../../public/world.json";
 import packs from "../../public/packs.json";
+import p0 from "../../public/places/p0.json";
+import p1 from "../../public/places/p1.json";
+import p2 from "../../public/places/p2.json";
+import p3 from "../../public/places/p3.json";
+import p4 from "../../public/places/p4.json";
+import p5 from "../../public/places/p5.json";
+import p6 from "../../public/places/p6.json";
+import p7 from "../../public/places/p7.json";
+import p8 from "../../public/places/p8.json";
+import p9 from "../../public/places/p9.json";
+import pa from "../../public/places/pa.json";
+import pb from "../../public/places/pb.json";
+import pc from "../../public/places/pc.json";
+import pd from "../../public/places/pd.json";
+import pe from "../../public/places/pe.json";
+import pf from "../../public/places/pf.json";
 
 export interface McpDeps {
   flights: (q: FlightQuery) => Promise<SearchResult>;
@@ -356,6 +372,17 @@ const hm = (iso: string) => iso.slice(0, 16).replace("T", " ");
 // Orte und Länder wie in der App (ohne die kleinen Orte): Ländercode und Mittelpunkt für die Unterkunftssuche (#593)
 const GEO: GeoData = { world: (world as any).countries, packs: packs as any, places: {} };
 
+// Kleine Orte (public/places) je Teil nur bei Bedarf laden
+const PLACES: Record<string, unknown> = { 0: p0, 1: p1, 2: p2, 3: p3, 4: p4, 5: p5, 6: p6, 7: p7, 8: p8, 9: p9, a: pa, b: pb, c: pc, d: pd, e: pe, f: pf };
+const placesLoaded = new Set<string>();
+async function loadPlaces(cc: string | null): Promise<void> {
+  const bs = cc ? [bucket(cc)] : Object.keys(PLACES);
+  await Promise.all(bs.filter(b => !placesLoaded.has(b)).map(async b => {
+    Object.assign(GEO.places, PLACES[b]);
+    placesLoaded.add(b);
+  }));
+}
+
 async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Promise<object> {
   const today = deps.today || new Date().toISOString().slice(0, 10);
   if (name.startsWith("search_")) { const no = await deps.allowSearch(); if (no) fail(no); }
@@ -406,6 +433,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const applied: Prefs = {};
       const adults = a.adults;
       const cc = ccOf(GEO, S(a.country, 60));
+      const given = S(a.place).split(",")[1]?.trim();
+      await loadPlaces((given ? ccOf(GEO, given) : null) || cc);
       const sp = searchParts(GEO, S(a.place), cc);
       const kcc = ccOf(GEO, sp.country) || cc;
       if (kcc && pf.avoid?.includes(kcc)) fail(`${kcc} is in the user's countries to avoid: suggest another destination`);
@@ -743,6 +772,7 @@ async function homeOf(text: unknown, country: unknown, deps: McpDeps): Promise<H
   if (!v) return fail("home is empty");
   // Postleitzahlen der App, sonst Ort aus der Ortsliste (ohne PLZ)
   const hit = deps.home ? await deps.home(v, cc).catch(() => null) : null;
+  if (!hit) await loadPlaces(cc);
   const x = hit ? null : findCity(GEO, v.replace(/^\S*\d\S*\s+/, ""), cc);
   const c = hit || (x ? { plz: "", ort: x.name, lat: x.lat, lon: x.lon, ...(cc !== "DE" ? { cc } : {}) } : null);
   return c || fail(`Unknown home town "${v}" (${cc}): ask the user for the postal code, e.g. "47906 Kempen"`);
