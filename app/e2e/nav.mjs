@@ -18,3 +18,24 @@ export async function reloadHome(page, { url, set, remove } = {}) {
   }, [set, remove, inject]).catch(() => {});
   await (url ? page.goto(url) : page.reload());
 }
+
+/**
+ * „Meine Reisen“ öffnen (#640): Die Startseite zeigt höchstens die zuletzt geöffnete Reise, alle Reisen liegen hinter der
+ * Kachel. Auf der Startseite die Kachel antippen, sonst nichts tun; gibt die Seite zurück für p.locator(…).
+ */
+export async function myTrips(page) {
+  // nach dem Laden (Sprache wird ggf. nachgeladen) erst Startseite oder Reise abwarten
+  await page.locator(".start, header.top .tmenu").first().waitFor({ timeout: 10000 }).catch(() => {});
+  if (!(await page.locator(".start").count()) || (await page.locator(".start .hm-back").count())) return page;
+  // Reisen aus dem Konto kommen nach dem Laden etwas später: kurz auf die Kachel warten
+  const tile = page.locator(".start .home-mine");
+  if (await tile.waitFor({ timeout: 10000 }).then(() => true, () => false)) await tile.click();
+  return page;
+}
+
+/** Zurück zu den Einstiegen der Startseite, falls „Meine Reisen“ offen ist (#640); gibt die Seite zurück */
+export async function startPage(page) {
+  const back = page.locator(".start .hm-back");
+  if (await back.count()) await back.click();
+  return page;
+}

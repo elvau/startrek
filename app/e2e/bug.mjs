@@ -6,6 +6,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { startPage } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4182/";
 const log = (...a) => console.log("•", ...a);
@@ -33,7 +34,7 @@ try {
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ ok: true, number: 12, remaining: 4 }) });
   });
   await p.goto(URL);
-  await p.locator(".start .home-title").waitFor();
+  await (await startPage(p)).locator(".start .home-title").waitFor();
 
   // ein Fehler im Browser, der der Meldung beiliegen soll
   await p.evaluate(() => setTimeout(() => { throw new Error("Testfehler beim Rechnen"); }));

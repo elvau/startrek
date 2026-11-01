@@ -8,7 +8,7 @@
  */
 import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, myTrips } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4179/";
@@ -118,7 +118,7 @@ try {
   });
   await p.route("https://flights.test/events/search", r => r.request().method() === "OPTIONS" ? r.fulfill({ status: 204, headers: cors }) : json(r, { events: [], sources: [] }));
 
-  const open = async name => { await reloadHome(p, { url: URL }); await p.locator(".start .home-trip", { hasText: name }).first().click(); await p.locator(".hero h1").waitFor(); };
+  const open = async name => { await reloadHome(p, { url: URL }); await (await myTrips(p)).locator(".start .home-trip", { hasText: name }).first().click(); await p.locator(".hero h1").waitFor(); };
 
   // ---- Japan: Onkel Jens kommt später – Flugsuche mit seinen Daten
   await open("Japan Großfamilie");
