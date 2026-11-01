@@ -6,6 +6,7 @@
  * Weitere Events (Formel 1, Wikidata) kommen automatisch aus public/sports.json (feed.ts).
  */
 import type { EventHit, EventQuery } from "./types";
+import { today as localToday } from "../today";
 
 export type Sport = "multi" | "run" | "tri" | "bike" | "ski" | "tennis" | "motor" | "golf" | "hand" | "hockey" | "rugby" | "basket" | "nfl" | "athletics" | "darts" | "other";
 export type Join = "open" | "lottery" | "qualify";
@@ -149,7 +150,7 @@ export const sportMatches = (e: Pick<SportEvent, "sport" | "join">, s: string) =
  * Treffer aus dem Sportkalender: Stichwort (alle Wörter müssen vorkommen), Sportart oder Ort (Umkreis macht search.ts);
  * ohne alles keine Treffer. Vorbei ist vorbei; mehrtägige Events zählen, solange sie laufen (Beginn dann der erste Tag im Zeitraum).
  */
-export function searchSports(q: EventQuery, today = new Date().toISOString().slice(0, 10), list: SportEvent[] = SPORTS): EventHit[] {
+export function searchSports(q: EventQuery, today = localToday(), list: SportEvent[] = SPORTS): EventHit[] {
   const from = q.from && q.from > today ? q.from : today;
   const words = plain(q.q || "").split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 2);
   if (!words.length && !q.sport && !q.city) return [];

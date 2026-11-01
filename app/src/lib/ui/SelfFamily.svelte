@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Familienvorschläge (#571): Wer eine Person übernommen hat, kann die eigene Familie aus dem Konto vorschlagen
    * (bleibt, neu, nicht dabei). Wer bearbeiten darf, übernimmt oder lehnt ab; erst dann ändert sich die Reise.
@@ -16,7 +17,7 @@
   const myUid = $derived(ct && cloud.user ? cloud.user.uid : "");
   const me = $derived(myUid ? travelerOf(app.trip, myUid, claims) : undefined);
   const proposals = $derived(access.readonly ? [] : famProposals(app.trip, selfs, claims));
-  const day = $derived(app.trip.from || new Date().toISOString().slice(0, 10));
+  const day = $derived(app.trip.from || localToday());
   const fam = $derived(me && hasAccount() ? familyFromDir(dir, day) : []);
   const mineDiff = $derived(me && fam.length ? famDiff(app.trip, me, fam) : null);
   const myF = $derived(myUid ? selfs[myUid]?.f : undefined);

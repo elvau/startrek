@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   import { netMessage, isNetworkError } from "../neterror";
   import SearchLoading from "./SearchLoading.svelte";
   import { arrow, i18n, t, tn, type Key } from "../i18n/index.svelte";
@@ -128,7 +129,7 @@
       const withTrip = onTrip, tripId = app.trip.id, home = app.home;
       const pf = agentPrefs(prefsFor(app.home ? null : b, dir));
       // Schulferien laut Vorlieben als echte Termine (#163); ohne Such-Dienst bzw. Daten bleibt es bei der Region
-      const school = pf?.holidays ? await upcomingSchool(pf.holidays, new Date().toISOString().slice(0, 10), i18n.lang) : [];
+      const school = pf?.holidays ? await upcomingSchool(pf.holidays, localToday(), i18n.lang) : [];
       const res = await askAgent({ ...agentRequest(b, prompt, asked, pf, withTrip), ...(school.length ? { schoolHolidays: school } : {}), ...(focus ? { focus } : {}), ...(stayMode ? { stayMode } : {}) }, ctrl.signal);
       remaining = res.remaining ?? remaining;
       if (res.context) lastCtx = res.context;

@@ -1,6 +1,7 @@
 /* Ticketmaster Discovery API: Konzerte, Sport, Shows weltweit (kostenloser Schlüssel) */
 import { cleanText } from "./clean";
 import type { EventHit, EventQuery } from "./types";
+import { today as localToday } from "../today";
 
 export const TM_URL = "https://app.ticketmaster.com/discovery/v2/events.json";
 
@@ -38,7 +39,7 @@ export function fromTicketmaster(data: any): EventHit[] {
   }).filter(e => e.name && e.start);
 }
 
-export async function searchTicketmaster(q: EventQuery, key: string, f: typeof fetch = fetch, today = new Date().toISOString().slice(0, 10)): Promise<EventHit[]> {
+export async function searchTicketmaster(q: EventQuery, key: string, f: typeof fetch = fetch, today = localToday()): Promise<EventHit[]> {
   const res = await f(`${TM_URL}?${tmParams(q, key, today)}`, { headers: { accept: "application/json" } });
   if (!res.ok) throw new Error(`Ticketmaster ${res.status}`);
   return fromTicketmaster(await res.json());

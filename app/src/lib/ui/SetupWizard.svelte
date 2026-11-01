@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Konto einrichten (#160): Assistent in 7 Schritten, alles überspringbar. Arbeitet auf einem Entwurf, der mit „Weiter“
    * ins Konto geht (Personenverzeichnis, Vorlieben). Geschlecht, Staatsangehörigkeiten und LGBTQ+-Hinweise nur mit Konto,
@@ -120,7 +121,7 @@
   }
   function next(store = true) { if (store) save(); step = Math.min(step + 1, STEPS.length - 1); }
   function close() {
-    if (!dir.setup) dir.setup = new Date().toISOString().slice(0, 10);
+    if (!dir.setup) dir.setup = localToday();
     void saveDocsNow();
     setupWizard.open = false;
   }

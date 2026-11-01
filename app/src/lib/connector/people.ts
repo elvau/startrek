@@ -8,6 +8,7 @@
  */
 import { uid, type Directory, type Group, type Person, type Prefs, type Traveler } from "../model";
 import { personAge } from "../people";
+import { today as localToday } from "../today";
 
 export interface MemberView { id: string; first: string; age?: number }
 export interface FamilyView { id: string; name: string; you?: boolean; members: MemberView[]; adults: number; childAges: number[]; unknownAges?: number; home?: string }
@@ -138,7 +139,7 @@ export interface PersonInput { id?: string; first?: string; last?: string; age?:
  * gibt es den Namen schon, wird diese Person geändert statt doppelt angelegt). Familien umbenennen: alle Personen mit dem
  * Nachnamen. Alter aus einem Geburtsdatum ändert nur die App (Hinweis in notes).
  */
-export function savePeople(d: Directory, list: PersonInput[], renames: { from: string; to: string }[] = [], day = new Date().toISOString().slice(0, 10)): { saved: Person[]; notes: string[] } {
+export function savePeople(d: Directory, list: PersonInput[], renames: { from: string; to: string }[] = [], day = localToday()): { saved: Person[]; notes: string[] } {
   const saved: Person[] = [], notes: string[] = [];
   for (const r of renames) {
     const to = cleanName(r.to);

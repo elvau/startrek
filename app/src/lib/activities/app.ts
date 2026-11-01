@@ -7,6 +7,7 @@ import { evWhen, searchEventsRemote } from "../events/app";
 import { locOf } from "../geo/maps";
 import type { ActivityHit, ActivityQuery, ActivitySearchResult } from "./types";
 import { serverError } from "../neterror";
+import { today as localToday } from "../today";
 
 async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   if (!FLIGHTS_URL) throw new Error(t("search.notReady"));
@@ -37,7 +38,7 @@ export function eventItem(h: EventHit): Item {
     options: [{
       id: uid(), label: h.name, detail: [when, where].filter(Boolean).join(" · "),
       price: { mode: "person", currency: "EUR", adult }, ...(adult ? {} : { estimate: true }),
-      source: { name: h.sourceName, at: new Date().toISOString().slice(0, 10), ...(h.url ? { url: h.url } : {}) },
+      source: { name: h.sourceName, at: localToday(), ...(h.url ? { url: h.url } : {}) },
       ...(loc ? { loc } : {})
     }]
   };
@@ -52,7 +53,7 @@ export function activityItem(a: ActivityHit): Item {
     options: [{
       id: uid(), label: a.title, ...(facts ? { detail: facts } : {}),
       price: { mode: "person", currency: "EUR", adult }, ...(adult ? {} : { estimate: true }),
-      source: { name: a.sourceName, at: new Date().toISOString().slice(0, 10), ...(a.url ? { url: a.url } : {}), ...(a.sponsored ? { sponsored: true } : {}) },
+      source: { name: a.sourceName, at: localToday(), ...(a.url ? { url: a.url } : {}), ...(a.sponsored ? { sponsored: true } : {}) },
       ...(a.image && /^https:\/\//.test(a.image) ? { image: a.image } : {})
     }]
   };

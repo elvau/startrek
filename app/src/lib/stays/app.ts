@@ -10,6 +10,7 @@ import { dir } from "../directory.svelte";
 import { myHome } from "../prefs";
 import { searchMarket } from "./market";
 import { serverError } from "../neterror";
+import { today as localToday } from "../today";
 
 /** Gäste: Erwachsene und Alter der Kinder (Hotels rechnen bis 17 als Kind); ohne Alter: Kind 8, Baby 1 */
 export function guests(people: Traveler[]): Pick<StayQuery, "adults" | "childAges"> {
@@ -71,7 +72,7 @@ export function stayToOption(o: StayOffer, people: number, place?: string, parts
     ...(detail ? { detail } : {}),
     price: { mode: "unit", basis: "stay", currency: o.currency, unit: Math.round(o.total), capacity: Math.max(1, people), ...(parts > 1 ? { multiply: true } : {}) },
     ...(parts > 1 ? { split: parts } : {}),
-    source: { name: o.via && o.via !== o.sourceName ? t("st.via", { a: o.sourceName, b: o.via }) : o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url, ...(o.test ? { test: true } : {}) },
+    source: { name: o.via && o.via !== o.sourceName ? t("st.via", { a: o.sourceName, b: o.via }) : o.sourceName, at: localToday(), url: o.url, ...(o.test ? { test: true } : {}) },
     stay: { stars: o.stars, rating: o.score != null ? Math.round(o.score * 10) : undefined, facts: o.facts?.length ? o.facts : undefined, ...(o.board ? { board: o.board } : {}), ...(o.freeCancel ? { freeCancel: true } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) },
     ...(loc ? { loc } : {}),
     ...(o.fees?.length ? { extras: o.fees.map(f => feeToExtra(f, o.sourceName)) } : {})
