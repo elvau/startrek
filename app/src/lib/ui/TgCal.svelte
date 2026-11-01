@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Termin finden als Monatskalender (#569, Handy): eine Person, oben der Pinsel (kann, vielleicht, kann nicht, leeren),
    * dann Tage antippen oder darüberziehen. Am Handy seitlich ansetzen, senkrecht scrollt die Seite. Punkte je Tag:
@@ -19,7 +20,7 @@
   const skip = (d: string) => !inPlan.has(d) || off(d);
   const months = $derived([...new Set(days.map(d => d.slice(0, 7)))]);
   // Start: Monat des ersten passenden Tages ab heute
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   let ym = $state("");
   $effect(() => {
     if (months.includes(ym)) return;

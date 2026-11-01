@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   import { openImport } from "../import/open.svelte";
   import { netMessage, showError, isNetText } from "../neterror";
   import SearchLoading from "./SearchLoading.svelte";
@@ -370,7 +371,7 @@
   });
   /** Warnhinweise zum Ziel (z. B. Nordkorea): erklären, warum es keine frei buchbaren Flüge gibt */
   const destWarn = $derived(warnHintsFor((roughQuery?.to ?? []).map(c => ccOfAp(c)?.toUpperCase()), `${to} ${toLoc ? locLabel(toLoc) : ""}`));
-  const roughStart = $derived(((mode === "flex" ? rFrom : out) || addDays(new Date().toISOString().slice(0, 10), 30)).slice(0, 7));
+  const roughStart = $derived(((mode === "flex" ? rFrom : out) || addDays(localToday(), 30)).slice(0, 7));
   /** Tag(e) im Preiskalender gewählt: feste Daten eintragen und gleich suchen */
   function roughPick(o: string, b?: string) {
     mode = "fixed"; out = o; ret = b || ""; flexDays = 0;

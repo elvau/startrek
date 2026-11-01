@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Zeitraum in einem Kalender (wie bei Airbnb): ein Feld, ein Tipp öffnet den Kalender, erster Tag = von, zweiter = bis.
    * Auf dem Handy als Blatt von unten mit Monaten zum Durchscrollen, sonst als Fenster mit zwei Monaten nebeneinander.
@@ -21,7 +22,7 @@
     onchange?: (from: string, to: string) => void;
   } = $props();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   const lo = $derived(min ?? today);
   let open = $state(false);
   let draft = $state({ from: "", to: "" });

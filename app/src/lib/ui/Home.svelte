@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   import { i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
   import { ideasDir } from "../plan";
   /*
@@ -33,7 +34,7 @@
   // aus dem Teilen-Menü (#457): gleich „Neue Reise → Importieren“ mit den geteilten Dateien
   let shared = $state<Shared | null>(null);
   $effect(() => { if (shareIn.v) { shared = shareIn.v; shareIn.v = null; picking = true; } });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null; cmp?: { id: string; title: string; chosen?: string; archived?: string }; label: string };
   const rows = $derived<Row[]>(homeTrips().map(m => {
     const tr = tripFor(m.id);
@@ -122,7 +123,7 @@
   const sameDates = (b: Bundle<Row>) => b.list.every(r => r.from === b.list[0].from && r.to === b.list[0].to);
   // „in 12 Tagen“, „in 7 Monaten“, „morgen“
   function until(from: string): string {
-    const d = Math.round((Date.parse(from + "T00:00:00Z") - Date.parse(new Date().toISOString().slice(0, 10) + "T00:00:00Z")) / 86400000);
+    const d = Math.round((Date.parse(from + "T00:00:00Z") - Date.parse(localToday() + "T00:00:00Z")) / 86400000);
     if (d < 0) return "";
     const rtf = new Intl.RelativeTimeFormat(locale(), { numeric: "auto" });
     return d < 60 ? rtf.format(d, "day") : rtf.format(Math.round(d / 30.4), "month");

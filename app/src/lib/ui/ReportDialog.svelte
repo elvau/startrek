@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Reise als PDF: Reiseplan (Route, Unterkünfte, Tag für Tag, geschätzte Kosten) oder Rückblick (dazu tatsächliche Kosten
    * aus der Kasse). Karten werden geladen, dann öffnet der Druckdialog („Als PDF speichern“) oder ein neuer Tab (Handy).
@@ -14,7 +15,7 @@
 
   let { onclose }: { onclose: () => void } = $props();
   // nach der Reise (oder mit Ausgaben in der Kasse) gleich den Rückblick vorschlagen
-  const past = !!app.trip.to && app.trip.to < new Date().toISOString().slice(0, 10);
+  const past = !!app.trip.to && app.trip.to < localToday();
   let mode = $state<ReportMode>(past || app.trip.expenses?.length ? "after" : "plan");
   let busy = $state(false);
   let err = $state("");

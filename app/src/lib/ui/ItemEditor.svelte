@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   import { untrack } from "svelte";
   import { setStatus } from "../package";
   import { addPoll, newPoll, voters } from "../together";
@@ -83,7 +84,7 @@
     const x = payAmt.trim() ? parseNum(payAmt) : toShown(Math.max(0, net - paidSum));
     const by = payBy || hhList[0];
     if (!(x > 0) || !by) return;
-    item.payments = [...(item.payments || []), { amount: Math.round(fromShown(x) * 100) / 100, by, at: new Date().toISOString().slice(0, 10) }];
+    item.payments = [...(item.payments || []), { amount: Math.round(fromShown(x) * 100) / 100, by, at: localToday() }];
     if (paidSum + fromShown(x) >= net - 0.5 && item.status !== "dropped") setStatus(app.trip, item, "paid");
     payAmt = "";
   }

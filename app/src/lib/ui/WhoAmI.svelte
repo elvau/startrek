@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * „Wer bist du?“ (#435): nach dem Beitreten über den Einladungslink die eigene Person wählen (Platzhalter oder noch
    * nicht verknüpfte erwachsene Person). Die Zuordnung liegt im Konto der Reise; wer bearbeiten darf, trägt sie ein.
@@ -22,7 +23,7 @@
   let busy = $state(false), err = $state("");
   // aus dem Konto übernehmen (#571): Wohnort und Familie, standardmäßig angehakt; Familie nur als Vorschlag
   const home = $derived(hasAccount() ? homeFromDir(dir) : undefined);
-  const fam = $derived(hasAccount() ? familyFromDir(dir, app.trip.from || new Date().toISOString().slice(0, 10)) : []);
+  const fam = $derived(hasAccount() ? familyFromDir(dir, app.trip.from || localToday()) : []);
   const picked = $derived(list.find(x => x.id === pick));
   const famNew = $derived(picked && fam.length ? famChanges(famDiff(app.trip, picked, fam)) > 0 : false);
   let takeHome = $state(true), takeFam = $state(true);

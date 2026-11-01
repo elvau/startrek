@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Gemeinsam planen (#173) im Kapitel der Reisenden: Termin finden (wer wann kann, beste Zeiträume) und Abstimmungen
    * über Termine, Angebote oder frei. Eintragen und abstimmen für jede Person (wie die übrigen Reisedaten); wer man
@@ -65,7 +66,7 @@
   $effect(() => { void ensureCal(trip, leadHh); });
   const ctx = $derived(calState.ctx ?? calBase(trip, leadHh));
   function openForm() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localToday();
     const from = trip.from && trip.from > today ? addDay(trip.from, -14) : addDay(today, 21);
     const n = trip.from && trip.to ? Math.max(1, Math.round((Date.parse(trip.to) - Date.parse(trip.from)) / 86400000)) : 7;
     draft = { from, to: addDay(from, 56), nights: n, ...defaultCfg(ctx) };

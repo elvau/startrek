@@ -6,6 +6,7 @@
  */
 import { AGE, hhKey, isActive, uid, type Trip } from "./model";
 import type { DaysCfg } from "./datefit";
+import { today as localToday } from "./today";
 
 export type Avail = "yes" | "maybe" | "no";
 export interface AvailPlan extends DaysCfg {
@@ -317,9 +318,9 @@ export const maxMiles = (p: Poll) => p.options.length * 5;
 export const milesOf = (p: Poll) => Math.max(1, Math.min(maxMiles(p), Math.round(p.miles ?? 10)));
 
 /** noch offen: nicht abgeschlossen und Frist (einschließlich) nicht vorbei */
-export const pollOpen = (p: Poll, today = new Date().toISOString().slice(0, 10)) => !p.closed && (!p.due || today <= p.due);
+export const pollOpen = (p: Poll, today = localToday()) => !p.closed && (!p.due || today <= p.due);
 /** Frist endet heute oder morgen */
-export const dueSoon = (p: Poll, today = new Date().toISOString().slice(0, 10)) => !!p.due && pollOpen(p, today) && p.due <= addDay(today, 1);
+export const dueSoon = (p: Poll, today = localToday()) => !!p.due && pollOpen(p, today) && p.due <= addDay(today, 1);
 
 /** Stimmen einer Person in einer neuen Art ändern; gibt die neue Stimme (je Möglichkeit) zurück, ohne zu speichern */
 export function nextVote(p: Poll, mine: Record<string, number> | undefined, option: string, act: "for" | "veto" | "more" | "less"): Record<string, number> {

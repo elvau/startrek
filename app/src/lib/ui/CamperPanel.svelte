@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Roadtrip mit dem Camper (#203): Umschalter Auto | Camper, eigener oder gemieteter, über 3,5 t. Stationen legt man hier an:
    * je Station ein Unterkunfts-Posten „Campingplatz“ bzw. „Stellplatz“ mit Richtwert je Nacht und Land. Mietcamper als Posten
@@ -49,7 +50,7 @@
     const c = findCity(geo, p, ccOf(geo, app.trip.country)) || findCity(geo, p);
     err = !c;
     if (!c) return;
-    const from = camps.at(-1)?.to || app.trip.from || new Date().toISOString().slice(0, 10);
+    const from = camps.at(-1)?.to || app.trip.from || localToday();
     const it = stayFor(p, kind, from, n, c.cc);
     app.trip.items.push(it);
     if (!app.trip.from) app.trip.from = from;

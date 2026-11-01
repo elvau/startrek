@@ -18,6 +18,7 @@ import { locOf } from "../geo/maps";
 const withLoc = <T>(loc: T | undefined) => (loc ? { loc } : {});
 import type { StayOffer, StayQuery } from "../stays/types";
 import { feeToExtra } from "../stays/fees";
+import { today as localToday } from "../today";
 
 /** Flug aus der Suche als Teilstrecke; Dauer aus der Suche, weil Abflug und Landung Ortszeiten sind */
 const legOf = (dir: "out" | "back", l: OfferLeg) => ({ dir, from: l.from, to: l.to, dep: l.dep.slice(0, 16), arr: l.arr.slice(0, 16), carrier: l.carriers.join(" / "), stops: l.stops, ...(l.minutes > 0 ? { minutes: l.minutes } : {}), ...(l.toCity ? { toCity: l.toCity } : {}) });
@@ -88,7 +89,7 @@ export function newTrip(o: NewTrip): Trip {
 }
 
 const at = () => new Date().toISOString();
-const day = () => new Date().toISOString().slice(0, 10);
+const day = () => localToday();
 
 
 /**
