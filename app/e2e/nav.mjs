@@ -24,6 +24,8 @@ export async function reloadHome(page, { url, set, remove } = {}) {
  * Kachel. Auf der Startseite die Kachel antippen, sonst nichts tun; gibt die Seite zurück für p.locator(…).
  */
 export async function myTrips(page) {
+  // nach dem Laden (Sprache wird ggf. nachgeladen) erst Startseite oder Reise abwarten
+  await page.locator(".start, header.top .tmenu").first().waitFor({ timeout: 10000 }).catch(() => {});
   if (!(await page.locator(".start").count()) || (await page.locator(".start .hm-back").count())) return page;
   // Reisen aus dem Konto kommen nach dem Laden etwas später: kurz auf die Kachel warten
   const tile = page.locator(".start .home-mine");
