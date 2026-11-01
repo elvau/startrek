@@ -388,6 +388,7 @@ try {
   await cmpTile.locator(".hc-var", { hasText: "Brügge" }).click();
   await p.locator(".hero .meta", { hasText: "Brügge" }).waitFor();
   await p.locator(".top .brand-btn").click();
+  await (await myTrips(p)).locator(".start .home-cmp").first().waitFor();
   await cmpTile.waitFor();
   log("Als KI-Vergleichsreise in Belgien angelegt (Unterkunft einmal, bleibt nach dem Hochladen), ursprüngliche Reise unverändert; Startseite: eine Kachel mit den Varianten (aus „Alle übernehmen“ und der KI-Variante), Zeile öffnet die Reise");
 
