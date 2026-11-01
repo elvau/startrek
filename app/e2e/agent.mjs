@@ -3,7 +3,7 @@
  * Vorschlag übernehmen. Start: npm run test:cloud (braucht den Auth-Emulator)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips } from "./nav.mjs";
+import { reloadHome, myTrips, startPage } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4178/";
@@ -101,7 +101,7 @@ try {
   await p.goto(URL);
 
   // Startseite: KI-Knopf unten rechts; ohne Anmeldung nur der Hinweis mit Anmelde-Knopf
-  await p.locator(".start .home-title").waitFor();
+  await (await startPage(p)).locator(".start .home-title").waitFor();
   await shot("home");
   await p.locator(".ai-fab").click();
   const c = p.locator(".ai-chat");
@@ -260,7 +260,7 @@ try {
   for (const x of ["Halbpension", "Mietwagen 3 Tage", "Bootstour", "Verpflegung", "ca."]) if (!ct.includes(x)) fail(`Karte ohne „${x}“: ${ct}`);
   await into(card); await shot("ai-card");
   await p.locator(".ai-all").last().click();
-  await p.locator(".start .home-title").waitFor();
+  await (await startPage(p)).locator(".start .home-title").waitFor();
   await until(async () => (await (await myTrips(p)).locator(".start .home-trip .ht-ai").count()) >= 3, "KI-Reisen gekennzeichnet");
   if (!(await (await myTrips(p)).locator(".start .home-trip", { hasText: "Lissabon" }).count())) fail("Lissabon nicht angelegt");
   await into((await myTrips(p)).locator(".start .home-h").first()); await shot("ai-home");
@@ -506,7 +506,7 @@ try {
   const gate = new Promise(r => (release = r));
   await p.route("**/assets/firebase-*.js", async r => { await gate; await r.continue(); });
   await reloadHome(p);
-  await p.locator(".start .home-event").click();
+  await (await startPage(p)).locator(".start .home-event").click();
   await p.locator(".modal[aria-label='Reise zu einem Event']").waitFor();
   release();
   await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
@@ -578,7 +578,7 @@ try {
   await cw.locator(".ai-head .x").click();
   await p.locator(".ai-fab.working", { hasText: "KI arbeitet" }).waitFor();
   await p.locator(".top .brand-btn").click().catch(() => {});
-  await p.locator(".start .home-title").waitFor();
+  await (await startPage(p)).locator(".start .home-title").waitFor();
   await p.locator(".ai-note", { hasText: "Die KI ist fertig" }).waitFor({ timeout: 12000 });
   if (!(await p.locator(".ai-fab.unread").count())) fail("Knopf zeigt das Ergebnis nicht an");
   await p.locator(".ai-note").click();
@@ -592,7 +592,7 @@ try {
   const slow2 = async r => { await new Promise(res => setTimeout(res, 1500)); await r.continue().catch(() => {}); };
   await p.route("**/google.firestore.v1.Firestore/**", slow2);
   if (await p.locator(".top .brand-btn").count()) await p.locator(".top .brand-btn").click();
-  await p.locator(".start .home-new").click();
+  await (await startPage(p)).locator(".start .home-new").click();
   await p.locator(".modal .newtrip .btn.primary").click();
   const h1 = p.locator(".hero h1");
   await h1.click();

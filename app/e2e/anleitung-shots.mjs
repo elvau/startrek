@@ -4,7 +4,7 @@
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
-import { myTrips } from "./nav.mjs";
+import { myTrips, startPage } from "./nav.mjs";
 
 const out = process.argv[2];
 if (!out) throw new Error("Zielordner fehlt");
@@ -83,7 +83,7 @@ try {
     console.log("ok", name, spots[name].spots.length + "/" + Object.keys(SPOTS[name] || {}).length);
   }
   // Startseite (#640): „Weiter planen“ oben, darunter die Einstiege mit „Meine Reisen“
-  const top = await p.locator(".start .home-cont").evaluate(e => Math.round(e.getBoundingClientRect().top + scrollY) - 30);
+  const top = await (await startPage(p)).locator(".start .home-cont").evaluate(e => Math.round(e.getBoundingClientRect().top + scrollY) - 30);
   await shot("home", { x: 0, y: top, width: 1100, height: 700 });
   await (await myTrips(p)).locator(".home-trip", { hasText: "Kroatien" }).first().click();
   await p.waitForTimeout(1800);

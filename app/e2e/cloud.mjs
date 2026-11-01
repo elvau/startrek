@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (baut mit Emulator-Konfiguration, startet Emulatoren und Vorschau)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips } from "./nav.mjs";
+import { reloadHome, myTrips, startPage } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4174/";
@@ -329,15 +329,15 @@ try {
   mal.on("dialog", d => d.accept());
   await mal.locator(".top .tm-btn").first().click();
   await mal.locator(".tm-act", { hasText: "Diese Reise löschen" }).click();
-  await mal.locator(".start .home-title").waitFor();
-  if (await mal.locator(".home-cont").count()) fail("nach dem Löschen eine andere Reise zum Weiterplanen");
+  await (await startPage(mal)).locator(".start .home-title").waitFor();
+  if (await (await startPage(mal)).locator(".home-cont").count()) fail("nach dem Löschen eine andere Reise zum Weiterplanen");
   await mal.locator(".top .acct-btn").click();
   if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("Hinweis auf Gerät-Reise bleibt");
   await mal.keyboard.press("Escape");
   log("Offene Reise gelöscht: Startseite, keine andere Reise geöffnet, keine leere im Konto");
 
   // Neue Reise angemeldet: solo plant man als man selbst, nicht als Tier (Fehlerbericht #16)
-  await mal.locator(".start .home-new").click();
+  await (await startPage(mal)).locator(".start .home-new").click();
   const whoLine = mal.locator(".modal .who-d p").first();
   if (!(await whoLine.textContent()).includes("Du planst als Mallory")) fail("Neue Reise solo: " + await whoLine.textContent());
   await whoLine.locator(".linkbtn", { hasText: "Lieber als Tier planen" }).click();

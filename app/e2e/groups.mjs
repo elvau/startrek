@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (läuft nach e2e/cloud.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips } from "./nav.mjs";
+import { reloadHome, myTrips, startPage } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4174/";
@@ -32,7 +32,7 @@ const menu = async p => { await p.evaluate(() => scrollTo(0, 0)); await p.locato
 try {
   const a = await page("Anna");
   await a.goto(URL);
-  await a.locator(".start .home-new").click();
+  await (await startPage(a)).locator(".start .home-new").click();
   if (!(await a.locator(".modal .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
   await a.locator(".modal .newtrip .btn.primary").click();
   const solo = await a.locator(".person:not(.add) b").allTextContents();
@@ -327,7 +327,7 @@ try {
   await b.keyboard.press("Escape");
 
   // Reise mit Uwe: Alter zum Reisebeginn aus dem Geburtsdatum, Wohnort für die Familie Schmitz
-  await b.locator(".start .home-new").click();
+  await (await startPage(b)).locator(".start .home-new").click();
   await b.locator(".newtrip .who-b", { hasText: "Gruppe" }).click();
   await b.locator(".newtrip .src-b", { hasText: "Aus meinen Gruppen" }).click();
   await b.locator(".newtrip .sg-h", { hasText: "Kegeln" }).click();
@@ -356,7 +356,7 @@ try {
 
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   // Neue Gruppe beim Anlegen: Uwe hineinziehen, Monika antippen, Lea neu (Nachname aus dem Gruppennamen)
-  await b.locator(".start .home-new").click();
+  await (await startPage(b)).locator(".start .home-new").click();
   await b.locator(".newtrip .who-b", { hasText: "Familie" }).click();
   await b.locator(".newtrip .src-b", { hasText: "Neue Gruppe anlegen" }).click();
   await b.locator(".newtrip .ng-name").fill("Familie Schmitz");

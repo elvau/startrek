@@ -30,3 +30,10 @@ export async function myTrips(page) {
   if (await tile.waitFor({ timeout: 10000 }).then(() => true, () => false)) await tile.click();
   return page;
 }
+
+/** Zurück zu den Einstiegen der Startseite, falls „Meine Reisen“ offen ist (#640); gibt die Seite zurück */
+export async function startPage(page) {
+  const back = page.locator(".start .hm-back");
+  if (await back.count()) await back.click();
+  return page;
+}

@@ -4,7 +4,7 @@
  * Start: npm run test:cloud
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips } from "./nav.mjs";
+import { reloadHome, myTrips, startPage } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4179/";
@@ -100,7 +100,7 @@ try {
 
   // Startseite: geplant, gebucht, Archiv; Karte mit Ziel, Zeitraum, Nächten, Events, Verpflegung, Kosten
   await p.goto(URL);
-  await p.locator(".start .home-title").waitFor();
+  await (await startPage(p)).locator(".start .home-title").waitFor();
   const heads = await (await myTrips(p)).locator(".start .home-h").allInnerTexts();
   if (heads.map(h => h.replace(/🧹[\s\S]*$/, "").replace(/\s*\(\d+\)/, "").trim()).join("|") !== "Geplante Reisen|Gebuchte Reisen|Vergangene Reisen") fail("Gruppen: " + heads.join("|"));
   const palma = await (await myTrips(p)).locator(".start .home-trip", { hasText: "Sonne in Palma" }).innerText();

@@ -9,7 +9,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rolldown } from "rolldown";
-import { myTrips } from "./nav.mjs";
+import { myTrips, startPage } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4183/";
 const log = (...a) => console.log("•", ...a);
@@ -158,7 +158,7 @@ try {
   });
   await p.route("https://claude.test/**", r => r.fulfill({ status: 200, contentType: "text/html", body: "<h1>Claude</h1>" }));
   await p.goto(URL);
-  await p.locator(".start .home-title").waitFor();
+  await (await startPage(p)).locator(".start .home-title").waitFor();
   await p.locator(".tm-btn", { hasText: "Anmelden" }).first().click();
   await p.locator(".login .test input").fill("Claudia");
   await p.locator(".login .test button").click();

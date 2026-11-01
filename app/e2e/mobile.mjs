@@ -4,7 +4,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { reloadHome, myTrips } from "./nav.mjs";
+import { reloadHome, myTrips, startPage } from "./nav.mjs";
 
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
@@ -47,7 +47,7 @@ try {
   await p.goto("http://127.0.0.1:4183/");
   await reloadHome(p, { set: { "rk2-t:demo": TRIP, "rk2-index": [{ id: "demo", name: TRIP.name, place: TRIP.place }], "rk2-current": "demo" } });
   // Startseite (#533): Einstiege in zwei Spalten, Seite scrollt
-  const acts = p.locator(".home-acts .home-act");
+  const acts = (await startPage(p)).locator(".home-acts .home-act");
   await acts.first().waitFor();
   const [a0, a1] = [await acts.nth(0).boundingBox(), await acts.nth(1).boundingBox()];
   if (Math.abs(a0.y - a1.y) > 4 || a1.x <= a0.x) fail("Startseite: Kacheln nicht nebeneinander");
@@ -64,7 +64,7 @@ try {
   log("Startseite: Einstiege in zwei Spalten, Seite scrollbar, Fehler melden unten links");
   // Weniger ist mehr (#640): höchstens eine Reise (Weiter planen), alle Reisen hinter der Kachel „Meine Reisen“
   if (await p.locator(".start .home-trip, .start .home-row, .start .home-sort").count()) fail("Startseite: Reiseliste noch sichtbar");
-  if (!(await p.locator(".start .home-cont").innerText()).includes("Kroatien")) fail("Startseite: zuletzt geöffnete Reise fehlt");
+  if (!(await (await startPage(p)).locator(".start .home-cont").innerText()).includes("Kroatien")) fail("Startseite: zuletzt geöffnete Reise fehlt");
   if (!(await p.locator(".start .home-mine").innerText()).includes("1 Reise")) fail("Kachel „Meine Reisen“ ohne Anzahl");
   await p.locator(".start .home-mine").click();
   await p.locator(".start .hm-back").waitFor();

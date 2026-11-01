@@ -4,7 +4,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { myTrips } from "./nav.mjs";
+import { myTrips, startPage } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4177/";
 const log = (...a) => console.log("•", ...a);
@@ -100,7 +100,7 @@ try {
   await p.goto(URL);
 
   // Start mit „Zu einem Event“: legt die Reise an und öffnet den Planer
-  await p.locator(".start .home-event").click();
+  await (await startPage(p)).locator(".start .home-event").click();
   const m = p.locator(".modal");
   await m.locator(".ev-form").waitFor();
   // Event suchen und auswählen: Name, Stadt (aus der Anschrift), Stadion, Datum, Uhrzeit werden ausgefüllt
@@ -295,7 +295,7 @@ try {
   // Start → „Zu einem Event“, Suche ohne Flug, Planer schließen: keine halbe Reise bleibt zurück (#546)
   await p.evaluate(() => localStorage.clear());
   await p.goto(URL);
-  await p.locator(".start .home-event").click();
+  await (await startPage(p)).locator(".start .home-event").click();
   const m5 = p.locator(".modal");
   await m5.locator(".ev-form").waitFor();
   await m5.locator(".ev-find input").fill("Arsenal");
@@ -304,7 +304,7 @@ try {
   await m5.locator(".ev-form .btn.primary").click();
   await m5.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
   await p.keyboard.press("Escape");
-  await p.locator(".start .home-title").waitFor();
+  await (await startPage(p)).locator(".start .home-title").waitFor();
   if (await (await myTrips(p)).locator(".start .home-trip").count()) fail("Reise vom abgebrochenen Event-Planer bleibt stehen");
   log("Event-Planer ohne übernommenen Vorschlag geschlossen: keine Reise bleibt zurück");
 
@@ -322,7 +322,7 @@ try {
   });
   await p.evaluate(() => localStorage.clear());
   await p.goto(URL);
-  await p.locator(".start .home-event").click();
+  await (await startPage(p)).locator(".start .home-event").click();
   const m6 = p.locator(".modal");
   await m6.locator(".ev-form").waitFor();
   await m6.locator(".ev-find input").fill("Arsenal");
@@ -340,7 +340,7 @@ try {
   await p.route("https://flights.test/flights/search", r => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0, ms: 100 }] }) }));
   await p.evaluate(() => localStorage.clear());
   await p.goto(URL);
-  await p.locator(".start .home-event").click();
+  await (await startPage(p)).locator(".start .home-event").click();
   const m7 = p.locator(".modal");
   await m7.locator(".ev-form").waitFor();
   await m7.locator(".ev-find input").fill("Arsenal");

@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (nach flights.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips } from "./nav.mjs";
+import { reloadHome, myTrips, startPage } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4176/";
@@ -55,7 +55,7 @@ try {
   // Karte: leerer Kartenstil statt der echten Kacheln (OpenFreeMap)
   await p.route("https://tiles.openfreemap.org/**", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ version: 8, sources: {}, layers: [] }) }));
   await p.goto(URL);
-  await p.locator(".start .home-new").click();
+  await (await startPage(p)).locator(".start .home-new").click();
   await p.locator(".modal .newtrip .btn.primary").click();
   await p.locator("#stay .st-open").scrollIntoViewIfNeeded();
   await p.locator("#stay .st-open").click();
@@ -569,7 +569,7 @@ try {
 
   // privat bzw. schon vorhanden (#233): neue Reise ohne Ziel, Ort und Zeitraum über den Posten, Flug- und Event-Suche nutzen ihn
   await reloadHome(p);
-  await p.locator(".start .home-new").click();
+  await (await startPage(p)).locator(".start .home-new").click();
   await p.locator(".modal .newtrip .btn.primary").click();
   await p.locator("#stay .priv-open").scrollIntoViewIfNeeded();
   await p.locator("#stay .priv-open").click();
