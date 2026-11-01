@@ -155,6 +155,23 @@ describe("Zahleneingabe", () => {
     expect(parseNum("1.234")).toBe(1234);
     expect(parseNum("12.5")).toBe(12.5);
     expect(parseNum("1,234.56")).toBe(1234.56);
+  });
+
+  it("Betragseingabe: Währungen, Apostroph, Minus, Tausenderkomma je Sprache (Issue #629)", () => {
+    expect(parseNum("1,234", "en")).toBe(1234);
+    expect(parseNum("1,234", "de")).toBe(1.234);
+    expect(parseNum("0,123", "en")).toBe(0.123);
+    expect(parseNum("12,5", "en")).toBe(12.5);
+    for (const lang of ["de", "en", "es", "fr", "pl", "ru", "ar"]) {
+      expect(parseNum("£120", lang)).toBe(120);
+      expect(parseNum("$99", lang)).toBe(99);
+      expect(parseNum("CHF 120", lang)).toBe(120);
+      expect(parseNum("120 EUR", lang)).toBe(120);
+      expect(parseNum("120 zł", lang)).toBe(120);
+      expect(parseNum("1'234.50", lang)).toBe(1234.5);
+      expect(parseNum("1’234.50", lang)).toBe(1234.5);
+      expect(parseNum("\u221250", lang)).toBe(-50);
+    }
     expect(parseNum("1,234,567")).toBe(1234567);
     expect(parseNum("12,5")).toBe(12.5);
     expect(parseNum("")).toBeNaN();
