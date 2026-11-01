@@ -58,10 +58,17 @@ const esc = (s: string) => s.replace(/[\\;,]/g, m => `\\${m}`).replace(/\r?\n/g,
 const utc = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 const local = (s: string) => (s.length > 10 ? `${s.slice(0, 10).replace(/-/g, "")}T${s.slice(11, 16).replace(":", "")}00` : s.replace(/-/g, ""));
 
-/** Zeilen über 75 Zeichen falten (RFC 5545) */
+/** Zeilen auf höchstens 75 Oktette (UTF-8) falten (RFC 5545), nie mitten in einem Zeichen; Folgezeilen beginnen mit Leerzeichen */
 const fold = (line: string) => {
+  const enc = new TextEncoder();
   const out: string[] = [];
-  for (let i = 0; i < line.length; i += i ? 74 : 75) out.push((i ? " " : "") + line.slice(i, i + (i ? 74 : 75)));
+  let cur = "", bytes = 0;
+  for (const ch of line) {
+    const n = enc.encode(ch).length;
+    if (bytes + n > (out.length ? 74 : 75)) { out.push((out.length ? " " : "") + cur); cur = ""; bytes = 0; }
+    cur += ch; bytes += n;
+  }
+  out.push((out.length ? " " : "") + cur);
   return out.join("\r\n");
 };
 
