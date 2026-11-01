@@ -262,7 +262,7 @@ try {
   await p.locator(".ai-all").last().click();
   await (await startPage(p)).locator(".start .home-title").waitFor();
   await until(async () => (await (await myTrips(p)).locator(".start .home-trip .ht-ai").count()) >= 3, "KI-Reisen gekennzeichnet");
-  if (!(await (await myTrips(p)).locator(".start .home-trip", { hasText: "Lissabon" }).count())) fail("Lissabon nicht angelegt");
+  await until(async () => (await (await myTrips(p)).locator(".start .home-trip", { hasText: "Lissabon" }).count()) > 0, "Lissabon angelegt");
   await into((await myTrips(p)).locator(".start .home-h").first()); await shot("ai-home");
   log("Karte als ganze Reise (Halbpension, Mietwagen, Bootstour, Verpflegung, Gesamtpreis); alle angelegt und mit &✈KI gekennzeichnet");
 
