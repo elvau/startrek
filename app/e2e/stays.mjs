@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (nach flights.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, myTrips } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4176/";
@@ -310,7 +310,7 @@ try {
   };
   // Stand einspielen; ausstehende Speicherungen der App überschreiben ihn nicht mehr (reloadHome)
   await reloadHome(p, { set: { "rk2-t:k1": TRIP, "rk2-index": [{ id: "k1", name: TRIP.name, place: TRIP.place }], "rk2-current": "k1" } });
-  await p.locator(".start .home-trip").first().click();
+  await (await myTrips(p)).locator(".start .home-trip").first().click();
   const gl = await p.locator("#attractions .fs-direct a", { hasText: "GetYourGuide" }).getAttribute("href");
   if (!gl.includes("q=Split") || !gl.includes("date_from=2027-07-18")) fail("GetYourGuide-Link: " + gl);
   log("Erlebnisse: Links zu GetYourGuide (mit Reisezeitraum), Viator und Tiqets");
@@ -363,7 +363,7 @@ try {
   early.items[0].options[0].legs[1].dep = "2027-07-29T06:30";
   early.items.push({ id: "s2", cat: "stay", name: "Villa 2", status: "idea", from: "2027-07-25", to: "2027-07-29", participants: ["a", "b"], options: [{ id: "v2", label: "Villa 2", price: { mode: "unit", currency: "EUR", unit: 800, basis: "stay" } }] });
   await reloadHome(p, { set: { "rk2-t:k1": early } });
-  await p.locator(".start .home-trip").first().click();
+  await (await myTrips(p)).locator(".start .home-trip").first().click();
   const apn = p.locator("#stay .pl-notes li", { hasText: "Letzte Nacht näher am Flughafen?" });
   await apn.waitFor();
   const at = await apn.textContent();
@@ -467,15 +467,15 @@ try {
   if ((await p.evaluate(() => document.documentElement.lang)) !== "en") fail("html lang nicht en");
   if (!(await p.locator(".top .nav").textContent()).includes("Flights")) fail("Kapitel nicht übersetzt");
   await reloadHome(p);
-  await p.locator(".start .home-trip").first().click();
+  await (await myTrips(p)).locator(".start .home-trip").first().click();
   await p.locator("#stay .st-open", { hasText: "Search accommodation" }).waitFor();
   // Polnisch wird erst bei Bedarf geladen, auch nach dem Neuladen gleich auf Polnisch (kein Englisch dazwischen)
   await p.locator(".top .lang-sel").selectOption("pl");
   await p.locator("#stay .st-open", { hasText: "Szukaj noclegu" }).waitFor();
   await reloadHome(p);
-  await p.locator(".start .home-trip").first().waitFor();
+  await (await myTrips(p)).locator(".start .home-trip").first().waitFor();
   if (await p.locator("text=Search accommodation").count()) fail("nach dem Neuladen kurz Englisch");
-  await p.locator(".start .home-trip").first().click();
+  await (await myTrips(p)).locator(".start .home-trip").first().click();
   await p.locator("#stay .st-open", { hasText: "Szukaj noclegu" }).waitFor();
   await p.locator(".top .lang-sel").selectOption("de");
   await p.locator("#stay .st-open", { hasText: "Unterkunft suchen" }).waitFor();
@@ -527,7 +527,7 @@ try {
   await p.waitForTimeout(600);
   await p.evaluate(t => { localStorage.setItem("rk2-t:r1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "r1", name: t.name, place: "" }])); localStorage.setItem("rk2-current", "r1"); }, RT);
   await reloadHome(p);
-  await p.locator(".start .home-trip").first().click();
+  await (await myTrips(p)).locator(".start .home-trip").first().click();
   const rgaps = p.locator("#stay .pl-notes li.crit", { hasText: "ohne Unterkunft" });
   await rgaps.first().waitFor();
   await until(async () => (await rgaps.nth(2).textContent().catch(() => "")).includes("Rio de Janeiro"), "Station Rio aus dem Flughafen GIG");
@@ -612,7 +612,7 @@ try {
       items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, detail: { stay: true }
     };
     await reloadHome(p, { set: { "rk2-t:k516": K, "rk2-index": [{ id: "k516", name: K.name, place: K.place }], "rk2-current": "k516" } });
-    await p.locator(".start .home-trip", { hasText: "Mittelmeer" }).first().click();
+    await (await myTrips(p)).locator(".start .home-trip", { hasText: "Mittelmeer" }).first().click();
     await p.locator("#stay .cr-open").scrollIntoViewIfNeeded();
     await p.locator("#stay .cr-open").click();
     // Kreuzfahrt-Dialog (#519): Suche mit Fahrtgebiet und Portal-Links, „Von Hand“ legt den Posten an
@@ -705,7 +705,7 @@ try {
             cruise: { line: "Reederei B", ship: "Schiff B", ports: [{ date: "2027-06-06", place: "Genua" }, { date: "2027-06-08", sea: true }, { date: "2027-06-10", place: "Palma" }, { date: "2027-06-13", place: "Genua" }] } }] }]
     };
     await reloadHome(p, { set: { "rk2-t:k520": R, "rk2-index": [{ id: "k520", name: R.name, place: R.place }], "rk2-current": "k520" } });
-    await p.locator(".start .home-trip", { hasText: "Kreuzfahrt-Vergleich" }).first().click();
+    await (await myTrips(p)).locator(".start .home-trip", { hasText: "Kreuzfahrt-Vergleich" }).first().click();
     const card = p.locator("#stay .card", { has: p.locator(".cc") });
     const rows = card.locator(".cc .cc-row.opt");
     await rows.first().waitFor();
@@ -743,7 +743,7 @@ try {
       ]
     };
     await reloadHome(p, { set: { "rk2-t:c441": C, "rk2-index": [{ id: "c441", name: C.name, place: C.place }], "rk2-current": "c441" } });
-    await p.locator(".start .home-trip", { hasText: "Split Vergleich" }).first().click();
+    await (await myTrips(p)).locator(".start .home-trip", { hasText: "Split Vergleich" }).first().click();
     const fc = p.locator("#flights .card", { hasText: "Eurowings" }).locator(".fl-cmp");
     await fc.first().waitFor();
     const fa = await fc.nth(0).innerText(), fb = await fc.nth(1).innerText();

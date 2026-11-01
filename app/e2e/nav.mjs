@@ -18,3 +18,13 @@ export async function reloadHome(page, { url, set, remove } = {}) {
   }, [set, remove, inject]).catch(() => {});
   await (url ? page.goto(url) : page.reload());
 }
+
+/**
+ * „Meine Reisen“ öffnen (#640): Die Startseite zeigt höchstens die zuletzt geöffnete Reise, alle Reisen liegen hinter der
+ * Kachel. Auf der Startseite die Kachel antippen, sonst nichts tun; gibt die Seite zurück für p.locator(…).
+ */
+export async function myTrips(page) {
+  const tile = page.locator(".start .home-mine");
+  if (!(await page.locator(".start .hm-back").count()) && (await tile.count())) await tile.click();
+  return page;
+}

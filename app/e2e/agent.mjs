@@ -3,7 +3,7 @@
  * Vorschlag übernehmen. Start: npm run test:cloud (braucht den Auth-Emulator)
  */
 import { chromium } from "playwright";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, myTrips } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4178/";
@@ -216,7 +216,7 @@ try {
 
   // zurück zur Startseite: die Reise steht unter „Deine Reisen“
   await p.locator(".top .brand-btn").click();
-  await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).waitFor();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Sonne in Palma" }).waitFor();
   await shot("home-trips");
   await shot("home-m", 390, 844);
   log("Übersicht zeigt die neue Reise");
@@ -261,9 +261,9 @@ try {
   await into(card); await shot("ai-card");
   await p.locator(".ai-all").last().click();
   await p.locator(".start .home-title").waitFor();
-  await until(() => p.locator(".start .home-trip .ht-ai").count().then(n => n >= 3), "KI-Reisen gekennzeichnet");
-  if (!(await p.locator(".start .home-trip", { hasText: "Lissabon" }).count())) fail("Lissabon nicht angelegt");
-  await into(p.locator(".start .home-h").first()); await shot("ai-home");
+  await until(async () => (await (await myTrips(p)).locator(".start .home-trip .ht-ai").count()) >= 3, "KI-Reisen gekennzeichnet");
+  if (!(await (await myTrips(p)).locator(".start .home-trip", { hasText: "Lissabon" }).count())) fail("Lissabon nicht angelegt");
+  await into((await myTrips(p)).locator(".start .home-h").first()); await shot("ai-home");
   log("Karte als ganze Reise (Halbpension, Mietwagen, Bootstour, Verpflegung, Gesamtpreis); alle angelegt und mit &✈KI gekennzeichnet");
 
   // Vorlieben: „Ich“ mit Wohnort, gesperrtes Land, Umstiege, Reisestil → gehen ohne Namen an den KI-Planer
@@ -331,7 +331,7 @@ try {
 
   // offene Reise: die KI kennt sie (ohne Namen), alle Änderungen eines Auftrags mit einer Rückfrage übernehmen
   await c3.locator(".ai-head .x").click();
-  await p.locator(".start .home-trip:not(.home-cmp), .start .hc-var", { hasText: "Sonne in Palma" }).first().click();
+  await (await myTrips(p)).locator(".start .home-trip:not(.home-cmp), .start .hc-var", { hasText: "Sonne in Palma" }).first().click();
   await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
   const tripName = (await p.locator(".hero h1").innerText()).trim();
   await p.locator(".ai-fab").click();
@@ -377,14 +377,14 @@ try {
   await c4.locator(".ai-head .x").click();
   await p.locator(".top .brand-btn").click();
   // Startseite (#429): eine Kachel für den Vergleich, je Variante eine Zeile
-  const cmpTile = p.locator(".start .home-cmp", { hasText: "Brügge" });
+  const cmpTile = (await myTrips(p)).locator(".start .home-cmp", { hasText: "Brügge" });
   await cmpTile.waitFor().catch(async () => fail("keine Vergleichskachel: " + JSON.stringify(variantCmp) + " | " + (await p.locator(".start").innerText()).slice(0, 900).replace(/\n/g, " / ")));
   // „Sonne in Palma“ kam mit „Alle übernehmen“ schon in einen Vergleich: die KI-Variante kommt dazu (3 Varianten)
   const vars = await cmpTile.locator(".hc-var").allInnerTexts();
   if (!(await cmpTile.innerText()).includes(`${vars.length} Varianten`) || vars.length !== 3) fail("Kachel: " + await cmpTile.innerText());
   if (!vars.some(v => v.includes("Brügge")) || !vars.some(v => v.includes("Sonne in Palma"))) fail("Varianten: " + vars.join(" | "));
   // die Reisen bleiben zusätzlich als eigene Kacheln, mit Hinweis auf den Vergleich
-  if (!(await p.locator(".start .home-trip:not(.home-cmp)", { hasText: "Brügge" }).locator(".ht-incmp").count())) fail("Variante nicht als eigene Kachel mit Hinweis auf den Vergleich");
+  if (!(await (await myTrips(p)).locator(".start .home-trip:not(.home-cmp)", { hasText: "Brügge" }).locator(".ht-incmp").count())) fail("Variante nicht als eigene Kachel mit Hinweis auf den Vergleich");
   await cmpTile.locator(".hc-var", { hasText: "Brügge" }).click();
   await p.locator(".hero .meta", { hasText: "Brügge" }).waitFor();
   await p.locator(".top .brand-btn").click();
@@ -433,26 +433,26 @@ try {
   // Startseite: sortieren (Preis, zuletzt bearbeitet, Land), Liste statt Kacheln, Wahl bleibt nach dem Neuladen
   await p.locator(".top .brand-btn").click();
   // erst warten, bis die hochgeladene Mannschaftsfahrt in der Liste der Startseite steht (Kontoliste kennt sie kurz später)
-  await until(() => p.locator(".home-trip", { hasText: "Mannschaftsfahrt" }).count().then(n => n > 0), "Mannschaftsfahrt in der Liste der Startseite");
-  await p.locator(".home-sort .chip", { hasText: "Preis" }).click();
-  const prices = await p.locator(".home-trips:not(:has(.home-cmp))").first().locator(".ht-total").allInnerTexts();
+  await until(async () => (await myTrips(p)).locator(".home-trip", { hasText: "Mannschaftsfahrt" }).count().then(n => n > 0), "Mannschaftsfahrt in der Liste der Startseite");
+  await (await myTrips(p)).locator(".home-sort .chip", { hasText: "Preis" }).click();
+  const prices = await (await myTrips(p)).locator(".home-trips:not(:has(.home-cmp))").first().locator(".ht-total").allInnerTexts();
   const num = s => Number(s.replace(/·[\s\S]*$/, "").replace(/[^\d,]/g, "").replace(",", "."));
   if (prices.length < 2 || prices.some((x, i) => i && num(x) < num(prices[i - 1]))) fail("nicht nach Preis sortiert: " + prices);
-  await p.locator(".home-sort .chip", { hasText: "Zuletzt bearbeitet" }).click();
-  await p.locator(".home-h", { hasText: "Zuletzt bearbeitet" }).waitFor();
-  const first = await p.locator(".home-trip:not(.home-cmp)").first().innerText();
+  await (await myTrips(p)).locator(".home-sort .chip", { hasText: "Zuletzt bearbeitet" }).click();
+  await (await myTrips(p)).locator(".home-h", { hasText: "Zuletzt bearbeitet" }).waitFor();
+  const first = await (await myTrips(p)).locator(".home-trip:not(.home-cmp)").first().innerText();
   if (!first.includes("Mannschaftsfahrt")) {
     console.log("Diagnose zuletzt bearbeitet:", await p.evaluate(() => localStorage.getItem("rk2-edited")), "idx", await p.evaluate(() => [...document.querySelectorAll(".home-trip:not(.home-cmp)")].map(x => x.innerText.split("\n")[0]).join(" | ")));
     fail("zuletzt bearbeitete nicht oben: " + first);
   }
-  await p.locator(".home-sort .chip", { hasText: "Land" }).click();
-  await p.locator(".home-h", { hasText: "Spanien" }).waitFor();
-  await p.locator(".home-view .chip", { hasText: "Liste" }).click();
-  await p.locator(".home-trips.as-list .home-row").first().waitFor();
+  await (await myTrips(p)).locator(".home-sort .chip", { hasText: "Land" }).click();
+  await (await myTrips(p)).locator(".home-h", { hasText: "Spanien" }).waitFor();
+  await (await myTrips(p)).locator(".home-view .chip", { hasText: "Liste" }).click();
+  await (await myTrips(p)).locator(".home-trips.as-list .home-row").first().waitFor();
   await shot("home-list"); await shot("home-list-m", 390, 844);
   await reloadHome(p);
-  await p.locator(".home-trips.as-list .home-row").first().waitFor();
-  if (!(await p.locator(".home-sort .chip.on", { hasText: "Land" }).count())) fail("Sortierung nicht gemerkt");
+  await (await myTrips(p)).locator(".home-trips.as-list .home-row").first().waitFor();
+  if (!(await (await myTrips(p)).locator(".home-sort .chip.on", { hasText: "Land" }).count())) fail("Sortierung nicht gemerkt");
   log("Startseite: nach Preis, zuletzt bearbeitet und Land sortiert, Liste statt Kacheln, gemerkt");
 
   // Aufräumen: unberührter Entwurf verschwindet still, Reise ohne Kosten nach Rückfrage
@@ -470,11 +470,11 @@ try {
   // nur leere Reisen (ohne Ort, Daten und Kosten) aufräumen; „Idee Lissabon“ hat Ort und Daten und bleibt
   let asked2 = "";
   p.once("dialog", d => { asked2 = d.message(); void d.accept(); });
-  await p.locator(".home-clean", { hasText: "1 Reise" }).click();
-  await until(() => p.locator(".home-row", { hasText: "Irgendwas" }).count().then(n => n === 0), "leere Reise aufgeräumt");
+  await (await myTrips(p)).locator(".home-clean", { hasText: "1 Reise" }).click();
+  await until(async () => (await myTrips(p)).locator(".home-row", { hasText: "Irgendwas" }).count().then(n => n === 0), "leere Reise aufgeräumt");
   if (!asked2.includes("Irgendwas") || asked2.includes("Idee Lissabon")) fail("Rückfrage: " + asked2);
-  if (!(await p.locator(".home-row", { hasText: "Idee Lissabon" }).count())) fail("Idee Lissabon weg");
-  if (!(await p.locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
+  if (!(await (await myTrips(p)).locator(".home-row", { hasText: "Idee Lissabon" }).count())) fail("Idee Lissabon weg");
+  if (!(await (await myTrips(p)).locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
   log("Aufräumen: unberührter Entwurf still gelöscht; Reisen mit Ort oder Daten (auch ohne Kosten) bleiben");
 
   // Familien mit eigenen Zeiten (#230, #226): „Alle übernehmen“ legt Familien mit Zeiten an, Preis wie in der Vorschau
@@ -491,7 +491,7 @@ try {
   const shown = await fcard.locator("footer .num").innerText();
   await c6.locator(".ai-all").last().click();
   // „Alle übernehmen“ (#428): ein Vergleich, Zeilen nach dem Namen des Vorschlags
-  await p.locator(".home-cmp .hc-var", { hasText: "Palma mit Oma" }).first().click();
+  await (await myTrips(p)).locator(".home-cmp .hc-var", { hasText: "Palma mit Oma" }).first().click();
   await p.locator(".hero h1", { hasText: "Palma mit Oma" }).waitFor();
   if (!(await p.locator(".hero .meta").innerText()).includes("4 Personen")) fail("nicht 4 Personen: " + await p.locator(".hero .meta").innerText());
   const ftl = p.locator(".tl-card");
@@ -605,7 +605,7 @@ try {
   // Kopie auf dem Gerät weg, damit nach dem Neuladen nur zählt, was im Konto steht
   await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("rk2-t:")) localStorage.removeItem(k); });
   await reloadHome(p);
-  await until(() => p.locator(".start .home-trip, .start .home-row", { hasText: "Langsam-Test" }).count().then(n => n > 0), "Name im Konto angekommen", 15000);
+  await until(async () => (await myTrips(p)).locator(".start .home-trip, .start .home-row", { hasText: "Langsam-Test" }).count().then(n => n > 0), "Name im Konto angekommen", 15000);
   log("Langsames Netz: Reise während des Hochladens umbenannt, Name steht danach im Konto");
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));

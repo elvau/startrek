@@ -9,6 +9,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rolldown } from "rolldown";
+import { myTrips } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4183/";
 const log = (...a) => console.log("•", ...a);
@@ -164,8 +165,8 @@ try {
   await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
 
   // Reise vom Konnektor: in der Liste, öffnen, Flug mit KI-Markierung, Platzhalter statt Namen
-  await p.locator(".start .home-trip", { hasText: "Palma mit Claude" }).waitFor({ timeout: 15000 });
-  await p.locator(".start .home-trip", { hasText: "Palma mit Claude" }).click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Palma mit Claude" }).waitFor({ timeout: 15000 });
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Palma mit Claude" }).click();
   await p.locator(".hero h1", { hasText: "Palma mit Claude" }).waitFor();
   // Inhalt kommt aus dem Konto nach (erst Platzhalter): warten, bis Reisende und Daten da sind
   const t0 = Date.now();

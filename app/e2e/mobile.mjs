@@ -4,7 +4,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, myTrips } from "./nav.mjs";
 
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
@@ -62,7 +62,17 @@ try {
   }
   if (!(await p.evaluate(() => parseFloat(getComputedStyle(document.querySelector(".start")).paddingBottom) >= 90))) fail("Startseite: kein Platz unter der Reiseliste für die schwebenden Knöpfe");
   log("Startseite: Einstiege in zwei Spalten, Seite scrollbar, Fehler melden unten links");
-  await p.locator(".home-trip", { hasText: "Kroatien" }).first().click();
+  // Weniger ist mehr (#640): höchstens eine Reise (Weiter planen), alle Reisen hinter der Kachel „Meine Reisen“
+  if (await p.locator(".start .home-trip, .start .home-row, .start .home-sort").count()) fail("Startseite: Reiseliste noch sichtbar");
+  if (!(await p.locator(".start .home-cont").innerText()).includes("Kroatien")) fail("Startseite: zuletzt geöffnete Reise fehlt");
+  if (!(await p.locator(".start .home-mine").innerText()).includes("1 Reise")) fail("Kachel „Meine Reisen“ ohne Anzahl");
+  await p.locator(".start .home-mine").click();
+  await p.locator(".start .hm-back").waitFor();
+  if (await p.locator(".start .home-acts").count()) fail("Meine Reisen: Einstiege noch da");
+  await p.locator(".start .hm-back").click();
+  await p.locator(".start .home-acts").waitFor();
+  log("Startseite: nur die zuletzt geöffnete Reise, alle Reisen hinter „Meine Reisen“ mit Rückweg");
+  await (await myTrips(p)).locator(".home-trip", { hasText: "Kroatien" }).first().click();
   const on = () => p.locator(".mbar .mb.on").getAttribute("data-pg");
   await p.locator("main.pager").waitFor();
   if ((await p.locator(".mbar .mb").count()) !== 9) fail("Reiter: " + await p.locator(".mbar .mb").count());

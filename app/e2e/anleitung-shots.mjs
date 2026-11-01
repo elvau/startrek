@@ -4,6 +4,7 @@
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
+import { myTrips } from "./nav.mjs";
 
 const out = process.argv[2];
 if (!out) throw new Error("Zielordner fehlt");
@@ -39,7 +40,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || 
 
 /** Markierungen je Bild: Schlüssel → Suche nach Text (exakt oder RegExp), Reihenfolge = Nummer */
 const SPOTS = {
-  home: { neu: "Neue Reise", event: "Zu einem Event", ki: "Mit KI planen", ideen: "Reiseideen", reise: /Kroatien mit Freunden/, fuss: /Neues & Ausblick/ },
+  home: { neu: "Neue Reise", event: "Zu einem Event", ki: "Mit KI planen", ideen: "Reiseideen", reise: /Kroatien mit Freunden/, mine: "Meine Reisen", fuss: /Neues & Ausblick/ },
   trav: { personen: /^7 Personen/, familien: /Familien: Wohnort/i, termin: /Termin finden/, abst: /Abstimmung/ },
   flights: { modus: "Detailliert", suche: /Flüge suchen/, anreise: /Bahn 10 €/, vergleich: /Angebote vergleichen/ },
   stay: { suche: /Unterkunft suchen/, plan: "Wer ist wann wo", status: "Gebucht", aufteilung: /Aufteilung/ },
@@ -82,7 +83,7 @@ try {
     console.log("ok", name, spots[name].spots.length + "/" + Object.keys(SPOTS[name] || {}).length);
   }
   await shot("home", { x: 0, y: 270, width: 1100, height: 700 });
-  await p.locator(".home-trip", { hasText: "Kroatien" }).first().click();
+  await (await myTrips(p)).locator(".home-trip", { hasText: "Kroatien" }).first().click();
   await p.waitForTimeout(1800);
   for (const id of ["trav", "flights", "stay", "transport", "attractions", "misc", "plan", "split"]) {
     const el = p.locator("#" + id).first();

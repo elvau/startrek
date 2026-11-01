@@ -6,6 +6,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { myTrips } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4184/";
 const log = (...a) => console.log("•", ...a);
@@ -158,7 +159,7 @@ try {
     localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "eg", name: t.name, place: t.place, from: t.from, to: t.to, people: 1 }]));
   }, d.people[0].id);
   await b.reload();
-  await b.locator(".start .home-trip", { hasText: "Kairo" }).first().click();
+  await (await myTrips(b)).locator(".start .home-trip", { hasText: "Kairo" }).first().click();
   await b.locator(".hero h1").waitFor();
   await b.locator(".top .imp-btn").click();
   const own = b.locator(".modal .imp [data-personal]");

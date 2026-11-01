@@ -4,6 +4,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { myTrips } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4177/";
 const log = (...a) => console.log("•", ...a);
@@ -304,7 +305,7 @@ try {
   await m5.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
   await p.keyboard.press("Escape");
   await p.locator(".start .home-title").waitFor();
-  if (await p.locator(".start .home-trip").count()) fail("Reise vom abgebrochenen Event-Planer bleibt stehen");
+  if (await (await myTrips(p)).locator(".start .home-trip").count()) fail("Reise vom abgebrochenen Event-Planer bleibt stehen");
   log("Event-Planer ohne übernommenen Vorschlag geschlossen: keine Reise bleibt zurück");
 
   // Fernziel (#536): am Vortag geht kein Hinflug, einen Tag früher schon; ohne Treffer führt ein Knopf in die Einzelsuche

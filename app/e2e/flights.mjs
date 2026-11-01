@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (nach cloud.mjs und groups.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, myTrips } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4175/";
@@ -269,7 +269,7 @@ try {
   };
   // Stand einspielen; ausstehende Speicherungen der App überschreiben ihn nicht mehr (reloadHome)
   await reloadHome(p, { remove: ["rk-flight-search"], set: { "rk2-t:k2": TWO, "rk2-index": [{ id: "k2", name: TWO.name, place: TWO.place }], "rk2-current": "k2" } });
-  await p.locator(".start .home-trip").first().click();
+  await (await myTrips(p)).locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   if (!(await m.locator(".fs-who .chip.on", { hasText: "Klein (2)" }).count())) fail("Vorschlag erste Familie ohne Flug fehlt");
@@ -355,7 +355,7 @@ try {
 
   // wie im Artefakt: Hase fliegt mit Klein mit („Wie Flug Klein“), danach Vergleich mit einem eigenen Flug
   await reloadHome(p, { set: { "rk-flight-search": { mode: "fixed" }, "rk2-t:k2": TWO } });
-  await p.locator(".start .home-trip").first().click();
+  await (await myTrips(p)).locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   await pickRange(p, m.locator(".fs-form .dr-btn"), "2027-07-18", "2027-07-29");
@@ -559,7 +559,7 @@ try {
 
   // Vorlieben: 0 Umstiege vorbelegt, Kroatien gesperrt → an den Such-Dienst und Treffer dorthin ausgeblendet
   await reloadHome(p, { set: { "rk-flight-search": { mode: "fixed" }, "rk2-t:k2": TWO, "rk2-dir": { people: [], groups: [], prefs: { maxStops: 0, avoid: ["HR"] } } } });
-  await p.locator(".start .home-trip").first().click();
+  await (await myTrips(p)).locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   if ((await m.locator("label", { hasText: "Umstiege max." }).locator("select").inputValue()) !== "0") fail("Umstiege nicht aus den Vorlieben");
@@ -579,7 +579,7 @@ try {
     households: { Klein: { plz: "40210", geo: { lat: 51.23, lon: 6.78, ort: "Düsseldorf" }, mode: "car" } },
     items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 }, kmCost: 0.3 } };
   await reloadHome(p, { set: { "rk-flight-search": { mode: "fixed" }, "rk2-dir": { people: [], groups: [], prefs: {} }, "rk2-t:kb": FAM, "rk2-index": [{ id: "kb", name: FAM.name, place: FAM.place }], "rk2-current": "kb" } });
-  await p.locator(".start .home-trip").first().click();
+  await (await myTrips(p)).locator(".start .home-trip").first().click();
   await p.locator("#flights .fs-open").scrollIntoViewIfNeeded();
   await p.locator("#flights .fs-open").click();
   const fsForm = m.locator(".fs-form");
@@ -645,7 +645,7 @@ try {
     for (const f of ["airports.json", "world.json", "packs.json"]) await q.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
     await q.route("https://flights.test/where", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(where) }));
     await q.goto(URL);
-    await q.locator(".start .home-trip", { hasText: "Lissabon" }).click();
+    await (await myTrips(q)).locator(".start .home-trip", { hasText: "Lissabon" }).click();
     await q.locator("#flights .fs-open").click();
     const qm = q.locator(".modal-bg .modal");
     await until(async () => (await qm.locator(".fs-aps .chip.on").allInnerTexts())[0] === expect, `Abflughafen ${expect} zuerst`);
