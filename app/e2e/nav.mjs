@@ -24,7 +24,9 @@ export async function reloadHome(page, { url, set, remove } = {}) {
  * Kachel. Auf der Startseite die Kachel antippen, sonst nichts tun; gibt die Seite zurück für p.locator(…).
  */
 export async function myTrips(page) {
+  if (!(await page.locator(".start").count()) || (await page.locator(".start .hm-back").count())) return page;
+  // Reisen aus dem Konto kommen nach dem Laden etwas später: kurz auf die Kachel warten
   const tile = page.locator(".start .home-mine");
-  if (!(await page.locator(".start .hm-back").count()) && (await tile.count())) await tile.click();
+  if (await tile.waitFor({ timeout: 10000 }).then(() => true, () => false)) await tile.click();
   return page;
 }
