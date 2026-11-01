@@ -407,12 +407,16 @@ export function applyFunds(funds: Fund[], act: Traveler[], byPerson: Record<stri
   return { by, use, total, received };
 }
 
-/** Zahl aus deutscher oder englischer Eingabe, wie in der alten App */
-export function parseNum(v: unknown): number {
+/** Zahl aus deutscher oder englischer Eingabe, wie in der alten App; `lang` entscheidet bei „1,234“ */
+export function parseNum(v: unknown, lang: string = i18n.lang): number {
   if (v == null) return NaN;
   if (typeof v === "number") return v;
-  let s = String(v).trim().replace(/\s|€|¥/g, "");
+  let s = String(v).trim();
+  // Währungszeichen und ISO-Kürzel vor oder nach der Zahl, typografisches Minus, Apostroph als Tausendertrennzeichen
+  s = s.replace(/[\u2212\u2012-\u2014]/g, "-").replace(/[A-Za-z]{3}(?![A-Za-z])|zł|[€¥£$]/g, "").replace(/['’`´]/g, "").replace(/\s/g, "");
   if (!s) return NaN;
+  // Englisch (Punkt als Dezimalzeichen): ein Komma mit genau drei Ziffern danach ist Tausendertrennzeichen („1,234“)
+  if (lang === "en" && /^-?[1-9]\d{0,2},\d{3}$/.test(s)) s = s.replace(",", "");
   const c = s.lastIndexOf(","), d = s.lastIndexOf(".");
   // Komma und Punkt: das letzte ist das Dezimalzeichen; mehrere Kommas ohne Punkt: Tausendertrennzeichen
   if (c >= 0 && d > c) s = s.replace(/,/g, "");
