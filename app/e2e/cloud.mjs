@@ -467,6 +467,7 @@ try {
 
   // Startseite: geteilte Reise zeigt die anderen Mitglieder
   await anna.locator(".top .brand-btn").click();
+  await myTrips(anna);
   await until(async () => /mit [^·]*Oma/.test(await anna.locator(".start").innerText()), "Mitglieder auf der Karte").catch(async e => { console.log("HOME:", (await anna.locator(".start").innerText()).replace(/\s+/g, " ").slice(0, 900)); throw e; });
   log("Startseite: geteilte Reise „☁ mit Oma“");
 

@@ -2189,7 +2189,6 @@ export const fr: Dict = {
   "poll.up": "pour",
   "poll.whenQ": "Quand partons-nous ?",
   "poll.whichQ": "Quelle offre pour « {name} » ?",
-  "cmpv.back": "Accueil",
   "cmpv.add": "Ajouter une variante",
   "cmpv.rows": "Lignes",
   "cmpv.all": "Toutes les lignes",

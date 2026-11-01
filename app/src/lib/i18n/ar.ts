@@ -2366,7 +2366,6 @@ export const ar: Dict = {
   "poll.up": "مع",
   "poll.whenQ": "متى نسافر؟",
   "poll.whichQ": "أي عرض لـ «{name}»؟",
-  "cmpv.back": "الصفحة الرئيسية",
   "cmpv.add": "إضافة بديل",
   "cmpv.rows": "الصفوف",
   "cmpv.all": "كل الصفوف",

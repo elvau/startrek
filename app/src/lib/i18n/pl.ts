@@ -2279,7 +2279,6 @@ export const pl: Dict = {
   "poll.up": "za",
   "poll.whenQ": "Kiedy jedziemy?",
   "poll.whichQ": "Która oferta dla „{name}”?",
-  "cmpv.back": "Strona główna",
   "cmpv.add": "Dodaj wariant",
   "cmpv.rows": "Wiersze",
   "cmpv.all": "Wszystkie wiersze",

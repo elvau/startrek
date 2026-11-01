@@ -2189,7 +2189,6 @@ export const en: Dict = {
   "poll.up": "for",
   "poll.whenQ": "When do we go?",
   "poll.whichQ": "Which offer for “{name}”?",
-  "cmpv.back": "Home",
   "cmpv.add": "Add variant",
   "cmpv.rows": "Rows",
   "cmpv.all": "All rows",

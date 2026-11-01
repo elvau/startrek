@@ -5,7 +5,7 @@
    * Startseite bei jedem neuen Besuch (ein Neuladen im selben Tab bleibt in der Reise): Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { app, openCompare, joinCompare, splitCompare, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
+  import { app, homeUi, openCompare, joinCompare, splitCompare, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { summarize, type TripState, type TripSummary } from "../overview";
   import { ensureAirports, geo } from "../geo/geo.svelte";
@@ -30,8 +30,8 @@
 
   let picking = $state(false);
   // Weniger ist mehr (#640): auf der Startseite höchstens eine Reise, alle Reisen in der Ansicht „Meine Reisen“
-  let mine = $state(false);
-  function showMine(on: boolean) { mine = on; pairing = null; scrollTo({ top: 0 }); }
+  const mine = $derived(homeUi.mine);
+  function showMine(on: boolean) { homeUi.mine = on; pairing = null; scrollTo({ top: 0 }); }
   let checking = $state(false);
   // aus dem Teilen-Menü (#457): gleich „Neue Reise → Importieren“ mit den geteilten Dateien
   let shared = $state<Shared | null>(null);

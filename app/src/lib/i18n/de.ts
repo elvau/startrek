@@ -2187,7 +2187,6 @@ export const de = {
   "poll.up": "dafür",
   "poll.whenQ": "Wann fahren wir?",
   "poll.whichQ": "Welches Angebot für „{name}“?",
-  "cmpv.back": "Startseite",
   "cmpv.add": "Variante hinzufügen",
   "cmpv.rows": "Zeilen",
   "cmpv.all": "Alle Zeilen",

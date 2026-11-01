@@ -675,7 +675,11 @@ export function startTrip(travelers?: Traveler[], provisional?: string) {
   scrollTo({ top: 0 });
 }
 
+/** Startseite (#640): Ansicht „Meine Reisen“ statt der Einstiege; die Startseite selbst setzt sie zurück */
+export const homeUi = $state({ mine: false });
+
 export function goHome() {
+  homeUi.mine = false;
   flush();
   app.editing = null;
   app.home = true;

@@ -6,7 +6,7 @@
    */
   import { i18n, t, tn, type Key } from "../i18n/index.svelte";
   import SearchLoading from "./SearchLoading.svelte";
-  import { addVariant, allTrips, app, editTrip, goHome, openTrip, splitCompare, switchTrip, takeVariant, tripFor } from "../store.svelte";
+  import { addVariant, allTrips, app, editTrip, goHome, homeUi, openTrip, splitCompare, switchTrip, takeVariant, tripFor } from "../store.svelte";
   import { eur } from "../calc";
   import { flagOf, range } from "../format";
   import { ccOf, loadGeo } from "../geo/places";
@@ -154,7 +154,7 @@
 <TopNav home />
 <section class="start cmpv" data-ch="hero">
   <div class="home-in">
-    <button class="linkbtn cv-back" onclick={goHome}>← {t("cmpv.back")}</button>
+    <button class="linkbtn cv-back" onclick={() => { goHome(); homeUi.mine = true; }}>← {t("home.mine")}</button>
     <h1 class="home-title cv-title">{first?.cloud ? "☁ " : ""}{title}</h1>
     <p class="cv-meta">{[sameDates && first?.tr.from ? range(first.tr.from, first.tr.to) : "", first ? tn("n.persons", first.col.people) : "", first?.members.length ? t("home.with", { names: first.members.join(", ") }) : ""].filter(Boolean).join(" · ")}
       {#if first?.edit}· <button class="linkbtn cv-add" onclick={add}>+ {t("cmpv.add")}</button>

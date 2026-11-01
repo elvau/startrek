@@ -2279,7 +2279,6 @@ export const ru: Dict = {
   "poll.up": "за",
   "poll.whenQ": "Когда едем?",
   "poll.whichQ": "Какое предложение для «{name}»?",
-  "cmpv.back": "Главная",
   "cmpv.add": "Добавить вариант",
   "cmpv.rows": "Строки",
   "cmpv.all": "Все строки",
