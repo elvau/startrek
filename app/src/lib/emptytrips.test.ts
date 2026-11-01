@@ -27,3 +27,28 @@ describe("Reisen ohne Kosten aufräumen (Fehlerbericht #21)", () => {
     expect(s.resumeScroll.y).toBe(0);
   });
 });
+
+describe("Reise von der Startseite öffnen (#612)", () => {
+  beforeEach(() => { mem.clear(); vi.resetModules(); });
+
+  it("nicht mehr vorhandene Reise: Startseite bleibt, keine leere Hintergrundreise", async () => {
+    const s = await import("./store.svelte");
+    s.goHome();
+    const bg = s.app.trip.id;
+    expect(s.switchTrip("weg123")).toBe(false);
+    s.openTrip("weg123");
+    expect(s.app.home).toBe(true);
+    expect(s.app.trip.id).toBe(bg);
+  });
+
+  it("vorhandene Reise öffnet und verlässt die Startseite", async () => {
+    const s = await import("./store.svelte");
+    s.newTrip({ place: "Split" });
+    const id = s.app.trip.id;
+    s.newTrip({ place: "Rom" });
+    s.goHome();
+    s.openTrip(id);
+    expect(s.app.home).toBe(false);
+    expect(s.app.trip.id).toBe(id);
+  });
+});

@@ -36,8 +36,9 @@ const PAGE_KEY = "sf-mob-page";
 const NUDGE_KEY = "sf-mob-nudged";
 let tripId = "";
 
-function setPage(p: PageKey) {
-  if (mob.page === p) return;
+/** force: auch bei gleicher Seite Kapitel und Farben setzen (nach einem Reisewechsel standen sie sonst noch auf der Seite der vorigen Reise) */
+function setPage(p: PageKey, force = false) {
+  if (mob.page === p && !force) return;
   mob.page = p;
   try { if (tripId) sessionStorage.setItem(PAGE_KEY, JSON.stringify({ id: tripId, page: p })); } catch { /* egal */ }
   view.active = p;
@@ -57,9 +58,18 @@ export function goPage(p: PageKey, smooth = true) {
   setPage(p);
 }
 
+/**
+ * Jede Seite wieder von oben (#612): Bei einem Reisewechsel bleibt der Pager stehen, die Seiten behielten den Scrollstand
+ * der vorigen Reise. Safari setzt ihn bei kürzerem Inhalt nicht immer zurück, dann war nur der Hintergrund zu sehen.
+ */
+export function toTop(pages: Iterable<{ scrollTop: number }>) {
+  for (const p of pages) if (p.scrollTop) p.scrollTop = 0;
+}
+
 /** Pager anbinden: beim Wischen die aktuelle Seite merken */
 export function attachPager(el: HTMLElement, trip = ""): () => void {
   pager = el;
+  toTop(el.children as unknown as Iterable<HTMLElement>);
   // nur in der Reise scrollt die Seite selbst nicht (die Startseite schon)
   document.body.classList.add("mob-pager");
   tripId = trip;
@@ -68,20 +78,20 @@ export function attachPager(el: HTMLElement, trip = ""): () => void {
   try { const v = JSON.parse(sessionStorage.getItem(PAGE_KEY) || "null"); if (v?.id === trip && pages().includes(v.page)) back = v.page; } catch { /* egal */ }
   let raf = 0;
   const keys = () => [...el.children].map(c => (c as HTMLElement).dataset.ch as PageKey).filter(Boolean);
-  const tick = () => {
+  const tick = (force = false) => {
     raf = 0;
     const at = pageAt(el.scrollLeft, el.clientWidth, keys());
     if (target) { if (at !== target) return; target = null; }
-    setPage(at);
+    setPage(at, force);
   };
   // selbst wischen beendet einen laufenden Sprung
   const touch = () => { target = null; };
   el.addEventListener("touchstart", touch, { passive: true });
-  const on = () => { if (!raf) raf = requestAnimationFrame(tick); };
+  const on = () => { if (!raf) raf = requestAnimationFrame(() => tick()); };
   recheck = on;
   el.addEventListener("scroll", on, { passive: true });
   if (back && back !== "hero") requestAnimationFrame(() => goPage(back!, false));
-  else { el.scrollTo({ left: 0 }); tick(); }
+  else { el.scrollTo({ left: 0 }); tick(true); }
   // einmal je Gerät: die Seiten rucken kurz an, damit man sieht, dass daneben weitere liegen (Stil in mobile.css)
   let nudge: ReturnType<typeof setTimeout> | undefined;
   try {
