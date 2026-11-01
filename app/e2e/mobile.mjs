@@ -156,6 +156,21 @@ try {
   await sh.waitFor();
   if (!(await sh.locator(".foot-legal").innerText()).includes("Impressum")) fail("Mehr: Fußzeile fehlt");
   await sh.locator(".sheet-x").click();
+  // Reisewechsel (#612): Seiten weit unten gescrollt, auf „Abheben“, dann neue Reise über das Reise-Menü:
+  // Übersicht mit Inhalt, jede Seite von oben, Kapitel und Hintergrund wieder auf der Übersicht
+  await p.locator('.mbar [data-pg="flights"]').click();
+  await until(async () => (await on()) === "flights", "Leiste Abheben");
+  await p.evaluate(() => document.querySelectorAll("main.pager > .chapter").forEach(c => (c.scrollTop = 99999)));
+  await p.locator("header.top .tmenu .tm-btn").click();
+  await p.locator(".modal .btn.primary", { hasText: "Neue Reise" }).click();
+  await p.locator("form.newtrip button.primary").click();
+  await until(async () => (await on()) === "hero", "neue Reise auf der Übersicht");
+  const st = await p.evaluate(() => ({ ch: document.body.dataset.ch, tops: [...document.querySelectorAll("main.pager > .chapter")].map(c => c.scrollTop) }));
+  if (st.ch !== "hero") fail("Hintergrund noch vom vorigen Kapitel: " + st.ch);
+  if (st.tops.some(y => y > 0)) fail("Seiten behalten den Scrollstand der vorigen Reise: " + st.tops.join(","));
+  const h1 = await p.locator(".pg-hero h1").boundingBox();
+  if (!h1 || h1.x < 0 || h1.x > 390 || h1.y < 0 || h1.y > 844) fail("Übersicht der neuen Reise nicht zu sehen");
+  log("Reisewechsel am Handy: Übersicht mit Inhalt, jede Seite von oben, Hintergrund der Übersicht (#612)");
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Handy: Pager mit 9 Seiten, Wischen, Leiste unten mit allen Seiten und Gesamtsumme (öffnet Mehr), Kachel springt ins Kapitel, kein langes Scrollen");
   console.log("\nHandy-Ansicht: alles in Ordnung");
