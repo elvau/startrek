@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pageAt, pages, stepPage } from "./mobile.svelte";
+import { pageAt, pages, stepPage, toTop } from "./mobile.svelte";
 import { shown } from "./chapterVis.svelte";
 
 describe("Handy-Pager (#530)", () => {
@@ -23,5 +23,13 @@ describe("Handy-Pager (#530)", () => {
     expect(stepPage("hero", -1)).toBe("hero");
     expect(stepPage("hero", 1)).toBe("trav");
     expect(stepPage("split", 1)).toBe("split");
+  });
+});
+
+describe("Reisewechsel am Handy (#612)", () => {
+  it("jede Seite wieder von oben", () => {
+    const ps = [{ scrollTop: 0 }, { scrollTop: 555 }, { scrollTop: 90 }];
+    toTop(ps);
+    expect(ps.map(p => p.scrollTop)).toEqual([0, 0, 0]);
   });
 });

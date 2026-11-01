@@ -442,8 +442,9 @@ function open(trip: Trip, why: string) {
   scrollTo({ top: 0, behavior: "smooth" });
 }
 
-export function switchTrip(id: string, why = "gewechselt") {
-  if (id === app.trip.id) return;
+/** true, wenn die Reise danach offen ist (false: weder auf dem Gerät noch im Konto) */
+export function switchTrip(id: string, why = "gewechselt"): boolean {
+  if (id === app.trip.id) return true;
   flush();
   const prev = app.trip;
   const t = readTrip(id);
@@ -451,8 +452,9 @@ export function switchTrip(id: string, why = "gewechselt") {
   const c = t ? null : cloudTrip(id);
   if (t) open(t, why);
   else if (c) open({ id, name: c.name, place: "", country: "", travelers: [], items: [], tiers: {}, settings: { ...DEFAULT_SETTINGS } }, why);
-  else return;
+  else return false;
   dropIfPristine(prev);
+  return true;
 }
 
 /** Entwurf wie eine neue Reise, ohne sie zu öffnen oder zu speichern (Realitätscheck ohne Reise, #461) */
@@ -659,7 +661,8 @@ export function homeTrips(): TripEntry[] {
 
 /** Reise öffnen und Startseite verlassen */
 export function openTrip(id: string, why = "Startseite") {
-  switchTrip(id, why);
+  // Reise nicht mehr da (#612): auf der Startseite bleiben, statt die leere Hintergrundreise zu zeigen
+  if (!switchTrip(id, why)) { noteNav(`nicht gefunden: ${id}`); return; }
   app.home = false;
   app.compare = null;
   scrollTo({ top: 0 });
