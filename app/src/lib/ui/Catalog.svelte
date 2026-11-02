@@ -16,7 +16,13 @@
   import { capitalOf, kmBetween, loadGeo } from "../geo/places";
   import { homeUi } from "../store.svelte";
   import { monthsText } from "../prefsView";
-  import { startPlan } from "../planApp";
+  import { app, newTrip } from "../store.svelte";
+  import { travelersFrom, tagGroups } from "../directory.svelte";
+  import { groupTravelers, nextAnimal, placeholderTravelers } from "../placeholders";
+  import { applyPeople } from "../people";
+  import { countryName } from "../geo/locations";
+  import { hhKey, type Traveler } from "../model";
+  import { takeEntry, type Start, type TourMode } from "../catalog/take";
   import { FLY_KM, viewerCountry } from "../catalog/arrival";
   import { LENS, WHO, catalogBands, costRows, routeOf, cardOf, type CatalogCard, type CatalogFilter, type Origin, type RouteNode } from "../catalog/view";
   import { CATALOG_KINDS, persons, type CatalogEntry } from "../catalog/types";
@@ -113,15 +119,43 @@
   };
   const startIcon = (c: CatalogCard) => (c.route.find(n => !n.home)?.by || "car");
   function show(id: string) { sel = id; scrollTo({ top: 0 }); }
-  async function take(e: CatalogEntry) {
-    if (e.source !== "idea" || !e.slug) return;
-    const { PAGES } = await import("../seo/pages");
-    const p = PAGES.find(x => x.slug === e.slug);
-    if (!p) return;
-    const fam = p.plan.fam?.split(",").map(f => f.split("-").map(Number)).map(([a, k]) => ({ adults: a || 1, kids: k || 0 }));
-    homeUi.catalog = false;
-    await startPlan({ place: p.plan.ziel, cc: p.plan.land, name: p.plan.name, ...(fam ? { fam } : { group: p.plan.gruppe }), idea: p.slug });
+  // Übernehmen (#647): wer reist, wann, welche Touren; Anreise je Familie ab ihrem Wohnort
+  let taking = $state(false);
+  let who = $state<string>("like");
+  let start = $state("");
+  let mode = $state<TourMode>("all");
+  let off = $state<string[]>([]);
+  $effect(() => { void sel; taking = false; who = "like"; start = ""; mode = "all"; off = []; });
+  function travelersFor(e: CatalogEntry): Traveler[] {
+    if (who === "me" && dir.me) return travelersFrom([dir.me]);
+    const g = dir.groups.find(x => x.id === who);
+    if (g) return tagGroups(travelersFrom(g.memberIds), [g]);
+    const kids = e.group.children + e.group.infants;
+    return kids && e.group.adults <= 4 ? placeholderTravelers([{ animal: nextAnimal(), adults: e.group.adults, kids }]) : groupTravelers(e.group.adults, kids);
   }
+  function take(e: CatalogEntry) {
+    const travelers = travelersFor(e);
+    // Wohnorte der Familien aus den gespeicherten Personen
+    const homes: Record<string, Start> = {};
+    for (const x of travelers) {
+      const h = x.personId ? dir.people.find(p => p.id === x.personId)?.home : undefined;
+      if (h?.lat != null && h.lon != null && !homes[hhKey(x)]) homes[hhKey(x)] = { lat: h.lat, lon: h.lon, name: h.ort || h.plz };
+    }
+    const from = start || undefined;
+    const r = takeEntry(e, {
+      travelers, homes, origin: origin ? { lat: origin.lat, lon: origin.lon, name: startsOfEntry(e)[0] || origin.name } : null, from, flyKm,
+      tours: e.tours.length ? mode : "none", picked: e.tours.map(x => x.name).filter(n => !off.includes(n)),
+      tx: (k, v) => t(`cat.x.${k}` as Key, k === "detail" ? { m: standText(e.stand) } : v)
+    });
+    homeUi.catalog = false;
+    newTrip({ name: e.title, place: e.stops[0]?.place || "", ...(from ? { from, to: r.to } : {}), travelers, items: r.items });
+    if (e.stops[0]?.cc) app.trip.country = countryName(e.stops[0].cc);
+    if (Object.keys(r.days).length) app.trip.days = r.days;
+    applyPeople(app.trip, dir.people);
+    app.home = false;
+    scrollTo({ top: 0 });
+  }
+  const startsOfEntry = (e: CatalogEntry) => (card && card.e.id === e.id ? startsOf(card) : []);
 </script>
 
 {#snippet starts(c: CatalogCard)}
@@ -166,7 +200,37 @@
       <p class="muted small">{t("cat.d.note")}</p>
     </section>
     {#if c.e.source === "idea"}
-      <div class="kat-take"><button class="btn primary" onclick={() => void take(c.e)}>{t("cat.d.take")}</button></div>
+      {#if !taking}
+        <div class="kat-take"><button class="btn primary" onclick={() => (taking = true)}>{t("cat.d.take")}</button></div>
+      {:else}
+        <section class="kat-box kat-form">
+          <h2>{t("cat.d.take")}</h2>
+          <fieldset><legend>{t("cat.t.who")}</legend>
+            <div class="kat-opts">
+              <button class="kat-chip" class:on={who === "like"} onclick={() => (who = "like")}>{t("cat.t.like", { g: groupText(c.e) })}</button>
+              {#if dir.me}<button class="kat-chip" class:on={who === "me"} onclick={() => (who = "me")}>{t("cat.t.me")}</button>{/if}
+              {#each dir.groups as g (g.id)}<button class="kat-chip" class:on={who === g.id} onclick={() => (who = g.id)}>{g.name}</button>{/each}
+            </div>
+          </fieldset>
+          <label class="kat-when">{t("cat.t.when")}<input type="date" bind:value={start} /></label>
+          {#if c.e.tours.length}
+            <fieldset><legend>{t("cat.t.tours")}</legend>
+              <div class="kat-modes" role="radiogroup">
+                {#each (c.e.days.length ? ["all", "tours", "pick", "none"] : ["tours", "pick", "none"]) as m (m)}
+                  <label><input type="radio" name="kat-mode" value={m} checked={mode === m || (m === "tours" && mode === "all" && !c.e.days.length)} onchange={() => (mode = m as TourMode)} /> {t(`cat.t.${m === "tours" ? "only" : m}` as Key)}</label>
+                {/each}
+              </div>
+              {#if mode === "pick"}
+                <ul class="kat-tours">
+                  {#each c.e.tours as x (x.name)}<li><label><input type="checkbox" checked={!off.includes(x.name)} onchange={() => (off = off.includes(x.name) ? off.filter(n => n !== x.name) : [...off, x.name])} /> {x.name}</label>{#if x.pp}<span class="num"><bdi>~{eur(x.pp)}</bdi></span>{/if}</li>{/each}
+                </ul>
+              {/if}
+            </fieldset>
+          {/if}
+          <p class="muted small">{t("cat.t.note")}</p>
+          <div class="kat-take"><button class="btn primary" onclick={() => take(c.e)}>{t("cat.t.go")}</button></div>
+        </section>
+      {/if}
     {/if}
     {#if c.e.days.length}
       <section class="kat-sec">
@@ -335,5 +399,14 @@
   .kat-rows .num, .kat-tours .num { white-space: nowrap; }
   /* nicht schwebend: unten schweben schon 🐞 und KI */
   .kat-take { display: flex; }
+  .kat-form { gap: 14px; }
+  .kat-form h2 { margin: 0; font-size: 19px; }
+  .kat-form fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .kat-form legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+  .kat-when { display: grid; gap: 6px; font-weight: 700; }
+  .kat-when input { min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); padding: 0 12px; font: inherit; font-weight: 500; }
+  .kat-modes { display: grid; gap: 4px; }
+  .kat-modes label, .kat-form .kat-tours label { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+  .kat-modes input, .kat-form .kat-tours input { width: 20px; height: 20px; accent-color: var(--ink); }
   .kat-take .btn { flex: 1; min-height: 52px; font-size: 16px; }
 </style>

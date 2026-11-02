@@ -1,7 +1,6 @@
 <script lang="ts">
   import { today as localToday } from "../today";
   import { arrow, i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
-  import { ideasDir } from "../plan";
   /*
    * Startseite bei jedem neuen Besuch (ein Neuladen im selben Tab bleibt in der Reise): Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
@@ -28,7 +27,6 @@
   import AppFooter from "./AppFooter.svelte";
   import Catalog from "./Catalog.svelte";
   // Reiseideen liegen neben der App (…/startrek/reise/, Englisch unter …/en/trip-ideas/)
-  const BASE = (import.meta.env.BASE_URL as string) || "/";
 
   let picking = $state(false);
   // Weniger ist mehr (#640): auf der Startseite höchstens eine Reise, alle Reisen in der Ansicht „Meine Reisen“
@@ -222,10 +220,7 @@
           <span class="home-ico" aria-hidden="true">🔍</span><b>{t("home.check")}</b><small>{t("home.checkSub")}</small>
         </button>
       {/if}
-      <!-- Reiseideen (Inhaltsseiten /reise/): öffnen eine fertig gerechnete Reise, ersetzen die Beispielreise (#402) -->
-      <a class="home-act home-ideas" href="{BASE}{ideasDir(i18n.lang)}">
-        <span class="home-ico" aria-hidden="true">🧭</span><b>{t("home.ideas")}</b><small>{t("home.ideasSub")}</small>
-      </a>
+      <!-- Reiseideen stehen im Reisekatalog (Dani, 02.11.); die Seiten für Google bleiben, verlinkt in der Fußzeile -->
       <!-- Reisekatalog (#646): fertige Reisen ab dem Wohnort, mit Anreise -->
       <button class="home-act home-catalog" onclick={() => { homeUi.catalog = true; scrollTo({ top: 0 }); }}>
         <span class="home-ico" aria-hidden="true">🗺</span><b>{t("cat.title")}</b><small>{t("cat.tileSub")}</small>
