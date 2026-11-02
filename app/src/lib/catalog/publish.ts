@@ -9,6 +9,7 @@ import { scrub, privateWords } from "./fromTrip";
 import { checkTrip, publicWarn, type Finding } from "./check";
 import { CATALOG_KINDS, shapeErrors, type CatalogEntry, type CatalogKind } from "./types";
 import type { Trip } from "../model";
+import type { PricePoint } from "./prices";
 
 /** Längen wie in app/firestore.rules (Titel und Kurzbeschreibung stecken dort in data) */
 export const PUB_LIMITS = { title: 80, summary: 280, data: 100000 };
@@ -114,6 +115,21 @@ export async function fetchCatalog(f: typeof fetch = fetch): Promise<PublicEntry
     for (const d of j.documents || []) { const x = entryFromRest(d); if (x) out.push(x); }
     token = j.nextPageToken;
     if (!token) break;
+  }
+  return out;
+}
+
+/* ---------- geprüfte Preise (#652): catalogStats, öffentlich lesbar, schreibt nur der Such-Dienst ---------- */
+
+/** Preispunkte je Eintrag und die Anreise-Tabelle (Dokument ARRIVAL_DOC) */
+export async function fetchStats(f: typeof fetch = fetch): Promise<Record<string, PricePoint[]>> {
+  const r = await f(catalogRestUrl().replace("/catalog?", "/catalogStats?"), { cache: "no-store" });
+  if (!r.ok) { if (r.status === 404 || r.status === 403) return {}; throw new Error(`catalogStats ${r.status}`); }
+  const j = await r.json();
+  const out: Record<string, PricePoint[]> = {};
+  for (const d of j.documents || []) {
+    const id = typeof d?.name === "string" ? d.name.split("/").pop() : "";
+    try { const p = JSON.parse(d?.fields?.p?.stringValue || "[]"); if (id && Array.isArray(p)) out[id] = p.filter((x: PricePoint) => x && typeof x.pp === "number" && typeof x.k === "string"); } catch { /* kaputt */ }
   }
   return out;
 }

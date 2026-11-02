@@ -244,6 +244,13 @@ await expect("Katalog: Zeit selbst gesetzt", patch("anna", "/catalog/kat3", { ..
 await expect("Katalog: Mallory zieht Annas zurück", req("mallory", "/catalog/kat1", { method: "DELETE" }), 403);
 await expect("Katalog: Anna zieht zurück", req("anna", "/catalog/kat1", { method: "DELETE" }), 200);
 await req("admin", "/usernames/reh42", { method: "DELETE" });
+await expect("Katalog-Preise: Admin legt an", patch("admin", "/catalogStats/kat1", { p: "[]" }), 200);
+await expect("Katalog-Preise: ohne Konto lesen", req("", "/catalogStats/kat1"), 200);
+await expect("Katalog-Preise: auflisten", req("", "/catalogStats"), 200);
+await expect("Katalog-Preise: Anna schreibt", patch("anna", "/catalogStats/kat1", { p: "[{\"pp\":1}]" }), 403);
+await expect("Katalog-Preise: Anna legt an", patch("anna", "/catalogStats/kat9", { p: "[]" }), 403);
+await expect("Katalog-Preise: Anna löscht", req("anna", "/catalogStats/kat1", { method: "DELETE" }), 403);
+await req("admin", "/catalogStats/kat1", { method: "DELETE" });
 log("Reisekatalog (#644): lesen alle, veröffentlichen nur unter eigenem Namen, keine Gäste, keine Links/E-Mail, zurückziehen nur der Ersteller");
 
 await req("admin", "/trips/regeltest", { method: "DELETE" });

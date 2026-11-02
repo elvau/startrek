@@ -50,8 +50,17 @@ Epic #641. Öffentlicher Katalog mit Reisen von Nutzern und automatisch gepflegt
   nächste Flughäfen, feste Daten, bis 9 Personen), Tour am Ort ihres Tages (gemeinsame Wörter im Titel, Euro-Preis). Das
   günstigste echte Angebot kommt als Option dazu und wird gewählt, der Richtwert bleibt. Mietwagen und Transport vor Ort ohne
   Suche. Ergebnis je Posten in `trip.catalog.check` (Richtwert und Preis pro Person), „Erneut prüfen“ sucht nur Posten ohne
-  Angebot. e2e im Übernehmen-Schritt von `app/e2e/catalog.mjs`. Teil 2 (Preispunkte über den Worker, Richtwert aus den letzten
-  Monaten, Anreise-Tabelle) folgt.
+  Angebot. e2e im Übernehmen-Schritt von `app/e2e/catalog.mjs`.
+- `app/src/lib/catalog/prices.ts` + `worker/src/catalog.ts`: Preispunkte (#652 Teil 2). Nach der Prüfung schickt die App
+  mit Konto einmal je Reise `pointsOf` an `POST /catalog/price` (Anmeldung nötig; je Konto und Eintrag einmal am Tag, höchstens
+  `CATALOG_DAILY` = 10 Einträge am Tag). Punkt: Bereich (stay nach Ort, tour nach Name, arrival nach Zeile der Flug-Tabelle,
+  Flugpreis plus Weg zum Flughafen, Hauptsaison herausgerechnet), Betrag pro Person, Monat, Gruppengröße, Datum; ohne Konto,
+  Anbieter, Links. Gespeichert vom Dienstkonto in `catalogStats/{eintrag}` bzw. `catalogStats/_arrival` (Feld `p`, JSON, 12 Monate,
+  höchstens 80), Regeln: lesen alle, schreiben nur das Dienstkonto. Der Katalog liest alles per REST (`fetchStats`):
+  `applyStats` ersetzt Unterkunft je Ort und Touren durch die Mitte der Punkte (Ausreißer außerhalb 1,5 × Quartilsabstand ab 4
+  Punkten verworfen, mit Monat bevorzugt dieselbe Saison ab 3 Punkten), mit Stand und „n× beim Übernehmen geprüft“;
+  `arrivalTable` ersetzt Zeilen von `FLIGHT_PP` ab 3 Punkten (`ArrivalOpts.flights`). Live erst nach dem Release (Worker
+  deployt von `main`). e2e in `app/e2e/publish.mjs` (Such-Dienst gemockt, Punkte als Admin angelegt).
 - `app/src/lib/catalog/check.ts`: Plausibilitätscheck (#643). Rot blockiert (kein Ziel, keine Nächte, Rückflug vor Hinflug,
   Unterkunft außerhalb des Zeitraums, zwei Unterkünfte am selben Abend für dieselben Leute, 0 €, Kontaktdaten/Links im Text),
   gelb kennzeichnet (Nacht ohne Unterkunft, lange/sehr lange Fahrtage ab 6/10 Std., bei Roadtrip/Camper/ohne Flug 9/13 Std.,

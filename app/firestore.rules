@@ -125,6 +125,13 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.uid == uid();
     }
 
+    // Geprüfte Preise je Katalogeintrag und Anreise-Tabelle (#652): schreibt nur der Such-Dienst (Dienstkonto, ohne Konto
+    // des Meldenden), lesen alle (Richtwerte im Katalog)
+    match /catalogStats/{entryId} {
+      allow get, list: if true;
+      allow write: if false;
+    }
+
     // Angebotsspeicher (#462): nur der Such-Dienst (Dienstkonto, umgeht die Regeln); die App liest und schreibt nie
     match /offers/{offerId} {
       allow read, write: if false;

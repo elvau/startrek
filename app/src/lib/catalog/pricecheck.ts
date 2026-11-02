@@ -5,10 +5,14 @@
  * Transport vor Ort haben keine Suche und bleiben Schätzung. Suchen und Optionen kommen von außen (testbar ohne Netz).
  */
 import { addDays, okDate } from "../calc/travel";
-import { addOffer, type Item, type Option, type Trip } from "../model";
+import { addOffer, isActive, type Item, type Option, type Trip } from "../model";
 import type { ActivityHit, ActivityQuery } from "../activities/types";
 import type { FlightOffer, FlightQuery } from "../flights/types";
 import type { StayOffer, StayQuery } from "../stays/types";
+import { kmBetween } from "../geo/places";
+import { flightKey } from "./arrival";
+import { arrivalPoint, type PricePoint } from "./prices";
+import { ACCESS_PP } from "./take";
 
 export type PriceRow = NonNullable<NonNullable<Trip["catalog"]>["check"]>["rows"][number];
 type Pax = { adults: number; children: number; infants: number };
@@ -136,4 +140,27 @@ export async function checkPrices(trip: Trip, d: PriceDeps, onRow?: (r: PriceRow
 export function checkSum(rows: PriceRow[]): { est: number; pp: number; n: number } {
   const ok = rows.filter(r => r.state === "ok" && r.pp != null && r.est != null);
   return { est: ok.reduce((a, r) => a + r.est!, 0), pp: ok.reduce((a, r) => a + r.pp!, 0), n: ok.length };
+}
+
+/**
+ * Preispunkte für den Katalog (#652 Teil 2): je geprüftem Posten Betrag pro Person, Monat, Gruppengröße. Unterkunft nach
+ * Ort, Tour nach Name, Flug als Anreise nach Entfernung (Zeile der Tabelle). Keine Anbieter, Links, Namen oder Daten.
+ */
+export function pointsOf(trip: Trip, rows: PriceRow[]): Omit<PricePoint, "d">[] {
+  const c = trip.catalog, rel = c?.rel;
+  if (!rel || !trip.from) return [];
+  const m = +trip.from.slice(5, 7);
+  const n = trip.travelers.filter(isActive).length;
+  const out: Omit<PricePoint, "d">[] = [];
+  for (const r of rows) {
+    if (r.state !== "ok" || !(r.pp && r.pp > 0)) continue;
+    const it = trip.items.find(i => i.id === r.item);
+    if (!it) continue;
+    if (it.cat === "stay" && rel.stays[it.id]) out.push({ c: "stay", k: rel.stays[it.id].place, pp: r.pp, m, n });
+    else if (it.cat === "attractions") out.push({ c: "tour", k: it.name, pp: r.pp, m, n });
+    else if (it.cat === "flights" && rel.flights?.[it.id] && rel.dest) {
+      out.push({ c: "arrival", k: flightKey(kmBetween(rel.flights[it.id], rel.dest)), pp: arrivalPoint(r.pp, m, ACCESS_PP), m, n: it.participants?.length || n });
+    }
+  }
+  return out;
 }

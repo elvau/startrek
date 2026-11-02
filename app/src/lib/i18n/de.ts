@@ -1763,6 +1763,7 @@ export const de = {
   "cat.goal": "Ziel",
   "cat.goals": "Ziele",
   "cat.ret": "zurück",
+  "cat.checked": "{n}× beim Übernehmen geprüft",
   "pc.title": "Preise prüfen",
   "pc.lead": "Die Reise kommt aus dem Katalog. Die App sucht echte Angebote für Unterkunft, Flüge und Touren; der Richtwert bleibt zum Vergleich.",
   "pc.needDate": "Ab wann reist ihr? Mit dem Reisebeginn sucht die App echte Preise.",
