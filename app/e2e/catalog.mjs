@@ -63,13 +63,24 @@ try {
   if ((await p.evaluate(() => document.documentElement.scrollWidth)) > 390) fail("Detail breiter als das Handy");
   log(`Mallorca: Karte mit Ziel, ${start.replace(/\s+/g, " ").trim()}, Kosten ${rows.join(", ")}`);
 
-  // übernehmen: neue Reise mit Ziel und Gruppe
+  // übernehmen (#647): Reisebeginn, nur einzelne Touren; Anreise ab dem Startort, keine Zeile „ab Deutschland“
   await p.locator(".kat-take .btn").click();
+  await p.locator(".kat-form").waitFor();
+  await p.locator(".kat-when input").fill("2027-06-05");
+  await p.locator(".kat-modes label", { hasText: "Einzelne" }).click();
+  await p.locator(".kat-form .kat-tours input").first().uncheck();
+  await p.locator(".kat-form .kat-take .btn").click();
   const current = () => p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "null"));
   await until(async () => (await current())?.place === "Mallorca", "Reise Mallorca angelegt", 15000);
   const saved = await current();
   if (saved.travelers.length !== 8) fail("Gruppe falsch: " + saved.travelers.length);
-  log(`Übernommen: Reise „${saved.name}“ mit ${saved.travelers.length} Personen und ${saved.items.length} Posten`);
+  if (saved.from !== "2027-06-05" || saved.to !== "2027-06-10") fail("Zeitraum: " + saved.from + "–" + saved.to);
+  const fl = saved.items.filter(i => i.cat === "flights");
+  if (fl.length !== 1 || !fl[0].name.startsWith("Hin- und Rückflug ab ") || fl[0].name.includes("Deutschland")) fail("Anreise: " + fl.map(i => i.name).join(", "));
+  if (saved.items.some(i => i.cat === "attractions" && !i.auto)) fail("abgewählte Tour übernommen");
+  const stay = saved.items.find(i => i.cat === "stay" && !i.auto);
+  if (stay?.from !== "2027-06-05" || stay?.to !== "2027-06-10") fail("Unterkunft ohne Zeitraum");
+  log(`Übernommen: „${saved.name}“, ${saved.travelers.length} Personen, ${saved.from} bis ${saved.to}, ${fl[0].name}, ${saved.items.filter(i => !i.auto).length} Posten, ohne abgewählte Tour`);
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   console.log("\n✓ Reisekatalog in Ordnung");
