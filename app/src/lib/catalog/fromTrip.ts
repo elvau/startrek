@@ -89,6 +89,9 @@ export function tripToCatalog(trip: Trip, o: FromTripOpts): CatalogEntry {
     const loc = st ? activeOption(st, trip)?.loc : undefined;
     const hit = o.resolve?.(place) || null;
     if (loc?.lat != null && loc?.lon != null) return { lat: loc.lat, lon: loc.lon, cc: hit?.cc };
+    // Kreuzfahrt: Lage des Hafens aus der Route
+    const port = live.flatMap(i => i.cruise?.ports || []).find(p => p.place?.trim() === place && p.lat != null && p.lon != null);
+    if (port) return { lat: port.lat!, lon: port.lon!, cc: port.cc || hit?.cc };
     return hit;
   };
   let stops: CatalogStop[] = stations(days).map(s => {
@@ -129,11 +132,12 @@ export function tripToCatalog(trip: Trip, o: FromTripOpts): CatalogEntry {
   else if (live.some(i => i.rental || i.hint === "rental")) move.push("car");
   if (live.some(i => i.auto === "local" && i.hh === "daily")) move.push("transit");
 
-  const noFly = !live.some(i => i.cat === "flights");
+  // ausdrücklich ohne Flug: kein Flug und Anreise am Boden (Auto, Bahn, Camper); fehlt der Flug nur, entscheidet die Entfernung
+  const noFly = !live.some(i => i.cat === "flights") && (!!trip.camper || live.some(i => i.arrival || i.hint === "road:car"));
   const kind: CatalogKind = live.some(i => i.cruise) ? "cruise"
     : live.some(i => i.options.some(x => x.pkg && !x.pkg.off)) ? "package"
     : trip.event ? "event"
-    : trip.camper || (noFly && stops.length >= 2 && isRoadTrip(trip, stops.length)) ? "road"
+    : trip.camper || (!live.some(i => i.cat === "flights") && stops.length >= 2 && isRoadTrip(trip, stops.length)) ? "road"
     : stops.length >= 2 ? "round" : "stay";
 
   const plan: CatalogDay[] = [];

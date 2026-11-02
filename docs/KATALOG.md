@@ -16,3 +16,7 @@ Epic #641. Öffentlicher Katalog mit Reisen von Nutzern und automatisch gepflegt
 - `app/src/lib/catalog/types.ts`: Format `CatalogEntry`, Richtwert `corePP`, Formprüfung `shapeErrors`.
 - `app/src/lib/catalog/fromTrip.ts`: Reise → Eintrag (Anreise weg, Freitexte bereinigt, Kosten pro Person ohne geschätzte Nebenkosten).
 - `app/src/lib/catalog/seed.ts`: Startbestand aus den Reiseideen-Seiten (`seo/pages.ts`), Anreise-Zeilen und Touren je Seite in `SEED_META`.
+- `app/src/lib/catalog/arrival.ts`: Anreise als Richtwert (#645). Luftlinie Wohnort → erster Ort und letzter Ort → Wohnort;
+  bis 700 km Auto/Bahn, darüber Flug inkl. Weg zum Flughafen (Tabelle `ARRIVAL_PP`, Stand `ARRIVAL_STAND`), Hauptsaison +30 %.
+  Ohne Flug bzw. Roadtrip immer am Boden. Kreuzfahrt: zum Ablegehafen und vom Endhafen, mit Flug eine Nacht vor dem
+  Ablegen dazu. Katalogpreis `totalPP` = Ziel + Anreise (ohne Touren); `sortByDistance` für die Liste.
