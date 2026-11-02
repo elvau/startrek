@@ -16,7 +16,7 @@ const L = {
     toc: "Diese Auskunft enthält alles, was Split&Fly zu deinem Konto speichert. Die vollständige Kopie in maschinenlesbarer Form bekommst du über „Als Datei (JSON) herunterladen“.",
     s1: "1. Konto (Anmeldung, Google Firebase Authentication)", s2: "2. Gespeicherte Personen, Gruppen und Vorlieben", s3: "3. Angaben „Nur für dich“ (Geschlecht, Ablauf von Ausweis und Pass)",
     s4: "4. Reisen in deinem Konto", s5: "5. Aktionsseiten", s6: "6. Auf diesem Gerät gespeichert (Browser)", s7: "7. Was sonst verarbeitet wird",
-    uid: "Konto-ID", email: "E-Mail", name: "Name", providers: "Anmeldung über", verified: "E-Mail bestätigt", created: "Konto angelegt", last: "Letzte Anmeldung", username: "Benutzername (öffentlich)",
+    uid: "Konto-ID", email: "E-Mail", name: "Name", providers: "Anmeldung über", verified: "E-Mail bestätigt", created: "Konto angelegt", last: "Letzte Anmeldung", username: "Benutzername (öffentlich)", catalog: "Im Reisekatalog veröffentlicht (öffentlich)",
     yes: "ja", no: "nein", none: "Keine gespeichert.", people: "Personen", groups: "Gruppen", me: "Ich bin", prefs: "Eigene Vorlieben", setup: "Konto eingerichtet am",
     terms: "AGB zugestimmt", termsV: "Fassung {v}, am {at}", members: "Mitglieder", role: "Deine Rolle", roles: { owner: "Besitzer", editor: "Bearbeiten", viewer: "Ansehen" } as Record<string, string>,
     place: "Ziel", dates: "Zeitraum", travelers: "Reisende", items: "Posten", itemsN: "{n} Posten", expenses: "Ausgaben in der Kasse", invite: "Einladungslink aktiv",
@@ -44,7 +44,7 @@ const L = {
     toc: "This report contains everything Split&Fly stores for your account. The complete copy in machine-readable form is available via “Download as file (JSON)”.",
     s1: "1. Account (sign-in, Google Firebase Authentication)", s2: "2. Saved people, groups and preferences", s3: "3. “Just for you” details (gender, ID and passport expiry)",
     s4: "4. Trips in your account", s5: "5. Campaign pages", s6: "6. Stored on this device (browser)", s7: "7. Other processing",
-    uid: "Account ID", email: "Email", name: "Name", providers: "Signed in with", verified: "Email verified", created: "Account created", last: "Last sign-in", username: "Username (public)",
+    uid: "Account ID", email: "Email", name: "Name", providers: "Signed in with", verified: "Email verified", created: "Account created", last: "Last sign-in", username: "Username (public)", catalog: "Published in the trip catalogue (public)",
     yes: "yes", no: "no", none: "None stored.", people: "People", groups: "Groups", me: "I am", prefs: "Own preferences", setup: "Account set up on",
     terms: "Terms accepted", termsV: "version {v}, on {at}", members: "Members", role: "Your role", roles: { owner: "Owner", editor: "Edit", viewer: "View" } as Record<string, string>,
     place: "Destination", dates: "Dates", travelers: "Travellers", items: "Items", itemsN: "{n} items", expenses: "Kitty expenses", invite: "Invite link active",
@@ -101,7 +101,7 @@ export function reportHtml(d: AccountData, local: LocalEntry[], lang: Lang = "de
   const row = (k: string, v: string) => (v ? `<tr><th>${esc(k)}</th><td>${v}</td></tr>` : "");
   const a = d.account;
 
-  const s1 = `<table>${row(l.uid, esc(a.uid))}${row(l.email, esc(a.email))}${row(l.name, esc(a.name))}${row(l.providers, esc(a.providers.join(", ")))}${row(l.verified, a.verified ? l.yes : l.no)}${row(l.created, esc(day(a.created)))}${row(l.last, esc(day(a.lastSignIn)))}${d.username ? row(l.username, esc("@" + d.username)) : ""}</table>`;
+  const s1 = `<table>${row(l.uid, esc(a.uid))}${row(l.email, esc(a.email))}${row(l.name, esc(a.name))}${row(l.providers, esc(a.providers.join(", ")))}${row(l.verified, a.verified ? l.yes : l.no)}${row(l.created, esc(day(a.created)))}${row(l.last, esc(day(a.lastSignIn)))}${d.username ? row(l.username, esc("@" + d.username)) : ""}${d.catalog?.length ? row(l.catalog, esc(d.catalog.map(c => c.title || c.id).join(", "))) : ""}</table>`;
 
   const people = dir.people.map(p => { const { id: _id, ...rest } = p; return `<li><b>${esc(fullName(p) || "–")}</b>${value(rest, l, names)}</li>`; }).join("");
   const groups = dir.groups.map(g => `<li><b>${esc(g.name)}</b>: ${esc(g.memberIds.map(id => names.get(id) || id).join(", "))}${g.prefs ? value({ [l.prefs]: g.prefs }, l, names) : ""}</li>`).join("");
@@ -144,7 +144,7 @@ ul,ol{margin:4px 0;padding-left:20px}li{margin:3px 0}.muted{color:#555;font-size
 /** vollständige Kopie als Datei (Art. 15 Abs. 3, Art. 20): Konto, Profil und Reisen als Objekte statt als Text */
 export function accountJson(d: AccountData, local: LocalEntry[], now = new Date()): string {
   return JSON.stringify({
-    created: now.toISOString(), account: d.account, ...(d.username ? { username: d.username } : {}), profile: parse(d.profile, null), travelDocs: parse(d.travelDocs, null),
+    created: now.toISOString(), account: d.account, ...(d.username ? { username: d.username } : {}), ...(d.catalog?.length ? { catalog: d.catalog } : {}), profile: parse(d.profile, null), travelDocs: parse(d.travelDocs, null),
     trips: d.trips.map(t => ({ ...t, data: parse(t.data, t.data) })), campaigns: d.campaigns, device: local
   }, null, 2);
 }

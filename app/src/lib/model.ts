@@ -594,6 +594,12 @@ export interface Trip {
   days?: Record<string, DayPlan>;
   /** öffentliche Aktionsseite zum Mitfinanzieren (Zuschüsse Stufe 2), nur mit Einwilligung zu Name und IBAN */
   campaign?: Campaign;
+  /** im Reisekatalog veröffentlicht (#644): Kennung des Eintrags, Konto des Erstellers, Zeitpunkt; Kopien und Varianten erben es nicht */
+  pub?: {
+    id: string; uid: string; at: string;
+    /** zuletzt veröffentlichte Angaben, vorbelegt bei „Eintrag aktualisieren“ */
+    input?: { title: string; summary: string; kind: "stay" | "round" | "road" | "event" | "package" | "cruise"; months: number[] };
+  };
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
   detail?: Partial<Record<CatKey, boolean>>;
   tiers: Partial<Record<CatKey, Tier[]>>;

@@ -15,7 +15,7 @@ export type CheckLevel = "red" | "yellow";
 /** gelbe Hinweise, die auch im Katalog stehen */
 export const PUBLIC_WARN = ["longDay", "veryLong", "gap", "noMove", "stayPrice"] as const;
 export type WarnCode = (typeof PUBLIC_WARN)[number];
-export type CheckCode = WarnCode | "noDest" | "noNights" | "backBefore" | "stayOutside" | "overlap" | "zeroPrice" | "contact" | "names";
+export type CheckCode = WarnCode | "noDest" | "noNights" | "backBefore" | "stayOutside" | "overlap" | "zeroPrice" | "contact" | "names" | "noTitle";
 export interface Finding { level: CheckLevel; code: CheckCode; v?: Record<string, string | number>; itemId?: string; day?: number }
 
 /** Fahrtag: so viele Stunden (mit Pausen) gelten als lang bzw. sehr lang; bei Roadtrip, Camper, ohne Flug höher */

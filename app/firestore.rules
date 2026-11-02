@@ -103,6 +103,28 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.owner == uid();
     }
 
+    // Reisekatalog (#644): veröffentlichte Reisen, für alle lesbar (auch ohne Konto, die Liste lädt alle). Der Eintrag
+    // (Reisekern ohne Anreise und ohne Namen, catalog/publish.ts) steckt als Text in data, ohne Links und E-Mail-Adressen.
+    // Veröffentlichen nur mit Konto (kein Gast) und unter dem eigenen öffentlichen Benutzernamen (usernames/{name});
+    // ändern und zurückziehen nur das Konto, das veröffentlicht hat.
+    function validEntry(d) {
+      return d.keys().hasOnly(['uid', 'by', 'data', 'terms', 'at'])
+        && d.uid == uid()
+        && d.by is string && d.by.size() >= 3 && d.by.size() <= 20
+        && exists(/databases/$(database)/documents/usernames/$(d.by.lower()))
+        && get(/databases/$(database)/documents/usernames/$(d.by.lower())).data.uid == uid()
+        && d.data is string && d.data.size() > 20 && d.data.size() < 100000
+        && !d.data.matches('(?is).*(https?://|www[.]|[^ "@]+@[^ "@]+[.][a-z]{2,}).*')
+        && d.terms is string && d.terms.size() <= 20
+        && d.at == request.time;
+    }
+    match /catalog/{entryId} {
+      allow get, list: if true;
+      allow create: if signedIn() && !guest() && validEntry(request.resource.data);
+      allow update: if signedIn() && !guest() && resource.data.uid == uid() && validEntry(request.resource.data);
+      allow delete: if signedIn() && resource.data.uid == uid();
+    }
+
     // Angebotsspeicher (#462): nur der Such-Dienst (Dienstkonto, umgeht die Regeln); die App liest und schreibt nie
     match /offers/{offerId} {
       allow read, write: if false;

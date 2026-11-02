@@ -37,7 +37,7 @@ export type GuideSpots = Record<string, { w: number; h: number; spots: { key: st
 
 export const GUIDE_STAND = "November 2026";
 /** Datum der letzten inhaltlichen Änderung (JJJJ-MM-TT), mit GUIDE_STAND anheben; für lastmod in der Sitemap */
-export const GUIDE_UPDATED = "2026-11-01";
+export const GUIDE_UPDATED = "2026-11-02";
 
 export const GUIDE: GuidePage[] = [
   {
@@ -343,14 +343,15 @@ export const GUIDE: GuidePage[] = [
   {
     slug: "ideen-und-ki",
     nav: "Ideen & KI",
-    title: "Reiseideen, KI-Planer, Import und Events",
-    description: "Reisen schneller starten: fertig gerechnete Reiseideen übernehmen, die KI Vorschläge machen lassen, ein Angebot importieren oder die Reise nach einem Event planen.",
-    h1: "Reiseideen, KI-Planer, Import und Events",
+    title: "Reisekatalog, KI-Planer, Import und Events",
+    description: "Reisen schneller starten: aus dem Reisekatalog übernehmen oder eigene veröffentlichen, mit KI planen, ein Angebot importieren oder zu einem Event reisen.",
+    h1: "Reisekatalog, KI-Planer, Import und Events",
     intro: [
-      "Nicht jede Reise beginnt bei null. Auf der Startseite findest du drei Abkürzungen: Reiseideen, den KI-Planer und Reisen zu einem Event."
+      "Nicht jede Reise beginnt bei null. Auf der Startseite findest du drei Abkürzungen: den Reisekatalog, den KI-Planer und Reisen zu einem Event."
     ],
     steps: [
-      "Reiseideen: Auf der Startseite „🧭 Reiseideen“ öffnen und eine fertig gerechnete Gruppenreise übernehmen. Ziel, Gruppe und Kosten sind schon eingetragen, die echten Preise suchst du danach.",
+      "Reisekatalog: Auf der Startseite den „Reisekatalog“ öffnen. Die Reisen sind nach Entfernung ab deinem Wohnort sortiert, der Preis pro Person enthält einen Richtwert für die Anreise. Mit „Als neue Reise übernehmen“ und „Reise anlegen“ wird daraus deine Reise; die echten Preise suchst du danach.",
+      "Eigene Reise veröffentlichen (mit Konto): Im Reise-Menü „🌍 Im Katalog veröffentlichen“ antippen. Ohne Benutzernamen wählst du zuerst einen, er steht als Ersteller am Eintrag. In Schritt 1 prüfst du Titel, Kurzbeschreibung, Reiseart und gute Monate und siehst die Prüfung: Rot musst du korrigieren, Gelb wird als Hinweis gezeigt. In Schritt 2 siehst du die Vorschau genau wie im Katalog, stimmst den Bedingungen zu und tippst auf „Veröffentlichen“.",
       "Mit KI planen (Beta): Beschreibe deine Wunschreise in ein paar Sätzen. Die KI schlägt Ziele und Varianten vor, die du prüfst und übernimmst.",
       "Zu einem Event (🎟): Bei Spiel, Konzert oder Festival planst du die Reise passend zum Termin.",
       "Angebot importieren (mit Konto): Unter „Neue Reise“ auf „Importieren“ tippen und ein Angebot, eine Buchung oder eine Teilnehmerliste einwerfen, als Datei (Screenshot, Foto, PDF, Word, CSV oder Excel), als Text oder als Link. Mit „Auslesen und Reise anlegen“ entsteht daraus eine Reise mit Flug, Unterkunft und Reisenden.",
@@ -361,6 +362,8 @@ export const GUIDE: GuidePage[] = [
     tips: [
       "Die KI kennt deine Vorlieben aus dem Start-Assistenten, wenn du ihn ausgefüllt hast.",
       "Persönliche Daten wie Name, Geschlecht, Staatsangehörigkeit und Geburtsdatum gehen nicht an die KI.",
+      "Im Katalog steht nur der Reisekern am Ziel: ohne Anreise, Namen, Alter, Wohnorte, Buchungen, Kasse und Anbieter. Namen der Mitreisenden, Links und Telefonnummern entfernt die App aus deinen Texten.",
+      "Änderungen an deiner Reise kommen erst mit „Eintrag aktualisieren“ in den Katalog. Im Reise-Menü steht dann „🌍 Im Katalog: aktualisieren · ansehen · zurückziehen“.",
       "Die KI-Vorbefüllung zählt als eine der KI-Anfragen pro Tag und ist optional.",
       "Prüfe KI-Vorschläge wie jede Schätzung: Preise sind Richtwerte, keine Angebote.",
       "Am Handy kannst du ein Angebot auch über das Teilen-Menü an Split&Fly senden, wenn die App installiert ist. Es kommt in die zuletzt geöffnete Reise; mit „Stattdessen neue Reise“ legst du eine neue an.",
@@ -371,11 +374,13 @@ export const GUIDE: GuidePage[] = [
     ],
     faq: [
       { q: "Ist die KI-Planung kostenlos?", a: "Ja, sie ist als Beta enthalten. Pro Tag gibt es eine begrenzte Zahl an Anfragen." },
-      { q: "Sind die Reiseideen Angebote?", a: "Nein. Es sind Richtwerte mit Spannen pro Person. Echte Preise ermittelst du danach in deiner eigenen Reise." },
+      { q: "Sind die Reisen im Katalog Angebote?", a: "Nein. Es sind Richtwerte pro Person mit Stand. Echte Preise ermittelst du danach in deiner eigenen Reise." },
+      { q: "Kann ich eine veröffentlichte Reise wieder entfernen?", a: "Ja, jederzeit: Reise-Menü → „🌍 Im Katalog: …“ → „Zurückziehen“. Der Eintrag wird gelöscht. Wer die Reise schon übernommen hat, behält seine Kopie." },
+      { q: "Mir ist ein unpassender Eintrag aufgefallen. Was tun?", a: "Öffne ihn im Katalog und tippe auf „⚑ Melden“ (mit Konto). Die Meldung wird geprüft, unpassende Einträge werden entfernt." },
       { q: "Warum ist beim Import der Flug schon angehakt, obwohl ich nur die Unterkunft wollte?", a: "Weil der Preis im Angebot nur für das ganze Paket gilt. Einzeln stünde ein Teil mit dem Paketpreis da und der andere ohne Preis. Du kannst den Haken trotzdem entfernen." },
       { q: "Werden meine Dateien beim Import gespeichert?", a: "Nein. Sie werden nur ausgelesen. Aus Teilnehmerlisten übernimmt die App Namen und Alter als Reisende. Lade keine Ausweis- oder Passdaten hoch." }
     ],
-    where: "Startseite → Reiseideen, Mit KI planen, Zu einem Event; Neue Reise → Importieren; in der Reise: Kapitel → 📥 … importieren, Reise-Menü → Reise um Import erweitern",
+    where: "Startseite → Reisekatalog, Mit KI planen, Zu einem Event; in der Reise: Reise-Menü → 🌍 Im Katalog veröffentlichen; Neue Reise → Importieren; in der Reise: Kapitel → 📥 … importieren, Reise-Menü → Reise um Import erweitern",
     emoji: "✨",
     shots: [{ img: "home", alt: "Startseite mit den Abkürzungen Zu einem Event, Mit KI planen und Reiseideen", caption: "Drei Abkürzungen auf der Startseite.", pins: {
       event: "🎟 Zu einem Event: Spiel, Konzert oder Festival, die Reise passend zum Termin.",
