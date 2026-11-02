@@ -294,9 +294,8 @@
             <button class="kat-card" onclick={() => show(c.e.id)}>
               <span class="kat-pic" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
                 <CatalogMap stops={stopPts(c.e)} area={areaOf(c.e)} />
-                <span class="kat-kind">{t(`cat.kind.${c.e.kind}` as Key)}</span>
-                {#if c.km != null}<span class="kat-km">{c.km.toLocaleString(locale())} km</span>{/if}
-                <span class="kat-dest"><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
+                <span class="kat-dest"><span><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
+                  <small>{t(`cat.kind.${c.e.kind}` as Key)}{c.km != null ? ` · ${c.km.toLocaleString(locale())} km` : ""}</small></span>
               </span>
               {#if c.e.stops.length > 1}<span class="kat-way" style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render route(routeOf(c.e, null, c.arrival))}</span>{/if}
               {#if startsOf(c).length}{@render starts(c)}{/if}
@@ -340,11 +339,9 @@
   /* Karte mit dem Zielland, Ziel darüber; bis das Kartenbild da ist, die Farbe der Reiseart */
   .kat-pic { position: relative; display: block; aspect-ratio: 5 / 2; background: var(--ks); overflow: hidden; }
   .kat-pic.big { border-radius: 18px; aspect-ratio: 2 / 1; }
-  .kat-dest { position: absolute; inset-inline: 0; bottom: 0; padding: 28px 14px 10px; background: linear-gradient(transparent, rgba(10,20,35,.72)); color: #fff; font-size: 20px; font-weight: 800; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  .kat-dest { position: absolute; inset-inline: 0; bottom: 0; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; padding: 24px 14px 10px; background: linear-gradient(transparent, rgba(10,20,35,.72)); color: #fff; font-size: 20px; font-weight: 800; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  .kat-dest small { flex: none; font-size: 12px; font-weight: 700; opacity: .95; padding-bottom: 3px; }
   .kat-pic.big .kat-dest { font-size: 26px; padding: 40px 16px 14px; }
-  .kat-kind, .kat-km { position: absolute; top: 10px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.9); color: #15202E; }
-  .kat-kind { inset-inline-start: 10px; }
-  .kat-km { inset-inline-end: 10px; }
   .kat-way { display: block; padding: 10px 14px 0; color: var(--k); }
   .kat-start { display: flex; align-items: center; gap: 8px; padding: 10px 14px 0; color: var(--k); font-size: 13px; font-weight: 600; }
   .kat-start > small { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }

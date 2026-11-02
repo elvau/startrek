@@ -8,7 +8,8 @@
   import { cachedSnap, mapSnap } from "./mapSnap";
 
   let { stops, area = [], w = 360, h = 144 }: { stops: LatLon[]; area?: LatLon[]; w?: number; h?: number } = $props();
-  const PAD = 18;
+  // Rand, damit Stationen nicht unter der Zielzeile unten liegen
+  const PAD = 22;
   const pts = $derived([...area, ...stops]);
   const pr = $derived(project(pts, w, h, PAD));
   const view = $derived(mapView(pts, w, h, PAD));
