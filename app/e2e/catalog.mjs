@@ -1,6 +1,7 @@
 /*
  * Reisekatalog (#646): Kachel auf der Startseite, Liste nach Entfernung ab dem Land des Betrachters (hier Schweiz über die
- * Zeitzone, nicht ab Deutschland), Filter, Detail mit Kosten und Route, „Als neue Reise übernehmen“ legt die Reise an.
+ * Zeitzone, nicht ab Deutschland), Karte mit Bild und Ziel zuerst, darunter Startpunkte und „~xy € ab …“, Filter, Detail
+ * mit Kosten, „Als neue Reise übernehmen“ legt die Reise an.
  * Start: npm run build:emu && node e2e/catalog.mjs (ohne Emulator; Ortsdaten liegen neben der App und werden hier gereicht)
  */
 import { chromium } from "playwright";
@@ -20,6 +21,7 @@ try {
   // world.json liegt in der echten Seite neben der App (public/ im Repo), nicht im Build der App
   await ctx.route("**/world.json", r => r.fulfill({ path: "../public/world.json" }));
   await ctx.route("**/packs.json", r => r.fulfill({ path: "../public/packs.json" }));
+  await ctx.route("**/airports.json", r => r.fulfill({ path: "../public/airports.json" }));
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(e.message));
   await p.goto(URL);
@@ -42,17 +44,24 @@ try {
   await p.locator(".kat-reset").click();
   log("Filter Familie: 3 Reisen, zurückgesetzt");
 
-  // Detail: Route mit Rückweg, Kosten nach Bereichen, Touren
-  await p.locator(".kat-card", { hasText: "Gruppenreise Mallorca" }).click();
+  // Karte: Ziel zuerst (im Bild), darunter mögliche Startpunkte, Preis „ab …“ (Dani, 02.11.)
+  const mallorca = p.locator(".kat-card", { hasText: "Gruppenreise Mallorca" });
+  if (!(await mallorca.locator(".kat-dest").innerText()).includes("Mallorca")) fail("Ziel nicht im Bild");
+  if (!(await mallorca.locator(".kat-pic svg.kat-art").count())) fail("Bild fehlt");
+  const start = await mallorca.locator(".kat-start").innerText();
+  if (!start.includes("Zürich") || !(await mallorca.locator(".kat-start use[href='#i-plane']").count())) fail("Startpunkte: " + start);
+  const from = ((await mallorca.locator(".kat-price small").innerText()).match(/ab (.+)$/) || [])[1];
+  if (!from || !start.includes(from)) fail("Preis ohne Startpunkt: " + (await mallorca.locator(".kat-price small").innerText()));
+
+  // Detail: Bild mit Ziel, Startpunkte, Kosten nach Bereichen, Touren
+  await mallorca.click();
   await p.locator(".kat-box").waitFor();
-  const route = await p.locator(".kat-hero .cr-node").allInnerTexts();
-  if (route.length !== 3 || !route[1].includes("Mallorca")) fail("Route: " + route.join(" → "));
-  if (!(await p.locator(".kat-hero .cr-ico use[href='#i-plane']").count())) fail("Flug-Symbol fehlt in der Route");
+  if (!(await p.locator(".kat-pic.big .kat-dest").innerText()).includes("Mallorca")) fail("Detail: Ziel fehlt");
   const rows = await p.locator(".kat-rows li b").allInnerTexts();
   if (rows[0] !== "Anreise (geschätzt)" || !rows.includes("Unterkunft")) fail("Kostenzeilen: " + rows.join(", "));
   if (!(await p.locator(".kat-tours li").count())) fail("Touren fehlen");
   if ((await p.evaluate(() => document.documentElement.scrollWidth)) > 390) fail("Detail breiter als das Handy");
-  log(`Detail Mallorca: Route ${route.map(r => r.split("\n")[0]).join(" → ")}, Kosten ${rows.join(", ")}`);
+  log(`Mallorca: Bild mit Ziel, ${start.replace(/\s+/g, " ").trim()}, Kosten ${rows.join(", ")}`);
 
   // übernehmen: neue Reise mit Ziel und Gruppe
   await p.locator(".kat-take .btn").click();
