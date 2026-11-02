@@ -3,6 +3,7 @@ rules_version = '2';
 // Reisekasse: Reisen gehören ihren Mitgliedern.
 // Rollen: owner (alles, Mitglieder verwalten, löschen), editor (Inhalt bearbeiten), viewer (nur lesen).
 // Beitreten nur mit dem Einladungsschlüssel, den der Besitzer in der Reise hinterlegt hat.
+// Eingespielt von .github/workflows/regeln.yml (pre-release → Testprojekt, main → echtes Projekt), siehe docs/FIREBASE.md.
 service cloud.firestore {
   match /databases/{database}/documents {
 
