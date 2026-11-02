@@ -28,8 +28,11 @@ Weiterentwicklung gebündelt in Epics (`epic`, mittlere Version), Features (`fea
 Ablauf und „fertig ist, wenn …“ in `docs/ABLAUF.md`. In Sitzungen mit Dani ein Epic Feature für Feature abarbeiten,
 offene Entscheidungen zur Oberfläche vorher mit Entwurf klären.
 Jedes offene Ticket hat genau ein Zuständigkeits-Label: `zuständig: Entwicklung` (diese Sitzungen), `zuständig: QA-Routinen`
-(Bugs und kleine Änderungswünsche), `zuständig: Dani` (Entscheidungen `entscheidung`, Einrichtungen `einrichtung`; Dani
-schließt sie). Braucht es eine Entscheidung von Dani, ein eigenes Ticket dafür anlegen statt nur im Chat zu fragen.
+(Bugs und kleine Änderungswünsche), `zuständig: Dani` (Entscheidungen `entscheidung`, Einrichtungen `einrichtung`).
+Braucht es eine Entscheidung von Dani, ein eigenes Ticket dafür anlegen statt nur im Chat zu fragen. Dani steuert alles über
+die Sitzungen: Hat Dani im Chat entschieden oder eine Einrichtung als erledigt gemeldet (bzw. ist sie nachweislich erledigt),
+schließt die Sitzung das Ticket selbst, mit einem Kommentar, was entschieden bzw. erledigt ist. Teilweise Entscheidungen:
+Kommentar, Ticket bleibt offen. Fertige Features und Epics schließt die Sitzung ebenfalls (nach dem Release, siehe oben).
 
 ## Arbeitsteilung (Routinen)
 Fehler und QA laufen über Routinen auf einem eigenen Konto (Einrichtung und Prompts: `docs/claude2claude.md`): **SAF 1 – Triage** macht aus Fehlerberichten Issues
