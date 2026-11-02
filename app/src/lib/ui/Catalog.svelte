@@ -11,7 +11,8 @@
   import { flagOf } from "../format";
   import { dir } from "../directory.svelte";
   import { myHome } from "../prefs";
-  import { geo } from "../geo/geo.svelte";
+  import { airportData, ensureAirports, geo } from "../geo/geo.svelte";
+  import { airportsNear } from "../geo/locations";
   import { capitalOf, loadGeo } from "../geo/places";
   import { homeUi } from "../store.svelte";
   import { monthsText } from "../prefsView";
@@ -28,10 +29,14 @@
   let picked = $state<Home | null>(null);
   let asking = $state(false);
   let sel = $state<string | null>(null);
+  // Bilder: eigene Szenen der Reiseideen (seo/art.ts, keine Fotos von Anbietern, #649); sonst Flaggen auf Farbfläche
+  let art = $state<Record<string, string>>({});
 
   onMount(() => {
     void import("../catalog/seed").then(m => (entries = m.seedCatalog()));
+    void import("../seo/art").then(m => (art = Object.fromEntries(Object.keys(m.ART).map(k => [k, m.artSvg(k, "kat-art")])))); 
     void loadGeo(geo, []);
+    void ensureAirports().catch(() => {});
   });
 
   const flyKm = $derived(dir.prefs?.flyKm || FLY_KM);
@@ -68,6 +73,37 @@
   const routeLabel = (r: RouteNode[]) => `${t("cat.route")}: ${r.map(n => (n.by ? `${t(`cat.by.${n.by}` as Key)} → ` : "") + n.name).join(", ")}`;
   const KIND_TINT: Record<string, string> = { stay: "stay", round: "attractions", road: "misc", event: "trav", package: "pkg", cruise: "flights" };
 
+  /** Ziel(e) für das Bild: Orte ohne direkte Wiederholung, Flaggen je Land */
+  const dests = (e: CatalogEntry) => e.stops.filter((s, i) => i === 0 || s.place !== e.stops[i - 1].place).filter((s, i, a) => i === 0 || i < a.length - 1 || s.place !== a[0].place);
+  const destFlags = (e: CatalogEntry) => [...new Set(dests(e).map(s => s.cc).filter((c): c is string => !!c))].map(flagOf).join(" ");
+  const picOf = (e: CatalogEntry) => (e.slug ? art[e.slug] : "") || "";
+  /** Beschriftung im Flussdiagramm: Start, Ziel bzw. Ziele, zurück */
+  const capOf = (nodes: RouteNode[], i: number) => {
+    const n = nodes[i];
+    if (n.home) return i === 0 ? t("cat.start") : t("cat.ret");
+    const first = nodes.findIndex(x => !x.home);
+    return i === first ? (nodes.filter(x => !x.home).length > 1 ? t("cat.goals") : t("cat.goal")) : "";
+  };
+  /**
+   * Mögliche Startpunkte (Dani, 02.11.): mit Flug die eigenen Flughäfen aus den Vorlieben bzw. die nächsten großen
+   * Flughäfen am Startort (Städte), sonst der Startort selbst
+   */
+  const startsOf = (c: CatalogCard): string[] => {
+    if (!origin) return [];
+    if (c.arrival?.mode !== "flight") return [origin.name];
+    void airportData.airports.length;
+    const own = dir.prefs?.airports?.length ? dir.prefs.airports.map(code => airportData.airports.find(a => a[0] === code)?.[2] || code) : [];
+    const near = own.length ? own : airportsNear(airportData, origin, 150, 4).map(a => apLabel(a.name, a.city));
+    const out = [...new Set(near)].slice(0, 3);
+    return out.length ? out : [origin.name];
+  };
+  /** kurzer Name eines Flughafens: „Leipzig/Halle“ (liegt in Schkeuditz), sonst die Stadt („Köln“), bei „Bâle / Mulhouse“ der Name ohne Zusätze („Basel“) */
+  const apLabel = (name: string, city?: string) => {
+    if (name.length <= 14 && !name.includes(" ")) return name;
+    if (city && !city.includes("/")) return city;
+    return name.replace(/\b(EuroAirport|Airport|International|Flughafen)\b/g, "").split(/[–-]/)[0].trim() || name;
+  };
+  const startIcon = (c: CatalogCard) => (c.route.find(n => !n.home)?.by || "car");
   function show(id: string) { sel = id; scrollTo({ top: 0 }); }
   async function take(e: CatalogEntry) {
     if (e.source !== "idea" || !e.slug) return;
@@ -80,12 +116,16 @@
   }
 </script>
 
+{#snippet starts(c: CatalogCard)}
+  <span class="kat-start"><small>{t("cat.start")}</small><span class="cr-ico" title={t(`cat.by.${startIcon(c)}` as Key)}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{startIcon(c)}" /></svg></span><span><span aria-hidden="true">{origin?.cc ? flagOf(origin.cc) : ""}</span> {startsOf(c).join(" · ")}</span></span>
+{/snippet}
+
 {#snippet route(nodes: RouteNode[], big = false)}
   <ol class="cr-route" class:big aria-label={routeLabel(nodes)}>
     {#each nodes as n, i (i)}
       <li>
         {#if n.by}<span class="cr-leg" title={t(`cat.by.${n.by}` as Key)}><i></i><span class="cr-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{n.by}" /></svg></span><i></i></span>{/if}
-        <span class="cr-node"><span class="cr-flag" aria-hidden="true">{n.cc ? flagOf(n.cc) : "📍"}</span><span class="cr-name">{n.name}{#if big && n.nights}<small>{t("cat.d.nightsShort", { n: n.nights })}</small>{/if}</span></span>
+        <span class="cr-node" class:home={n.home}><span class="cr-flag" aria-hidden="true">{n.cc ? flagOf(n.cc) : "📍"}</span><span class="cr-name">{#if capOf(nodes, i)}<small class="cr-cap">{capOf(nodes, i)}</small>{/if}{n.name}{#if big && n.nights}<small>{t("cat.d.nightsShort", { n: n.nights })}</small>{/if}</span></span>
       </li>
     {/each}
   </ol>
@@ -96,9 +136,12 @@
     {@const c = card}
     {@const rows = costRows(c.e, c.arrival)}
     <button class="linkbtn kat-back" onclick={() => (sel = null)}>{arrow() === "→" ? "←" : "→"} {t("cat.d.back")}</button>
-    <div class="kat-hero" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
-      {@render route(routeOf(c.e, origin, c.arrival, true), true)}
+    <div class="kat-pic big" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
+      {#if picOf(c.e)}{@html picOf(c.e)}{:else}<span class="kat-ph" aria-hidden="true">{destFlags(c.e)}</span>{/if}
+      <span class="kat-dest"><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
     </div>
+    {#if c.e.stops.length > 1}<div class="kat-way" style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render route(routeOf(c.e, null, c.arrival), true)}</div>{/if}
+    {#if startsOf(c).length}<div style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render starts(c)}</div>{/if}
     <div class="kat-dh">
       <small class="muted">{t(`cat.kind.${c.e.kind}` as Key)}{c.km != null ? ` · ${c.km.toLocaleString(locale())} km` : ""}</small>
       <h1 class="home-title kat-h">{c.e.title}</h1>
@@ -106,7 +149,7 @@
       <small class="muted">{byText(c.e)} · {t("cat.d.stand", { m: standText(c.e.stand) })}</small>
     </div>
     <section class="kat-box">
-      <div class="kat-sum"><b>{origin ? t("cat.d.cost", { place: origin.name }) : t("cat.d.costNoHome")}</b><span class="kat-big num"><bdi>~{eur(c.pp)}</bdi></span></div>
+      <div class="kat-sum"><b>{origin ? t("cat.d.cost", { place: startsOf(c)[0] || origin.name }) : t("cat.d.costNoHome")}</b><span class="kat-big num"><bdi>~{eur(c.pp)}</bdi></span></div>
       <ul class="kat-rows">
         {#each rows as r (r.key)}
           <li class:est={r.est}><span><b>{t(`cat.cost.${r.key}` as Key)}</b>{#if r.labels.length}<small class="muted">{r.labels.join(" · ")}</small>{/if}</span><span class="num"><bdi>~{eur(r.pp)}</bdi></span></li>
@@ -177,12 +220,16 @@
         <div class="kat-grid">
           {#each b.cards as c (c.e.id)}
             <button class="kat-card" onclick={() => show(c.e.id)}>
-              <span class="kat-top" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
-                <span class="kat-kind"><span>{t(`cat.kind.${c.e.kind}` as Key)}</span>{#if c.km != null}<span>{c.km.toLocaleString(locale())} km</span>{/if}</span>
-                {@render route(c.route)}
+              <span class="kat-pic" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
+                {#if picOf(c.e)}{@html picOf(c.e)}{:else}<span class="kat-ph" aria-hidden="true">{destFlags(c.e)}</span>{/if}
+                <span class="kat-kind">{t(`cat.kind.${c.e.kind}` as Key)}</span>
+                {#if c.km != null}<span class="kat-km">{c.km.toLocaleString(locale())} km</span>{/if}
+                <span class="kat-dest"><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
               </span>
+              {#if c.e.stops.length > 1}<span class="kat-way" style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render route(routeOf(c.e, null, c.arrival))}</span>{/if}
+              {#if startsOf(c).length}{@render starts(c)}{/if}
               <span class="kat-body">
-                <span class="kat-tl"><b>{c.e.title}</b><span class="kat-price"><b class="num"><bdi>~{eur(c.pp)}</bdi></b><small>{t("cat.pp")}</small></span></span>
+                <span class="kat-tl"><b>{c.e.title}</b><span class="kat-price"><b class="num"><bdi>~{eur(c.pp)}</bdi></b><small>{startsOf(c).length ? t("cat.ppFrom", { place: startsOf(c)[0] }) : t("cat.pp")}</small></span></span>
                 <span class="kat-meta">{tn("n.nights", c.e.nights)} · {groupText(c.e)}{c.e.months.length ? ` · ${monthsText(c.e.months)}` : ""}</span>
                 <span class="kat-tags">
                   {#if c.arrival}<span class="kat-tag arr">{arrText(c)}</span>{/if}
@@ -218,9 +265,21 @@
   .kat-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
   .kat-card { display: flex; flex-direction: column; text-align: start; padding: 0; border-radius: 18px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); overflow: hidden; box-shadow: 0 1px 2px rgba(21,32,46,.06); }
   .kat-card:hover, .kat-card:focus-visible { box-shadow: var(--shadow); }
-  .kat-top, .kat-hero { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; background: var(--ks); color: var(--k); }
-  .kat-hero { border-radius: 18px; padding: 16px; }
-  .kat-kind { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+  /* Bild mit Ziel darüber; ohne Szene Flaggen auf der Farbe der Reiseart */
+  .kat-pic { position: relative; display: block; aspect-ratio: 5 / 2; background: var(--ks); overflow: hidden; }
+  .kat-pic.big { border-radius: 18px; aspect-ratio: 2 / 1; }
+  .kat-pic :global(.kat-art) { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .kat-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 56px; letter-spacing: 8px; }
+  .kat-dest { position: absolute; inset-inline: 0; bottom: 0; padding: 28px 14px 10px; background: linear-gradient(transparent, rgba(10,20,35,.72)); color: #fff; font-size: 20px; font-weight: 800; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  .kat-pic.big .kat-dest { font-size: 26px; padding: 40px 16px 14px; }
+  .kat-kind, .kat-km { position: absolute; top: 10px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.9); color: #15202E; }
+  .kat-kind { inset-inline-start: 10px; }
+  .kat-km { inset-inline-end: 10px; }
+  .kat-way { display: block; padding: 10px 14px 0; color: var(--k); }
+  .kat-start { display: flex; align-items: center; gap: 8px; padding: 10px 14px 0; color: var(--k); font-size: 13px; font-weight: 600; }
+  .kat-start > small { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .kat-start > span:last-child { color: var(--ink); }
+  .kat-start .cr-ico { width: 24px; height: 24px; flex: none; }
   .kat-body { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px 14px; }
   .kat-tl { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
   .kat-tl > b { font-size: 17px; line-height: 1.25; overflow-wrap: anywhere; }
@@ -243,6 +302,8 @@
   .cr-flag { font-size: 16px; line-height: 1; }
   .cr-name { display: flex; flex-direction: column; line-height: 1.15; }
   .cr-name small { font-size: 11px; font-weight: 500; color: var(--ink-2); }
+  .cr-name .cr-cap { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .cr-node.home { background: var(--paper-2); box-shadow: none; border: 1px solid var(--line); }
   .big .cr-node { font-size: 13px; padding: 5px 10px 5px 7px; }
   .big .cr-flag { font-size: 18px; }
   .big .cr-ico { width: 30px; height: 30px; }
