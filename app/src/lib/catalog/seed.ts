@@ -67,7 +67,7 @@ export function pageToCatalog(p: Page): CatalogEntry | null {
     else costs.push({ cat: c.cat, label: c.label, ...row, ...(c.cat === "stay" ? { place: p.plan.ziel, nights: m.nights } : {}) });
   });
   return {
-    v: 1, id: `idea:${p.slug}`, source: "idea", lang: "de", title: p.h1, kind: m.kind, styles: [...m.styles],
+    v: 1, id: `idea:${p.slug}`, source: "idea", lang: "de", title: p.plan.name, kind: m.kind, styles: [...m.styles],
     ...(m.noFly ? { noFly: true } : {}), ...(m.event ? { event: m.event } : {}),
     group: groupOf(p), months: [...m.months], nights: m.nights,
     stops: [{ place: p.plan.ziel, cc: p.plan.land, lat: m.lat, lon: m.lon, nights: m.nights }],

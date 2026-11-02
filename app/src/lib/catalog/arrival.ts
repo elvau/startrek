@@ -18,8 +18,8 @@ export const DIST_BANDS: DistBand[] = ["near", "short", "mid", "far"];
 export const ARRIVAL_STAND = "2026-11";
 /** ab hier Flug statt Auto oder Bahn (Standard; eigene Grenze in den Vorlieben: Prefs.flyKm, Dani 02.11.) */
 export const FLY_KM = 700;
-/** Richtwerte pro Person für Hin und zurück, Nebensaison: am Boden bis 300 bzw. 700 km, Flug inklusive Gepäck und Weg zum Flughafen */
-export const GROUND_PP: { upTo: number; pp: number }[] = [{ upTo: 300, pp: 40 }, { upTo: 700, pp: 90 }];
+/** Richtwerte pro Person für Hin und zurück, Nebensaison: am Boden bis 30 (Nahverkehr), 300 bzw. 700 km, Flug inklusive Gepäck und Weg zum Flughafen */
+export const GROUND_PP: { upTo: number; pp: number }[] = [{ upTo: 30, pp: 10 }, { upTo: 300, pp: 40 }, { upTo: 700, pp: 90 }];
 export const FLIGHT_PP: { upTo: number; pp: number }[] = [
   { upTo: 2000, pp: 220 },
   { upTo: 4500, pp: 400 },

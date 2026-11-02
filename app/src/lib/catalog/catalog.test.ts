@@ -63,7 +63,7 @@ describe("Reise → Katalogeintrag (#642)", () => {
   it("Stationen mit Nächten und Lage, Rundreise, Monate, Stand", () => {
     expect(e.stops).toEqual([
       { place: "Split", nights: 3, lat: 43.5, lon: 16.4, cc: "HR" },
-      { place: "Dubrovnik", nights: 2, lat: 42.65, lon: 18.09, cc: "HR" }
+      { place: "Dubrovnik", nights: 2, lat: 42.65, lon: 18.09, cc: "HR", by: "plane" }
     ]);
     expect(e.kind).toBe("round");
     expect(e.nights).toBe(5);

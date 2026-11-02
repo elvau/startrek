@@ -19,7 +19,7 @@ describe("Anreise als Richtwert nach Entfernung (#645)", () => {
     expect(bandOf(3000)).toBe("mid");
     expect(bandOf(7500)).toBe("far");
     const amsterdam = arrivalFor(entry({ stops: [at(52.37, 4.9)] }), KOELN)!;
-    expect(amsterdam).toMatchObject({ mode: "ground", band: "near", pp: GROUND_PP[0].pp });
+    expect(amsterdam).toMatchObject({ mode: "ground", band: "near", pp: GROUND_PP[1].pp });
     const mallorca = arrivalFor(entry({ stops: [at(39.62, 2.98)] }), KOELN)!;
     expect(mallorca).toMatchObject({ mode: "flight", band: "short", pp: 220, peak: false });
     expect(mallorca.range[0]).toBeLessThan(220);
@@ -34,7 +34,7 @@ describe("Anreise als Richtwert nach Entfernung (#645)", () => {
     const e = entry({ stops: [at(39.47, -0.38)], noFly: true });
     const a = arrivalFor(e, KOELN)!;
     expect(a.mode).toBe("ground");
-    expect(a.pp).toBeGreaterThan(GROUND_PP[1].pp);
+    expect(a.pp).toBeGreaterThan(GROUND_PP[2].pp);
     expect(arrivalFor({ ...e, noFly: undefined, kind: "road" }, KOELN)!.mode).toBe("ground");
   });
   it("Rundreise: hin zum ersten, zurück vom letzten Ort", () => {

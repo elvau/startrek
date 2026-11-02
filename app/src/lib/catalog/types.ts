@@ -17,6 +17,8 @@ export type CatalogSource = "user" | "auto" | "idea";
 
 /** Unterwegs vor Ort */
 export type CatalogMove = "car" | "camper" | "transit";
+/** Verkehrsmittel zu einer Station (Route als Flussdiagramm in der Karte) */
+export type CatalogBy = "plane" | "car" | "train" | "ship" | "camper";
 
 export interface CatalogStop {
   place: string;
@@ -26,6 +28,8 @@ export interface CatalogStop {
   lat?: number;
   lon?: number;
   nights: number;
+  /** wie man von der vorigen Station hierher kommt (bei der ersten: kommt aus der Anreise, #645) */
+  by?: CatalogBy;
 }
 
 /** Kosten am Ziel pro Person (Mittelwert über alle Reisenden), ohne Anreise und ohne Touren */

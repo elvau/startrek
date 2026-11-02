@@ -10,7 +10,7 @@ import { dayDiff, okDate } from "../calc/travel";
 import { itinerary, stations } from "../itinerary";
 import { isActive, uid, type Item, type Trip } from "../model";
 import { isRoadTrip } from "../road/trip";
-import type { CatalogCost, CatalogDay, CatalogEntry, CatalogKind, CatalogMove, CatalogStop, CatalogTour } from "./types";
+import type { CatalogBy, CatalogCost, CatalogDay, CatalogEntry, CatalogKind, CatalogMove, CatalogStop, CatalogTour } from "./types";
 
 /** Ortsname → Lage und Land (in der App aus den Geodaten) */
 export type PlaceResolver = (name: string) => { lat: number; lon: number; cc?: string } | null;
@@ -102,6 +102,16 @@ export function tripToCatalog(trip: Trip, o: FromTripOpts): CatalogEntry {
     const loc = stopLoc(trip.place);
     stops = [{ place: trip.place, nights: Math.max(0, days.length - 1), ...(loc ? { lat: loc.lat, lon: loc.lon, ...(loc.cc ? { cc: loc.cc } : {}) } : {}) }];
   }
+  // Verkehrsmittel zwischen den Stationen: Flug zwischen Stationen, Kreuzfahrt, Camper, sonst Auto bzw. Bahn
+  const viaDays = live.filter(i => i.cat === "flights").flatMap(i => (activeOption(i, trip)?.legs || []).filter(l => l.dir === "via").map(l => l.dep.slice(0, 10)));
+  const cruise = live.some(i => i.cruise);
+  const ground: CatalogBy = trip.camper ? "camper" : live.some(i => i.rental || i.hint === "rental" || i.hint === "road:car") ? "car" : "train";
+  const st = stations(days);
+  stops.forEach((s, i) => {
+    if (i === 0) return;
+    const from = st[i - 1]?.from, to = st[i]?.from;
+    s.by = cruise ? "ship" : from && to && viaDays.some(d => d >= from && d <= to) ? "plane" : ground;
+  });
   const nights = okDate(trip.from) && okDate(trip.to) ? Math.max(0, dayDiff(trip.from!, trip.to!)) : stops.reduce((a, s) => a + s.nights, 0);
 
   // geschätzte Nebenkosten (Kurtaxe …) nicht speichern: die Ansicht schätzt sie neu (fees.ts); eingetragene bleiben
