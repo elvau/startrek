@@ -50,6 +50,7 @@
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import GroupChat from "./lib/ui/GroupChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
+  import PriceCheck from "./lib/ui/PriceCheck.svelte";
   import BrokerGate from "./lib/ui/BrokerGate.svelte";
   import TermsGate from "./lib/ui/TermsGate.svelte";
   import { hasPending, takePending, termsAccepted } from "./lib/terms";
@@ -240,9 +241,11 @@
   <main bind:this={mainEl} class:pager={mob.on}>
     {#if mob.on}
       <!-- Handy (#530): erste Seite des Pagers ist die Übersicht der Reise -->
-      <section class="chapter pg-hero" class:on={mob.page === "hero"} data-ch="hero"><Hero /><TripTimeline /></section>
+      <section class="chapter pg-hero" class:on={mob.page === "hero"} data-ch="hero"><Hero /><TripTimeline />{#if app.trip.catalog}<PriceCheck />{/if}</section>
     {:else}
       <TripTimeline />
+      <!-- aus dem Katalog übernommen (#652): Preise prüfen -->
+      {#if app.trip.catalog}<PriceCheck />{/if}
     {/if}
     <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>

@@ -363,6 +363,7 @@ export const GUIDE: GuidePage[] = [
       "Die KI kennt deine Vorlieben aus dem Start-Assistenten, wenn du ihn ausgefüllt hast.",
       "Persönliche Daten wie Name, Geschlecht, Staatsangehörigkeit und Geburtsdatum gehen nicht an die KI.",
       "Im Katalog steht nur der Reisekern am Ziel: ohne Anreise, Namen, Alter, Wohnorte, Buchungen, Kasse und Anbieter. Namen der Mitreisenden, Links und Telefonnummern entfernt die App aus deinen Texten.",
+      "Nach dem Übernehmen prüft die App die Preise von selbst: Oben in der Reise zeigt „🔎 Preise prüfen“ je Posten den Richtwert und das gefundene Angebot pro Person. Ohne Reisebeginn fragt die Karte danach; der Richtwert bleibt im Posten zum Vergleich.",
       "Änderungen an deiner Reise kommen erst mit „Eintrag aktualisieren“ in den Katalog. Im Reise-Menü steht dann „🌍 Im Katalog: aktualisieren · ansehen · zurückziehen“.",
       "Die KI-Vorbefüllung zählt als eine der KI-Anfragen pro Tag und ist optional.",
       "Prüfe KI-Vorschläge wie jede Schätzung: Preise sind Richtwerte, keine Angebote.",
