@@ -189,6 +189,7 @@
       <h1 class="home-title kat-h">{c.e.title}</h1>
       <span>{tn("n.nights", c.e.nights)} · {groupText(c.e)}{c.e.months.length ? ` · ${t("cat.good", { m: monthsText(c.e.months) })}` : ""}</span>
       <small class="muted">{byText(c.e)} · {t("cat.d.stand", { m: standText(c.e.stand) })}</small>
+      {#if c.e.warn?.length}<span class="kat-tags">{#each c.e.warn as w (w)}<span class="kat-tag warn">{t(`cat.warn.${w}` as Key)}</span>{/each}</span>{/if}
     </div>
     <section class="kat-box">
       <div class="kat-sum"><b>{origin ? t("cat.d.cost", { place: startsOf(c)[0] || origin.name }) : t("cat.d.costNoHome")}</b><span class="kat-big num"><bdi>~{eur(c.pp)}</bdi></span></div>
@@ -305,6 +306,7 @@
                 <span class="kat-tags">
                   {#if c.arrival}<span class="kat-tag arr">{arrText(c)}</span>{/if}
                   {#if c.tours}<span class="kat-tag tour">{t("cat.tours", { v: eur(c.tours) })}</span>{/if}
+                  {#each c.e.warn || [] as w (w)}<span class="kat-tag warn">{t(`cat.warn.${w}` as Key)}</span>{/each}
                 </span>
                 <small class="muted">{byText(c.e)}</small>
               </span>
@@ -358,6 +360,7 @@
   .kat-tag { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 10px; }
   .kat-tag.arr { color: var(--c-flights); background: var(--c-flights-s); }
   .kat-tag.tour { color: var(--c-attractions); background: var(--c-attractions-s); }
+  .kat-tag.warn { color: var(--warn); background: var(--warn-soft); border: 1px dashed var(--warn); }
   /* Route als Flussdiagramm: Flagge und Ort, dazwischen das Verkehrsmittel */
   .cr-route { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; row-gap: 8px; }
   .cr-route li { display: flex; align-items: center; }

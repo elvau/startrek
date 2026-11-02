@@ -48,6 +48,25 @@ service cloud.firestore {
         && request.resource.data.data is string && request.resource.data.data.size() < 500000;
     }
 
+    // Öffentlicher Benutzername (#650): Dokument je Name (klein geschrieben) mit dem Konto, das ihn hat. Jeder darf einen
+    // Namen nachschlagen (Ersteller im Katalog, Verfügbarkeit), auflisten nur die eigenen. Belegen nur mit Konto (kein Gast),
+    // nur für sich selbst, Regeln wie account/username.ts; ändern und freigeben nur das Konto, dem der Name gehört.
+    function validName(key) {
+      return request.resource.data.keys().hasOnly(['uid', 'name', 'at'])
+        && request.resource.data.uid == uid()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 20
+        && request.resource.data.name.lower() == key
+        && request.resource.data.name.matches('^[\\p{L}\\p{N}_]([\\p{L}\\p{N}._]*[\\p{L}\\p{N}_])?$');
+    }
+    match /usernames/{key} {
+      allow get: if true;
+      allow list: if signedIn() && resource.data.uid == uid();
+      allow create: if signedIn() && !guest() && validName(key);
+      allow update: if signedIn() && !guest() && resource.data.uid == uid() && validName(key);
+      allow delete: if signedIn() && resource.data.uid == uid();
+    }
+
     // Buchungsdaten (Ausweis, Reisepass): nur für einen selbst, nie für Mitreisende oder Eingeladene
     match /travelDocs/{userId} {
       allow read, delete: if signedIn() && uid() == userId;

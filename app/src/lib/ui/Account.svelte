@@ -7,10 +7,12 @@
   import { connect } from "../connector/app.svelte";
   import { restartSetup } from "../setup/app.svelte";
   import { myData } from "../mydata.svelte";
+  import UsernameField from "./UsernameField.svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
   let open = $state(false);
   let busy = $state(false);
+  let naming = $state(false);
   let root = $state<HTMLDivElement>();
   const local = $derived(localTrips().length);
   const STATUS = (s: string) => t(`acct.st.${s}` as Key);
@@ -38,7 +40,11 @@
       </button>
       {#if open}
         <div class="tm-pop acct-pop" role="menu">
-          <div class="acct-who"><b>{cloud.user.name}</b><small>{cloud.user.email}</small></div>
+          <div class="acct-who"><b>{cloud.user.name}</b><small>{cloud.user.email}</small>{#if cloud.username}<small class="acct-un">@{cloud.username}</small>{/if}</div>
+          {#if !cloud.user.guest}
+            {#if naming}<div class="acct-unf"><UsernameField onsaved={() => (naming = false)} /></div>
+            {:else}<button class="tm-act acct-name" onclick={() => (naming = true)}>{cloud.username ? `@ ${t("un.label")}` : t("un.choose")}</button>{/if}
+          {/if}
           <div class="acct-st"><i class="dot {cloud.status}"></i>{STATUS(cloud.status)}</div>
           {#if cloud.error}<div class="err small">{cloud.error}</div>{/if}
           {#if local}
@@ -61,3 +67,8 @@
     {/if}
   </div>
 {/if}
+
+<style>
+  .acct-un { font-weight: 600; }
+  .acct-unf { padding: 6px 12px 10px; width: min(300px, 80vw); }
+</style>
