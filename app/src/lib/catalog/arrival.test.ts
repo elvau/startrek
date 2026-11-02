@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
-import { ARRIVAL_PP, arrivalFor, bandOf, originOf, sortByDistance, totalPP, viewerCountry } from "./arrival";
+import { GROUND_PP, arrivalFor, bandOf, originOf, sortByDistance, totalPP, viewerCountry } from "./arrival";
 import { tripToCatalog } from "./fromTrip";
 import { seedCatalog } from "./seed";
 import { corePP, type CatalogEntry } from "./types";
@@ -19,7 +19,7 @@ describe("Anreise als Richtwert nach Entfernung (#645)", () => {
     expect(bandOf(3000)).toBe("mid");
     expect(bandOf(7500)).toBe("far");
     const amsterdam = arrivalFor(entry({ stops: [at(52.37, 4.9)] }), KOELN)!;
-    expect(amsterdam).toMatchObject({ mode: "ground", band: "near", pp: ARRIVAL_PP[0].pp });
+    expect(amsterdam).toMatchObject({ mode: "ground", band: "near", pp: GROUND_PP[0].pp });
     const mallorca = arrivalFor(entry({ stops: [at(39.62, 2.98)] }), KOELN)!;
     expect(mallorca).toMatchObject({ mode: "flight", band: "short", pp: 220, peak: false });
     expect(mallorca.range[0]).toBeLessThan(220);
@@ -34,7 +34,7 @@ describe("Anreise als Richtwert nach Entfernung (#645)", () => {
     const e = entry({ stops: [at(39.47, -0.38)], noFly: true });
     const a = arrivalFor(e, KOELN)!;
     expect(a.mode).toBe("ground");
-    expect(a.pp).toBeGreaterThan(ARRIVAL_PP[1].pp);
+    expect(a.pp).toBeGreaterThan(GROUND_PP[1].pp);
     expect(arrivalFor({ ...e, noFly: undefined, kind: "road" }, KOELN)!.mode).toBe("ground");
   });
   it("Rundreise: hin zum ersten, zurück vom letzten Ort", () => {
@@ -107,5 +107,24 @@ describe("Startort ohne festen Rückfall auf Deutschland", () => {
   it("Startbestand ohne Bezug auf Deutschland als Startland", () => {
     const json = JSON.stringify(seedCatalog());
     expect(json).not.toMatch(/Deutschland|ab Deutschland|Anreise/);
+  });
+});
+
+describe("Grenze Flug statt Auto aus den Vorlieben (Dani, 02.11.)", () => {
+  const istrien = entry({ stops: [at(45.23, 13.6, "Poreč")], months: [5] });
+  it("Standard 700 km: Kroatien ab Köln (803 km) mit Flug", () => {
+    expect(arrivalFor(istrien, KOELN)!).toMatchObject({ mode: "flight", band: "short", pp: 220 });
+  });
+  it("eigene Grenze 1.000 km: am Boden, Band „mit Auto oder Bahn“, Preis steigt mit der Strecke", () => {
+    const a = arrivalFor(istrien, KOELN, undefined, { flyKm: 1000 })!;
+    expect(a.mode).toBe("ground");
+    expect(a.band).toBe("near");
+    expect(a.pp).toBeGreaterThan(90);
+    expect(a.pp).toBeLessThan(220);
+    expect(sortByDistance([istrien], KOELN, { flyKm: 1000 })[0].band).toBe("near");
+  });
+  it("eigene Grenze 300 km: Amsterdam (213 km) am Boden, Prag (536 km) mit Flug", () => {
+    expect(arrivalFor(entry({ stops: [at(52.37, 4.9)] }), KOELN, undefined, { flyKm: 300 })!.mode).toBe("ground");
+    expect(arrivalFor(entry({ stops: [at(50.09, 14.42)] }), KOELN, undefined, { flyKm: 300 })!.mode).toBe("flight");
   });
 });

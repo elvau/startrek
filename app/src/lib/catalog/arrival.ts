@@ -1,6 +1,7 @@
 /*
  * Anreise zu einem Katalogeintrag als Richtwert (#645): aus der Luftlinie Wohnort → erster Ort (Hinreise) und letzter
- * Ort → Wohnort (Rückreise), ohne Abfrage. Bis 700 km Auto oder Bahn, darüber Flug inklusive Weg zum Flughafen.
+ * Ort → Wohnort (Rückreise), ohne Abfrage. Bis 700 km (eigene Grenze in den Vorlieben) Auto oder Bahn, darüber Flug
+ * inklusive Weg zum Flughafen.
  * Ohne Flug (Roadtrip, Camper, „ohne Flug“) immer am Boden. Kreuzfahrt (Dani, 02.11.): Anreise zum Ablegehafen und vom
  * Endhafen zurück, mit Flug eine Nacht vor dem Ablegen dazu. Der Katalogpreis ist immer Ziel + Anreise.
  */
@@ -15,18 +16,17 @@ export const DIST_BANDS: DistBand[] = ["near", "short", "mid", "far"];
 
 /** Stand der Richtwerte: beim Nachpflegen anheben */
 export const ARRIVAL_STAND = "2026-11";
-/** ab hier Flug statt Auto oder Bahn */
-export const GROUND_MAX_KM = 700;
-/** Richtwerte pro Person für Hin und zurück (Flug inklusive Gepäck und Weg zum Flughafen), Nebensaison */
-export const ARRIVAL_PP: { upTo: number; mode: ArrivalMode; pp: number }[] = [
-  { upTo: 300, mode: "ground", pp: 40 },
-  { upTo: GROUND_MAX_KM, mode: "ground", pp: 90 },
-  { upTo: 2000, mode: "flight", pp: 220 },
-  { upTo: 4500, mode: "flight", pp: 400 },
-  { upTo: 8000, mode: "flight", pp: 750 },
-  { upTo: Infinity, mode: "flight", pp: 1000 }
+/** ab hier Flug statt Auto oder Bahn (Standard; eigene Grenze in den Vorlieben: Prefs.flyKm, Dani 02.11.) */
+export const FLY_KM = 700;
+/** Richtwerte pro Person für Hin und zurück, Nebensaison: am Boden bis 300 bzw. 700 km, Flug inklusive Gepäck und Weg zum Flughafen */
+export const GROUND_PP: { upTo: number; pp: number }[] = [{ upTo: 300, pp: 40 }, { upTo: 700, pp: 90 }];
+export const FLIGHT_PP: { upTo: number; pp: number }[] = [
+  { upTo: 2000, pp: 220 },
+  { upTo: 4500, pp: 400 },
+  { upTo: 8000, pp: 750 },
+  { upTo: Infinity, pp: 1000 }
 ];
-/** Auto bzw. Bahn auf langen Strecken (ohne Flug): pro Person und km einfach */
+/** Auto bzw. Bahn über 700 km (ohne Flug oder eigene Grenze höher): pro Person und km einfach, zusätzlich */
 export const GROUND_PP_KM = 0.13;
 /** Hauptsaison: Sommerferien und Weihnachten */
 export const PEAK_MONTHS = [7, 8, 12];
@@ -49,26 +49,40 @@ export interface ArrivalEst {
   preNight?: number;
 }
 
-export const bandOf = (km: number): DistBand => (km <= GROUND_MAX_KM ? "near" : km <= 2000 ? "short" : km <= 4500 ? "mid" : "far");
+export interface ArrivalOpts {
+  /** ab dieser Luftlinie Flug statt Auto oder Bahn (Vorlieben), sonst FLY_KM */
+  flyKm?: number;
+}
+const flyOf = (o?: ArrivalOpts) => (o?.flyKm && o.flyKm > 0 ? o.flyKm : FLY_KM);
+
+/** Band der Liste: „near“ = am Boden erreichbar (bis zur eigenen Grenze), dann Kurz-, Mittel-, Fernstrecke */
+export const bandOf = (km: number, flyKm = FLY_KM): DistBand => (km <= flyKm ? "near" : km <= 2000 ? "short" : km <= 4500 ? "mid" : "far");
 
 const r5 = (n: number) => Math.round(n / 5) * 5;
 
+/** am Boden, Hin und zurück pro Person; über 700 km steigt der Preis mit jedem km weiter */
+export function groundPP(km: number): number {
+  const row = GROUND_PP.find(r => km <= r.upTo);
+  return row ? row.pp : GROUND_PP.at(-1)!.pp + 2 * (km - GROUND_PP.at(-1)!.upTo) * GROUND_PP_KM;
+}
+/** Flug, Hin und zurück pro Person */
+export const flightPP = (km: number) => FLIGHT_PP.find(r => km <= r.upTo)!.pp;
+
 /** eine Richtung, pro Person */
-function oneWay(km: number, noFly: boolean): { mode: ArrivalMode; pp: number } {
-  if (noFly && km > GROUND_MAX_KM) return { mode: "ground", pp: km * GROUND_PP_KM + ARRIVAL_PP[1].pp / 2 };
-  const row = ARRIVAL_PP.find(r => km <= r.upTo)!;
-  return { mode: noFly ? "ground" : row.mode, pp: row.pp / 2 };
+function oneWay(km: number, noFly: boolean, flyKm: number): { mode: ArrivalMode; pp: number } {
+  return noFly || km <= flyKm ? { mode: "ground", pp: groundPP(km) / 2 } : { mode: "flight", pp: flightPP(km) / 2 };
 }
 
 const hasLoc = (s?: { lat?: number; lon?: number }): s is LatLon => s?.lat != null && s?.lon != null;
 
 /** Anreise zum Eintrag ab Wohnort; month: Reisemonat (sonst erster guter Monat) */
-export function arrivalFor(e: CatalogEntry, home: LatLon, month?: number): ArrivalEst | null {
+export function arrivalFor(e: CatalogEntry, home: LatLon, month?: number, opts?: ArrivalOpts): ArrivalEst | null {
   const a = e.stops[0], b = e.stops.at(-1);
   if (!hasLoc(a)) return null;
   const noFly = !!e.noFly || e.kind === "road";
   const km = kmBetween(home, a);
-  const out = oneWay(km, noFly), back = oneWay(hasLoc(b) ? kmBetween(b, home) : km, noFly);
+  const fk = flyOf(opts);
+  const out = oneWay(km, noFly, fk), back = oneWay(hasLoc(b) ? kmBetween(b, home) : km, noFly, fk);
   const mode: ArrivalMode = out.mode === "flight" || back.mode === "flight" ? "flight" : "ground";
   const m = month ?? e.months[0];
   const peak = !!m && PEAK_MONTHS.includes(m);
@@ -76,12 +90,12 @@ export function arrivalFor(e: CatalogEntry, home: LatLon, month?: number): Arriv
   const preNight = e.kind === "cruise" && out.mode === "flight" ? PRE_NIGHT_PP : undefined;
   if (preNight) pp += preNight;
   const v = r5(pp);
-  return { mode, km: Math.round(km), band: bandOf(km), pp: v, range: [r5(pp * (1 - SPREAD)), r5(pp * (1 + SPREAD))], peak, ...(preNight ? { preNight } : {}) };
+  return { mode, km: Math.round(km), band: bandOf(km, fk), pp: v, range: [r5(pp * (1 - SPREAD)), r5(pp * (1 + SPREAD))], peak, ...(preNight ? { preNight } : {}) };
 }
 
 /** Katalogpreis pro Person: Ziel + Anreise (ohne Touren); ohne Wohnort bzw. Lage nur das Ziel */
-export function totalPP(e: CatalogEntry, home?: LatLon | null, month?: number): { pp: number; arrival: ArrivalEst | null } {
-  const arrival = home ? arrivalFor(e, home, month) : null;
+export function totalPP(e: CatalogEntry, home?: LatLon | null, month?: number, opts?: ArrivalOpts): { pp: number; arrival: ArrivalEst | null } {
+  const arrival = home ? arrivalFor(e, home, month, opts) : null;
   return { pp: corePP(e) + (arrival?.pp || 0), arrival };
 }
 
@@ -111,10 +125,10 @@ export function originOf(home?: LatLon | null, cc?: string, capital?: (cc: strin
 }
 
 /** Vorsortierung nach Luftlinie, Einträge ohne Lage ans Ende; ohne Startort unverändert */
-export function sortByDistance<T extends CatalogEntry>(list: T[], home?: LatLon | null): { e: T; km: number | null; band: DistBand | null }[] {
+export function sortByDistance<T extends CatalogEntry>(list: T[], home?: LatLon | null, opts?: ArrivalOpts): { e: T; km: number | null; band: DistBand | null }[] {
   const rows = list.map(e => {
     const km = home && hasLoc(e.stops[0]) ? Math.round(kmBetween(home, e.stops[0])) : null;
-    return { e, km, band: km == null ? null : bandOf(km) };
+    return { e, km, band: km == null ? null : bandOf(km, flyOf(opts)) };
   });
   if (!home) return rows;
   return rows.sort((x, y) => (x.km ?? Infinity) - (y.km ?? Infinity));
