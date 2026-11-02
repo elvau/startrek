@@ -8,6 +8,7 @@
 import { t, type Key } from "./i18n/index.svelte";
 import { noPrice, uid, type CatKey, type Item, type Option, type Status, type Trip } from "./model";
 import { calcOption } from "./calc";
+import { today as localToday } from "./today";
 
 export type PkgPart = "flights" | "stay" | "transport";
 export interface PkgInfo { id: string; main: Item; parts: Item[] }
@@ -113,7 +114,7 @@ export function createPackage(trip: Trip, p: NewPackage): Item[] {
   const parts = (["stay", "flights", "transport"] as const).filter(k => p.parts.includes(k));
   if (!parts.length) return [];
   const people = Math.max(1, trip.travelers.filter(x => x.active !== false).length);
-  const source = p.provider || p.url ? { name: p.provider || t("pkg.title"), at: new Date().toISOString().slice(0, 10), ...(p.url ? { url: p.url } : {}) } : undefined;
+  const source = p.provider || p.url ? { name: p.provider || t("pkg.title"), at: localToday(), ...(p.url ? { url: p.url } : {}) } : undefined;
   trip.detail ||= {};
   const items = parts.map((k, i): Item => {
     const main = i === 0;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Meine Daten (Art. 15 und 20 DSGVO): alles aus dem Konto frisch vom Server holen, als Auskunft zum Drucken bzw.
    * „Als PDF speichern“ (Druckdialog des Browsers) und als vollständige Datei (JSON). Entsteht nur im Browser; enthält
@@ -32,7 +33,7 @@
   $effect(() => { void load(); });
 
   const html = () => reportHtml(data!, local(), i18n.lang === "de" ? "de" : "en");
-  const stamp = () => new Date().toISOString().slice(0, 10);
+  const stamp = () => localToday();
 
   /** Druckdialog über einen unsichtbaren Rahmen (kein neues Fenster, das der Browser sperren könnte) */
   function print() {

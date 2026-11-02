@@ -105,6 +105,8 @@ export interface Prefs {
   maxHours?: number;
   /** Anfahrt zum Flughafen */
   access?: "car" | "train";
+  /** ab dieser Luftlinie (km) Flug statt Auto oder Bahn, z. B. für die Anreise im Reisekatalog; fehlt: 700 km (catalog/arrival.ts) */
+  flyKm?: number;
   /** Unterkunft */
   stayType?: "whole" | "hotel" | "all";
   minStars?: number;

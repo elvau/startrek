@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
-  import { ideasDir } from "../plan";
+  import { today as localToday } from "../today";
+  import { arrow, i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
   /*
    * Startseite bei jedem neuen Besuch (ein Neuladen im selben Tab bleibt in der Reise): Wohin geht's? Neue Reise, Reise zu einem Event, mit dem KI-Assistenten planen,
    * darunter die eigenen Reisen. Leere Entwürfe tauchen nicht auf.
    */
-  import { app, openCompare, joinCompare, splitCompare, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
+  import { app, homeUi, openCompare, joinCompare, splitCompare, costless, deleteIf, deleteTrip, emptyTrips, homeTrips, openTrip, startTrip, sweepPristine, tripFor, type TripEntry } from "../store.svelte";
   import { eur } from "../calc";
   import { summarize, type TripState, type TripSummary } from "../overview";
   import { ensureAirports, geo } from "../geo/geo.svelte";
@@ -25,15 +25,18 @@
   import AiMark from "./AiMark.svelte";
   import TopNav from "./TopNav.svelte";
   import AppFooter from "./AppFooter.svelte";
+  import Catalog from "./Catalog.svelte";
   // Reiseideen liegen neben der App (…/startrek/reise/, Englisch unter …/en/trip-ideas/)
-  const BASE = (import.meta.env.BASE_URL as string) || "/";
 
   let picking = $state(false);
+  // Weniger ist mehr (#640): auf der Startseite höchstens eine Reise, alle Reisen in der Ansicht „Meine Reisen“
+  const mine = $derived(homeUi.mine);
+  function showMine(on: boolean) { homeUi.mine = on; pairing = null; scrollTo({ top: 0 }); }
   let checking = $state(false);
   // aus dem Teilen-Menü (#457): gleich „Neue Reise → Importieren“ mit den geteilten Dateien
   let shared = $state<Shared | null>(null);
   $effect(() => { if (shareIn.v) { shared = shareIn.v; shareIn.v = null; picking = true; } });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   type Row = TripEntry & { s: TripSummary | null; route: ReturnType<typeof tripRoute> | null; cmp?: { id: string; title: string; chosen?: string; archived?: string }; label: string };
   const rows = $derived<Row[]>(homeTrips().map(m => {
     const tr = tripFor(m.id);
@@ -122,7 +125,7 @@
   const sameDates = (b: Bundle<Row>) => b.list.every(r => r.from === b.list[0].from && r.to === b.list[0].to);
   // „in 12 Tagen“, „in 7 Monaten“, „morgen“
   function until(from: string): string {
-    const d = Math.round((Date.parse(from + "T00:00:00Z") - Date.parse(new Date().toISOString().slice(0, 10) + "T00:00:00Z")) / 86400000);
+    const d = Math.round((Date.parse(from + "T00:00:00Z") - Date.parse(localToday() + "T00:00:00Z")) / 86400000);
     if (d < 0) return "";
     const rtf = new Intl.RelativeTimeFormat(locale(), { numeric: "auto" });
     return d < 60 ? rtf.format(d, "day") : rtf.format(Math.round(d / 30.4), "month");
@@ -179,6 +182,15 @@
 <TopNav home />
 <section class="start" class:has-trips={rows.length > 0} data-ch="hero">
   <div class="home-in">
+    {#if homeUi.catalog}
+    <Catalog />
+    {:else}
+    {#if mine}
+    <div class="hm-head">
+      <button class="linkbtn hm-back" onclick={() => showMine(false)}>{arrow() === "→" ? "←" : "→"} {t("home.toStart")}</button>
+      <h1 class="home-title hm-title">{t("home.mine")} <span class="muted">({rows.length})</span></h1>
+    </div>
+    {:else}
     <h1 class="home-title">{t("home.heading")}</h1>
     <p class="home-lead">{t("home.lead")}</p>
 
@@ -208,11 +220,20 @@
           <span class="home-ico" aria-hidden="true">🔍</span><b>{t("home.check")}</b><small>{t("home.checkSub")}</small>
         </button>
       {/if}
-      <!-- Reiseideen (Inhaltsseiten /reise/): öffnen eine fertig gerechnete Reise, ersetzen die Beispielreise (#402) -->
-      <a class="home-act home-ideas" href="{BASE}{ideasDir(i18n.lang)}">
-        <span class="home-ico" aria-hidden="true">🧭</span><b>{t("home.ideas")}</b><small>{t("home.ideasSub")}</small>
-      </a>
+      <!-- Reiseideen stehen im Reisekatalog (Dani, 02.11.); die Seiten für Google bleiben, verlinkt in der Fußzeile -->
+      <!-- Reisekatalog (#646): fertige Reisen ab dem Wohnort, mit Anreise -->
+      <button class="home-act home-catalog" onclick={() => { homeUi.catalog = true; scrollTo({ top: 0 }); }}>
+        <span class="home-ico" aria-hidden="true">🗺</span><b>{t("cat.title")}</b><small>{t("cat.tileSub")}</small>
+      </button>
+      {#if rows.length}
+        <button class="home-act home-mine" onclick={() => showMine(true)}>
+          <span class="home-ico" aria-hidden="true">🗂</span><b>{t("home.mine")}</b><small>{tn("home.mineSub", rows.length)}</small>
+        </button>
+      {/if}
     </div>
+    {/if}
+
+    {#if mine}
 
     {#if rows.length > 1}
       <div class="home-tools">
@@ -343,6 +364,9 @@
     {#if empties.length && !firstOpen}
       <p><button class="home-clean" onclick={cleanUp}>🧹 {tn("home.clean", empties.length)}</button></p>
     {/if}
+    {#if !rows.length}<p class="muted">{t("home.mineEmpty")}</p>{/if}
+    {/if}
+    {/if}
     <AppFooter home />
   </div>
 </section>
@@ -351,6 +375,9 @@
 {#if picking}<NewTripDialog onclose={() => { picking = false; shared = null; }} mode={shared ? "import" : "blank"} shared={shared?.files} sharedText={shared?.text} sharedUrl={shared?.url} />{/if}
 
 <style>
+  .hm-head { display: grid; gap: 6px; justify-items: start; }
+  .hm-back { font-size: 15px; }
+  .hm-title { margin: 0 0 4px; }
   .home-cmp-wrap { grid-column: 1 / -1; }
   .home-cmp-wrap .home-cmp { cursor: default; padding-inline-end: 18px; }
   .home-cmp:hover { transform: none; }

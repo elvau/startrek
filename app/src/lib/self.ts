@@ -10,6 +10,7 @@ import { holidayPlace } from "./holidays";
 import { travelerOf, type Claims } from "./claims";
 import type { Avail } from "./together";
 import { accounts, stand, type FamCfg } from "./famvote";
+import { today as localToday } from "./today";
 
 export interface SelfHome { plz?: string; cc?: string; lat?: number; lon?: number; ort?: string; region?: string }
 export interface FamMember { n: string; age?: number | null; kind?: "adult" | "child" | "infant" }
@@ -188,7 +189,7 @@ export function memberState(trip: Trip, u: string, selfs: Selfs, claims: Claims,
   const by = mergedAvail(trip, selfs, claims);
   const hh = hhKey(who);
   const home = !!(trip.households?.[hh]?.geo || selfs[u]?.h?.ort);
-  const open = (trip.polls || []).filter(p => !p.closed && !(p.due && p.due < new Date().toISOString().slice(0, 10)));
+  const open = (trip.polls || []).filter(p => !p.closed && !(p.due && p.due < localToday()));
   return {
     who,
     ...(trip.avail ? { dates: !!(by[who.id] && Object.keys(by[who.id]).length) } : {}),

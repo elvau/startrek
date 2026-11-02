@@ -4,7 +4,7 @@
  * Start: npm run test:cloud
  */
 import { chromium } from "playwright";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, myTrips, startPage } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4179/";
@@ -100,23 +100,23 @@ try {
 
   // Startseite: geplant, gebucht, Archiv; Karte mit Ziel, Zeitraum, Nächten, Events, Verpflegung, Kosten
   await p.goto(URL);
-  await p.locator(".start .home-title").waitFor();
-  const heads = await p.locator(".start .home-h").allInnerTexts();
+  await (await startPage(p)).locator(".start .home-title").waitFor();
+  const heads = await (await myTrips(p)).locator(".start .home-h").allInnerTexts();
   if (heads.map(h => h.replace(/🧹[\s\S]*$/, "").replace(/\s*\(\d+\)/, "").trim()).join("|") !== "Geplante Reisen|Gebuchte Reisen|Vergangene Reisen") fail("Gruppen: " + heads.join("|"));
-  const palma = await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).innerText();
+  const palma = await (await myTrips(p)).locator(".start .home-trip", { hasText: "Sonne in Palma" }).innerText();
   // Karte: Ziel, Nächte, Countdown, Stand von Flug (gewählt) und Unterkunft (Idee), Events, Summe; kein Essensstil mehr
   for (const s of ["Palma, Spanien", "3 Nächte", "2 Events", "✈ geplant", "🛏 geplant", "ca. "]) if (!palma.includes(s)) fail(`Karte Palma ohne „${s}“: ${palma}`);
   if (palma.includes("Halbpension")) fail("Essensstil noch auf der Karte");
-  await until(async () => (await p.locator(".start .home-trip", { hasText: "Balkan" }).innerText()).includes("Rundreise: Kroatien, Montenegro"), "Rundreise mit Ländern");
-  if (!(await p.locator(".start .home-trip", { hasText: "Balkan" }).innerText()).includes("gebucht")) fail("Balkan nicht als gebucht markiert");
-  if (await p.locator(".start .home-trip", { hasText: "Rom 2025" }).isVisible()) fail("Archiv nicht zugeklappt");
-  await p.locator(".start .home-past summary").click();
-  await p.locator(".start .home-trip", { hasText: "Rom 2025" }).waitFor();
+  await until(async () => (await (await myTrips(p)).locator(".start .home-trip", { hasText: "Balkan" }).innerText()).includes("Rundreise: Kroatien, Montenegro"), "Rundreise mit Ländern");
+  if (!(await (await myTrips(p)).locator(".start .home-trip", { hasText: "Balkan" }).innerText()).includes("gebucht")) fail("Balkan nicht als gebucht markiert");
+  if (await (await myTrips(p)).locator(".start .home-trip", { hasText: "Rom 2025" }).isVisible()) fail("Archiv nicht zugeklappt");
+  await (await myTrips(p)).locator(".start .home-past summary").click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Rom 2025" }).waitFor();
   log("Startseite: geplant, gebucht (Rundreise Kroatien, Montenegro), Archiv zugeklappt; Karte mit Ziel, Nächten, Stand von Flug und Unterkunft, Events, Kosten");
   if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/w-home.png`, fullPage: true });
 
   // Reise öffnen, Preise prüfen (an der Gesamtkalkulation): dieselben Angebote zum heutigen Preis
-  await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
   await p.locator(".aside .watch-run").click();
   await p.locator(".aside .watch-res").waitFor();
   const fq = asked.flights[0], sq = asked.stays[0];
@@ -153,14 +153,14 @@ try {
 
   // Ergebnis bleibt nach dem Neuladen
   await reloadHome(p);
-  await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
   await p.locator('[data-item="fl"] .wb-up').waitFor();
   log("Ergebnis bleibt nach dem Neuladen");
 
   // Reise ohne Ziel mit Flug EIN → PMI: „Events & Aktivitäten“ im Kopf führt zu den Erlebnissen und sucht in Palma
   await p.evaluate(() => scrollTo(0, 0));
   await reloadHome(p, { url: URL });
-  await p.locator(".start .home-trip", { hasText: "Mallorca-Kurztrip" }).click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Mallorca-Kurztrip" }).click();
   await p.locator(".hero .ht-ev").click();
   // Touren & Tickets zuerst, Events im zweiten Reiter
   await p.locator("#attractions .modal.inline .xp-tab", { hasText: "Events" }).click();
@@ -215,7 +215,7 @@ try {
   await fsm.locator(".modal-h .x").click();
   await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
   await p.locator(".top .brand-btn").click();
-  await p.locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
   await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
   await p.waitForTimeout(500);
   if (await p.locator(".modal-bg .modal").count()) fail("Suche aus der anderen Reise noch offen");
@@ -263,7 +263,7 @@ try {
 
   // nahes Ziel: Bahn, Fernbus, Auto, Reisebus mit Richtwerten; bahn.de vorbefüllt; Reisebus als Posten
   await p.locator(".top .brand-btn").click();
-  await p.locator(".start .home-trip", { hasText: "Berlin-Wochenende" }).click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Berlin-Wochenende" }).click();
   const gr = p.locator("#transport .ground");
   await gr.waitFor();
   const grText = await gr.innerText();
@@ -337,7 +337,7 @@ try {
 
   // Gruppe mit 6 Einzelnen: ein Posten „Verpflegung“ statt 6; Abrechnung als Tabelle, gleiche Aufschlüsselung nur einmal
   await p.locator(".top .brand-btn").click();
-  const gcard = p.locator(".start .home-trip", { hasText: "Stammtisch Wien" });
+  const gcard = (await myTrips(p)).locator(".start .home-trip", { hasText: "Stammtisch Wien" });
   const gtxt = await gcard.innerText();
   if (gtxt.includes("Gemischt") || !gtxt.includes("🛏 geplant") || !gtxt.includes("✈ fehlt")) fail("Startseite: Planungsstand statt Essensstil: " + gtxt);
   await gcard.click();
@@ -382,7 +382,7 @@ try {
 
   // Anreise zum Flughafen: für alle Gruppenbus (Kosten nach Personen), dann Fahrgemeinschaft und Fahrdienst
   await p.locator(".top .brand-btn").click();
-  await p.locator(".start .home-trip", { hasText: "Ibiza Clique" }).click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Ibiza Clique" }).click();
   await p.locator(".hhs").scrollIntoViewIfNeeded();
   await p.locator(".hhs .hh-all").selectOption("bus");
   const accLines = () => p.locator("#flights .card[data-item]").first().innerText();
@@ -399,8 +399,8 @@ try {
 
   // Reise ohne Flug und ohne Wohnort: „Unterwegs“ fragt nach der PLZ für den Bahn/Bus-Vergleich
   await p.locator(".top .brand-btn").click();
-  if (!(await p.locator(".start .home-trip", { hasText: "Rom 2025" }).isVisible())) await p.locator(".start .home-past summary").click();
-  await p.locator(".start .home-trip", { hasText: "Rom 2025" }).click();
+  if (!(await (await myTrips(p)).locator(".start .home-trip", { hasText: "Rom 2025" }).isVisible())) await (await myTrips(p)).locator(".start .home-past summary").click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Rom 2025" }).click();
   await p.locator("#transport").scrollIntoViewIfNeeded();
   const ask = p.locator("#transport .gr-askhome");
   await ask.waitFor({ timeout: 10000 });

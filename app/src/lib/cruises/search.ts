@@ -6,6 +6,7 @@
  */
 import { CABIN_TYPES, type CabinType } from "../model";
 import { parsePorts, type ImportPort } from "../import/ai";
+import { today as localToday } from "../today";
 
 export const CRUISE_AREAS = ["any", "med", "norway", "baltic", "atlantic", "caribbean", "orient", "asia", "river"] as const;
 export type CruiseArea = (typeof CRUISE_AREAS)[number];
@@ -87,7 +88,7 @@ const SYSTEM = `You find real cruise sailings for a group travel cost planner. S
 - title: short name in the user's language, e.g. "Mittelmeer ab Barcelona".`;
 
 /** Anfrage an die KI (Gemini-Format; Claude übersetzt google_search in seine Websuche) */
-export function cruisePayload(q: CruiseQuery, today = new Date().toISOString().slice(0, 10)) {
+export function cruisePayload(q: CruiseQuery, today = localToday()) {
   const people = `${q.adults} adults` + (q.childAges?.length ? ` and ${q.childAges.length} children (ages ${q.childAges.join(", ")})` : "");
   const lines = [
     `Today is ${today}. The user's language: ${q.lang}.`,

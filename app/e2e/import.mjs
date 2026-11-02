@@ -10,7 +10,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, startPage } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4186/";
 const log = (...a) => console.log("•", ...a);
@@ -94,7 +94,7 @@ try {
 
   // 1. ohne Anmeldung: nur der Hinweis mit Anmelde-Knopf
   await p.goto(URL);
-  await p.locator(".home-new").click();
+  await (await startPage(p)).locator(".home-new").click();
   const dlg = p.locator(".modal", { hasText: "Neue Reise" });
   await dlg.locator(".nt-mode .chip", { hasText: "Importieren" }).click();
   await dlg.locator(".imp", { hasText: "Zum Importieren bitte anmelden" }).waitFor();
@@ -202,7 +202,7 @@ try {
 
   // 7. Realitätscheck von der Startseite: Flugdeal, direkt zum Bericht, keine Reise angelegt; Koffer-Annahme festlegen; übernehmen
   await reloadHome(p);
-  await p.locator(".home-check").click();
+  await (await startPage(p)).locator(".home-check").click();
   const cd = p.locator(".modal", { hasText: "Realitätscheck" });
   await cd.locator(".imp-src .chip", { hasText: "Text" }).click();
   await cd.locator("textarea").fill("Flugdeal Barcelona 99 € hin und zurück");
@@ -286,7 +286,7 @@ try {
 
   // 10. nur Unterkunft (#475): Flug „Brauchen wir nicht“ fragt nach der Anreise (Auto vorgewählt), Wohnort, Bahn → Posten
   await reloadHome(p);
-  await p.locator(".home-new").click();
+  await (await startPage(p)).locator(".home-new").click();
   const nd = p.locator(".modal", { hasText: "Neue Reise" });
   await nd.locator(".nt-mode .chip", { hasText: "Importieren" }).click();
   await nd.locator(".imp-src .chip", { hasText: "Text" }).click();

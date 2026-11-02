@@ -6,6 +6,7 @@
  */
 import { BOARDS, CABIN_TYPES, type Board, type CabinType, type ExtraBasis, type ExtraKind } from "../model";
 import { PARTY_KINDS, type PartyKind } from "../agent/types";
+import { today as localToday } from "../today";
 
 export const IMPORT_TEXT_MAX = 20000;
 export const IMPORT_FILES_MAX = 6;
@@ -220,7 +221,7 @@ export interface ImportFile { mime: ImportMime; data: string }
 export interface ImportRequest { text?: string; url?: string; files: ImportFile[]; lang: string }
 
 /** Anfrage an die KI: Dateien als Bild bzw. PDF, Text (eigener und von der Seite), ein Werkzeugaufruf erzwungen */
-export function importPayload(r: ImportRequest, page?: string, today = new Date().toISOString().slice(0, 10)) {
+export function importPayload(r: ImportRequest, page?: string, today = localToday()) {
   const intro = `Today is ${today}. The user's language: ${r.lang}.` + (r.url ? ` Offer link: ${r.url}` : "");
   const texts = [intro, r.text ? `User text:\n${r.text}` : "", page ? `Text of the linked page:\n${page}` : ""].filter(Boolean).join("\n\n");
   return {

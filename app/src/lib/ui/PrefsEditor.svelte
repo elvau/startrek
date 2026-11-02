@@ -10,6 +10,7 @@
   import { dir } from "../directory.svelte";
   import { SOUVENIR_DEFAULT } from "../souvenir";
   import { SHORE_AFTER, SHORE_BEFORE } from "../cruise";
+  import { FLY_KM } from "../catalog/arrival";
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
   import { cloud } from "../cloud/cloud.svelte";
@@ -69,8 +70,8 @@
   }
   const listSt = (k: "styles" | "months", v: string | number): "" | "on" | "inh" | "chg" =>
     own(k) ? ((p[k] as (string | number)[]).includes(v) ? (group ? "chg" : "on") : "") : group && ((base?.[k] as (string | number)[] | undefined) || []).includes(v) ? "inh" : "";
-  function step(k: "maxHours" | "nightsMin" | "nightsMax" | "souvenirs", d: number, lo: number, hi: number) {
-    const cur = p[k] ?? base?.[k] ?? (k === "maxHours" ? 6 : k === "nightsMin" ? 3 : k === "souvenirs" ? SOUVENIR_DEFAULT : 7);
+  function step(k: "maxHours" | "nightsMin" | "nightsMax" | "souvenirs" | "flyKm", d: number, lo: number, hi: number) {
+    const cur = p[k] ?? base?.[k] ?? (k === "maxHours" ? 6 : k === "nightsMin" ? 3 : k === "souvenirs" ? SOUVENIR_DEFAULT : k === "flyKm" ? FLY_KM : 7);
     set(k, Math.max(lo, Math.min(hi, cur + d)));
   }
   // Landgang auf Kreuzfahrten (#518): Puffer in Minuten, in 15er-Schritten
@@ -196,6 +197,14 @@
           </div>
         </div>
       </div>
+      {@render lbl(t("prefs.flyKm"), "flyKm", base?.flyKm ? `${base.flyKm} km` : null)}
+      <span class="pv-step" class:inh={group && !own("flyKm")} class:chg={group && own("flyKm")}>
+        <button type="button" aria-label="−" onclick={() => step("flyKm", -100, 200, 2000)}>−</button>
+        <b>{p.flyKm ?? base?.flyKm ?? FLY_KM} km</b>
+        <button type="button" aria-label="+" onclick={() => step("flyKm", 100, 200, 2000)}>+</button>
+      </span>
+      {#if !group && p.flyKm}<button type="button" class="pv-x" onclick={() => set("flyKm", undefined)}>{t("prefs.flyKmStd", { km: FLY_KM })}</button>{/if}
+      <span class="muted small">{t("prefs.flyKmHint")}</span>
     {/snippet}
     {@render card("flights", flights)}
 

@@ -7,7 +7,8 @@ import { loadMapLibre } from "./maplibre";
 
 const STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const KEY = "rk2-mapsnap:";
-const KEEP = 16;
+// Reisekatalog (#646): bis zu ~20 Karten je Liste, damit ein zweiter Besuch ohne Warten auskommt
+const KEEP = 40;
 export interface View { center: [number, number]; zoom: number }
 
 const mem = new Map<string, string>();
@@ -51,12 +52,17 @@ export function cachedSnap(v: View, w: number, h: number): string | undefined {
   return hit;
 }
 
-export function mapSnap(v: View, w: number, h: number): Promise<string | null> {
+/** Karte schon vorbereiten (Bibliothek, Stil), z. B. beim Öffnen des Reisekatalogs, damit das erste Bild schneller kommt */
+export function warmMap(): void { void getMap(); }
+
+/** want: beim Drankommen noch gebraucht? (Reisekatalog: Karte noch sichtbar), sonst übersprungen und nicht gemerkt */
+export function mapSnap(v: View, w: number, h: number, want?: () => boolean): Promise<string | null> {
   const hit = cachedSnap(v, w, h);
   if (hit) return Promise.resolve(hit);
   const k = keyOf(v, w, h);
   const job = queue.then(async () => {
     if (mem.has(k)) return mem.get(k)!;
+    if (want && !want()) return null;
     const mp = await getMap();
     if (!mp) return null;
     const box = mp.getContainer();

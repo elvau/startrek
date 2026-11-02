@@ -12,7 +12,7 @@ export type CardId = "flights" | "stay" | "style" | "times" | "avoid" | "special
 
 /** Felder je Karte (alle heutigen Felder, kein neues Datenmodell) */
 export const CARD_KEYS: Record<CardId, (keyof Prefs)[]> = {
-  flights: ["plz", "plzCc", "airports", "maxStops", "bags", "seatsTogether", "maxHours", "access"],
+  flights: ["plz", "plzCc", "airports", "maxStops", "bags", "seatsTogether", "maxHours", "access", "flyKm"],
   stay: ["stayType", "minStars", "board"],
   style: ["styles", "budget", "souvenirs", "tips", "shore"],
   times: ["holidays", "months", "nightsMin", "nightsMax"],
@@ -70,6 +70,7 @@ export function summary(p: Prefs, base?: Prefs, cname: (k: string) => string = k
   add("maxStops", "flights", eff.maxStops != null && (eff.maxStops === 0 ? t("prefs.sum.direct") : t("prefs.sum.stops", { s: tn("n.stops", eff.maxStops) })));
   add("bags", "flights", eff.bags != null && (eff.bags ? t("prefs.bagsYes") : t("prefs.bagsNo")));
   add("access", "flights", eff.access && t("prefs.sum.access", { m: t(`prefs.${eff.access}` as Key) }));
+  add("flyKm", "flights", eff.flyKm != null && t("prefs.sum.flyKm", { km: eff.flyKm }));
   add("stayType", "stay", eff.stayType && eff.stayType !== "all" && t(eff.stayType === "whole" ? "st.whole" : "st.hotel"));
   add("minStars", "stay", eff.minStars && "★".repeat(eff.minStars));
   add("board", "stay", eff.board && t(`board.${eff.board}` as Key));

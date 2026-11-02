@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /* Details einer gespeicherten Person: Geburtsdatum, Wohnort, Angaben „Nur für dich“ (nur im Konto, erst auf Wunsch geladen) */
   import BirthInput from "./BirthInput.svelte";
   import { t, tn } from "../i18n/index.svelte";
@@ -11,7 +12,7 @@
   let { p }: { p: Person } = $props();
 
   const age = $derived(p.birth ? personAge(p) : null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
 
   let show = $state(false);
   function toggleDocs() {

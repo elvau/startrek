@@ -35,9 +35,9 @@ export interface GuideShot { img: string; alt: string; caption: string; pins: Re
 /** Lage der Markierungen je Bild in Prozent (von app/e2e/anleitung-shots.mjs erzeugt) */
 export type GuideSpots = Record<string, { w: number; h: number; spots: { key: string; x: number; y: number }[] }>;
 
-export const GUIDE_STAND = "Oktober 2026";
+export const GUIDE_STAND = "November 2026";
 /** Datum der letzten inhaltlichen Änderung (JJJJ-MM-TT), mit GUIDE_STAND anheben; für lastmod in der Sitemap */
-export const GUIDE_UPDATED = "2026-10-31";
+export const GUIDE_UPDATED = "2026-11-01";
 
 export const GUIDE: GuidePage[] = [
   {
@@ -60,8 +60,8 @@ export const GUIDE: GuidePage[] = [
     ],
     tips: [
       "Die Leiste am Rand (am Handy unten) springt zwischen den Kapiteln. Das Kapitel in der Mitte ist scharf, der Rest tritt zurück.",
-      "Auf der Startseite siehst du deine Reisen als Liste oder als Kacheln und kannst sie sortieren, zum Beispiel nach „Als Nächstes“, Preis oder Land.",
-      "Zwei Reisen vergleichen: eine Reise auf eine andere ziehen oder „Vergleichen“ wählen. So stellst du Varianten wie „Kroatien“ und „Portugal“ nebeneinander.",
+      "Auf der Startseite steht nur die Reise, an der du zuletzt geplant hast („Weiter planen“). Alle Reisen findest du unter „🗂 Meine Reisen“: als Liste oder als Kacheln, sortiert zum Beispiel nach „Als Nächstes“, Preis oder Land. „← Startseite“ führt zurück.",
+      "Zwei Reisen vergleichen: in „Meine Reisen“ eine Reise auf eine andere ziehen oder ⇆ wählen. So stellst du Varianten wie „Kroatien“ und „Portugal“ nebeneinander.",
       "Im Vergleich kannst du mit „Abstimmen lassen“ alle Mitreisenden über die Varianten abstimmen lassen, mit „Was wäre wenn …“ eine Variante mit anderem Zeitraum oder Abflughafen anlegen (Preise werden neu gesucht) und mit „Diese nehmen“ entscheiden. Die anderen Varianten werden archiviert und lassen sich wiederherstellen.",
       "An schwierigen Stellen zeigt ein kleines „?“ eine kurze Erklärung. Antippen, noch einmal antippen schließt sie."
     ],
@@ -72,9 +72,10 @@ export const GUIDE: GuidePage[] = [
     ],
     where: "Startseite → Neue Reise",
     emoji: "🧳",
-    shots: [{ img: "home", alt: "Startseite von Split&Fly mit den Karten Neue Reise, Zu einem Event, Mit KI planen und Reiseideen und der Reise Kroatien mit Freunden", caption: "Die Startseite: von hier aus startest du, setzt eine Reise fort oder holst dir Ideen.", pins: {
+    shots: [{ img: "home", alt: "Startseite von Split&Fly mit der Reise Kroatien mit Freunden zum Weiterplanen und den Karten Neue Reise, Zu einem Event, Mit KI planen, Reiseideen und Meine Reisen", caption: "Die Startseite: von hier aus startest du, setzt eine Reise fort oder holst dir Ideen.", pins: {
       neu: "🧳 Neue Reise: hier geht es los. Allein, zu zweit, mit Familie oder Freunden.",
-      reise: "Deine Reisen auf einen Blick: Ziel, Zeitraum, wer mitfährt, was gebucht ist und die Kosten gesamt und pro Person. Antippen öffnet die Reise.",
+      reise: "Weiter planen: die Reise, an der du zuletzt geplant hast. Antippen öffnet sie.",
+      mine: "🗂 Meine Reisen: alle deine Reisen mit Ziel, Zeitraum, Stand und Kosten, sortierbar, mit Vergleichen und vergangenen Reisen.",
       fuss: "✨ Neues & Ausblick: was neu ist und was als Nächstes kommt." } }]
   },
   {

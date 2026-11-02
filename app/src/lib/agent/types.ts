@@ -5,6 +5,7 @@ import type { CampStop } from "../road/camper";
 import type { EventHit } from "../events/types";
 import { BOARDS, CAT_KEYS, STYLES, type CatKey, type Prefs, type Status } from "../model";
 import { parseMarket } from "../stays/market";
+import { today as localToday } from "../today";
 
 /** Was die App schickt: Wunsch in eigenen Worten und was über die Reisenden bekannt ist */
 export interface AgentRequest {
@@ -194,7 +195,7 @@ export function parseAgentRequest(b: unknown): AgentRequest | string {
   if (prompt.length < 5) return "Bitte beschreib die Reise in ein paar Worten";
   if (prompt.length > 1000) return "Beschreibung höchstens 1000 Zeichen";
   const lang = typeof o.lang === "string" && /^[a-z]{2}$/.test(o.lang) ? o.lang : "de";
-  const today = typeof o.today === "string" && DATE.test(o.today) ? o.today : new Date().toISOString().slice(0, 10);
+  const today = typeof o.today === "string" && DATE.test(o.today) ? o.today : localToday();
   const origins = Array.isArray(o.origins) ? o.origins.filter(x => typeof x === "string" && /^[A-Z]{3}$/.test(x)).slice(0, 6) as string[] : [];
   const adults = o.adults ?? 1, infants = o.infants ?? 0, childAges = o.childAges ?? [];
   // Gruppen bis 20 Erwachsene: Flüge sucht die KI dann in mehreren Buchungen (höchstens 9 Plätze je Buchung)

@@ -4,7 +4,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, myTrips, startPage } from "./nav.mjs";
 
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
@@ -47,7 +47,7 @@ try {
   await p.goto("http://127.0.0.1:4183/");
   await reloadHome(p, { set: { "rk2-t:demo": TRIP, "rk2-index": [{ id: "demo", name: TRIP.name, place: TRIP.place }], "rk2-current": "demo" } });
   // Startseite (#533): Einstiege in zwei Spalten, Seite scrollt
-  const acts = p.locator(".home-acts .home-act");
+  const acts = (await startPage(p)).locator(".home-acts .home-act");
   await acts.first().waitFor();
   const [a0, a1] = [await acts.nth(0).boundingBox(), await acts.nth(1).boundingBox()];
   if (Math.abs(a0.y - a1.y) > 4 || a1.x <= a0.x) fail("Startseite: Kacheln nicht nebeneinander");
@@ -62,7 +62,17 @@ try {
   }
   if (!(await p.evaluate(() => parseFloat(getComputedStyle(document.querySelector(".start")).paddingBottom) >= 90))) fail("Startseite: kein Platz unter der Reiseliste für die schwebenden Knöpfe");
   log("Startseite: Einstiege in zwei Spalten, Seite scrollbar, Fehler melden unten links");
-  await p.locator(".home-trip", { hasText: "Kroatien" }).first().click();
+  // Weniger ist mehr (#640): höchstens eine Reise (Weiter planen), alle Reisen hinter der Kachel „Meine Reisen“
+  if (await p.locator(".start .home-trip, .start .home-row, .start .home-sort").count()) fail("Startseite: Reiseliste noch sichtbar");
+  if (!(await (await startPage(p)).locator(".start .home-cont").innerText()).includes("Kroatien")) fail("Startseite: zuletzt geöffnete Reise fehlt");
+  if (!(await p.locator(".start .home-mine").innerText()).includes("1 Reise")) fail("Kachel „Meine Reisen“ ohne Anzahl");
+  await p.locator(".start .home-mine").click();
+  await p.locator(".start .hm-back").waitFor();
+  if (await p.locator(".start .home-acts").count()) fail("Meine Reisen: Einstiege noch da");
+  await p.locator(".start .hm-back").click();
+  await p.locator(".start .home-acts").waitFor();
+  log("Startseite: nur die zuletzt geöffnete Reise, alle Reisen hinter „Meine Reisen“ mit Rückweg");
+  await (await myTrips(p)).locator(".home-trip", { hasText: "Kroatien" }).first().click();
   const on = () => p.locator(".mbar .mb.on").getAttribute("data-pg");
   await p.locator("main.pager").waitFor();
   if ((await p.locator(".mbar .mb").count()) !== 9) fail("Reiter: " + await p.locator(".mbar .mb").count());
@@ -171,6 +181,28 @@ try {
   const h1 = await p.locator(".pg-hero h1").boundingBox();
   if (!h1 || h1.x < 0 || h1.x > 390 || h1.y < 0 || h1.y > 844) fail("Übersicht der neuen Reise nicht zu sehen");
   log("Reisewechsel am Handy: Übersicht mit Inhalt, jede Seite von oben, Hintergrund der Übersicht (#612)");
+  // Kapitelköpfe (#631): in ru und ar ragt auf keiner Seite etwas über den Rand, bei 390 und 320 px Breite
+  for (const lang of ["ru", "ar"]) for (const width of [390, 320]) {
+    await p.setViewportSize({ width, height: 844 });
+    await p.evaluate(l => localStorage.setItem("rk-lang", l), lang);
+    await p.reload();
+    await p.locator(".mbar").waitFor();
+    const pages = await p.locator(".mbar [data-pg]").evaluateAll(els => els.map(e => e.getAttribute("data-pg")));
+    for (const pg of pages) {
+      await p.locator(`.mbar [data-pg="${pg}"]`).click();
+      await until(async () => (await on()) === pg, `${lang} ${width}: Leiste ${pg}`);
+      // relativ zum Kapitel (der Pager scrollt seitlich); Kopf darf nicht breiter sein als das Kapitel
+      const over = await p.evaluate(pg => {
+        const ch = document.querySelector(`main.pager > [data-ch="${pg}"]`);
+        const c = ch?.getBoundingClientRect(); if (!c) return ["Kapitel fehlt"];
+        return [...ch.querySelectorAll(".ch-head *")]
+          .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > c.right + 1 || r.left < c.left - 1); }).map(e => e.className || e.tagName);
+      }, pg);
+      if (over.length) fail(`Kapitelkopf ${pg} (${lang}, ${width} px) ragt über den Rand: ` + over.join(", "));
+    }
+  }
+  await p.evaluate(() => localStorage.removeItem("rk-lang"));
+  log("Kapitelköpfe in ru und ar bei 390 und 320 px ohne Überlauf (#631)");
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Handy: Pager mit 9 Seiten, Wischen, Leiste unten mit allen Seiten und Gesamtsumme (öffnet Mehr), Kachel springt ins Kapitel, kein langes Scrollen");
   console.log("\nHandy-Ansicht: alles in Ordnung");

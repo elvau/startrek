@@ -12,6 +12,7 @@ import { origin } from "./origin.svelte";
 import { airportData } from "../geo/geo.svelte";
 import { addOnExtras, addOns, sumAddOns, type AddOns, type BagNeed } from "./addons";
 import { serverError } from "../neterror";
+import { today as localToday } from "../today";
 
 /** Adresse des Such-Dienstes (Cloudflare Worker); leer: noch nicht eingerichtet */
 export const FLIGHTS_URL = (import.meta.env.VITE_FLIGHTS_URL as string | undefined)?.replace(/\/$/, "") || "";
@@ -175,7 +176,7 @@ export function offerToOption(o: FlightOffer, split?: SplitInfo, more: OfferExtr
     detail: [o.out.route.join(" → "), o.back ? o.back.route.join(" → ") : "", split?.note || ""].filter(Boolean).join(" · "),
     ...(split ? { split: split.size } : {}),
     price: { mode: "unit", currency: o.currency, unit: o.price },
-    source: { name: o.sourceName, at: new Date().toISOString().slice(0, 10), url: o.url, ...(o.sponsored ? { sponsored: true } : {}), ...(o.test ? { test: true } : {}) },
+    source: { name: o.sourceName, at: localToday(), url: o.url, ...(o.sponsored ? { sponsored: true } : {}), ...(o.test ? { test: true } : {}) },
     legs: [legOf("out", o.out), ...(o.back ? [legOf("back", o.back)] : [])],
     ...(o.baggage ? { baggage: { ...o.baggage } } : {}),
     ...(extras.length ? { extras } : {}),
@@ -212,7 +213,7 @@ export function roundToOption(rt: RoundTrip, home: boolean, split?: SplitInfo, a
     detail: `${n === 1 ? tn("n.tickets", 1) : t("round.separate", { n: tn("n.tickets", n) })}${rt.stays?.length ? ` · ${rt.stays.map(s => (s.hours != null ? `${s.name} ${Math.round(s.hours)} h` : `${s.name} ${t("round.nightsShort", { n: s.nights ?? 0 })}`)).join(" / ")}` : ""}${split ? ` · ${split.note}` : ""}`,
     ...(split ? { split: split.size } : {}),
     price: { mode: "unit", currency: rt.legs[0].currency, unit: rt.price },
-    source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: new Date().toISOString().slice(0, 10), url: rt.legs[0].url, ...(rt.legs[0].sponsored ? { sponsored: true } : {}), ...(rt.legs.some(l => l.test) ? { test: true } : {}) },
+    source: { name: [...new Set(rt.legs.map(l => l.sourceName))].join(", "), at: localToday(), url: rt.legs[0].url, ...(rt.legs[0].sponsored ? { sponsored: true } : {}), ...(rt.legs.some(l => l.test) ? { test: true } : {}) },
     legs: rt.legs.map((l, i) => ({ ...legOf(i === 0 ? "out" : i === n - 1 && home ? "back" : "via", l.out), ...(l.baggage ? { baggage: { ...l.baggage } } : {}) })),
     ...(extras.length ? { extras } : {})
   };

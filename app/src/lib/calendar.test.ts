@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "./model";
-import { cancelEvents, icsName, planEvents, toIcs } from "./calendar";
+import { cancelEvents, icsHref, icsName, planEvents, toIcs } from "./calendar";
 import type { Day } from "./itinerary";
 
 const trip: Trip = { id: "t1", name: "Split mit Familie", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25", tiers: {}, settings: DEFAULT_SETTINGS,
@@ -16,6 +16,21 @@ const days: Day[] = [
 ];
 
 describe("Kalender-Export", () => {
+  it("faltet nie mitten in einem Zeichen und höchstens 75 Oktette je Zeile", () => {
+    const enc = new TextEncoder();
+    const texts = [
+      ...Array.from({ length: 21 }, (_, k) => "a".repeat(60 + k) + "🏖️🏖️🏖️ Strand"),
+      "Überraschungsbesuch bei Müllers Größe ".repeat(5), "Достопримечательности и прогулки ".repeat(4), "مرحبا بالعالم رحلة جميلة ".repeat(4),
+    ];
+    for (const summary of texts) {
+      const ics = toIcs([{ uid: "x", summary, start: "2026-05-01" }], "T");
+      expect(() => icsHref(ics)).not.toThrow();
+      for (const line of ics.split("\r\n")) expect(enc.encode(line).length).toBeLessThanOrEqual(75);
+      const unfolded = ics.replace(/\r\n /g, "");
+      expect(unfolded).toContain(`SUMMARY:${summary}`);
+    }
+  });
+
   it("Reisezeitraum ganztägig, Flug von Abflug bis Landung in Ortszeit, Einträge mit und ohne Uhrzeit", () => {
     const ev = planEvents(trip, days);
     expect(ev[0]).toMatchObject({ summary: "Split mit Familie", start: "2027-07-18", end: "2027-07-26" });

@@ -3,6 +3,7 @@
  * und Flughafensuche. Überschreibt nur, was aus der Person kommt; eigene Angaben in der Reise bleiben.
  */
 import { hhKey, type Person, type Trip } from "./model";
+import { today as localToday } from "./today";
 
 /** Alter an einem Tag (JJJJ-MM-TT) aus dem Geburtsdatum */
 export function ageAt(birth: string, day: string): number | null {
@@ -14,7 +15,7 @@ export function ageAt(birth: string, day: string): number | null {
 }
 
 /** Alter einer Person an einem Tag: aus dem Geburtsdatum, sonst das eingetragene Alter */
-export function personAge(p: Person, day = new Date().toISOString().slice(0, 10)): number | null {
+export function personAge(p: Person, day = localToday()): number | null {
   return (p.birth ? ageAt(p.birth, day) : null) ?? p.age ?? null;
 }
 
@@ -25,7 +26,7 @@ const refDay = (trip: Trip, today: string) => (trip.from && /^\d{4}-\d{2}-\d{2}$
  * Angaben der Personen in die Reise übernehmen: Alter aus dem Geburtsdatum (zum Reisebeginn), Wohnort für die Familie,
  * falls sie noch keinen hat. Gibt zurück, ob sich etwas geändert hat (nur dann schreiben, sonst Endlosschleife).
  */
-export function applyPeople(trip: Trip, people: Person[], today = new Date().toISOString().slice(0, 10)): boolean {
+export function applyPeople(trip: Trip, people: Person[], today = localToday()): boolean {
   let changed = false;
   const day = refDay(trip, today);
   for (const t of trip.travelers) {

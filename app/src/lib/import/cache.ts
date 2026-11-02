@@ -7,6 +7,7 @@
  * - Gültig bis Ablauf des Angebots, ohne Angabe bis zum Reisedatum, höchstens 14 Tage.
  */
 import type { ImportedOffer, ImportRequest } from "./ai";
+import { today as localToday } from "../today";
 
 export const CACHE_MAX_DAYS = 14;
 
@@ -46,7 +47,7 @@ export async function offerKey(o: ImportedOffer): Promise<string> {
 export const cacheable = (o: ImportedOffer) => !o.travelers?.length;
 
 /** Ablauf (ISO-Datum): gültig bis, sonst Reisedatum, höchstens 14 Tage ab heute; null, wenn schon abgelaufen */
-export function expiryOf(o: ImportedOffer, today = new Date().toISOString().slice(0, 10)): string | null {
+export function expiryOf(o: ImportedOffer, today = localToday()): string | null {
   const max = new Date(Date.parse(today + "T00:00:00Z") + CACHE_MAX_DAYS * 86400000).toISOString().slice(0, 10);
   const end = o.validUntil || o.from || max;
   const out = end < max ? end : max;

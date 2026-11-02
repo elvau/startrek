@@ -37,7 +37,7 @@ Oberfläche oder Änderungen über mehrere Bereiche. Im Zweifel eine Frage an Da
 
 ## Ein Feature umsetzen
 
-1. Issue lesen, offene Entscheidungen zuerst mit Dani klären (bei Oberfläche: Entwurf mit Screenshots für Handy und Desktop).
+1. Issue lesen, offene Entscheidungen zuerst mit Dani klären (bei Oberfläche: Entwurf mit Screenshots, Handy zuerst, dann Desktop).
 2. Auf dem Arbeits-Branch umsetzen; vor jedem Push die schnellen Prüfungen (svelte-check, Unit-Tests, e2e des Bereichs).
 3. Zum Ausprobieren in `pre-release` mergen und pushen (Testumgebung, nur gebaut).
 4. Im Issue kurz festhalten, was umgesetzt ist und wo es auf der Testumgebung zu sehen ist; Label `auf-test`.

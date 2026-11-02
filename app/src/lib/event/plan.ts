@@ -11,6 +11,7 @@ import { t } from "../i18n/index.svelte";
 import { uid, type Item, type Option, type Settings, type Trip, type TripEvent } from "../model";
 import type { FlightOffer } from "../flights/types";
 import type { StayOffer, StayQuery } from "../stays/types";
+import { today as localToday } from "../today";
 
 /** Landung spätestens so viele Stunden vor Beginn (Gepäck, Weg in die Stadt, Einlass) */
 export const BEFORE_H = 3;
@@ -59,7 +60,7 @@ export function takeTickets(trip: Trip, ev: TripEvent): Item {
     id: uid(), label: ev.name,
     ...(detail ? { detail } : {}),
     price: { mode: "person", currency: rated ? p!.currency : "EUR", adult: rated ? p!.min : 0 }, ...(rated && p!.min ? {} : { estimate: true }),
-    ...(ev.url ? { source: { name: t("evs.tickets"), at: new Date().toISOString().slice(0, 10), url: ev.url } } : {})
+    ...(ev.url ? { source: { name: t("evs.tickets"), at: localToday(), url: ev.url } } : {})
   };
   const name = t("ev.tItem", { name: ev.name });
   const old = ev.item ? trip.items.find(i => i.id === ev.item) : undefined;

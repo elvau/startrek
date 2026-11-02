@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (läuft nach e2e/cloud.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, myTrips, startPage } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4174/";
@@ -32,7 +32,7 @@ const menu = async p => { await p.evaluate(() => scrollTo(0, 0)); await p.locato
 try {
   const a = await page("Anna");
   await a.goto(URL);
-  await a.locator(".start .home-new").click();
+  await (await startPage(a)).locator(".start .home-new").click();
   if (!(await a.locator(".modal .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
   await a.locator(".modal .newtrip .btn.primary").click();
   const solo = await a.locator(".person:not(.add) b").allTextContents();
@@ -327,7 +327,7 @@ try {
   await b.keyboard.press("Escape");
 
   // Reise mit Uwe: Alter zum Reisebeginn aus dem Geburtsdatum, Wohnort für die Familie Schmitz
-  await b.locator(".start .home-new").click();
+  await (await startPage(b)).locator(".start .home-new").click();
   await b.locator(".newtrip .who-b", { hasText: "Gruppe" }).click();
   await b.locator(".newtrip .src-b", { hasText: "Aus meinen Gruppen" }).click();
   await b.locator(".newtrip .sg-h", { hasText: "Kegeln" }).click();
@@ -345,18 +345,18 @@ try {
   // Startseite: Reise direkt löschen (Konto-Reise, eigene)
   await b.evaluate(() => scrollTo(0, 0));
   await b.locator(".top .brand-btn").click();
-  await until(async () => (await b.locator(".ht-wrap").count()) > 0, "Reisen auf der Startseite");
-  const n0 = await b.locator(".ht-wrap").count();
-  const victim = await b.locator(".ht-wrap .home-trip b").first().textContent();
-  await b.locator(".ht-wrap .ht-del").first().click();
-  await until(async () => (await b.locator(".ht-wrap").count()) === n0 - 1, "Reise von der Startseite gelöscht");
+  await until(async () => (await (await myTrips(b)).locator(".ht-wrap").count()) > 0, "Reisen auf der Startseite");
+  const n0 = await (await myTrips(b)).locator(".ht-wrap").count();
+  const victim = await (await myTrips(b)).locator(".ht-wrap .home-trip b").first().textContent();
+  await (await myTrips(b)).locator(".ht-wrap .ht-del").first().click();
+  await until(async () => (await (await myTrips(b)).locator(".ht-wrap").count()) === n0 - 1, "Reise von der Startseite gelöscht");
   await new Promise(r => setTimeout(r, 1500));
-  if ((await b.locator(".ht-wrap").count()) !== n0 - 1) fail("nach dem Löschen taucht eine Reise auf: " + await b.locator(".ht-wrap .home-trip b").allTextContents());
+  if ((await (await myTrips(b)).locator(".ht-wrap").count()) !== n0 - 1) fail("nach dem Löschen taucht eine Reise auf: " + await (await myTrips(b)).locator(".ht-wrap .home-trip b").allTextContents());
   log(`Startseite: „${victim.replace("☁ ", "")}“ mit 🗑 gelöscht (${n0} → ${n0 - 1} Reisen)`);
 
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   // Neue Gruppe beim Anlegen: Uwe hineinziehen, Monika antippen, Lea neu (Nachname aus dem Gruppennamen)
-  await b.locator(".start .home-new").click();
+  await (await startPage(b)).locator(".start .home-new").click();
   await b.locator(".newtrip .who-b", { hasText: "Familie" }).click();
   await b.locator(".newtrip .src-b", { hasText: "Neue Gruppe anlegen" }).click();
   await b.locator(".newtrip .ng-name").fill("Familie Schmitz");
@@ -385,7 +385,7 @@ try {
   await bi.fill("840");
   await b.waitForTimeout(2500);
   await reloadHome(a, { url: URL });
-  const card = a.locator(".start .home-trip", { hasText: "Zweitgerät-Test" });
+  const card = (await myTrips(a)).locator(".start .home-trip", { hasText: "Zweitgerät-Test" });
   await card.waitFor();
   // Gesamt wie auf dem anderen Gerät: 840 € Unterkunft plus Souvenirs (#421, bei neuen Reisen an)
   const bTotal = (await b.locator(".hero .total b.num").first().textContent()).replace(/\s*€/, "");

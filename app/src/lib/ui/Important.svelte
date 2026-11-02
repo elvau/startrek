@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Wichtiges zur Reise im Popup der Bubble in der Menüleiste (ImportantButton; ersetzt „Einreise & Tipps“ im Tagesplan).
    * Dringendes (Reisewarnung, Einreise) steht aufgeklappt, Sicherheitshinweise und besondere Orte einzeilig bis zum
@@ -199,7 +200,7 @@
         ev.push({ uid: `sale-${x.e.id}`, summary: t("book.icsTitle", { name: x.e.name }), at: x.sale.at, url: x.e.links[0]?.url, alarm: 15 });
       if (p.kind === "entry" && app.trip.from) {
         const d = new Date(Date.parse(`${app.trip.from}T00:00:00Z`) - 14 * 86400000).toISOString().slice(0, 10);
-        if (d >= new Date().toISOString().slice(0, 10)) ev.push({ uid: `entry-${p.cc}`, summary: `${t("imp.entry", { c: countryName(p.cc!) })}: ${p.hint?.links[0]?.label || text(p)}`, start: d, url: p.hint?.links[0]?.url, alarm: 9 * 60 });
+        if (d >= localToday()) ev.push({ uid: `entry-${p.cc}`, summary: `${t("imp.entry", { c: countryName(p.cc!) })}: ${p.hint?.links[0]?.label || text(p)}`, start: d, url: p.hint?.links[0]?.url, alarm: 9 * 60 });
       }
     }
     return [...ev, ...cancelEvents(app.trip, n => t("cal.cancel", { name: n }))];

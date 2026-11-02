@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { today as localToday } from "../today";
   /*
    * Kasse unterwegs: tatsächliche Ausgaben eintragen (wer hat ausgelegt, für wen), Zahlungen zu Posten (im Posten unter
    * „Bezahlt“), Salden je Kasse (Familie mit gemeinsamer Kasse oder einzelne Erwachsene) und wer wem wie viel überweist. Ein Tipp auf „Erledigt“ trägt die Überweisung ein.
@@ -70,7 +71,7 @@
     if (!x) return;
     if (payer) x.payer = payer; else delete x.payer;
   }
-  const today = () => new Date().toISOString().slice(0, 10);
+  const today = () => localToday();
   // Währung am Ziel (Kuna, Złoty …) zur Auswahl, dazu die eigene
   const destCur = $derived(geo.world.find(w => w.k === ccOf(geo, app.trip.country))?.cur);
   const curs = $derived([...new Set([entryCurrency(), "EUR", ...(destCur ? [destCur] : []), ...CURRENCIES])]);

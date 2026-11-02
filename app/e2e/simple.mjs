@@ -5,7 +5,7 @@
  * Start: npm run test:cloud
  */
 import { chromium } from "playwright";
-import { reloadHome } from "./nav.mjs";
+import { reloadHome, myTrips } from "./nav.mjs";
 import { spawn } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 
@@ -39,7 +39,7 @@ try {
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(e.message));
   await p.goto(URL);
-  await p.locator(".start .home-trip", { hasText: "Zu viert" }).click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Zu viert" }).click();
 
   const card = p.locator("#attractions .simple-card");
   await card.scrollIntoViewIfNeeded();
@@ -98,7 +98,7 @@ try {
 
   // Neu laden: alles gespeichert
   await reloadHome(p);
-  await p.locator(".start .home-trip", { hasText: "Zu viert" }).click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Zu viert" }).click();
   await p.locator("#attractions .sl").nth(2).waitFor();
   if ((await p.locator("#attractions .sl").nth(0).locator(".sl-who .chip.on").count()) !== 2) fail("Auswahl nicht gespeichert");
   log("Nach dem Neuladen alles da");
@@ -149,7 +149,7 @@ try {
   const m = await mctx.newPage();
   m.on("pageerror", e => errors.push(e.message));
   await m.goto(URL);
-  await m.locator(".start .home-trip", { hasText: "Split mobil" }).click();
+  await (await myTrips(m)).locator(".start .home-trip", { hasText: "Split mobil" }).click();
   // kompakte Posten (#242, #531): eine Zeile mit Name und Preis; Bild und Hin/Zurück erst nach dem Antippen
   const sCard = m.locator("#stay .card[data-item='s']"), fCard = m.locator("#flights .card[data-item='f']");
   await m.locator('.mbar [data-pg="stay"]').click();
@@ -221,7 +221,7 @@ try {
   const ep = await ectx.newPage();
   ep.on("pageerror", e => errors.push(e.message));
   await ep.goto(URL);
-  await ep.locator(".start .home-trip", { hasText: "Leere Reise" }).click();
+  await (await myTrips(ep)).locator(".start .home-trip", { hasText: "Leere Reise" }).click();
   const ef = await ep.locator("[data-empty=flights]").innerText();
   if (!ef.includes("Noch keine Anreise") || !ef.includes("„Flüge suchen“") || !ef.includes("„Flug oder Anreise“")) fail("Leeres Kapitel Flüge: " + ef);
   const es = await ep.locator("[data-empty=stay]").innerText();
@@ -241,7 +241,7 @@ try {
   gp.on("pageerror", e => errors.push(e.message));
   gp.on("dialog", d => d.accept());
   await gp.goto(URL);
-  await gp.locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
+  await (await myTrips(gp)).locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
   const tg = gp.locator("#together .tg");
   await tg.scrollIntoViewIfNeeded();
   // Wer entscheidet mit (#567): Cleo abwählen, dann trägt sie nicht ein (eigene Zeile weg, Hinweis); wieder alle
@@ -430,7 +430,7 @@ try {
   const xp = await xctx.newPage();
   xp.on("pageerror", e => errors.push(e.message));
   await xp.goto(URL);
-  await xp.locator(".start .home-trip", { hasText: "Split Nebenkosten" }).click();
+  await (await myTrips(xp)).locator(".start .home-trip", { hasText: "Split Nebenkosten" }).click();
   const tot = async () => (await xp.locator(".aside .tk-top b").innerText()).trim();
   const xs = xp.locator("[data-xc='s']");
   await xs.waitFor();
@@ -492,7 +492,7 @@ try {
   fp.on("pageerror", e => errors.push(e.message));
   await data(fp);
   await fp.goto(URL);
-  await fp.locator(".start .home-trip", { hasText: "Rom" }).first().click();
+  await (await myTrips(fp)).locator(".start .home-trip", { hasText: "Rom" }).first().click();
   const rx = fp.locator("[data-xc='h']");
   await rx.waitFor();
   // 7,50 € × 1 Erwachsene × 7 Nächte (Kind 9 frei) = 52,50 €
@@ -503,12 +503,12 @@ try {
   await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "Kurtaxe weggeklickt");
   await fp.waitForTimeout(800);
   await reloadHome(fp);
-  await fp.locator(".start .home-trip", { hasText: "Rom" }).first().click();
+  await (await myTrips(fp)).locator(".start .home-trip", { hasText: "Rom" }).first().click();
   await fp.locator(".aside .tk-top b").waitFor();
   await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "weggeklickt bleibt nach dem Neuladen");
   // Kroatien ohne Flug, Wohnort Düsseldorf: Österreich und Slowenien (Vignetten), Kroatien (Maut)
   await fp.locator(".top .brand-btn").click();
-  await fp.locator(".start .home-trip", { hasText: "Kroatien mit dem Auto" }).click();
+  await (await myTrips(fp)).locator(".start .home-trip", { hasText: "Kroatien mit dem Auto" }).click();
   const road = fp.locator("#transport .road");
   await road.waitFor({ timeout: 15000 });
   const rt = await road.innerText();
@@ -561,7 +561,7 @@ try {
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ legs, configured: true, source: "ors" }) });
   });
   await rp.goto(URL);
-  await rp.locator(".start .home-trip", { hasText: "Roadtrip Italien" }).click();
+  await (await myTrips(rp)).locator(".start .home-trip", { hasText: "Roadtrip Italien" }).click();
   const trip = rp.locator("#transport .road-trip");
   await trip.waitFor({ timeout: 15000 });
   await until(async () => (await trip.innerText()).includes("openrouteservice"), "Strecken vom Routen-Dienst");
@@ -606,7 +606,7 @@ try {
   sp.on("pageerror", e => errors.push(e.message));
   await data(sp);
   await sp.goto(URL);
-  await sp.locator(".start .home-trip", { hasText: "Sardinien mit dem Auto" }).click();
+  await (await myTrips(sp)).locator(".start .home-trip", { hasText: "Sardinien mit dem Auto" }).click();
   const st = sp.locator("#transport .road-trip");
   await st.waitFor({ timeout: 15000 });
   const fr = st.locator(".rt-ferry");
@@ -639,7 +639,7 @@ try {
   cp.on("pageerror", e => errors.push(e.message));
   await data(cp);
   await cp.goto(URL);
-  await cp.locator(".start .home-trip", { hasText: "Mit dem Camper" }).click();
+  await (await myTrips(cp)).locator(".start .home-trip", { hasText: "Mit dem Camper" }).click();
   const panel = cp.locator("#transport .camper");
   await panel.waitFor({ timeout: 15000 });
   await panel.locator(".cp-mode .chip", { hasText: "Camper" }).click();
@@ -693,7 +693,7 @@ try {
   const tp = await tctx.newPage();
   tp.on("pageerror", e => errors.push(e.message));
   await tp.goto(URL);
-  await tp.locator(".start .home-trip", { hasText: "Zeitleiste" }).click();
+  await (await myTrips(tp)).locator(".start .home-trip", { hasText: "Zeitleiste" }).click();
   const tlc = tp.locator(".tl-card");
   await tlc.waitFor({ timeout: 15000 });
   if (!(await tlc.innerText()).includes("Alle gleich lang") || await tlc.locator(".tl-row").count()) fail("Zeitleiste nicht kompakt: " + await tlc.innerText());
@@ -756,7 +756,7 @@ try {
   await data(pp);
   pp.on("pageerror", e => errors.push(e.message));
   await pp.goto(URL);
-  await pp.locator(".start .home-trip", { hasText: "Zu viert" }).click();
+  await (await myTrips(pp)).locator(".start .home-trip", { hasText: "Zu viert" }).click();
   // versteckt (#323): ohne bekanntes Haustier und ohne Schalter kein Bereich; einschalten an der Reise (✎)
   if (await pp.locator(".pets-h").count()) fail("Zuhause während der Reise sichtbar, obwohl nichts eingeschaltet");
   await pp.locator(".top .top-edit").click();
@@ -807,12 +807,12 @@ try {
   cp.on("pageerror", e => errors.push(e.message));
   cp.on("dialog", d => d.type() === "prompt" ? d.accept("Eifel Monschau") : d.accept());
   await cp.goto(URL);
-  const tile = cp.locator(".home-cmp", { hasText: "Chalet-Wochenende" });
+  const tile = (await myTrips(cp)).locator(".home-cmp", { hasText: "Chalet-Wochenende" });
   await tile.waitFor();
   if (!(await tile.innerText()).includes("3 Varianten") || (await tile.locator(".hc-var").count()) !== 3) fail("Kachel: " + await tile.innerText());
   if (!(await tile.locator(".hc-var", { hasText: "Ardennen Frankreich" }).innerText()).includes("günstigste")) fail("günstigste nicht markiert");
   // Reisen bleiben zusätzlich einzeln sichtbar, mit Hinweis auf den Vergleich
-  if ((await cp.locator(".home-trip:not(.home-cmp) .ht-incmp", { hasText: "Chalet-Wochenende" }).count()) !== 3) fail("Varianten nicht als eigene Kacheln");
+  if ((await (await myTrips(cp)).locator(".home-trip:not(.home-cmp) .ht-incmp", { hasText: "Chalet-Wochenende" }).count()) !== 3) fail("Varianten nicht als eigene Kacheln");
   await tile.locator(".hc-cmp-go").click();
   const cv = cp.locator(".cmpv");
   await cv.locator(".cv-table").waitFor();
@@ -860,8 +860,8 @@ try {
   await tile.waitFor();
   const tt = await tile.innerText();
   if (!tt.includes("2 Varianten") || !(await tile.locator(".hc-vars").first().innerText()).includes("✓ Ardennen Belgien") || !(await tile.locator(".hc-arch").innerText()).includes("1 archivierte Variante")) fail("Kachel nach Wahl: " + tt.replace(/\n/g, " / "));
-  if (!(await cp.locator(".home-trip:not(.home-cmp)", { hasText: "Monschau" }).count())) fail("herausgenommene Variante nicht als eigene Reise");
-  if ((await cp.locator(".home-trip:not(.home-cmp) .ht-incmp").count()) !== 1) fail("archivierte Variante noch als eigene Kachel");
+  if (!(await (await myTrips(cp)).locator(".home-trip:not(.home-cmp)", { hasText: "Monschau" }).count())) fail("herausgenommene Variante nicht als eigene Reise");
+  if ((await (await myTrips(cp)).locator(".home-trip:not(.home-cmp) .ht-incmp").count()) !== 1) fail("archivierte Variante noch als eigene Kachel");
   // in der Reise: „Gewählt · 1 weitere Variante“, von dort zum Vergleich
   await tile.locator(".hc-var", { hasText: "Ardennen Belgien" }).click();
   await cp.locator(".hero .vbar", { hasText: "Gewählt · 1 weitere Variante" }).waitFor();
@@ -875,7 +875,7 @@ try {
   await cp.setViewportSize({ width: 1280, height: 900 });
   await cv.locator(".cv-back").click();
   await tile.waitFor();
-  await cp.locator(".home-trip:not(.home-cmp)", { hasText: "Monschau" }).dragTo(tile.locator(".hc-open"));
+  await (await myTrips(cp)).locator(".home-trip:not(.home-cmp)", { hasText: "Monschau" }).dragTo(tile.locator(".hc-open"));
   await cv.locator(".cv-table").waitFor();
   await cv.locator(".cv-others").click();
   await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 3, "Reise auf den Vergleich gezogen");
@@ -883,10 +883,10 @@ try {
   await cv.locator(".cv-var[data-var=v3] .cv-remove").click();
   await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 2, "wieder herausgenommen");
   await cv.locator(".cv-back").click();
-  await cp.locator(".ht-wrap", { hasText: "Monschau" }).locator(".ht-cmp").click();
+  await (await myTrips(cp)).locator(".ht-wrap", { hasText: "Monschau" }).locator(".ht-cmp").click();
   await cp.locator(".home-pick").waitFor();
-  if (await cp.locator(".ht-wrap", { hasText: "Monschau" }).locator(".ht-pick").count()) fail("Reise selbst als Ziel angeboten");
-  await cp.locator(".home-cmp-wrap .ht-pick").click();
+  if (await (await myTrips(cp)).locator(".ht-wrap", { hasText: "Monschau" }).locator(".ht-pick").count()) fail("Reise selbst als Ziel angeboten");
+  await (await myTrips(cp)).locator(".home-cmp-wrap .ht-pick").click();
   await cv.locator(".cv-table").waitFor();
   await cv.locator(".cv-others").click();
   await until(async () => (await cv.locator(".cv-head .cv-var").count()) === 3, "Reise per Antippen zum Vergleich");
@@ -901,7 +901,7 @@ try {
   if (!(await cv.locator(".cv-head .cv-var", { hasText: "Ardennen Belgien ·" }).count())) fail("Was-wäre-wenn-Variante ohne Namen: " + await cv.locator(".cv-head").innerText());
   // Vergleich trennen: alle wieder eigene Reisen
   await cv.locator(".cv-split").click();
-  await until(async () => !(await cp.locator(".home-cmp").count()) && (await cp.locator(".home-trip:not(.home-cmp)").count()) === 4, "Vergleich getrennt");
+  await until(async () => !(await (await myTrips(cp)).locator(".home-cmp").count()) && (await (await myTrips(cp)).locator(".home-trip:not(.home-cmp)").count()) === 4, "Vergleich getrennt");
   await vctx.close();
   log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Abstimmung über die Varianten (Ohne mich mit Folgen an der Variante, Stand in Spalte und Kachel, Ergebnis nehmen), Diese nehmen (andere archiviert, wiederherstellbar), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln, Reise auf den Vergleich ziehen bzw. per ⇆ antippen, „Was wäre wenn“ (eine Nacht mehr), Vergleich trennen");
   }
