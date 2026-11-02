@@ -11,6 +11,7 @@ import type { Trip } from "../model";
 import { configured, emulator } from "./config";
 import type { Role, TripDoc } from "./firebase";
 import type { CampaignDoc } from "../campaign";
+import type { CatalogDoc } from "../catalog/publish";
 import { byTime, CHAT_LIMIT, cleanText, parseMsg, validImg, type ChatMsg } from "../chat";
 import { parseSelf, type SelfDoc, type Selfs } from "../self";
 
@@ -464,6 +465,17 @@ export async function myAccountData() {
 export async function loginTest(email: string, name: string) { if (emulator) { await (await load()).loginTest(email, name); refreshUser(); } }
 
 const message = errorMessage;
+
+/* ---------- Reisekatalog (#644) ---------- */
+
+/** Eintrag veröffentlichen oder aktualisieren (nur mit Konto und Benutzernamen); gibt das Konto zurück */
+export async function publishEntry(id: string, d: Omit<CatalogDoc, "uid">): Promise<string> {
+  if (!fbUser || fbUser.isAnonymous) throw new Error(t("pub.needLogin"));
+  await (await load()).publishCatalog(id, { ...d, uid: fbUser.uid });
+  return fbUser.uid;
+}
+/** Eintrag zurückziehen (löscht ihn; übernommene Reisen anderer bleiben) */
+export async function withdrawEntry(id: string) { await (await load()).removeCatalog(id); }
 
 /* ---------- Aktionsseite ---------- */
 

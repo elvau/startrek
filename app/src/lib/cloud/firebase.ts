@@ -33,6 +33,7 @@ export interface TripDoc {
 
 import { emulator } from "./config";
 import type { CampaignDoc } from "../campaign";
+import type { CatalogDoc } from "../catalog/publish";
 
 const env = import.meta.env;
 
@@ -297,6 +298,12 @@ export const saveProfileTx = (uid: string, resolve: (remote: string | null) => s
     return data;
   });
 
+/* ---------- Reisekatalog (catalog/{id}, #644): öffentlich lesbar (REST), nur das veröffentlichende Konto schreibt ---------- */
+
+export const publishCatalog = (id: string, d: CatalogDoc) => setDoc(doc(start().db, "catalog", id), { ...d, at: serverTimestamp() });
+export const removeCatalog = (id: string) => deleteDoc(doc(start().db, "catalog", id));
+const myCatalog = (uid: string) => getDocsFromServer(query(collection(start().db, "catalog"), where("uid", "==", uid), limit(200)));
+
 /* ---------- Öffentlicher Benutzername (usernames/{schlüssel}, #650) ---------- */
 
 const nameRef = (key: string) => doc(start().db, "usernames", key);
@@ -386,6 +393,8 @@ export interface AccountData {
   chat?: Record<string, { t: string; img?: boolean; at?: string }[]>;
   /** öffentlicher Benutzername (#650) */
   username?: string | null;
+  /** im Reisekatalog veröffentlichte Reisen (#644) */
+  catalog?: { id: string; title: string }[];
 }
 
 /** liest alles direkt vom Server (nicht aus dem Zwischenspeicher), wie „Konto zurücksetzen“ es löschen würde */
@@ -405,6 +414,7 @@ export async function collectAccount(uid: string): Promise<AccountData> {
       created: u.metadata.creationTime, lastSignIn: u.metadata.lastSignInTime
     },
     profile, travelDocs, username: await myUsername(uid).catch(() => null),
+    catalog: await myCatalog(uid).then(q => q.docs.map(d => { let title = ""; try { title = JSON.parse(d.data().data).title || ""; } catch { /* kaputt */ } return { id: d.id, title }; })).catch(() => []),
     trips: trips.docs.map(d => {
       const { invite, updatedAt: _u, ...rest } = d.data() as TripDoc;
       return { id: d.id, ...rest, ...(invite ? { invite: { role: invite.role } } : {}) };
@@ -448,6 +458,7 @@ export async function wipeAccount(uid: string): Promise<WipeResult> {
   await deleteDoc(profileRef(uid));
   await deleteTravelDocs(uid);
   for (const d of (await myNames(uid)).docs) await deleteDoc(d.ref);
+  for (const d of (await myCatalog(uid)).docs) await deleteDoc(d.ref);
   return { deleted, left, campaigns: camps.size };
 }
 

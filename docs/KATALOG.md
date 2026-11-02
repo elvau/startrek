@@ -27,6 +27,18 @@ Epic #641. Öffentlicher Katalog mit Reisen von Nutzern und automatisch gepflegt
 - `app/src/lib/ui/CatalogMap.svelte`: Karte mit dem Zielland statt Bildern (Dani, 02.11.), Kartenbild wie RouteMini (OpenFreeMap), erst wenn sichtbar.
 - `app/src/lib/ui/Catalog.svelte`: Ansicht auf der Startseite (Kachel „Reisekatalog“), Handy zuerst; e2e `app/e2e/catalog.mjs`.
   Ohne Wohnort: Land über `viewerCountry` (Hauptstadt, sonst größte Stadt), Hinweis „Mit deinem Wohnort wird es genauer“.
+- `app/src/lib/catalog/publish.ts` + `app/src/lib/ui/PublishDialog.svelte`: Veröffentlichen (#644, Entwurf mit Dani 02.11.):
+  Reise-Menü „🌍 Im Katalog veröffentlichen“, nur mit Konto und Benutzernamen (sonst zuerst das Namensfeld). Schritt 1:
+  Titel, Kurzbeschreibung (80/280 Zeichen), Reiseart, gute Monate (vorbelegt), Check auf den eingetippten Texten (rot blockiert).
+  Schritt 2: Vorschau mit `Catalog preview={…}` (Karte wie in der Liste, Detail), Zustimmung zu den Bedingungen
+  (`agb.html#katalog`, Fassung `CATALOG_TERMS` im Dokument). Texte werden vor dem Speichern bereinigt (`scrub`).
+  Firestore `catalog/{id}`: `uid`, `by` (muss `usernames/{by}` des Kontos sein), `data` (Eintrag als JSON, ohne Links und
+  E-Mail, < 100 000 Zeichen), `terms`, `at` (Serverzeit); lesen alle, schreiben nur der Ersteller (Regeln in `firestore.rules`,
+  Tests in `e2e/rules.mjs`). In der Reise `trip.pub` (Kennung, Konto, Zeit, letzte Angaben; Kopien erben es nicht).
+  Änderungen an der Reise kommen nur über „Eintrag aktualisieren“ hinein; „Zurückziehen“ löscht den Eintrag, übernommene
+  Reisen bleiben. Der Katalog lädt die Einträge ohne Konto über REST (`fetchCatalog`), eigene mit „Deine Reise“ und
+  Zurückziehen, fremde mit „Melden“ (Fehlerbericht mit der Kennung des Eintrags). Konto zurücksetzen löscht eigene Einträge,
+  die Datenauskunft nennt sie. e2e `app/e2e/publish.mjs`.
 - `app/src/lib/catalog/take.ts`: Übernehmen als neue Reise (#647): Reisende (wie im Eintrag, „Nur ich“, gespeicherte Gruppe),
   Reisebeginn, Touren (alle mit Tagesplan, nur Touren, einzelne, keine). Anreise je Startort (Familien ab Wohnort, sonst
   ab dem Startort des Betrachters) als Richtwert; Flug ohne den Weg zum Flughafen (`ACCESS_PP`, rechnet die App selbst).
