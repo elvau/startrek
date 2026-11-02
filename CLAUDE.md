@@ -13,7 +13,8 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
   landen nicht auf der Testumgebung.
 - Produktion https://splitandfly.com: jeder Push auf `main` (Firebase Hosting, `release.yml` legt Tag und Release an).
 - Worker: deployt nur von `main` (Cloudflare Workers Builds). Secrets nur in Cloudflare, nie im Code oder Chat.
-- Firestore-Regeln (`app/firestore.rules`) spielt Dani von Hand in der Firebase-Konsole ein (echtes und Testprojekt): nach Änderungen Bescheid sagen.
+- Firestore-Regeln (`app/firestore.rules`) spielt `.github/workflows/regeln.yml` ein (Push auf `pre-release` → Testprojekt, `main` → echtes Projekt),
+  sobald die Dienstkonten eingerichtet sind (docs/FIREBASE.md); bis dahin bzw. wenn der Lauf warnt, von Hand durch Dani: nach Änderungen Bescheid sagen.
 - **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: Version auf `pre-release` anheben,
   `test:cloud`, PR `pre-release` → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit); danach `pre-release`
   auf `main` vorspulen (`git push origin origin/main:refs/heads/pre-release`, legt ihn auch neu an, falls GitHub ihn nach dem Merge gelöscht hat; offene PRs danach wieder auf `pre-release` stellen) und den Arbeits-Branch auf `origin/main` zurücksetzen.

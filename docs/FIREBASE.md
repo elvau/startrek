@@ -28,7 +28,8 @@ Dauer: etwa 15 Minuten. Kosten: Der kostenlose Spark-Tarif reicht für Familie u
    Die Regeln sorgen dafür, dass nur Mitglieder eine Reise sehen und nur mit Einladung beitreten können,
    und dass gespeicherte Gruppen und Personen nur für einen selbst sichtbar sind.
 
-   **Wenn sich `app/firestore.rules` ändert, die Regeln hier erneut einfügen und veröffentlichen.**
+   **Wenn sich `app/firestore.rules` ändert, die Regeln hier erneut einfügen und veröffentlichen** (oder automatisch,
+   siehe „Regeln automatisch einspielen“).
 
 ## 4. Web-App registrieren
 1. **Projektübersicht** (Zahnrad) **→ Projekteinstellungen → Meine Apps → Web-App hinzufügen** (Symbol `</>`).
@@ -67,7 +68,26 @@ Einmalig einrichten (Dani):
    (KI-Planer, Fehler melden, Admin-Ansicht). Konten von dort heißen im Such-Dienst `test:<uid>`; für die
    Admin-Ansicht auf der Testumgebung `test:<uid>` in `ADMIN_UIDS` ergänzen. Den KI-Konnektor gibt es nur für echte Konten.
 
-Regeländerungen (`app/firestore.rules`) dann in **beiden** Projekten einspielen.
+Regeländerungen (`app/firestore.rules`) dann in **beiden** Projekten einspielen – automatisch, sobald die Dienstkonten
+eingerichtet sind (nächster Abschnitt), sonst von Hand.
+
+## Regeln automatisch einspielen
+
+Der Workflow `.github/workflows/regeln.yml` spielt `app/firestore.rules` ein, sobald sie sich ändern: Push auf
+`pre-release` → Testprojekt, Push auf `main` (Release) → echtes Projekt. Von Hand: Actions → „Firestore-Regeln
+einspielen“ → Run workflow (Branch wählen). Fehlt ein Secret, warnt er nur; dann wie bisher von Hand.
+
+Einmalig einrichten (Dani), je Projekt:
+1. **Google Cloud Console → IAM und Verwaltung → IAM** des Projekts.
+2. **Echtes Projekt (`startrek-1b6a7`):** dem Dienstkonto, das schon im Secret `FIREBASE_SERVICE_ACCOUNT` steckt
+   (Hosting-Deploy, Adresse steht im JSON unter `client_email`), die Rollen **Firebase Rules Admin** und
+   **Service Usage Consumer** hinzufügen. Kein neues Secret nötig.
+3. **Testprojekt (`startrek-test-b792b`):** unter **IAM → Dienstkonten** ein Dienstkonto anlegen (z. B. `regeln-deploy`),
+   Rollen **Firebase Rules Admin** und **Service Usage Consumer**; dann **Schlüssel → Schlüssel hinzufügen → JSON**.
+4. In GitHub **Settings → Secrets and variables → Actions → New repository secret**: Name
+   `FIREBASE_SERVICE_ACCOUNT_TEST`, Inhalt die ganze JSON-Datei aus Schritt 3. Die Datei danach löschen.
+5. Probelauf: Actions → „Firestore-Regeln einspielen“ → Run workflow auf `pre-release`, dann auf `main`.
+
 
 ## Lokal entwickeln
 - Gegen die Emulatoren (kein echtes Projekt nötig): `npm run build:emu`, dann

@@ -1,0 +1,56 @@
+name: Firestore-Regeln einspielen
+
+# Firestore-Regeln (app/firestore.rules) automatisch einspielen, statt sie von Hand in die Konsole zu kopieren:
+# Push auf pre-release → Testprojekt (startrek-test-b792b), Push auf main → echtes Projekt (startrek-1b6a7).
+# Nur wenn sich die Regeln geändert haben, oder von Hand (Actions → „Firestore-Regeln einspielen“ → Run workflow).
+# Fehlt das Secret des Dienstkontos, wird nur gewarnt (Regeln dann wie bisher von Hand). Einrichtung: docs/FIREBASE.md
+on:
+  push:
+    branches: [main, pre-release]
+    paths: [app/firestore.rules]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regeln-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Projekt und Zugang wählen
+        id: ziel
+        env:
+          SA_PROD: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SA_TEST: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TEST }}
+        run: |
+          if [ "$GITHUB_REF_NAME" = "main" ]; then P=startrek-1b6a7; SA="$SA_PROD"; NAME=FIREBASE_SERVICE_ACCOUNT
+          else P=startrek-test-b792b; SA="$SA_TEST"; NAME=FIREBASE_SERVICE_ACCOUNT_TEST; fi
+          echo "project=$P" >> "$GITHUB_OUTPUT"
+          if [ -z "$SA" ]; then
+            echo "::warning::Secret $NAME fehlt: Regeln für $P bitte von Hand einspielen (docs/FIREBASE.md)"
+            echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Abhängigkeiten
+        if: steps.ziel.outputs.skip != '1'
+        working-directory: app
+        run: npm ci
+      - name: Regeln einspielen (${{ steps.ziel.outputs.project }})
+        if: steps.ziel.outputs.skip != '1'
+        working-directory: app
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx firebase deploy --only firestore:rules --project "${{ steps.ziel.outputs.project }}" --non-interactive
+      - name: Zugang wieder löschen
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
