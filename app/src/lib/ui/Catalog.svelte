@@ -179,6 +179,8 @@
     newTrip({ name: e.title, place: e.stops[0]?.place || "", ...(from ? { from, to: r.to } : {}), travelers, items: r.items });
     if (e.stops[0]?.cc) app.trip.country = countryName(e.stops[0].cc);
     if (Object.keys(r.days).length) app.trip.days = r.days;
+    // Herkunft für die Preisprüfung (#652): startet in der Reise von selbst, sobald der Reisebeginn feststeht
+    app.trip.catalog = { id: e.id, stand: e.stand, rel: r.rel };
     applyPeople(app.trip, dir.people);
     app.home = false;
     scrollTo({ top: 0 });

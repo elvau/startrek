@@ -43,6 +43,15 @@ Epic #641. Öffentlicher Katalog mit Reisen von Nutzern und automatisch gepflegt
   Reisebeginn, Touren (alle mit Tagesplan, nur Touren, einzelne, keine). Anreise je Startort (Familien ab Wohnort, sonst
   ab dem Startort des Betrachters) als Richtwert; Flug ohne den Weg zum Flughafen (`ACCESS_PP`, rechnet die App selbst).
   Verpflegung und Transport vor Ort nicht doppelt (rechnet die App). Die Kachel „Reiseideen“ entfällt, die Seiten bleiben.
+- `app/src/lib/catalog/pricecheck.ts` + `app/src/lib/ui/PriceCheck.svelte`: Preise prüfen nach dem Übernehmen (#652 Teil 1,
+  Entscheidung Dani 02.11.: automatisch). `trip.catalog` merkt Eintrag, Stand und die Lage der Posten relativ zum Reisebeginn
+  (`TakenRel`: Nächte je Unterkunft, Tag je Tour, Startort je Flug, erster Ort); ohne Reisebeginn fragt die Karte danach
+  (`applyStart`). Mit Reisebeginn startet die Prüfung von selbst, nacheinander: Unterkunft je Station, Flug je Startort (zwei
+  nächste Flughäfen, feste Daten, bis 9 Personen), Tour am Ort ihres Tages (gemeinsame Wörter im Titel, Euro-Preis). Das
+  günstigste echte Angebot kommt als Option dazu und wird gewählt, der Richtwert bleibt. Mietwagen und Transport vor Ort ohne
+  Suche. Ergebnis je Posten in `trip.catalog.check` (Richtwert und Preis pro Person), „Erneut prüfen“ sucht nur Posten ohne
+  Angebot. e2e im Übernehmen-Schritt von `app/e2e/catalog.mjs`. Teil 2 (Preispunkte über den Worker, Richtwert aus den letzten
+  Monaten, Anreise-Tabelle) folgt.
 - `app/src/lib/catalog/check.ts`: Plausibilitätscheck (#643). Rot blockiert (kein Ziel, keine Nächte, Rückflug vor Hinflug,
   Unterkunft außerhalb des Zeitraums, zwei Unterkünfte am selben Abend für dieselben Leute, 0 €, Kontaktdaten/Links im Text),
   gelb kennzeichnet (Nacht ohne Unterkunft, lange/sehr lange Fahrtage ab 6/10 Std., bei Roadtrip/Camper/ohne Flug 9/13 Std.,
