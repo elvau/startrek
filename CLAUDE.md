@@ -3,7 +3,7 @@
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
 Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer und KI-Import mit Claude Haiku, ersatzweise Gemini, Fehlermeldungen), Daten und
 Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, PARTNER, NEBENKOSTEN, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste, IMPORT = KI-Import und Realitätscheck (Konzept),
-`claude2claude.md` = Einrichtung der Routinen, ABLAUF = Planung in Epics/Features).
+`claude2claude.md` = Einrichtung der Routinen, ABLAUF = Planung in Epics/Features, KATALOG = Reisekatalog).
 
 ## Umgebungen und Ablauf
 - Branches: Arbeits-Branch je Sitzung oder Routine (`claude/…`) → **`pre-release`** (Sammelstand) → `main` (Produktion).

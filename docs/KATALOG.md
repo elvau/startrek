@@ -1,0 +1,18 @@
+# Reisekatalog
+
+Epic #641. Öffentlicher Katalog mit Reisen von Nutzern und automatisch gepflegten Reiseideen.
+
+## Grundsätze (Sitzung mit Dani, 02.11.2026)
+- Ein Eintrag ist nur der **Reisekern am Ziel**: Stationen mit Nächten, Unterkünfte, Mobilität und Verpflegung vor Ort,
+  Tagesplan, Touren. **Ohne Anreise**; die schätzt die App je Betrachter aus dessen Wohnort (#645).
+- Liste vorsortiert nach **Luftlinie** Wohnort → erster Ort; Preis als „~xy € p. P.“ inklusive Anreise-Richtwert, ohne Touren.
+- **Keine persönlichen Daten** (Namen, Alter, Wohnorte, Buchungsnummern, Kasse) und **keine Anbieternamen oder Links** (#649).
+  Buchungslinks gibt es erst in der übernommenen Reise; dort geprüfte Preise aktualisieren die Richtwerte (#652).
+- Ersteller mit öffentlichem Benutzernamen (#650). Veröffentlichen nur nach Plausibilitätscheck (#643), der warnt statt ausschließt.
+- Touren zählen nicht zum Richtpreis; übernehmbar alle samt Tagesplan oder einzeln (#647).
+- Etwa 50 automatische Reiseideen, wöchentlich gepflegt von „SAF 10 – Reiseideen“ (#651).
+
+## Code
+- `app/src/lib/catalog/types.ts`: Format `CatalogEntry`, Richtwert `corePP`, Formprüfung `shapeErrors`.
+- `app/src/lib/catalog/fromTrip.ts`: Reise → Eintrag (Anreise weg, Freitexte bereinigt, Kosten pro Person ohne geschätzte Nebenkosten).
+- `app/src/lib/catalog/seed.ts`: Startbestand aus den Reiseideen-Seiten (`seo/pages.ts`), Anreise-Zeilen und Touren je Seite in `SEED_META`.
