@@ -23,6 +23,7 @@
   import type { Home } from "../home";
   import HomeInput from "./HomeInput.svelte";
   import CatalogMap from "./CatalogMap.svelte";
+  import { warmMap } from "./mapSnap";
 
   let entries = $state<CatalogEntry[]>([]);
   let filter = $state<CatalogFilter>({});
@@ -35,6 +36,8 @@
     void import("../catalog/seed").then(m => (entries = m.seedCatalog()));
     void loadGeo(geo, []);
     void ensureAirports().catch(() => {});
+    // Kartenbibliothek und Stil schon laden, während die Liste aufgebaut wird
+    warmMap();
   });
 
   const flyKm = $derived(dir.prefs?.flyKm || FLY_KM);

@@ -13,24 +13,25 @@
   const pr = $derived(project(pts, w, h, PAD));
   const view = $derived(mapView(pts, w, h, PAD));
   let bg = $state<string | null>(null);
-  // Kartenbild erst rendern, wenn die Karte ins Bild kommt (lange Liste, eine unsichtbare Karte rendert nacheinander)
+  // Lazy (Dani, 02.11.): Kartenbild nur rendern, solange die Karte zu sehen ist (eine unsichtbare Karte rendert nacheinander);
+  // wer weiterscrollt, überspringt die Karten dazwischen, beim Zurückscrollen kommen sie wieder an die Reihe
   let el = $state<SVGSVGElement>();
-  let seen = $state(false);
+  let near = $state(false);
+  let vis = false;
   $effect(() => {
-    if (!el || seen) return;
-    if (typeof IntersectionObserver === "undefined") { seen = true; return; }
-    const io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { seen = true; io.disconnect(); } }, { rootMargin: "200px" });
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") { near = vis = true; return; }
+    const io = new IntersectionObserver(es => { for (const x of es) { vis = x.isIntersecting; if (vis) near = true; } }, { rootMargin: "150px" });
     io.observe(el);
     return () => io.disconnect();
   });
   $effect(() => {
     const v = view;
     if (!v) { bg = null; return; }
-    if (!seen) { bg = cachedSnap(v, w, h) ?? null; return; }
     bg = cachedSnap(v, w, h) ?? null;
-    if (bg) return;
+    if (bg || !near) return;
     let live = true;
-    void mapSnap(v, w, h).then(u => { if (live) bg = u; });
+    void mapSnap(v, w, h, () => live && vis).then(u => { if (!live) return; if (u) bg = u; else near = vis; });
     return () => { live = false; };
   });
   const line = $derived(stops.length > 1 ? "M" + stops.map(p => pr(p).map(v => v.toFixed(1)).join(" ")).join("L") : "");
@@ -49,6 +50,9 @@
 <style>
   .kmap { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .kmap:not(.on) { opacity: .9; }
+  .kmap image { animation: km-in .35s ease-out; }
+  @keyframes km-in { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .kmap image { animation: none; } }
   /* ohne Kartenbild: Städte des Ziellands als Punkte, zeigen die Umrisse */
   .km-city { fill: var(--k, var(--a)); opacity: .28; }
   .km-line { fill: none; stroke: var(--k, var(--a)); stroke-width: 3; stroke-dasharray: 6 5; stroke-linecap: round; }
