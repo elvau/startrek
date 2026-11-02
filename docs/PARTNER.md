@@ -115,6 +115,40 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 
 Flüge über die Travelpayouts-Schnittstelle bekommen den `marker` im Such-Dienst (Secret `TRAVELPAYOUTS_MARKER`), nicht hier.
 
+## KI-Konnektor: Weitergabe an fremde KI-Programme (#591)
+
+Entscheidung Dani (02.11.2026): Der Konnektor bleibt mit allen Partnern an, außer sie untersagen es ausdrücklich
+(„lieber um Verzeihung bitten als um Erlaubnis“). Risiko bewusst getragen: Im schlimmsten Fall kündigt ein Partner oder
+zahlt für Klicks aus dem Konnektor nichts aus. Dafür:
+
+- **Liste der Partner, die es untersagen** (nur auf splitandfly.com, nie über den Konnektor). Neue Fälle hier eintragen
+  und im Code ausschließen:
+
+  | Partner | Grund | Seit |
+  |---|---|---|
+  | Viator | Bedingungen: nur auf der eigenen Seite | 10/2026 |
+  | Expedia DACH (CJ) | Bedingungen: keine Expedia-Inhalte auf fremden Seiten | 10/2026 |
+
+- **Unklar** (Bedingungen nennen KI-Assistenten nicht): alle übrigen Partner; bei Bedarf mit der Vorlage unten nachfragen.
+  Antworten hier vermerken (erlaubt, untersagt, unter Bedingungen).
+
+**Vorlage zum Nachfragen** (Absender: Partnerkonto bzw. Kontakt-Adresse von Split&Fly):
+
+> Betreff: Split&Fly – Partnerlinks in KI-Assistenten (Claude, ChatGPT)
+>
+> Hallo,
+>
+> Split&Fly (splitandfly.com) ist ein Planer für Gruppenreisen und Partner in Ihrem Programm (Partner-ID: …). Nutzer können
+> Split&Fly mit ihrem KI-Assistenten (z. B. Claude oder ChatGPT) verbinden. Der Assistent sucht dann über Split&Fly nach
+> Angeboten und zeigt dem Nutzer die Ergebnisse mit unseren Partnerlinks. Jeder Link führt über splitandfly.com zu Ihnen;
+> wir buchen nichts selbst, geben keine Kundendaten weiter und zeigen keine Inhalte von Ihrer Seite.
+>
+> Ist diese Nutzung nach Ihren Programmbedingungen zulässig? Falls es Einschränkungen gibt (z. B. bestimmte Inhalte, Kennzeichnung
+> als Werbung, eigene Werbemethode „KI-Assistent“), setzen wir sie gern um.
+>
+> Viele Grüße
+> …
+
 ## Bedingungen
 
 - **Viator:** Suche nur auf splitandfly.com, nicht über den KI-Konnektor (siehe `docs/KONNEKTOR.md`).

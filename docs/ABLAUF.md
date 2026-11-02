@@ -9,7 +9,7 @@ Jedes offene Ticket trägt genau ein Zuständigkeits-Label, so sieht man auf den
 
 | Label | Wer | Was |
 |---|---|---|
-| `zuständig: Dani` | Dani | Entscheidungen (`entscheidung`) und Einrichtungen (`einrichtung`: Partnerkonten, Schlüssel, Konsolen). Dani schließt sie, wenn erledigt. |
+| `zuständig: Dani` | Dani | Entscheidungen (`entscheidung`) und Einrichtungen (`einrichtung`: Partnerkonten, Schlüssel, Konsolen). Die Entwicklungssitzung schließt sie, sobald Dani im Chat entschieden bzw. die Einrichtung als erledigt gemeldet hat (Kommentar mit der Entscheidung). |
 | `zuständig: Entwicklung` | Entwicklungssitzungen mit Dani | Epics, Features, Pflege |
 | `zuständig: QA-Routinen` | Routinen auf Monikas Konto | Bugs und kleine Änderungswünsche aus Fehlerberichten (`docs/claude2claude.md`) |
 
