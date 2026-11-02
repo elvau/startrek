@@ -26,6 +26,7 @@
   import AiMark from "./AiMark.svelte";
   import TopNav from "./TopNav.svelte";
   import AppFooter from "./AppFooter.svelte";
+  import Catalog from "./Catalog.svelte";
   // Reiseideen liegen neben der App (…/startrek/reise/, Englisch unter …/en/trip-ideas/)
   const BASE = (import.meta.env.BASE_URL as string) || "/";
 
@@ -183,6 +184,9 @@
 <TopNav home />
 <section class="start" class:has-trips={rows.length > 0} data-ch="hero">
   <div class="home-in">
+    {#if homeUi.catalog}
+    <Catalog />
+    {:else}
     {#if mine}
     <div class="hm-head">
       <button class="linkbtn hm-back" onclick={() => showMine(false)}>{arrow() === "→" ? "←" : "→"} {t("home.toStart")}</button>
@@ -222,6 +226,10 @@
       <a class="home-act home-ideas" href="{BASE}{ideasDir(i18n.lang)}">
         <span class="home-ico" aria-hidden="true">🧭</span><b>{t("home.ideas")}</b><small>{t("home.ideasSub")}</small>
       </a>
+      <!-- Reisekatalog (#646): fertige Reisen ab dem Wohnort, mit Anreise -->
+      <button class="home-act home-catalog" onclick={() => { homeUi.catalog = true; scrollTo({ top: 0 }); }}>
+        <span class="home-ico" aria-hidden="true">🗺</span><b>{t("cat.title")}</b><small>{t("cat.tileSub")}</small>
+      </button>
       {#if rows.length}
         <button class="home-act home-mine" onclick={() => showMine(true)}>
           <span class="home-ico" aria-hidden="true">🗂</span><b>{t("home.mine")}</b><small>{tn("home.mineSub", rows.length)}</small>
@@ -362,6 +370,7 @@
       <p><button class="home-clean" onclick={cleanUp}>🧹 {tn("home.clean", empties.length)}</button></p>
     {/if}
     {#if !rows.length}<p class="muted">{t("home.mineEmpty")}</p>{/if}
+    {/if}
     {/if}
     <AppFooter home />
   </div>

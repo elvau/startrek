@@ -3,7 +3,7 @@
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
 Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer und KI-Import mit Claude Haiku, ersatzweise Gemini, Fehlermeldungen), Daten und
 Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, PARTNER, NEBENKOSTEN, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste, IMPORT = KI-Import und Realitätscheck (Konzept),
-`claude2claude.md` = Einrichtung der Routinen, ABLAUF = Planung in Epics/Features).
+`claude2claude.md` = Einrichtung der Routinen, ABLAUF = Planung in Epics/Features, KATALOG = Reisekatalog).
 
 ## Umgebungen und Ablauf
 - Branches: Arbeits-Branch je Sitzung oder Routine (`claude/…`) → **`pre-release`** (Sammelstand) → `main` (Produktion).
@@ -66,6 +66,8 @@ Neue Funktionen bekommen Unit-Tests und, wo sinnvoll, einen Schritt in `app/e2e/
 
 ## Konventionen
 - Sprache in Code-Kommentaren, Commits und Antworten an Dani: Deutsch, knapp, wie der umgebende Code.
+- **Handy zuerst (mobile first):** Entwürfe und Umsetzung zuerst für das Handy (etwa 390 px breit, Daumen-Bedienung,
+  Knöpfe mindestens 44 px), Desktop als Erweiterung (Epics #354, #529).
 - Oberfläche in 7 Sprachen (de, en, es, fr, pl, ru, ar; ar von rechts nach links). Neue Texte immer in
   `app/src/lib/i18n/*.ts` für alle Sprachen, Mehrzahl über `.one/.other` (pl/ru mit few/many, ar mit zero/two/few/many).
 - Keine Modellnamen im Repo. Commit-Trailer wie bisher (`Co-Authored-By: Claude …`).

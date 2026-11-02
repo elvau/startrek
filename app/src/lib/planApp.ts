@@ -1,5 +1,5 @@
 /* Link von den Inhaltsseiten anwenden: neue Reise mit Ziel, Gruppe und den Kosten der Reiseidee, direkt geöffnet (#314, #402) */
-import { parsePlan, stripPlan } from "./plan";
+import { parsePlan, stripPlan, type PlanLink } from "./plan";
 import { app, newTrip } from "./store.svelte";
 import { i18n } from "./i18n/index.svelte";
 import { groupTravelers, nextAnimal, placeholderTravelers } from "./placeholders";
@@ -11,6 +11,12 @@ export async function applyPlanLink(): Promise<boolean> {
   const p = parsePlan(location.search);
   if (!p) return false;
   history.replaceState(null, "", stripPlan(new URL(location.href)));
+  await startPlan(p);
+  return true;
+}
+
+/** neue Reise aus Ziel, Gruppe und ggf. Reiseidee; auch aus dem Reisekatalog (#646) */
+export async function startPlan(p: PlanLink): Promise<void> {
   let travelers: Traveler[] | undefined;
   if (p.fam) {
     const used: string[] = [];
@@ -28,5 +34,4 @@ export async function applyPlanLink(): Promise<boolean> {
   newTrip({ place: p.place, ...(p.name ? { name: p.name } : {}), ...(travelers ? { travelers } : {}), ...(items ? { items, kicker } : {}) });
   if (p.cc) app.trip.country = countryName(p.cc);
   app.home = false;
-  return true;
 }
