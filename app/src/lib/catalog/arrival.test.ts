@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Trip } from "../model";
-import { ARRIVAL_PP, arrivalFor, bandOf, originOf, sortByDistance, totalPP } from "./arrival";
+import { ARRIVAL_PP, arrivalFor, bandOf, originOf, sortByDistance, totalPP, viewerCountry } from "./arrival";
 import { tripToCatalog } from "./fromTrip";
 import { seedCatalog } from "./seed";
 import { corePP, type CatalogEntry } from "./types";
@@ -83,5 +83,29 @@ describe("Anreise als Richtwert nach Entfernung (#645)", () => {
     expect(e.noFly).toBeUndefined();
     expect(e.stops[0]).toMatchObject({ place: "Miami", lat: 25.77, cc: "US" });
     expect(arrivalFor(e, KOELN)!.mode).toBe("flight");
+  });
+});
+
+describe("Startort ohne festen Rückfall auf Deutschland", () => {
+  it("Wohnort, Vorlieben, Zeitzone, Browsersprache, sonst keiner", () => {
+    expect(viewerCountry({ home: { cc: "AT" }, tz: "Europe/Berlin" })).toBe("AT");
+    expect(viewerCountry({ prefsCc: "fr", lang: "de-DE" })).toBe("FR");
+    expect(viewerCountry({ tz: "Europe/Zurich", lang: "de" })).toBe("CH");
+    expect(viewerCountry({ tz: "Europe/Zurich", lang: "de-DE" })).toBe("CH");
+    expect(viewerCountry({ lang: "fr-BE" })).toBe("BE");
+    expect(viewerCountry({ lang: "de" })).toBeNull();
+    expect(viewerCountry({})).toBeNull();
+  });
+  it("ab Zürich steht der Gardasee vor Dänemark, ab Lyon Barcelona vor Prag", () => {
+    const at = (home: { lat: number; lon: number }) => sortByDistance(seedCatalog(), home).map(r => r.e.slug);
+    const zh = at({ lat: 47.37, lon: 8.54 });
+    expect(zh.indexOf("gardasee-mehrere-familien-kosten")).toBeLessThan(zh.indexOf("ferienhaus-daenemark-familien-kosten"));
+    const lyon = at({ lat: 45.76, lon: 4.84 });
+    expect(lyon.indexOf("gruppenreise-barcelona-kosten")).toBeLessThan(lyon.indexOf("gruppenreise-prag-kosten"));
+    expect(arrivalFor(seedCatalog().find(e => e.slug === "gruppenreise-barcelona-kosten")!, { lat: 45.76, lon: 4.84 })!.mode).toBe("ground");
+  });
+  it("Startbestand ohne Bezug auf Deutschland als Startland", () => {
+    const json = JSON.stringify(seedCatalog());
+    expect(json).not.toMatch(/Deutschland|ab Deutschland|Anreise/);
   });
 });

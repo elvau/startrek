@@ -85,6 +85,25 @@ export function totalPP(e: CatalogEntry, home?: LatLon | null, month?: number): 
   return { pp: corePP(e) + (arrival?.pp || 0), arrival };
 }
 
+/** Zeitzone → Land (Europa und häufige Märkte): verlässlicher als die Browsersprache („de“ auch in CH und AT) */
+const TZ_CC: Record<string, string> = {
+  "Europe/Berlin": "DE", "Europe/Busingen": "DE", "Europe/Zurich": "CH", "Europe/Vienna": "AT", "Europe/Paris": "FR", "Europe/Brussels": "BE",
+  "Europe/Amsterdam": "NL", "Europe/Luxembourg": "LU", "Europe/Copenhagen": "DK", "Europe/Oslo": "NO", "Europe/Stockholm": "SE",
+  "Europe/Helsinki": "FI", "Europe/London": "GB", "Europe/Dublin": "IE", "Europe/Madrid": "ES", "Europe/Lisbon": "PT", "Europe/Rome": "IT",
+  "Europe/Warsaw": "PL", "Europe/Prague": "CZ", "Europe/Bratislava": "SK", "Europe/Budapest": "HU", "Europe/Ljubljana": "SI",
+  "Europe/Zagreb": "HR", "Europe/Athens": "GR", "Europe/Bucharest": "RO", "Europe/Sofia": "BG", "Europe/Vilnius": "LT", "Europe/Riga": "LV",
+  "Europe/Tallinn": "EE", "Europe/Moscow": "RU", "Europe/Istanbul": "TR", "Europe/Kyiv": "UA", "Europe/Kiev": "UA", "Asia/Dubai": "AE", "Asia/Riyadh": "SA"
+};
+
+/**
+ * Land des Betrachters ohne festen Rückfall auf Deutschland (Dani, 02.11.): Wohnort, Land aus den Vorlieben, Zeitzone,
+ * Region der Browsersprache („de-CH“); sonst keins (dann Wohnort erfragen statt ab Deutschland zu sortieren).
+ */
+export function viewerCountry(o: { home?: { cc?: string } | null; prefsCc?: string; tz?: string; lang?: string }): string | null {
+  const ok = (c?: string | null) => (c && /^[A-Z]{2}$/.test(c.toUpperCase()) ? c.toUpperCase() : null);
+  return ok(o.home?.cc) || ok(o.prefsCc) || ok(o.tz ? TZ_CC[o.tz] : null) || ok((o.lang || "").split(/[-_]/)[1]) || null;
+}
+
 /** Startort: Wohnort, sonst Hauptstadt des Landes (Rückfall), sonst keiner */
 export function originOf(home?: LatLon | null, cc?: string, capital?: (cc: string) => LatLon | null): LatLon | null {
   if (hasLoc(home ?? undefined)) return { lat: home!.lat, lon: home!.lon };

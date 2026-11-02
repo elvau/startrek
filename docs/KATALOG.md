@@ -9,6 +9,9 @@ Epic #641. Öffentlicher Katalog mit Reisen von Nutzern und automatisch gepflegt
 - **Keine persönlichen Daten** (Namen, Alter, Wohnorte, Buchungsnummern, Kasse) und **keine Anbieternamen oder Links** (#649).
   Buchungslinks gibt es erst in der übernommenen Reise; dort geprüfte Preise aktualisieren die Richtwerte (#652).
 - Ersteller mit öffentlichem Benutzernamen (#650). Veröffentlichen nur nach Plausibilitätscheck (#643), der warnt statt ausschließt.
+- **Kein festes Startland:** gerechnet und sortiert wird ab dem Wohnort des Betrachters; ohne Wohnort ab der Hauptstadt des
+  Landes aus Vorlieben, Zeitzone oder Browsersprache (`viewerCountry`), sonst Wohnort erfragen. Texte im Katalog nennen
+  kein Startland („Flug ab Deutschland“), die Routine #651 legt Ideen für alle Märkte an.
 - Touren zählen nicht zum Richtpreis; übernehmbar alle samt Tagesplan oder einzeln (#647).
 - Etwa 50 automatische Reiseideen, wöchentlich gepflegt von „SAF 10 – Reiseideen“ (#651).
 

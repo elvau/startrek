@@ -2,6 +2,7 @@
  * Startbestand des Reisekatalogs (#642): die Reiseideen-Seiten (seo/pages.ts) als Katalogeinträge. Zeilen der Anreise
  * (Flug, Bahn, Bus, Auto ab Wohnort) fallen weg, die Anreise schätzt die App je Betrachter (#645). Ausflüge werden Touren,
  * außer sie sind der Kern der Reise (Skipass, Festivalticket, Musical). Weitere Einträge pflegt die Routine (#651).
+ * Ohne Beschreibung der Seite: die nennt Anreise und Abflug ab Deutschland, der Katalog rechnet ab dem Wohnort des Betrachters.
  */
 import { PAGES, STAND, type Page } from "../seo/pages";
 import type { TravelStyle } from "../model";
@@ -66,7 +67,7 @@ export function pageToCatalog(p: Page): CatalogEntry | null {
     else costs.push({ cat: c.cat, label: c.label, ...row, ...(c.cat === "stay" ? { place: p.plan.ziel, nights: m.nights } : {}) });
   });
   return {
-    v: 1, id: `idea:${p.slug}`, source: "idea", lang: "de", title: p.h1, summary: p.description, kind: m.kind, styles: [...m.styles],
+    v: 1, id: `idea:${p.slug}`, source: "idea", lang: "de", title: p.h1, kind: m.kind, styles: [...m.styles],
     ...(m.noFly ? { noFly: true } : {}), ...(m.event ? { event: m.event } : {}),
     group: groupOf(p), months: [...m.months], nights: m.nights,
     stops: [{ place: p.plan.ziel, cc: p.plan.land, lat: m.lat, lon: m.lon, nights: m.nights }],
