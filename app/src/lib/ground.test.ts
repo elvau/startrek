@@ -27,7 +27,10 @@ describe("Bahn, Bus, Auto statt Flug", () => {
     expect(isIsland("Long Island")).toBe(false);
     expect(isIsland("Berlin")).toBe(false);
     expect(groundPlan(de, ibiza, 4, 3, { road: true })).toBeNull();
-    expect(groundPlan({ ...KOELN, lat: 53.5 }, sylt, 4, 3)).toBeNull();
+    // Sylt ist per Bahn erreichbar (Hindenburgdamm, #633): Vergleich mit Bahn und Auto bleibt
+    expect(isIsland("Westerland (Sylt)")).toBe(false);
+    expect(groundPlan({ ...KOELN, lat: 53.5 }, sylt, 4, 3)).not.toBeNull();
+    expect(isIsland("Föhr")).toBe(true);
     expect(groundPlan(de, fr, 4, 3)).toBeNull();
     expect(groundPlan(de, fr, 4, 3, { road: true })).not.toBeNull();
     expect(groundPlan(de, { ...BERLIN, cc: "DE" }, 4, 3)).not.toBeNull();
