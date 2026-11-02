@@ -197,6 +197,25 @@ await expect("Verbindungen der Chat-Apps lesen", req("anna", "/mcpGrants/x"), 40
 await expect("Verbindungen der Chat-Apps schreiben", patch("anna", "/mcpGrants/x", { uid: "anna" }), 403);
 log("Verbindungen der Chat-Apps (#590): App kann weder lesen noch schreiben");
 
+// Öffentlicher Benutzername (#650): eindeutig, nur für sich selbst, Gäste nicht, lesen darf jeder, auflisten nur die eigenen
+await expect("Name: Anna belegt reh42", patch("anna", "/usernames/reh42", { uid: "anna", name: "Reh42" }), 200);
+await expect("Name: jeder liest ihn", req("", "/usernames/reh42"), 200);
+await expect("Name: Mallory übernimmt ihn", patch("mallory", "/usernames/reh42", { uid: "mallory", name: "reh42" }), 403);
+await expect("Name: Mallory belegt einen für Anna", patch("mallory", "/usernames/anna2", { uid: "anna", name: "anna2" }), 403);
+await expect("Name: Schlüssel passt nicht zum Namen", patch("mallory", "/usernames/xyz", { uid: "mallory", name: "abc" }), 403);
+await expect("Name: zu kurz", patch("mallory", "/usernames/ab", { uid: "mallory", name: "ab" }), 403);
+await expect("Name: Leerzeichen", patch("mallory", "/usernames/a b c", { uid: "mallory", name: "a b c" }), 403);
+await expect("Name: fremde Felder", patch("mallory", "/usernames/mallo", { uid: "mallory", name: "mallo", email: "x@y.de" }), 403);
+await expect("Name: Gast belegt", patch("gast1", "/usernames/gastname", { uid: "gast1", name: "gastname" }), 403);
+await expect("Name: Umlaut erlaubt", patch("mallory", "/usernames/bär12", { uid: "mallory", name: "Bär12" }), 200);
+await expect("Name: Mallory löscht Annas", req("mallory", "/usernames/reh42", { method: "DELETE" }), 403);
+await expect("Name: alle auflisten", req("mallory", "/usernames"), 403);
+await expect("Name: eigene abfragen", query("mallory", "usernames", { fieldFilter: { field: { fieldPath: "uid" }, op: "EQUAL", value: { stringValue: "mallory" } } }), 200);
+await expect("Name: fremde abfragen", query("mallory", "usernames", { fieldFilter: { field: { fieldPath: "uid" }, op: "EQUAL", value: { stringValue: "anna" } } }), 403);
+await expect("Name: Anna gibt ihn frei", req("anna", "/usernames/reh42", { method: "DELETE" }), 200);
+await req("admin", "/usernames/bär12", { method: "DELETE" });
+log("Benutzernamen (#650): eindeutig, nur für sich, keine Gäste, lesen ja, auflisten nur eigene");
+
 await req("admin", "/trips/regeltest", { method: "DELETE" });
 await req("admin", "/profiles/anna", { method: "DELETE" });
 await req("admin", "/travelDocs/anna", { method: "DELETE" });

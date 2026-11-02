@@ -15,6 +15,7 @@
   import { geo } from "../geo/geo.svelte";
   import { loadGeo } from "../geo/places";
   import { homeText, type Home } from "../home";
+  import UsernameField from "./UsernameField.svelte";
   import HomeInput from "./HomeInput.svelte";
   import { FLIGHTS_URL, homeGuess } from "../flights/app";
   import { guessAirports } from "../flights/origin";
@@ -175,6 +176,7 @@
         <button class="btn wz-manual" onclick={() => (step = 0)}>{t("setup.manual")}</button>
 
       {:else if STEPS[step] === "me"}
+        {#if cloud.user && !cloud.user.guest}<div class="wz-sec wz-un"><UsernameField /></div>{/if}
         {#if filled.length}<p class="wz-note">✨ {t("setup.aiFilled", { n: filled.length })}{left != null ? ` · ${tn("ai.left", left)}` : ""}</p>{/if}
         <div class="wz-grid">
           <label class="f">{t("setup.first")}<input bind:value={d.first} autocomplete="given-name" /></label>

@@ -36,7 +36,9 @@ export const cloud = $state({
   /** Reisen, deren aktueller Stand aus dem Konto schon da ist */
   loaded: {} as Record<string, boolean>,
   /** Liste im Konto ist vom Server (nicht nur aus dem Zwischenspeicher des Browsers) */
-  fresh: false
+  fresh: false,
+  /** öffentlicher Benutzername (#650): undefined = noch nicht geladen, null = keiner */
+  username: undefined as string | null | undefined
 });
 
 let fb: FB | null = null;
@@ -112,7 +114,7 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
   f.onUser(u => {
     fbUser = u;
     unTrips?.(); unTrips = null;
-    if (!u) { cloud.user = null; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); older.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
+    if (!u) { cloud.user = null; cloud.username = undefined; cloud.trips = []; cloud.fresh = false; cloud.loaded = {}; synced.clear(); older.clear(); remote.clear(); remoteRev.n++; cloud.status = "local"; cloud.ready = true; stopWatch(); return; }
     setUser(u);
     cloud.showLogin = false;
     // Meldung eines abgebrochenen Versuchs soll nach erfolgreicher Anmeldung nicht stehen bleiben
@@ -136,7 +138,26 @@ export async function initCloud(handlers: { remote: (id: string, trip: Trip) => 
 }
 
 function setUser(u: User) {
+  const same = cloud.user?.uid === u.uid;
   cloud.user = { uid: u.uid, name: fb!.displayName(u), email: u.email || "", guest: u.isAnonymous };
+  if (!same) { cloud.username = undefined; if (!u.isAnonymous) void fb!.myUsername(u.uid).then(n => { if (cloud.user?.uid === u.uid) cloud.username = n; }).catch(() => {}); }
+}
+
+/** Benutzername speichern (#650): „ok“, „taken“ (vergeben) oder „error“ */
+export async function saveUsername(name: string): Promise<"ok" | "taken" | "error"> {
+  const u = cloud.user;
+  if (!u || u.guest) return "error";
+  try {
+    const r = await (await load()).claimUsername(u.uid, name);
+    if (r === "ok") cloud.username = name.trim();
+    return r;
+  } catch { return "error"; }
+}
+/** Name frei? (Tippen im Feld) */
+export async function usernameFree(name: string): Promise<boolean | null> {
+  const u = cloud.user;
+  if (!u) return null;
+  try { return await (await load()).usernameFree(name, u.uid); } catch { return null; }
 }
 /** nach dem Verknüpfen eines Gasts mit einem Konto meldet Firebase keinen neuen Nutzer: Stand neu lesen */
 function refreshUser() {
