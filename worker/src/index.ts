@@ -30,6 +30,7 @@ import { HOLIDAY_SOURCE, type HolidayData } from "../../app/src/lib/holidays";
 import { HOLIDAY_CC, fetchHolidays } from "./holidays";
 import { CA_LIST, parseCanada, parseUkCountry, parseUkIndex, parseUsa, UK_LIST, ukCountry, US_LIST, type GovAdvice, type GovMap } from "../../app/src/lib/govadvice";
 import { bugImage, reportBug, type BugEnv } from "./bugs";
+import { catalogPrice, pointStore, type CatalogEnv } from "./catalog";
 import { agentBudget } from "./budget";
 import { isOverloaded } from "./gemini";
 import { kiCaller, kiModels, kiReady, type KiEnv } from "./ki";
@@ -45,7 +46,7 @@ import pkg from "../../app/package.json";
 import { partnerOn } from "../../app/src/lib/partner";
 import { parseRouteQuery, routeOrs, type RoadResult } from "../../app/src/lib/road/ors";
 
-interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv, KiEnv {
+interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv, KiEnv, CatalogEnv {
   /** KI-Konnektor: Suchen pro Schlüssel und Tag (Standard 50) */
   MCP_DAILY?: string;
   /** erlaubte Herkünfte, kommagetrennt */
@@ -331,6 +332,15 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
       const block = await overLimit("bug", req, env, h);
       if (block) return block;
       return reportBug(req, env, h, json, (uid, kind) => countToday(env, uid, kind), meter(env));
+    }
+
+    // Reisekatalog (#652): Preispunkte aus geprüften Übernahmen, nur angemeldet
+    if (url.pathname === "/catalog/price" && req.method === "POST") {
+      if (!h["access-control-allow-origin"]) return json({ error: "Herkunft nicht erlaubt" }, 403, h);
+      noteRoute(env, "catalog");
+      const block = await overLimit("bug", req, env, h);
+      if (block) return block;
+      return catalogPrice(req, env, h, json, (uid, kind) => countToday(env, uid, kind), pointStore(env));
     }
 
     // Klick auf einen Anbieter-Link (sendBeacon aus der App), nur zählen

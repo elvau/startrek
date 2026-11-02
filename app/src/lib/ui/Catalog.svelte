@@ -33,14 +33,18 @@
   import CatalogMap from "./CatalogMap.svelte";
   import { warmMap } from "./mapSnap";
   import { cloud, withdrawEntry } from "../cloud/cloud.svelte";
-  import { fetchCatalog } from "../catalog/publish";
+  import { fetchCatalog, fetchStats } from "../catalog/publish";
+  import { applyStats, arrivalTable, ARRIVAL_DOC, type PricePoint } from "../catalog/prices";
   import { bugDialog } from "../bugs/app.svelte";
 
   let { preview }: { preview?: CatalogEntry } = $props();
   let loaded = $state<CatalogEntry[]>([]);
   /** Eintrag → Konto, das ihn veröffentlicht hat (eigene erkennen) */
   let owners = $state<Record<string, string>>({});
-  const entries = $derived(preview ? [preview] : loaded);
+  /** geprüfte Preise je Eintrag und Anreise-Tabelle (#652) */
+  let stats = $state<Record<string, PricePoint[]>>({});
+  const flights = $derived(arrivalTable(stats[ARRIVAL_DOC] || []));
+  const entries = $derived(preview ? [preview] : loaded.map(e => (stats[e.id] ? applyStats(e, stats[e.id], filter.month) : e)));
   let filter = $state<CatalogFilter>({});
   let open = $state<"who" | "kind" | "month" | "len" | "budget" | null>(null);
   let picked = $state<Home | null>(null);
@@ -54,6 +58,7 @@
         owners = Object.fromEntries(list.map(x => [x.entry.id, x.uid]));
         loaded = [...loaded.filter(e => e.source !== "user"), ...list.map(x => x.entry)];
       }).catch(() => {});
+      if (cloud.configured) void fetchStats().then(s => (stats = s)).catch(() => {});
       if (homeUi.catalogSel) { sel = homeUi.catalogSel; homeUi.catalogSel = null; }
     }
     void loadGeo(geo, []);
@@ -75,8 +80,8 @@
     return c ? { lat: c.lat, lon: c.lon, cc: guessCc!, name: c.name } : null;
   });
   const exact = $derived(!!(picked || myHome(dir)?.lat));
-  const bands = $derived(catalogBands(entries, origin, filter, { flyKm }));
-  const card = $derived.by((): CatalogCard | null => { const e = preview || (sel && entries.find(x => x.id === sel)); return e ? cardOf(e, origin, { flyKm, month: filter.month }) : null; });
+  const bands = $derived(catalogBands(entries, origin, filter, { flyKm, flights }));
+  const card = $derived.by((): CatalogCard | null => { const e = preview || (sel && entries.find(x => x.id === sel)); return e ? cardOf(e, origin, { flyKm, flights, month: filter.month }) : null; });
   const mine = (e: CatalogEntry) => e.source === "user" && !!cloud.user && owners[e.id] === cloud.user.uid;
   /** Melden (#649): geht wie ein Fehlerbericht an Dani, mit der Kennung des Eintrags */
   function report(e: CatalogEntry) { bugDialog.text = t("cat.reportText", { id: e.id }); bugDialog.open = true; }
@@ -171,7 +176,7 @@
     }
     const from = start || undefined;
     const r = takeEntry(e, {
-      travelers, homes, origin: origin ? { lat: origin.lat, lon: origin.lon, name: startsOfEntry(e)[0] || origin.name } : null, from, flyKm,
+      travelers, homes, origin: origin ? { lat: origin.lat, lon: origin.lon, name: startsOfEntry(e)[0] || origin.name } : null, from, flyKm, flights,
       tours: e.tours.length ? mode : "none", picked: e.tours.map(x => x.name).filter(n => !off.includes(n)),
       tx: (k, v) => t(`cat.x.${k}` as Key, k === "detail" ? { m: standText(e.stand) } : v)
     });
@@ -242,7 +247,7 @@
       <small class="muted">{t(`cat.kind.${c.e.kind}` as Key)}{c.km != null ? ` · ${c.km.toLocaleString(locale())} km` : ""}</small>
       <h1 class="home-title kat-h">{c.e.title}</h1>
       <span>{tn("n.nights", c.e.nights)} · {groupText(c.e)}{c.e.months.length ? ` · ${t("cat.good", { m: monthsText(c.e.months) })}` : ""}</span>
-      <small class="muted">{byText(c.e)} · {t("cat.d.stand", { m: standText(c.e.stand) })}</small>
+      <small class="muted">{byText(c.e)} · {t("cat.d.stand", { m: standText(c.e.stand) })}{c.e.checked ? ` · ${t("cat.checked", { n: c.e.checked })}` : ""}</small>
       {#if c.e.warn?.length}<span class="kat-tags">{#each c.e.warn as w (w)}<span class="kat-tag warn">{t(`cat.warn.${w}` as Key)}</span>{/each}</span>{/if}
       {#if c.e.summary}<p class="kat-sumtext">{c.e.summary}</p>{/if}
     </div>

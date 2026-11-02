@@ -13,7 +13,9 @@
   import { activityItem, searchActivitiesRemote } from "../activities/app";
   import { airportData, ensureAirports } from "../geo/geo.svelte";
   import { airportsNear, destAround, resolveLoc } from "../geo/locations";
-  import { applyStart, checkPrices, checkSum, MAX_APS, toCheck, type PriceDeps, type PriceRow } from "../catalog/pricecheck";
+  import { applyStart, checkPrices, checkSum, MAX_APS, pointsOf, toCheck, type PriceDeps, type PriceRow } from "../catalog/pricecheck";
+  import { hasAccount, idToken } from "../cloud/cloud.svelte";
+  import { today } from "../today";
   import { showItem } from "./showItem";
 
   let running = $state(false);
@@ -53,8 +55,25 @@
     pending = toCheck(trip).map(i => i.id);
     try {
       await ensureAirports().catch(() => {});
-      await checkPrices(trip, deps, r => { rows = [...rows, r]; pending = pending.filter(x => x !== r.item); });
+      const done = await checkPrices(trip, deps, r => { rows = [...rows, r]; pending = pending.filter(x => x !== r.item); });
+      void send(trip, done);
     } finally { running = false; pending = []; }
+  }
+  /**
+   * Preispunkte an den Katalog (#652 Teil 2): nur mit Konto, einmal je Reise; nur Beträge pro Person, Monat, Gruppengröße,
+   * Ort bzw. Tour bzw. Entfernung, ohne Anbieter, Links und Konto (der Such-Dienst zählt nur je Tag mit)
+   */
+  async function send(trip: typeof app.trip, done: PriceRow[]) {
+    const c = trip.catalog;
+    if (!c || c.sent || !hasAccount() || !FLIGHTS_URL) return;
+    const points = pointsOf(trip, done);
+    if (!points.length) return;
+    try {
+      const token = await idToken();
+      if (!token) return;
+      const r = await fetch(`${FLIGHTS_URL}/catalog/price`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ entry: c.id, points }) });
+      if (r.ok || r.status === 429) c.sent = today();
+    } catch { /* nächster Versuch beim nächsten Prüfen */ }
   }
   function begin() { if (!start) return; applyStart(app.trip, start); void run(); }
 

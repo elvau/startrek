@@ -52,6 +52,8 @@ export interface ArrivalEst {
 export interface ArrivalOpts {
   /** ab dieser Luftlinie Flug statt Auto oder Bahn (Vorlieben), sonst FLY_KM */
   flyKm?: number;
+  /** Flug-Richtwerte aus geprüften Preisen (#652), Schlüssel wie flightKey; fehlt einer, gilt FLIGHT_PP */
+  flights?: Record<string, number>;
 }
 const flyOf = (o?: ArrivalOpts) => (o?.flyKm && o.flyKm > 0 ? o.flyKm : FLY_KM);
 
@@ -66,11 +68,13 @@ export function groundPP(km: number): number {
   return row ? row.pp : GROUND_PP.at(-1)!.pp + 2 * (km - GROUND_PP.at(-1)!.upTo) * GROUND_PP_KM;
 }
 /** Flug, Hin und zurück pro Person */
-export const flightPP = (km: number) => FLIGHT_PP.find(r => km <= r.upTo)!.pp;
+export const flightPP = (km: number, table?: Record<string, number>) => { const r = FLIGHT_PP.find(x => km <= x.upTo)!; return table?.[String(r.upTo)] || r.pp; };
+/** Zeile der Flug-Tabelle zu einer Entfernung („2000“ … „Infinity“), Schlüssel der geprüften Anreise-Preise */
+export const flightKey = (km: number) => String(FLIGHT_PP.find(x => km <= x.upTo)!.upTo);
 
 /** eine Richtung, pro Person */
-function oneWay(km: number, noFly: boolean, flyKm: number): { mode: ArrivalMode; pp: number } {
-  return noFly || km <= flyKm ? { mode: "ground", pp: groundPP(km) / 2 } : { mode: "flight", pp: flightPP(km) / 2 };
+function oneWay(km: number, noFly: boolean, flyKm: number, table?: Record<string, number>): { mode: ArrivalMode; pp: number } {
+  return noFly || km <= flyKm ? { mode: "ground", pp: groundPP(km) / 2 } : { mode: "flight", pp: flightPP(km, table) / 2 };
 }
 
 const hasLoc = (s?: { lat?: number; lon?: number }): s is LatLon => s?.lat != null && s?.lon != null;
@@ -82,7 +86,7 @@ export function arrivalFor(e: CatalogEntry, home: LatLon, month?: number, opts?:
   const noFly = !!e.noFly || e.kind === "road";
   const km = kmBetween(home, a);
   const fk = flyOf(opts);
-  const out = oneWay(km, noFly, fk), back = oneWay(hasLoc(b) ? kmBetween(b, home) : km, noFly, fk);
+  const out = oneWay(km, noFly, fk, opts?.flights), back = oneWay(hasLoc(b) ? kmBetween(b, home) : km, noFly, fk, opts?.flights);
   const mode: ArrivalMode = out.mode === "flight" || back.mode === "flight" ? "flight" : "ground";
   const m = month ?? e.months[0];
   const peak = !!m && PEAK_MONTHS.includes(m);

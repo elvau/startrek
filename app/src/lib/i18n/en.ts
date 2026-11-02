@@ -1765,6 +1765,7 @@ export const en: Dict = {
   "cat.goal": "Destination",
   "cat.goals": "Destinations",
   "cat.ret": "back",
+  "cat.checked": "checked {n}× when taken over",
   "pc.title": "Check prices",
   "pc.lead": "This trip comes from the catalogue. The app looks for real offers for accommodation, flights and tours; the guide price stays for comparison.",
   "pc.needDate": "When do you start? With a start date the app searches real prices.",

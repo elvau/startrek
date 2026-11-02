@@ -604,6 +604,8 @@ export interface Trip {
     check?: { at: string; rows: { item: string; state: "ok" | "none" | "skip" | "err"; est?: number; pp?: number }[] };
     /** Karte „Preise prüfen“ ausgeblendet */
     hide?: boolean;
+    /** Preispunkte an den Katalog geschickt (Datum), nur einmal je Reise */
+    sent?: string;
   };
   /** im Reisekatalog veröffentlicht (#644): Kennung des Eintrags, Konto des Erstellers, Zeitpunkt; Kopien und Varianten erben es nicht */
   pub?: {

@@ -1807,6 +1807,7 @@ export const pl: Dict = {
   "cat.goal": "Cel",
   "cat.goals": "Cele",
   "cat.ret": "powrót",
+  "cat.checked": "sprawdzono {n}× przy przejęciu",
   "pc.title": "Sprawdź ceny",
   "pc.lead": "Ta podróż pochodzi z katalogu. Aplikacja szuka prawdziwych ofert noclegów, lotów i wycieczek; cena orientacyjna zostaje do porównania.",
   "pc.needDate": "Kiedy ruszacie? Z datą początku aplikacja szuka prawdziwych cen.",
