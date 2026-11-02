@@ -13,7 +13,7 @@
   import { myHome } from "../prefs";
   import { airportData, ensureAirports, geo } from "../geo/geo.svelte";
   import { airportsNear } from "../geo/locations";
-  import { capitalOf, loadGeo } from "../geo/places";
+  import { capitalOf, kmBetween, loadGeo } from "../geo/places";
   import { homeUi } from "../store.svelte";
   import { monthsText } from "../prefsView";
   import { startPlan } from "../planApp";
@@ -22,6 +22,7 @@
   import { CATALOG_KINDS, persons, type CatalogEntry } from "../catalog/types";
   import type { Home } from "../home";
   import HomeInput from "./HomeInput.svelte";
+  import CatalogMap from "./CatalogMap.svelte";
 
   let entries = $state<CatalogEntry[]>([]);
   let filter = $state<CatalogFilter>({});
@@ -29,12 +30,9 @@
   let picked = $state<Home | null>(null);
   let asking = $state(false);
   let sel = $state<string | null>(null);
-  // Bilder: eigene Szenen der Reiseideen (seo/art.ts, keine Fotos von Anbietern, #649); sonst Flaggen auf Farbfläche
-  let art = $state<Record<string, string>>({});
 
   onMount(() => {
     void import("../catalog/seed").then(m => (entries = m.seedCatalog()));
-    void import("../seo/art").then(m => (art = Object.fromEntries(Object.keys(m.ART).map(k => [k, m.artSvg(k, "kat-art")])))); 
     void loadGeo(geo, []);
     void ensureAirports().catch(() => {});
   });
@@ -76,7 +74,14 @@
   /** Ziel(e) für das Bild: Orte ohne direkte Wiederholung, Flaggen je Land */
   const dests = (e: CatalogEntry) => e.stops.filter((s, i) => i === 0 || s.place !== e.stops[i - 1].place).filter((s, i, a) => i === 0 || i < a.length - 1 || s.place !== a[0].place);
   const destFlags = (e: CatalogEntry) => [...new Set(dests(e).map(s => s.cc).filter((c): c is string => !!c))].map(flagOf).join(" ");
-  const picOf = (e: CatalogEntry) => (e.slug ? art[e.slug] : "") || "";
+  /** Karte statt Bild (Dani, 02.11.): Stationen und das Zielland (dessen Städte bis 1.200 km um die Stationen) */
+  const stopPts = (e: CatalogEntry) => e.stops.filter(s => s.lat != null && s.lon != null).map(s => ({ lat: s.lat!, lon: s.lon! }));
+  const areaOf = (e: CatalogEntry) => {
+    void geo.world.length;
+    const st = stopPts(e), ccs = new Set(e.stops.map(s => s.cc).filter(Boolean));
+    return geo.world.filter(w => ccs.has(w.k)).flatMap(w => w.cities.map(c => ({ lat: c[1], lon: c[2] })))
+      .filter(c => st.some(p => kmBetween(p, c) <= 1200));
+  };
   /** Beschriftung im Flussdiagramm: Start, Ziel bzw. Ziele, zurück */
   const capOf = (nodes: RouteNode[], i: number) => {
     const n = nodes[i];
@@ -137,7 +142,7 @@
     {@const rows = costRows(c.e, c.arrival)}
     <button class="linkbtn kat-back" onclick={() => (sel = null)}>{arrow() === "→" ? "←" : "→"} {t("cat.d.back")}</button>
     <div class="kat-pic big" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
-      {#if picOf(c.e)}{@html picOf(c.e)}{:else}<span class="kat-ph" aria-hidden="true">{destFlags(c.e)}</span>{/if}
+      <CatalogMap stops={stopPts(c.e)} area={areaOf(c.e)} w={720} h={360} />
       <span class="kat-dest"><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
     </div>
     {#if c.e.stops.length > 1}<div class="kat-way" style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render route(routeOf(c.e, null, c.arrival), true)}</div>{/if}
@@ -221,7 +226,7 @@
           {#each b.cards as c (c.e.id)}
             <button class="kat-card" onclick={() => show(c.e.id)}>
               <span class="kat-pic" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
-                {#if picOf(c.e)}{@html picOf(c.e)}{:else}<span class="kat-ph" aria-hidden="true">{destFlags(c.e)}</span>{/if}
+                <CatalogMap stops={stopPts(c.e)} area={areaOf(c.e)} />
                 <span class="kat-kind">{t(`cat.kind.${c.e.kind}` as Key)}</span>
                 {#if c.km != null}<span class="kat-km">{c.km.toLocaleString(locale())} km</span>{/if}
                 <span class="kat-dest"><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
@@ -265,11 +270,9 @@
   .kat-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
   .kat-card { display: flex; flex-direction: column; text-align: start; padding: 0; border-radius: 18px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); overflow: hidden; box-shadow: 0 1px 2px rgba(21,32,46,.06); }
   .kat-card:hover, .kat-card:focus-visible { box-shadow: var(--shadow); }
-  /* Bild mit Ziel darüber; ohne Szene Flaggen auf der Farbe der Reiseart */
+  /* Karte mit dem Zielland, Ziel darüber; bis das Kartenbild da ist, die Farbe der Reiseart */
   .kat-pic { position: relative; display: block; aspect-ratio: 5 / 2; background: var(--ks); overflow: hidden; }
   .kat-pic.big { border-radius: 18px; aspect-ratio: 2 / 1; }
-  .kat-pic :global(.kat-art) { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  .kat-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 56px; letter-spacing: 8px; }
   .kat-dest { position: absolute; inset-inline: 0; bottom: 0; padding: 28px 14px 10px; background: linear-gradient(transparent, rgba(10,20,35,.72)); color: #fff; font-size: 20px; font-weight: 800; line-height: 1.2; text-shadow: 0 1px 3px rgba(0,0,0,.35); }
   .kat-pic.big .kat-dest { font-size: 26px; padding: 40px 16px 14px; }
   .kat-kind, .kat-km { position: absolute; top: 10px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.9); color: #15202E; }

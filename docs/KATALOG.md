@@ -24,5 +24,6 @@ Epic #641. Öffentlicher Katalog mit Reisen von Nutzern und automatisch gepflegt
   Ohne Flug bzw. Roadtrip immer am Boden. Kreuzfahrt: zum Ablegehafen und vom Endhafen, mit Flug eine Nacht vor dem
   Ablegen dazu. Katalogpreis `totalPP` = Ziel + Anreise (ohne Touren); `sortByDistance` für die Liste.
 - `app/src/lib/catalog/view.ts`: Karten (Preis ab Startort, Route als Flussdiagramm), Filter, Bänder, Kostenzeilen.
+- `app/src/lib/ui/CatalogMap.svelte`: Karte mit dem Zielland statt Bildern (Dani, 02.11.), Kartenbild wie RouteMini (OpenFreeMap), erst wenn sichtbar.
 - `app/src/lib/ui/Catalog.svelte`: Ansicht auf der Startseite (Kachel „Reisekatalog“), Handy zuerst; e2e `app/e2e/catalog.mjs`.
   Ohne Wohnort: Land über `viewerCountry` (Hauptstadt, sonst größte Stadt), Hinweis „Mit deinem Wohnort wird es genauer“.
