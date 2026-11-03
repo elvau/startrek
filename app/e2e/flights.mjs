@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (nach cloud.mjs und groups.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, quickTrip } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4175/";
@@ -106,7 +106,7 @@ try {
   await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
   await p.goto(URL);
   await (await startPage(p)).locator(".start .home-new").click();
-  await p.locator(".modal .newtrip .btn.primary").click();
+  await quickTrip(p);
   // Kopf der neuen Reise: vier Kacheln als Einstieg; „Flüge“ öffnet die Suche im Kapitel
   const tiles = (await p.locator(".hero .ht-tile b").allInnerTexts()).join("|");
   if (tiles !== "Flüge ›|Unterkünfte ›|Erlebnisse ›") fail("Kacheln im Kopf: " + tiles);

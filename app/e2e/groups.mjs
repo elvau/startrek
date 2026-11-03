@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (läuft nach e2e/cloud.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage, autoAsk } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, autoAsk, quickTrip, toWho, finishTrip } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4174/";
@@ -33,8 +33,9 @@ try {
   const a = await page("Anna");
   await a.goto(URL);
   await (await startPage(a)).locator(".start .home-new").click();
+  await toWho(a);
   if (!(await a.locator(".modal .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
-  await a.locator(".modal .newtrip .btn.primary").click();
+  await finishTrip(a);
   const solo = await a.locator(".person:not(.add) b").allTextContents();
   if (solo.length !== 1 || solo[0].includes(" ")) fail("Start nicht mit einem Tier: " + solo);
   log("Erster Start: 1-Personen-Reise als", solo[0]);
@@ -71,7 +72,7 @@ try {
   await a.evaluate(() => scrollTo({ top: document.body.scrollHeight, behavior: "instant" }));
   await until(async () => (await a.evaluate(() => scrollY)) > 300, "nach unten gescrollt");
   await a.locator(".top .tm-plus").click();
-  if (await a.locator(".newtrip label", { hasText: "Wohin" }).count()) fail("Wohin noch im Dialog");
+  await toWho(a);
   if (!(await a.locator(".newtrip .who-b.on").textContent()).includes("Solo")) fail("Solo nicht vorausgewählt");
   // Gruppe: erst der Weg (nichts vorausgewählt), dann die gespeicherte Gruppe antippen
   await a.locator(".newtrip .who-b", { hasText: "Gruppe" }).click();
@@ -79,7 +80,7 @@ try {
   if (!(await a.locator(".newtrip .btn.primary").isDisabled())) fail("Anlegen ohne Weg möglich");
   await a.locator(".newtrip .src-b", { hasText: "Aus meinen Gruppen" }).click();
   await a.locator(".newtrip .sg-h", { hasText: "Kegeln" }).click();
-  await a.locator(".newtrip .btn.primary", { hasText: "Reise mit Kegeln anlegen (2 Personen)" }).click();
+  await finishTrip(a, "Reise mit Kegeln anlegen (2 Personen)");
   await until(async () => (await a.locator(".hero h1").textContent()).startsWith("Neue Reise"), "neue Reise offen");
   await until(async () => (await a.evaluate(() => scrollY)) < 50, "neue Reise steht oben");
   // Ort und Zeitraum oben in der Reise: der Name bildet sich daraus
@@ -193,6 +194,7 @@ try {
   // Schnell mit Platzhaltern: zwei Tierfamilien (zufällige Tiere)
   await a.evaluate(() => scrollTo(0, 0));
   await a.locator(".top .tm-plus").click();
+  await toWho(a);
   await a.locator(".newtrip .who-b", { hasText: "Familie" }).click();
   if (await a.locator(".newtrip .qf").count()) fail("Tiere vorausgewählt");
   await a.locator(".newtrip .src-b", { hasText: "Mit Platzhalter-Tieren" }).click();
@@ -205,7 +207,7 @@ try {
   const fams = await qf.locator(".qf-row select").evaluateAll(xs => xs.map(x => x.value));
   const [A, B] = fams;
   if (fams.length !== 2 || A === B) fail("Familien: " + fams);
-  await a.locator(".newtrip .btn", { hasText: "Reise anlegen" }).click();
+  await finishTrip(a, "Reise anlegen");
   // große Gruppe: Übersicht oben, erst 4 Personen, der Rest über „Alle 10 anzeigen“
   await until(async () => (await a.locator(".people.list .p-sum").count()) === 1, "Familien-Reise offen");
   const pSum = (await a.locator(".people.list .p-sum").innerText()).replace(/\s+/g, " ");
@@ -328,10 +330,11 @@ try {
 
   // Reise mit Uwe: Alter zum Reisebeginn aus dem Geburtsdatum, Wohnort für die Familie Schmitz
   await (await startPage(b)).locator(".start .home-new").click();
+  await toWho(b);
   await b.locator(".newtrip .who-b", { hasText: "Gruppe" }).click();
   await b.locator(".newtrip .src-b", { hasText: "Aus meinen Gruppen" }).click();
   await b.locator(".newtrip .sg-h", { hasText: "Kegeln" }).click();
-  await b.locator(".newtrip .btn.primary", { hasText: "Reise mit Kegeln anlegen" }).click();
+  await finishTrip(b, "Reise mit Kegeln anlegen");
   await until(async () => (await b.locator(".hero h1").textContent()).startsWith("Neue Reise"), "Reise mit Uwe offen");
   await b.locator(".top-edit").click();
   await b.locator(".trip-ed label", { hasText: "Von" }).locator("input").fill("2027-03-01");
@@ -357,6 +360,7 @@ try {
   if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   // Neue Gruppe beim Anlegen: Uwe hineinziehen, Monika antippen, Lea neu (Nachname aus dem Gruppennamen)
   await (await startPage(b)).locator(".start .home-new").click();
+  await toWho(b);
   await b.locator(".newtrip .who-b", { hasText: "Familie" }).click();
   await b.locator(".newtrip .src-b", { hasText: "Neue Gruppe anlegen" }).click();
   await b.locator(".newtrip .ng-name").fill("Familie Schmitz");
@@ -368,7 +372,7 @@ try {
   await add.locator(".btn", { hasText: "Hinzufügen" }).click();
   const inGroup = await b.locator(".newtrip .ng-zone .ng-chip").allTextContents();
   if (inGroup.length !== 3 || !inGroup[0].includes("Uwe") || !inGroup[2].includes("Lea Schmitz")) fail("neue Gruppe: " + inGroup);
-  await b.locator(".newtrip .btn.primary", { hasText: "Reise mit Familie Schmitz anlegen (3 Personen)" }).click();
+  await finishTrip(b, "Reise mit Familie Schmitz anlegen (3 Personen)");
   await until(async () => (await b.locator(".person:not(.add) b").count()) === 3, "Reise der neuen Gruppe offen");
   const saved = await b.evaluate(() => { const d = JSON.parse(localStorage.getItem("rk2-dir") || "{}"); const g = d.groups.find(x => x.name === "Familie Schmitz"); return g && g.memberIds.map(id => d.people.find(p => p.id === id)); });
   if (!saved || saved.length !== 3 || saved[2].first !== "Lea" || saved[2].last !== "Schmitz" || saved[2].age !== 8) fail("Gruppe nicht gespeichert: " + JSON.stringify(saved));

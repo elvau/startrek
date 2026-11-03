@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (baut mit Emulator-Konfiguration, startet Emulatoren und Vorschau)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage, autoAsk } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, autoAsk, quickTrip, toWho, finishTrip } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4174/";
@@ -338,6 +338,7 @@ try {
 
   // Neue Reise angemeldet: solo plant man als man selbst, nicht als Tier (Fehlerbericht #16)
   await (await startPage(mal)).locator(".start .home-new").click();
+  await toWho(mal);
   const whoLine = mal.locator(".modal .who-d p").first();
   if (!(await whoLine.textContent()).includes("Du planst als Mallory")) fail("Neue Reise solo: " + await whoLine.textContent());
   await whoLine.locator(".linkbtn", { hasText: "Lieber als Tier planen" }).click();

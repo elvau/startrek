@@ -63,3 +63,29 @@ export function autoAsk(page, { text, once = false, on } = {}) {
   })();
   return { stop: () => { stop = true; } };
 }
+
+/** Neue Reise geführt (#672): Wohin und Wann überspringen, bis „Wer fährt mit?“ da ist */
+export async function toWho(page) {
+  for (let i = 0; i < 3 && !(await page.locator(".newtrip .who-b").count()); i++) await page.locator(".newtrip .gt-skip").click();
+  await page.locator(".newtrip .who-b").first().waitFor();
+}
+
+/** Neue Reise geführt: alles überspringen (wie früher sofort „Reise anlegen“, eine Person) */
+export async function quickTrip(page) {
+  const gt = page.locator(".modal .newtrip.gt");
+  await gt.waitFor();
+  for (let i = 0; i < 5 && (await gt.count()); i++) await page.locator(".newtrip .gt-skip").click();
+  if (await gt.count()) throw new Error("Neue Reise: Fragen nicht durchlaufen");
+}
+
+/** Neue Reise geführt: nach „Wer fährt mit?“ weiter bis zum Anlegen; label: Text des letzten Knopfs */
+export async function finishTrip(page, label) {
+  const gt = page.locator(".modal .newtrip.gt");
+  for (let i = 0; i < 3 && (await gt.count()); i++) {
+    const btn = page.locator(".newtrip .gt-next");
+    const last = !(await btn.innerText()).includes("Weiter");
+    if (last && label && !(await btn.innerText()).includes(label)) throw new Error(`Neue Reise: Knopf „${await btn.innerText()}“ statt „${label}“`);
+    await btn.click();
+    if (last) break;
+  }
+}
