@@ -19,7 +19,7 @@ describe("Stufen der Oberfläche (#666)", () => {
     expect(bad).toEqual([]);
   });
   it("keine Schrift unter 11 px", () => {
-    const bad = src.flatMap(x => [...x.s.matchAll(/font-size: *([\d.]+)px/g)].filter(m => +m[1] < 11).map(m => `${x.f}: ${m[1]}px`));
+    const bad = src.flatMap(x => [...x.s.matchAll(/font(?:-size)?: *(?:\d{3} +)?([\d.]+)px/g)].filter(m => +m[1] < 11).map(m => `${x.f}: ${m[1]}px`));
     expect(bad).toEqual([]);
   });
 });

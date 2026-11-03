@@ -215,6 +215,21 @@ try {
     if (small.length) fail(`Tippziele unter 44 px auf ${pg}: ` + small.join(" | "));
   }
   log("Tippziele: Kopf, Leiste und alle Seiten mindestens 44 px (#661)");
+  // Leiste (#663): Verlauf am Rand, wo es weitergeht; schwebende Knöpfe beim Herunterscrollen weg, beim Hochscrollen da
+  await p.locator('.mbar [data-pg="hero"]').click();
+  await until(async () => (await on()) === "hero", "zurück zur Übersicht");
+  await until(async () => await p.locator(".mbar .mb-row").evaluate(el => el.classList.contains("fade-e") && !el.classList.contains("fade-s")), "Verlauf rechts an der Leiste");
+  const tall = await p.evaluate(() => [...document.querySelectorAll("main.pager > [data-ch]")].map(c => [c.dataset.ch, c.scrollHeight - c.clientHeight]).sort((a, b) => b[1] - a[1])[0]);
+  if (!tall || tall[1] < 250) fail("keine Seite zum Scrollen: " + JSON.stringify(tall));
+  await p.locator(`.mbar [data-pg="${tall[0]}"]`).click();
+  await until(async () => (await on()) === tall[0], "lange Seite");
+  const scrollHero = y => p.evaluate(([y, k]) => { document.querySelector(`main.pager > [data-ch="${k}"]`).scrollTop = y; }, [y, tall[0]]);
+  await scrollHero(80); await p.waitForTimeout(150); await scrollHero(240);
+  await until(async () => p.evaluate(() => document.body.classList.contains("fab-hide")), "KI-Knopf beim Herunterscrollen weg");
+  await p.waitForTimeout(150); await scrollHero(120);
+  await until(async () => p.evaluate(() => !document.body.classList.contains("fab-hide")), "KI-Knopf beim Hochscrollen da");
+  await scrollHero(0);
+  log("Leiste mit Verlauf am Rand, schwebende Knöpfe weichen beim Herunterscrollen (#663)");
 
   for (const lang of ["ru", "ar"]) for (const width of [390, 320]) {
     await p.setViewportSize({ width, height: 844 });

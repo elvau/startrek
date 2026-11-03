@@ -52,6 +52,7 @@
   import BugButton from "./lib/ui/BugButton.svelte";
   import PriceCheck from "./lib/ui/PriceCheck.svelte";
   import AskDialog from "./lib/ui/AskDialog.svelte";
+  import { hideFabsOnScroll } from "./lib/ui/fabs";
   import { ask } from "./lib/ui/ask.svelte";
   import BrokerGate from "./lib/ui/BrokerGate.svelte";
   import TermsGate from "./lib/ui/TermsGate.svelte";
@@ -135,6 +136,8 @@
 
   // Tageskurse für die Anzeige in anderer Währung und für Preise in Fremdwährung (einmal am Tag)
   onMount(() => { void loadRates(); });
+  // Handy (#663): schwebende Knöpfe beim Herunterscrollen ausblenden
+  onMount(() => hideFabsOnScroll());
   // Link von einer Inhaltsseite (?ziel=…&idee=…): neue Reise mit Ziel, Gruppe und den Kosten der Reiseidee
   onMount(() => { void applyPlanLink(); });
   // …/?info öffnet „Neues & Ausblick“

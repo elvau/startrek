@@ -98,3 +98,7 @@ body.mob :is(.dual-track, .dual-fill){top:19px}
 body.mob .qf-step button{min-width:var(--tap);min-height:var(--tap)}
 body.mob :is(label.in-row, label.check){min-height:var(--tap);display:flex;align-items:center}
 body.mob :is(.souv-step, .pv-step, .qf-step, [class$="-step"]) button{min-width:var(--tap);min-height:var(--tap)}
+
+/* schwebende Knöpfe beim Herunterscrollen weg (#663, fabs.ts) */
+body.mob :is(.ai-fab, .bug-fab, .gc-fab, .ai-note){transition:transform .25s ease, opacity .2s ease}
+body.mob.fab-hide :is(.ai-fab, .bug-fab, .gc-fab, .ai-note){transform:translateY(180%);opacity:0;pointer-events:none}
