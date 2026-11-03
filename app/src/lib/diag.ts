@@ -59,16 +59,25 @@ export function measure(): string {
   return lines.join("\n");
 }
 
-/** Kasten einblenden und jede Sekunde neu messen */
+/** Kasten einblenden und jede Sekunde neu messen; × schließt ihn */
 export function showDiag() {
   const box = document.createElement("div");
   box.setAttribute("style", "position:fixed;left:4px;right:4px;top:calc(env(safe-area-inset-top,0px) + 4px);z-index:2147483647;max-height:40vh;overflow:auto;background:rgba(0,0,0,.85);color:#fff;font:11px/1.35 ui-monospace,monospace;padding:8px;border-radius:8px;white-space:pre-wrap;word-break:break-all;pointer-events:auto");
+  const bstyle = "min-height:44px;min-width:44px;padding:0 12px;font:600 15px system-ui;border-radius:8px;border:0;background:#fff;color:#000";
+  const bar = document.createElement("div");
+  bar.setAttribute("style", "display:flex;gap:8px;margin:0 0 6px");
   const btn = document.createElement("button");
   btn.type = "button";
   btn.textContent = "📋 Kopieren";
-  btn.setAttribute("style", "display:block;min-height:44px;min-width:120px;margin:0 0 6px;font:600 15px system-ui;border-radius:8px;border:0;background:#fff;color:#000");
+  btn.setAttribute("style", bstyle);
+  const close = document.createElement("button");
+  close.type = "button";
+  close.textContent = "×";
+  close.setAttribute("aria-label", "Diagnose schließen");
+  close.setAttribute("style", bstyle + ";margin-inline-start:auto");
+  bar.append(btn, close);
   const pre = document.createElement("div");
-  box.append(btn, pre);
+  box.append(bar, pre);
   btn.addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(pre.textContent || ""); btn.textContent = "✓ Kopiert"; }
     catch { getSelection()?.selectAllChildren(pre); btn.textContent = "Text markiert"; }
@@ -81,5 +90,6 @@ export function showDiag() {
   };
   document.body.append(box);
   tick();
-  setInterval(tick, 1000);
+  const timer = setInterval(tick, 1000);
+  close.addEventListener("click", () => { clearInterval(timer); box.remove(); });
 }

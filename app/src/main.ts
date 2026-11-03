@@ -18,6 +18,8 @@ loadBeacon();
 watchInstall();
 if (import.meta.env.PROD && "serviceWorker" in navigator) void navigator.serviceWorker.register(import.meta.env.BASE_URL + "sw.js").catch(() => {});
 
+const diag = wantsDiag(location.search);
+
 // gewählte Sprache zuerst laden (Deutsch und Englisch sind schon da), sonst blitzt kurz Englisch auf
 await i18nReady();
 // Aktionsseite (…/?aktion=ID): eigene, schlanke Seite ohne Reise und ohne Konto
@@ -26,7 +28,7 @@ const target = document.getElementById("app")!;
 // Text der Startseite für Suchmaschinen und ohne JavaScript (index.html) weicht der App
 target.replaceChildren();
 // Diagnose für Darstellungsfehler (…/?diag, #612): Kasten mit Messwerten zum Kopieren
-if (wantsDiag(location.search)) setTimeout(showDiag, 1500);
+if (diag) void import("./lib/diagTrip").then(m => { m.openDiagTrip(); setTimeout(showDiag, 1500); });
 export default aktion
   ? mount((await import("./lib/ui/CampaignPage.svelte")).default, { target, props: { id: aktion } })
   : mount(App, { target });
