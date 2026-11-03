@@ -18,3 +18,4 @@ describe("Diagnose (#612)", () => {
     expect(rect(null)).toBe("–");
   });
 });
+
