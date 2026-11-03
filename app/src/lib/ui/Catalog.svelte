@@ -271,9 +271,9 @@
           <h2>{t("cat.d.take")}</h2>
           <fieldset><legend>{t("cat.t.who")}</legend>
             <div class="kat-opts">
-              <button class="kat-chip" class:on={who === "like"} onclick={() => (who = "like")}>{t("cat.t.like", { g: groupText(c.e) })}</button>
-              {#if dir.me}<button class="kat-chip" class:on={who === "me"} onclick={() => (who = "me")}>{t("cat.t.me")}</button>{/if}
-              {#each dir.groups as g (g.id)}<button class="kat-chip" class:on={who === g.id} onclick={() => (who = g.id)}>{g.name}</button>{/each}
+              <button class="chip kat-chip" class:on={who === "like"} onclick={() => (who = "like")}>{t("cat.t.like", { g: groupText(c.e) })}</button>
+              {#if dir.me}<button class="chip kat-chip" class:on={who === "me"} onclick={() => (who = "me")}>{t("cat.t.me")}</button>{/if}
+              {#each dir.groups as g (g.id)}<button class="chip kat-chip" class:on={who === g.id} onclick={() => (who = g.id)}>{g.name}</button>{/each}
             </div>
           </fieldset>
           <label class="kat-when">{t("cat.t.when")}<input type="date" bind:value={start} /></label>
@@ -332,21 +332,21 @@
       {/if}
       <div class="kat-chips" role="toolbar">
         {#each ["who", "kind", "month", "len", "budget"] as const as k (k)}
-          <button class="kat-chip" class:on={active(k)} aria-expanded={open === k} onclick={() => (open = open === k ? null : k)}>{t(`cat.f.${k}` as Key)} ▾</button>
+          <button class="chip kat-chip" class:on={active(k)} aria-expanded={open === k} onclick={() => (open = open === k ? null : k)}>{t(`cat.f.${k}` as Key)} ▾</button>
         {/each}
         {#if anyFilter}<button class="linkbtn kat-reset" onclick={() => { filter = {}; open = null; }}>{t("cat.f.reset")}</button>{/if}
       </div>
       {#if open}
         <div class="kat-opts">
-          {#if open === "who"}{#each WHO as w (w)}<button class="kat-chip" class:on={filter.who?.includes(w)} onclick={() => toggle("who", w)}>{t(`cat.who.${w}` as Key)}</button>{/each}
-          {:else if open === "kind"}{#each CATALOG_KINDS as w (w)}<button class="kat-chip" class:on={filter.kind?.includes(w)} onclick={() => toggle("kind", w)}>{t(`cat.kind.${w}` as Key)}</button>{/each}
-          {:else if open === "len"}{#each LENS as w (w)}<button class="kat-chip" class:on={filter.len?.includes(w)} onclick={() => toggle("len", w)}>{t(`cat.len.${w}` as Key)}</button>{/each}
+          {#if open === "who"}{#each WHO as w (w)}<button class="chip kat-chip" class:on={filter.who?.includes(w)} onclick={() => toggle("who", w)}>{t(`cat.who.${w}` as Key)}</button>{/each}
+          {:else if open === "kind"}{#each CATALOG_KINDS as w (w)}<button class="chip kat-chip" class:on={filter.kind?.includes(w)} onclick={() => toggle("kind", w)}>{t(`cat.kind.${w}` as Key)}</button>{/each}
+          {:else if open === "len"}{#each LENS as w (w)}<button class="chip kat-chip" class:on={filter.len?.includes(w)} onclick={() => toggle("len", w)}>{t(`cat.len.${w}` as Key)}</button>{/each}
           {:else if open === "month"}
-            <button class="kat-chip" class:on={!filter.month} onclick={() => (filter = { ...filter, month: undefined })}>{t("cat.f.any")}</button>
-            {#each Array.from({ length: 12 }, (_, i) => i + 1) as m (m)}<button class="kat-chip" class:on={filter.month === m} onclick={() => (filter = { ...filter, month: m })}>{monthName(m)}</button>{/each}
+            <button class="chip kat-chip" class:on={!filter.month} onclick={() => (filter = { ...filter, month: undefined })}>{t("cat.f.any")}</button>
+            {#each Array.from({ length: 12 }, (_, i) => i + 1) as m (m)}<button class="chip kat-chip" class:on={filter.month === m} onclick={() => (filter = { ...filter, month: m })}>{monthName(m)}</button>{/each}
           {:else}
-            <button class="kat-chip" class:on={!filter.budget} onclick={() => (filter = { ...filter, budget: undefined })}>{t("cat.f.any")}</button>
-            {#each BUDGETS as b (b)}<button class="kat-chip" class:on={filter.budget === b} onclick={() => (filter = { ...filter, budget: b })}>{t("cat.budgetUpTo", { v: eur(b) })}</button>{/each}
+            <button class="chip kat-chip" class:on={!filter.budget} onclick={() => (filter = { ...filter, budget: undefined })}>{t("cat.f.any")}</button>
+            {#each BUDGETS as b (b)}<button class="chip kat-chip" class:on={filter.budget === b} onclick={() => (filter = { ...filter, budget: b })}>{t("cat.budgetUpTo", { v: eur(b) })}</button>{/each}
           {/if}
         </div>
       {/if}
@@ -376,8 +376,8 @@
   .kat-from { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-weight: 600; }
   .kat-chips { display: flex; gap: 8px; overflow-x: auto; max-width: 100%; padding-bottom: 2px; scrollbar-width: none; }
   .kat-chips::-webkit-scrollbar { display: none; }
-  .kat-chip { flex: none; min-height: 40px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-weight: 600; font-size: 14px; white-space: nowrap; }
-  .kat-chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  /* Auswahl wie überall: globaler Chip (#664), hier nur nicht umbrechen */
+  .kat-chip { flex: none; white-space: nowrap; }
   .kat-opts { display: flex; flex-wrap: wrap; gap: 8px; }
   .kat-reset { font-size: 14px; white-space: nowrap; }
   .kat-band { display: grid; gap: 12px; }

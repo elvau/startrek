@@ -50,7 +50,9 @@ select option,select optgroup{background:var(--paper);color:var(--ink)}
 .seg button.on[data-s="dropped"]{background:var(--paper);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--line)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--ink-2)}
-.chip.on{background:var(--a-soft);border-color:var(--a);color:var(--a)}
+/* gewählt = gefüllt in der Akzentfarbe (#664), wie Umschalter und Vorlieben; hell mit Rand nur für „geerbt“ */
+.chip.on{background:var(--a);border-color:var(--a);color:var(--on-a)}
+.chip.on :is(small,.age-pill){color:inherit;opacity:.85}
 /* gerade gewählt (z. B. aus der Suche): kurz hervorheben */
 .chip.flash{animation:chipFlash 1.2s ease}
 @keyframes chipFlash{0%,60%{box-shadow:0 0 0 4px var(--a-soft);transform:scale(1.08)}100%{box-shadow:none;transform:none}}
@@ -246,9 +248,7 @@ html:has(.modal-bg){overflow:hidden}
 /* Einfach / Detailliert */
 .mode{display:inline-flex;gap:2px;padding:3px;border-radius:99px;background:color-mix(in srgb,var(--paper) 75%,transparent);border:1px solid var(--line);backdrop-filter:blur(6px);margin-top:8px;vertical-align:middle}
 .mode button{border:0;background:transparent;border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:700;color:var(--ink-2);transition:background .2s,color .2s}
-.mode button.on{background:var(--a);color:#fff}
-:root[data-theme="dark"] .mode button.on{color:#0D131C}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .mode button.on{color:#0D131C}}
+.mode button.on{background:var(--a);color:var(--on-a)}
 .ch-t .mode{display:flex;width:max-content}
 .hero-mode{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:14px}
 .hero-mode .mode{margin-top:0}
