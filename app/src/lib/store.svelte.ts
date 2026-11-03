@@ -60,7 +60,12 @@ function normalize(t: Trip): Trip {
   return t;
 }
 
-type NewOpts = { name?: string; place?: string; from?: string; to?: string; travelers?: Traveler[]; items?: Item[]; kicker?: string; /** vorläufiger Name, bis Ort oder Zeitraum da sind */ provisional?: string };
+type NewOpts = {
+  name?: string; place?: string; country?: string; from?: string; to?: string; travelers?: Traveler[]; items?: Item[]; kicker?: string;
+  /** vorläufiger Name, bis Ort oder Zeitraum da sind */ provisional?: string;
+  /** geführte neue Reise (#672): Wohnorte je Familie, Vorlieben nur für diese Reise (Monat, Dauer) */
+  households?: Trip["households"]; prefs?: Trip["prefs"];
+};
 
 /** Leere Reise; ohne Namen heißt sie „Neue Reise“, bis Ort oder Zeitraum da sind oder man selbst einen vergibt */
 function emptyTrip(o: NewOpts = {}): Trip {
@@ -72,7 +77,8 @@ function emptyTrip(o: NewOpts = {}): Trip {
   const simple = (c: CatKey) => ((o.items || []).some(i => i.cat === c && !i.auto) ? {} : { [c]: false });
   return {
     id: uid(), name: own || auto || o.provisional?.trim() || "", autoName: !own,
-    place: o.place?.trim() || "", country: "", from: o.from || undefined, to: o.to || undefined,
+    place: o.place?.trim() || "", country: o.country?.trim() || "", from: o.from || undefined, to: o.to || undefined,
+    ...(o.prefs && Object.keys(o.prefs).length ? { prefs: o.prefs } : {}),
     travelers, items: o.items || [], tiers: {}, settings: { ...DEFAULT_SETTINGS }, ...(o.kicker ? { kicker: o.kicker } : {}),
     // Verpflegung gehört zu den versteckten Kosten: bei neuen Reisen eingerechnet, gespeicherte behalten ihre Einstellung (#388, #418).
     // Sonstiges und Vor Ort bleiben dabei einfach (sonst schalteten die automatischen Posten sie auf detailliert); sie zählen trotzdem mit
@@ -468,8 +474,8 @@ export function newTrip(opts: NewOpts = {}) {
   const prev = app.trip;
   open({
     ...emptyTrip(opts),
-    // Wohnorte und Anreise je Familie aus der bisherigen Reise übernehmen, das spart Tipparbeit
-    households: JSON.parse(JSON.stringify(prev.households || {}))
+    // Wohnorte und Anreise je Familie aus der bisherigen Reise übernehmen, das spart Tipparbeit; Angaben aus den Fragen gehen vor (#672)
+    households: { ...JSON.parse(JSON.stringify(prev.households || {})), ...(opts.households || {}) }
   }, "neu");
   // neu angelegt zählt als bearbeitet (auch wenn sie gleich gefüllt und verlassen wird, z. B. „Alle übernehmen“)
   markEdited(app.trip.id);
@@ -670,9 +676,9 @@ export function openTrip(id: string, why = "Startseite") {
   scrollTo({ top: 0 });
 }
 
-/** neue Reise mit diesen Reisenden (Standard: eine Person) und direkt hinein */
-export function startTrip(travelers?: Traveler[], provisional?: string) {
-  newTrip({ ...(travelers ? { travelers } : {}), ...(provisional ? { provisional } : {}) });
+/** neue Reise mit diesen Reisenden (Standard: eine Person) und direkt hinein; more: Ziel, Zeitraum, Wohnorte aus den Fragen (#672) */
+export function startTrip(travelers?: Traveler[], provisional?: string, more: Omit<NewOpts, "travelers" | "provisional"> = {}) {
+  newTrip({ ...more, ...(travelers ? { travelers } : {}), ...(provisional ? { provisional } : {}) });
   app.home = false;
   scrollTo({ top: 0 });
 }

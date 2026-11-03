@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (nach flights.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, quickTrip } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4176/";
@@ -56,7 +56,7 @@ try {
   await p.route("https://tiles.openfreemap.org/**", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ version: 8, sources: {}, layers: [] }) }));
   await p.goto(URL);
   await (await startPage(p)).locator(".start .home-new").click();
-  await p.locator(".modal .newtrip .btn.primary").click();
+  await quickTrip(p);
   await p.locator("#stay .st-open").scrollIntoViewIfNeeded();
   await p.locator("#stay .st-open").click();
   const m = p.locator(".modal");
@@ -570,7 +570,7 @@ try {
   // privat bzw. schon vorhanden (#233): neue Reise ohne Ziel, Ort und Zeitraum über den Posten, Flug- und Event-Suche nutzen ihn
   await reloadHome(p);
   await (await startPage(p)).locator(".start .home-new").click();
-  await p.locator(".modal .newtrip .btn.primary").click();
+  await quickTrip(p);
   await p.locator("#stay .priv-open").scrollIntoViewIfNeeded();
   await p.locator("#stay .priv-open").click();
   const pm = p.locator(".modal", { has: p.locator("form.priv") });

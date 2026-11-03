@@ -3,7 +3,7 @@
  * Vorschlag übernehmen. Start: npm run test:cloud (braucht den Auth-Emulator)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage, autoAsk } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, autoAsk, quickTrip, toWho, finishTrip } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4178/";
@@ -594,7 +594,7 @@ try {
   await p.route("**/google.firestore.v1.Firestore/**", slow2);
   if (await p.locator(".top .brand-btn").count()) await p.locator(".top .brand-btn").click();
   await (await startPage(p)).locator(".start .home-new").click();
-  await p.locator(".modal .newtrip .btn.primary").click();
+  await quickTrip(p);
   const h1 = p.locator(".hero h1");
   await h1.click();
   await p.keyboard.press("ControlOrMeta+a");

@@ -4,7 +4,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { reloadHome, myTrips, startPage } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, quickTrip } from "./nav.mjs";
 
 const log = (...a) => console.log("•", ...a);
 const fail = m => { throw new Error(m); };
@@ -179,7 +179,7 @@ try {
   await p.evaluate(() => document.querySelectorAll("main.pager > .chapter").forEach(c => (c.scrollTop = 99999)));
   await p.locator("header.top .tmenu .tm-btn").click();
   await p.locator(".modal .btn.primary", { hasText: "Neue Reise" }).click();
-  await p.locator("form.newtrip button.primary").click();
+  await quickTrip(p);
   await until(async () => (await on()) === "hero", "neue Reise auf der Übersicht");
   const st = await p.evaluate(() => ({ ch: document.body.dataset.ch, tops: [...document.querySelectorAll("main.pager > .chapter")].map(c => c.scrollTop) }));
   if (st.ch !== "hero") fail("Hintergrund noch vom vorigen Kapitel: " + st.ch);
@@ -224,7 +224,9 @@ try {
   const tall = await p.evaluate(() => [...document.querySelectorAll("main.pager > [data-ch]")].map(c => [c.dataset.ch, c.scrollHeight - c.clientHeight]).sort((a, b) => b[1] - a[1])[0]);
   if (!tall || tall[1] < 250) fail("keine Seite zum Scrollen: " + JSON.stringify(tall));
   await p.locator(`.mbar [data-pg="${tall[0]}"]`).click();
-  await until(async () => (await on()) === tall[0], "lange Seite");
+  // erst scrollen, wenn der Pager dort steht: sonst zählt sein Nachgleiten als Seitenwechsel und blendet die Knöpfe wieder ein
+  const settled = k => p.evaluate(k => { const m = document.querySelector("main.pager"), c = m.querySelector(`:scope > [data-ch="${k}"]`); return !!c && Math.abs(m.scrollLeft - c.offsetLeft) < 2; }, k);
+  await until(async () => (await on()) === tall[0] && await settled(tall[0]), "lange Seite");
   const scrollHero = y => p.evaluate(([y, k]) => { document.querySelector(`main.pager > [data-ch="${k}"]`).scrollTop = y; }, [y, tall[0]]);
   await scrollHero(80); await p.waitForTimeout(150); await scrollHero(240);
   await until(async () => p.evaluate(() => document.body.classList.contains("fab-hide")), "KI-Knopf beim Herunterscrollen weg");
@@ -254,6 +256,52 @@ try {
   }
   await p.evaluate(() => localStorage.removeItem("rk-lang"));
   log("Kapitelköpfe in ru und ar bei 390 und 320 px ohne Überlauf (#631)");
+
+  // Geführte neue Reise (#672): Wohin (Suche), Wann (Ferien mit Regler), Wer (zwei Familien), Von wo (je Familie)
+  await p.setViewportSize({ width: 390, height: 844 });
+  for (const f of ["world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+  await p.route("**/holidays?cc=DE", r => r.fulfill({ json: { public: [], school: [
+    { from: "2027-07-19", to: "2027-08-31", n: { de: "Sommerferien", en: "Summer holidays" }, nationwide: false, regions: ["DE-NW"] },
+    { from: "2027-03-22", to: "2027-04-03", n: { de: "Osterferien", en: "Easter holidays" }, nationwide: false, regions: ["DE-BY"] }] } }));
+  await reloadHome(p);
+  await (await startPage(p)).locator(".start .home-new").click();
+  const gt = p.locator(".modal .newtrip.gt");
+  if ((await gt.locator(".gt-back").evaluate(e => getComputedStyle(e).visibility)) !== "hidden") fail("Geführt: Zurück auf der ersten Frage");
+  await gt.locator(".gt-q").fill("Berl");
+  await gt.locator(".gt-sugg button", { hasText: "Berlin" }).first().click();
+  await gt.locator(".gt-next").click();
+  if (await p.locator(".modal .nt-mode").count()) fail("Geführt: Leer/Importieren nach der ersten Frage");
+  await gt.locator(".gt-seg button", { hasText: "Ferien" }).click();
+  // Bundesland aus dem Wohnort der letzten Reise (Köln → NRW), nur dessen Ferien
+  await gt.locator(".gt-hols .chip", { hasText: "Sommerferien" }).click();
+  if (await gt.locator(".gt-hols .chip", { hasText: "Osterferien" }).count()) fail("Geführt: Ferien eines anderen Bundeslands");
+  const range = () => gt.locator(".gt-range").innerText();
+  if (!(await range()).includes("Sa 24.07. bis Sa 31.07.")) fail("Geführt: Vorgabe in den Ferien: " + await range());
+  await gt.locator(".rs-in").nth(1).focus();
+  for (let k = 0; k < 3; k++) await p.keyboard.press("ArrowRight");
+  if (!(await range()).includes("10 Nächte")) fail("Geführt: Regler per Tastatur: " + await range());
+  const small = await gt.evaluate(g => [...g.querySelectorAll("button, input, select")].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height < 44 && !e.classList.contains("rs-in"); }).map(e => `${e.tagName}.${e.className}`));
+  if (small.length) fail("Geführt: Tippziele unter 44 px: " + small.join(", "));
+  await gt.locator(".gt-next").click();
+  await gt.locator(".who-b", { hasText: "Familie" }).click();
+  await gt.locator(".src-b", { hasText: "Mit Platzhalter-Tieren" }).click();
+  await gt.locator(".qf .linkbtn").click();
+  await gt.locator(".gt-next").click();
+  // zwei Familien: erst „Alle vom selben Ort“, dann je Familie; die erste mit dem bekannten Wohnort
+  await gt.locator(".gt-seg2 button", { hasText: "Von verschiedenen Orten" }).click();
+  const homes = gt.locator(".gt-home input:not([type=hidden])");
+  if ((await homes.count()) !== 2) fail("Geführt: Wohnort je Familie: " + await homes.count());
+  if (!(await homes.first().inputValue()).includes("Köln")) fail("Geführt: bekannter Wohnort fehlt: " + await homes.first().inputValue());
+  if (!(await gt.innerText()).includes("1 Familie noch ohne Startort")) fail("Geführt: offene Startorte nicht genannt");
+  await gt.locator(".gt-next", { hasText: "Reise anlegen" }).click();
+  await until(async () => (await p.locator(".pg-hero h1").innerText()).includes("Berlin"), "geführte Reise offen");
+  const saved = () => p.evaluate(() => { const id = localStorage.getItem("rk2-current"); return JSON.parse(localStorage.getItem("rk2-t:" + id) || "null"); });
+  await until(async () => (await saved())?.place === "Berlin", "geführte Reise gespeichert");
+  const made = await saved();
+  const hh = Object.values(made.households || {});
+  if (made.from !== "2027-07-24" || made.to !== "2027-08-03") fail("Geführt: Zeitraum " + made.from + " bis " + made.to);
+  if (made.travelers.length < 4 || !hh.some(h => h.geo?.ort === "Köln") || !hh.some(h => !h.geo && h.region === "DE-NW")) fail("Geführt: Familien und Wohnorte " + JSON.stringify(made.households));
+  log("Geführte neue Reise: Ziel aus der Suche, Sommerferien NRW mit Regler, zwei Familien, Startort je Familie (#672)");
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Handy: Pager mit 9 Seiten, Wischen, Leiste unten mit allen Seiten und Gesamtsumme (öffnet Mehr), Kachel springt ins Kapitel, kein langes Scrollen");
   console.log("\nHandy-Ansicht: alles in Ordnung");

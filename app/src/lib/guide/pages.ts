@@ -53,8 +53,10 @@ export const GUIDE: GuidePage[] = [
     steps: [
       "Auf der Startseite „🧳 Neue Reise“ antippen. Das geht allein, zu zweit, mit Familie oder Freunden.",
       "Beim ersten Start fragt dich ein kurzer Assistent nach deinen Vorlieben (Wohnort, Auto, Essen, Führerschein). Das ist freiwillig und lässt sich später in den Vorlieben ändern. Mit „Später“ überspringst du es.",
-      "Gib der Reise einen Namen. Ziel und Reisedaten kannst du auch erst später eintragen, eine Reise darf zunächst „noch ohne Ziel und Daten“ sein.",
-      "Trag im Kapitel „Wer fährt mit“ ein, wer dabei ist (siehe Seite „Reisende und Familien“).",
+      "Beantworte die vier Fragen, je eine pro Bildschirm: „Wohin geht's?“ (Ort, Region oder Land suchen), „Wann?“, „Wer fährt mit?“ und „Von wo geht's los?“. Jede Frage kannst du mit „Überspringen“ auslassen, bei „Wohin“ geht auch „Weiß ich noch nicht“.",
+      "Bei „Wann?“ wählst du „Tage“, „Monat“, „Ferien“ oder „Flexibel“. Bei Monat und Ferien legst du Hin- und Rückreise mit dem Regler fest. Bei Ferien wählst du zuerst die Region (z. B. dein Bundesland), dann die Ferien, etwa die Sommerferien.",
+      "Fahren mehrere Familien oder eine Gruppe mit, fragt „Von wo geht's los?“, ob alle vom selben Ort starten. Bei „Von verschiedenen Orten“ trägst du den Wohnort je Familie ein, bei einer Gruppe Startorte mit Personenzahl. Wer noch keinen hat, ergänzt ihn später selbst.",
+      "Mit „Reise anlegen“ steht die Reise mit Ziel, Zeitraum und Personen bereit. Namen und weitere Personen ergänzt du im Kapitel „Wer fährt mit“ (siehe Seite „Reisende und Familien“).",
       "Geh die Kapitel Flüge, Unterkunft, Vor Ort, Erlebnisse und Sonstiges durch und trag ein, was du schon weißt. Geschätzt reicht zum Start.",
       "Schau in „Wer zahlt was“, was jede Familie zahlt."
     ],
@@ -63,12 +65,13 @@ export const GUIDE: GuidePage[] = [
       "Auf der Startseite steht nur die Reise, an der du zuletzt geplant hast („Weiter planen“). Alle Reisen findest du unter „🗂 Meine Reisen“: als Liste oder als Kacheln, sortiert zum Beispiel nach „Als Nächstes“, Preis oder Land. „← Startseite“ führt zurück.",
       "Zwei Reisen vergleichen: in „Meine Reisen“ eine Reise auf eine andere ziehen oder ⇆ wählen. So stellst du Varianten wie „Kroatien“ und „Portugal“ nebeneinander.",
       "Im Vergleich kannst du mit „Abstimmen lassen“ alle Mitreisenden über die Varianten abstimmen lassen, mit „Was wäre wenn …“ eine Variante mit anderem Zeitraum oder Abflughafen anlegen (Preise werden neu gesucht) und mit „Diese nehmen“ entscheiden. Die anderen Varianten werden archiviert und lassen sich wiederherstellen.",
-      "An schwierigen Stellen zeigt ein kleines „?“ eine kurze Erklärung. Antippen, noch einmal antippen schließt sie."
+      "An schwierigen Stellen zeigt ein kleines „?“ eine kurze Erklärung. Antippen, noch einmal antippen schließt sie.",
+      "Kennt die App deinen Wohnort schon (aus dem Konto oder der letzten Reise), fällt die Frage „Von wo geht's los?“ weg, wenn alle von einem Ort starten. Bei „Ferien“ ist die Region dann vorausgewählt."
     ],
     faq: [
       { q: "Brauche ich ein Konto?", a: "Nein. Ohne Konto liegen deine Reisen nur in diesem Browser auf diesem Gerät. Mit Konto liegen sie sicher in der Cloud, auf allen deinen Geräten, und du kannst sie teilen." },
       { q: "Kostet Split&Fly etwas?", a: "Nein, Split&Fly ist kostenlos. Die Suche nach Flügen und Unterkünften dient als Hilfe für realistische Preise, gebucht wird beim Anbieter." },
-      { q: "Muss ich schon alles wissen?", a: "Nein. Eine Reise kann ohne Ziel und Daten beginnen. Trag zuerst grobe Beträge ein und ersetze sie später durch echte Preise." }
+      { q: "Muss ich schon alles wissen?", a: "Nein. Jede Frage beim Anlegen lässt sich überspringen, eine Reise kann ohne Ziel und Daten beginnen. Weißt du nur den Monat, wähle „Monat“ und „Genaue Tage noch offen“. Trag zuerst grobe Beträge ein und ersetze sie später durch echte Preise." }
     ],
     where: "Startseite → Neue Reise",
     emoji: "🧳",
