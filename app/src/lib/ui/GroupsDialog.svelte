@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from "./ask.svelte";
   import { exampleFamily } from "../placeholders";
   import { t, tn } from "../i18n/index.svelte";
   import Help from "./Help.svelte";
@@ -17,15 +18,15 @@
   let open = $state<string | null>(dir.groups[0]?.id ?? null);
   let det = $state<string | null>(null);
   function close() { void saveDocsNow(); onclose(); }
-  function delPerson(id: string, name: string) {
-    if (!confirm(t("grp.deletePersonConfirm", { name }))) return;
+  async function delPerson(id: string, name: string) {
+    if (!await ask(t("grp.deletePersonConfirm", { name }))) return;
     removePerson(id);
     // Buchungsdaten der Person mit löschen (auch wenn sie noch nicht geladen waren)
     if (cloud.user) void loadDocs().then(() => removeDoc(id));
     if (det === id) det = null;
   }
   async function delAll() {
-    if (!confirm(t("per.docsDeleteAllConfirm"))) return;
+    if (!await ask(t("per.docsDeleteAllConfirm"))) return;
     try { await deleteAllDocs(); } catch (e) { console.warn(e); }
   }
   const summary = (p: (typeof dir.people)[number]) => {
@@ -70,7 +71,7 @@
                   <span class="muted small">{t("grp.noPeople")}</span>
                 {/each}
               </div>
-              <button class="linkbtn danger" onclick={() => { if (confirm(t("grp.deleteConfirm", { name: g.name }))) removeGroup(g.id); }}>{t("grp.delete")}</button>
+              <button class="linkbtn danger" onclick={async () => { if (await ask(t("grp.deleteConfirm", { name: g.name }))) removeGroup(g.id); }}>{t("grp.delete")}</button>
             </div>
           {/if}
         </div>

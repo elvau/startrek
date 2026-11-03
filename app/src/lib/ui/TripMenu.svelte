@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask, askText } from "./ask.svelte";
   import { t, tn } from "../i18n/index.svelte";
   /* Oben links: „Reisen“ öffnet die Übersicht aller Reisen, „+“ legt eine neue an */
   import type { Key } from "../i18n/index.svelte";
@@ -35,15 +36,15 @@
   }
 
   function act(fn: () => unknown) { void fn(); open = false; }
-  function renameVariant() {
-    const v = prompt(t("tm.renameVarQ"), variantLabel(app.trip))?.trim();
+  async function renameVariant() {
+    const v = (await askText(t("tm.renameVarQ"), variantLabel(app.trip)))?.trim();
     if (v && app.trip.cmp) app.trip.cmp.label = v.slice(0, 60);
   }
-  function remove() {
+  async function remove() {
     const q = cur && !isOwner
       ? t("tm.leaveConfirm", { name: app.trip.name })
       : [t("tm.deleteConfirm", { name: app.trip.name }), cur && Object.keys(cur.members).length > 1 ? t("tm.deleteAll") : "", t("tm.noUndo")].filter(Boolean).join(" ");
-    if (confirm(q)) act(() => deleteTrip(app.trip.id));
+    if (await ask(q)) act(() => deleteTrip(app.trip.id));
   }
 </script>
 
@@ -73,23 +74,23 @@
       {#if cloud.configured && !access.readonly}<button class="tm-act tm-import" onclick={() => act(() => openImport("all"))}>📥 {t("imp.title.all")}</button>{/if}
       <!-- Reisekatalog (#644): veröffentlichen bzw. aktualisieren, ansehen, zurückziehen -->
       {#if cloud.configured && (!access.readonly || app.trip.pub)}<button class="tm-act tm-publish" onclick={() => { publish = true; open = false; }}>🌍 {app.trip.pub ? t("pub.menuOn") : t("pub.menu")}</button>{/if}
-      <button class="tm-act" onclick={() => act(duplicateTrip)}>{t("tm.copy")}</button>
+      <button class="tm-act" onclick={() => act(duplicateTrip)}><span aria-hidden="true">⧉</span> {t("tm.copy")}</button>
       <!-- Variante im selben Vergleich (#428); herausnehmen macht sie wieder zu einer normalen Reise -->
       {#if !access.readonly}<button class="tm-act tm-variant" onclick={() => act(addVariant)}>⇆ {t("tm.variant")}</button>{/if}
       {#if app.trip.cmp && !access.readonly}
         <button class="tm-act tm-rename-var" onclick={() => act(renameVariant)}>✎ {t("tm.renameVar", { x: variantLabel(app.trip) })}</button>
-        <button class="tm-act tm-uncmp" onclick={() => act(() => leaveCompare(app.trip))}>{t("tm.leaveCmp", { title: app.trip.cmp.title })}</button>
+        <button class="tm-act tm-uncmp" onclick={() => act(() => leaveCompare(app.trip))}><span aria-hidden="true">↩</span> {t("tm.leaveCmp", { title: app.trip.cmp.title })}</button>
       {/if}
       {#if cloud.user && !cur}
         <button class="tm-act" onclick={() => act(() => moveToCloud(app.trip.id))}>☁ {t("tm.saveCloud")}</button>
       {/if}
       {#if cur}
-        <button class="tm-act" onclick={() => { share = true; open = false; }}>{isOwner ? t("tm.shareMembers") : t("tm.members")}</button>
+        <button class="tm-act" onclick={() => { share = true; open = false; }}><span aria-hidden="true">👥</span> {isOwner ? t("tm.shareMembers") : t("tm.members")}</button>
       {:else if cloud.configured && !cloud.user}
-        <button class="tm-act" onclick={() => { cloud.showLogin = true; open = false; }}>{t("tm.loginShare")}</button>
+        <button class="tm-act" onclick={() => { cloud.showLogin = true; open = false; }}><span aria-hidden="true">🔗</span> {t("tm.loginShare")}</button>
       {/if}
       {#if !access.readonly || (cur && !isOwner)}
-        <button class="tm-act danger" onclick={remove}>{cur && !isOwner ? t("tm.leave") : t("tm.delete")}</button>
+        <button class="tm-act danger" onclick={remove}><span aria-hidden="true">🗑</span> {cur && !isOwner ? t("tm.leave") : t("tm.delete")}</button>
       {/if}
     </div>
   </Modal>

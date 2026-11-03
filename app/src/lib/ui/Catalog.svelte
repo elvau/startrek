@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask, tell } from "./ask.svelte";
   /*
    * Reisekatalog (#646, Entwurf mit Dani 02.11., Handy zuerst): Liste nach Entfernung ab dem Wohnort, in Bändern, mit
    * Filtern; Karte mit Route als Flussdiagramm (Flaggen, Verkehrsmittel) und Preis „~xy € p. P.“ inkl. Anreise, ohne
@@ -86,13 +87,13 @@
   /** Melden (#649): geht wie ein Fehlerbericht an Dani, mit der Kennung des Eintrags */
   function report(e: CatalogEntry) { bugDialog.text = t("cat.reportText", { id: e.id }); bugDialog.open = true; }
   async function withdraw(e: CatalogEntry) {
-    if (!confirm(t("pub.withdrawQ"))) return;
+    if (!await ask(t("pub.withdrawQ"))) return;
     try {
       await withdrawEntry(e.id);
       loaded = loaded.filter(x => x.id !== e.id);
       sel = null;
       if (app.trip.pub?.id === e.id) delete app.trip.pub;
-    } catch { alert(t("pub.err")); }
+    } catch { void tell(t("pub.err")); }
   }
 
   function pickHome(h: Home) { picked = h; asking = false; }

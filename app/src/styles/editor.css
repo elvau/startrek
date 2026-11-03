@@ -358,7 +358,11 @@ html:has(.modal-bg){overflow:hidden}
 :root[data-theme="dark"] .tm-plus,:root[data-theme="dark"] .icon-btn{background:rgba(10,25,45,.5)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tm-plus,:root:not([data-theme="light"]) .icon-btn{background:rgba(10,25,45,.5)}}
 .tm-list{display:flex;flex-direction:column;gap:2px;max-height:45vh;overflow:auto;margin:0 -6px;flex-shrink:0}
-.tm-acts{display:flex;flex-wrap:wrap;gap:4px 8px;margin:-6px -10px 0}
+/* Reise-Menü als Liste wie das ⋯-Menü (#665): eine Aktion je Zeile, Löschen abgesetzt am Ende */
+.tm-acts{display:flex;flex-direction:column;gap:2px;margin:-6px -10px 0}
+.tm-acts .tm-act{flex-direction:row;align-items:center;gap:10px;min-height:48px;color:var(--ink);font-size:14.5px}
+.tm-acts .tm-act:hover{background:var(--paper-2)}
+.tm-acts .tm-act.danger{margin-top:6px;border-top:1px solid var(--line);border-radius:0 0 10px 10px;color:var(--bad)}
 .modal .tm-h{padding:4px 0 0}
 .who-art{display:grid;place-items:end center;width:84px;height:62px;border-radius:16px;margin-bottom:6px;background:var(--w1);overflow:hidden}
 .who-fig{width:80px;height:60px}

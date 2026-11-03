@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from "./ask.svelte";
   /*
    * Eine Abstimmung in den neuen Arten (#432): eine Stimme, mehrere Stimmen oder Meilen-Wahl, je Möglichkeit
    * „✕ Ohne mich“, Frist. Planerin stellt Art, Meilen und Frist ein und übernimmt das Ergebnis.
@@ -65,13 +66,13 @@
   }
   const notes = $derived(open ? myNotes(p) : []);
   /** Ergebnis übernehmen: wer bei der Möglichkeit nicht dabei wäre, wird nach Rückfrage auf „nicht dabei“ gestellt */
-  function take(id: string, label: string) {
+  async function take(id: string, label: string) {
     // über Varianten (#432): Abstimmung schließen und die Variante nehmen, die anderen archivieren
     if (p.kind === "variants") {
       const tid = p.options.find(o => o.id === id)?.tripId;
       const ids = out[id] || [];
       // trotz „Ohne mich“: nachfragen, dann in der Variante wirklich auf „nicht dabei“ (#439)
-      if (ids.length && !confirm(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
+      if (ids.length && !await ask(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
       applyResult(trip, p, id);
       if (tid) void (async () => {
         if (ids.length) await editTrip(tid, tr => { for (const x of tr.travelers) if (ids.includes(x.id)) x.active = false; });
@@ -81,7 +82,7 @@
     }
     const ids = out[id] || [];
     if (ids.length) {
-      if (!confirm(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
+      if (!await ask(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
       for (const x of trip.travelers) if (ids.includes(x.id)) x.active = false;
     }
     applyResult(trip, p, id);

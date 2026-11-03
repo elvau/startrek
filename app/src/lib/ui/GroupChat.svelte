@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from "./ask.svelte";
   /*
    * Gruppenchat einer geteilten Reise: Knopf über dem KI-Assistenten, Fenster an derselben Stelle (immer nur eines
    * offen). Text, Emojis und Bilder; keine Videos, keine Sprachnachrichten. Schreiben alle Mitglieder, auch „nur
@@ -86,7 +87,7 @@
     if (e.key === "Escape") close();
   }
   async function del(m: ChatMsg) {
-    if (!confirm(t("gc.deleteQ"))) return;
+    if (!await ask(t("gc.deleteQ"))) return;
     try { await removeChat(id, m); } catch { err = t("gc.sendErr"); }
   }
 

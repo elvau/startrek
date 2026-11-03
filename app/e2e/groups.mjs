@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (läuft nach e2e/cloud.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, autoAsk } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4174/";
@@ -18,7 +18,7 @@ async function page(name) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(`${name}: ${e.message}`));
-  p.on("dialog", d => d.accept(d.type() === "prompt" ? "Kegeltruppe" : undefined));
+  autoAsk(p, { text: "Kegeltruppe" });
   return p;
 }
 async function until(fn, what, ms = 15000) {

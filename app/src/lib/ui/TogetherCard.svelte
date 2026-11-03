@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from "./ask.svelte";
   import { today as localToday } from "../today";
   /*
    * Gemeinsam planen (#173) im Kapitel der Reisenden: Termin finden (wer wann kann, beste Zeiträume) und Abstimmungen
@@ -223,8 +224,8 @@
     addPoll(trip, p);
     nq = ""; nopts = ""; ndue = ""; nmode = "one"; adding = false;
   }
-  function removePoll(id: string) {
-    if (!confirm(t("poll.removeQ"))) return;
+  async function removePoll(id: string) {
+    if (!await ask(t("poll.removeQ"))) return;
     trip.polls = (trip.polls || []).filter(p => p.id !== id);
     if (!trip.polls.length) delete trip.polls;
   }
@@ -352,7 +353,7 @@
     {:else if entered}
       <p class="muted small">{t("tg.noneYet")}</p>
     {/if}
-    {#if !access.readonly}<button class="linkbtn danger small tg-reset" onclick={() => { if (confirm(t("tg.resetQ"))) delete trip.avail; }}>{t("tg.reset")}</button>{/if}
+    {#if !access.readonly}<button class="linkbtn danger small tg-reset" onclick={async () => { if (await ask(t("tg.resetQ"))) delete trip.avail; }}>{t("tg.reset")}</button>{/if}
   {/if}
 
   <h3 class="tg-polls">🗳 {t("poll.title")} <Help k="polls" /></h3>

@@ -5,7 +5,7 @@
  * Start: npm run test:cloud
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips } from "./nav.mjs";
+import { reloadHome, myTrips, autoAsk } from "./nav.mjs";
 import { spawn } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 
@@ -241,7 +241,7 @@ try {
   await gctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, GP);
   const gp = await gctx.newPage();
   gp.on("pageerror", e => errors.push(e.message));
-  gp.on("dialog", d => d.accept());
+  autoAsk(gp);
   await gp.goto(URL);
   await (await myTrips(gp)).locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
   const tg = gp.locator("#together .tg");
@@ -807,7 +807,7 @@ try {
   await vctx.addInitScript(ts => { if (localStorage.getItem("rk2-index")) return; for (const t of ts) localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify(ts.map(t => ({ id: t.id, name: t.name, place: t.place })))); }, VS);
   const cp = await vctx.newPage();
   cp.on("pageerror", e => errors.push(e.message));
-  cp.on("dialog", d => d.type() === "prompt" ? d.accept("Eifel Monschau") : d.accept());
+  autoAsk(cp, { text: "Eifel Monschau" });
   await cp.goto(URL);
   const tile = (await myTrips(cp)).locator(".home-cmp", { hasText: "Chalet-Wochenende" });
   await tile.waitFor();

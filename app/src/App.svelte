@@ -51,6 +51,8 @@
   import GroupChat from "./lib/ui/GroupChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
   import PriceCheck from "./lib/ui/PriceCheck.svelte";
+  import AskDialog from "./lib/ui/AskDialog.svelte";
+  import { ask } from "./lib/ui/ask.svelte";
   import BrokerGate from "./lib/ui/BrokerGate.svelte";
   import TermsGate from "./lib/ui/TermsGate.svelte";
   import { hasPending, takePending, termsAccepted } from "./lib/terms";
@@ -229,6 +231,7 @@
 <Sprite />
 <Ambience />
 <GuestNote />
+<AskDialog />
 {#if app.home && app.compare}
 <CompareView />
 {:else if app.home}
@@ -279,7 +282,7 @@
       {@const det = isDetailed(app.trip, ch.k)}
       <Chapter {ch} n={num(ch.k)} sum={eur(calc.T.byCat[ch.k] - netOf([...inPkg].filter(id => app.trip.items.find(x => x.id === id)?.cat === ch.k)))} sub={ch.k === "stay" && nn && det ? tn("n.nights", nn) : ch.sub}
         onadd={access.readonly || !det ? undefined : () => addItem(ch.k)}
-        onreset={items.length ? () => { if (confirm(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
+        onreset={items.length ? async () => { if (await ask(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button>

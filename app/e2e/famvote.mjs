@@ -6,6 +6,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { autoAsk } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4176/";
 const log = (...a) => console.log("•", ...a);
@@ -19,7 +20,7 @@ async function person(name) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(`${name}: ${e.message}`));
-  p.on("dialog", d => d.accept());
+  autoAsk(p);
   return p;
 }
 async function login(p, name) {

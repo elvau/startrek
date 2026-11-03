@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask as askYes } from "./ask.svelte";
   /*
    * Familie stimmt mit (#585), oben in „Gemeinsam planen“: „Ich stimme ab und trage ein: selbst / wie Anna“ für die
    * ganze Reise; nach dem Verknüpfen einmal der Hinweis, dass die Familie schon für einen abgestimmt hat.
@@ -31,12 +32,12 @@
     await saveMySelf(trip.id, { ...(a ? { a } : {}), d: true });
   });
   /** „wie …“: eigene Angaben verwerfen (nach Rückfrage), dann folgen; „selbst“: entschieden */
-  function setLike(v: string) {
+  async function setLike(v: string) {
     if (!f) return;
     if (!v) { void run(() => saveMySelf(trip.id, { l: undefined, d: true })); return; }
     const ownPolls = (trip.polls || []).filter(p => Object.keys(myVote(p) || {}).length);
     const ownDays = !!f.cfg.a;
-    if ((ownPolls.length || ownDays) && !confirm(t("fam.dropQ", { name: nameOf(v) }))) return;
+    if ((ownPolls.length || ownDays) && !await askYes(t("fam.dropQ", { name: nameOf(v) }))) return;
     void run(async () => {
       for (const p of ownPolls) await dropMyVote(p);
       await saveMySelf(trip.id, { l: v, d: undefined, ...(ownDays ? { a: undefined } : {}) });

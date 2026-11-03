@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from "./ask.svelte";
   /*
    * Reise im Katalog veröffentlichen (#644, Entwurf mit Dani 02.11.: Reise-Menü, zwei Schritte). Nur mit Konto und
    * Benutzernamen (sonst zuerst das Namensfeld). Schritt 1: Titel, Kurzbeschreibung, Reiseart, gute Monate (vorbelegt aus
@@ -83,7 +84,7 @@
   }
   async function withdraw() {
     const p = app.trip.pub;
-    if (!p || !confirm(t("pub.withdrawQ"))) return;
+    if (!p || !await ask(t("pub.withdrawQ"))) return;
     busy = true; err = "";
     try {
       await withdrawEntry(p.id);
