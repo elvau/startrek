@@ -62,7 +62,7 @@ export function measure(): string {
 /** Kasten einblenden und jede Sekunde neu messen */
 export function showDiag() {
   const box = document.createElement("div");
-  box.setAttribute("style", "position:fixed;left:4px;right:4px;top:4px;z-index:2147483647;max-height:45vh;overflow:auto;background:rgba(0,0,0,.85);color:#fff;font:11px/1.35 ui-monospace,monospace;padding:8px;border-radius:8px;white-space:pre-wrap;word-break:break-all;pointer-events:auto");
+  box.setAttribute("style", "position:fixed;left:4px;right:4px;top:calc(env(safe-area-inset-top,0px) + 4px);z-index:2147483647;max-height:40vh;overflow:auto;background:rgba(0,0,0,.85);color:#fff;font:11px/1.35 ui-monospace,monospace;padding:8px;border-radius:8px;white-space:pre-wrap;word-break:break-all;pointer-events:auto");
   const btn = document.createElement("button");
   btn.type = "button";
   btn.textContent = "📋 Kopieren";
