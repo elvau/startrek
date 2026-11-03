@@ -77,6 +77,8 @@ try {
   await p.locator("main.pager").waitFor();
   if ((await p.locator(".mbar .mb").count()) !== 9) fail("Reiter: " + await p.locator(".mbar .mb").count());
   if (await on() !== "hero") fail("Start nicht auf der Übersicht");
+  // iOS 27 zeichnete den Pager in einer 0 px hohen Ebene nicht (#612): .wrap darf in der Reise keine eigene Ebene sein
+  if (await p.evaluate(() => { const s = getComputedStyle(document.querySelector(".wrap")); return s.position !== "static" || s.zIndex !== "auto"; })) fail(".wrap bildet eine eigene Ebene um den Pager");
   if (await p.locator(".mtabs").count()) fail("Reiter oben noch da");
   if (!/€/.test(await p.locator(".mbar .mb-tot").innerText())) fail("Gesamtsumme unten fehlt");
   // Kopfzeile: der Reisename ist lesbar (nicht nur ein Buchstabe), Anmelden nur als Symbol (#553)

@@ -5,6 +5,9 @@
 body.mob{--mob-top:62px;--mob-bar:60px}
 body.mob-pager{overflow:hidden;overscroll-behavior:none}
 body.mob .wrap{display:block;max-width:none;padding:0}
+/* In der Reise hält .wrap nur den festen Pager und ist 0 px hoch. Als eigene Ebene (relative, z-index) zeichnete iOS 27 den
+   Pager darin nicht mehr, nur der Hintergrund war zu sehen (#612). Ohne eigene Ebene liegt der Pager wie bisher über .amb. */
+body.mob-pager .wrap{position:static;z-index:auto}
 body.mob .wrap > main.pager{position:fixed;left:0;right:0;top:var(--mob-top);bottom:calc(var(--mob-bar) + env(safe-area-inset-bottom,0px));z-index:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
 body.mob .wrap > main.pager::-webkit-scrollbar{display:none}
 body.mob main.pager > .chapter{flex:0 0 100%;width:100%;min-width:0;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;padding:12px 12px 96px;opacity:1;filter:none}
