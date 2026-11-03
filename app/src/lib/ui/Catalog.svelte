@@ -1,9 +1,12 @@
 <script lang="ts">
+  import { ask, tell } from "./ask.svelte";
   /*
    * Reisekatalog (#646, Entwurf mit Dani 02.11., Handy zuerst): Liste nach Entfernung ab dem Wohnort, in Bändern, mit
    * Filtern; Karte mit Route als Flussdiagramm (Flaggen, Verkehrsmittel) und Preis „~xy € p. P.“ inkl. Anreise, ohne
    * Touren. Detail mit Kosten nach Bereichen, Tagesplan und Touren. Ohne Wohnort: Land aus Zeitzone bzw. Sprache
    * (Hauptstadt), sonst Wohnort erfragen – nie fest ab Deutschland.
+   * Veröffentlichte Reisen (#644) kommen ohne Konto über die REST-Schnittstelle dazu; mit preview zeigt die Ansicht nur
+   * diesen Eintrag (Karte wie in der Liste und Detail), ohne Übernehmen und Melden.
    */
   import { onMount } from "svelte";
   import { arrow, locale, t, tn, type Key } from "../i18n/index.svelte";
@@ -30,8 +33,19 @@
   import HomeInput from "./HomeInput.svelte";
   import CatalogMap from "./CatalogMap.svelte";
   import { warmMap } from "./mapSnap";
+  import { cloud, withdrawEntry } from "../cloud/cloud.svelte";
+  import { fetchCatalog, fetchStats } from "../catalog/publish";
+  import { applyStats, arrivalTable, ARRIVAL_DOC, type PricePoint } from "../catalog/prices";
+  import { bugDialog } from "../bugs/app.svelte";
 
-  let entries = $state<CatalogEntry[]>([]);
+  let { preview }: { preview?: CatalogEntry } = $props();
+  let loaded = $state<CatalogEntry[]>([]);
+  /** Eintrag → Konto, das ihn veröffentlicht hat (eigene erkennen) */
+  let owners = $state<Record<string, string>>({});
+  /** geprüfte Preise je Eintrag und Anreise-Tabelle (#652) */
+  let stats = $state<Record<string, PricePoint[]>>({});
+  const flights = $derived(arrivalTable(stats[ARRIVAL_DOC] || []));
+  const entries = $derived(preview ? [preview] : loaded.map(e => (stats[e.id] ? applyStats(e, stats[e.id], filter.month) : e)));
   let filter = $state<CatalogFilter>({});
   let open = $state<"who" | "kind" | "month" | "len" | "budget" | null>(null);
   let picked = $state<Home | null>(null);
@@ -39,7 +53,15 @@
   let sel = $state<string | null>(null);
 
   onMount(() => {
-    void import("../catalog/seed").then(m => (entries = m.seedCatalog()));
+    if (!preview) {
+      void import("../catalog/seed").then(m => (loaded = [...m.seedCatalog(), ...loaded]));
+      if (cloud.configured) void fetchCatalog().then(list => {
+        owners = Object.fromEntries(list.map(x => [x.entry.id, x.uid]));
+        loaded = [...loaded.filter(e => e.source !== "user"), ...list.map(x => x.entry)];
+      }).catch(() => {});
+      if (cloud.configured) void fetchStats().then(s => (stats = s)).catch(() => {});
+      if (homeUi.catalogSel) { sel = homeUi.catalogSel; homeUi.catalogSel = null; }
+    }
     void loadGeo(geo, []);
     void ensureAirports().catch(() => {});
     // Kartenbibliothek und Stil schon laden, während die Liste aufgebaut wird
@@ -59,8 +81,20 @@
     return c ? { lat: c.lat, lon: c.lon, cc: guessCc!, name: c.name } : null;
   });
   const exact = $derived(!!(picked || myHome(dir)?.lat));
-  const bands = $derived(catalogBands(entries, origin, filter, { flyKm }));
-  const card = $derived.by((): CatalogCard | null => { const e = sel && entries.find(x => x.id === sel); return e ? cardOf(e, origin, { flyKm, month: filter.month }) : null; });
+  const bands = $derived(catalogBands(entries, origin, filter, { flyKm, flights }));
+  const card = $derived.by((): CatalogCard | null => { const e = preview || (sel && entries.find(x => x.id === sel)); return e ? cardOf(e, origin, { flyKm, flights, month: filter.month }) : null; });
+  const mine = (e: CatalogEntry) => e.source === "user" && !!cloud.user && owners[e.id] === cloud.user.uid;
+  /** Melden (#649): geht wie ein Fehlerbericht an Dani, mit der Kennung des Eintrags */
+  function report(e: CatalogEntry) { bugDialog.text = t("cat.reportText", { id: e.id }); bugDialog.open = true; }
+  async function withdraw(e: CatalogEntry) {
+    if (!await ask(t("pub.withdrawQ"))) return;
+    try {
+      await withdrawEntry(e.id);
+      loaded = loaded.filter(x => x.id !== e.id);
+      sel = null;
+      if (app.trip.pub?.id === e.id) delete app.trip.pub;
+    } catch { void tell(t("pub.err")); }
+  }
 
   function pickHome(h: Home) { picked = h; asking = false; }
   function toggle<T>(k: "who" | "kind" | "len", v: T) {
@@ -143,7 +177,7 @@
     }
     const from = start || undefined;
     const r = takeEntry(e, {
-      travelers, homes, origin: origin ? { lat: origin.lat, lon: origin.lon, name: startsOfEntry(e)[0] || origin.name } : null, from, flyKm,
+      travelers, homes, origin: origin ? { lat: origin.lat, lon: origin.lon, name: startsOfEntry(e)[0] || origin.name } : null, from, flyKm, flights,
       tours: e.tours.length ? mode : "none", picked: e.tours.map(x => x.name).filter(n => !off.includes(n)),
       tx: (k, v) => t(`cat.x.${k}` as Key, k === "detail" ? { m: standText(e.stand) } : v)
     });
@@ -151,6 +185,8 @@
     newTrip({ name: e.title, place: e.stops[0]?.place || "", ...(from ? { from, to: r.to } : {}), travelers, items: r.items });
     if (e.stops[0]?.cc) app.trip.country = countryName(e.stops[0].cc);
     if (Object.keys(r.days).length) app.trip.days = r.days;
+    // Herkunft für die Preisprüfung (#652): startet in der Reise von selbst, sobald der Reisebeginn feststeht
+    app.trip.catalog = { id: e.id, stand: e.stand, rel: r.rel };
     applyPeople(app.trip, dir.people);
     app.home = false;
     scrollTo({ top: 0 });
@@ -160,6 +196,26 @@
 
 {#snippet starts(c: CatalogCard)}
   <span class="kat-start"><small>{t("cat.start")}</small><span class="cr-ico" title={t(`cat.by.${startIcon(c)}` as Key)}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{startIcon(c)}" /></svg></span><span><span aria-hidden="true">{origin?.cc ? flagOf(origin.cc) : ""}</span> {startsOf(c).join(" · ")}</span></span>
+{/snippet}
+
+{#snippet cardInner(c: CatalogCard)}
+  <span class="kat-pic" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
+    <CatalogMap stops={stopPts(c.e)} area={areaOf(c.e)} />
+    <span class="kat-dest"><span><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
+      <small>{t(`cat.kind.${c.e.kind}` as Key)}{c.km != null ? ` · ${c.km.toLocaleString(locale())} km` : ""}</small></span>
+  </span>
+  {#if c.e.stops.length > 1}<span class="kat-way" style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render route(routeOf(c.e, null, c.arrival))}</span>{/if}
+  {#if startsOf(c).length}{@render starts(c)}{/if}
+  <span class="kat-body">
+    <span class="kat-tl"><b>{c.e.title}</b><span class="kat-price"><b class="num"><bdi>~{eur(c.pp)}</bdi></b><small>{startsOf(c).length ? t("cat.ppFrom", { place: startsOf(c)[0] }) : t("cat.pp")}</small></span></span>
+    <span class="kat-meta">{tn("n.nights", c.e.nights)} · {groupText(c.e)}{c.e.months.length ? ` · ${monthsText(c.e.months)}` : ""}</span>
+    <span class="kat-tags">
+      {#if c.arrival}<span class="kat-tag arr">{arrText(c)}</span>{/if}
+      {#if c.tours}<span class="kat-tag tour">{t("cat.tours", { v: eur(c.tours) })}</span>{/if}
+      {#each c.e.warn || [] as w (w)}<span class="kat-tag warn">{t(`cat.warn.${w}` as Key)}</span>{/each}
+    </span>
+    <small class="muted">{byText(c.e)}</small>
+  </span>
 {/snippet}
 
 {#snippet route(nodes: RouteNode[], big = false)}
@@ -177,18 +233,24 @@
   {#if card}
     {@const c = card}
     {@const rows = costRows(c.e, c.arrival)}
-    <button class="linkbtn kat-back" onclick={() => (sel = null)}>{arrow() === "→" ? "←" : "→"} {t("cat.d.back")}</button>
-    <div class="kat-pic big" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
-      <CatalogMap stops={stopPts(c.e)} area={areaOf(c.e)} w={720} h={360} />
-      <span class="kat-dest"><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
-    </div>
+    {#if preview}
+      <div class="kat-card kat-prev">{@render cardInner(c)}</div>
+    {:else}
+      <button class="linkbtn kat-back" onclick={() => (sel = null)}>{arrow() === "→" ? "←" : "→"} {t("cat.d.back")}</button>
+      <div class="kat-pic big" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
+        <CatalogMap stops={stopPts(c.e)} area={areaOf(c.e)} w={720} h={360} />
+        <span class="kat-dest"><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
+      </div>
+    {/if}
     {#if c.e.stops.length > 1}<div class="kat-way" style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render route(routeOf(c.e, null, c.arrival), true)}</div>{/if}
-    {#if startsOf(c).length}<div style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render starts(c)}</div>{/if}
+    {#if !preview && startsOf(c).length}<div style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render starts(c)}</div>{/if}
     <div class="kat-dh">
       <small class="muted">{t(`cat.kind.${c.e.kind}` as Key)}{c.km != null ? ` · ${c.km.toLocaleString(locale())} km` : ""}</small>
       <h1 class="home-title kat-h">{c.e.title}</h1>
       <span>{tn("n.nights", c.e.nights)} · {groupText(c.e)}{c.e.months.length ? ` · ${t("cat.good", { m: monthsText(c.e.months) })}` : ""}</span>
-      <small class="muted">{byText(c.e)} · {t("cat.d.stand", { m: standText(c.e.stand) })}</small>
+      <small class="muted">{byText(c.e)} · {t("cat.d.stand", { m: standText(c.e.stand) })}{c.e.checked ? ` · ${t("cat.checked", { n: c.e.checked })}` : ""}</small>
+      {#if c.e.warn?.length}<span class="kat-tags">{#each c.e.warn as w (w)}<span class="kat-tag warn">{t(`cat.warn.${w}` as Key)}</span>{/each}</span>{/if}
+      {#if c.e.summary}<p class="kat-sumtext">{c.e.summary}</p>{/if}
     </div>
     <section class="kat-box">
       <div class="kat-sum"><b>{origin ? t("cat.d.cost", { place: startsOf(c)[0] || origin.name }) : t("cat.d.costNoHome")}</b><span class="kat-big num"><bdi>~{eur(c.pp)}</bdi></span></div>
@@ -199,7 +261,10 @@
       </ul>
       <p class="muted small">{t("cat.d.note")}</p>
     </section>
-    {#if c.e.source === "idea"}
+    {#if !preview && mine(c.e)}
+      <div class="kat-own"><span class="kat-tag mine">{t("cat.mine")}</span><button class="linkbtn kat-withdraw" onclick={() => withdraw(c.e)}>{t("pub.withdraw")}</button></div>
+    {/if}
+    {#if !preview}
       {#if !taking}
         <div class="kat-take"><button class="btn primary" onclick={() => (taking = true)}>{t("cat.d.take")}</button></div>
       {:else}
@@ -207,9 +272,9 @@
           <h2>{t("cat.d.take")}</h2>
           <fieldset><legend>{t("cat.t.who")}</legend>
             <div class="kat-opts">
-              <button class="kat-chip" class:on={who === "like"} onclick={() => (who = "like")}>{t("cat.t.like", { g: groupText(c.e) })}</button>
-              {#if dir.me}<button class="kat-chip" class:on={who === "me"} onclick={() => (who = "me")}>{t("cat.t.me")}</button>{/if}
-              {#each dir.groups as g (g.id)}<button class="kat-chip" class:on={who === g.id} onclick={() => (who = g.id)}>{g.name}</button>{/each}
+              <button class="chip kat-chip" class:on={who === "like"} onclick={() => (who = "like")}>{t("cat.t.like", { g: groupText(c.e) })}</button>
+              {#if dir.me}<button class="chip kat-chip" class:on={who === "me"} onclick={() => (who = "me")}>{t("cat.t.me")}</button>{/if}
+              {#each dir.groups as g (g.id)}<button class="chip kat-chip" class:on={who === g.id} onclick={() => (who = g.id)}>{g.name}</button>{/each}
             </div>
           </fieldset>
           <label class="kat-when">{t("cat.t.when")}<input type="date" bind:value={start} /></label>
@@ -231,6 +296,9 @@
           <div class="kat-take"><button class="btn primary" onclick={() => take(c.e)}>{t("cat.t.go")}</button></div>
         </section>
       {/if}
+    {/if}
+    {#if !preview && c.e.source === "user" && !mine(c.e) && cloud.configured}
+      <button class="linkbtn kat-report" onclick={() => report(c.e)}>⚑ {t("cat.report")}</button>
     {/if}
     {#if c.e.days.length}
       <section class="kat-sec">
@@ -265,21 +333,21 @@
       {/if}
       <div class="kat-chips" role="toolbar">
         {#each ["who", "kind", "month", "len", "budget"] as const as k (k)}
-          <button class="kat-chip" class:on={active(k)} aria-expanded={open === k} onclick={() => (open = open === k ? null : k)}>{t(`cat.f.${k}` as Key)} ▾</button>
+          <button class="chip kat-chip" class:on={active(k)} aria-expanded={open === k} onclick={() => (open = open === k ? null : k)}>{t(`cat.f.${k}` as Key)} ▾</button>
         {/each}
         {#if anyFilter}<button class="linkbtn kat-reset" onclick={() => { filter = {}; open = null; }}>{t("cat.f.reset")}</button>{/if}
       </div>
       {#if open}
         <div class="kat-opts">
-          {#if open === "who"}{#each WHO as w (w)}<button class="kat-chip" class:on={filter.who?.includes(w)} onclick={() => toggle("who", w)}>{t(`cat.who.${w}` as Key)}</button>{/each}
-          {:else if open === "kind"}{#each CATALOG_KINDS as w (w)}<button class="kat-chip" class:on={filter.kind?.includes(w)} onclick={() => toggle("kind", w)}>{t(`cat.kind.${w}` as Key)}</button>{/each}
-          {:else if open === "len"}{#each LENS as w (w)}<button class="kat-chip" class:on={filter.len?.includes(w)} onclick={() => toggle("len", w)}>{t(`cat.len.${w}` as Key)}</button>{/each}
+          {#if open === "who"}{#each WHO as w (w)}<button class="chip kat-chip" class:on={filter.who?.includes(w)} onclick={() => toggle("who", w)}>{t(`cat.who.${w}` as Key)}</button>{/each}
+          {:else if open === "kind"}{#each CATALOG_KINDS as w (w)}<button class="chip kat-chip" class:on={filter.kind?.includes(w)} onclick={() => toggle("kind", w)}>{t(`cat.kind.${w}` as Key)}</button>{/each}
+          {:else if open === "len"}{#each LENS as w (w)}<button class="chip kat-chip" class:on={filter.len?.includes(w)} onclick={() => toggle("len", w)}>{t(`cat.len.${w}` as Key)}</button>{/each}
           {:else if open === "month"}
-            <button class="kat-chip" class:on={!filter.month} onclick={() => (filter = { ...filter, month: undefined })}>{t("cat.f.any")}</button>
-            {#each Array.from({ length: 12 }, (_, i) => i + 1) as m (m)}<button class="kat-chip" class:on={filter.month === m} onclick={() => (filter = { ...filter, month: m })}>{monthName(m)}</button>{/each}
+            <button class="chip kat-chip" class:on={!filter.month} onclick={() => (filter = { ...filter, month: undefined })}>{t("cat.f.any")}</button>
+            {#each Array.from({ length: 12 }, (_, i) => i + 1) as m (m)}<button class="chip kat-chip" class:on={filter.month === m} onclick={() => (filter = { ...filter, month: m })}>{monthName(m)}</button>{/each}
           {:else}
-            <button class="kat-chip" class:on={!filter.budget} onclick={() => (filter = { ...filter, budget: undefined })}>{t("cat.f.any")}</button>
-            {#each BUDGETS as b (b)}<button class="kat-chip" class:on={filter.budget === b} onclick={() => (filter = { ...filter, budget: b })}>{t("cat.budgetUpTo", { v: eur(b) })}</button>{/each}
+            <button class="chip kat-chip" class:on={!filter.budget} onclick={() => (filter = { ...filter, budget: undefined })}>{t("cat.f.any")}</button>
+            {#each BUDGETS as b (b)}<button class="chip kat-chip" class:on={filter.budget === b} onclick={() => (filter = { ...filter, budget: b })}>{t("cat.budgetUpTo", { v: eur(b) })}</button>{/each}
           {/if}
         </div>
       {/if}
@@ -291,24 +359,7 @@
         {#if b.band}<h2>{t(`cat.band.${b.band}` as Key)} <small class="muted">{bandSub(b.band)}</small></h2>{/if}
         <div class="kat-grid">
           {#each b.cards as c (c.e.id)}
-            <button class="kat-card" onclick={() => show(c.e.id)}>
-              <span class="kat-pic" style="--k:var(--c-{KIND_TINT[c.e.kind]}); --ks:var(--c-{KIND_TINT[c.e.kind]}-s)">
-                <CatalogMap stops={stopPts(c.e)} area={areaOf(c.e)} />
-                <span class="kat-dest"><span><span aria-hidden="true">{destFlags(c.e)}</span> {dests(c.e).map(s => s.place).join(" · ")}</span>
-                  <small>{t(`cat.kind.${c.e.kind}` as Key)}{c.km != null ? ` · ${c.km.toLocaleString(locale())} km` : ""}</small></span>
-              </span>
-              {#if c.e.stops.length > 1}<span class="kat-way" style="--k:var(--c-{KIND_TINT[c.e.kind]})">{@render route(routeOf(c.e, null, c.arrival))}</span>{/if}
-              {#if startsOf(c).length}{@render starts(c)}{/if}
-              <span class="kat-body">
-                <span class="kat-tl"><b>{c.e.title}</b><span class="kat-price"><b class="num"><bdi>~{eur(c.pp)}</bdi></b><small>{startsOf(c).length ? t("cat.ppFrom", { place: startsOf(c)[0] }) : t("cat.pp")}</small></span></span>
-                <span class="kat-meta">{tn("n.nights", c.e.nights)} · {groupText(c.e)}{c.e.months.length ? ` · ${monthsText(c.e.months)}` : ""}</span>
-                <span class="kat-tags">
-                  {#if c.arrival}<span class="kat-tag arr">{arrText(c)}</span>{/if}
-                  {#if c.tours}<span class="kat-tag tour">{t("cat.tours", { v: eur(c.tours) })}</span>{/if}
-                </span>
-                <small class="muted">{byText(c.e)}</small>
-              </span>
-            </button>
+            <button class="kat-card" onclick={() => show(c.e.id)}>{@render cardInner(c)}</button>
           {/each}
         </div>
       </section>
@@ -326,8 +377,8 @@
   .kat-from { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-weight: 600; }
   .kat-chips { display: flex; gap: 8px; overflow-x: auto; max-width: 100%; padding-bottom: 2px; scrollbar-width: none; }
   .kat-chips::-webkit-scrollbar { display: none; }
-  .kat-chip { flex: none; min-height: 40px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-weight: 600; font-size: 14px; white-space: nowrap; }
-  .kat-chip.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  /* Auswahl wie überall: globaler Chip (#664), hier nur nicht umbrechen */
+  .kat-chip { flex: none; white-space: nowrap; }
   .kat-opts { display: flex; flex-wrap: wrap; gap: 8px; }
   .kat-reset { font-size: 14px; white-space: nowrap; }
   .kat-band { display: grid; gap: 12px; }
@@ -344,7 +395,7 @@
   .kat-pic.big .kat-dest { font-size: 26px; padding: 40px 16px 14px; }
   .kat-way { display: block; padding: 10px 14px 0; color: var(--k); }
   .kat-start { display: flex; align-items: center; gap: 8px; padding: 10px 14px 0; color: var(--k); font-size: 13px; font-weight: 600; }
-  .kat-start > small { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .kat-start > small { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
   .kat-start > span:last-child { color: var(--ink); }
   .kat-start .cr-ico { width: 24px; height: 24px; flex: none; }
   .kat-body { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px 14px; }
@@ -358,6 +409,7 @@
   .kat-tag { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 10px; }
   .kat-tag.arr { color: var(--c-flights); background: var(--c-flights-s); }
   .kat-tag.tour { color: var(--c-attractions); background: var(--c-attractions-s); }
+  .kat-tag.warn { color: var(--warn); background: var(--warn-soft); border: 1px dashed var(--warn); }
   /* Route als Flussdiagramm: Flagge und Ort, dazwischen das Verkehrsmittel */
   .cr-route { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; row-gap: 8px; }
   .cr-route li { display: flex; align-items: center; }
@@ -369,7 +421,7 @@
   .cr-flag { font-size: 16px; line-height: 1; }
   .cr-name { display: flex; flex-direction: column; line-height: 1.15; }
   .cr-name small { font-size: 11px; font-weight: 500; color: var(--ink-2); }
-  .cr-name .cr-cap { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .cr-name .cr-cap { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
   .cr-node.home { background: var(--paper-2); box-shadow: none; border: 1px solid var(--line); }
   .big .cr-node { font-size: 13px; padding: 5px 10px 5px 7px; }
   .big .cr-flag { font-size: 18px; }
@@ -406,4 +458,9 @@
   .kat-modes label, .kat-form .kat-tours label { display: flex; align-items: center; gap: 10px; min-height: 44px; }
   .kat-modes input, .kat-form .kat-tours input { width: 20px; height: 20px; accent-color: var(--ink); }
   .kat-take .btn { flex: 1; min-height: 52px; font-size: 16px; }
+  .kat-sumtext { margin: 6px 0 0; line-height: 1.45; overflow-wrap: anywhere; }
+  .kat-own { display: flex; align-items: center; gap: 12px; }
+  .kat-tag.mine { color: var(--good); background: var(--paper-2); border: 1px solid var(--good); }
+  .kat-withdraw, .kat-report { justify-self: start; min-height: 44px; font-size: 14px; }
+  .kat-prev { pointer-events: none; }
 </style>

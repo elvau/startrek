@@ -85,6 +85,10 @@
   <li>for signing in: email address or Google account (name, email, profile picture), time of sign-in, IP address;
     if you join a trip via an invite link as a guest without an account, Firebase gives you an anonymous ID and you only
     enter a first name; if you create an account later, the ID is kept;</li>
+  <li>your <strong>username</strong> (optional, freely chosen, no real name needed): <strong>publicly visible</strong>, e.g. on
+    trips you publish in the trip catalogue, later also for friend lists; stored with your account ID so that each name is
+    taken only once. You can change it at any time, the old one is then released; deleted when you delete your account and
+    included in your data export;</li>
   <li>for shared trips under “Who are you?”: which member is which person of the trip, with the chosen first name
     (visible to all members of the trip; you can unlink at any time or leave the trip);</li>
   <li>for shared trips your votes in polls (including “Count me out”, with an optional reason and whether your family is included) per account, with time; visible with names to all
@@ -386,7 +390,41 @@
   PayPal.me link or the fundraiser link takes you to that provider, whose privacy notices apply.
 </p>
 
-<h2>13. Your rights</h2>
+<h2 id="catalogue">13. Trip catalogue</h2>
+<p>
+  With an account and a username you can publish one of your trips in the <strong>trip catalogue</strong>. The entry is
+  <strong>public</strong>: readable by everyone, also without an account. Only the core of the trip at the destination is
+  public: title and short description you enter yourself, type of trip, good months, stops with nights and location, type of
+  accommodation, getting around and meals on site, costs per person as guide prices with date (month/year), day plan and tours
+  as day of the trip (no dates), travellers only as a count (“2 adults, 1 child”), notes from the plausibility check and your
+  <strong>username</strong> as creator; the entry also stores your account ID (so only you can change or withdraw it), the
+  version of the terms you agreed to, and the time.
+</p>
+<p>
+  Not included: travel from your home, names, ages, home towns, families, dates, booking numbers, notes, kitty and payments,
+  providers, links and pictures. The app removes names of fellow travellers, providers, booking numbers, email addresses,
+  phone numbers and links from your texts; before publishing you see a preview of exactly what becomes public. The price
+  including travel is calculated in each viewer's browser from their own home; nothing about it is sent to me.
+</p>
+<p>
+  Publishing only happens with your explicit consent (Art. 6(1)(a) GDPR); the entry is stored in Cloud Firestore (see
+  section 5). You can withdraw it at any time in the trip menu, it is then deleted; the same happens when you reset your
+  account. Anyone who took over the trip as a template keeps that copy in their own trip. Viewers of the catalogue are not
+  tracked; the list loads entries without an account and without cookies. “Report” sends a note about an entry to me like a
+  bug report (see section 9).
+</p>
+<p>
+  If you take over a trip from the catalogue, the app uses the start date to search real prices for accommodation, flights and
+  tours through my search service (see section 6). If you are signed in, one <strong>price point</strong> per area is then sent
+  to the search service once per trip: amount per person, month of travel, group size, plus the place of the accommodation,
+  the name of the tour or a distance level for travel there. No names, home towns, providers, links or trip data. The search
+  service checks your sign-in and counts per account and day (account ID, entry and date, deleted after two days); the price
+  point is stored without any link to the account with the entry in Cloud Firestore, for at most twelve months. The catalogue
+  derives its guide prices from the price points (middle of the checks). Legal basis: Art. 6(1)(f) GDPR (legitimate interest
+  in up-to-date guide prices in the catalogue).
+</p>
+
+<h2>14. Your rights</h2>
 <p>
   You have the right of access (Art. 15 GDPR), rectification (Art. 16), erasure (Art. 17), restriction of processing
   (Art. 18), data portability (Art. 20) and to object to processing based on legitimate interests (Art. 21). Simply

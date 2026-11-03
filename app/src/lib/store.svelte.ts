@@ -490,6 +490,8 @@ export function duplicateTrip(variant = false) {
   const src = app.trip.id;
   const copy: Trip = JSON.parse(JSON.stringify(app.trip));
   copy.id = uid();
+  // der Katalogeintrag gehört zur ursprünglichen Reise (#644)
+  delete copy.pub;
   if (variant) { delete copy.polls; if (copy.cmp) { delete copy.cmp.label; delete copy.cmp.chosen; delete copy.cmp.archived; } }
   else { copy.name = `${copy.name} (${tr("store.copy")})`; delete copy.cmp; }
   const toCloud = !!cloud.user;
@@ -676,7 +678,14 @@ export function startTrip(travelers?: Traveler[], provisional?: string) {
 }
 
 /** Startseite (#640): Ansicht „Meine Reisen“ statt der Einstiege; die Startseite selbst setzt sie zurück */
-export const homeUi = $state({ mine: false, catalog: false });
+export const homeUi = $state({ mine: false, catalog: false, /** Eintrag, den der Katalog gleich öffnet (#644) */ catalogSel: null as string | null });
+
+/** Reisekatalog öffnen, auf Wunsch gleich mit einem Eintrag (#644) */
+export function openCatalog(id?: string) {
+  goHome();
+  homeUi.catalog = true;
+  homeUi.catalogSel = id || null;
+}
 
 export function goHome() {
   homeUi.mine = false;

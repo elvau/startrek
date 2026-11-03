@@ -17,6 +17,9 @@
   let err = $state("");
   let done = $state<number | null>(null);
 
+  // Vorgabe übernehmen (Melden im Katalog, #644)
+  $effect(() => { if (bugDialog.open && bugDialog.text) { text = bugDialog.text; bugDialog.text = ""; } });
+
   function pick(e: Event) {
     const f = (e.currentTarget as HTMLInputElement).files?.[0] || null;
     err = "";

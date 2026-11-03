@@ -594,6 +594,25 @@ export interface Trip {
   days?: Record<string, DayPlan>;
   /** öffentliche Aktionsseite zum Mitfinanzieren (Zuschüsse Stufe 2), nur mit Einwilligung zu Name und IBAN */
   campaign?: Campaign;
+  /**
+   * aus dem Reisekatalog übernommen (#652): Eintrag und Stand, Lage der Posten relativ zum Reisebeginn (Daten nachtragen),
+   * Ergebnis der Preisprüfung je Posten (est/pp: Richtwert bzw. gefundener Preis pro Person in €)
+   */
+  catalog?: {
+    id: string; stand: string;
+    rel?: { nights: number; dest?: { place: string; lat: number; lon: number; cc?: string }; stays: Record<string, { off: number; n: number; place: string }>; flights?: Record<string, { name: string; lat: number; lon: number }>; tours: Record<string, { day?: number; time?: string; place: string }> };
+    check?: { at: string; rows: { item: string; state: "ok" | "none" | "skip" | "err"; est?: number; pp?: number }[] };
+    /** Karte „Preise prüfen“ ausgeblendet */
+    hide?: boolean;
+    /** Preispunkte an den Katalog geschickt (Datum), nur einmal je Reise */
+    sent?: string;
+  };
+  /** im Reisekatalog veröffentlicht (#644): Kennung des Eintrags, Konto des Erstellers, Zeitpunkt; Kopien und Varianten erben es nicht */
+  pub?: {
+    id: string; uid: string; at: string;
+    /** zuletzt veröffentlichte Angaben, vorbelegt bei „Eintrag aktualisieren“ */
+    input?: { title: string; summary: string; kind: "stay" | "round" | "road" | "event" | "package" | "cruise"; months: number[] };
+  };
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
   detail?: Partial<Record<CatKey, boolean>>;
   tiers: Partial<Record<CatKey, Tier[]>>;

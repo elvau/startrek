@@ -27,7 +27,41 @@ Epic #641. Öffentlicher Katalog mit Reisen von Nutzern und automatisch gepflegt
 - `app/src/lib/ui/CatalogMap.svelte`: Karte mit dem Zielland statt Bildern (Dani, 02.11.), Kartenbild wie RouteMini (OpenFreeMap), erst wenn sichtbar.
 - `app/src/lib/ui/Catalog.svelte`: Ansicht auf der Startseite (Kachel „Reisekatalog“), Handy zuerst; e2e `app/e2e/catalog.mjs`.
   Ohne Wohnort: Land über `viewerCountry` (Hauptstadt, sonst größte Stadt), Hinweis „Mit deinem Wohnort wird es genauer“.
+- `app/src/lib/catalog/publish.ts` + `app/src/lib/ui/PublishDialog.svelte`: Veröffentlichen (#644, Entwurf mit Dani 02.11.):
+  Reise-Menü „🌍 Im Katalog veröffentlichen“, nur mit Konto und Benutzernamen (sonst zuerst das Namensfeld). Schritt 1:
+  Titel, Kurzbeschreibung (80/280 Zeichen), Reiseart, gute Monate (vorbelegt), Check auf den eingetippten Texten (rot blockiert).
+  Schritt 2: Vorschau mit `Catalog preview={…}` (Karte wie in der Liste, Detail), Zustimmung zu den Bedingungen
+  (`agb.html#katalog`, Fassung `CATALOG_TERMS` im Dokument). Texte werden vor dem Speichern bereinigt (`scrub`).
+  Firestore `catalog/{id}`: `uid`, `by` (muss `usernames/{by}` des Kontos sein), `data` (Eintrag als JSON, ohne Links und
+  E-Mail, < 100 000 Zeichen), `terms`, `at` (Serverzeit); lesen alle, schreiben nur der Ersteller (Regeln in `firestore.rules`,
+  Tests in `e2e/rules.mjs`). In der Reise `trip.pub` (Kennung, Konto, Zeit, letzte Angaben; Kopien erben es nicht).
+  Änderungen an der Reise kommen nur über „Eintrag aktualisieren“ hinein; „Zurückziehen“ löscht den Eintrag, übernommene
+  Reisen bleiben. Der Katalog lädt die Einträge ohne Konto über REST (`fetchCatalog`), eigene mit „Deine Reise“ und
+  Zurückziehen, fremde mit „Melden“ (Fehlerbericht mit der Kennung des Eintrags). Konto zurücksetzen löscht eigene Einträge,
+  die Datenauskunft nennt sie. e2e `app/e2e/publish.mjs`.
 - `app/src/lib/catalog/take.ts`: Übernehmen als neue Reise (#647): Reisende (wie im Eintrag, „Nur ich“, gespeicherte Gruppe),
   Reisebeginn, Touren (alle mit Tagesplan, nur Touren, einzelne, keine). Anreise je Startort (Familien ab Wohnort, sonst
   ab dem Startort des Betrachters) als Richtwert; Flug ohne den Weg zum Flughafen (`ACCESS_PP`, rechnet die App selbst).
   Verpflegung und Transport vor Ort nicht doppelt (rechnet die App). Die Kachel „Reiseideen“ entfällt, die Seiten bleiben.
+- `app/src/lib/catalog/pricecheck.ts` + `app/src/lib/ui/PriceCheck.svelte`: Preise prüfen nach dem Übernehmen (#652 Teil 1,
+  Entscheidung Dani 02.11.: automatisch). `trip.catalog` merkt Eintrag, Stand und die Lage der Posten relativ zum Reisebeginn
+  (`TakenRel`: Nächte je Unterkunft, Tag je Tour, Startort je Flug, erster Ort); ohne Reisebeginn fragt die Karte danach
+  (`applyStart`). Mit Reisebeginn startet die Prüfung von selbst, nacheinander: Unterkunft je Station, Flug je Startort (zwei
+  nächste Flughäfen, feste Daten, bis 9 Personen), Tour am Ort ihres Tages (gemeinsame Wörter im Titel, Euro-Preis). Das
+  günstigste echte Angebot kommt als Option dazu und wird gewählt, der Richtwert bleibt. Mietwagen und Transport vor Ort ohne
+  Suche. Ergebnis je Posten in `trip.catalog.check` (Richtwert und Preis pro Person), „Erneut prüfen“ sucht nur Posten ohne
+  Angebot. e2e im Übernehmen-Schritt von `app/e2e/catalog.mjs`.
+- `app/src/lib/catalog/prices.ts` + `worker/src/catalog.ts`: Preispunkte (#652 Teil 2). Nach der Prüfung schickt die App
+  mit Konto einmal je Reise `pointsOf` an `POST /catalog/price` (Anmeldung nötig; je Konto und Eintrag einmal am Tag, höchstens
+  `CATALOG_DAILY` = 10 Einträge am Tag). Punkt: Bereich (stay nach Ort, tour nach Name, arrival nach Zeile der Flug-Tabelle,
+  Flugpreis plus Weg zum Flughafen, Hauptsaison herausgerechnet), Betrag pro Person, Monat, Gruppengröße, Datum; ohne Konto,
+  Anbieter, Links. Gespeichert vom Dienstkonto in `catalogStats/{eintrag}` bzw. `catalogStats/_arrival` (Feld `p`, JSON, 12 Monate,
+  höchstens 80), Regeln: lesen alle, schreiben nur das Dienstkonto. Der Katalog liest alles per REST (`fetchStats`):
+  `applyStats` ersetzt Unterkunft je Ort und Touren durch die Mitte der Punkte (Ausreißer außerhalb 1,5 × Quartilsabstand ab 4
+  Punkten verworfen, mit Monat bevorzugt dieselbe Saison ab 3 Punkten), mit Stand und „n× beim Übernehmen geprüft“;
+  `arrivalTable` ersetzt Zeilen von `FLIGHT_PP` ab 3 Punkten (`ArrivalOpts.flights`). Live erst nach dem Release (Worker
+  deployt von `main`). e2e in `app/e2e/publish.mjs` (Such-Dienst gemockt, Punkte als Admin angelegt).
+- `app/src/lib/catalog/check.ts`: Plausibilitätscheck (#643). Rot blockiert (kein Ziel, keine Nächte, Rückflug vor Hinflug,
+  Unterkunft außerhalb des Zeitraums, zwei Unterkünfte am selben Abend für dieselben Leute, 0 €, Kontaktdaten/Links im Text),
+  gelb kennzeichnet (Nacht ohne Unterkunft, lange/sehr lange Fahrtage ab 6/10 Std., bei Roadtrip/Camper/ohne Flug 9/13 Std.,
+  weite Wege ohne Verkehrsmittel, ungewöhnlicher Unterkunftspreis, Namen im Text). Öffentliche Hinweise in `CatalogEntry.warn`.

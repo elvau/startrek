@@ -90,6 +90,10 @@ export interface CatalogEntry {
   days: CatalogDay[];
   /** Stand der Preise (JJJJ-MM) */
   stand: string;
+  /** gelbe Hinweise aus dem Plausibilitätscheck (#643), im Katalog gezeigt (longDay, veryLong, gap, noMove, stayPrice) */
+  warn?: string[];
+  /** so oft wurden die Preise beim Übernehmen geprüft (#652); die Richtwerte sind dann die Mitte der Prüfungen */
+  checked?: number;
   /** Reiseidee-Seite (/reise/<slug>/) */
   slug?: string;
 }

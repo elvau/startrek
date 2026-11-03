@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from "./ask.svelte";
   /*
    * Aktionsseite einrichten (im Bereich „Zuschüsse & Kasse“): Titel, Text, Ziel, PayPal.me und/oder Link zu einer
    * Sammelaktion. Veröffentlichen nur angemeldet und mit Einwilligung (beides ist für alle mit dem Link sichtbar).
@@ -56,7 +57,7 @@
   const withoutOwner = ({ owner: _o, ...d }: ReturnType<typeof campaignDoc>) => d;
 
   async function withdraw() {
-    if (!c || !confirm(t("cmp.withdrawConfirm"))) return;
+    if (!c || !await ask(t("cmp.withdrawConfirm"))) return;
     busy = true;
     try { if (c.at) await deleteCampaign(c.id); delete app.trip.campaign; edit = null; }
     catch (e) { err = netMessage(e); }

@@ -50,6 +50,10 @@
   import AgentChat from "./lib/ui/AgentChat.svelte";
   import GroupChat from "./lib/ui/GroupChat.svelte";
   import BugButton from "./lib/ui/BugButton.svelte";
+  import PriceCheck from "./lib/ui/PriceCheck.svelte";
+  import AskDialog from "./lib/ui/AskDialog.svelte";
+  import { hideFabsOnScroll } from "./lib/ui/fabs";
+  import { ask } from "./lib/ui/ask.svelte";
   import BrokerGate from "./lib/ui/BrokerGate.svelte";
   import TermsGate from "./lib/ui/TermsGate.svelte";
   import { hasPending, takePending, termsAccepted } from "./lib/terms";
@@ -132,6 +136,8 @@
 
   // Tageskurse für die Anzeige in anderer Währung und für Preise in Fremdwährung (einmal am Tag)
   onMount(() => { void loadRates(); });
+  // Handy (#663): schwebende Knöpfe beim Herunterscrollen ausblenden
+  onMount(() => hideFabsOnScroll());
   // Link von einer Inhaltsseite (?ziel=…&idee=…): neue Reise mit Ziel, Gruppe und den Kosten der Reiseidee
   onMount(() => { void applyPlanLink(); });
   // …/?info öffnet „Neues & Ausblick“
@@ -228,6 +234,7 @@
 <Sprite />
 <Ambience />
 <GuestNote />
+<AskDialog />
 {#if app.home && app.compare}
 <CompareView />
 {:else if app.home}
@@ -240,9 +247,11 @@
   <main bind:this={mainEl} class:pager={mob.on}>
     {#if mob.on}
       <!-- Handy (#530): erste Seite des Pagers ist die Übersicht der Reise -->
-      <section class="chapter pg-hero" class:on={mob.page === "hero"} data-ch="hero"><Hero /><TripTimeline /></section>
+      <section class="chapter pg-hero" class:on={mob.page === "hero"} data-ch="hero"><Hero /><TripTimeline />{#if app.trip.catalog}<PriceCheck />{/if}</section>
     {:else}
       <TripTimeline />
+      <!-- aus dem Katalog übernommen (#652): Preise prüfen -->
+      {#if app.trip.catalog}<PriceCheck />{/if}
     {/if}
     <Chapter ch={CHAPTERS[0]} n={1} sum={String(calc.T.active)} sub="{calc.T.active < app.trip.travelers.length ? t('app.ofTotal', { n: app.trip.travelers.length }) + ' · ' : ''}{households > 1 && households === calc.T.active ? "" : hhLabel}">
       <article class="card" use:reveal><TravelersCard /></article>
@@ -276,7 +285,7 @@
       {@const det = isDetailed(app.trip, ch.k)}
       <Chapter {ch} n={num(ch.k)} sum={eur(calc.T.byCat[ch.k] - netOf([...inPkg].filter(id => app.trip.items.find(x => x.id === id)?.cat === ch.k)))} sub={ch.k === "stay" && nn && det ? tn("n.nights", nn) : ch.sub}
         onadd={access.readonly || !det ? undefined : () => addItem(ch.k)}
-        onreset={items.length ? () => { if (confirm(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
+        onreset={items.length ? async () => { if (await ask(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button>

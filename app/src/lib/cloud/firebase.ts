@@ -33,6 +33,7 @@ export interface TripDoc {
 
 import { emulator } from "./config";
 import type { CampaignDoc } from "../campaign";
+import type { CatalogDoc } from "../catalog/publish";
 
 const env = import.meta.env;
 
@@ -297,6 +298,42 @@ export const saveProfileTx = (uid: string, resolve: (remote: string | null) => s
     return data;
   });
 
+/* ---------- Reisekatalog (catalog/{id}, #644): öffentlich lesbar (REST), nur das veröffentlichende Konto schreibt ---------- */
+
+export const publishCatalog = (id: string, d: CatalogDoc) => setDoc(doc(start().db, "catalog", id), { ...d, at: serverTimestamp() });
+export const removeCatalog = (id: string) => deleteDoc(doc(start().db, "catalog", id));
+const myCatalog = (uid: string) => getDocsFromServer(query(collection(start().db, "catalog"), where("uid", "==", uid), limit(200)));
+
+/* ---------- Öffentlicher Benutzername (usernames/{schlüssel}, #650) ---------- */
+
+const nameRef = (key: string) => doc(start().db, "usernames", key);
+const myNames = (uid: string) => getDocsFromServer(query(collection(start().db, "usernames"), where("uid", "==", uid), limit(5)));
+
+/** eigener Benutzername (null: noch keiner) */
+export async function myUsername(uid: string): Promise<string | null> {
+  const s = await myNames(uid);
+  return s.empty ? null : ((s.docs[0].data().name as string) || null);
+}
+
+/** Name belegen (eindeutig ohne Groß-/Kleinschreibung); alte Namen desselben Kontos werden freigegeben */
+export async function claimUsername(uid: string, name: string): Promise<"ok" | "taken"> {
+  const key = name.trim().toLowerCase();
+  const old = (await myNames(uid)).docs.map(d => d.id).filter(k => k !== key);
+  return runTransaction(start().db, async tx => {
+    const s = await tx.get(nameRef(key));
+    if (s.exists() && s.data().uid !== uid) return "taken";
+    tx.set(nameRef(key), { uid, name: name.trim(), at: serverTimestamp() });
+    for (const k of old) tx.delete(nameRef(k));
+    return "ok";
+  });
+}
+
+/** ist der Name frei (oder schon der eigene)? */
+export async function usernameFree(name: string, uid: string): Promise<boolean> {
+  const s = await getDocFromServer(nameRef(name.trim().toLowerCase()));
+  return !s.exists() || s.data().uid === uid;
+}
+
 /* ---------- Buchungsdaten (travelDocs/{uid}) ----------
  * Bewusst über die REST-Schnittstelle statt über den Firestore-Client: der legt eine Kopie im Browser (IndexedDB) ab,
  * die Buchungsdaten sollen aber nur im Konto liegen.
@@ -354,6 +391,10 @@ export interface AccountData {
   self?: Record<string, Record<string, unknown>>;
   /** eigene Nachrichten im Gruppenchat je Reise (Bilder als Hinweis, nicht als Daten) */
   chat?: Record<string, { t: string; img?: boolean; at?: string }[]>;
+  /** öffentlicher Benutzername (#650) */
+  username?: string | null;
+  /** im Reisekatalog veröffentlichte Reisen (#644) */
+  catalog?: { id: string; title: string }[];
 }
 
 /** liest alles direkt vom Server (nicht aus dem Zwischenspeicher), wie „Konto zurücksetzen“ es löschen würde */
@@ -372,7 +413,8 @@ export async function collectAccount(uid: string): Promise<AccountData> {
       uid, email: u.email || "", name: displayName(u), providers: u.providerData.map(p => p.providerId), verified: u.emailVerified,
       created: u.metadata.creationTime, lastSignIn: u.metadata.lastSignInTime
     },
-    profile, travelDocs,
+    profile, travelDocs, username: await myUsername(uid).catch(() => null),
+    catalog: await myCatalog(uid).then(q => q.docs.map(d => { let title = ""; try { title = JSON.parse(d.data().data).title || ""; } catch { /* kaputt */ } return { id: d.id, title }; })).catch(() => []),
     trips: trips.docs.map(d => {
       const { invite, updatedAt: _u, ...rest } = d.data() as TripDoc;
       return { id: d.id, ...rest, ...(invite ? { invite: { role: invite.role } } : {}) };
@@ -415,6 +457,8 @@ export async function wipeAccount(uid: string): Promise<WipeResult> {
   for (const d of camps.docs) await deleteDoc(d.ref);
   await deleteDoc(profileRef(uid));
   await deleteTravelDocs(uid);
+  for (const d of (await myNames(uid)).docs) await deleteDoc(d.ref);
+  for (const d of (await myCatalog(uid)).docs) await deleteDoc(d.ref);
   return { deleted, left, campaigns: camps.size };
 }
 

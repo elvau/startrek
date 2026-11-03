@@ -197,6 +197,62 @@ await expect("Verbindungen der Chat-Apps lesen", req("anna", "/mcpGrants/x"), 40
 await expect("Verbindungen der Chat-Apps schreiben", patch("anna", "/mcpGrants/x", { uid: "anna" }), 403);
 log("Verbindungen der Chat-Apps (#590): App kann weder lesen noch schreiben");
 
+// Öffentlicher Benutzername (#650): eindeutig, nur für sich selbst, Gäste nicht, lesen darf jeder, auflisten nur die eigenen
+await expect("Name: Anna belegt reh42", patch("anna", "/usernames/reh42", { uid: "anna", name: "Reh42" }), 200);
+await expect("Name: jeder liest ihn", req("", "/usernames/reh42"), 200);
+await expect("Name: Mallory übernimmt ihn", patch("mallory", "/usernames/reh42", { uid: "mallory", name: "reh42" }), 403);
+await expect("Name: Mallory belegt einen für Anna", patch("mallory", "/usernames/anna2", { uid: "anna", name: "anna2" }), 403);
+await expect("Name: Schlüssel passt nicht zum Namen", patch("mallory", "/usernames/xyz", { uid: "mallory", name: "abc" }), 403);
+await expect("Name: zu kurz", patch("mallory", "/usernames/ab", { uid: "mallory", name: "ab" }), 403);
+await expect("Name: Leerzeichen", patch("mallory", "/usernames/a b c", { uid: "mallory", name: "a b c" }), 403);
+await expect("Name: fremde Felder", patch("mallory", "/usernames/mallo", { uid: "mallory", name: "mallo", email: "x@y.de" }), 403);
+await expect("Name: Gast belegt", patch("gast1", "/usernames/gastname", { uid: "gast1", name: "gastname" }), 403);
+await expect("Name: Umlaut erlaubt", patch("mallory", "/usernames/bär12", { uid: "mallory", name: "Bär12" }), 200);
+await expect("Name: Mallory löscht Annas", req("mallory", "/usernames/reh42", { method: "DELETE" }), 403);
+await expect("Name: alle auflisten", req("mallory", "/usernames"), 403);
+await expect("Name: eigene abfragen", query("mallory", "usernames", { fieldFilter: { field: { fieldPath: "uid" }, op: "EQUAL", value: { stringValue: "mallory" } } }), 200);
+await expect("Name: fremde abfragen", query("mallory", "usernames", { fieldFilter: { field: { fieldPath: "uid" }, op: "EQUAL", value: { stringValue: "anna" } } }), 403);
+await expect("Name: Anna gibt ihn frei", req("anna", "/usernames/reh42", { method: "DELETE" }), 200);
+await req("admin", "/usernames/bär12", { method: "DELETE" });
+log("Benutzernamen (#650): eindeutig, nur für sich, keine Gäste, lesen ja, auflisten nur eigene");
+
+// Reisekatalog (#644): lesen alle, veröffentlichen nur mit Konto unter dem eigenen Benutzernamen, ohne Links, ändern und
+// zurückziehen nur der Ersteller. Zeitstempel über die REST-Schnittstelle als Feldtransformation (wie serverTimestamp)
+const entry = (o = {}) => JSON.stringify({ v: 1, title: "Toskana mit Kindern", stops: [{ place: "Siena", nights: 7 }], ...o });
+const pub = (uid, id, o, method = "PATCH") => req(uid, ":commit", { method: "POST", body: JSON.stringify({ writes: [{
+  update: { name: `projects/${P}/databases/(default)/documents/catalog/${id}`, fields: fields(o) },
+  ...(method === "CREATE" ? { currentDocument: { exists: false } } : {}),
+  updateTransforms: [{ fieldPath: "at", setToServerValue: "REQUEST_TIME" }]
+}] }) });
+await expect("Katalog: Anna belegt ihren Namen", patch("anna", "/usernames/reh42", { uid: "anna", name: "reh42" }), 200);
+const good = { uid: "anna", by: "reh42", data: entry(), terms: "2026-11-02" };
+await expect("Katalog: Anna veröffentlicht", pub("anna", "kat1", good, "CREATE"), 200);
+await expect("Katalog: ohne Konto lesen", req("", "/catalog/kat1"), 200);
+await expect("Katalog: ohne Konto auflisten", req("", "/catalog"), 200);
+await expect("Katalog: Anna aktualisiert", pub("anna", "kat1", { ...good, data: entry({ title: "Toskana im Mai" }) }), 200);
+await expect("Katalog: Mallory überschreibt Annas", pub("mallory", "kat1", { ...good, uid: "mallory" }), 403);
+await expect("Katalog: Mallory unter Annas Namen", pub("mallory", "kat2", { ...good, uid: "mallory" }, "CREATE"), 403);
+await expect("Katalog: Mallory für Anna", pub("mallory", "kat2", good, "CREATE"), 403);
+await expect("Katalog: Mallory ohne Benutzernamen", pub("mallory", "kat2", { ...good, uid: "mallory", by: "mallo" }, "CREATE"), 403);
+await expect("Katalog: Gast veröffentlicht", pub("gast1", "kat2", { ...good, uid: "gast1" }, "CREATE"), 403);
+await expect("Katalog: mit Link", pub("anna", "kat2", { ...good, data: entry({ summary: "Infos unter https://example.com" }) }, "CREATE"), 403);
+await expect("Katalog: mit www", pub("anna", "kat2", { ...good, data: entry({ summary: "siehe WWW.example.com" }) }, "CREATE"), 403);
+await expect("Katalog: mit E-Mail", pub("anna", "kat2", { ...good, data: entry({ summary: "Fragen an anna@example.com" }) }, "CREATE"), 403);
+await expect("Katalog: fremde Felder", pub("anna", "kat2", { ...good, email: "x" }, "CREATE"), 403);
+await expect("Katalog: zu groß", pub("anna", "kat2", { ...good, data: entry({ summary: "x".repeat(100000) }) }, "CREATE"), 403);
+await expect("Katalog: Zeit selbst gesetzt", patch("anna", "/catalog/kat3", { ...good, at: "2020-01-01" }), 403);
+await expect("Katalog: Mallory zieht Annas zurück", req("mallory", "/catalog/kat1", { method: "DELETE" }), 403);
+await expect("Katalog: Anna zieht zurück", req("anna", "/catalog/kat1", { method: "DELETE" }), 200);
+await req("admin", "/usernames/reh42", { method: "DELETE" });
+await expect("Katalog-Preise: Admin legt an", patch("admin", "/catalogStats/kat1", { p: "[]" }), 200);
+await expect("Katalog-Preise: ohne Konto lesen", req("", "/catalogStats/kat1"), 200);
+await expect("Katalog-Preise: auflisten", req("", "/catalogStats"), 200);
+await expect("Katalog-Preise: Anna schreibt", patch("anna", "/catalogStats/kat1", { p: "[{\"pp\":1}]" }), 403);
+await expect("Katalog-Preise: Anna legt an", patch("anna", "/catalogStats/kat9", { p: "[]" }), 403);
+await expect("Katalog-Preise: Anna löscht", req("anna", "/catalogStats/kat1", { method: "DELETE" }), 403);
+await req("admin", "/catalogStats/kat1", { method: "DELETE" });
+log("Reisekatalog (#644): lesen alle, veröffentlichen nur unter eigenem Namen, keine Gäste, keine Links/E-Mail, zurückziehen nur der Ersteller");
+
 await req("admin", "/trips/regeltest", { method: "DELETE" });
 await req("admin", "/profiles/anna", { method: "DELETE" });
 await req("admin", "/travelDocs/anna", { method: "DELETE" });

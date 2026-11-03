@@ -22,6 +22,17 @@ try {
   await ctx.route("**/world.json", r => r.fulfill({ path: "../public/world.json" }));
   await ctx.route("**/packs.json", r => r.fulfill({ path: "../public/packs.json" }));
   await ctx.route("**/airports.json", r => r.fulfill({ path: "../public/airports.json" }));
+  // Such-Dienst für die Preisprüfung nach dem Übernehmen (#652): je ein Treffer für Unterkunft und Flug
+  const H = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
+  const ok = (r, body) => r.request().method() === "OPTIONS" ? r.fulfill({ status: 204, headers: H }) : r.fulfill({ status: 200, contentType: "application/json", headers: H, body: JSON.stringify(body) });
+  const src = [{ id: "t", name: "Test", configured: true, ok: true, count: 1 }];
+  const searched = [];
+  await ctx.route("https://flights.test/stays/search", r => { searched.push("stay"); return ok(r, { offers: [{ id: "s1", source: "t", sourceName: "Testbett", name: "Finca Sol", total: 2400, currency: "EUR", url: "https://example.com/s" }], sources: src }); });
+  await ctx.route("https://flights.test/flights/search", r => { searched.push("flight:" + JSON.parse(r.request().postData() || "{}").from); return ok(r, { offers: [{ price: 1600, currency: "EUR", sourceName: "Testflug", url: "https://example.com/f",
+    out: { from: "ZRH", to: "PMI", dep: "2027-06-05T08:00", arr: "2027-06-05T10:00", carriers: ["TA"], stops: 0, minutes: 120, route: ["ZRH", "PMI"] },
+    back: { from: "PMI", to: "ZRH", dep: "2027-06-10T18:00", arr: "2027-06-10T20:00", carriers: ["TA"], stops: 0, minutes: 120, route: ["PMI", "ZRH"] } }], sources: src }); });
+  await ctx.route("https://flights.test/activities/search", r => ok(r, { activities: [], sources: src }));
+  await ctx.route("https://flights.test/{health,rates,click}", r => ok(r, {}));
   const p = await ctx.newPage();
   p.on("pageerror", e => errors.push(e.message));
   await p.goto(URL);
@@ -80,6 +91,21 @@ try {
   if (saved.items.some(i => i.cat === "attractions" && !i.auto)) fail("abgewählte Tour übernommen");
   const stay = saved.items.find(i => i.cat === "stay" && !i.auto);
   if (stay?.from !== "2027-06-05" || stay?.to !== "2027-06-10") fail("Unterkunft ohne Zeitraum");
+  // Preise prüfen (#652): startet von selbst, Unterkunft und Flug mit Angebot, Richtwert bleibt als Option
+  const pc = p.locator(".pc");
+  await pc.waitFor({ timeout: 15000 });
+  await until(async () => (await pc.locator(".pc-sum").count()) > 0, "Preisprüfung fertig", 20000);
+  const pcRows = await pc.locator(".pc-rows li").allInnerTexts();
+  if ((await pc.locator(".pc-ok").count()) < 2) fail("Preisprüfung: " + pcRows.join(" | ") + " / gesucht: " + searched.join(", "));
+  if (!(await pc.locator(".pc-sum").innerText()).includes("→")) fail("Summe der Prüfung fehlt");
+  // Flug ab dem Startort des Postens (Bern), nicht ab Standard-Flughäfen
+  if (!searched.includes("flight:BRN")) fail("Flug nicht ab Bern gesucht: " + searched.join(", "));
+  if (process.env.SHOTS) await pc.screenshot({ path: `${process.env.SHOTS}/preise.png` });
+  await until(async () => (await current())?.catalog?.check?.rows?.length > 0, "Prüfung gespeichert");
+  const checked = await current();
+  const st = checked.items.find(i => i.cat === "stay" && !i.auto);
+  if (st.options.length !== 2 || st.options.find(o => o.id === st.chosen)?.label !== "Finca Sol" || !st.options.some(o => o.estimate)) fail("Unterkunft nach der Prüfung: " + JSON.stringify(st.options.map(o => o.label)));
+  log(`Preise geprüft: ${pcRows.map(x => x.replace(/\s+/g, " ")).join(" | ")}; gesucht ${searched.join(", ")}`);
   log(`Übernommen: „${saved.name}“, ${saved.travelers.length} Personen, ${saved.from} bis ${saved.to}, ${fl[0].name}, ${saved.items.filter(i => !i.auto).length} Posten, ohne abgewählte Tour`);
 
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));

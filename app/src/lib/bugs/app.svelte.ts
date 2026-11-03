@@ -10,7 +10,8 @@ import type { BugReport } from "./types";
 import { recentErrors, recentNav } from "./log";
 import { serverError } from "../neterror";
 
-export const bugDialog = $state({ open: false });
+/** text: Vorgabe für die Beschreibung (z. B. „Katalogeintrag … melden“, #644) */
+export const bugDialog = $state({ open: false, text: "" });
 
 
 /** Ansicht ohne persönliche Daten: Startseite oder Reise, Modus, Personen, Zahl der Posten */

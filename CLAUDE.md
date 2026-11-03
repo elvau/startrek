@@ -13,7 +13,8 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
   landen nicht auf der Testumgebung.
 - Produktion https://splitandfly.com: jeder Push auf `main` (Firebase Hosting, `release.yml` legt Tag und Release an).
 - Worker: deployt nur von `main` (Cloudflare Workers Builds). Secrets nur in Cloudflare, nie im Code oder Chat.
-- Firestore-Regeln (`app/firestore.rules`) spielt Dani von Hand in der Firebase-Konsole ein (echtes und Testprojekt): nach Änderungen Bescheid sagen.
+- Firestore-Regeln (`app/firestore.rules`) spielt `.github/workflows/regeln.yml` ein (Push auf `pre-release` → Testprojekt, `main` → echtes Projekt),
+  sobald die Dienstkonten eingerichtet sind (docs/FIREBASE.md); bis dahin bzw. wenn der Lauf warnt, von Hand durch Dani: nach Änderungen Bescheid sagen.
 - **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: Version auf `pre-release` anheben,
   `test:cloud`, PR `pre-release` → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit); danach `pre-release`
   auf `main` vorspulen (`git push origin origin/main:refs/heads/pre-release`, legt ihn auch neu an, falls GitHub ihn nach dem Merge gelöscht hat; offene PRs danach wieder auf `pre-release` stellen) und den Arbeits-Branch auf `origin/main` zurücksetzen.
@@ -27,8 +28,11 @@ Weiterentwicklung gebündelt in Epics (`epic`, mittlere Version), Features (`fea
 Ablauf und „fertig ist, wenn …“ in `docs/ABLAUF.md`. In Sitzungen mit Dani ein Epic Feature für Feature abarbeiten,
 offene Entscheidungen zur Oberfläche vorher mit Entwurf klären.
 Jedes offene Ticket hat genau ein Zuständigkeits-Label: `zuständig: Entwicklung` (diese Sitzungen), `zuständig: QA-Routinen`
-(Bugs und kleine Änderungswünsche), `zuständig: Dani` (Entscheidungen `entscheidung`, Einrichtungen `einrichtung`; Dani
-schließt sie). Braucht es eine Entscheidung von Dani, ein eigenes Ticket dafür anlegen statt nur im Chat zu fragen.
+(Bugs und kleine Änderungswünsche), `zuständig: Dani` (Entscheidungen `entscheidung`, Einrichtungen `einrichtung`).
+Braucht es eine Entscheidung von Dani, ein eigenes Ticket dafür anlegen statt nur im Chat zu fragen. Dani steuert alles über
+die Sitzungen: Hat Dani im Chat entschieden oder eine Einrichtung als erledigt gemeldet (bzw. ist sie nachweislich erledigt),
+schließt die Sitzung das Ticket selbst, mit einem Kommentar, was entschieden bzw. erledigt ist. Teilweise Entscheidungen:
+Kommentar, Ticket bleibt offen. Fertige Features und Epics schließt die Sitzung ebenfalls (nach dem Release, siehe oben).
 
 ## Arbeitsteilung (Routinen)
 Fehler und QA laufen über Routinen auf einem eigenen Konto (Einrichtung und Prompts: `docs/claude2claude.md`): **SAF 1 – Triage** macht aus Fehlerberichten Issues

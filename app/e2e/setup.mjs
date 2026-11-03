@@ -90,6 +90,17 @@ try {
   if (!(await b.locator(".wz-note").textContent()).includes("vorbefüllt")) fail("Hinweis auf Vorbefüllung fehlt");
   // Geschlecht aus der KI-Antwort wird nicht übernommen
   if (await b.locator(".wz-gender .chip.on", { hasText: "weiblich" }).count()) fail("Geschlecht aus der KI übernommen");
+  // Benutzername (#650): Vorschlag, Hinweis „öffentlich“, prüfen und speichern
+  const un = b.locator(".wz-un .un-in");
+  if (!(await un.inputValue()).match(/^\p{L}+\d{2}$/u)) fail("Vorschlag für den Benutzernamen fehlt: " + (await un.inputValue()));
+  if (!(await b.locator(".wz-un .un-hint").innerText()).includes("öffentlich")) fail("Hinweis „öffentlich sichtbar“ fehlt");
+  await un.fill("ab");
+  await b.locator(".wz-un .un-st", { hasText: "Mindestens 3 Zeichen" }).waitFor();
+  await un.fill("Alex_Klein");
+  await b.locator(".wz-un .un-st", { hasText: "Frei" }).waitFor({ timeout: 10000 });
+  await b.locator(".wz-un .un-save").click();
+  await b.locator(".wz-un .un-st", { hasText: "Gespeichert" }).waitFor({ timeout: 10000 });
+  log("Benutzername: Vorschlag, Hinweis öffentlich, zu kurz abgelehnt, „Alex_Klein“ frei und gespeichert");
   await b.locator(".wz label", { hasText: "Vorname" }).locator("input").fill("Alex");
   await b.locator(".wz label", { hasText: "Nachname" }).locator("input").fill("Klein");
   await b.locator(".wz .bd-d").selectOption("1");

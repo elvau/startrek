@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (baut mit Emulator-Konfiguration, startet Emulatoren und Vorschau)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, autoAsk } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4174/";
@@ -240,7 +240,7 @@ try {
   await until(async () => (await agc.locator(".gc-errline").innerText().catch(() => "")).includes("keine Videos"), "Video abgelehnt");
   const annaMsg = ogc.locator(".gc-msg", { hasText: "Unser Strand" });
   if (await annaMsg.locator(".gc-del").count()) throw new Error("Oma kann Annas Nachricht löschen");
-  oma.once("dialog", d => d.accept());
+  autoAsk(oma, { once: true });
   await ogc.locator(".gc-msg", { hasText: "Hallo zusammen" }).locator(".gc-del").click();
   await until(async () => !(await agc.locator(".gc-msgs").innerText()).includes("Hallo zusammen"), "Omas gelöschte Nachricht ist bei Anna weg");
   await agc.locator(".ai-head .x").click();
@@ -326,7 +326,7 @@ try {
   log("Zurückgezogener Link funktioniert nicht mehr");
 
   // Mallory löscht die offene Reise: danach die Startseite, keine andere Reise und keine leere im Konto (Fehlerbericht #13)
-  mal.on("dialog", d => d.accept());
+  autoAsk(mal);
   await mal.locator(".top .tm-btn").first().click();
   await mal.locator(".tm-act", { hasText: "Diese Reise löschen" }).click();
   await (await startPage(mal)).locator(".start .home-title").waitFor();
@@ -458,7 +458,7 @@ try {
   log("Aktionsseiten: einzeln per Link lesbar, die Sammlung ohne Konto weder auflist- noch abfragbar");
 
   // Zurückziehen: Link zeigt „gibt es nicht mehr“
-  anna.on("dialog", d => d.accept());
+  autoAsk(anna);
   await anna.locator("#split .cmp-box .fu-del").click();
   await anna.locator("#split .cmp-start").waitFor();
   await reloadHome(gast);

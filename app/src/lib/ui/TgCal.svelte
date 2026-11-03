@@ -124,7 +124,7 @@
   .tc-b.on { border-width: 2px; }
   .tc-b.yes.on, .tc-d.yes { background: color-mix(in srgb, var(--good) 22%, var(--paper)); color: var(--good); border-color: var(--good); }
   .tc-b.maybe.on, .tc-d.maybe { background: color-mix(in srgb, var(--warn) 18%, var(--paper)); color: var(--warn); border-color: var(--warn); }
-  .tc-b.no.on, .tc-d.no { background: color-mix(in srgb, #C4452E 16%, var(--paper)); color: #C4452E; border-color: #C4452E; }
+  .tc-b.no.on, .tc-d.no { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); color: var(--bad); border-color: var(--bad); }
   .tc-b.clear.on { background: var(--paper); border-color: var(--ink-3); }
   .tc-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .tc-m { all: unset; box-sizing: border-box; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); font-size: 20px; cursor: pointer; }
@@ -143,7 +143,7 @@
   .tc-d.fer::after { content: ""; position: absolute; inset-inline: 4px; bottom: 2px; height: 3px; border-radius: 2px; background: #5A7FB8; }
   .tc-d.off { cursor: default; background: transparent; border-style: dashed; opacity: .45; }
   .tc-d.off .n { font-weight: 400; color: var(--ink-3); }
-  .dots { display: flex; gap: 2px; font-size: 9.5px; line-height: 1; color: var(--good); font-weight: 700; }
+  .dots { display: flex; gap: 2px; font-size: 11px; line-height: 1; color: var(--good); font-weight: 700; }
   .dots i { width: 5px; height: 5px; border-radius: 50%; }
   .dots i.y { background: var(--good); }
   .dots i.m { background: var(--warn); }

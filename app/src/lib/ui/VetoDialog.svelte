@@ -63,5 +63,5 @@
   .veto-eff { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--paper-2); font-size: 14px; }
   .veto-stays { color: var(--warn); }
   .ck { display: flex; gap: 8px; align-items: center; }
-  .veto-ok { background: #C4452E; border-color: #C4452E; }
+  .veto-ok { background: var(--bad); border-color: var(--bad); }
 </style>

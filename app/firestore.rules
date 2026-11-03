@@ -3,6 +3,7 @@ rules_version = '2';
 // Reisekasse: Reisen gehören ihren Mitgliedern.
 // Rollen: owner (alles, Mitglieder verwalten, löschen), editor (Inhalt bearbeiten), viewer (nur lesen).
 // Beitreten nur mit dem Einladungsschlüssel, den der Besitzer in der Reise hinterlegt hat.
+// Eingespielt von .github/workflows/regeln.yml (pre-release → Testprojekt, main → echtes Projekt), siehe docs/FIREBASE.md.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -48,6 +49,25 @@ service cloud.firestore {
         && request.resource.data.data is string && request.resource.data.data.size() < 500000;
     }
 
+    // Öffentlicher Benutzername (#650): Dokument je Name (klein geschrieben) mit dem Konto, das ihn hat. Jeder darf einen
+    // Namen nachschlagen (Ersteller im Katalog, Verfügbarkeit), auflisten nur die eigenen. Belegen nur mit Konto (kein Gast),
+    // nur für sich selbst, Regeln wie account/username.ts; ändern und freigeben nur das Konto, dem der Name gehört.
+    function validName(key) {
+      return request.resource.data.keys().hasOnly(['uid', 'name', 'at'])
+        && request.resource.data.uid == uid()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 20
+        && request.resource.data.name.lower() == key
+        && request.resource.data.name.matches('^[\\p{L}\\p{N}_]([\\p{L}\\p{N}._]*[\\p{L}\\p{N}_])?$');
+    }
+    match /usernames/{key} {
+      allow get: if true;
+      allow list: if signedIn() && resource.data.uid == uid();
+      allow create: if signedIn() && !guest() && validName(key);
+      allow update: if signedIn() && !guest() && resource.data.uid == uid() && validName(key);
+      allow delete: if signedIn() && resource.data.uid == uid();
+    }
+
     // Buchungsdaten (Ausweis, Reisepass): nur für einen selbst, nie für Mitreisende oder Eingeladene
     match /travelDocs/{userId} {
       allow read, delete: if signedIn() && uid() == userId;
@@ -81,6 +101,35 @@ service cloud.firestore {
       allow create: if signedIn() && !guest() && validCampaign(request.resource.data);
       allow update: if signedIn() && resource.data.owner == uid() && validCampaign(request.resource.data);
       allow delete: if signedIn() && resource.data.owner == uid();
+    }
+
+    // Reisekatalog (#644): veröffentlichte Reisen, für alle lesbar (auch ohne Konto, die Liste lädt alle). Der Eintrag
+    // (Reisekern ohne Anreise und ohne Namen, catalog/publish.ts) steckt als Text in data, ohne Links und E-Mail-Adressen.
+    // Veröffentlichen nur mit Konto (kein Gast) und unter dem eigenen öffentlichen Benutzernamen (usernames/{name});
+    // ändern und zurückziehen nur das Konto, das veröffentlicht hat.
+    function validEntry(d) {
+      return d.keys().hasOnly(['uid', 'by', 'data', 'terms', 'at'])
+        && d.uid == uid()
+        && d.by is string && d.by.size() >= 3 && d.by.size() <= 20
+        && exists(/databases/$(database)/documents/usernames/$(d.by.lower()))
+        && get(/databases/$(database)/documents/usernames/$(d.by.lower())).data.uid == uid()
+        && d.data is string && d.data.size() > 20 && d.data.size() < 100000
+        && !d.data.matches('(?is).*(https?://|www[.]|[^ "@]+@[^ "@]+[.][a-z]{2,}).*')
+        && d.terms is string && d.terms.size() <= 20
+        && d.at == request.time;
+    }
+    match /catalog/{entryId} {
+      allow get, list: if true;
+      allow create: if signedIn() && !guest() && validEntry(request.resource.data);
+      allow update: if signedIn() && !guest() && resource.data.uid == uid() && validEntry(request.resource.data);
+      allow delete: if signedIn() && resource.data.uid == uid();
+    }
+
+    // Geprüfte Preise je Katalogeintrag und Anreise-Tabelle (#652): schreibt nur der Such-Dienst (Dienstkonto, ohne Konto
+    // des Meldenden), lesen alle (Richtwerte im Katalog)
+    match /catalogStats/{entryId} {
+      allow get, list: if true;
+      allow write: if false;
     }
 
     // Angebotsspeicher (#462): nur der Such-Dienst (Dienstkonto, umgeht die Regeln); die App liest und schreibt nie

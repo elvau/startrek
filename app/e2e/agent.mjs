@@ -3,7 +3,7 @@
  * Vorschlag übernehmen. Start: npm run test:cloud (braucht den Auth-Emulator)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, autoAsk } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4178/";
@@ -470,7 +470,7 @@ try {
   await until(() => p.evaluate(() => localStorage.getItem("rk2-t:leer1") === null), "unberührter Entwurf gelöscht");
   // nur leere Reisen (ohne Ort, Daten und Kosten) aufräumen; „Idee Lissabon“ hat Ort und Daten und bleibt
   let asked2 = "";
-  p.once("dialog", d => { asked2 = d.message(); void d.accept(); });
+  autoAsk(p, { once: true, on: m => { asked2 = m; } });
   await (await myTrips(p)).locator(".home-clean", { hasText: "1 Reise" }).click();
   await until(async () => (await myTrips(p)).locator(".home-row", { hasText: "Irgendwas" }).count().then(n => n === 0), "leere Reise aufgeräumt");
   if (!asked2.includes("Irgendwas") || asked2.includes("Idee Lissabon")) fail("Rückfrage: " + asked2);

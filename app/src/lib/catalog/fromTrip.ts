@@ -105,12 +105,15 @@ export function tripToCatalog(trip: Trip, o: FromTripOpts): CatalogEntry {
   // Verkehrsmittel zwischen den Stationen: Flug zwischen Stationen, Kreuzfahrt, Camper, sonst Auto bzw. Bahn
   const viaDays = live.filter(i => i.cat === "flights").flatMap(i => (activeOption(i, trip)?.legs || []).filter(l => l.dir === "via").map(l => l.dep.slice(0, 10)));
   const cruise = live.some(i => i.cruise);
-  const ground: CatalogBy = trip.camper ? "camper" : live.some(i => i.rental || i.hint === "rental" || i.hint === "road:car") ? "car" : "train";
+  // ohne Mietwagen, Auto oder Transport-Posten bleibt das Verkehrsmittel offen (Check #643: weite Wege ohne Verkehrsmittel)
+  const ground: CatalogBy | undefined = trip.camper ? "camper" : live.some(i => i.rental || i.hint === "rental" || i.hint === "road:car") ? "car"
+    : live.some(i => i.cat === "transport" && !i.auto && !i.arrival) ? "train" : undefined;
   const st = stations(days);
   stops.forEach((s, i) => {
     if (i === 0) return;
     const from = st[i - 1]?.from, to = st[i]?.from;
-    s.by = cruise ? "ship" : from && to && viaDays.some(d => d >= from && d <= to) ? "plane" : ground;
+    const by = cruise ? "ship" : from && to && viaDays.some(d => d >= from && d <= to) ? "plane" : ground;
+    if (by) s.by = by;
   });
   const nights = okDate(trip.from) && okDate(trip.to) ? Math.max(0, dayDiff(trip.from!, trip.to!)) : stops.reduce((a, s) => a + s.nights, 0);
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from "./ask.svelte";
   import { today as localToday } from "../today";
   import { arrow, i18n, locale, t, tn, type Key } from "../i18n/index.svelte";
   /*
@@ -137,9 +138,9 @@
   // unberührte Entwürfe beim Anzeigen der Startseite aufräumen; Reisen ohne Kosten nur nach Rückfrage
   $effect(() => { if (cloud.ready || !cloud.configured) sweepPristine(); });
   const empties = $derived(rows.length ? emptyTrips() : []);
-  function cleanUp() {
+  async function cleanUp() {
     const names = empties.map(m => `• ${m.name || m.place || t("trip.untitled")}`).join("\n");
-    if (!confirm(`${tn("home.cleanConfirm", empties.length)}\n\n${names}\n\n${t("tm.noUndo")}`)) return;
+    if (!await ask(`${tn("home.cleanConfirm", empties.length)}\n\n${names}\n\n${t("tm.noUndo")}`)) return;
     // Konto-Reisen frisch prüfen: auf einem anderen Gerät befüllt → bleibt
     for (const m of empties) void deleteIf(m.id, costless).catch(e => console.warn(e));
   }
@@ -167,14 +168,14 @@
     const c = await joinCompare(id, isBundle(u) ? u.list[0].id : u.id).catch(e => { console.warn(e); return null; });
     if (c) openCompare(c);
   }
-  function split(b: Bundle<Row>) {
-    if (confirm(t("cmpv.splitQ", { title: b.title, n: b.list.length }))) void splitCompare(b.cmp).catch(e => console.warn(e));
+  async function split(b: Bundle<Row>) {
+    if (await ask(t("cmpv.splitQ", { title: b.title, n: b.list.length }))) void splitCompare(b.cmp).catch(e => console.warn(e));
   }
   /** Reise direkt von der Startseite löschen (bzw. verlassen, wenn sie jemand anderem gehört) */
-  function remove(m: TripEntry, name: string, leave: boolean) {
+  async function remove(m: TripEntry, name: string, leave: boolean) {
     const q = leave ? t("tm.leaveConfirm", { name })
       : [t("tm.deleteConfirm", { name }), m.shared ? t("tm.deleteAll") : "", t("tm.noUndo")].filter(Boolean).join(" ");
-    if (confirm(q)) deleteTrip(m.id).catch(e => console.warn(e));
+    if (await ask(q)) deleteTrip(m.id).catch(e => console.warn(e));
   }
 </script>
 
