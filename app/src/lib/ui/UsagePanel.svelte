@@ -135,5 +135,5 @@
 <style>
   .adm-reset { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
   .adm-reset-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .adm-reset-go { background: #C4452E; border-color: #C4452E; color: #fff; }
+  .adm-reset-go { background: var(--bad); border-color: var(--bad); color: #fff; }
 </style>

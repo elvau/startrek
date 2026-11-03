@@ -116,7 +116,7 @@
   .inf-faq p { margin: 0; padding: 0 12px 12px; color: var(--ink-2); font-size: 14px; }
   .inf-report { margin-top: 12px; }
   .inf-foot { margin: 14px 0 0; }
-  @media (max-width: 520px) {
+  @media (max-width: 480px) {
     .inf-tabs { display: grid; grid-template-columns: repeat(4, 1fr); align-self: stretch; }
     .inf-tabs button { padding: 6px 4px; font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
     .inf-tabs button span { font-size: 17px; }

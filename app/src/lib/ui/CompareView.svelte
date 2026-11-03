@@ -301,7 +301,7 @@
   .cv-wi { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: 0 0 12px; text-align: start; background: var(--paper); }
   .cv-wi .ed-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; }
   .cv-wi-msg { color: var(--warn); text-align: start; }
-  .cv-veto { color: #C4452E; }
+  .cv-veto { color: var(--bad); }
   .cv-poll { margin: 16px 0; text-align: start; }
   .cv-poll-start { margin: 16px 0; text-align: start; }
   .cv-table, .cv-mob, .cv-picked, .cv-mode { text-align: start; }
@@ -336,7 +336,7 @@
   .cv-track span { display: block; height: 100%; border-radius: 99px; background: var(--a); }
   .cv-track span.cv-min { background: var(--good); }
   .cv-mob-acts { display: flex; flex-wrap: wrap; gap: 6px; }
-  @media (max-width: 720px) {
+  @media (max-width: 760px) {
     .cv-table { display: none; }
     .cv-mob { display: grid; gap: 10px; }
   }

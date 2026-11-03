@@ -428,18 +428,18 @@
   .tg-grid { overflow-x: auto; display: grid; gap: 2px; padding-bottom: 4px; }
   .tg-row { display: flex; gap: 2px; align-items: center; }
   .tg-name { position: sticky; inset-inline-start: 0; z-index: 1; flex: none; width: 76px; background: var(--paper); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tg-d { flex: none; width: 26px; text-align: center; font-size: 10.5px; color: var(--ink-3); }
+  .tg-d { flex: none; width: 26px; text-align: center; font-size: 11px; color: var(--ink-3); }
   .tg-d.we { color: var(--ink); font-weight: 700; background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: 4px; }
   .tg-d.hol { color: var(--warn); font-weight: 800; }
   .tg-gap { flex: none; width: 8px; align-self: stretch; margin-inline: 2px; border-radius: 2px; background: repeating-linear-gradient(135deg, var(--line) 0 3px, transparent 3px 6px); }
-  .tg-d small { font-size: 9px; }
+  .tg-d small { font-size: 11px; }
   .tg-c.we:not(.yes):not(.maybe):not(.no) { background: color-mix(in srgb, var(--ink) 8%, var(--paper-2)); }
-  .tg-fer .tg-name { font-size: 10.5px; color: var(--ink-3); }
+  .tg-fer .tg-name { font-size: 11px; color: var(--ink-3); }
   .tg-f { flex: none; width: 26px; height: 6px; border-radius: 2px; }
   .tg-f.on { background: #5A7FB8; }
-  .tg-f.sch { background: #C4452E; }
+  .tg-f.sch { background: var(--bad); }
   /* Handy: unpassende Tage ganz weg (kompakt), sonst schmal */
-  @media (max-width: 640px) { .tg-c { width: 30px; height: 30px; } .tg-d, .tg-f { width: 30px; } }
+  @media (max-width: 760px) { .tg-c { width: 30px; height: 30px; } .tg-d, .tg-f { width: 30px; } }
   .tg-view { align-self: flex-start; display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
   .tg-view button { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; min-height: 36px; background: var(--paper); color: var(--ink-2); border: 0; cursor: pointer; }
   .tg-view button.on { background: var(--a); color: #fff; }
@@ -457,18 +457,18 @@
   .tg-pw.me { font-weight: 700; }
   .tg-pw.yes { background: color-mix(in srgb, var(--good) 22%, var(--paper)); color: var(--good); border-color: var(--good); }
   .tg-pw.maybe { background: color-mix(in srgb, var(--warn) 18%, var(--paper)); color: var(--warn); border-color: var(--warn); }
-  .tg-pw.no { background: color-mix(in srgb, #C4452E 16%, var(--paper)); color: #C4452E; border-color: #C4452E; text-decoration: line-through; }
+  .tg-pw.no { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); color: var(--bad); border-color: var(--bad); text-decoration: line-through; }
   .tg-bv:disabled { opacity: .5; cursor: default; }
   .tg-bv.yes.on { background: color-mix(in srgb, var(--good) 22%, var(--paper)); color: var(--good); border-color: var(--good); }
   .tg-bv.maybe.on { background: color-mix(in srgb, var(--warn) 18%, var(--paper)); color: var(--warn); border-color: var(--warn); }
-  .tg-bv.no.on { background: color-mix(in srgb, #C4452E 16%, var(--paper)); color: #C4452E; border-color: #C4452E; }
+  .tg-bv.no.on { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); color: var(--bad); border-color: var(--bad); }
   .tg-cfg { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .tg-cfg-edit { padding: 0; }
   .tg-c { all: unset; box-sizing: border-box; flex: none; width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper-2); display: grid; place-items: center; font-size: 13px; cursor: pointer; }
   .tg-c:focus-visible { outline: 2px solid var(--a); }
   .tg-c.yes, .tg-leg .yes { background: color-mix(in srgb, var(--good) 22%, var(--paper)); color: var(--good); border-color: var(--good); }
   .tg-c.maybe, .tg-leg .maybe { background: color-mix(in srgb, var(--warn) 18%, var(--paper)); color: var(--warn); border-color: var(--warn); }
-  .tg-c.no, .tg-leg .no { background: color-mix(in srgb, #C4452E 16%, var(--paper)); color: #C4452E; border-color: #C4452E; }
+  .tg-c.no, .tg-leg .no { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); color: var(--bad); border-color: var(--bad); }
   .tg-leg i { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; border: 1px solid; margin-inline: 6px 2px; }
   .tg-best { margin: 0; padding-inline-start: 18px; display: grid; gap: 6px; }
   .tg-best li { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }

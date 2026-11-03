@@ -2,7 +2,8 @@
   /*
    * Eine Leiste oben für Startseite und Reise, immer sichtbar: links Marke (in der Reise zurück zur Startseite) und Reise-Menü,
    * in der Mitte die Kapitel (erst beim Scrollen), rechts überall gleich Gruppen, Vorlieben, Konto, hell/dunkel und Sprache.
-   * Auf dem Handy liegen Gruppen, Vorlieben, hell/dunkel und Sprache hinter „⋯“.
+   * Auf dem Handy liegen Gruppen, Vorlieben, hell/dunkel und Sprache hinter „⋯“, in der Reise (#662) auch Startseite,
+   * „Reise bearbeiten“ und „Fehler melden“: oben bleiben nur Reisename, Wichtiges, Konto und ⋯, alle 44 px.
    */
   import { t } from "../i18n/index.svelte";
   import LangSelect from "./LangSelect.svelte";
@@ -63,9 +64,9 @@
     {#if home}
       <span class="brand"><img class="brand-ico" src="icon.svg" alt="" width="22" height="22">Split<span class="brand-y">&amp;</span>Fly</span>
     {:else}
-      <button class="brand brand-btn" onclick={goHome} aria-label={t("home.back")} title={t("home.back")}><img class="brand-ico" src="icon.svg" alt="" width="22" height="22"><span class="brand-txt">Split<span class="brand-y">&amp;</span>Fly</span></button>
+      {#if !mob.on}<button class="brand brand-btn" onclick={goHome} aria-label={t("home.back")} title={t("home.back")}><img class="brand-ico" src="icon.svg" alt="" width="22" height="22"><span class="brand-txt">Split<span class="brand-y">&amp;</span>Fly</span></button>{/if}
       <TripMenu compact />
-      {#if !access.readonly}
+      {#if !access.readonly && !mob.on}
         <button class="icon-btn top-edit" class:on={heroEdit.open} onclick={() => { heroEdit.open = !heroEdit.open; if (heroEdit.open) { if (mob.on) goPage("hero"); else scrollTo({ top: 0, behavior: "smooth" }); } }}
           aria-expanded={heroEdit.open} aria-label={heroEdit.open ? t("close") : t("hero.edit")} title={heroEdit.open ? t("close") : t("hero.edit")}><span aria-hidden="true">{heroEdit.open ? "×" : "✎"}</span></button>
       {/if}
@@ -82,8 +83,6 @@
     {/if}
     <div class="top-r">
       {#if !home}<ImportantButton />{/if}
-      <!-- Handy in der Reise: Fehler melden hier statt als schwebender Knopf (dort liegt die Leiste) -->
-      {#if !home && mob.on && cloud.configured && FLIGHTS_URL}<button class="tbtn top-bug" onclick={() => (bugDialog.open = true)} aria-label={t("bug.title")} title={t("bug.open")}><span aria-hidden="true">🐞</span></button>{/if}
       <span class="top-wide"><GroupsButton /></span>
       <span class="top-wide"><PrefsButton inTrip={!home && !access.readonly} /></span>
       <Account compact />
@@ -94,6 +93,12 @@
         <button class="tbtn" onclick={() => (more = !more)} aria-expanded={more} aria-label={t("nav.more")} title={t("nav.more")}><span aria-hidden="true">⋯</span></button>
         {#if more}
           <div class="tm-pop top-pop" role="menu">
+            <!-- Handy in der Reise (#662): was nicht mehr in die Kopfzeile passt -->
+            {#if !home && mob.on}
+              <button class="tm-act top-home" onclick={() => { more = false; goHome(); }}><Icon name="home" size={16} /> {t("home.toStart")}</button>
+              {#if !access.readonly}<button class="tm-act top-edit-m" onclick={() => { more = false; heroEdit.open = true; goPage("hero"); }}><span aria-hidden="true">✎</span> {t("hero.edit")}</button>{/if}
+              {#if cloud.configured && FLIGHTS_URL}<button class="tm-act top-bug" onclick={() => { more = false; bugDialog.open = true; }}><span aria-hidden="true">🐞</span> {t("bug.title")}</button>{/if}
+            {/if}
             <button class="tm-act" onclick={() => { more = false; groups = true; }}><Icon name="users" size={16} /> {t("groups.title")}</button>
             <button class="tm-act" onclick={() => { more = false; prefs = true; }}><Icon name="sliders" size={16} /> {t("prefs.title")}</button>
             <button class="tm-act" onclick={toggleTheme}><Icon name="moon" size={16} /> {t("nav.theme")}</button>

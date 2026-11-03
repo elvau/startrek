@@ -192,7 +192,7 @@
   .pub-ok { color: var(--good); font-weight: 600; }
   .pub-f { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
   .pub-f li { line-height: 1.4; }
-  .pub-f.red li { color: #C4452E; font-weight: 600; }
+  .pub-f.red li { color: var(--bad); font-weight: 600; }
   .pub-f.yellow li { color: var(--warn); }
   .pub-prev { border: 1px dashed var(--line); border-radius: 18px; padding: 12px; background: var(--paper-2); }
   .pub-agree { align-items: flex-start; line-height: 1.4; }
@@ -200,6 +200,6 @@
   .pub-acts { display: flex; gap: 10px; flex-wrap: wrap; }
   .pub-acts .btn { min-height: 48px; flex: 1; }
   .pub-acts.col { flex-direction: column; }
-  .pub-withdraw { color: #C4452E; }
+  .pub-withdraw { color: var(--bad); }
   .pub-done { font-weight: 700; color: var(--good); }
 </style>

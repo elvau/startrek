@@ -182,7 +182,7 @@
   .gc-imgph { display: grid; place-items: center; width: 180px; height: 120px; border-radius: 10px; background: var(--line); opacity: .6; }
   .gc-day { align-self: center; margin: 4px 0; font-size: 11.5px; color: var(--ink-3); }
   .gc-day span { padding: 2px 10px; border-radius: 99px; background: var(--paper-2); border: 1px solid var(--line); }
-  .gc-err, .gc-errline { color: #C4452E; }
+  .gc-err, .gc-errline { color: var(--bad); }
   .gc-errline { margin: 0; padding: 4px 14px 0; }
   .gc-pre { display: flex; align-items: center; gap: 10px; padding: 8px 12px 0; }
   .gc-pre img { max-height: 70px; max-width: 120px; border-radius: 8px; border: 1px solid var(--line); }

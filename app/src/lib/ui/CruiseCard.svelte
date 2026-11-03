@@ -163,7 +163,7 @@
   .cr-go .chip { cursor: pointer; }
   .warnline { font-size: 13px; color: var(--warn); font-weight: 600; }
   /* Handy zugeklappt: Route als Zeile statt Leiste und Kabinen */
-  @media (max-width: 560px) {
+  @media (max-width: 480px) {
     :global(.card[data-more]:not(.edit)) .cr-route, :global(.card[data-more]:not(.edit)) .cr-cabins, :global(.card[data-more]:not(.edit)) .cr-go { display: none; }
     :global(.card[data-more]:not(.edit)) .cr-line { display: block; }
   }

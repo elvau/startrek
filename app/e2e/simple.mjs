@@ -202,10 +202,12 @@ try {
   await m.locator('.mbar [data-pg="flights"]').click();
   await m.waitForTimeout(700);
   await m.reload();
-  await m.locator(".top .brand-btn").waitFor();
+  await m.locator(".mbar").waitFor();
   if (await m.locator(".start").count()) fail("Neuladen in der Reise landet auf der Startseite");
   await until(async () => (await m.locator(".mbar .mb.on").getAttribute("data-pg")) === "flights", "Seite nach dem Neuladen");
-  await m.locator(".top .brand-btn").click();
+  // Handy (#662): Startseite über ⋯
+  await m.locator(".top .top-more .tbtn").click();
+  await m.locator(".top .top-pop .top-home").click();
   await m.locator(".start").waitFor();
   await m.reload();
   await m.locator(".start").waitFor();

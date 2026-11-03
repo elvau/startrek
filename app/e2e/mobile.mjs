@@ -81,7 +81,10 @@ try {
   if (!/€/.test(await p.locator(".mbar .mb-tot").innerText())) fail("Gesamtsumme unten fehlt");
   // Kopfzeile: der Reisename ist lesbar (nicht nur ein Buchstabe), Anmelden nur als Symbol (#553)
   const nameW = (await p.locator("header.top .tm-name").boundingBox()).width;
-  if (nameW < 90) fail("Reisename in der Kopfzeile zu schmal: " + nameW);
+  if (nameW < 120) fail("Reisename in der Kopfzeile zu schmal: " + nameW);
+  // höchstens vier Bedienelemente oben (#662): Reisename, Wichtiges, Konto, ⋯
+  const topN = await p.locator("header.top .top-in").evaluate(el => [...el.querySelectorAll("button, select, a")].filter(b => { const r = b.getBoundingClientRect(); return r.width > 0 && !b.closest(".top-pop, .nav"); }).length);
+  if (topN > 4) fail("Kopfzeile: " + topN + " Bedienelemente statt höchstens 4");
   if (await p.locator("header.top .tm-plus").isVisible()) fail("Kopfzeile: „+“ nimmt dem Reisenamen den Platz");
   log("Kopfzeile in der Reise: Reisename " + Math.round(nameW) + " px breit");
   // Lasche am Rand: auf der Übersicht nur „weiter“, antippen wechselt zur nächsten Seite, dann auch „zurück“; Anstupser einmal je Gerät
@@ -92,9 +95,10 @@ try {
   await until(async () => (await on()) === "hero", "Lasche zurück zur Übersicht");
   await until(async () => (await p.evaluate(() => localStorage.getItem("sf-mob-nudged"))) === "1", "Anstupser gemerkt");
   log("Lasche am Rand zeigt die Nachbarseite und wechselt dorthin; Anstupser einmal je Gerät");
-  // Fehler melden in der Reise: nicht schwebend (dort liegt die Leiste), sondern oben in der Kopfzeile
+  // Fehler melden in der Reise: nicht schwebend (dort liegt die Leiste), sondern im ⋯-Menü (#662)
   if (await p.locator(".bug-fab").count()) fail("Fehler melden schwebt noch");
-  await p.locator("header.top .top-bug").click();
+  await p.locator("header.top .top-more .tbtn").click();
+  await p.locator("header.top .top-pop .top-bug").click();
   await p.locator(".modal", { hasText: "Fehler melden" }).waitFor();
   await p.keyboard.press("Escape");
   await until(async () => !(await p.locator(".modal", { hasText: "Fehler melden" }).count()), "Fehler melden schließen");
@@ -182,6 +186,36 @@ try {
   if (!h1 || h1.x < 0 || h1.x > 390 || h1.y < 0 || h1.y > 844) fail("Übersicht der neuen Reise nicht zu sehen");
   log("Reisewechsel am Handy: Übersicht mit Inhalt, jede Seite von oben, Hintergrund der Übersicht (#612)");
   // Kapitelköpfe (#631): in ru und ar ragt auf keiner Seite etwas über den Rand, bei 390 und 320 px Breite
+  // Tippziele mindestens 44 px (#661): Kopf, Leiste und jede Seite; kleine Symbole zählen mit ihrer Fläche (::after).
+  // Ausgenommen: Links im Fließtext und die Laschen am Rand (.mb-edge, dort wischt man)
+  const smallTargets = pg => p.evaluate(pg => {
+    const ch = document.querySelector(`main.pager > [data-ch="${pg}"]`);
+    const els = [...document.querySelectorAll("header.top *, .mbar *"), ...(ch ? ch.querySelectorAll("*") : [])];
+    const out = [];
+    for (const el of els) {
+      const tag = el.tagName, r = el.getBoundingClientRect();
+      if (!r.width || !r.height || el.disabled || el.closest(".mb-edge")) continue;
+      const s = getComputedStyle(el);
+      if (s.display === "none" || s.visibility === "hidden") continue;
+      const inter = ["BUTTON", "SELECT", "SUMMARY", "TEXTAREA"].includes(tag) || (tag === "INPUT" && el.type !== "hidden") || (tag === "A" && el.href && !el.closest("p, small, .small, .muted, footer"));
+      if (!inter) continue;
+      let w = r.width, h = r.height;
+      if ((el.type === "checkbox" || el.type === "radio") && el.closest("label")) { const l = el.closest("label").getBoundingClientRect(); w = l.width; h = l.height; }
+      const a = getComputedStyle(el, "::after");
+      if (a.content !== "none" && a.position === "absolute" && (parseFloat(a.top) < 0 || parseFloat(a.left) < 0)) { w -= parseFloat(a.left) + parseFloat(a.right); h -= parseFloat(a.top) + parseFloat(a.bottom); }
+      if (w < 43.5 || h < 43.5) out.push(`${tag.toLowerCase()}.${String(el.className).split(" ")[0]} ${Math.round(w)}×${Math.round(h)} „${(el.getAttribute("aria-label") || el.innerText || "").trim().slice(0, 30)}“`);
+    }
+    return [...new Set(out)];
+  }, pg);
+  await p.setViewportSize({ width: 390, height: 844 });
+  for (const pg of await p.locator(".mbar [data-pg]").evaluateAll(els => els.map(e => e.getAttribute("data-pg")))) {
+    await p.locator(`.mbar [data-pg="${pg}"]`).click();
+    await until(async () => (await on()) === pg, `Leiste ${pg}`);
+    const small = await smallTargets(pg);
+    if (small.length) fail(`Tippziele unter 44 px auf ${pg}: ` + small.join(" | "));
+  }
+  log("Tippziele: Kopf, Leiste und alle Seiten mindestens 44 px (#661)");
+
   for (const lang of ["ru", "ar"]) for (const width of [390, 320]) {
     await p.setViewportSize({ width, height: 844 });
     await p.evaluate(l => localStorage.setItem("rk-lang", l), lang);

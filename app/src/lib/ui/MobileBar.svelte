@@ -67,7 +67,7 @@
   .mb.on { color: var(--a); font-weight: 800; }
   .mb-tot { flex: none; border: 0; border-inline-start: 1px solid var(--line); background: transparent; padding: 0 12px; display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 4px; align-content: center; text-align: end; color: var(--ink); font-family: inherit; }
   .mb-tot b { font: 800 15px "Bricolage Grotesque Variable", sans-serif; }
-  .mb-tot small { grid-row: 2; font-size: 10.5px; color: var(--ink-2); white-space: nowrap; }
+  .mb-tot small { grid-row: 2; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
   .mb-tot .up { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 11px; color: var(--ink-2); }
   .mb-acts { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
   /* Lasche am Rand: schmal, halb durchsichtig, mittig zwischen Kopf und Leiste */

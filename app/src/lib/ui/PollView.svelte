@@ -186,9 +186,9 @@
   .pv-set select, .pv-set input { font-size: 13px; }
   .poll-v { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .pv-n { min-width: 18px; text-align: center; }
-  .pv-veto.on { background: color-mix(in srgb, #C4452E 16%, var(--paper)); color: #C4452E; border-color: #C4452E; }
-  .pv-x { color: #C4452E; font-weight: 600; }
-  li.veto .poll-l { text-decoration: line-through; text-decoration-color: #C4452E; }
+  .pv-veto.on { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); color: var(--bad); border-color: var(--bad); }
+  .pv-x { color: var(--bad); font-weight: 600; }
+  li.veto .poll-l { text-decoration: line-through; text-decoration-color: var(--bad); }
   .pv-soon { color: var(--warn); font-weight: 700; }
   .pv-eff { grid-column: 1 / -1; color: var(--ink-2); }
   .pv-notes { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 12%, var(--paper)); font-size: 13.5px; }
@@ -196,5 +196,5 @@
   .pv-who { color: var(--ink-2); }
   .pv-like { color: var(--ink-2); }
   .pv-again { padding: 0; }
-  .pv-avoid { grid-column: 1 / -1; justify-self: start; padding: 0; color: #C4452E; text-align: start; }
+  .pv-avoid { grid-column: 1 / -1; justify-self: start; padding: 0; color: var(--bad); text-align: start; }
 </style>

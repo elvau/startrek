@@ -380,7 +380,7 @@
   .pv-x{border:0;background:none;color:var(--ink-3);font-size:13px;text-decoration:underline;padding:0 4px}
   .pv-lock{opacity:.6}
   .pv textarea{min-height:52px}
-  @media (max-width:560px){
+  @media (max-width:480px){
     .pv-sum{flex-direction:column}
     .pv-grid{grid-template-columns:1fr}
   }

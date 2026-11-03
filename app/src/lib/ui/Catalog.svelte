@@ -394,7 +394,7 @@
   .kat-pic.big .kat-dest { font-size: 26px; padding: 40px 16px 14px; }
   .kat-way { display: block; padding: 10px 14px 0; color: var(--k); }
   .kat-start { display: flex; align-items: center; gap: 8px; padding: 10px 14px 0; color: var(--k); font-size: 13px; font-weight: 600; }
-  .kat-start > small { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .kat-start > small { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
   .kat-start > span:last-child { color: var(--ink); }
   .kat-start .cr-ico { width: 24px; height: 24px; flex: none; }
   .kat-body { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px 14px; }
@@ -420,7 +420,7 @@
   .cr-flag { font-size: 16px; line-height: 1; }
   .cr-name { display: flex; flex-direction: column; line-height: 1.15; }
   .cr-name small { font-size: 11px; font-weight: 500; color: var(--ink-2); }
-  .cr-name .cr-cap { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .cr-name .cr-cap { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
   .cr-node.home { background: var(--paper-2); box-shadow: none; border: 1px solid var(--line); }
   .big .cr-node { font-size: 13px; padding: 5px 10px 5px 7px; }
   .big .cr-flag { font-size: 18px; }
