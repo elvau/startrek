@@ -18,6 +18,10 @@
   import AppFooter from "./AppFooter.svelte";
 
   let row = $state<HTMLElement>();
+  // Ränder der Leiste (#663): Verlauf, wo es seitlich weitergeht
+  let fadeS = $state(false), fadeE = $state(false);
+  function edges() { if (!row) return; fadeS = row.scrollLeft > 2; fadeE = row.scrollLeft + row.clientWidth < row.scrollWidth - 2; }
+  $effect(() => { void pages().length; requestAnimationFrame(edges); addEventListener("resize", edges); return () => removeEventListener("resize", edges); });
   const label = (k: string) => (k === "hero" ? t("mob.home") : CHAPTERS.find(c => c.k === k)?.label || k);
   const icon = (k: string) => (k === "hero" ? "home" : CHAPTERS.find(c => c.k === k)?.icon || "");
   const next = $derived(stepPage(mob.page, 1)), prev = $derived(stepPage(mob.page, -1));
@@ -34,7 +38,7 @@
 {/if}
 
 <nav class="mbar" aria-label={t("mob.bar")}>
-  <div class="mb-row" bind:this={row} role="tablist">
+  <div class="mb-row" class:fade-s={fadeS} class:fade-e={fadeE} bind:this={row} onscroll={edges} role="tablist">
     {#each pages() as k (k)}
       <button type="button" role="tab" class="mb" class:on={mob.page === k} aria-selected={mob.page === k} data-pg={k} onclick={() => { mob.more = false; goPage(k); }}>
         <Icon name={icon(k)} /><span>{label(k)}</span>
@@ -62,12 +66,20 @@
   .mbar { position: fixed; z-index: 92; left: 0; right: 0; bottom: 0; height: calc(var(--mob-bar) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); display: flex; align-items: stretch; background: color-mix(in srgb, var(--paper) 94%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
   .mb-row { flex: 1; min-width: 0; display: flex; overflow-x: auto; scrollbar-width: none; }
   .mb-row::-webkit-scrollbar { display: none; }
-  .mb { flex: none; min-width: 64px; padding: 0 6px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 600 10.5px inherit; font-family: inherit; color: var(--ink-2); white-space: nowrap; }
+  /* Reiter rasten am Rand ein; Verlauf zeigt, dass es weitergeht (#663) */
+  .mb-row { scroll-snap-type: x proximity; }
+  .mb { scroll-snap-align: start; }
+  .mb-row.fade-e { mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+  .mb-row.fade-s { mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); }
+  .mb-row.fade-s.fade-e { mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
+  :global([dir="rtl"]) .mb-row.fade-e { mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); }
+  :global([dir="rtl"]) .mb-row.fade-s { mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+  .mb { flex: none; min-width: 64px; padding: 0 6px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 600 11px inherit; font-family: inherit; color: var(--ink-2); white-space: nowrap; }
   .mb :global(svg) { width: 20px; height: 20px; }
   .mb.on { color: var(--a); font-weight: 800; }
   .mb-tot { flex: none; border: 0; border-inline-start: 1px solid var(--line); background: transparent; padding: 0 12px; display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 4px; align-content: center; text-align: end; color: var(--ink); font-family: inherit; }
   .mb-tot b { font: 800 15px "Bricolage Grotesque Variable", sans-serif; }
-  .mb-tot small { grid-row: 2; font-size: 10.5px; color: var(--ink-2); white-space: nowrap; }
+  .mb-tot small { grid-row: 2; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
   .mb-tot .up { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 11px; color: var(--ink-2); }
   .mb-acts { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
   /* Lasche am Rand: schmal, halb durchsichtig, mittig zwischen Kopf und Leiste */

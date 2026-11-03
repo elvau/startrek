@@ -372,7 +372,7 @@
   .chips .chip { padding: 7px 14px; font-size: 13.5px; }
   .chips .chip.sm { padding: 5px 10px; }
   .wz-nat { width: auto; font-size: 13px; padding: 6px 30px 6px 10px; border-radius: 99px; }
-  .wz-ai-tag { font-size: 10.5px; font-weight: 700; color: var(--idea); background: var(--idea-soft); border-radius: 99px; padding: 1px 7px; text-transform: none; letter-spacing: 0; }
+  .wz-ai-tag { font-size: 11px; font-weight: 700; color: var(--idea); background: var(--idea-soft); border-radius: 99px; padding: 1px 7px; text-transform: none; letter-spacing: 0; }
   .wz-people { display: flex; flex-direction: column; gap: 8px; }
   .wz-person { display: flex; gap: 8px; align-items: center; }
   .wz-person.off { opacity: .6; }
@@ -390,7 +390,7 @@
   .wz-idea { border: 1px dashed var(--a); border-radius: 16px; padding: 12px 14px; background: var(--a-soft); font-size: 14px; }
   .wz-idea b { color: var(--a); }
   .wz-idea .btn { display: block; margin-top: 8px; }
-  @media (max-width: 560px) {
+  @media (max-width: 480px) {
     .wz-bg { padding: 0; place-items: stretch; }
     .wz { max-height: none; height: 100dvh; border-radius: 0; width: 100%; }
     .wz-grid { grid-template-columns: 1fr; }

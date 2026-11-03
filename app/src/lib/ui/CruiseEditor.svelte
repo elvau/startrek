@@ -215,7 +215,7 @@
   .cr-x { margin-inline-start: auto; border: 0; background: none; color: var(--ink-3); font-size: 18px; padding: 2px 6px; cursor: pointer; }
   .cr-cabed .f input, .cr-cabed .f select { background: var(--paper); }
   .cr-warn { font-size: 13px; color: var(--warn); font-weight: 600; margin: 0; }
-  @media (max-width: 640px) {
+  @media (max-width: 760px) {
     .cr-pedit { grid-template-columns: 1fr 1fr; }
     .cr-pname { grid-column: 1 / -1; }
     .cr-pedit .f input { padding: 8px 4px; }

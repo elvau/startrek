@@ -69,7 +69,7 @@
   .pv-restart{margin:6px 0 0}
   .pv-tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .pv-tab{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper-2);border-radius:99px;padding:8px 14px;font-weight:600;font-size:14px;color:var(--ink-2);min-height:40px}
-  .pv-tab.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+  .pv-tab.on{background:var(--a);border-color:var(--a);color:var(--on-a)}
   .pv-n{font-size:11.5px;background:var(--warn-soft);color:var(--warn);border-radius:99px;padding:1px 7px}
-  .pv-tab.on .pv-n{background:rgba(255,255,255,.22);color:var(--paper)}
+  .pv-tab.on .pv-n{background:rgba(255,255,255,.22);color:inherit}
 </style>

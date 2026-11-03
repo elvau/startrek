@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask, askText } from "./ask.svelte";
   import PetsCard from "./PetsCard.svelte";
   import { access, app } from "../store.svelte";
   import { t, t as tt, tn, type Key } from "../i18n/index.svelte";
@@ -72,9 +73,9 @@
   }
 
   // Person oder Platzhalter aus der Reise nehmen, auch aus den Posten, denen sie zugeordnet ist
-  function remove(id: string) {
+  async function remove(id: string) {
     const x = app.trip.travelers.find(t => t.id === id);
-    if (!x || !confirm(t("trav.removeQ", { name: x.placeholder ? x.name : `${x.name} ${x.household}`.trim() || t("trav.noName") }))) return;
+    if (!x || !await ask(t("trav.removeQ", { name: x.placeholder ? x.name : `${x.name} ${x.household}`.trim() || t("trav.noName") }))) return;
     app.trip.travelers = app.trip.travelers.filter(t => t.id !== id);
     for (const it of app.trip.items) if (it.participants?.includes(id)) it.participants = it.participants.filter(p => p !== id);
     if (replacing === id) replacing = null;
@@ -125,12 +126,12 @@
     app.trip.travelers.push(...tagGroups(travelersFrom(ids, app.trip.travelers, app.trip.from || undefined), g ? [g] : []));
     pick = false;
   }
-  function saveGroup() {
+  async function saveGroup() {
     if (incomplete) { edit = true; saved = t("trav.needNames"); return; }
     // Platzhalter bleiben in der Reise und kommen nicht in gespeicherte Gruppen
     const real = app.trip.travelers.filter(t => !t.placeholder);
     if (!real.length) { saved = t("trav.noPlaceholders"); return; }
-    const name = prompt(t("trav.groupPrompt", { a: exampleFamily() }), app.trip.name);
+    const name = await askText(t("trav.groupPrompt", { a: exampleFamily() }), app.trip.name);
     if (!name?.trim()) return;
     const g = saveAsGroup(name, real, app.trip.households);
     saved = t("trav.savedGroup", { name: g.name, p: tn("n.persons", g.memberIds.length) });

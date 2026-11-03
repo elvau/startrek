@@ -113,5 +113,5 @@
   .tl-track.thin { height: 18px; background: none; box-shadow: none; }
   .tl-evbar { background: var(--c-attractions-s, var(--paper-2)) !important; border-color: var(--c-attractions) !important; font-weight: 600; }
   .tl-stay { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--c-stay-s); border: 1px solid var(--c-stay); font-size: 11px; line-height: 16px; padding-inline: 4px; overflow: hidden; white-space: nowrap; color: var(--ink-2); box-sizing: border-box; }
-  @media (max-width: 560px) { .tl-row { grid-template-columns: 1fr; } .tl-dates { text-align: start; } }
+  @media (max-width: 480px) { .tl-row { grid-template-columns: 1fr; } .tl-dates { text-align: start; } }
 </style>

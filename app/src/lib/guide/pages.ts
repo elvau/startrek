@@ -37,7 +37,7 @@ export type GuideSpots = Record<string, { w: number; h: number; spots: { key: st
 
 export const GUIDE_STAND = "November 2026";
 /** Datum der letzten inhaltlichen Änderung (JJJJ-MM-TT), mit GUIDE_STAND anheben; für lastmod in der Sitemap */
-export const GUIDE_UPDATED = "2026-11-02";
+export const GUIDE_UPDATED = "2026-11-03";
 
 export const GUIDE: GuidePage[] = [
   {
@@ -408,7 +408,8 @@ export const GUIDE: GuidePage[] = [
       "Ohne Netz kannst du weiterplanen. Die Änderungen werden beim nächsten Online-Gang abgeglichen.",
       "Ausweis- und Passnummern speichert Split&Fly nicht. Angaben „Nur für dich“ wie das Ablaufdatum deines Reisepasses liegen nur in deinem Konto, nie in einer Reise und nie bei der KI.",
       "In deinem Konto siehst du jederzeit, was Split&Fly über dich speichert, und kannst es ausdrucken oder als Datei laden.",
-      "Etwas klappt nicht? Über „Fehler melden“ (Beta) schickst du uns eine Nachricht. Am Handy erreichst du es über die Summe unten rechts.",
+      "Etwas klappt nicht? Über „Fehler melden“ (Beta) schickst du uns eine Nachricht. Am Handy erreichst du es über „⋯“ oben rechts oder die Summe unten rechts.",
+      "Am Handy stehen in der Reise oben nur der Reisename, „Wichtiges“, dein Konto und „⋯“. Unter „⋯“ findest du Startseite, „Reise bearbeiten“, „Fehler melden“, Gruppen, Vorlieben, Sprache und Währung. Der KI-Knopf weicht beim Herunterscrollen aus und kommt beim Hochscrollen zurück.",
       "Am Handy hat jede Reise unten eine Leiste mit allen Kapiteln und der Gesamtsumme. Zwischen den Kapiteln wischst du auch seitlich; die Summe antippen öffnet die Kostenübersicht, „Fehler melden“ und die Links zu Anleitung und Impressum."
     ],
     faq: [

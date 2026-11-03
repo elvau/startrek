@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from "./ask.svelte";
   /*
    * Eine Abstimmung in den neuen Arten (#432): eine Stimme, mehrere Stimmen oder Meilen-Wahl, je Möglichkeit
    * „✕ Ohne mich“, Frist. Planerin stellt Art, Meilen und Frist ein und übernimmt das Ergebnis.
@@ -65,13 +66,13 @@
   }
   const notes = $derived(open ? myNotes(p) : []);
   /** Ergebnis übernehmen: wer bei der Möglichkeit nicht dabei wäre, wird nach Rückfrage auf „nicht dabei“ gestellt */
-  function take(id: string, label: string) {
+  async function take(id: string, label: string) {
     // über Varianten (#432): Abstimmung schließen und die Variante nehmen, die anderen archivieren
     if (p.kind === "variants") {
       const tid = p.options.find(o => o.id === id)?.tripId;
       const ids = out[id] || [];
       // trotz „Ohne mich“: nachfragen, dann in der Variante wirklich auf „nicht dabei“ (#439)
-      if (ids.length && !confirm(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
+      if (ids.length && !await ask(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
       applyResult(trip, p, id);
       if (tid) void (async () => {
         if (ids.length) await editTrip(tid, tr => { for (const x of tr.travelers) if (ids.includes(x.id)) x.active = false; });
@@ -81,7 +82,7 @@
     }
     const ids = out[id] || [];
     if (ids.length) {
-      if (!confirm(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
+      if (!await ask(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
       for (const x of trip.travelers) if (ids.includes(x.id)) x.active = false;
     }
     applyResult(trip, p, id);
@@ -186,9 +187,9 @@
   .pv-set select, .pv-set input { font-size: 13px; }
   .poll-v { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .pv-n { min-width: 18px; text-align: center; }
-  .pv-veto.on { background: color-mix(in srgb, #C4452E 16%, var(--paper)); color: #C4452E; border-color: #C4452E; }
-  .pv-x { color: #C4452E; font-weight: 600; }
-  li.veto .poll-l { text-decoration: line-through; text-decoration-color: #C4452E; }
+  .pv-veto.on { background: color-mix(in srgb, var(--bad) 16%, var(--paper)); color: var(--bad); border-color: var(--bad); }
+  .pv-x { color: var(--bad); font-weight: 600; }
+  li.veto .poll-l { text-decoration: line-through; text-decoration-color: var(--bad); }
   .pv-soon { color: var(--warn); font-weight: 700; }
   .pv-eff { grid-column: 1 / -1; color: var(--ink-2); }
   .pv-notes { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--warn) 12%, var(--paper)); font-size: 13.5px; }
@@ -196,5 +197,5 @@
   .pv-who { color: var(--ink-2); }
   .pv-like { color: var(--ink-2); }
   .pv-again { padding: 0; }
-  .pv-avoid { grid-column: 1 / -1; justify-self: start; padding: 0; color: #C4452E; text-align: start; }
+  .pv-avoid { grid-column: 1 / -1; justify-self: start; padding: 0; color: var(--bad); text-align: start; }
 </style>

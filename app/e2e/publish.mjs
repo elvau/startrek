@@ -6,7 +6,7 @@
  */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { reloadHome, myTrips } from "./nav.mjs";
+import { reloadHome, myTrips, autoAsk } from "./nav.mjs";
 
 const URL = "http://127.0.0.1:4186/";
 const log = (...a) => console.log("•", ...a);
@@ -161,7 +161,7 @@ try {
   if (!(await item.innerText()).includes("zurückziehen")) fail("Menü zeigt den Eintrag nicht: " + await item.innerText());
   await item.click();
   await a.locator(".pub .pub-on", { hasText: "Im Katalog seit" }).waitFor();
-  a.once("dialog", d => d.accept());
+  autoAsk(a, { once: true });
   await a.locator(".pub .pub-withdraw").click();
   await a.locator(".pub .pub-done", { hasText: "Zurückgezogen" }).waitFor({ timeout: 10000 });
   await v.goto(URL);

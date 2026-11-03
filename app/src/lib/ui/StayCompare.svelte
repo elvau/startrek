@@ -220,9 +220,9 @@
   .cmp-own-x { border: 0; background: none; padding: 0 2px; color: var(--ink-3); cursor: pointer; font-size: 14px; line-height: 1; }
   .cmp-add { padding: 0; font-size: 13px; }
   .cmp-form { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; }
-  .cmp-form .err { color: #C4452E; margin: 0; }
+  .cmp-form .err { color: var(--bad); margin: 0; }
   .cmp-lite, .cmp-tg { display: none; }
-  @media (max-width: 600px) {
+  @media (max-width: 760px) {
     .st-cmp :global(.cmp-row) { grid-auto-flow: row; grid-auto-columns: auto; overflow: visible; scroll-snap-type: none; }
     .cmp-t:not(.open) .cmp-more, .cmp-t:not(.open) :is(img, .cmp-ph, .cmp-snap) { display: none; }
     .cmp-t:not(.open) .cmp-lite { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }

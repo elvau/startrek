@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask, askText } from "./ask.svelte";
   /*
    * Vergleichsansicht (#430): Varianten eines Vergleichs kompakt nebeneinander, zum Lesen. Desktop: Spalten je Variante;
    * Handy: Kapitel untereinander, Varianten als Balken (#433, Fassung B). Bearbeitet wird nur am Rand: „Diese nehmen“,
@@ -103,18 +104,18 @@
     const p = newPoll(t("cmpv.pollQ", { title }), "variants", all.filter(v => !archivedOf(v)).map(v => ({ label: v.label, tripId: v.id })), "one");
     void editTrip(h.id, tr => addPoll(tr, p));
   }
-  function removePoll() {
-    if (!vpoll || !confirm(t("poll.removeQ"))) return;
+  async function removePoll() {
+    if (!vpoll || !await ask(t("poll.removeQ"))) return;
     app.trip.polls = (app.trip.polls || []).filter(p => p.id !== vpoll.id);
     if (!app.trip.polls.length) delete app.trip.polls;
   }
   async function restore(v: V) { await editTrip(v.id, tr => { if (tr.cmp) delete tr.cmp.archived; }); }
   async function rename(v: V) {
-    const x = prompt(t("tm.renameVarQ"), v.label)?.trim();
+    const x = (await askText(t("tm.renameVarQ"), v.label))?.trim();
     if (x) await editTrip(v.id, tr => { if (tr.cmp) tr.cmp.label = x.slice(0, 60); });
   }
   async function remove(v: V) {
-    if (confirm(t("cmpv.removeQ", { x: v.label }))) await editTrip(v.id, leaveCompare);
+    if (await ask(t("cmpv.removeQ", { x: v.label }))) await editTrip(v.id, leaveCompare);
   }
   /* ---------- „Was wäre wenn …“ (#430): Variante mit anderem Zeitraum, Abflughafen oder Nächten, Preise neu gesucht ---------- */
   let wi = $state<{ base: string; from: string; to: string; airport: string } | null>(null);
@@ -147,7 +148,7 @@
   let menu = $state<string | null>(null);
   // Vergleich trennen: alle wieder eigene Reisen, danach zurück zur Startseite (Effekt oben)
   async function split() {
-    if (confirm(t("cmpv.splitQ", { title, n: all.length }))) await splitCompare(id);
+    if (await ask(t("cmpv.splitQ", { title, n: all.length }))) await splitCompare(id);
   }
 </script>
 
@@ -301,7 +302,7 @@
   .cv-wi { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: 0 0 12px; text-align: start; background: var(--paper); }
   .cv-wi .ed-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; }
   .cv-wi-msg { color: var(--warn); text-align: start; }
-  .cv-veto { color: #C4452E; }
+  .cv-veto { color: var(--bad); }
   .cv-poll { margin: 16px 0; text-align: start; }
   .cv-poll-start { margin: 16px 0; text-align: start; }
   .cv-table, .cv-mob, .cv-picked, .cv-mode { text-align: start; }
@@ -336,7 +337,7 @@
   .cv-track span { display: block; height: 100%; border-radius: 99px; background: var(--a); }
   .cv-track span.cv-min { background: var(--good); }
   .cv-mob-acts { display: flex; flex-wrap: wrap; gap: 6px; }
-  @media (max-width: 720px) {
+  @media (max-width: 760px) {
     .cv-table { display: none; }
     .cv-mob { display: grid; gap: 10px; }
   }

@@ -39,3 +39,27 @@ export async function startPage(page) {
   if (await back.count()) await back.click();
   return page;
 }
+
+/**
+ * Rückfragen der App (#665, AskDialog statt confirm/prompt) automatisch bestätigen, wie früher page.on("dialog", accept).
+ * text: Antwort für Textfragen (Wert oder Funktion der Frage), once: nur die nächste, on: bekommt den Fragetext.
+ */
+export function autoAsk(page, { text, once = false, on } = {}) {
+  let stop = false;
+  void (async () => {
+    while (!stop && !page.isClosed()) {
+      try {
+        if (await page.locator(".ask .ask-yes").count()) {
+          const msg = await page.locator(".ask .ask-text").innerText();
+          const inp = page.locator(".ask .ask-in");
+          if (text != null && (await inp.count())) await inp.fill(typeof text === "function" ? text(msg) : text);
+          on?.(msg);
+          await page.locator(".ask .ask-yes").click();
+          if (once) stop = true;
+        }
+      } catch { /* Seite wechselt gerade */ }
+      await new Promise(r => setTimeout(r, 100));
+    }
+  })();
+  return { stop: () => { stop = true; } };
+}

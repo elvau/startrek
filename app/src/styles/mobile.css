@@ -69,3 +69,36 @@ body.mob main.pager.nudge > .chapter{animation:pg-nudge 1s ease-in-out}
 @keyframes pg-nudge{0%,100%{transform:none}35%,55%{transform:translateX(-44px)}}
 @keyframes pg-nudge-rtl{0%,100%{transform:none}35%,55%{transform:translateX(44px)}}
 @media (prefers-reduced-motion:reduce){body.mob main.pager.nudge > .chapter{animation:none}}
+
+/* ---------- Tippziele mindestens 44 px am Handy (#661) ----------
+ * Knöpfe, Chips, Felder und Menüzeilen werden 44 px hoch. Textlinks (.linkbtn) bekommen die Höhe mit negativem Rand, das
+ * Layout bleibt gleich. Kleine Symbole behalten ihre Größe, die Tippfläche wächst unsichtbar per ::after auf 44 × 44.
+ * Ausnahmen: Links im Fließtext und die Laschen am Rand (.mb-edge, dort wischt man).
+ */
+body.mob :is(.btn, .chip, .tm-btn, .tm-act, .tm-trip, .dr-btn, .kat-chip, .mode button, .fam-l, .fam-more, .cat-a, .xc-l, .pv-c){min-height:var(--tap)}
+body.mob :is(.fam-l, .fam-more, .cat-a, .xc-l){align-items:center}
+body.mob :is(.fam-more, .xc-l){display:flex}
+body.mob :is(.tbtn, .x, .icon-btn, .tm-plus, .sheet-x){min-width:var(--tap);min-height:var(--tap)}
+body.mob :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), select, textarea){min-height:var(--tap)}
+body.mob .linkbtn{display:inline-flex;align-items:center;min-height:var(--tap);margin-block:-8px}
+body.mob summary{min-height:var(--tap);display:flex;align-items:center}
+body.mob .sh-cats summary{display:grid}
+body.mob .dp-title-in{margin-block:-10px}
+/* kleine Symbole: Fläche per ::after */
+body.mob :is(.help-q, .dp-del, .cat-t, .gc-del, .dp-gap-add, .dec-edit, .brand-btn, .dabei, .people.list .person .p-x){position:relative}
+body.mob :is(.help-q, .dp-del, .cat-t, .gc-del, .dp-gap-add, .dec-edit, .brand-btn, .dabei, .p-x, .lp-btn)::after{content:"";position:absolute;inset:min(0px, calc((100% - var(--tap)) / 2))}
+body.mob :is(.btn, .chip, .tm-btn, .pv-c, .pv-tab, .tc-m, .pv-step button){min-width:var(--tap)}
+body.mob :is(.pv-tab, .pv-ai, .person.add, .add, .real-note summary, .tc-m, .pv-step button, .bug-fab, .ht-del, .ht-cmp){min-height:var(--tap)}
+body.mob :is(.lang-sel, .cur-sel, .bug-fab, .ht-del, .ht-cmp){min-width:var(--tap)}
+body.mob label:has(> .sw){min-height:var(--tap);display:inline-flex;align-items:center;gap:8px}
+body.mob input[type=range]{min-height:var(--tap)}
+body.mob .dual{height:var(--tap)}
+body.mob .dual input[type=range]{height:var(--tap)}
+body.mob :is(.dual-track, .dual-fill){top:19px}
+body.mob .qf-step button{min-width:var(--tap);min-height:var(--tap)}
+body.mob :is(label.in-row, label.check){min-height:var(--tap);display:flex;align-items:center}
+body.mob :is(.souv-step, .pv-step, .qf-step, [class$="-step"]) button{min-width:var(--tap);min-height:var(--tap)}
+
+/* schwebende Knöpfe beim Herunterscrollen weg (#663, fabs.ts) */
+body.mob :is(.ai-fab, .bug-fab, .gc-fab, .ai-note){transition:transform .25s ease, opacity .2s ease}
+body.mob.fab-hide :is(.ai-fab, .bug-fab, .gc-fab, .ai-note){transform:translateY(180%);opacity:0;pointer-events:none}
