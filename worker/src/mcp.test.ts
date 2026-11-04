@@ -164,6 +164,18 @@ describe("KI-Konnektor (MCP)", () => {
     expect(sauna.data.offers.map((o: any) => o.id)).toEqual(["c"]);
   });
 
+  it("Kombi aus mehreren Einheiten wird genannt (#677)", async () => {
+    const d = deps();
+    const r = await tool(d, "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 6, childAges: [4, 7, 10], rooms: 4 });
+    expect(r.data.offers[0].units).toBe(4);
+    expect(r.data.unitsNote).toContain("4 separate units");
+    const id = (await tool(d, "create_trip", { place: "Scharnitz", from: "2027-05-07", to: "2027-05-10", adults: 6, childAges: [4, 7, 10], travelersFrom: "user" })).data.tripId;
+    await tool(d, "add_stay", { tripId: id, offerId: "s1" });
+    expect((await tool(d, "get_trip", { tripId: id })).data.items.find((i: any) => i.category === "stay").units).toBe(4);
+    const one = await tool(d, "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, rooms: 1 });
+    expect(one.data.unitsNote).toBeUndefined();
+  });
+
   it("findet kleine Orte und ignoriert Gemeinde oder Insel nach dem Komma (#622)", async () => {
     let got: any;
     const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });

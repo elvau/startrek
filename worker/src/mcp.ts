@@ -479,8 +479,11 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
           id: o.id, name: o.name, priceTotal: Math.round(o.total), currency: o.currency, provider: o.via || o.sourceName, link: links[i],
           ...(o.score != null ? { rating: o.score } : {}), ...(o.stars ? { stars: o.stars } : {}), ...(o.place ? { area: o.place } : {}),
           ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {}),
-          ...(o.bedrooms != null ? { bedrooms: o.bedrooms } : {}), ...(o.sleeps != null ? { sleeps: o.sleeps } : {})
+          ...(o.bedrooms != null ? { bedrooms: o.bedrooms } : {}), ...(o.sleeps != null ? { sleeps: o.sleeps } : {}),
+          ...(sq.rooms > 1 ? { units: sq.rooms } : {})
         })),
+        // Kombi (#677): bei mehreren Zimmern ist jedes Angebot eine Kombination getrennter Einheiten
+        ...(top.length && sq.rooms > 1 ? { unitsNote: `Each offer is a combination of ${sq.rooms} separate units (rooms or apartments, possibly different names at the provider), not one house. Say so when you present it; for one house use bedroomsMin.` } : {}),
         ...(Object.keys(applied).length ? { appliedPreferences: applied } : {}),
         ...(top.length ? {} : { note: amen.length && res.offers.length ? `No accommodation listing ${amen.join(", ")} found: providers list only some facilities. Do not add other offers as if they had them; tell the user` : want > 0 && res.offers.length ? "No accommodation with this board found: try a lower board or without board" : sq.bedroomsMin || sq.sleepsMin ? ROOMS_NONE : "No accommodation found" })
       };

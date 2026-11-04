@@ -29,6 +29,7 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    fehlen sonst still); die KI fragt nach und setzt den Ort mit `update_travelers` (`homes`).
    Ausstattung (#681): `search_stays` mit `amenities` (`pool`, `indoorPool`, `waterslide`, `sauna`) behält nur Angebote, deren `facts`
    sie nennen (Hallenbad, Wasserrutsche, Sauna aus den Merkmalen von Booking.com bzw. Trivago); Pool filtern die Anbieter selbst.
+   Kombi (#677): mit `rooms` > 1 tragen die Treffer `units` und das Ergebnis `unitsNote` (getrennte Einheiten, kein Haus), `get_trip` zeigt `units`.
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist
