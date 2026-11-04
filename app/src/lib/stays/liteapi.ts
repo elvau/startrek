@@ -100,6 +100,7 @@ export function fromLite(hotels: any[], rates: any[], q: StayQuery, link?: strin
       ...(url ? { url } : {}),
       ...(num(h.rating) != null ? { score: num(h.rating) } : {}), ...(num(h.reviewCount) ? { reviews: num(h.reviewCount) } : {}),
       ...(num(h.stars) ? { stars: Math.round(num(h.stars)!) } : {}),
+      ...(typeof h.city === "string" && h.city ? { city: h.city } : {}),
       ...(h.address || h.city ? { place: [h.address, h.city].filter(Boolean).join(", ") } : {}),
       ...(num(h.latitude) != null && num(h.longitude) != null ? { lat: num(h.latitude), lon: num(h.longitude) } : {}),
       ...(typeof h.main_photo === "string" && /^https:\/\//.test(h.main_photo) ? { image: h.main_photo } : {}),

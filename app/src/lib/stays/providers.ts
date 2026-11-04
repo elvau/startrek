@@ -83,7 +83,7 @@ export function fromBooking(data: any, currency = "EUR"): StayOffer[] {
     id: "booking:" + a.id, source: "booking", sourceName: "Booking.com",
     name: a.name || "?", total: priceNum(a.price?.book), currency: a.price?.currency || currency, url: a.url,
     score: num(a.rating?.review_score), reviews: num(a.rating?.number_of_reviews), stars: num(a.rating?.stars) || undefined,
-    place: place(a.location?.district_name, a.location?.city_name),
+    place: place(a.location?.district_name, a.location?.city_name), ...(a.location?.city_name ? { city: String(a.location.city_name) } : {}),
     lat: num(a.location?.coordinates?.latitude), lon: num(a.location?.coordinates?.longitude),
     facts: factsOf(a.facilities || []), board: boardOf([...(a.facilities || []), ...(a.meal_plan ? [String(a.meal_plan)] : [])], a.name)
   })).filter((o: StayOffer) => o.total > 0);
@@ -151,6 +151,9 @@ function cheapestDeal(a: any): { total: number; via?: string; url?: string; curr
   return { total, via: d.advertiser || undefined, url: d.deal_url || undefined, currency: d.currency || undefined, ...(board ? { board } : {}), ...(ids.includes("freeCancellation") ? { freeCancel: true } : {}) };
 }
 
+/** erster Teil vor dem Komma („Split, Kroatien“ → Split) */
+const cityOf = (s: unknown): string | undefined => (typeof s === "string" ? s.split(",")[0].trim() || undefined : undefined);
+
 export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[] {
   return (data?.accommodations || []).map((a: any) => {
     const amen = String(a.top_amenities || "").split(/,\s*/).filter(Boolean);
@@ -161,7 +164,9 @@ export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[]
       id: "trivago:" + a.accommodation_id, source: "trivago", sourceName: "Trivago", via: deal?.via || a.advertisers || undefined,
       name: a.accommodation_name || "?", total: deal ? deal.total : priceNum(a.price_per_stay), currency: deal?.currency || a.currency || "EUR", url: deal?.url || a.accommodation_url,
       score: num(a.review_rating), reviews: num(priceNum(a.review_count)), stars: num(a.hotel_rating) || undefined,
-      place: a.distance || a.country_city || undefined, lat: num(a.latitude), lon: num(a.longitude), image: a.main_image || undefined,
+      place: a.distance || a.country_city || undefined,
+      // „Arrach, Deutschland“ (Ort, Land); fehlt die Angabe, ist es der Ort vor dem Komma in distance
+      ...(cityOf(a.country_city || a.distance) ? { city: cityOf(a.country_city || a.distance) } : {}), lat: num(a.latitude), lon: num(a.longitude), image: a.main_image || undefined,
       facts: factsOf(amen), board: deal?.board || boardOf(amen, a.accommodation_name), kind, ...(deal?.freeCancel ? { freeCancel: true } : {})
     };
     return o;
