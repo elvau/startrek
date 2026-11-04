@@ -3,7 +3,7 @@ import type { SourceStatus } from "../flights/types";
 import { searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
 import { searchLite } from "./liteapi";
 import { inCurrency, type Rates } from "../fx";
-import { keepStays } from "./sort";
+import { keepKind, keepStays } from "./sort";
 import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StaySearchResult } from "./types";
 import { errorText } from "../netcheck";
 import { parseLang, parseMarket } from "./market";
@@ -74,7 +74,7 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
     }
   }));
   sources.sort((a, b) => STAY_PROVIDERS.findIndex(p => p.id === a.id) - STAY_PROVIDERS.findIndex(p => p.id === b.id));
-  return { offers: keepStays(mergeStays(lists), q), sources };
+  return { offers: keepStays(keepKind(mergeStays(lists), q.type), q), sources };
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
