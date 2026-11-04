@@ -36,6 +36,9 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Nach Namen (#683): `names` (bis 5) sucht nur diese Häuser (Booking.com `hotel_names` mit dem Ort, Trivago je Name eine Namenssuche in einer
    Verbindung); bekannte Häuser ohne freies Angebot stehen in `soldOut` (Booking.com meldet sie als Fehler `hotel_names_no_availability`).
    Mit Pool-Filter gesucht tragen alle Treffer „Pool“ (die Anbieter filtern, Trivago nennt ihn oft nicht).
+   Gleiches Haus aus zwei Quellen: Merkmale werden zusammengeführt (z. B. Wasserrutsche aus den Merkmalen von Booking.com am günstigeren
+   Trivago-Treffer). Sortierung „Für Familien“ hebt Familienhotels laut Name (Familotel, Familienhotel, Kinderhotel) und Rutschen hervor.
+   Eine automatische Zusatzsuche nach „Familotel …“ bringt nichts: Trivago filtert freie Texte nicht nach dem Wort (getestet 11/2026).
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist

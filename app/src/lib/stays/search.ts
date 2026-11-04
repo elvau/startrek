@@ -1,6 +1,6 @@
 /* Unterkünfte: alle Quellen gleichzeitig fragen, Doppelte zusammenführen, nach Preis sortieren */
 import type { SourceStatus } from "../flights/types";
-import { searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
+import { FACTS, searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
 import { searchLite } from "./liteapi";
 import { inCurrency, type Rates } from "../fx";
 import { keepStays } from "./sort";
@@ -41,6 +41,12 @@ const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,
 const near = (a: StayOffer, b: StayOffer) =>
   a.lat == null || b.lat == null || a.lon == null || b.lon == null || (Math.abs(a.lat - b.lat) < 0.003 && Math.abs(a.lon - b.lon) < 0.004);
 
+/** Merkmale zweier Quellen ohne Doppelte, in der Reihenfolge von FACTS (Unbekanntes dahinter), höchstens 8 */
+export function factsUnion(a: string[] = [], b: string[] = []): string[] {
+  const rank = (x: string) => { const i = FACTS.findIndex(([l]) => l === x); return i < 0 ? FACTS.length : i; };
+  return [...new Set([...a, ...b])].sort((x, y) => rank(x) - rank(y)).slice(0, 8);
+}
+
 export function mergeStays(lists: StayOffer[][]): StayOffer[] {
   const out: StayOffer[] = [];
   for (const o of lists.flat().map(withRooms)) {
@@ -48,8 +54,10 @@ export function mergeStays(lists: StayOffer[][]): StayOffer[] {
     if (i < 0) { out.push(o); continue; }
     // echter Preis geht vor einem Testpreis (Sandbox)
     const [keep, other] = (!!out[i].test === !!o.test ? o.total < out[i].total : out[i].test) ? [o, out[i]] : [out[i], o];
-    // Schlafzimmer, die nur eine Quelle kennt (Booking.com auf Nachfrage), gehen nicht verloren (#674)
-    out[i] = { ...keep, ...(keep.bedrooms == null && other.bedrooms != null ? { bedrooms: other.bedrooms } : {}), ...(keep.sleeps == null && other.sleeps != null ? { sleeps: other.sleeps } : {}) };
+    // Schlafzimmer, die nur eine Quelle kennt (Booking.com auf Nachfrage), gehen nicht verloren (#674);
+    // Merkmale beider Quellen zusammen, z. B. Wasserrutsche von Booking.com am günstigeren Trivago-Treffer (#683)
+    const facts = factsUnion(keep.facts, other.facts);
+    out[i] = { ...keep, ...(keep.bedrooms == null && other.bedrooms != null ? { bedrooms: other.bedrooms } : {}), ...(keep.sleeps == null && other.sleeps != null ? { sleeps: other.sleeps } : {}), ...(facts.length ? { facts } : {}) };
   }
   return out.sort((a, b) => a.total - b.total);
 }
