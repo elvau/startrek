@@ -3,7 +3,7 @@ import trivago from "./trivago.fixture.json";
 import booking from "./booking.fixture.json";
 import { boardOf, bookingArgs, bookingMarket, trivagoMarket, fromBooking, fromTrivago, markBreakfast, priceNum, searchTrivago, trivagoArgs, trivagoTool } from "./providers";
 import { configuredStays, mergeStays, parseStayQuery, searchStays, STAY_PROVIDERS } from "./search";
-import { centerKm, keepStays, sortStays } from "./sort";
+import { centerKm, keepKind, keepStays, sortStays } from "./sort";
 import { activeMins, defaultStayQuery, effectiveSources, sourceNotWired, guests, staysHidden, stayToOption, takeStay } from "./app";
 import type { StayOffer, StayQuery } from "./types";
 import type { Item, Trip } from "../model";
@@ -277,9 +277,9 @@ describe("Unterkunftssuche: Filter und Sortierung", () => {
       o("Chalet Alpenblick", 60), o("Zimmer 7", 50), o("Neu", 40, { facts: ["Küche"] }), o("Sternchen", 30, { stars: 3 }),
       o("Booking-Haus", 20, { kind: "whole" }), o("Lite", 10, { kind: "hotel" })
     ];
-    expect(keepStays(l, { type: "whole" }).map(x => x.id)).toEqual(["Ferienhaus am See", "Chalet Alpenblick", "Neu", "Booking-Haus"]);
-    expect(keepStays(l, { type: "hotel" }).map(x => x.id)).toEqual(["Landhotel Hirsch", "Gasthaus zur Post", "Limehome Aparthotel", "Sternchen", "Lite"]);
-    expect(keepStays(l, { type: "all" })).toHaveLength(l.length);
+    expect(keepKind(l, "whole").map(x => x.id)).toEqual(["Ferienhaus am See", "Chalet Alpenblick", "Neu", "Booking-Haus"]);
+    expect(keepKind(l, "hotel").map(x => x.id)).toEqual(["Landhotel Hirsch", "Gasthaus zur Post", "Limehome Aparthotel", "Sternchen", "Lite"]);
+    expect(keepKind(l, "all")).toHaveLength(l.length);
   });
   it("Booking: bei gesetzter Art gelten die Treffer als diese Art", () => {
     expect(fromBooking(booking, "EUR", { type: "whole" })[0].kind).toBe("whole");
@@ -292,7 +292,7 @@ describe("Unterkunftssuche: Filter und Sortierung", () => {
   it("Sterne gelten nicht bei ganzen Unterkünften, bei „alles“ nur für Hotels", () => {
     const l = [o("h3", 100, { stars: 3 }), o("h5", 200, { stars: 5 }), o("w", 50)];
     // Art „ganz“ filtert seit #675 selbst nach Art; die Sterne-Regel prüft keepStays für Angebote, die als ganz gelten
-    expect(keepStays(l.map(x => ({ ...x, kind: "whole" as const })), { minStars: 4, type: "whole" }).map(x => x.id)).toEqual(["h3", "h5", "w"]);
+    expect(keepStays(l, { minStars: 4, type: "whole" }).map(x => x.id)).toEqual(["h3", "h5", "w"]);
     expect(keepStays(l, { minStars: 4, type: "all" }).map(x => x.id)).toEqual(["h5", "w"]);
     expect(keepStays(l, { minStars: 4, type: "hotel" }).map(x => x.id)).toEqual(["h5"]);
   });

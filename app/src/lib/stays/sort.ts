@@ -26,12 +26,14 @@ export function stayKind(o: StayOffer): "whole" | "hotel" | undefined {
   return o.stars ? "hotel" : undefined;
 }
 
-/** was die Anbieter trotz Filter liefern: falsche Art, zu wenig Sterne oder zu schwache Bewertung fliegt raus (Art unbekannt: bei gesetzter Art ebenfalls) */
+/** bei gesetzter Art (ganz/Hotel) nur Angebote dieser Art; unbekannte Art fliegt raus. Im Such-Dienst (`searchStays`), nicht in der App */
+export const keepKind = (list: StayOffer[], type?: StayType): StayOffer[] => (!type || type === "all" ? list : list.filter(o => stayKind(o) === type));
+
+/** was die Anbieter trotz Filter liefern: zu wenig Sterne oder zu schwache Bewertung fliegt raus */
 export function keepStays(list: StayOffer[], q: Pick<StayQuery, "minStars" | "minScore"> & { type?: StayType }): StayOffer[] {
   // Ferienwohnungen und Häuser haben keine Sterne: bei „ganze Unterkunft“ gilt der Filter nicht, bei „alles“ nur für Hotels
   const starsOk = (o: StayOffer) => !q.minStars || q.type === "whole" || (q.type === "all" && !o.stars) || (o.stars || 0) >= q.minStars;
-  const kindOk = (o: StayOffer) => !q.type || q.type === "all" || stayKind(o) === q.type;
-  return list.filter(o => kindOk(o) && starsOk(o) && (!q.minScore || o.score == null || o.score >= q.minScore));
+  return list.filter(o => starsOk(o) && (!q.minScore || o.score == null || o.score >= q.minScore));
 }
 
 /** Testangebote (Sandbox, keine echten Preise) immer hinter die echten, sonst stehen sie bei „Günstigste“ oben */
