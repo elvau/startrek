@@ -140,7 +140,7 @@
   const empties = $derived(rows.length ? emptyTrips() : []);
   async function cleanUp() {
     const names = empties.map(m => `• ${m.name || m.place || t("trip.untitled")}`).join("\n");
-    if (!await ask(`${tn("home.cleanConfirm", empties.length)}\n\n${names}\n\n${t("tm.noUndo")}`)) return;
+    if (!await ask(`${tn("home.cleanConfirm", empties.length)}\n\n${names}\n\n${t("tm.noUndo")}`, { ok: t("ask.delete") })) return;
     // Konto-Reisen frisch prüfen: auf einem anderen Gerät befüllt → bleibt
     for (const m of empties) void deleteIf(m.id, costless).catch(e => console.warn(e));
   }
@@ -169,13 +169,13 @@
     if (c) openCompare(c);
   }
   async function split(b: Bundle<Row>) {
-    if (await ask(t("cmpv.splitQ", { title: b.title, n: b.list.length }))) void splitCompare(b.cmp).catch(e => console.warn(e));
+    if (await ask(t("cmpv.splitQ", { title: b.title, n: b.list.length }), { ok: t("cmpv.split"), danger: false })) void splitCompare(b.cmp).catch(e => console.warn(e));
   }
   /** Reise direkt von der Startseite löschen (bzw. verlassen, wenn sie jemand anderem gehört) */
   async function remove(m: TripEntry, name: string, leave: boolean) {
     const q = leave ? t("tm.leaveConfirm", { name })
       : [t("tm.deleteConfirm", { name }), m.shared ? t("tm.deleteAll") : "", t("tm.noUndo")].filter(Boolean).join(" ");
-    if (await ask(q)) deleteTrip(m.id).catch(e => console.warn(e));
+    if (await ask(q, leave ? { ok: t("ask.leave"), danger: false } : { ok: t("ask.delete"), title: t("tm.delete") })) deleteTrip(m.id).catch(e => console.warn(e));
   }
 </script>
 

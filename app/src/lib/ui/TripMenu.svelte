@@ -44,7 +44,7 @@
     const q = cur && !isOwner
       ? t("tm.leaveConfirm", { name: app.trip.name })
       : [t("tm.deleteConfirm", { name: app.trip.name }), cur && Object.keys(cur.members).length > 1 ? t("tm.deleteAll") : "", t("tm.noUndo")].filter(Boolean).join(" ");
-    if (await ask(q)) act(() => deleteTrip(app.trip.id));
+    if (await ask(q, cur && !isOwner ? { ok: t("ask.leave"), danger: false } : { ok: t("ask.delete"), title: t("tm.delete") })) act(() => deleteTrip(app.trip.id));
   }
 </script>
 

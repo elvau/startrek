@@ -87,7 +87,7 @@
   /** Melden (#649): geht wie ein Fehlerbericht an Dani, mit der Kennung des Eintrags */
   function report(e: CatalogEntry) { bugDialog.text = t("cat.reportText", { id: e.id }); bugDialog.open = true; }
   async function withdraw(e: CatalogEntry) {
-    if (!await ask(t("pub.withdrawQ"))) return;
+    if (!await ask(t("pub.withdrawQ"), { ok: t("pub.withdraw") })) return;
     try {
       await withdrawEntry(e.id);
       loaded = loaded.filter(x => x.id !== e.id);

@@ -3659,4 +3659,7 @@ export const pl: Dict = {
   "gt.where": "Dokąd jedziecie?",
   "gt.wherePh": "Miejscowość, region lub kraj",
   "gt.whoLater": "Imiona i kolejne osoby możesz dodać do podróży w każdej chwili.",
+  "ask.delete": "Usuń",
+  "ask.leave": "Opuść",
+  "ask.reset": "Zresetuj",
 };

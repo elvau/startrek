@@ -23,3 +23,10 @@ describe("Stufen der Oberfläche (#666)", () => {
     expect(bad).toEqual([]);
   });
 });
+
+describe("Rückfragen (#670)", () => {
+  it("jedes ask(…) nennt die Aktion im Hauptknopf (ok)", () => {
+    const bad = src.flatMap(x => x.s.split("\n").filter(l => /\bawait ask\(/.test(l) && !/\bok:/.test(l)).map(l => `${x.f}: ${l.trim().slice(0, 80)}`));
+    expect(bad).toEqual([]);
+  });
+});

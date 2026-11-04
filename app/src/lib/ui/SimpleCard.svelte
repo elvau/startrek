@@ -66,7 +66,7 @@
     <p class="muted small simple-hidden">
       {t("simple.hidden", { n: hidden, sum: eur(hiddenSum) })}{v != null && Math.abs(v - hiddenSum) > 0.005 ? ` ${t("simple.hiddenSum")}` : ""}
       <button class="linkbtn" onclick={() => setDetailed(cat, true)}>{t("simple.restore")}</button>
-      <button class="linkbtn danger" onclick={async () => { if (await ask(t("simple.discardConfirm", { n: hidden, label }))) discardDetails(cat); }}>{t("simple.discard")}</button>
+      <button class="linkbtn danger" onclick={async () => { if (await ask(t("simple.discardConfirm", { n: hidden, label }), { ok: t("simple.discard") })) discardDetails(cat); }}>{t("simple.discard")}</button>
     </p>
   {/if}
 </article>

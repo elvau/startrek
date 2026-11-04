@@ -3788,4 +3788,7 @@ export const ar: Dict = {
   "gt.where": "إلى أين؟",
   "gt.wherePh": "مدينة أو منطقة أو دولة",
   "gt.whoLater": "يمكنك إضافة الأسماء وأشخاص آخرين إلى الرحلة في أي وقت.",
+  "ask.delete": "حذف",
+  "ask.leave": "مغادرة",
+  "ask.reset": "إعادة تعيين",
 };

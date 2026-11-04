@@ -84,7 +84,7 @@
   }
   async function withdraw() {
     const p = app.trip.pub;
-    if (!p || !await ask(t("pub.withdrawQ"))) return;
+    if (!p || !await ask(t("pub.withdrawQ"), { ok: t("pub.withdraw") })) return;
     busy = true; err = "";
     try {
       await withdrawEntry(p.id);

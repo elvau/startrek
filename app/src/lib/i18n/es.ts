@@ -3527,4 +3527,7 @@ export const es: Dict = {
   "gt.where": "¿Adónde vais?",
   "gt.wherePh": "Lugar, región o país",
   "gt.whoLater": "Puedes añadir nombres y más personas al viaje en cualquier momento.",
+  "ask.delete": "Eliminar",
+  "ask.leave": "Salir",
+  "ask.reset": "Restablecer",
 };
