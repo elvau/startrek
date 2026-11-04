@@ -72,7 +72,7 @@
       const tid = p.options.find(o => o.id === id)?.tripId;
       const ids = out[id] || [];
       // trotz „Ohne mich“: nachfragen, dann in der Variante wirklich auf „nicht dabei“ (#439)
-      if (ids.length && !await ask(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
+      if (ids.length && !await ask(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }), { ok: t("ai.apply"), danger: false })) return;
       applyResult(trip, p, id);
       if (tid) void (async () => {
         if (ids.length) await editTrip(tid, tr => { for (const x of tr.travelers) if (ids.includes(x.id)) x.active = false; });
@@ -82,7 +82,7 @@
     }
     const ids = out[id] || [];
     if (ids.length) {
-      if (!await ask(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }))) return;
+      if (!await ask(t("veto.applyQ", { x: label, names: ids.map(x => trip.travelers.find(y => y.id === x)?.name || "?").join(", ") }), { ok: t("ai.apply"), danger: false })) return;
       for (const x of trip.travelers) if (ids.includes(x.id)) x.active = false;
     }
     applyResult(trip, p, id);

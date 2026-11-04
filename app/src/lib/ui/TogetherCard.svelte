@@ -225,7 +225,7 @@
     nq = ""; nopts = ""; ndue = ""; nmode = "one"; adding = false;
   }
   async function removePoll(id: string) {
-    if (!await ask(t("poll.removeQ"))) return;
+    if (!await ask(t("poll.removeQ"), { ok: t("ask.delete") })) return;
     trip.polls = (trip.polls || []).filter(p => p.id !== id);
     if (!trip.polls.length) delete trip.polls;
   }
@@ -353,7 +353,7 @@
     {:else if entered}
       <p class="muted small">{t("tg.noneYet")}</p>
     {/if}
-    {#if !access.readonly}<button class="linkbtn danger small tg-reset" onclick={async () => { if (await ask(t("tg.resetQ"))) delete trip.avail; }}>{t("tg.reset")}</button>{/if}
+    {#if !access.readonly}<button class="linkbtn danger small tg-reset" onclick={async () => { if (await ask(t("tg.resetQ"), { ok: t("ask.reset") })) delete trip.avail; }}>{t("tg.reset")}</button>{/if}
   {/if}
 
   <h3 class="tg-polls">🗳 {t("poll.title")} <Help k="polls" /></h3>

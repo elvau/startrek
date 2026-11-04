@@ -75,7 +75,7 @@
   // Person oder Platzhalter aus der Reise nehmen, auch aus den Posten, denen sie zugeordnet ist
   async function remove(id: string) {
     const x = app.trip.travelers.find(t => t.id === id);
-    if (!x || !await ask(t("trav.removeQ", { name: x.placeholder ? x.name : `${x.name} ${x.household}`.trim() || t("trav.noName") }))) return;
+    if (!x || !await ask(t("trav.removeQ", { name: x.placeholder ? x.name : `${x.name} ${x.household}`.trim() || t("trav.noName") }), { ok: t("remove") })) return;
     app.trip.travelers = app.trip.travelers.filter(t => t.id !== id);
     for (const it of app.trip.items) if (it.participants?.includes(id)) it.participants = it.participants.filter(p => p !== id);
     if (replacing === id) replacing = null;

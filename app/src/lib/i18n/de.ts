@@ -3525,4 +3525,7 @@ export const de = {
   "gt.where": "Wohin geht's?",
   "gt.wherePh": "Ort, Region oder Land",
   "gt.whoLater": "Namen und weitere Personen kannst du jederzeit in der Reise ergänzen.",
+  "ask.delete": "Löschen",
+  "ask.leave": "Verlassen",
+  "ask.reset": "Zurücksetzen",
 };

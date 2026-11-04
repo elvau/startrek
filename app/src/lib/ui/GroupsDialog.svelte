@@ -19,14 +19,14 @@
   let det = $state<string | null>(null);
   function close() { void saveDocsNow(); onclose(); }
   async function delPerson(id: string, name: string) {
-    if (!await ask(t("grp.deletePersonConfirm", { name }))) return;
+    if (!await ask(t("grp.deletePersonConfirm", { name }), { ok: t("ask.delete") })) return;
     removePerson(id);
     // Buchungsdaten der Person mit löschen (auch wenn sie noch nicht geladen waren)
     if (cloud.user) void loadDocs().then(() => removeDoc(id));
     if (det === id) det = null;
   }
   async function delAll() {
-    if (!await ask(t("per.docsDeleteAllConfirm"))) return;
+    if (!await ask(t("per.docsDeleteAllConfirm"), { ok: t("ask.delete") })) return;
     try { await deleteAllDocs(); } catch (e) { console.warn(e); }
   }
   const summary = (p: (typeof dir.people)[number]) => {
@@ -71,7 +71,7 @@
                   <span class="muted small">{t("grp.noPeople")}</span>
                 {/each}
               </div>
-              <button class="linkbtn danger" onclick={async () => { if (await ask(t("grp.deleteConfirm", { name: g.name }))) removeGroup(g.id); }}>{t("grp.delete")}</button>
+              <button class="linkbtn danger" onclick={async () => { if (await ask(t("grp.deleteConfirm", { name: g.name }), { ok: t("ask.delete") })) removeGroup(g.id); }}>{t("grp.delete")}</button>
             </div>
           {/if}
         </div>
