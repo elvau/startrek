@@ -9,7 +9,7 @@ import type { Key } from "../i18n/types";
 import { clickId } from "./click";
 import { expediaActivityLink, expediaCarLink, expediaFlightLink, expediaHotelLink, expediaPackageLink } from "./expedia";
 import {
-  airbnbLink, bookingLink, getYourGuideLink, googleFlightsLink, klookLink, skyscannerLink, tiqetsLink, tripadvisorRestaurantsLink, viatorLink,
+  airbnbLink, bookingLink, vrboLink, getYourGuideLink, googleFlightsLink, klookLink, skyscannerLink, tiqetsLink, tripadvisorRestaurantsLink, viatorLink,
   type ActivityLinkQuery, type FlightLinkQuery, type StayLinkQuery
 } from "../links";
 
@@ -92,6 +92,7 @@ export const PARTNERS = {
   /* Unterkünfte */
   booking: p<StayLinkQuery>({ name: "Booking.com", cat: "stay", net: "cj", link: bookingLink }),
   airbnb: p<StayLinkQuery>({ name: "Airbnb", cat: "stay", link: airbnbLink }),
+  vrbo: p<StayLinkQuery>({ name: "Vrbo", cat: "stay", link: vrboLink }),
   expediaHotels: p<StayLinkQuery>({ name: "Expedia", cat: "stay", net: "cj", link: expediaHotelLink, tag: EXPEDIA }),
   /* Erlebnisse */
   getYourGuide: p<ActivityLinkQuery>({ name: "GetYourGuide", cat: "activity", net: "cj", link: getYourGuideLink }),
