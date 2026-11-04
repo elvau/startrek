@@ -16,11 +16,22 @@ export function familyScore(o: Pick<StayOffer, "facts" | "score">): number {
   return f.reduce((s, x) => s + (pts[x] || 0), 0) + (o.score || 0) / 2;
 }
 
-/** was die Anbieter trotz Filter liefern: zu wenig Sterne oder zu schwache Bewertung fliegt raus */
+const HOTEL_NAME = /hotel|gasthof|gasthaus|pension|hostel|\bresort\b|\binn\b|motel|\bgarni\b|\bhof\b/i;
+const WHOLE_NAME = /ferienwohnung|ferienhaus|ferienhof|apartment|appartement|\bvilla\b|hütte|huette|chalet|cottage|bungalow|holiday (home|house)|vacation (home|rental)|\bfewo\b|\bhaus\b|\bhome\b/i;
+/** Art einer Unterkunft: Angabe des Anbieters, sonst geraten (Name, Sterne, Küche); undefined = unbekannt */
+export function stayKind(o: StayOffer): "whole" | "hotel" | undefined {
+  if (o.kind) return o.kind;
+  if (HOTEL_NAME.test(o.name)) return "hotel";
+  if (WHOLE_NAME.test(o.name) || o.facts?.includes("Küche")) return "whole";
+  return o.stars ? "hotel" : undefined;
+}
+
+/** was die Anbieter trotz Filter liefern: falsche Art, zu wenig Sterne oder zu schwache Bewertung fliegt raus (Art unbekannt: bei gesetzter Art ebenfalls) */
 export function keepStays(list: StayOffer[], q: Pick<StayQuery, "minStars" | "minScore"> & { type?: StayType }): StayOffer[] {
   // Ferienwohnungen und Häuser haben keine Sterne: bei „ganze Unterkunft“ gilt der Filter nicht, bei „alles“ nur für Hotels
   const starsOk = (o: StayOffer) => !q.minStars || q.type === "whole" || (q.type === "all" && !o.stars) || (o.stars || 0) >= q.minStars;
-  return list.filter(o => starsOk(o) && (!q.minScore || o.score == null || o.score >= q.minScore));
+  const kindOk = (o: StayOffer) => !q.type || q.type === "all" || stayKind(o) === q.type;
+  return list.filter(o => kindOk(o) && starsOk(o) && (!q.minScore || o.score == null || o.score >= q.minScore));
 }
 
 /** Testangebote (Sandbox, keine echten Preise) immer hinter die echten, sonst stehen sie bei „Günstigste“ oben */

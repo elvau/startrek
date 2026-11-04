@@ -78,19 +78,21 @@ function bookingFilters(q: StayQuery) {
   };
 }
 
-export function fromBooking(data: any, currency = "EUR"): StayOffer[] {
+export function fromBooking(data: any, currency = "EUR", q?: Pick<StayQuery, "type">): StayOffer[] {
   return (data?.accommodations || []).map((a: any): StayOffer => ({
     id: "booking:" + a.id, source: "booking", sourceName: "Booking.com",
     name: a.name || "?", total: priceNum(a.price?.book), currency: a.price?.currency || currency, url: a.url,
     score: num(a.rating?.review_score), reviews: num(a.rating?.number_of_reviews), stars: num(a.rating?.stars) || undefined,
     place: place(a.location?.district_name, a.location?.city_name),
+    // Booking filtert die Art selbst (accommodation_types): Treffer gelten als diese Art
+    ...(q?.type === "whole" || q?.type === "hotel" ? { kind: q.type } : {}),
     lat: num(a.location?.coordinates?.latitude), lon: num(a.location?.coordinates?.longitude),
     facts: factsOf(a.facilities || []), board: boardOf([...(a.facilities || []), ...(a.meal_plan ? [String(a.meal_plan)] : [])], a.name)
   })).filter((o: StayOffer) => o.total > 0);
 }
 
 export async function searchBooking(q: StayQuery, url: string, f: typeof fetch = fetch): Promise<StayOffer[]> {
-  return fromBooking(await callTool(url, "accommodations_search", bookingArgs(q), "Booking.com", f), q.currency);
+  return fromBooking(await callTool(url, "accommodations_search", bookingArgs(q), "Booking.com", f), q.currency, q);
 }
 
 /* ---------- Trivago (vergleicht viele Portale, z. B. Airbnb, CHECK24, Booking.com) ---------- */
@@ -156,8 +158,8 @@ export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[]
     const amen = String(a.top_amenities || "").split(/,\s*/).filter(Boolean);
     const deal = cheapestDeal(a);
     // Trivago kennt keinen Filter nach Art: ganze Unterkunft = mit Küche, Hotel = mit Sternen
-    const kind = amen.some(x => /küche|kitchen/i.test(x)) ? "whole" : a.hotel_rating > 0 ? "hotel" : undefined;
-    const o: StayOffer & { kind?: string } = {
+    const kind: StayOffer["kind"] = amen.some(x => /küche|kitchen/i.test(x)) ? "whole" : a.hotel_rating > 0 ? "hotel" : undefined;
+    const o: StayOffer = {
       id: "trivago:" + a.accommodation_id, source: "trivago", sourceName: "Trivago", via: deal?.via || a.advertisers || undefined,
       name: a.accommodation_name || "?", total: deal ? deal.total : priceNum(a.price_per_stay), currency: deal?.currency || a.currency || "EUR", url: deal?.url || a.accommodation_url,
       score: num(a.review_rating), reviews: num(priceNum(a.review_count)), stars: num(a.hotel_rating) || undefined,
@@ -165,8 +167,8 @@ export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[]
       facts: factsOf(amen), board: deal?.board || boardOf(amen, a.accommodation_name), kind, ...(deal?.freeCancel ? { freeCancel: true } : {})
     };
     return o;
-  }).filter((o: StayOffer & { kind?: string }) => o.total > 0 && !(q?.type === "whole" && o.kind === "hotel") && !(q?.type === "hotel" && o.kind === "whole"))
-    .map(({ kind: _k, ...o }: StayOffer & { kind?: string }) => o);
+  }).filter((o: StayOffer) => o.total > 0 && !(q?.type === "whole" && o.kind === "hotel") && !(q?.type === "hotel" && o.kind === "whole"))
+    .map((o: StayOffer) => o);
 }
 
 export async function searchTrivago(q: StayQuery, url = TRIVAGO_MCP, f: typeof fetch = fetch): Promise<StayOffer[]> {

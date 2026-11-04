@@ -96,7 +96,7 @@ export function fromLite(hotels: any[], rates: any[], q: StayQuery, link?: strin
     const facts = c.free ? ["Kostenlos stornierbar"] : [];
     const url = link ? bookingUrl(link, r.hotelId, q) : undefined;
     return {
-      id: "liteapi:" + r.hotelId, source: "liteapi", sourceName: "liteAPI", name: h.name || "?", total: Math.round(c.total), currency: c.currency,
+      id: "liteapi:" + r.hotelId, source: "liteapi", kind: "hotel", sourceName: "liteAPI", name: h.name || "?", total: Math.round(c.total), currency: c.currency,
       ...(url ? { url } : {}),
       ...(num(h.rating) != null ? { score: num(h.rating) } : {}), ...(num(h.reviewCount) ? { reviews: num(h.reviewCount) } : {}),
       ...(num(h.stars) ? { stars: Math.round(num(h.stars)!) } : {}),
