@@ -13,7 +13,7 @@ import { parseEventQuery } from "../../app/src/lib/events/search";
 import type { FlightOffer, FlightQuery, SearchResult } from "../../app/src/lib/flights/types";
 import type { StayOffer, StayQuery, StaySearchResult } from "../../app/src/lib/stays/types";
 import type { EventQuery, EventSearchResult } from "../../app/src/lib/events/types";
-import { hhKey, type Directory, type Item, type Person, type Status, type Traveler, type Trip } from "../../app/src/lib/model";
+import { hhKey, markUnverified, type Directory, type Item, type Person, type Status, type Traveler, type Trip } from "../../app/src/lib/model";
 import { addCost, addFlight, addStay, aiKnows, clashes, aiState, aiWrote, changesSinceAi, changeTraveler, isCat, LANGS, markBooked, newTrip, removeItem, renameFamily, setHome, setHousehold, tripPeople, type HouseholdInput, tripSummary, updateTrip } from "../../app/src/lib/connector/trips";
 import { joinTarget } from "../../app/src/lib/variants";
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
@@ -21,7 +21,7 @@ import { cleanName, saveGroup, savePeople, travelerColor, travelersFor, traveler
 import { applyPeople } from "../../app/src/lib/people";
 import type { HomeHit } from "./home";
 import { mergePrefs, prefsFor } from "../../app/src/lib/prefs";
-import { prefsFromAi } from "../../app/src/lib/agent/agent";
+import { prefsFromAi, unverifiedOf } from "../../app/src/lib/agent/agent";
 import { STYLES, uid, type Prefs } from "../../app/src/lib/model";
 import type { KeyInfo } from "./apikey";
 import { bucket, ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
@@ -90,6 +90,7 @@ const INSTRUCTIONS = [
   "Split&Fly does not book: each offer has a link to the provider, where the user books. Never ask for passport or ID data.",
   "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family.",
   "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, being brought, taxi, train, carpool, per household from its settings) and meals; never add these as costs. If the user tells you how a family gets to the airport (e.g. they are brought, take the train, ride with another family, parking is free or booked), set it with households in create_trip or update_travelers.",
+  "Hard criteria of the user (number of bedrooms, pool, indoor pool, water slide, sauna, pets allowed, step-free …) count only if the offer's data confirms them (bedrooms, sleeps, facts, board). Never add an offer as fitting when it does not: tell the user which criterion you could not check, and either leave it out or add it with unverified (add_stay), so the app marks it 'please check'. Offers that clearly miss a hard criterion (e.g. fewer bedrooms) are not added.",
   "Bedrooms are not rooms: for one house or apartment with N bedrooms (or for N guests) for the whole group, search_stays with bedroomsMin (and sleepsMin), never with rooms N; rooms N books N separate units (e.g. several studios).",
   "Searches use the user's saved preferences (own, group, trip) for anything you leave out and always skip countries to avoid; pass tripId to use a trip's preferences, and the result lists appliedPreferences. If the user has none yet, offer to set up a short travel profile by asking about airports, budget, accommodation, meals, travel style and countries to avoid, then save it with save_my_preferences after they confirmed. Wishes for one trip only go to set_trip_preferences.",
   "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. When you swap a flight or accommodation for another offer, pass replace with the old item id, so the trip does not count both. Put alternatives you propose into one comparison (create_trip with compareWith and a compareTitle such as 'Summer holiday 2027', each variant with a short variantName); existing trips join with update_trip.",
@@ -252,7 +253,7 @@ const TRIP_TOOLS = [
       ...REPLACE
     }, required: ["tripId", "offerId"] }
   },
-  { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip. To swap an accommodation for a cheaper or better one, pass replace with the old item id; otherwise both stay in the trip and count.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang, ...REPLACE }, required: ["tripId", "offerId"] } },
+  { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip. To swap an accommodation for a cheaper or better one, pass replace with the old item id; otherwise both stay in the trip and count.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang, ...REPLACE, unverified: { type: "array", items: { type: "string" }, maxItems: 5, description: "Hard criteria of the user that this offer's data does not confirm (e.g. '4 bedrooms', 'water slide'), short, in the user's language. The item is marked 'please check' in the app" } }, required: ["tripId", "offerId"] } },
   {
     name: "add_cost", title: "Add cost to trip",
     description: "Add another cost (rental car, transfers at the destination, tickets, an accommodation the user already booked, an estimate) to a trip, in EUR. Already booked or paid: pass status, the booking number and paidBy (family name in the trip that paid; the app then settles the costs between the families). Not for the way to the departure airport or airport parking: the app calculates them for every flight.",
@@ -638,8 +639,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
           const items = addFlight(t, saved!.offer, lng(a.language), seats ? { seats, travelers, ids } : undefined);
           return done(items, { added: items.map(i => i.id), bookings: items.length, name: items[0]?.name });
         }
-        const it = addStay(t, saved!.offer, (saved as { q: StayQuery }).q, lng(a.language));
-        return done([it], { added: it.id, name: it.name });
+        const it = markUnverified(addStay(t, saved!.offer, (saved as { q: StayQuery }).q, lng(a.language)), unverifiedOf(a.unverified));
+        return done([it], { added: it.id, name: it.name, ...(it.check ? { markedForCheck: it.checkWhy } : {}) });
       });
     }
     case "add_cost": {

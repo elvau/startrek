@@ -113,6 +113,16 @@ describe("KI-Reiseplaner", () => {
     expect(f.asked.stays[0]).toMatchObject({ rooms: 1, type: "whole", bedroomsMin: 4 });
   });
 
+  it("ungeprüfte harte Kriterien gehen mit dem Vorschlag mit (#676)", async () => {
+    const f = fake([
+      call("search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13" }),
+      call("propose_trips", { trips: [{ title: "A", summary: "s", place: "Palma", from: "2027-05-10", to: "2027-05-13", stayId: "s1", unverified: ["Wasserrutsche", "", 7] }] })
+    ]);
+    const res = await runAgent(req, f.deps);
+    expect(res.trips[0].unverified).toEqual(["Wasserrutsche"]);
+    expect(JSON.stringify(f.asked.bodies[0])).toContain("Hard criteria in the wish");
+  });
+
   it("vergangene Daten und ungültige Eingaben gehen als Fehler an die KI zurück", async () => {
     const f = fake([
       call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2026-01-10", return: "2026-01-13" }),

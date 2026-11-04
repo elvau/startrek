@@ -330,6 +330,7 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
       ...(eur != null ? { eur } : {}), ...(o?.estimate ? { estimate: true } : {}), ...(i.arrival ? { arrival: true } : {}),
       ...(i.from ? { from: i.from, to: i.to } : {}), ...(o?.source?.url ? { link: partner ? o.source.url : plainLink(o.source.url) } : {}),
       ...(i.options.length > 1 ? { offers: i.options.length } : {}),
+      ...(i.check ? { pleaseCheck: i.checkWhy?.length ? i.checkWhy : true } : {}),
       ...(i.booking?.ref ? { bookingRef: i.booking.ref } : {}), ...(i.payments?.length ? { paidEur: Math.round(i.payments.reduce((s, p) => s + (p.amount || 0), 0)) } : {}),
       // Nebenkosten (nicht enthalten, nicht weggeklickt) und Kaution: die genaue Summe rechnet die App
       ...(o?.extras?.some(x => !x.off && x.pay !== "included") ? { extraCosts: o.extras.filter(x => !x.off && x.pay !== "included").map(x => ({ kind: x.kind, amount: x.amount, per: x.basis, pay: x.pay, ...(x.est ? { estimate: true } : {}) })) } : {}),

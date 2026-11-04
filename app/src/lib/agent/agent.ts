@@ -226,6 +226,9 @@ const UPDATE = {
   }
 };
 
+/** harte Kriterien (#676): nur Bestätigtes gilt als passend, Ungeprüftes wird gekennzeichnet */
+const HARD = "Hard criteria in the wish (number of bedrooms, pool, indoor pool, water slide, sauna, pets allowed, step-free …) count only if an offer's data confirms them (bedrooms, sleeps, facts, board). Prefer offers that confirm them. If you still propose an offer that does not confirm one, list it in unverified and say so in the summary; never present it as fitting. Offers that clearly miss a hard criterion (e.g. fewer bedrooms) are not proposed.";
+
 const PROPOSE =
     {
       name: "propose_trips",
@@ -270,6 +273,7 @@ const PROPOSE =
                   required: ["label", "eur"]
                 },
                 stayId: S("id of the chosen accommodation offer (not for camper trips)"),
+                unverified: { type: "ARRAY", items: { type: "STRING" }, description: "Hard criteria from the wish that the chosen accommodation's data (bedrooms, sleeps, facts, board) does not confirm, short and in the user's language, e.g. '4 bedrooms', 'water slide'. Empty if all are confirmed" },
                 camper: {
                   type: "OBJECT", description: "Only for trips with a camper or motorhome: the route as stops instead of an accommodation",
                   properties: {
@@ -341,6 +345,7 @@ export function systemPrompt(r: AgentRequest, events = true): string {
       : `Before searching, check whether essential details are missing: the departure city (if the home town is unknown and the wish names none), the number of travelers (if the app has none and the wish names none), the number and ages of children (if the wish mentions children but the ages are unknown), the travel period (month, holidays or dates) and the trip length or maximum number of nights. If any of these is missing, call ask_user once, in ${lang}, with one short question covering all missing points and 2-4 tappable answers. Do not ask about anything you can reasonably assume (budget, hotel type). If nothing essential is missing, search right away.`,
     ...prefsLines(r),
     "Use search_flights and search_stays to find real offers. Never invent prices, flights or hotels.",
+    HARD,
     "If the travelers say they arrive on their own (by car, train or bus, \"we drive\", \"no flight\", \"Anreise selbst\" …), do not search flights: propose destinations within reach, each with a real accommodation and ownArrival (how, rough round-trip cost for the group), no flightId.",
     CAMPER_NEW,
     ...splitLines(r),
@@ -464,6 +469,10 @@ export function prefsFromAi(a: any): Prefs | undefined {
   if (avoid.length) p.avoid = [...new Set(avoid as string[])].slice(0, 30);
   return Object.keys(p).length ? p : undefined;
 }
+
+/** ungeprüfte Kriterien (#676): kurze Texte, höchstens fünf */
+export const unverifiedOf = (v: unknown): string[] =>
+  Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string").map(x => x.trim().slice(0, 60)).filter(Boolean))].slice(0, 5) : [];
 
 const stayBrief = (o: StayOffer) => ({ id: o.id, name: o.name, totalPrice: Math.round(o.total), ...(onSiteFees(o) ? { plusOnSite: onSiteFees(o) } : {}), currency: o.currency, rating: o.score, stars: o.stars, area: o.place, ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {}), ...(o.bedrooms != null ? { bedrooms: o.bedrooms } : {}), ...(o.sleeps != null ? { sleeps: o.sleeps } : {}) });
 
@@ -606,6 +615,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
         ...(flight ? { flight } : {}),
         ...(split ? { bookings } : {}),
         ...(sts.length ? { stays: sts } : st ? { stay: st.offer, stayQuery: st.q } : {}),
+        ...(unverifiedOf(t.unverified).length && (st || sts.length) ? { unverified: unverifiedOf(t.unverified) } : {}),
         ...(camp.length ? { camper: { own: t.camper.own === true, stops: camp } } : {}),
         total: Math.round(bookings.reduce((s, b) => s + bookingPrice(b), 0) + (sts.length ? sts.reduce((s, x) => s + x.offer.total, 0) : st?.offer.total || 0) + (camp.length ? campTotal(camp, size()) : 0)),
         ...(partyFromAi && !groups.some(g => !knownGroups.has(g.key)) ? { party: { ...party, childAges: [...party.childAges] } } : {}),

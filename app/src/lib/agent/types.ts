@@ -146,6 +146,8 @@ export interface AgentTrip {
   stayQuery?: StayQuery;
   /** statt stay: mehrere Unterkünfte für Teilgruppen (#494), zusammen alle Reisenden */
   stays?: StayBooking[];
+  /** harte Kriterien des Wunsches, die die Daten der Unterkunft nicht bestätigen (#676), z. B. „4 Schlafzimmer“; Posten „bitte prüfen“ */
+  unverified?: string[];
   /** Flug + Unterkunft für alle, ohne Anreise zum Flughafen */
   total: number;
   /** mit diesen Reisenden gesucht (nur, wenn die App keine kannte) */

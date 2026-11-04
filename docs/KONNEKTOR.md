@@ -23,6 +23,8 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Anbietern getrennte Einheiten (z. B. mehrere Studios). Die Suche nennt keine Schlafzimmer: Angaben kommen aus dem Namen und für die fünf
    günstigsten ganzen Unterkünfte von Booking.com aus dessen Auskunft (`answer_property_qa_by_ids_v2`, eine Verbindung, `app/src/lib/stays/rooms.ts`);
    bei mehreren Wohnungstypen zählt die größte. Ohne Angabe fällt ein Angebot weg (wie beim Filter `board`), der KI-Planer nutzt dasselbe.
+   Harte Kriterien (#676), die ein Angebot nicht bestätigt: `add_stay` mit `unverified` (kurze Texte in der Sprache des Nutzers) markiert
+   den Posten „bitte prüfen“ (`check`, `checkWhy`), `get_trip` zeigt `pleaseCheck`.
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist

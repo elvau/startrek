@@ -126,6 +126,20 @@ describe("KI-Konnektor (MCP)", () => {
     expect((await tool(d, "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 6, bedroomsMin: 40 })).error).toBe(true);
   });
 
+  it("ungeprüfte harte Kriterien: Posten „bitte prüfen“ (#676)", async () => {
+    const d = deps();
+    await tool(d, "search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13", adults: 2 });
+    const id = (await tool(d, "create_trip", { place: "Palma", from: "2027-05-10", to: "2027-05-13", adults: 2, travelersFrom: "user" })).data.tripId;
+    const add = await tool(d, "add_stay", { tripId: id, offerId: "s1", unverified: ["4 Schlafzimmer", " Wasserrutsche ", "4 Schlafzimmer", 3] });
+    expect(add.data.markedForCheck).toEqual(["4 Schlafzimmer", "Wasserrutsche"]);
+    const trip: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(trip.items.find(i => i.cat === "stay")).toMatchObject({ check: true, checkWhy: ["4 Schlafzimmer", "Wasserrutsche"] });
+    const got = await tool(d, "get_trip", { tripId: id });
+    expect(got.data.items.find((i: any) => i.category === "stay").pleaseCheck).toEqual(["4 Schlafzimmer", "Wasserrutsche"]);
+    // ohne Angabe: keine Markierung
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1" })).data.markedForCheck).toBeUndefined();
+  });
+
   it("findet kleine Orte und ignoriert Gemeinde oder Insel nach dem Komma (#622)", async () => {
     let got: any;
     const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });
