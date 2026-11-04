@@ -19,7 +19,7 @@ export function occupancies(q: Pick<StayQuery, "adults" | "childAges" | "rooms">
 
 /** Ausstattung, die liteAPI hier nicht prüfen kann: dann keine Treffer statt falscher */
 const UNKNOWN_MUSTS = ["pool", "kitchen", "aircon", "parking"];
-export const liteFits = (q: StayQuery) => q.type !== "whole" && !(q.must || []).some(m => UNKNOWN_MUSTS.includes(m));
+export const liteFits = (q: StayQuery) => q.type !== "whole" && !q.names?.length && !(q.must || []).some(m => UNKNOWN_MUSTS.includes(m));
 
 /** Verpflegung aus Kürzel oder Name („RO“, „BB“, „Breakfast Included“, „Half Board“ …) */
 export function boardOfLite(type?: string, name?: string): Board | undefined {

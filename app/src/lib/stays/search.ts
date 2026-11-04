@@ -67,9 +67,11 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
       const test = !!p.test?.(env);
       // mit Filter „kostenlos stornierbar“ gesucht: gilt für alle Treffer (die Anbieter filtern selbst)
       const free = !!q.must?.includes("freeCancel");
+      // mit Pool-Filter gesucht: die Anbieter haben gefiltert, nennen den Pool aber oft nicht (Trivago: „Wellness“) (#683)
+      const pool = !!q.must?.includes("pool");
       const offers = inCurrency(await withTimeout(p.search(q.type === "hotel" ? q : { ...q, minStars: undefined }, env, f), timeoutMs), "total", q.currency || "EUR", env.FX)
-        .map(o => ({ ...o, ...(test ? { test } : {}), ...(free ? { freeCancel: true } : {}) }));
-      sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0, ...(test ? { test } : {}) });
+        .map(o => ({ ...o, ...(test ? { test } : {}), ...(free && !o.soldOut ? { freeCancel: true } : {}), ...(pool && !o.soldOut && !o.facts?.includes("Pool") ? { facts: ["Pool", ...(o.facts || [])] } : {}) }));
+      sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.filter(o => !o.soldOut).length, ms: Date.now() - t0, ...(test ? { test } : {}) });
       return offers;
     } catch (e) {
       sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: errorText(e) });
@@ -77,7 +79,10 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
     }
   }));
   sources.sort((a, b) => STAY_PROVIDERS.findIndex(p => p.id === a.id) - STAY_PROVIDERS.findIndex(p => p.id === b.id));
-  return { offers: keepStays(mergeStays(lists), q), sources };
+  // ausgebucht (#683): getrennt melden, nicht als Treffer; was eine andere Quelle frei hat, gilt nicht als ausgebucht
+  const free = mergeStays(lists.map(l => l.filter(o => !o.soldOut)));
+  const soldOut = [...new Map(lists.flat().filter(o => o.soldOut && !free.some(x => norm(x.name) === norm(o.name))).map(o => [norm(o.name), o.name])).values()];
+  return { offers: keepStays(free, q), sources, ...(soldOut.length ? { soldOut } : {}) };
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -104,6 +109,11 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   if (o.bedroomsMin != null && !int(o.bedroomsMin, 1, 20)) return "Schlafzimmer: 1 bis 20";
   if (o.sleepsMin != null && !int(o.sleepsMin, 1, 50)) return "Schlafplätze: 1 bis 50";
   if (o.radiusKm != null && !int(o.radiusKm, 1, 20)) return "Umkreis: 1 bis 20 km";
+  let names: string[] | undefined;
+  if (o.names != null) {
+    if (!Array.isArray(o.names) || o.names.length > 5 || !o.names.every(n => typeof n === "string" && n.trim().length >= 2 && n.trim().length <= 80)) return "Namen: bis zu 5, je 2 bis 80 Zeichen";
+    if (o.names.length) names = [...new Set((o.names as string[]).map(n => n.trim()))];
+  }
   const one = o.bedroomsMin != null || o.sleepsMin != null;
   const adults = o.adults ?? 1, rooms = one ? 1 : o.rooms ?? 1, childAges = o.childAges ?? [];
   if (!int(adults, 1, 20)) return "1 bis 20 Erwachsene";
@@ -133,7 +143,8 @@ export function parseStayQuery(b: unknown): StayQuery | string {
     ...(sources ? { sources } : {}), currency, ...(must ? { must } : {}),
     ...(o.minStars != null ? { minStars: o.minStars as number } : {}), ...(o.minScore ? { minScore: o.minScore as number } : {}),
     ...(o.bedroomsMin != null ? { bedroomsMin: o.bedroomsMin as number } : {}), ...(o.sleepsMin != null ? { sleepsMin: o.sleepsMin as number } : {}),
-    // Umkreis nur mit Mittelpunkt
-    ...(o.radiusKm != null && "lat" in geo ? { radiusKm: o.radiusKm as number } : {})
+    // Umkreis nur mit Mittelpunkt, nicht bei der Suche nach Namen
+    ...(o.radiusKm != null && "lat" in geo && !names ? { radiusKm: o.radiusKm as number } : {}),
+    ...(names ? { names } : {})
   };
 }
