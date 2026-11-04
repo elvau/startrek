@@ -146,6 +146,7 @@ export function toolsFor(r: Pick<AgentRequest, "asked" | "travelersKnown" | "cur
           checkout: S("YYYY-MM-DD"),
           rooms: { type: "INTEGER", description: "Rooms (default one per two adults), e.g. 4 for 10 people with 2-3 per room. Separate bookable units, not bedrooms" },
           bedroomsMin: { type: "INTEGER", description: "Only if the wish asks for bedrooms: one house or apartment for everyone with at least this many bedrooms (drops offers whose bedrooms are unknown)" },
+          names: { type: "ARRAY", items: { type: "STRING" }, description: "Optional: search only these properties by name (up to 5), e.g. family hotels you know in the area" },
           ...party,
           ...unit
         },
@@ -228,6 +229,9 @@ const UPDATE = {
 
 /** harte Kriterien (#676): nur Bestätigtes gilt als passend, Ungeprüftes wird gekennzeichnet */
 const HARD = "Hard criteria in the wish (number of bedrooms, pool, indoor pool, water slide, sauna, pets allowed, step-free …) count only if an offer's data confirms them (bedrooms, sleeps, facts, board). Prefer offers that confirm them. If you still propose an offer that does not confirm one, list it in unverified and say so in the summary; never present it as fitting. Offers that clearly miss a hard criterion (e.g. fewer bedrooms) are not proposed.";
+
+/** Häuser nach Namen (#683): bekannte Familienhotels gezielt suchen, auch außerhalb der ersten Treffer */
+const NAMES = "If the wish names hotels, or asks for something the area search rarely shows (e.g. family hotels with water slides) and you know suitable properties nearby, search them with search_stays names (up to 5). soldOut lists named properties without availability for these dates: mention them.";
 
 const PROPOSE =
     {
@@ -346,6 +350,7 @@ export function systemPrompt(r: AgentRequest, events = true): string {
     ...prefsLines(r),
     "Use search_flights and search_stays to find real offers. Never invent prices, flights or hotels.",
     HARD,
+    NAMES,
     "If the travelers say they arrive on their own (by car, train or bus, \"we drive\", \"no flight\", \"Anreise selbst\" …), do not search flights: propose destinations within reach, each with a real accommodation and ownArrival (how, rough round-trip cost for the group), no flightId.",
     CAMPER_NEW,
     ...splitLines(r),
@@ -548,7 +553,9 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
       place: a.place, country: a.country, checkin: a.checkin, checkout: a.checkout,
       ...who, rooms, type: r.prefs?.stayType ?? "all", currency: "EUR", market: r.market, lang: r.lang,
       // eine Einheit mit so vielen Schlafzimmern (#674); nicht beim Aufteilen
-      ...(!unit && Number.isInteger(a.bedroomsMin) && a.bedroomsMin >= 1 ? { bedroomsMin: Math.min(20, a.bedroomsMin) } : {})
+      ...(!unit && Number.isInteger(a.bedroomsMin) && a.bedroomsMin >= 1 ? { bedroomsMin: Math.min(20, a.bedroomsMin) } : {}),
+      // nach Namen (#683)
+      ...(Array.isArray(a.names) && a.names.length ? { names: a.names.filter((n: unknown) => typeof n === "string").slice(0, 5) } : {})
     });
     if (typeof q === "string") return { error: q };
     const res = await deps.stays(q);
@@ -556,7 +563,8 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     top.forEach(o => stays.set(o.id, { offer: o, q }));
     if (top.length) stayHit = true;
     else if (!unit && size() >= SPLIT_FROM) wholeMiss = true;
-    return top.length ? { offers: top.map(o => ({ ...stayBrief(o), ...(unit ? { forTravelers: unit } : {}) })) } : { offers: [], note: unit ? "No accommodation found for this group size" : q.bedroomsMin ? "No single unit with verified bedrooms found (providers rarely state them). Do not propose unverified accommodation as fitting; say so in your answer" : "No accommodation found" };
+    const sold = res.soldOut?.length ? { soldOut: res.soldOut.slice(0, 10) } : {};
+    return top.length ? { offers: top.map(o => ({ ...stayBrief(o), ...(unit ? { forTravelers: unit } : {}) })), ...sold } : sold.soldOut ? { offers: [], ...sold, note: "These properties have no availability for these dates" } : { offers: [], note: unit ? "No accommodation found for this group size" : q.bedroomsMin ? "No single unit with verified bedrooms found (providers rarely state them). Do not propose unverified accommodation as fitting; say so in your answer" : "No accommodation found" };
   }
 
   async function searchEvents(a: any) {

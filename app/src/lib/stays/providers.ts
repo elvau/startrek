@@ -1,5 +1,5 @@
 /* Booking.com und Trivago über ihre MCP-Server */
-import { callTool } from "../mcp";
+import { callTool, callTools } from "../mcp";
 import type { StayMust, StayOffer, StayQuery } from "./types";
 import { askRooms } from "./rooms";
 
@@ -43,13 +43,16 @@ const num = (v: unknown) => (typeof v === "number" && isFinite(v) ? v : v != nul
 
 export function bookingArgs(q: StayQuery) {
   // Umkreis (#680): Booking sucht dann um den Mittelpunkt statt nach dem Namen
-  const near = q.radiusKm && Number.isFinite(q.lat) && Number.isFinite(q.lon);
+  // nach Namen (#683): Booking braucht dazu den Ort als Ziel, nicht Koordinaten; Art gilt dann nicht
+  const names = q.names?.length ? q.names : undefined;
+  const near = !names && q.radiusKm && Number.isFinite(q.lat) && Number.isFinite(q.lon);
   return {
     ...(near ? { coordinates: { latitude: q.lat, longitude: q.lon, radius: q.radiusKm } } : { destination: q.country ? `${q.place}, ${q.country}` : q.place }),
+    ...(names ? { hotel_names: names } : {}),
     checkin_date: q.checkin, checkout_date: q.checkout,
     number_of_adults: q.adults, number_of_rooms: q.rooms,
     ...(q.childAges.length ? { children_ages: q.childAges } : {}),
-    ...(q.type === "whole" ? { accommodation_types: ["HOLIDAY_HOME", "APARTMENT", "VILLA"] } : q.type === "hotel" ? { accommodation_types: ["HOTEL", "GUEST_HOUSE"] } : {}),
+    ...(names ? {} : q.type === "whole" ? { accommodation_types: ["HOLIDAY_HOME", "APARTMENT", "VILLA"] } : q.type === "hotel" ? { accommodation_types: ["HOTEL", "GUEST_HOUSE"] } : {}),
     ...bookingFilters(q),
     ...bookingMarket(q), currency: q.currency || "EUR"
   };
@@ -93,8 +96,21 @@ export function fromBooking(data: any, currency = "EUR"): StayOffer[] {
   })).filter((o: StayOffer) => o.total > 0);
 }
 
+/**
+ * Booking.com meldet bei der Suche nach Namen „hotel_names_no_availability“ als Fehler, mit den Namen in details (#683):
+ * daraus ausgebuchte Häuser machen; andere Fehler bleiben Fehler
+ */
+export function bookingSoldOut(e: unknown): StayOffer[] {
+  let j: any = null;
+  try { j = JSON.parse((e as Error)?.message || ""); } catch { /* kein JSON */ }
+  if (j?.type !== "hotel_names_no_availability") throw e;
+  return (Array.isArray(j.details) ? j.details : []).filter((n: unknown) => typeof n === "string" && n).map((n: string): StayOffer => (
+    { id: "booking:soldout:" + n, source: "booking", sourceName: "Booking.com", name: n, total: 0, currency: "EUR", soldOut: true }));
+}
+
 export async function searchBooking(q: StayQuery, url: string, f: typeof fetch = fetch): Promise<StayOffer[]> {
-  const data = await callTool(url, "accommodations_search", bookingArgs(q), "Booking.com", f);
+  const data = await callTool(url, "accommodations_search", bookingArgs(q), "Booking.com", f).catch(e => bookingSoldOut(e));
+  if (Array.isArray(data)) return data;
   const offers = fromBooking(data, q.currency);
   // Schlafzimmer gewünscht (#674): die Suche nennt sie nicht, darum je Unterkunft nachfragen
   return q.bedroomsMin || q.sleepsMin ? askRooms(offers, data, url, f) : offers;
@@ -161,7 +177,8 @@ function cheapestDeal(a: any): { total: number; via?: string; url?: string; curr
 /** erster Teil vor dem Komma („Split, Kroatien“ → Split) */
 const cityOf = (s: unknown): string | undefined => (typeof s === "string" ? s.split(",")[0].trim() || undefined : undefined);
 
-export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[] {
+export function fromTrivago(data: any, q?: Pick<StayQuery, "type" | "names">): StayOffer[] {
+  const named = !!q?.names?.length;
   return (data?.accommodations || []).map((a: any) => {
     const amen = String(a.top_amenities || "").split(/,\s*/).filter(Boolean);
     const deal = cheapestDeal(a);
@@ -177,11 +194,19 @@ export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[]
       facts: factsOf(amen), board: deal?.board || boardOf(amen, a.accommodation_name), kind, ...(deal?.freeCancel ? { freeCancel: true } : {})
     };
     return o;
-  }).filter((o: StayOffer & { kind?: string }) => o.total > 0 && !(q?.type === "whole" && o.kind === "hotel") && !(q?.type === "hotel" && o.kind === "whole"))
+  }).map((o: StayOffer & { kind?: string }) => (o.total > 0 || !named ? o : { ...o, total: 0, soldOut: true }))
+    // bei der Suche nach Namen (#683): ohne Angebot = zu den Daten ausgebucht, die Art filtert nicht; sonst fällt es weg
+    .filter((o: StayOffer & { kind?: string }) => (o.total > 0 || (o.soldOut && o.name !== "?")) && (named || (!(q?.type === "whole" && o.kind === "hotel") && !(q?.type === "hotel" && o.kind === "whole"))))
     .map(({ kind: _k, ...o }: StayOffer & { kind?: string }) => o);
 }
 
 export async function searchTrivago(q: StayQuery, url = TRIVAGO_MCP, f: typeof fetch = fetch): Promise<StayOffer[]> {
+  // nach Namen (#683): je Haus eine Namenssuche in einer Verbindung
+  if (q.names?.length) {
+    const args = trivagoArgs({ ...q, lat: undefined, lon: undefined, must: undefined, minStars: undefined, minScore: undefined });
+    const res = await callTools(url, q.names.map(n => ({ tool: "trivago-accommodation-search", args: { ...args, query: n } })), "Trivago", f);
+    return res.flatMap(r => (r ? fromTrivago(r, q) : []));
+  }
   // Trivago nennt die Verpflegung selten. Dieselbe Suche mit „Frühstück inklusive“: was dort zum selben Preis
   // auftaucht, hat Frühstück dabei (live: Welikehotel Triton Beach, sonst als „unbekannt“ übernommen)
   const withBreakfast = !(q.must || []).includes("breakfast") && q.type !== "whole";

@@ -123,6 +123,15 @@ describe("KI-Reiseplaner", () => {
     expect(JSON.stringify(f.asked.bodies[0])).toContain("Hard criteria in the wish");
   });
 
+  it("sucht Häuser nach Namen (#683)", async () => {
+    const f = fake([
+      call("search_stays", { place: "Schönberg", checkin: "2027-05-10", checkout: "2027-05-13", names: ["Familotel Schreinerhof"] }),
+      call("propose_trips", { trips: [] })
+    ]);
+    await runAgent(req, f.deps);
+    expect(f.asked.stays[0].names).toEqual(["Familotel Schreinerhof"]);
+  });
+
   it("vergangene Daten und ungültige Eingaben gehen als Fehler an die KI zurück", async () => {
     const f = fake([
       call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2026-01-10", return: "2026-01-13" }),

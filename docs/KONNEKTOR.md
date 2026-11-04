@@ -33,6 +33,9 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Umkreis (#680): `radiusKm` (1–20) sucht um den Mittelpunkt des Orts (Booking.com mit Koordinaten), Treffer weiter weg oder ohne Lage fallen weg.
    In der App dieselben Felder: Regler „Umkreis“ (0 = nur Ort) und „Schlafzimmer mind.“ neben „Zimmer“; Suchlinks zu Booking.com, Airbnb und Vrbo
    übernehmen die Schlafzimmer (`entire_place_bedroom_count` bei Booking.com nicht offiziell bestätigt, `min_bedrooms`, `minBedrooms`).
+   Nach Namen (#683): `names` (bis 5) sucht nur diese Häuser (Booking.com `hotel_names` mit dem Ort, Trivago je Name eine Namenssuche in einer
+   Verbindung); bekannte Häuser ohne freies Angebot stehen in `soldOut` (Booking.com meldet sie als Fehler `hotel_names_no_availability`).
+   Mit Pool-Filter gesucht tragen alle Treffer „Pool“ (die Anbieter filtern, Trivago nennt ihn oft nicht).
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist

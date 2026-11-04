@@ -39,6 +39,8 @@ export interface StayQuery {
   sleepsMin?: number;
   /** Umkreis in km um lat/lon (1–20); Treffer weiter weg oder ohne Lage fallen weg */
   radiusKm?: number;
+  /** nur diese Häuser, gesucht nach Namen (#683, höchstens 5); place dient zur Unterscheidung */
+  names?: string[];
   currency?: string;
   /** Land der suchenden Person (ISO-2) für Preise und Inhalte der Anbieter; fehlt: DE (#464) */
   market?: string;
@@ -86,9 +88,13 @@ export interface StayOffer {
   fees?: { label: string; amount: number; included: boolean }[];
   /** direkt in der App buchbar (später) */
   bookable?: boolean;
+  /** Anbieter kennt das Haus, hat aber nichts frei (#683); fällt aus den Treffern, steht in soldOut */
+  soldOut?: boolean;
 }
 
 export interface StaySearchResult {
   offers: StayOffer[];
   sources: SourceStatus[];
+  /** Häuser ohne freies Angebot zu den Daten (#683) */
+  soldOut?: string[];
 }

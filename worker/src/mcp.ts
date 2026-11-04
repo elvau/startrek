@@ -94,6 +94,7 @@ const INSTRUCTIONS = [
   "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family.",
   "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, being brought, taxi, train, carpool, per household from its settings) and meals; never add these as costs. If the user tells you how a family gets to the airport (e.g. they are brought, take the train, ride with another family, parking is free or booked), set it with households in create_trip or update_travelers.",
   "Hard criteria of the user (number of bedrooms, pool, indoor pool, water slide, sauna, pets allowed, step-free …) count only if the offer's data confirms them (bedrooms, sleeps, facts, board). Never add an offer as fitting when it does not: tell the user which criterion you could not check, and either leave it out or add it with unverified (add_stay), so the app marks it 'please check'. Offers that clearly miss a hard criterion (e.g. fewer bedrooms) are not added.",
+  "If the user names hotels, or wants something the area search rarely shows (e.g. family hotels with water slides) and you know suitable properties nearby, search them with search_stays names; soldOut lists named properties without availability for these dates.",
   "Bedrooms are not rooms: for one house or apartment with N bedrooms (or for N guests) for the whole group, search_stays with bedroomsMin (and sleepsMin), never with rooms N; rooms N books N separate units (e.g. several studios).",
   "Searches use the user's saved preferences (own, group, trip) for anything you leave out and always skip countries to avoid; pass tripId to use a trip's preferences, and the result lists appliedPreferences. If the user has none yet, offer to set up a short travel profile by asking about airports, budget, accommodation, meals, travel style and countries to avoid, then save it with save_my_preferences after they confirmed. Wishes for one trip only go to set_trip_preferences.",
   "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. When you swap a flight or accommodation for another offer, pass replace with the old item id, so the trip does not count both. Put alternatives you propose into one comparison (create_trip with compareWith and a compareTitle such as 'Summer holiday 2027', each variant with a short variantName); existing trips join with update_trip.",
@@ -193,6 +194,7 @@ const SEARCH_TOOLS = [
       minStars: int("Minimum hotel stars (default: preferences)", 1, 5), tripId: str("Use this trip's preferences (default: the user's own)"),
       board: { type: "string", enum: ["breakfast", "half", "full", "all"], description: "At least this board: breakfast, half (half board), full (full board), all (all inclusive). Drops offers without board info" },
       radiusKm: int("Only accommodation within this many km of the place (1-20), e.g. a village and its surroundings", 1, 20),
+      names: { type: "array", items: { type: "string" }, maxItems: 5, description: "Search these properties by name only (e.g. hotels the user or you know, like family hotels with water slides); place helps to tell same names apart. Results list soldOut for known properties without availability" },
       amenities: { type: "array", items: { type: "string", enum: ["pool", "indoorPool", "waterslide", "sauna"] }, description: "Must have all of these: pool (any), indoorPool, waterslide, sauna. Drops offers that do not list them" },
       bedroomsMin: int("One unit for everyone (house, apartment) with at least this many bedrooms. Use this when the user asks for bedrooms, never rooms: rooms means separate bookable units. Sets rooms 1 and type whole; drops offers whose bedrooms are unknown", 1, 20),
       sleepsMin: int("One unit for everyone that sleeps at least this many guests (e.g. the whole group). Sets rooms 1 and type whole; drops offers whose capacity is unknown", 1, 50)
@@ -462,6 +464,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
         // eine Einheit für alle (#674): parseStayQuery setzt dann ein Zimmer und ganze Unterkunft
         ...(a.bedroomsMin != null ? { bedroomsMin: a.bedroomsMin } : {}), ...(a.sleepsMin != null ? { sleepsMin: a.sleepsMin } : {}),
         ...(a.radiusKm != null ? { radiusKm: a.radiusKm } : {}),
+        ...(Array.isArray(a.names) ? { names: a.names.filter((n: unknown) => typeof n === "string").slice(0, 5) } : {}),
         // Pool filtern die Anbieter selbst, den Rest prüft facts (#681)
         ...(amen.some(k => k !== "sauna") ? { must: ["pool"] } : {})
       });
@@ -484,6 +487,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
           ...(o.bedrooms != null ? { bedrooms: o.bedrooms } : {}), ...(o.sleeps != null ? { sleeps: o.sleeps } : {}),
           ...(sq.rooms > 1 ? { units: sq.rooms } : {})
         })),
+        // ausgebucht (#683): Häuser, die die Anbieter kennen, aber zu den Daten nicht frei haben
+        ...(res.soldOut?.length ? { soldOut: res.soldOut.slice(0, 10), soldOutNote: "These properties exist but have no availability for these dates: say so, suggest other dates or similar places nearby" } : {}),
         // Kombi (#677): bei mehreren Zimmern ist jedes Angebot eine Kombination getrennter Einheiten
         ...(top.length && sq.rooms > 1 ? { unitsNote: `Each offer is a combination of ${sq.rooms} separate units (rooms or apartments, possibly different names at the provider), not one house. Say so when you present it; for one house use bedroomsMin.` } : {}),
         ...(Object.keys(applied).length ? { appliedPreferences: applied } : {}),

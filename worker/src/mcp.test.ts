@@ -184,6 +184,15 @@ describe("KI-Konnektor (MCP)", () => {
     expect((await tool(d, "search_stays", { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, radiusKm: 300 })).error).toBe(true);
   });
 
+  it("Suche nach Namen, ausgebuchte Häuser werden genannt (#683)", async () => {
+    let got: any;
+    const d = deps({ stays: async q => { got = q; return { offers: [stay("s1", 1643)], sources: [], soldOut: ["Landhaus zur Ohe"] }; } });
+    const r = await tool(d, "search_stays", { place: "Schönberg", checkin: "2027-11-13", checkout: "2027-11-15", adults: 2, childAges: [8, 5], names: ["Familotel Schreinerhof", "Landhaus zur Ohe", 7] });
+    expect(got.names).toEqual(["Familotel Schreinerhof", "Landhaus zur Ohe"]);
+    expect(r.data.soldOut).toEqual(["Landhaus zur Ohe"]);
+    expect(r.data.soldOutNote).toContain("no availability");
+  });
+
   it("findet kleine Orte und ignoriert Gemeinde oder Insel nach dem Komma (#622)", async () => {
     let got: any;
     const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });
