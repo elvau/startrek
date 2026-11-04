@@ -1,6 +1,7 @@
 /* Booking.com und Trivago über ihre MCP-Server */
 import { callTool } from "../mcp";
 import type { StayMust, StayOffer, StayQuery } from "./types";
+import { askRooms } from "./rooms";
 
 export const TRIVAGO_MCP = "https://mcp.trivago.com/mcp";
 
@@ -90,7 +91,10 @@ export function fromBooking(data: any, currency = "EUR"): StayOffer[] {
 }
 
 export async function searchBooking(q: StayQuery, url: string, f: typeof fetch = fetch): Promise<StayOffer[]> {
-  return fromBooking(await callTool(url, "accommodations_search", bookingArgs(q), "Booking.com", f), q.currency);
+  const data = await callTool(url, "accommodations_search", bookingArgs(q), "Booking.com", f);
+  const offers = fromBooking(data, q.currency);
+  // Schlafzimmer gewünscht (#674): die Suche nennt sie nicht, darum je Unterkunft nachfragen
+  return q.bedroomsMin || q.sleepsMin ? askRooms(offers, data, url, f) : offers;
 }
 
 /* ---------- Trivago (vergleicht viele Portale, z. B. Airbnb, CHECK24, Booking.com) ---------- */

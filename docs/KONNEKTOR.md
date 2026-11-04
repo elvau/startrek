@@ -19,6 +19,10 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Vorschläge als Vergleich: `create_trip` mit `compareWith`, `compareTitle` (Titel für alle Varianten) und `variantName`;
    vorhandene Reisen mit `update_trip` (`compareWith`, `compareTitle`, `variantName`, `leaveCompare`).
    Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel in Firestore (`mcpOffers`, Kennung = Prüfwert aus Schlüssel und Angebot; der Cloudflare-Zwischenspeicher gilt nur je Rechenzentrum, Chat-Apps landen oft in verschiedenen), `add_*` nimmt die Kennung. `add_flight` mit `people` (Reisende-IDs) für Zubringer nur eines Teils der Gruppe. `add_flight`/`add_stay` mit `replace` (Posten-ID) tauschen ein Angebot aus (gleiche Rückfrage wie `remove_item`); ohne `replace` warnt das Ergebnis, wenn dieselben Reisenden schon einen Flug auf der Strecke bzw. eine Unterkunft im Zeitraum haben.
+   Schlafzimmer (#674): `search_stays` mit `bedroomsMin`/`sleepsMin` sucht eine ganze Einheit für alle (ein Zimmer, `whole`); `rooms` heißt bei den
+   Anbietern getrennte Einheiten (z. B. mehrere Studios). Die Suche nennt keine Schlafzimmer: Angaben kommen aus dem Namen und für die fünf
+   günstigsten ganzen Unterkünfte von Booking.com aus dessen Auskunft (`answer_property_qa_by_ids_v2`, eine Verbindung, `app/src/lib/stays/rooms.ts`);
+   bei mehreren Wohnungstypen zählt die größte. Ohne Angabe fällt ein Angebot weg (wie beim Filter `board`), der KI-Planer nutzt dasselbe.
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist

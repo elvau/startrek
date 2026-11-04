@@ -104,6 +104,15 @@ describe("KI-Reiseplaner", () => {
     expect(t.total).toBe(Math.round((480 / 2) * 15 + 600));
   });
 
+  it("Schlafzimmer gewünscht: eine ganze Unterkunft, nicht mehrere Zimmer (#674)", async () => {
+    const f = fake([
+      call("search_stays", { place: "Scharnitz", checkin: "2027-12-30", checkout: "2028-01-03", rooms: 4, bedroomsMin: 4 }),
+      call("propose_trips", { trips: [] })
+    ]);
+    await runAgent({ ...req, adults: 6, childAges: [4, 7, 10] }, f.deps);
+    expect(f.asked.stays[0]).toMatchObject({ rooms: 1, type: "whole", bedroomsMin: 4 });
+  });
+
   it("vergangene Daten und ungültige Eingaben gehen als Fehler an die KI zurück", async () => {
     const f = fake([
       call("search_flights", { from: ["DUS"], to: ["PMI"], depart: "2026-01-10", return: "2026-01-13" }),

@@ -34,6 +34,9 @@ export interface StayQuery {
   minStars?: number;
   /** mindestens diese Gästebewertung (0–10, z. B. 8) */
   minScore?: number;
+  /** eine Einheit für alle (#674): mindestens so viele Schlafzimmer bzw. Schlafplätze; Angebote ohne Angabe fallen weg */
+  bedroomsMin?: number;
+  sleepsMin?: number;
   currency?: string;
   /** Land der suchenden Person (ISO-2) für Preise und Inhalte der Anbieter; fehlt: DE (#464) */
   market?: string;
@@ -72,6 +75,9 @@ export interface StayOffer {
   facts?: string[];
   /** kostenlos stornierbar laut Anbieter (bzw. gesucht mit diesem Filter); fehlt: nicht bekannt */
   freeCancel?: boolean;
+  /** Schlafzimmer und Schlafplätze der (größten) Einheit, falls bekannt (Name, Anbieter-Auskunft) (#674) */
+  bedrooms?: number;
+  sleeps?: number;
   /** Verpflegung, falls der Anbieter sie nennt */
   board?: "self" | "breakfast" | "half" | "full" | "all";
   /** Steuern und Gebühren laut Anbieter (im Preis enthalten oder vor Ort zu zahlen), in der Währung des Angebots */

@@ -114,6 +114,18 @@ describe("KI-Konnektor (MCP)", () => {
     expect(got.cc).toBeUndefined();
   });
 
+  it("Schlafzimmer statt Zimmer: eine ganze Unterkunft für alle (#674)", async () => {
+    let got: any;
+    const d = deps({ stays: async q => { got = q; return { offers: q.bedroomsMin ? [{ ...stay("s4", 2200), bedrooms: 5, sleeps: 10 }] : [], sources: [] }; } });
+    const r = await tool(d, "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 6, childAges: [4, 7, 10], rooms: 4, bedroomsMin: 4 });
+    expect(got).toMatchObject({ rooms: 1, type: "whole", bedroomsMin: 4 });
+    expect(r.data.offers[0]).toMatchObject({ bedrooms: 5, sleeps: 10 });
+    // ohne geprüfte Treffer: Hinweis, nichts Ungeprüftes anlegen
+    const none = await tool(deps({ stays: async () => ({ offers: [], sources: [] }) }), "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 6, sleepsMin: 9 });
+    expect(none.data.note).toContain("Do not add unverified offers");
+    expect((await tool(d, "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 6, bedroomsMin: 40 })).error).toBe(true);
+  });
+
   it("findet kleine Orte und ignoriert Gemeinde oder Insel nach dem Komma (#622)", async () => {
     let got: any;
     const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });

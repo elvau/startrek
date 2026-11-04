@@ -144,7 +144,8 @@ export function toolsFor(r: Pick<AgentRequest, "asked" | "travelersKnown" | "cur
           country: S("Country name in English, e.g. 'Croatia'"),
           checkin: S("YYYY-MM-DD"),
           checkout: S("YYYY-MM-DD"),
-          rooms: { type: "INTEGER", description: "Rooms (default one per two adults), e.g. 4 for 10 people with 2-3 per room" },
+          rooms: { type: "INTEGER", description: "Rooms (default one per two adults), e.g. 4 for 10 people with 2-3 per room. Separate bookable units, not bedrooms" },
+          bedroomsMin: { type: "INTEGER", description: "Only if the wish asks for bedrooms: one house or apartment for everyone with at least this many bedrooms (drops offers whose bedrooms are unknown)" },
           ...party,
           ...unit
         },
@@ -464,7 +465,7 @@ export function prefsFromAi(a: any): Prefs | undefined {
   return Object.keys(p).length ? p : undefined;
 }
 
-const stayBrief = (o: StayOffer) => ({ id: o.id, name: o.name, totalPrice: Math.round(o.total), ...(onSiteFees(o) ? { plusOnSite: onSiteFees(o) } : {}), currency: o.currency, rating: o.score, stars: o.stars, area: o.place, ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {}) });
+const stayBrief = (o: StayOffer) => ({ id: o.id, name: o.name, totalPrice: Math.round(o.total), ...(onSiteFees(o) ? { plusOnSite: onSiteFees(o) } : {}), currency: o.currency, rating: o.score, stars: o.stars, area: o.place, ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {}), ...(o.bedrooms != null ? { bedrooms: o.bedrooms } : {}), ...(o.sleeps != null ? { sleeps: o.sleeps } : {}) });
 
 export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentResult> {
   /** gefundene Flüge nach Kennung für die KI, mit den Plätzen, für die gesucht wurde */
@@ -536,7 +537,9 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     const rooms = Number.isInteger(a.rooms) && a.rooms >= 1 ? Math.min(10, who.adults, a.rooms) : Math.min(10, roomsFor(who.adults, who.childAges.length));
     const q = parseStayQuery({
       place: a.place, country: a.country, checkin: a.checkin, checkout: a.checkout,
-      ...who, rooms, type: r.prefs?.stayType ?? "all", currency: "EUR", market: r.market, lang: r.lang
+      ...who, rooms, type: r.prefs?.stayType ?? "all", currency: "EUR", market: r.market, lang: r.lang,
+      // eine Einheit mit so vielen Schlafzimmern (#674); nicht beim Aufteilen
+      ...(!unit && Number.isInteger(a.bedroomsMin) && a.bedroomsMin >= 1 ? { bedroomsMin: Math.min(20, a.bedroomsMin) } : {})
     });
     if (typeof q === "string") return { error: q };
     const res = await deps.stays(q);
@@ -544,7 +547,7 @@ export async function runAgent(r: AgentRequest, deps: AgentDeps): Promise<AgentR
     top.forEach(o => stays.set(o.id, { offer: o, q }));
     if (top.length) stayHit = true;
     else if (!unit && size() >= SPLIT_FROM) wholeMiss = true;
-    return top.length ? { offers: top.map(o => ({ ...stayBrief(o), ...(unit ? { forTravelers: unit } : {}) })) } : { offers: [], note: unit ? "No accommodation found for this group size" : "No accommodation found" };
+    return top.length ? { offers: top.map(o => ({ ...stayBrief(o), ...(unit ? { forTravelers: unit } : {}) })) } : { offers: [], note: unit ? "No accommodation found for this group size" : q.bedroomsMin ? "No single unit with verified bedrooms found (providers rarely state them). Do not propose unverified accommodation as fitting; say so in your answer" : "No accommodation found" };
   }
 
   async function searchEvents(a: any) {
