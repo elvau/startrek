@@ -415,6 +415,12 @@ export interface DayPlan { title?: string; notes?: DayNote[] }
 /** imported: per KI aus einem Angebot, einer Buchung oder Liste übernommen (#457) */
 export interface AiMark { at: string; kind: "suggested" | "created" | "changed" | "imported" }
 
+/** harte Kriterien, die das Angebot nicht bestätigt (#676): Posten „bitte prüfen“ mit Grund, bis jemand „Geprüft“ antippt */
+export function markUnverified(it: Item, why?: string[]): Item {
+  if (why?.length) { it.check = true; it.checkWhy = [...new Set([...(it.checkWhy || []), ...why])]; }
+  return it;
+}
+
 export type AccessMode = "car" | "drop" | "taxi" | "train" | "bus" | "with";
 export const ACCESS_MODES: AccessMode[] = ["car", "drop", "taxi", "train", "bus", "with"];
 

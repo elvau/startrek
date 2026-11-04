@@ -13,7 +13,7 @@ import { parseEventQuery } from "../../app/src/lib/events/search";
 import type { FlightOffer, FlightQuery, SearchResult } from "../../app/src/lib/flights/types";
 import type { StayOffer, StayQuery, StaySearchResult } from "../../app/src/lib/stays/types";
 import type { EventQuery, EventSearchResult } from "../../app/src/lib/events/types";
-import { hhKey, type Directory, type Item, type Person, type Status, type Traveler, type Trip } from "../../app/src/lib/model";
+import { hhKey, markUnverified, type Directory, type Item, type Person, type Status, type Traveler, type Trip } from "../../app/src/lib/model";
 import { addCost, addFlight, addStay, aiKnows, clashes, aiState, aiWrote, changesSinceAi, changeTraveler, isCat, LANGS, markBooked, newTrip, removeItem, renameFamily, setHome, setHousehold, tripPeople, type HouseholdInput, tripSummary, updateTrip } from "../../app/src/lib/connector/trips";
 import { joinTarget } from "../../app/src/lib/variants";
 import { canEdit, roleOf, type TripRecord, type TripStore } from "./firestore";
@@ -21,7 +21,7 @@ import { cleanName, saveGroup, savePeople, travelerColor, travelersFor, traveler
 import { applyPeople } from "../../app/src/lib/people";
 import type { HomeHit } from "./home";
 import { mergePrefs, prefsFor } from "../../app/src/lib/prefs";
-import { prefsFromAi } from "../../app/src/lib/agent/agent";
+import { prefsFromAi, unverifiedOf } from "../../app/src/lib/agent/agent";
 import { STYLES, uid, type Prefs } from "../../app/src/lib/model";
 import type { KeyInfo } from "./apikey";
 import { bucket, ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
@@ -78,6 +78,12 @@ const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const SHOWN = 8;
 /** Länge des Namens eigener Kosten (add_cost) */
 const NAME_MAX = 120;
+/** search_stays mit bedroomsMin/sleepsMin ohne Treffer (#674): nichts Ungeprüftes anlegen, sondern nachfragen */
+const ROOMS_NONE = "No single unit with verified bedrooms/capacity found: providers rarely state bedrooms. Do not add unverified offers as if they fit. Tell the user, and ask whether several units are fine (search with rooms) or whether they want to search on the provider sites themselves (the trip in the app has search links).";
+
+/** Ausstattung (search_stays amenities, #681) → Merkmal in facts */
+const AMENITY: Record<string, string> = { pool: "Pool", indoorPool: "Hallenbad", waterslide: "Wasserrutsche", sauna: "Sauna" };
+
 /** Verpflegung aufsteigend (search_stays: board als Mindeststufe) */
 const BOARDS = ["self", "breakfast", "half", "full", "all"];
 
@@ -87,6 +93,8 @@ const INSTRUCTIONS = [
   "Split&Fly does not book: each offer has a link to the provider, where the user books. Never ask for passport or ID data.",
   "Items you add are marked in the app as suggested or created by AI. The app shows the exact split per person and family.",
   "For every flight the app itself adds the way from home to the departure airport and back (own car incl. airport parking, being brought, taxi, train, carpool, per household from its settings) and meals; never add these as costs. If the user tells you how a family gets to the airport (e.g. they are brought, take the train, ride with another family, parking is free or booked), set it with households in create_trip or update_travelers.",
+  "Hard criteria of the user (number of bedrooms, pool, indoor pool, water slide, sauna, pets allowed, step-free …) count only if the offer's data confirms them (bedrooms, sleeps, facts, board). Never add an offer as fitting when it does not: tell the user which criterion you could not check, and either leave it out or add it with unverified (add_stay), so the app marks it 'please check'. Offers that clearly miss a hard criterion (e.g. fewer bedrooms) are not added.",
+  "Bedrooms are not rooms: for one house or apartment with N bedrooms (or for N guests) for the whole group, search_stays with bedroomsMin (and sleepsMin), never with rooms N; rooms N books N separate units (e.g. several studios).",
   "Searches use the user's saved preferences (own, group, trip) for anything you leave out and always skip countries to avoid; pass tripId to use a trip's preferences, and the result lists appliedPreferences. If the user has none yet, offer to set up a short travel profile by asking about airports, budget, accommodation, meals, travel style and countries to avoid, then save it with save_my_preferences after they confirmed. Wishes for one trip only go to set_trip_preferences.",
   "Keep working on one trip instead of creating new ones for every attempt: change it with update_trip, clean up failed attempts with delete_trip. When you swap a flight or accommodation for another offer, pass replace with the old item id, so the trip does not count both. Put alternatives you propose into one comparison (create_trip with compareWith and a compareTitle such as 'Summer holiday 2027', each variant with a short variantName); existing trips join with update_trip.",
   "Ask instead of guessing: call get_my_travelers first (families with names, ages and home town, saved groups, preferences). If destination, time frame, who travels, budget or kind of trip are still unclear, ask the user short questions, each with 2-4 concrete options plus 'something else', before creating a trip. Never invent travelers or children's ages; state any remaining assumption explicitly.",
@@ -177,13 +185,16 @@ const SEARCH_TOOLS = [
   },
   {
     name: "search_stays", title: "Search accommodation",
-    description: "Search real accommodation (hotels, apartments) for all travelers. Accommodation type and stars default to the user's preferences; countries to avoid are refused. Returns offers with id, total price for the whole stay, board (self, breakfast, half, full, all) if known and booking link.",
+    description: "Search real accommodation (hotels, apartments) for all travelers. Accommodation type and stars default to the user's preferences; countries to avoid are refused. Returns offers with id, total price for the whole stay, board (self, breakfast, half, full, all), bedrooms and sleeps (of the largest unit) if known and booking link.",
     inputSchema: { type: "object", properties: {
       place: str("City or region"), country: str("Country (English)"), checkin: str("YYYY-MM-DD"), checkout: str("YYYY-MM-DD"),
       adults: int("Adults", 1, 20), childAges: ages, rooms: int("Rooms (default: one per two adults)", 1, 10),
       type: { type: "string", enum: ["all", "hotel", "whole"], description: "all, hotel or whole (apartment/house); default: preferences" },
       minStars: int("Minimum hotel stars (default: preferences)", 1, 5), tripId: str("Use this trip's preferences (default: the user's own)"),
-      board: { type: "string", enum: ["breakfast", "half", "full", "all"], description: "At least this board: breakfast, half (half board), full (full board), all (all inclusive). Drops offers without board info" }
+      board: { type: "string", enum: ["breakfast", "half", "full", "all"], description: "At least this board: breakfast, half (half board), full (full board), all (all inclusive). Drops offers without board info" },
+      amenities: { type: "array", items: { type: "string", enum: ["pool", "indoorPool", "waterslide", "sauna"] }, description: "Must have all of these: pool (any), indoorPool, waterslide, sauna. Drops offers that do not list them" },
+      bedroomsMin: int("One unit for everyone (house, apartment) with at least this many bedrooms. Use this when the user asks for bedrooms, never rooms: rooms means separate bookable units. Sets rooms 1 and type whole; drops offers whose bedrooms are unknown", 1, 20),
+      sleepsMin: int("One unit for everyone that sleeps at least this many guests (e.g. the whole group). Sets rooms 1 and type whole; drops offers whose capacity is unknown", 1, 50)
     }, required: ["place", "checkin", "checkout", "adults"] }
   },
   {
@@ -246,7 +257,7 @@ const TRIP_TOOLS = [
       ...REPLACE
     }, required: ["tripId", "offerId"] }
   },
-  { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip. To swap an accommodation for a cheaper or better one, pass replace with the old item id; otherwise both stay in the trip and count.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang, ...REPLACE }, required: ["tripId", "offerId"] } },
+  { name: "add_stay", title: "Add accommodation to trip", description: "Add an accommodation offer from search_stays to a trip. To swap an accommodation for a cheaper or better one, pass replace with the old item id; otherwise both stay in the trip and count.", inputSchema: { type: "object", properties: { tripId: str("Trip id"), offerId: str("Offer id from search_stays"), language: lang, ...REPLACE, unverified: { type: "array", items: { type: "string" }, maxItems: 5, description: "Hard criteria of the user that this offer's data does not confirm (e.g. '4 bedrooms', 'water slide'), short, in the user's language. The item is marked 'please check' in the app" } }, required: ["tripId", "offerId"] } },
   {
     name: "add_cost", title: "Add cost to trip",
     description: "Add another cost (rental car, transfers at the destination, tickets, an accommodation the user already booked, an estimate) to a trip, in EUR. Already booked or paid: pass status, the booking number and paidBy (family name in the trip that paid; the app then settles the costs between the families). Not for the way to the departure airport or airport parking: the app calculates them for every flight.",
@@ -443,9 +454,14 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const minStars = Number.isInteger(a.minStars) ? a.minStars : pf.minStars;
       if (!Number.isInteger(a.minStars) && pf.minStars) applied.minStars = pf.minStars;
       const city = findCity(GEO, sp.place, kcc);
+      const amen: string[] = Array.isArray(a.amenities) ? [...new Set(a.amenities.filter((x: unknown) => typeof x === "string" && x in AMENITY) as string[])] : [];
       const q = parseStayQuery({
         place: sp.place, country: sp.country || a.country, ...(kcc ? { cc: kcc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin: a.checkin, checkout: a.checkout, adults, childAges: kids(a.childAges),
-        rooms: Number.isInteger(a.rooms) ? a.rooms : Math.max(1, Math.ceil((Number(adults) || 1) / 2)), type, ...(minStars ? { minStars } : {}), currency: "EUR"
+        rooms: Number.isInteger(a.rooms) ? a.rooms : Math.max(1, Math.ceil((Number(adults) || 1) / 2)), type, ...(minStars ? { minStars } : {}), currency: "EUR",
+        // eine Einheit für alle (#674): parseStayQuery setzt dann ein Zimmer und ganze Unterkunft
+        ...(a.bedroomsMin != null ? { bedroomsMin: a.bedroomsMin } : {}), ...(a.sleepsMin != null ? { sleepsMin: a.sleepsMin } : {}),
+        // Pool filtern die Anbieter selbst, den Rest prüft facts (#681)
+        ...(amen.some(k => k !== "sauna") ? { must: ["pool"] } : {})
       });
       if (typeof q === "string") fail(q);
       const sq = q as StayQuery;
@@ -453,7 +469,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const res = await deps.stays(sq);
       // Verpflegung als Mindeststufe; die Anbieter filtern nicht danach, darum hier
       const want = BOARDS.indexOf(a.board);
-      const top = res.offers.filter(o => want < 1 || (!!o.board && BOARDS.indexOf(o.board) >= want)).slice(0, SHOWN);
+      const hasAll = (o: StayOffer) => amen.every(k => o.facts?.includes(AMENITY[k]));
+      const top = res.offers.filter(o => (want < 1 || (!!o.board && BOARDS.indexOf(o.board) >= want)) && hasAll(o)).slice(0, SHOWN);
       await deps.offers.put(top.map(o => [o.id, { kind: "stay", offer: o, q: sq }]));
       const links = await Promise.all(top.map(o => via(deps, o.url, o.via || o.sourceName, "stay")));
       return {
@@ -461,10 +478,14 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
         offers: top.map((o, i) => ({
           id: o.id, name: o.name, priceTotal: Math.round(o.total), currency: o.currency, provider: o.via || o.sourceName, link: links[i],
           ...(o.score != null ? { rating: o.score } : {}), ...(o.stars ? { stars: o.stars } : {}), ...(o.place ? { area: o.place } : {}),
-          ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {})
+          ...(o.board ? { board: o.board } : {}), ...(o.facts?.length ? { facts: o.facts } : {}),
+          ...(o.bedrooms != null ? { bedrooms: o.bedrooms } : {}), ...(o.sleeps != null ? { sleeps: o.sleeps } : {}),
+          ...(sq.rooms > 1 ? { units: sq.rooms } : {})
         })),
+        // Kombi (#677): bei mehreren Zimmern ist jedes Angebot eine Kombination getrennter Einheiten
+        ...(top.length && sq.rooms > 1 ? { unitsNote: `Each offer is a combination of ${sq.rooms} separate units (rooms or apartments, possibly different names at the provider), not one house. Say so when you present it; for one house use bedroomsMin.` } : {}),
         ...(Object.keys(applied).length ? { appliedPreferences: applied } : {}),
-        ...(top.length ? {} : { note: want > 0 && res.offers.length ? "No accommodation with this board found: try a lower board or without board" : "No accommodation found" })
+        ...(top.length ? {} : { note: amen.length && res.offers.length ? `No accommodation listing ${amen.join(", ")} found: providers list only some facilities. Do not add other offers as if they had them; tell the user` : want > 0 && res.offers.length ? "No accommodation with this board found: try a lower board or without board" : sq.bedroomsMin || sq.sleepsMin ? ROOMS_NONE : "No accommodation found" })
       };
     }
     case "search_events": {
@@ -629,8 +650,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
           const items = addFlight(t, saved!.offer, lng(a.language), seats ? { seats, travelers, ids } : undefined);
           return done(items, { added: items.map(i => i.id), bookings: items.length, name: items[0]?.name });
         }
-        const it = addStay(t, saved!.offer, (saved as { q: StayQuery }).q, lng(a.language));
-        return done([it], { added: it.id, name: it.name });
+        const it = markUnverified(addStay(t, saved!.offer, (saved as { q: StayQuery }).q, lng(a.language)), unverifiedOf(a.unverified));
+        return done([it], { added: it.id, name: it.name, ...(it.check ? { markedForCheck: it.checkWhy } : {}) });
       });
     }
     case "add_cost": {
