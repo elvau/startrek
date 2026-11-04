@@ -141,7 +141,7 @@ export function addStay(trip: Trip, o: StayOffer, q: StayQuery, lang: string): I
   };
   const item: Item = {
     id: uid(), cat: "stay", status: "idea", from: q.checkin, to: q.checkout, options: [opt], ai: { at: at(), kind: "suggested" },
-    name: tr(lang, "st.itemName", { place: q.place })
+    name: tr(lang, "st.itemName", { place: o.city || q.place })
   };
   return push(trip, item);
 }

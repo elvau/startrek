@@ -63,6 +63,8 @@ export interface StayOffer {
   stars?: number;
   /** Stadtteil, Ort */
   place?: string;
+  /** Ort der Unterkunft laut Anbieter (nicht der Suchort), z. B. für den Namen des Postens */
+  city?: string;
   lat?: number;
   lon?: number;
   image?: string;

@@ -533,6 +533,14 @@ describe("KI-Konnektor (MCP)", () => {
     expect((await tool(d, "search_flights", { to: ["PMI"], depart: "2027-05-10", adults: 2 })).text).toContain("no home airports");
   });
 
+  it("add_stay: Posten heißt nach dem Ort der Unterkunft, nicht nach dem Suchort (#678)", async () => {
+    const d = deps({ stays: async () => ({ offers: [{ ...stay("s1", 400), city: "Arrach" }], sources: [] }) });
+    await tool(d, "search_stays", { place: "Bodenmais", checkin: "2027-08-19", checkout: "2027-08-29", adults: 2, childAges: [] });
+    const id = (await tool(d, "create_trip", { place: "Bodenmais", adults: 2, childAges: [], travelersFrom: "user" })).data.tripId;
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1" })).error).toBe(false);
+    expect((await tool(d, "get_trip", { tripId: id })).data.items[0].name).toBe("Unterkunft in Arrach");
+  });
+
   it("Unterkünfte nach Verpflegung, Hotelname und Verpflegung in der Reise, lange Kostennamen", async () => {
     const offers: StayOffer[] = [{ ...stay("s1", 400), board: "self" }, { ...stay("s2", 500) }, { ...stay("s3", 600), board: "half", stars: 4 }, { ...stay("s4", 700), board: "all" }];
     const d = deps({ stays: async () => ({ offers, sources: [] }) });

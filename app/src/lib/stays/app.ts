@@ -98,11 +98,11 @@ export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, 
   const empty = !part ? trip.items.find(i => i.cat === "stay" && !i.participants && blank(i) && (!i.from || i.from === q.checkin) && (!i.to || i.to === q.checkout)) : undefined;
   if (empty) {
     empty.options = [opt];
-    if (!empty.name || empty.name === t("stay.new")) empty.name = t("st.itemName", { place: q.place });
+    if (!empty.name || empty.name === t("stay.new")) empty.name = t("st.itemName", { place: o.city || q.place });
     empty.from = q.checkin; empty.to = q.checkout;
     return empty;
   }
-  const item: Item = { id: uid(), cat: "stay", name: t("st.itemName", { place: q.place }), status: "idea", from: q.checkin, to: q.checkout, options: [opt] };
+  const item: Item = { id: uid(), cat: "stay", name: t("st.itemName", { place: o.city || q.place }), status: "idea", from: q.checkin, to: q.checkout, options: [opt] };
   if (part) item.participants = part;
   trip.items.push(item);
   return item;
