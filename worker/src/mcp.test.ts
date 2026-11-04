@@ -152,6 +152,18 @@ describe("KI-Konnektor (MCP)", () => {
     expect((await tool(d, "get_trip", { tripId: made.data.tripId })).data.homeMissing).toBeUndefined();
   });
 
+  it("Ausstattung: Hallenbad, Wasserrutsche, Sauna (#681)", async () => {
+    let got: any;
+    const offers = [{ ...stay("a", 500), facts: ["Pool", "Hallenbad", "Wasserrutsche"] }, { ...stay("b", 400), facts: ["Pool"] }, { ...stay("c", 450), facts: ["Sauna"] }];
+    const d = deps({ stays: async q => { got = q; return { offers, sources: [] }; } });
+    const r = await tool(d, "search_stays", { place: "Bodenmais", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, childAges: [8, 5], amenities: ["waterslide", "indoorPool"] });
+    expect(got.must).toEqual(["pool"]);
+    expect(r.data.offers.map((o: any) => o.id)).toEqual(["a"]);
+    const sauna = await tool(d, "search_stays", { place: "Bodenmais", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, amenities: ["sauna", "x"] });
+    expect(got.must).toBeUndefined();
+    expect(sauna.data.offers.map((o: any) => o.id)).toEqual(["c"]);
+  });
+
   it("findet kleine Orte und ignoriert Gemeinde oder Insel nach dem Komma (#622)", async () => {
     let got: any;
     const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });

@@ -81,6 +81,9 @@ const NAME_MAX = 120;
 /** search_stays mit bedroomsMin/sleepsMin ohne Treffer (#674): nichts Ungeprüftes anlegen, sondern nachfragen */
 const ROOMS_NONE = "No single unit with verified bedrooms/capacity found: providers rarely state bedrooms. Do not add unverified offers as if they fit. Tell the user, and ask whether several units are fine (search with rooms) or whether they want to search on the provider sites themselves (the trip in the app has search links).";
 
+/** Ausstattung (search_stays amenities, #681) → Merkmal in facts */
+const AMENITY: Record<string, string> = { pool: "Pool", indoorPool: "Hallenbad", waterslide: "Wasserrutsche", sauna: "Sauna" };
+
 /** Verpflegung aufsteigend (search_stays: board als Mindeststufe) */
 const BOARDS = ["self", "breakfast", "half", "full", "all"];
 
@@ -189,6 +192,7 @@ const SEARCH_TOOLS = [
       type: { type: "string", enum: ["all", "hotel", "whole"], description: "all, hotel or whole (apartment/house); default: preferences" },
       minStars: int("Minimum hotel stars (default: preferences)", 1, 5), tripId: str("Use this trip's preferences (default: the user's own)"),
       board: { type: "string", enum: ["breakfast", "half", "full", "all"], description: "At least this board: breakfast, half (half board), full (full board), all (all inclusive). Drops offers without board info" },
+      amenities: { type: "array", items: { type: "string", enum: ["pool", "indoorPool", "waterslide", "sauna"] }, description: "Must have all of these: pool (any), indoorPool, waterslide, sauna. Drops offers that do not list them" },
       bedroomsMin: int("One unit for everyone (house, apartment) with at least this many bedrooms. Use this when the user asks for bedrooms, never rooms: rooms means separate bookable units. Sets rooms 1 and type whole; drops offers whose bedrooms are unknown", 1, 20),
       sleepsMin: int("One unit for everyone that sleeps at least this many guests (e.g. the whole group). Sets rooms 1 and type whole; drops offers whose capacity is unknown", 1, 50)
     }, required: ["place", "checkin", "checkout", "adults"] }
@@ -450,11 +454,14 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const minStars = Number.isInteger(a.minStars) ? a.minStars : pf.minStars;
       if (!Number.isInteger(a.minStars) && pf.minStars) applied.minStars = pf.minStars;
       const city = findCity(GEO, sp.place, kcc);
+      const amen: string[] = Array.isArray(a.amenities) ? [...new Set(a.amenities.filter((x: unknown) => typeof x === "string" && x in AMENITY) as string[])] : [];
       const q = parseStayQuery({
         place: sp.place, country: sp.country || a.country, ...(kcc ? { cc: kcc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin: a.checkin, checkout: a.checkout, adults, childAges: kids(a.childAges),
         rooms: Number.isInteger(a.rooms) ? a.rooms : Math.max(1, Math.ceil((Number(adults) || 1) / 2)), type, ...(minStars ? { minStars } : {}), currency: "EUR",
         // eine Einheit für alle (#674): parseStayQuery setzt dann ein Zimmer und ganze Unterkunft
-        ...(a.bedroomsMin != null ? { bedroomsMin: a.bedroomsMin } : {}), ...(a.sleepsMin != null ? { sleepsMin: a.sleepsMin } : {})
+        ...(a.bedroomsMin != null ? { bedroomsMin: a.bedroomsMin } : {}), ...(a.sleepsMin != null ? { sleepsMin: a.sleepsMin } : {}),
+        // Pool filtern die Anbieter selbst, den Rest prüft facts (#681)
+        ...(amen.some(k => k !== "sauna") ? { must: ["pool"] } : {})
       });
       if (typeof q === "string") fail(q);
       const sq = q as StayQuery;
@@ -462,7 +469,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const res = await deps.stays(sq);
       // Verpflegung als Mindeststufe; die Anbieter filtern nicht danach, darum hier
       const want = BOARDS.indexOf(a.board);
-      const top = res.offers.filter(o => want < 1 || (!!o.board && BOARDS.indexOf(o.board) >= want)).slice(0, SHOWN);
+      const hasAll = (o: StayOffer) => amen.every(k => o.facts?.includes(AMENITY[k]));
+      const top = res.offers.filter(o => (want < 1 || (!!o.board && BOARDS.indexOf(o.board) >= want)) && hasAll(o)).slice(0, SHOWN);
       await deps.offers.put(top.map(o => [o.id, { kind: "stay", offer: o, q: sq }]));
       const links = await Promise.all(top.map(o => via(deps, o.url, o.via || o.sourceName, "stay")));
       return {
@@ -474,7 +482,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
           ...(o.bedrooms != null ? { bedrooms: o.bedrooms } : {}), ...(o.sleeps != null ? { sleeps: o.sleeps } : {})
         })),
         ...(Object.keys(applied).length ? { appliedPreferences: applied } : {}),
-        ...(top.length ? {} : { note: want > 0 && res.offers.length ? "No accommodation with this board found: try a lower board or without board" : sq.bedroomsMin || sq.sleepsMin ? ROOMS_NONE : "No accommodation found" })
+        ...(top.length ? {} : { note: amen.length && res.offers.length ? `No accommodation listing ${amen.join(", ")} found: providers list only some facilities. Do not add other offers as if they had them; tell the user` : want > 0 && res.offers.length ? "No accommodation with this board found: try a lower board or without board" : sq.bedroomsMin || sq.sleepsMin ? ROOMS_NONE : "No accommodation found" })
       };
     }
     case "search_events": {

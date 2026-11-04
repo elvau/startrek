@@ -15,13 +15,14 @@ export function priceNum(v: unknown): number {
   return +m[1].replace(/[.,]/g, "") + (m[2] ? +("0." + m[2]) : 0);
 }
 
-/** wenige, für Familien und Gruppen wichtige Merkmale */
-const FACTS: [string, RegExp][] = [
-  ["Küche", /küche|kitchen/i], ["Pool", /pool/i], ["Parkplatz", /parkpl|parking/i], ["Klimaanlage", /klimaanlage|air ?condition/i],
-  ["Familienzimmer", /familienzimmer|family room/i], ["Waschmaschine", /waschmaschine|washing/i], ["Strand", /strand|beach/i], ["Garten", /garten|garden/i]
+/** wenige, für Familien und Gruppen wichtige Merkmale; Hallenbad, Wasserrutsche und Sauna für den Ausstattungsfilter (#681) */
+export const FACTS: [string, RegExp][] = [
+  ["Küche", /küche|kitchen/i], ["Pool", /pool/i], ["Hallenbad", /innenpool|hallenbad|indoor[\s-]?(?:swimming[\s-]?)?pool/i],
+  ["Wasserrutsche", /wasserrutsche|water ?slide|aqua ?park|wasserpark/i], ["Sauna", /sauna/i], ["Familienzimmer", /familienzimmer|family room/i],
+  ["Parkplatz", /parkpl|parking/i], ["Klimaanlage", /klimaanlage|air ?condition/i], ["Waschmaschine", /waschmaschine|washing/i], ["Strand", /strand|beach/i], ["Garten", /garten|garden/i]
 ];
 export function factsOf(list: string[]): string[] {
-  return FACTS.filter(([, re]) => list.some(f => re.test(f))).map(([l]) => l).slice(0, 4);
+  return FACTS.filter(([, re]) => list.some(f => re.test(f))).map(([l]) => l).slice(0, 6);
 }
 
 /** Verpflegung aus Merkmalen oder Name („All Inclusive“, „Halbpension“, „Frühstück inklusive“); Frühstück nur, wenn inklusive */

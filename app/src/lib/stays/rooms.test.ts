@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { askRooms, roomsFit, roomsOf, withRooms } from "./rooms";
+import { factsOf } from "./providers";
 import { mergeStays, parseStayQuery } from "./search";
 import { keepStays } from "./sort";
 import type { StayOffer } from "./types";
@@ -57,5 +58,11 @@ describe("Schlafzimmer und Schlafplätze (#674)", () => {
     expect(inits).toBe(1);
     expect(out.find(x => x.id === "booking:1")).toMatchObject({ bedrooms: 5, sleeps: 10 });
     expect(out.find(x => x.id === "booking:3")?.bedrooms).toBeUndefined();
+  });
+
+  it("Ausstattung aus Booking.com: Hallenbad, Wasserrutsche, Sauna (#681)", () => {
+    expect(factsOf(["Parkplatz", "Sauna", "Innenpool (ganzjährig)", "Wasserrutsche", "Spielplatz mit Rutsche", "Familienzimmer", "Klimaanlage"]))
+      .toEqual(["Pool", "Hallenbad", "Wasserrutsche", "Sauna", "Familienzimmer", "Parkplatz"]);
+    expect(factsOf(["Spielplatz mit Rutsche"])).toEqual([]);
   });
 });
