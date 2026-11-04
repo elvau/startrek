@@ -1,6 +1,8 @@
 /* Datenmodell der Reisekasse. Siehe docs/KONZEPT.md, Abschnitte 2 und 4. */
 
 export type CatKey = "flights" | "stay" | "transport" | "attractions" | "misc";
+/** Bausteine des Fortschritts (#151): Anreise, Unterkunft, Vor Ort, Erlebnisse, Sonstiges */
+export type ProgressBlock = "travel" | "stay" | "transport" | "attractions" | "misc";
 export const CAT_KEYS: CatKey[] = ["flights", "stay", "transport", "attractions", "misc"];
 
 /** Idee → Gewählt → Gebucht → Bezahlt, oder Verworfen */
@@ -615,6 +617,8 @@ export interface Trip {
   };
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
   detail?: Partial<Record<CatKey, boolean>>;
+  /** Fortschritt (#151): Bausteine, die diese Reise nicht braucht („Brauchen wir nicht“); ihr Gewicht geht an die übrigen */
+  progressOff?: ProgressBlock[];
   tiers: Partial<Record<CatKey, Tier[]>>;
   settings: Settings;
   /** Verpflegung wie im Artefakt: Essensstil für alle oder je Familie, Kinder und Babys in Prozent */
