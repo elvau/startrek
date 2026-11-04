@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { bookingArgs, bookingSoldOut, fromTrivago } from "./providers";
-import { parseStayQuery, searchStays } from "./search";
+import { factsUnion, mergeStays, parseStayQuery, searchStays } from "./search";
+import { sortStays } from "./sort";
 import type { StayQuery } from "./types";
 
 /* Familienhotels gezielt (#683): Suche nach Namen, ausgebucht sichtbar, Pool laut Filter */
@@ -66,5 +67,20 @@ describe("Familienhotels gezielt (#683)", () => {
     expect(r.offers[0].facts?.[0]).toBe("Pool");
     const r2 = await searchStays({ ...Q, sources: ["trivago"] }, { TRIVAGO_MCP_URL: "https://t" }, f);
     expect(r2.offers[0].facts).not.toContain("Pool");
+  });
+
+  it("gleiches Haus aus zwei Quellen: Merkmale zusammen (Wasserrutsche von Booking.com am Trivago-Treffer)", () => {
+    expect(factsUnion(["Parkplatz", "Pool"], ["Wasserrutsche", "Pool", "Sauna"])).toEqual(["Pool", "Wasserrutsche", "Sauna", "Parkplatz"]);
+    const m = mergeStays([
+      [{ id: "trivago:1", source: "trivago", sourceName: "Trivago", name: "Hotel Obermühle", total: 900, currency: "EUR", facts: ["Parkplatz"] }],
+      [{ id: "booking:1", source: "booking", sourceName: "Booking.com", name: "Hotel Obermühle", total: 950, currency: "EUR", facts: ["Pool", "Hallenbad", "Wasserrutsche"] }]
+    ]);
+    expect(m).toHaveLength(1);
+    expect(m[0]).toMatchObject({ id: "trivago:1", facts: ["Pool", "Hallenbad", "Wasserrutsche", "Parkplatz"] });
+  });
+  it("„Für Familien“: Familienhotels und Rutsche nach oben", () => {
+    const o = (name: string, total: number, facts: string[] = []) => ({ id: name, source: "t", sourceName: "T", name, total, currency: "EUR", score: 8.5, facts });
+    const l = sortStays([o("Hotel Zentral", 300, ["Pool"]), o("Familienhotel Schreinerhof", 1643, ["Pool"]), o("Landhotel", 500, ["Pool", "Wasserrutsche"])], "family");
+    expect(l.map(x => x.name)).toEqual(["Familienhotel Schreinerhof", "Landhotel", "Hotel Zentral"]);
   });
 });

@@ -15,11 +15,14 @@ export function centerKm(o: Pick<StayOffer, "place">): number | undefined {
   return m ? +m[1].replace(",", ".") : undefined;
 }
 
-/** Punkte für Familien: Pool, Familienzimmer, Küche, Strand, Garten, gute Bewertung */
-export function familyScore(o: Pick<StayOffer, "facts" | "score">): number {
+/** Familienhotel laut Name (Familotel, Familienhotel, Kinderhotel, „Family“) (#683) */
+export const FAMILY_NAME = /famil|kinderhotel|kids|kinderland/i;
+
+/** Punkte für Familien: Familienhotel, Rutsche, Pool, Hallenbad, Familienzimmer, Küche, Strand, Garten, gute Bewertung */
+export function familyScore(o: Pick<StayOffer, "facts" | "score"> & { name?: string }): number {
   const f = o.facts || [];
-  const pts: Record<string, number> = { Pool: 3, Familienzimmer: 3, Küche: 2, Strand: 2, Garten: 1, Waschmaschine: 1 };
-  return f.reduce((s, x) => s + (pts[x] || 0), 0) + (o.score || 0) / 2;
+  const pts: Record<string, number> = { Wasserrutsche: 3, Pool: 3, Hallenbad: 2, Familienzimmer: 3, Küche: 2, Strand: 2, Garten: 1, Waschmaschine: 1 };
+  return f.reduce((s, x) => s + (pts[x] || 0), 0) + (o.score || 0) / 2 + (o.name && FAMILY_NAME.test(o.name) ? 4 : 0);
 }
 
 /** was die Anbieter trotz Filter liefern: zu wenig Sterne oder zu schwache Bewertung fliegt raus */
