@@ -103,6 +103,7 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   // eine Einheit für alle (#674): Schlafzimmer bzw. Schlafplätze gewünscht → ein Zimmer, ganze Unterkunft
   if (o.bedroomsMin != null && !int(o.bedroomsMin, 1, 20)) return "Schlafzimmer: 1 bis 20";
   if (o.sleepsMin != null && !int(o.sleepsMin, 1, 50)) return "Schlafplätze: 1 bis 50";
+  if (o.radiusKm != null && !int(o.radiusKm, 1, 20)) return "Umkreis: 1 bis 20 km";
   const one = o.bedroomsMin != null || o.sleepsMin != null;
   const adults = o.adults ?? 1, rooms = one ? 1 : o.rooms ?? 1, childAges = o.childAges ?? [];
   if (!int(adults, 1, 20)) return "1 bis 20 Erwachsene";
@@ -131,6 +132,8 @@ export function parseStayQuery(b: unknown): StayQuery | string {
     place, ...(country ? { country } : {}), ...(cc ? { cc } : {}), ...geo, checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type,
     ...(sources ? { sources } : {}), currency, ...(must ? { must } : {}),
     ...(o.minStars != null ? { minStars: o.minStars as number } : {}), ...(o.minScore ? { minScore: o.minScore as number } : {}),
-    ...(o.bedroomsMin != null ? { bedroomsMin: o.bedroomsMin as number } : {}), ...(o.sleepsMin != null ? { sleepsMin: o.sleepsMin as number } : {})
+    ...(o.bedroomsMin != null ? { bedroomsMin: o.bedroomsMin as number } : {}), ...(o.sleepsMin != null ? { sleepsMin: o.sleepsMin as number } : {}),
+    // Umkreis nur mit Mittelpunkt
+    ...(o.radiusKm != null && "lat" in geo ? { radiusKm: o.radiusKm as number } : {})
   };
 }

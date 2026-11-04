@@ -134,7 +134,8 @@ export function addStay(trip: Trip, o: StayOffer, q: StayQuery, lang: string): I
     id: uid(), label: o.name, ...(o.place ? { detail: o.place } : {}),
     price: { mode: "unit", basis: "stay", currency: o.currency, unit: Math.round(o.total), capacity: Math.max(1, q.adults + q.childAges.length) },
     source: { name: o.sourceName, at: day(), ...(o.url ? { url: o.url } : {}) },
-    stay: { ...(o.stars ? { stars: o.stars } : {}), ...(o.score != null ? { rating: Math.round(o.score * 10) } : {}), ...(o.facts?.length ? { facts: o.facts } : {}), ...(o.board ? { board: o.board } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) },
+    stay: { ...(o.stars ? { stars: o.stars } : {}), ...(o.score != null ? { rating: Math.round(o.score * 10) } : {}), ...(o.facts?.length ? { facts: o.facts } : {}), ...(o.board ? { board: o.board } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}),
+      ...(o.bedrooms ? { bedrooms: o.bedrooms } : {}), ...(o.sleeps ? { sleeps: o.sleeps } : {}), ...(q.type !== "hotel" && q.rooms > 1 ? { units: q.rooms } : {}) },
     ...withLoc(locOf(o.name, q.place, o)),
     query: { place: q.place, country: q.country, checkin: q.checkin, checkout: q.checkout, adults: q.adults, childAges: [...q.childAges], rooms: q.rooms },
     ...(o.fees?.length ? { extras: o.fees.map(f => feeToExtra(f, o.sourceName)) } : {})

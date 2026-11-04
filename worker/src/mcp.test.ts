@@ -176,6 +176,14 @@ describe("KI-Konnektor (MCP)", () => {
     expect(one.data.unitsNote).toBeUndefined();
   });
 
+  it("Umkreis 1–20 km um den Ort (#680)", async () => {
+    let got: any;
+    const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });
+    await tool(d, "search_stays", { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, radiusKm: 12 });
+    expect(got).toMatchObject({ radiusKm: 12, cc: "ES" });
+    expect((await tool(d, "search_stays", { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, radiusKm: 300 })).error).toBe(true);
+  });
+
   it("findet kleine Orte und ignoriert Gemeinde oder Insel nach dem Komma (#622)", async () => {
     let got: any;
     const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });

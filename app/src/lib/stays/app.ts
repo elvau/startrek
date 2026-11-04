@@ -73,7 +73,8 @@ export function stayToOption(o: StayOffer, people: number, place?: string, parts
     price: { mode: "unit", basis: "stay", currency: o.currency, unit: Math.round(o.total), capacity: Math.max(1, people), ...(parts > 1 ? { multiply: true } : {}) },
     ...(parts > 1 ? { split: parts } : {}),
     source: { name: o.via && o.via !== o.sourceName ? t("st.via", { a: o.sourceName, b: o.via }) : o.sourceName, at: localToday(), url: o.url, ...(o.test ? { test: true } : {}) },
-    stay: { stars: o.stars, rating: o.score != null ? Math.round(o.score * 10) : undefined, facts: o.facts?.length ? o.facts : undefined, ...(o.board ? { board: o.board } : {}), ...(o.freeCancel ? { freeCancel: true } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}) },
+    stay: { stars: o.stars, rating: o.score != null ? Math.round(o.score * 10) : undefined, facts: o.facts?.length ? o.facts : undefined, ...(o.board ? { board: o.board } : {}), ...(o.freeCancel ? { freeCancel: true } : {}), ...(o.image && /^https:\/\//.test(o.image) ? { image: o.image } : {}),
+      ...(o.bedrooms ? { bedrooms: o.bedrooms } : {}), ...(o.sleeps ? { sleeps: o.sleeps } : {}) },
     ...(loc ? { loc } : {}),
     ...(o.fees?.length ? { extras: o.fees.map(f => feeToExtra(f, o.sourceName)) } : {})
   };
@@ -87,9 +88,13 @@ const blank = (it: Item) => it.options.length === 1 && !it.options[0].label && !
  * Übernehmen: erstes Ergebnis füllt einen leeren Unterkunft-Posten oder legt einen an,
  * weitere kommen als Angebote zum Vergleichen dazu.
  */
+/** Kombi (#677): ganze Unterkunft bzw. alles mit mehreren Zimmern gesucht = so viele getrennte Einheiten; Hotelzimmer nicht */
+export const comboUnits = (q: Pick<StayQuery, "type" | "rooms">): number => (q.type !== "hotel" && q.rooms > 1 ? q.rooms : 0);
+
 export function takeStay(trip: Trip, o: StayOffer, q: StayQuery, into?: string, ids?: string[], parts = 1): Item {
   const opt = stayToOption(o, q.adults + q.childAges.length, q.place, parts);
   opt.query = { place: q.place, country: q.country, checkin: q.checkin, checkout: q.checkout, adults: q.adults, childAges: [...q.childAges], rooms: q.rooms };
+  if (comboUnits(q)) opt.stay = { ...(opt.stay || {}), units: comboUnits(q) };
   const target = into ? trip.items.find(i => i.id === into) : undefined;
   if (target) { addOffer(target, opt); return target; }
   // nur ein Teil der Reisenden (z. B. eine Familie, die früher kommt)

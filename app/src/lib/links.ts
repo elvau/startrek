@@ -4,7 +4,7 @@
  * In der Oberfläche laufen die Links über das Partner-Verzeichnis (partners/), das bei Bedarf die Partnerkennung anhängt.
  */
 /** pets: ein Haustier reist mit (#322), setzt den Haustier-Filter des Anbieters */
-export interface StayLinkQuery { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number; pets?: boolean }
+export interface StayLinkQuery { place: string; country?: string; checkin: string; checkout: string; adults: number; childAges: number[]; rooms: number; pets?: boolean; bedrooms?: number }
 export interface FlightLinkQuery { from: string; to: string; depart: string; ret?: string; adults: number; children: number; infants: number }
 
 const where = (q: StayLinkQuery) => (q.country ? `${q.place}, ${q.country}` : q.place);
@@ -12,8 +12,9 @@ const where = (q: StayLinkQuery) => (q.country ? `${q.place}, ${q.country}` : q.
 export function bookingLink(q: StayLinkQuery): string {
   const p = new URLSearchParams({ ss: where(q), checkin: q.checkin, checkout: q.checkout, group_adults: String(q.adults), group_children: String(q.childAges.length), no_rooms: String(q.rooms), selected_currency: "EUR" });
   q.childAges.forEach(a => p.append("age", String(a)));
-  // Filter „Haustiere erlaubt“
-  if (q.pets) p.append("nflt", "hotelfacility=4");
+  // Filter „Haustiere erlaubt“ und Schlafzimmer (#682, nflt mit „;“ verbunden)
+  const nflt = [q.pets ? "hotelfacility=4" : "", q.bedrooms ? `entire_place_bedroom_count=${q.bedrooms}` : ""].filter(Boolean);
+  if (nflt.length) p.append("nflt", nflt.join(";"));
   return `https://www.booking.com/searchresults.de.html?${p}`;
 }
 
@@ -24,7 +25,17 @@ export function airbnbLink(q: StayLinkQuery): string {
   if (kids) p.set("children", String(kids));
   if (infants) p.set("infants", String(infants));
   if (q.pets) p.set("pets", "1");
+  if (q.bedrooms) p.set("min_bedrooms", String(q.bedrooms));
   return `https://www.airbnb.de/s/${encodeURIComponent(slug)}/homes?${p}`;
+}
+
+/** Vrbo (#682, neutral): Ferienhäuser; Kinder wie bei Expedia als Zimmer_Alter, Schlafzimmer als minBedrooms */
+export function vrboLink(q: StayLinkQuery): string {
+  const p = new URLSearchParams({ destination: where(q), startDate: q.checkin, endDate: q.checkout, adults: String(q.adults) });
+  if (q.childAges.length) p.set("children", q.childAges.map(a => `1_${a}`).join(","));
+  if (q.bedrooms) p.set("minBedrooms", String(q.bedrooms));
+  if (q.pets) p.set("petsIncluded", "true");
+  return `https://www.vrbo.com/search?${p}`;
 }
 
 export function googleFlightsLink(q: FlightLinkQuery): string {

@@ -37,7 +37,7 @@ export type GuideSpots = Record<string, { w: number; h: number; spots: { key: st
 
 export const GUIDE_STAND = "November 2026";
 /** Datum der letzten inhaltlichen Änderung (JJJJ-MM-TT), mit GUIDE_STAND anheben; für lastmod in der Sitemap */
-export const GUIDE_UPDATED = "2026-11-03";
+export const GUIDE_UPDATED = "2026-11-04";
 
 export const GUIDE: GuidePage[] = [
   {
@@ -163,7 +163,7 @@ export const GUIDE: GuidePage[] = [
     ],
     steps: [
       "Im Kapitel „Ankommen“ eine Unterkunft hinzufügen oder „🛏 Unterkunft suchen“ wählen.",
-      "Ort, Art der Unterkunft (ganze Unterkunft, Hotel …), Zeitraum, Gäste und Zimmer angeben. Bei einer Rundreise wählst du die Station.",
+      "Ort, Art der Unterkunft (ganze Unterkunft, Hotel …), Zeitraum, Gäste und Zimmer angeben. Bei einer Rundreise wählst du die Station. Mit dem Regler „Umkreis“ suchst du bis 20 km um den Ort.",
       "Treffer ansehen, filtern (zum Beispiel nach Ausstattung) und passende Angebote übernehmen.",
       "Der Preis lässt sich als Preis pro Nacht, pro Person und Nacht oder als Gesamtpreis eintragen.",
       "Mehrere Angebote erscheinen als A, B, C mit Karte, Entfernung zum Zentrum und zum Meer und den Kosten der ganzen Reise. So findest du die beste Wahl und siehst, was es mit Verpflegung kostet.",
@@ -174,6 +174,8 @@ export const GUIDE: GuidePage[] = [
       "Nachzügler oder zwei Nächte woanders? Im Gesamtpaket „✈ Flug hinzufügen“ bzw. „🛏 Unterkunft hinzufügen“. Das steht dann unter „Ergänzungen“ mit eigenem Preis, nicht im Paketpreis.",
       "Reise ohne Flug (Auto, Bahn, Camper)? Dann fehlt das Kapitel „Abheben“. Mit „Kein Flug nötig“ blendest du es selbst aus, „Doch fliegen? Flug hinzufügen“ im Kapitel Transport bringt es zurück.",
       "Der Tagesplan warnt, wenn Nächte ohne Unterkunft sind oder doppelt gebucht wurden.",
+      "Ein Haus für alle? Bei „Ganze Unterkunft“ trägst du „Schlafzimmer mind.“ ein. Dann sucht Split&Fly eine Unterkunft für die ganze Gruppe und zeigt nur Treffer, bei denen die Schlafzimmer bekannt sind. Die Suchlinks zu Booking.com, Airbnb und Vrbo übernehmen die Zahl.",
+      "„🧩 Kombi aus 4 Einheiten“ heißt: kein Haus für alle, sondern mehrere getrennte Zimmer oder Wohnungen. Das passiert, wenn du bei einer ganzen Unterkunft mehr als ein Zimmer suchst.",
       "Nach der Landung ohne Anschluss kannst du direkt „Unterkunft am Flughafen suchen“. Für eine Unterkunft, die du schon hast, gibt es „🏠 Privat“.",
       "Wo die Suche es weiß, siehst du „kostenlos stornierbar“. Für die Buchung gehst du zum Anbieter.",
       "Kreuzfahrt? „🚢 Kreuzfahrt“ öffnet drei Wege: „Suchen“ nach Fahrtgebiet, Abfahrtshafen, Zeitraum, Nächten und Kabine, „Importieren“ für ein Angebot oder eine Buchung (Screenshot, PDF, Text, Link) oder „Von Hand“. Treffer und Importe kommen mit Route und Kabinen nach Familien.",
@@ -185,6 +187,7 @@ export const GUIDE: GuidePage[] = [
     ],
     faq: [
       { q: "Was ist, wenn die Gruppe nicht in ein Zimmer passt?", a: "Die Belegung berücksichtigt die maximale Gästezahl und die Zimmer. Passt es nicht, teile die Gruppe auf mehrere Unterkünfte auf." },
+      { q: "Warum finde ich mit Schlafzimmern so wenig?", a: "Die Anbieter nennen die Zahl der Schlafzimmer selten. Split&Fly zeigt nur Treffer, bei denen sie bestätigt ist. Findest du nichts, such direkt beim Anbieter: Die Links unter der Suche übernehmen Ort, Daten, Gäste und Schlafzimmer." },
       { q: "Kann ich auch eine private Unterkunft eintragen?", a: "Ja. Du kannst jede Unterkunft von Hand eintragen, auch eine, die du nicht über die Suche findest, zum Beispiel ein Haus von Bekannten." },
       { q: "Woher kommen die Treffer der Kreuzfahrt-Suche?", a: "Die KI sucht im Netz nach passenden Fahrten und zeigt bis zu sechs mit „ab“-Preis pro Person und Link zur Fundstelle. Die Preise sind nicht live geprüft, deshalb ist der Posten als „bitte prüfen“ markiert. Darunter findest du Links zu Kreuzfahrt-Portalen zum Selbstvergleichen. Für die Suche musst du angemeldet sein." },
       { q: "Wie teilen sich die Kosten einer Kreuzfahrt auf?", a: "Nach Kabinen. Jede Kabine kostet die Personen darin, geteilt nach Personen. Wohnen zwei Familien in einer Kabine, zum Beispiel Oma mit Enkel, zahlt jede ihren Anteil. Getränkepaket, WLAN, Hafengebühren und Trinkgeld trägst du unter „Nebenkosten“ ein." }

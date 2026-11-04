@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { askRooms, roomsFit, roomsOf, withRooms } from "./rooms";
-import { factsOf } from "./providers";
+import { bookingArgs, factsOf } from "./providers";
+import { inRadius } from "./sort";
+import { comboUnits, takeStay } from "./app";
+import { airbnbLink, bookingLink, vrboLink } from "../links";
+import type { Trip } from "../model";
 import { mergeStays, parseStayQuery } from "./search";
 import { keepStays } from "./sort";
 import type { StayOffer } from "./types";
@@ -64,5 +68,36 @@ describe("Schlafzimmer und Schlafplätze (#674)", () => {
     expect(factsOf(["Parkplatz", "Sauna", "Innenpool (ganzjährig)", "Wasserrutsche", "Spielplatz mit Rutsche", "Familienzimmer", "Klimaanlage"]))
       .toEqual(["Pool", "Hallenbad", "Wasserrutsche", "Sauna", "Familienzimmer", "Parkplatz"]);
     expect(factsOf(["Spielplatz mit Rutsche"])).toEqual([]);
+  });
+
+  it("Umkreis (#680): nur 1–20 km, Booking um den Mittelpunkt, Treffer weiter weg fallen weg", () => {
+    const base = { place: "Bodenmais", checkin: "2027-12-30", checkout: "2028-01-03", adults: 2, lat: 49.07, lon: 13.1 };
+    expect(parseStayQuery({ ...base, radiusKm: 15 })).toMatchObject({ radiusKm: 15 });
+    expect(parseStayQuery({ ...base, radiusKm: 25 })).toBe("Umkreis: 1 bis 20 km");
+    expect(parseStayQuery({ ...base, lat: undefined, lon: undefined, radiusKm: 15 })).not.toHaveProperty("radiusKm");
+    const q = parseStayQuery({ ...base, radiusKm: 15 }) as Exclude<ReturnType<typeof parseStayQuery>, string>;
+    expect(bookingArgs(q)).toMatchObject({ coordinates: { latitude: 49.07, longitude: 13.1, radius: 15 } });
+    expect(bookingArgs(q)).not.toHaveProperty("destination");
+    expect(inRadius({ lat: 49.1, lon: 13.15 }, q)).toBe(true);
+    expect(inRadius({ lat: 49.3, lon: 12.67 }, q)).toBe(false); // Arrach, gut 40 km
+    expect(inRadius({}, q)).toBe(false);
+    expect(inRadius({}, { lat: 1, lon: 1 })).toBe(true);
+  });
+  it("Suchlinks mit Schlafzimmern (#682)", () => {
+    const q = { place: "Garmisch-Partenkirchen", country: "Germany", checkin: "2026-12-30", checkout: "2027-01-03", adults: 6, childAges: [4, 7, 10], rooms: 1, bedrooms: 4 };
+    expect(new URL(airbnbLink(q)).searchParams.get("min_bedrooms")).toBe("4");
+    expect(new URL(bookingLink({ ...q, pets: true })).searchParams.get("nflt")).toBe("hotelfacility=4;entire_place_bedroom_count=4");
+    const v = new URL(vrboLink(q)).searchParams;
+    expect([v.get("destination"), v.get("adults"), v.get("children"), v.get("minBedrooms")]).toEqual(["Garmisch-Partenkirchen, Germany", "6", "1_4,1_7,1_10", "4"]);
+    expect(new URL(vrboLink({ ...q, bedrooms: undefined })).searchParams.has("minBedrooms")).toBe(false);
+  });
+  it("Kombi (#677): ganze Unterkunft mit mehreren Zimmern, nicht bei Hotels", () => {
+    expect(comboUnits({ type: "whole", rooms: 4 })).toBe(4);
+    expect(comboUnits({ type: "all", rooms: 2 })).toBe(2);
+    expect(comboUnits({ type: "hotel", rooms: 4 })).toBe(0);
+    expect(comboUnits({ type: "whole", rooms: 1 })).toBe(0);
+    const trip = { id: "t", name: "T", travelers: [], items: [] } as unknown as Trip;
+    const it = takeStay(trip, o("booking:9", 1890, { name: "Karwendel-Lodge", bedrooms: 5, sleeps: 10 }), { place: "Scharnitz", checkin: "2027-12-30", checkout: "2028-01-03", adults: 6, childAges: [], rooms: 4, type: "whole", currency: "EUR" });
+    expect(it.options[0].stay).toMatchObject({ units: 4, bedrooms: 5, sleeps: 10 });
   });
 });

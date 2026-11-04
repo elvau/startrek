@@ -42,8 +42,10 @@ const num = (v: unknown) => (typeof v === "number" && isFinite(v) ? v : v != nul
 /* ---------- Booking.com ---------- */
 
 export function bookingArgs(q: StayQuery) {
+  // Umkreis (#680): Booking sucht dann um den Mittelpunkt statt nach dem Namen
+  const near = q.radiusKm && Number.isFinite(q.lat) && Number.isFinite(q.lon);
   return {
-    destination: q.country ? `${q.place}, ${q.country}` : q.place,
+    ...(near ? { coordinates: { latitude: q.lat, longitude: q.lon, radius: q.radiusKm } } : { destination: q.country ? `${q.place}, ${q.country}` : q.place }),
     checkin_date: q.checkin, checkout_date: q.checkout,
     number_of_adults: q.adults, number_of_rooms: q.rooms,
     ...(q.childAges.length ? { children_ages: q.childAges } : {}),

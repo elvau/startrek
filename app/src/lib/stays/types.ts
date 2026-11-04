@@ -37,6 +37,8 @@ export interface StayQuery {
   /** eine Einheit für alle (#674): mindestens so viele Schlafzimmer bzw. Schlafplätze; Angebote ohne Angabe fallen weg */
   bedroomsMin?: number;
   sleepsMin?: number;
+  /** Umkreis in km um lat/lon (1–20); Treffer weiter weg oder ohne Lage fallen weg */
+  radiusKm?: number;
   currency?: string;
   /** Land der suchenden Person (ISO-2) für Preise und Inhalte der Anbieter; fehlt: DE (#464) */
   market?: string;

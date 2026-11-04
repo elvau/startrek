@@ -192,6 +192,7 @@ const SEARCH_TOOLS = [
       type: { type: "string", enum: ["all", "hotel", "whole"], description: "all, hotel or whole (apartment/house); default: preferences" },
       minStars: int("Minimum hotel stars (default: preferences)", 1, 5), tripId: str("Use this trip's preferences (default: the user's own)"),
       board: { type: "string", enum: ["breakfast", "half", "full", "all"], description: "At least this board: breakfast, half (half board), full (full board), all (all inclusive). Drops offers without board info" },
+      radiusKm: int("Only accommodation within this many km of the place (1-20), e.g. a village and its surroundings", 1, 20),
       amenities: { type: "array", items: { type: "string", enum: ["pool", "indoorPool", "waterslide", "sauna"] }, description: "Must have all of these: pool (any), indoorPool, waterslide, sauna. Drops offers that do not list them" },
       bedroomsMin: int("One unit for everyone (house, apartment) with at least this many bedrooms. Use this when the user asks for bedrooms, never rooms: rooms means separate bookable units. Sets rooms 1 and type whole; drops offers whose bedrooms are unknown", 1, 20),
       sleepsMin: int("One unit for everyone that sleeps at least this many guests (e.g. the whole group). Sets rooms 1 and type whole; drops offers whose capacity is unknown", 1, 50)
@@ -460,6 +461,7 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
         rooms: Number.isInteger(a.rooms) ? a.rooms : Math.max(1, Math.ceil((Number(adults) || 1) / 2)), type, ...(minStars ? { minStars } : {}), currency: "EUR",
         // eine Einheit für alle (#674): parseStayQuery setzt dann ein Zimmer und ganze Unterkunft
         ...(a.bedroomsMin != null ? { bedroomsMin: a.bedroomsMin } : {}), ...(a.sleepsMin != null ? { sleepsMin: a.sleepsMin } : {}),
+        ...(a.radiusKm != null ? { radiusKm: a.radiusKm } : {}),
         // Pool filtern die Anbieter selbst, den Rest prüft facts (#681)
         ...(amen.some(k => k !== "sauna") ? { must: ["pool"] } : {})
       });
