@@ -11,6 +11,7 @@
   import HeroTiles from "./HeroTiles.svelte";
   import VariantBar from "./VariantBar.svelte";
   import CostParts from "./CostParts.svelte";
+  import NextSteps from "./NextSteps.svelte";
 
   import { heroEdit } from "./heroEdit.svelte";
   // „Reise bearbeiten“ sitzt in der Leiste oben; beim Öffnen einer Reise zu
@@ -84,6 +85,8 @@
       <span>{n ? t("perPerson", { v: eurPP(calc.T.due / n) }) : t("nobody")}{calc.T.funds ? ` · ${t("fund.minus", { v: eur(calc.T.funds) })}` : ""}</span>
       {#if calc.T.total > 0}<CostParts />{/if}
     </div>
+    <!-- Nächste Schritte mit Fortschritt (#151) -->
+    <NextSteps />
   </div>
   <button class="hint" onclick={() => document.getElementById("trav")?.scrollIntoView({ behavior: "smooth", block: "start" })} aria-label={t("hero.discoverAria")}>
     <i aria-hidden="true"></i><span>{t("hero.discover")}</span><svg class="hint-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>

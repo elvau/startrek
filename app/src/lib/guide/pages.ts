@@ -57,6 +57,7 @@ export const GUIDE: GuidePage[] = [
       "Bei „Wann?“ wählst du „Tage“, „Monat“, „Ferien“ oder „Flexibel“. Bei Monat und Ferien legst du Hin- und Rückreise mit dem Regler fest. Bei Ferien wählst du zuerst die Region (z. B. dein Bundesland), dann die Ferien, etwa die Sommerferien.",
       "Fahren mehrere Familien oder eine Gruppe mit, fragt „Von wo geht's los?“, ob alle vom selben Ort starten. Bei „Von verschiedenen Orten“ trägst du den Wohnort je Familie ein, bei einer Gruppe Startorte mit Personenzahl. Wer noch keinen hat, ergänzt ihn später selbst.",
       "Mit „Reise anlegen“ steht die Reise mit Ziel, Zeitraum und Personen bereit. Namen und weitere Personen ergänzt du im Kapitel „Wer fährt mit“ (siehe Seite „Reisende und Familien“).",
+      "In der Übersicht zeigt „Nächste Schritte“, wie weit die Reise geplant ist, und was noch fehlt: Ziel und Zeitraum, Anreise, Unterkunft, Vor Ort, Erlebnisse, Sonstiges, dazu Startorte und Mitreisende einladen. Antippen springt an die Stelle; ist ein Bereich noch leer, öffnet sich gleich die Suche.",
       "Geh die Kapitel Flüge, Unterkunft, Vor Ort, Erlebnisse und Sonstiges durch und trag ein, was du schon weißt. Geschätzt reicht zum Start.",
       "Schau in „Wer zahlt was“, was jede Familie zahlt."
     ],
@@ -65,6 +66,7 @@ export const GUIDE: GuidePage[] = [
       "Auf der Startseite steht nur die Reise, an der du zuletzt geplant hast („Weiter planen“). Alle Reisen findest du unter „🗂 Meine Reisen“: als Liste oder als Kacheln, sortiert zum Beispiel nach „Als Nächstes“, Preis oder Land. „← Startseite“ führt zurück.",
       "Zwei Reisen vergleichen: in „Meine Reisen“ eine Reise auf eine andere ziehen oder ⇆ wählen. So stellst du Varianten wie „Kroatien“ und „Portugal“ nebeneinander.",
       "Im Vergleich kannst du mit „Abstimmen lassen“ alle Mitreisenden über die Varianten abstimmen lassen, mit „Was wäre wenn …“ eine Variante mit anderem Zeitraum oder Abflughafen anlegen (Preise werden neu gesucht) und mit „Diese nehmen“ entscheiden. Die anderen Varianten werden archiviert und lassen sich wiederherstellen.",
+      "So rechnet „Nächste Schritte“: Anreise zählt 40 %, Unterkunft 30 %, Vor Ort, Erlebnisse und Sonstiges je 10 %. Anreise zählt je Person, Unterkunft je Person und Nacht. „Gewählt“ zählt halb, „Gebucht“ und „Bezahlt“ ganz, Ideen noch nicht. Braucht eure Reise etwas nicht, tippe „Brauchen wir nicht“; das Gewicht geht dann an die übrigen Bereiche.",
       "An schwierigen Stellen zeigt ein kleines „?“ eine kurze Erklärung. Antippen, noch einmal antippen schließt sie.",
       "Kennt die App deinen Wohnort schon (aus dem Konto oder der letzten Reise), fällt die Frage „Von wo geht's los?“ weg, wenn alle von einem Ort starten. Bei „Ferien“ ist die Region dann vorausgewählt."
     ],

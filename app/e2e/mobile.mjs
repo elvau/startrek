@@ -302,6 +302,30 @@ try {
   if (made.from !== "2027-07-24" || made.to !== "2027-08-03") fail("Geführt: Zeitraum " + made.from + " bis " + made.to);
   if (made.travelers.length < 4 || !hh.some(h => h.geo?.ort === "Köln") || !hh.some(h => !h.geo && h.region === "DE-NW")) fail("Geführt: Familien und Wohnorte " + JSON.stringify(made.households));
   log("Geführte neue Reise: Ziel aus der Suche, Sommerferien NRW mit Regler, zwei Familien, Startort je Familie (#672)");
+
+  // Nächste Schritte (#151): Fortschritt nach Bausteinen, offene Startorte, „Brauchen wir nicht“ verteilt das Gewicht um
+  const np = p.locator(".pg-hero .np");
+  await np.scrollIntoViewIfNeeded();
+  const pct = async () => +(await np.locator(".np-pct").innerText()).replace(/\D/g, "");
+  // neue Reise: nur die Verpflegung als Schätzung (Sonstiges halb)
+  if ((await pct()) !== 5) fail("Nächste Schritte: Start mit " + await pct() + " %");
+  if (!(await np.locator(".np-row", { hasText: "Ziel und Zeitraum" }).locator("xpath=..").getAttribute("class")).includes("done")) fail("Nächste Schritte: Ziel und Zeitraum nicht abgehakt");
+  if (!(await np.locator(".np-row", { hasText: "Startorte ergänzen" }).innerText()).includes("1 Familie noch ohne Startort")) fail("Nächste Schritte: offene Startorte fehlen");
+  for (const b of ["Vor Ort", "Erlebnisse"]) await np.locator("li", { has: p.locator(".np-row", { hasText: b }) }).locator(".np-skip").click();
+  await until(async () => (await pct()) === 6, "Gewicht ohne Vor Ort und Erlebnisse");
+  await until(async () => JSON.stringify((await saved())?.progressOff?.sort()) === JSON.stringify(["attractions", "transport"]), "„Brauchen wir nicht“ gespeichert");
+  await np.locator(".np-row", { hasText: "Vor Ort" }).click();
+  await until(async () => (await pct()) === 5, "Vor Ort wieder aufgenommen");
+  const smallNp = await np.evaluate(g => [...g.querySelectorAll("button")].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height < 44; }).map(e => e.className));
+  if (smallNp.length) fail("Nächste Schritte: Tippziele unter 44 px: " + smallNp.join(", "));
+  // leer und mit Suche: öffnet gleich die Suche; sonst Sprung ins Kapitel
+  await np.locator(".np-row", { hasText: "Unterkunft" }).click();
+  await p.locator(".modal .st-dates").waitFor();
+  await p.keyboard.press("Escape");
+  await p.locator(".modal .st-dates").waitFor({ state: "detached" });
+  await np.locator(".np-row", { hasText: "Sonstiges" }).click();
+  await until(async () => (await on()) === "misc", "Sprung zu Sonstiges");
+  log("Nächste Schritte: Fortschritt nach Bausteinen, Haken, offene Startorte, „Brauchen wir nicht“, Sprung ins Kapitel (#151)");
   if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Handy: Pager mit 9 Seiten, Wischen, Leiste unten mit allen Seiten und Gesamtsumme (öffnet Mehr), Kachel springt ins Kapitel, kein langes Scrollen");
   console.log("\nHandy-Ansicht: alles in Ordnung");
