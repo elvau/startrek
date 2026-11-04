@@ -344,6 +344,7 @@ export function tripSummary(trip: Trip, role: string, partner = false) {
     id: trip.id, name: trip.name, place: trip.place, country: trip.country || undefined, from: trip.from, to: trip.to, role,
     travelers: { adults: cnt("adult"), children: cnt("child"), infants: cnt("infant"), ...(teens ? { teens, note: "Teens (12-17) pay adult fares and are counted in adults" } : {}) }, ...tripPeople(trip),
     items, approxTotalEur: total, ...(trip.prefs && Object.keys(trip.prefs).length ? { preferences: trip.prefs } : {}),
+    ...(homeless(trip).length ? { homeMissing: homeless(trip), homeNote: HOME_NOTE } : {}),
     note: "Approximate total of the items (chosen or cheapest offer), without extraCosts (tourist tax, cleaning, baggage … paid on site or extra; add them when comparing) and without deposits (only blocked, credit card only if how = credit). The way to the departure airport and back (car incl. parking or train, per household) and meals are added automatically by the Split&Fly app and are not listed here; do not add them. Exact split per person is calculated in the app."
   };
 }
@@ -355,6 +356,11 @@ const homeOf = (h: { plz?: string; geo?: { ort: string }; cc?: string } | undefi
   h?.geo?.ort ? [[h.plz, h.geo.ort].filter(Boolean).join(" "), h.cc && h.cc !== "DE" ? h.cc : ""].filter(Boolean).join(", ") : undefined;
 
 /** Reisende für den Assistenten: Kennung, Vorname, Familie, Alter bzw. Altersklasse; Familien mit Wohnort */
+/** Familien ohne Wohnort (#684): für sie rechnet die App weder Anreise mit Auto oder Bahn noch den Weg zum Flughafen */
+export const homeless = (trip: Trip): string[] =>
+  [...new Set(trip.travelers.filter(isActive).map(hhKey))].filter(k => !trip.households?.[k]?.geo);
+const HOME_NOTE = "These families have no home town, so the app cannot calculate their way there (own car, train, bus) or to the departure airport, and the trip looks cheaper than it is. Ask the user where they start from and set it with update_travelers (homes); until then, tell the user the arrival is missing.";
+
 export function tripPeople(trip: Trip) {
   const act = trip.travelers.filter(isActive);
   return {

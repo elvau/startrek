@@ -25,6 +25,8 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    bei mehreren Wohnungstypen zählt die größte. Ohne Angabe fällt ein Angebot weg (wie beim Filter `board`), der KI-Planer nutzt dasselbe.
    Harte Kriterien (#676), die ein Angebot nicht bestätigt: `add_stay` mit `unverified` (kurze Texte in der Sprache des Nutzers) markiert
    den Posten „bitte prüfen“ (`check`, `checkWhy`), `get_trip` zeigt `pleaseCheck`.
+   Familien ohne Wohnort (#684): `create_trip`/`get_trip` nennen sie in `homeMissing` mit `homeNote` (Anreise und Weg zum Flughafen
+   fehlen sonst still); die KI fragt nach und setzt den Ort mit `update_travelers` (`homes`).
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist

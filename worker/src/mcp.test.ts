@@ -140,6 +140,18 @@ describe("KI-Konnektor (MCP)", () => {
     expect((await tool(d, "add_stay", { tripId: id, offerId: "s1" })).data.markedForCheck).toBeUndefined();
   });
 
+  it("Familie ohne Wohnort: Hinweis statt stiller Lücke in der Anreise (#684)", async () => {
+    const d = deps();
+    const made = await tool(d, "create_trip", { place: "Bodenmais", from: "2026-11-13", to: "2026-11-15", adults: 2, childAges: [8, 5], travelersFrom: "user" });
+    expect(made.data.homeMissing).toHaveLength(1);
+    expect(made.data.homeNote).toContain("update_travelers");
+    const trip: Trip = JSON.parse((d.store as any).docs.get(made.data.tripId).data);
+    const fam = made.data.homeMissing[0];
+    trip.households = { [fam]: { plz: "80331", geo: { lat: 48.14, lon: 11.57, ort: "München" } } };
+    (d.store as any).docs.set(made.data.tripId, { ...(d.store as any).docs.get(made.data.tripId), data: JSON.stringify(trip) });
+    expect((await tool(d, "get_trip", { tripId: made.data.tripId })).data.homeMissing).toBeUndefined();
+  });
+
   it("findet kleine Orte und ignoriert Gemeinde oder Insel nach dem Komma (#622)", async () => {
     let got: any;
     const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });
