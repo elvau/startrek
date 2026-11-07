@@ -220,7 +220,10 @@ try {
   // Leiste (#663): Verlauf am Rand, wo es weitergeht; schwebende Knöpfe beim Herunterscrollen weg, beim Hochscrollen da
   await p.locator('.mbar [data-pg="hero"]').click();
   await until(async () => (await on()) === "hero", "zurück zur Übersicht");
-  await until(async () => await p.locator(".mbar .mb-row").evaluate(el => el.classList.contains("fade-e") && !el.classList.contains("fade-s")), "Verlauf rechts an der Leiste");
+  // Zustand der Leiste in die Meldung, falls es hängt (#688)
+  const rowState = () => p.locator(".mbar .mb-row").evaluate(el => `${el.className} scrollLeft ${el.scrollLeft}, ${el.clientWidth}/${el.scrollWidth} px`);
+  await until(async () => await p.locator(".mbar .mb-row").evaluate(el => el.classList.contains("fade-e") && !el.classList.contains("fade-s")), "Verlauf rechts an der Leiste")
+    .catch(async e => fail(e.message + " (" + await rowState() + ")"));
   const tall = await p.evaluate(() => [...document.querySelectorAll("main.pager > [data-ch]")].map(c => [c.dataset.ch, c.scrollHeight - c.clientHeight]).sort((a, b) => b[1] - a[1])[0]);
   if (!tall || tall[1] < 250) fail("keine Seite zum Scrollen: " + JSON.stringify(tall));
   await p.locator(`.mbar [data-pg="${tall[0]}"]`).click();
