@@ -28,7 +28,11 @@
   // aktive Seite in der Leiste sichtbar halten (nur die Leiste verschieben)
   $effect(() => {
     const a = row?.querySelector<HTMLElement>(`[data-pg="${mob.page}"]`);
-    if (row && a) row.scrollTo({ left: a.offsetLeft - (row.clientWidth - a.offsetWidth) / 2, behavior: "smooth" });
+    if (!row || !a) return;
+    row.scrollTo({ left: a.offsetLeft - (row.clientWidth - a.offsetWidth) / 2, behavior: "smooth" });
+    // Ränder nach dem weichen Scrollen sicher neu setzen, falls das letzte scroll-Ereignis ausbleibt (#688)
+    const tm = setTimeout(edges, 700);
+    return () => clearTimeout(tm);
   });
 </script>
 
@@ -38,7 +42,7 @@
 {/if}
 
 <nav class="mbar" aria-label={t("mob.bar")}>
-  <div class="mb-row" class:fade-s={fadeS} class:fade-e={fadeE} bind:this={row} onscroll={edges} role="tablist">
+  <div class="mb-row" class:fade-s={fadeS} class:fade-e={fadeE} bind:this={row} onscroll={edges} onscrollend={edges} role="tablist">
     {#each pages() as k (k)}
       <button type="button" role="tab" class="mb" class:on={mob.page === k} aria-selected={mob.page === k} data-pg={k} onclick={() => { mob.more = false; goPage(k); }}>
         <Icon name={icon(k)} /><span>{label(k)}</span>
