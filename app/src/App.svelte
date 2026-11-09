@@ -285,7 +285,7 @@
       {@const det = isDetailed(app.trip, ch.k)}
       <Chapter {ch} n={num(ch.k)} sum={eur(calc.T.byCat[ch.k] - netOf([...inPkg].filter(id => app.trip.items.find(x => x.id === id)?.cat === ch.k)))} sub={ch.k === "stay" && nn && det ? tn("n.nights", nn) : ch.sub}
         onadd={access.readonly || !det ? undefined : () => addItem(ch.k)}
-        onreset={items.length ? async () => { if (await ask(t("app.confirmReset", { n: items.length, label: ch.label }))) discardDetails(ch.k); } : undefined}
+        onreset={items.length ? async () => { if (await ask(t("app.confirmReset", { n: items.length, label: ch.label }), { ok: t("ask.delete") })) discardDetails(ch.k); } : undefined}
         mode={det ? "detail" : "simple"} onmode={access.readonly ? undefined : on => setDetailed(ch.k, on, true)}>
         {#if ch.k === "flights" && !access.readonly}
           <div class="search-row"><button class="btn primary fs-open" onclick={() => openFlightSearch()}>✈ {t("fs.open")}</button>

@@ -1,6 +1,7 @@
 /* Booking.com und Trivago über ihre MCP-Server */
-import { callTool } from "../mcp";
+import { callTool, callTools } from "../mcp";
 import type { StayMust, StayOffer, StayQuery } from "./types";
+import { askRooms } from "./rooms";
 
 export const TRIVAGO_MCP = "https://mcp.trivago.com/mcp";
 
@@ -14,13 +15,14 @@ export function priceNum(v: unknown): number {
   return +m[1].replace(/[.,]/g, "") + (m[2] ? +("0." + m[2]) : 0);
 }
 
-/** wenige, für Familien und Gruppen wichtige Merkmale */
-const FACTS: [string, RegExp][] = [
-  ["Küche", /küche|kitchen/i], ["Pool", /pool/i], ["Parkplatz", /parkpl|parking/i], ["Klimaanlage", /klimaanlage|air ?condition/i],
-  ["Familienzimmer", /familienzimmer|family room/i], ["Waschmaschine", /waschmaschine|washing/i], ["Strand", /strand|beach/i], ["Garten", /garten|garden/i]
+/** wenige, für Familien und Gruppen wichtige Merkmale; Hallenbad, Wasserrutsche und Sauna für den Ausstattungsfilter (#681) */
+export const FACTS: [string, RegExp][] = [
+  ["Küche", /küche|kitchen/i], ["Pool", /pool/i], ["Hallenbad", /innenpool|hallenbad|indoor[\s-]?(?:swimming[\s-]?)?pool/i],
+  ["Wasserrutsche", /wasserrutsche|water ?slide|aqua ?park|wasserpark/i], ["Sauna", /sauna/i], ["Familienzimmer", /familienzimmer|family room/i],
+  ["Parkplatz", /parkpl|parking/i], ["Klimaanlage", /klimaanlage|air ?condition/i], ["Waschmaschine", /waschmaschine|washing/i], ["Strand", /strand|beach/i], ["Garten", /garten|garden/i]
 ];
 export function factsOf(list: string[]): string[] {
-  return FACTS.filter(([, re]) => list.some(f => re.test(f))).map(([l]) => l).slice(0, 4);
+  return FACTS.filter(([, re]) => list.some(f => re.test(f))).map(([l]) => l).slice(0, 6);
 }
 
 /** Verpflegung aus Merkmalen oder Name („All Inclusive“, „Halbpension“, „Frühstück inklusive“); Frühstück nur, wenn inklusive */
@@ -40,12 +42,17 @@ const num = (v: unknown) => (typeof v === "number" && isFinite(v) ? v : v != nul
 /* ---------- Booking.com ---------- */
 
 export function bookingArgs(q: StayQuery) {
+  // Umkreis (#680): Booking sucht dann um den Mittelpunkt statt nach dem Namen
+  // nach Namen (#683): Booking braucht dazu den Ort als Ziel, nicht Koordinaten; Art gilt dann nicht
+  const names = q.names?.length ? q.names : undefined;
+  const near = !names && q.radiusKm && Number.isFinite(q.lat) && Number.isFinite(q.lon);
   return {
-    destination: q.country ? `${q.place}, ${q.country}` : q.place,
+    ...(near ? { coordinates: { latitude: q.lat, longitude: q.lon, radius: q.radiusKm } } : { destination: q.country ? `${q.place}, ${q.country}` : q.place }),
+    ...(names ? { hotel_names: names } : {}),
     checkin_date: q.checkin, checkout_date: q.checkout,
     number_of_adults: q.adults, number_of_rooms: q.rooms,
     ...(q.childAges.length ? { children_ages: q.childAges } : {}),
-    ...(q.type === "whole" ? { accommodation_types: ["HOLIDAY_HOME", "APARTMENT", "VILLA"] } : q.type === "hotel" ? { accommodation_types: ["HOTEL", "GUEST_HOUSE"] } : {}),
+    ...(names ? {} : q.type === "whole" ? { accommodation_types: ["HOLIDAY_HOME", "APARTMENT", "VILLA"] } : q.type === "hotel" ? { accommodation_types: ["HOTEL", "GUEST_HOUSE"] } : {}),
     ...bookingFilters(q),
     ...bookingMarket(q), currency: q.currency || "EUR"
   };
@@ -83,14 +90,30 @@ export function fromBooking(data: any, currency = "EUR"): StayOffer[] {
     id: "booking:" + a.id, source: "booking", sourceName: "Booking.com",
     name: a.name || "?", total: priceNum(a.price?.book), currency: a.price?.currency || currency, url: a.url,
     score: num(a.rating?.review_score), reviews: num(a.rating?.number_of_reviews), stars: num(a.rating?.stars) || undefined,
-    place: place(a.location?.district_name, a.location?.city_name),
+    place: place(a.location?.district_name, a.location?.city_name), ...(a.location?.city_name ? { city: String(a.location.city_name) } : {}),
     lat: num(a.location?.coordinates?.latitude), lon: num(a.location?.coordinates?.longitude),
     facts: factsOf(a.facilities || []), board: boardOf([...(a.facilities || []), ...(a.meal_plan ? [String(a.meal_plan)] : [])], a.name)
   })).filter((o: StayOffer) => o.total > 0);
 }
 
+/**
+ * Booking.com meldet bei der Suche nach Namen „hotel_names_no_availability“ als Fehler, mit den Namen in details (#683):
+ * daraus ausgebuchte Häuser machen; andere Fehler bleiben Fehler
+ */
+export function bookingSoldOut(e: unknown): StayOffer[] {
+  let j: any = null;
+  try { j = JSON.parse((e as Error)?.message || ""); } catch { /* kein JSON */ }
+  if (j?.type !== "hotel_names_no_availability") throw e;
+  return (Array.isArray(j.details) ? j.details : []).filter((n: unknown) => typeof n === "string" && n).map((n: string): StayOffer => (
+    { id: "booking:soldout:" + n, source: "booking", sourceName: "Booking.com", name: n, total: 0, currency: "EUR", soldOut: true }));
+}
+
 export async function searchBooking(q: StayQuery, url: string, f: typeof fetch = fetch): Promise<StayOffer[]> {
-  return fromBooking(await callTool(url, "accommodations_search", bookingArgs(q), "Booking.com", f), q.currency);
+  const data = await callTool(url, "accommodations_search", bookingArgs(q), "Booking.com", f).catch(e => bookingSoldOut(e));
+  if (Array.isArray(data)) return data;
+  const offers = fromBooking(data, q.currency);
+  // Schlafzimmer gewünscht (#674): die Suche nennt sie nicht, darum je Unterkunft nachfragen
+  return q.bedroomsMin || q.sleepsMin ? askRooms(offers, data, url, f) : offers;
 }
 
 /* ---------- Trivago (vergleicht viele Portale, z. B. Airbnb, CHECK24, Booking.com) ---------- */
@@ -151,7 +174,11 @@ function cheapestDeal(a: any): { total: number; via?: string; url?: string; curr
   return { total, via: d.advertiser || undefined, url: d.deal_url || undefined, currency: d.currency || undefined, ...(board ? { board } : {}), ...(ids.includes("freeCancellation") ? { freeCancel: true } : {}) };
 }
 
-export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[] {
+/** erster Teil vor dem Komma („Split, Kroatien“ → Split) */
+const cityOf = (s: unknown): string | undefined => (typeof s === "string" ? s.split(",")[0].trim() || undefined : undefined);
+
+export function fromTrivago(data: any, q?: Pick<StayQuery, "type" | "names">): StayOffer[] {
+  const named = !!q?.names?.length;
   return (data?.accommodations || []).map((a: any) => {
     const amen = String(a.top_amenities || "").split(/,\s*/).filter(Boolean);
     const deal = cheapestDeal(a);
@@ -161,15 +188,25 @@ export function fromTrivago(data: any, q?: Pick<StayQuery, "type">): StayOffer[]
       id: "trivago:" + a.accommodation_id, source: "trivago", sourceName: "Trivago", via: deal?.via || a.advertisers || undefined,
       name: a.accommodation_name || "?", total: deal ? deal.total : priceNum(a.price_per_stay), currency: deal?.currency || a.currency || "EUR", url: deal?.url || a.accommodation_url,
       score: num(a.review_rating), reviews: num(priceNum(a.review_count)), stars: num(a.hotel_rating) || undefined,
-      place: a.distance || a.country_city || undefined, lat: num(a.latitude), lon: num(a.longitude), image: a.main_image || undefined,
+      place: a.distance || a.country_city || undefined,
+      // „Arrach, Deutschland“ (Ort, Land); fehlt die Angabe, ist es der Ort vor dem Komma in distance
+      ...(cityOf(a.country_city || a.distance) ? { city: cityOf(a.country_city || a.distance) } : {}), lat: num(a.latitude), lon: num(a.longitude), image: a.main_image || undefined,
       facts: factsOf(amen), board: deal?.board || boardOf(amen, a.accommodation_name), kind, ...(deal?.freeCancel ? { freeCancel: true } : {})
     };
     return o;
-  }).filter((o: StayOffer & { kind?: string }) => o.total > 0 && !(q?.type === "whole" && o.kind === "hotel") && !(q?.type === "hotel" && o.kind === "whole"))
+  }).map((o: StayOffer & { kind?: string }) => (o.total > 0 || !named ? o : { ...o, total: 0, soldOut: true }))
+    // bei der Suche nach Namen (#683): ohne Angebot = zu den Daten ausgebucht, die Art filtert nicht; sonst fällt es weg
+    .filter((o: StayOffer & { kind?: string }) => (o.total > 0 || (o.soldOut && o.name !== "?")) && (named || (!(q?.type === "whole" && o.kind === "hotel") && !(q?.type === "hotel" && o.kind === "whole"))))
     .map(({ kind: _k, ...o }: StayOffer & { kind?: string }) => o);
 }
 
 export async function searchTrivago(q: StayQuery, url = TRIVAGO_MCP, f: typeof fetch = fetch): Promise<StayOffer[]> {
+  // nach Namen (#683): je Haus eine Namenssuche in einer Verbindung
+  if (q.names?.length) {
+    const args = trivagoArgs({ ...q, lat: undefined, lon: undefined, must: undefined, minStars: undefined, minScore: undefined });
+    const res = await callTools(url, q.names.map(n => ({ tool: "trivago-accommodation-search", args: { ...args, query: n } })), "Trivago", f);
+    return res.flatMap(r => (r ? fromTrivago(r, q) : []));
+  }
   // Trivago nennt die Verpflegung selten. Dieselbe Suche mit „Frühstück inklusive“: was dort zum selben Preis
   // auftaucht, hat Frühstück dabei (live: Welikehotel Triton Beach, sonst als „unbekannt“ übernommen)
   const withBreakfast = !(q.must || []).includes("breakfast") && q.type !== "whole";

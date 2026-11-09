@@ -1,6 +1,8 @@
 /* Datenmodell der Reisekasse. Siehe docs/KONZEPT.md, Abschnitte 2 und 4. */
 
 export type CatKey = "flights" | "stay" | "transport" | "attractions" | "misc";
+/** Bausteine des Fortschritts (#151): Anreise, Unterkunft, Vor Ort, Erlebnisse, Sonstiges */
+export type ProgressBlock = "travel" | "stay" | "transport" | "attractions" | "misc";
 export const CAT_KEYS: CatKey[] = ["flights", "stay", "transport", "attractions", "misc"];
 
 /** Idee → Gewählt → Gebucht → Bezahlt, oder Verworfen */
@@ -215,7 +217,11 @@ export interface Option {
   source?: { name: string; at?: string; url?: string; sponsored?: boolean; test?: boolean; imported?: boolean };
   legs?: FlightLeg[];
   /** boards: wählbare Verpflegung laut Angebot mit Aufpreis pro Person und Nacht (Import, #457) */
-  stay?: { stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; boards?: { board: Board; extra?: number }[]; image?: string; freeCancel?: boolean };
+  stay?: {
+    stars?: number; rating?: number; nights?: number; facts?: string[]; board?: Board; boards?: { board: Board; extra?: number }[]; image?: string; freeCancel?: boolean;
+    /** Schlafzimmer und Schlafplätze laut Anbieter (#674); Kombi aus so vielen getrennten Einheiten (#677) */
+    bedrooms?: number; sleeps?: number; units?: number;
+  };
   /** Foto vom Anbieter (nur https), z. B. einer Tour */
   image?: string;
   /** Lage (Unterkunft, Veranstaltungsort): Koordinaten vom Anbieter und Suchtext für Google Maps */
@@ -412,6 +418,12 @@ export interface DayPlan { title?: string; notes?: DayNote[] }
 
 /** imported: per KI aus einem Angebot, einer Buchung oder Liste übernommen (#457) */
 export interface AiMark { at: string; kind: "suggested" | "created" | "changed" | "imported" }
+
+/** harte Kriterien, die das Angebot nicht bestätigt (#676): Posten „bitte prüfen“ mit Grund, bis jemand „Geprüft“ antippt */
+export function markUnverified(it: Item, why?: string[]): Item {
+  if (why?.length) { it.check = true; it.checkWhy = [...new Set([...(it.checkWhy || []), ...why])]; }
+  return it;
+}
 
 export type AccessMode = "car" | "drop" | "taxi" | "train" | "bus" | "with";
 export const ACCESS_MODES: AccessMode[] = ["car", "drop", "taxi", "train", "bus", "with"];
@@ -615,6 +627,8 @@ export interface Trip {
   };
   /** Bereiche, die detailliert (mit Posten) gerechnet werden. Fehlt: detailliert, sobald es Posten gibt. */
   detail?: Partial<Record<CatKey, boolean>>;
+  /** Fortschritt (#151): Bausteine, die diese Reise nicht braucht („Brauchen wir nicht“); ihr Gewicht geht an die übrigen */
+  progressOff?: ProgressBlock[];
   tiers: Partial<Record<CatKey, Tier[]>>;
   settings: Settings;
   /** Verpflegung wie im Artefakt: Essensstil für alle oder je Familie, Kinder und Babys in Prozent */

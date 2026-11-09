@@ -1,12 +1,13 @@
 /* Unterkünfte: alle Quellen gleichzeitig fragen, Doppelte zusammenführen, nach Preis sortieren */
 import type { SourceStatus } from "../flights/types";
-import { searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
+import { FACTS, searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
 import { searchLite } from "./liteapi";
 import { inCurrency, type Rates } from "../fx";
 import { keepStays } from "./sort";
 import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StaySearchResult } from "./types";
 import { errorText } from "../netcheck";
 import { parseLang, parseMarket } from "./market";
+import { withRooms } from "./rooms";
 
 /** Adressen der MCP-Server (Cloudflare-Variablen); Booking.com erst mit eingetragener Adresse */
 export interface StayEnv {
@@ -40,13 +41,23 @@ const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,
 const near = (a: StayOffer, b: StayOffer) =>
   a.lat == null || b.lat == null || a.lon == null || b.lon == null || (Math.abs(a.lat - b.lat) < 0.003 && Math.abs(a.lon - b.lon) < 0.004);
 
+/** Merkmale zweier Quellen ohne Doppelte, in der Reihenfolge von FACTS (Unbekanntes dahinter), höchstens 8 */
+export function factsUnion(a: string[] = [], b: string[] = []): string[] {
+  const rank = (x: string) => { const i = FACTS.findIndex(([l]) => l === x); return i < 0 ? FACTS.length : i; };
+  return [...new Set([...a, ...b])].sort((x, y) => rank(x) - rank(y)).slice(0, 8);
+}
+
 export function mergeStays(lists: StayOffer[][]): StayOffer[] {
   const out: StayOffer[] = [];
-  for (const o of lists.flat()) {
+  for (const o of lists.flat().map(withRooms)) {
     const i = out.findIndex(x => norm(x.name) === norm(o.name) && near(x, o));
-    if (i < 0) out.push(o);
+    if (i < 0) { out.push(o); continue; }
     // echter Preis geht vor einem Testpreis (Sandbox)
-    else if (!!out[i].test === !!o.test ? o.total < out[i].total : out[i].test) out[i] = o;
+    const [keep, other] = (!!out[i].test === !!o.test ? o.total < out[i].total : out[i].test) ? [o, out[i]] : [out[i], o];
+    // Schlafzimmer, die nur eine Quelle kennt (Booking.com auf Nachfrage), gehen nicht verloren (#674);
+    // Merkmale beider Quellen zusammen, z. B. Wasserrutsche von Booking.com am günstigeren Trivago-Treffer (#683)
+    const facts = factsUnion(keep.facts, other.facts);
+    out[i] = { ...keep, ...(keep.bedrooms == null && other.bedrooms != null ? { bedrooms: other.bedrooms } : {}), ...(keep.sleeps == null && other.sleeps != null ? { sleeps: other.sleeps } : {}), ...(facts.length ? { facts } : {}) };
   }
   return out.sort((a, b) => a.total - b.total);
 }
@@ -64,9 +75,11 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
       const test = !!p.test?.(env);
       // mit Filter „kostenlos stornierbar“ gesucht: gilt für alle Treffer (die Anbieter filtern selbst)
       const free = !!q.must?.includes("freeCancel");
+      // mit Pool-Filter gesucht: die Anbieter haben gefiltert, nennen den Pool aber oft nicht (Trivago: „Wellness“) (#683)
+      const pool = !!q.must?.includes("pool");
       const offers = inCurrency(await withTimeout(p.search(q.type === "hotel" ? q : { ...q, minStars: undefined }, env, f), timeoutMs), "total", q.currency || "EUR", env.FX)
-        .map(o => ({ ...o, ...(test ? { test } : {}), ...(free ? { freeCancel: true } : {}) }));
-      sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.length, ms: Date.now() - t0, ...(test ? { test } : {}) });
+        .map(o => ({ ...o, ...(test ? { test } : {}), ...(free && !o.soldOut ? { freeCancel: true } : {}), ...(pool && !o.soldOut && !o.facts?.includes("Pool") ? { facts: ["Pool", ...(o.facts || [])] } : {}) }));
+      sources.push({ id: p.id, name: p.name, configured: true, ok: true, count: offers.filter(o => !o.soldOut).length, ms: Date.now() - t0, ...(test ? { test } : {}) });
       return offers;
     } catch (e) {
       sources.push({ id: p.id, name: p.name, configured: true, ok: false, count: 0, ms: Date.now() - t0, error: errorText(e) });
@@ -74,7 +87,10 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
     }
   }));
   sources.sort((a, b) => STAY_PROVIDERS.findIndex(p => p.id === a.id) - STAY_PROVIDERS.findIndex(p => p.id === b.id));
-  return { offers: keepStays(mergeStays(lists), q), sources };
+  // ausgebucht (#683): getrennt melden, nicht als Treffer; was eine andere Quelle frei hat, gilt nicht als ausgebucht
+  const free = mergeStays(lists.map(l => l.filter(o => !o.soldOut)));
+  const soldOut = [...new Map(lists.flat().filter(o => o.soldOut && !free.some(x => norm(x.name) === norm(o.name))).map(o => [norm(o.name), o.name])).values()];
+  return { offers: keepStays(free, q), sources, ...(soldOut.length ? { soldOut } : {}) };
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -97,11 +113,21 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   const n = (Date.parse(checkout) - Date.parse(checkin)) / DAY;
   if (!(n >= 1)) return "Abreise muss nach der Anreise liegen";
   if (n > 90) return "Höchstens 90 Nächte";
-  const adults = o.adults ?? 1, rooms = o.rooms ?? 1, childAges = o.childAges ?? [];
+  // eine Einheit für alle (#674): Schlafzimmer bzw. Schlafplätze gewünscht → ein Zimmer, ganze Unterkunft
+  if (o.bedroomsMin != null && !int(o.bedroomsMin, 1, 20)) return "Schlafzimmer: 1 bis 20";
+  if (o.sleepsMin != null && !int(o.sleepsMin, 1, 50)) return "Schlafplätze: 1 bis 50";
+  if (o.radiusKm != null && !int(o.radiusKm, 1, 20)) return "Umkreis: 1 bis 20 km";
+  let names: string[] | undefined;
+  if (o.names != null) {
+    if (!Array.isArray(o.names) || o.names.length > 5 || !o.names.every(n => typeof n === "string" && n.trim().length >= 2 && n.trim().length <= 80)) return "Namen: bis zu 5, je 2 bis 80 Zeichen";
+    if (o.names.length) names = [...new Set((o.names as string[]).map(n => n.trim()))];
+  }
+  const one = o.bedroomsMin != null || o.sleepsMin != null;
+  const adults = o.adults ?? 1, rooms = one ? 1 : o.rooms ?? 1, childAges = o.childAges ?? [];
   if (!int(adults, 1, 20)) return "1 bis 20 Erwachsene";
   if (!Array.isArray(childAges) || childAges.length > 10 || !childAges.every(a => int(a, 0, 17))) return "Kinder: bis zu 10, Alter 0 bis 17";
   if (!int(rooms, 1, 10) || (rooms as number) > (adults as number)) return "Zimmer: 1 bis 10, höchstens so viele wie Erwachsene";
-  const type = o.type ?? "all";
+  const type = one ? "whole" : o.type ?? "all";
   if (type !== "whole" && type !== "hotel" && type !== "all") return "Art: whole, hotel oder all";
   let sources: string[] | undefined;
   if (o.sources != null) {
@@ -123,6 +149,10 @@ export function parseStayQuery(b: unknown): StayQuery | string {
     ...(market ? { market } : {}), ...(lang ? { lang } : {}),
     place, ...(country ? { country } : {}), ...(cc ? { cc } : {}), ...geo, checkin, checkout, adults: adults as number, childAges: childAges as number[], rooms: rooms as number, type,
     ...(sources ? { sources } : {}), currency, ...(must ? { must } : {}),
-    ...(o.minStars != null ? { minStars: o.minStars as number } : {}), ...(o.minScore ? { minScore: o.minScore as number } : {})
+    ...(o.minStars != null ? { minStars: o.minStars as number } : {}), ...(o.minScore ? { minScore: o.minScore as number } : {}),
+    ...(o.bedroomsMin != null ? { bedroomsMin: o.bedroomsMin as number } : {}), ...(o.sleepsMin != null ? { sleepsMin: o.sleepsMin as number } : {}),
+    // Umkreis nur mit Mittelpunkt, nicht bei der Suche nach Namen
+    ...(o.radiusKm != null && "lat" in geo && !names ? { radiusKm: o.radiusKm as number } : {}),
+    ...(names ? { names } : {})
   };
 }

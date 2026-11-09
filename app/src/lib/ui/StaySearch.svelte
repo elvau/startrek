@@ -25,7 +25,7 @@
   import { toCamper } from "./showItem";
   import { FLIGHTS_URL, providerDown } from "../flights/app";
   import { loadPartner, partner } from "../partnerState.svelte";
-  import { activeMins, effectiveSources, sourceNotWired, autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
+  import { activeMins, comboUnits, effectiveSources, sourceNotWired, autoParts, autoRooms, guests, searchStaysRemote, splitGuests, staysHidden, takeStay } from "../stays/app";
   import { arrivals, gaps, guestsIn, hintList, segments, stations, stayWindow } from "../stays/presence";
   import { groupLabel } from "../groups";
   import { hhKey, isActive } from "../model";
@@ -101,9 +101,14 @@
     checkin = s.from; checkout = s.to;
   }
   let rooms = $state(1);
+  // Umkreis um den Ort in km (#680), 0 = nur der Ort
+  let radius = $state(0);
   // Vorlieben (Konto und Gruppe) belegen die Art der Unterkunft vor
   const prefs = prefsFor(trip, dir);
   let type = $state<StayType>(prefs.stayType || (["whole", "hotel", "all"] as const).find(t => t === saved.type) || "whole");
+  // eine Unterkunft für alle mit so vielen Schlafzimmern (#674); 0 = egal. Gilt nicht für Hotels
+  let bedrooms = $state(0);
+  const bedOn = $derived(bedrooms > 0 && type !== "hotel");
   // Ort in einem gesperrten Land: nur Hinweis, suchen darf man trotzdem
   const blocked = $derived.by(() => {
     if (!prefs.avoid?.length || !place.trim()) return "";
@@ -169,12 +174,20 @@
     placeFocus = false;
   }
 
+  // Mittelpunkt des Orts (für Umkreis und Anbieter, die im Umkreis suchen)
+  const center = $derived.by(() => {
+    if (!place.trim()) return null;
+    const sp = searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc);
+    const cc = ccOf(geo, sp.country || trip.country || "") || near[0]?.ap.cc;
+    return findCity(geo, sp.place, cc || undefined);
+  });
+
   let busy = $state(false);
   // Suchlinks (#619): Ort, Daten, Gäste für die Anbieter (Formular und „Bei anderen Anbietern suchen“)
   const stayLq = $derived.by(() => {
     if (!place.trim() || nn <= 0) return null;
     const pets = petsAlong(trip, who.map(x => x.t.id));
-    return { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: Math.max(1, Math.min(rooms, g.adults)), ...(pets ? { pets } : {}) };
+    return { ...searchParts(geo, place.trim(), ccOf(geo, trip.country) || near[0]?.ap.cc), checkin, checkout, ...g, rooms: bedOn ? 1 : Math.max(1, Math.min(rooms, g.adults)), ...(pets ? { pets } : {}), ...(bedOn ? { bedrooms } : {}) };
   });
   const provSummary = $derived(stayLq ? [place.trim(), range(checkin, checkout), tn("n.guests", who.length)].join(" · ") : "");
   // „Bei anderen Anbietern suchen“: auf Klick; bei null Treffern einmal je Suche von selbst, mit Erklärung
@@ -278,10 +291,12 @@
     const cc = ccOf(geo, sp.country || trip.country || "") || near[0]?.ap.cc;
     // Mittelpunkt des Orts: für Anbieter, die im Umkreis suchen
     const city = findCity(geo, sp.place, cc || undefined);
+    // Schlafzimmer: ein Zimmer, ganze Unterkunft (wie der Such-Dienst); Umkreis nur mit Mittelpunkt
     let q: StayQuery = { place: sp.place, country: sp.country || trip.country || undefined, ...(cc ? { cc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin, checkout, ...per, rooms: Math.max(1, Math.min(rooms, per.adults)), type,
       // Quellen nur bei Auswahl mitschicken (ein älterer Such-Dienst kennt neue Quellen noch nicht)
       ...(eff.length < SOURCES.length ? { sources: eff } : {}), currency: "EUR",
-      ...(must.length ? { must } : {}), ...(minStars && type !== "whole" ? { minStars } : {}), ...(minScore ? { minScore } : {}) };
+      ...(must.length ? { must } : {}), ...(minStars && type !== "whole" ? { minStars } : {}), ...(minScore ? { minScore } : {}),
+      ...(bedOn ? { bedroomsMin: bedrooms, rooms: 1, type: "whole" as StayType } : {}), ...(radius && city ? { radiusKm: radius } : {}) };
     busy = true;
     ctrl?.abort(); ctrl = new AbortController();
     fellBack = "";
@@ -289,7 +304,7 @@
       let r = await searchStaysRemote(q, ctrl.signal);
       let got = keepStays(r.offers, q);
       // große Gruppe, keine Ferienwohnung für alle (Tokio, 9 Gäste): zwei Unterkünfte, sonst Hotels und Wohnungen mit Zimmern
-      if (!got.length && all > 4) {
+      if (!got.length && all > 4 && !q.bedroomsMin) {
         const tries: { parts: number; type: StayType }[] = [
           ...(type === "whole" && parts === 1 ? [{ parts: 2, type: "whole" as StayType }] : []),
           ...(type !== "all" ? [{ parts, type: "all" as StayType }] : [])
@@ -358,11 +373,14 @@
         {#if diff != null && Math.abs(diff) >= 1}<span class="st-diff" class:good={diff < 0}>{diff < 0 ? "−" : "+"}{eur(Math.abs(diff))} {t("st.vsCurrent")}</span>{/if}
       </div>
       <div class="fs-pills">
+        {#if asked && comboUnits(asked)}<span class="pill-h st-combo">🧩 {tn("st.combo", comboUnits(asked))}</span>{/if}
+        {#if o.bedrooms}<span class="pill-n st-beds">🛏 {tn("st.bedroomsN", o.bedrooms)}{o.sleeps ? ` · ${tn("st.sleepsN", o.sleeps)}` : ""}</span>{/if}
         {#if o.score}<span class="pill-n">{score(o.score)}{o.reviews ? ` (${t("st.reviews", { n: o.reviews.toLocaleString(locale()) })})` : ""}</span>{/if}
         {#if o.stars}<span class="pill-h">{"★".repeat(o.stars)}</span>{/if}
         {#if o.board && o.board !== "self"}<span class="pill-h">{t(`board.${o.board}`)}</span>{/if}
         {#each o.facts || [] as f (f)}<span class="pill-h">{f}</span>{/each}
       </div>
+      {#if asked && comboUnits(asked)}<p class="small st-combo-line">{t("st.comboLine")}</p>{/if}
       {#if o.place}<p class="muted small fs-sub">{o.place}</p>{/if}
       {#if dist(o).length}<div class="fs-pills st-dist">{#each dist(o) as d (d)}<span class="pill-h">{d}</span>{/each}</div>{/if}
       <div class="fs-acts">
@@ -406,6 +424,13 @@
         {/if}
       </label>
     </div>
+    {#if center}
+      <div class="st-radius">
+        <label class="st-radf"><span><span aria-hidden="true">📍</span> {t("st.radius")}: <b class="st-radv">{radius ? `${radius} km` : t("st.radiusOff")}</b></span>
+          <input type="range" min="0" max="20" step="1" bind:value={radius} aria-valuetext={radius ? `${radius} km` : t("st.radiusOff")} /></label>
+        {#if radius}<p class="muted small st-radhint">{t("st.radiusHint", { km: radius, place: center.name })}</p>{/if}
+      </div>
+    {/if}
     {#if blocked}<p class="warnline">{t("st.avoided")}</p>{/if}
     {#if sts.length > 1}
       <div class="st-stations" aria-label={t("st.stations")}>
@@ -445,8 +470,12 @@
         <button type="button" role="radio" aria-checked={type === "all"} class="chip" class:on={type === "all"} onclick={() => (type = "all")}>{t("all")}</button>
       </div>
       {#if type !== "hotel" || parts > 1 || all > 10}<label class="f">{t("st.parts")}<input class="n sm st-parts" type="number" min="1" max="10" bind:value={parts} oninput={() => (partsSet = true)} /></label>{/if}
-      <label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(30, per.adults)} bind:value={rooms} oninput={() => (roomsSet = true)} /></label>
+      {#if bedOn}<label class="f">{t("st.rooms")}<input class="n sm" type="number" value="1" disabled /></label>
+      {:else}<label class="f">{t("st.rooms")}<input class="n sm" type="number" min="1" max={Math.min(30, per.adults)} bind:value={rooms} oninput={() => (roomsSet = true)} /></label>{/if}
+      {#if type !== "hotel"}<label class="f">{t("st.bedrooms")}<input class="n sm st-bedrooms" type="number" min="0" max="20" placeholder="–" value={bedrooms || ""}
+          oninput={e => (bedrooms = Math.max(0, Math.min(20, Math.floor(+e.currentTarget.value || 0))))} /></label>{/if}
     </div>
+    {#if bedOn}<p class="small st-bed-hint"><span aria-hidden="true">🛏</span> {t("st.bedroomsHint", { n: bedrooms })}</p>{/if}
     {#if parts > 1}<p class="small st-split-hint">{t("st.split.short", { k: per.adults + per.childAges.length, n: parts })} <Help k="stSplit" /></p>{/if}
     <!-- privat bzw. schon vorhanden (#233): ohne Suche eintragen -->
     {#if !item}<p class="small st-priv"><span aria-hidden="true">🏠</span> {t("priv.searchHint")} <button type="button" class="linkbtn st-priv-open" onclick={() => openPrivStay()}>{t("priv.save")} {arrow() === "←" ? "‹" : "›"}</button></p>{/if}
@@ -481,7 +510,7 @@
     <p class="fs-facts small st-guests">
       {#if nn > 0}<span><span aria-hidden="true">📅</span> {tn("n.nights", nn)}</span>{/if}
       <span><span aria-hidden="true">👥</span> {#if who.length}<b>{tn("n.guests", who.length)}</b>: {people(g.adults, g.childAges)}{:else}{t("st.nobody")}{/if}</span>
-      <span><span aria-hidden="true">🛏</span> {parts > 1 ? `${parts} × ` : ""}{rooms} {t("st.rooms")}</span>
+      <span><span aria-hidden="true">🛏</span> {parts > 1 ? `${parts} × ` : ""}{bedOn ? tn("st.bedroomsN", bedrooms) : `${rooms} ${t("st.rooms")}`}</span>
     </p>
     {#if partial.length}<p class="small st-partial"><span aria-hidden="true">⚠️</span> {t("stay.partial", { list: partial.map(x => t("st.partialOf", { name: x.t.name, a: x.nights, b: nn })).join(", ") })}</p>{/if}
     {#if !FLIGHTS_URL}<p class="warnline small">{t("search.notSetUp")}</p>{/if}
@@ -489,7 +518,7 @@
     {#if stayLq}
       {@const pets = stayLq.pets}
       {@const lq = stayLq}
-      <p class="muted small fs-direct">{t("search.direct")} <PartnerLinks ids={partnersOf("stay")} q={lq} /></p>
+      <p class="muted small fs-direct">{bedOn ? t("search.directBedrooms", { n: bedrooms }) : t("search.direct")} <PartnerLinks ids={partnersOf("stay")} q={lq} /></p>
       {#if sponsoredAny(partnersOf("stay"), lq, partner.on)}<p class="muted small">* {t("fs.partnerNote")}</p>{/if}
       <BrokerNote />
       {#if pets}<p class="muted small st-pets">🐾 {t("pet.stayHint")}</p>{/if}
@@ -549,6 +578,7 @@
       {#if into}<p class="muted small">{t("st.takenHint", { name: trip.items.find(i => i.id === into)?.name || "" })}</p>{/if}
     {:else}
       <p class="muted small">{t("st.none")}</p>
+      {#if asked.bedroomsMin}<p class="warnline st-nobeds">{t("st.noBedrooms")}</p>{/if}
       {#if providerDown(sources)}<p class="warnline">{t("st.providerDown")}</p>{/if}
       {#if staysHidden(sources, list.length)}<p class="warnline">{t("st.hitsHidden")}</p>{/if}
       {#if asked && minsText(asked)}
@@ -566,5 +596,13 @@
 
 <style>
   .st-camper { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: var(--paper-2); }
+  /* Umkreis (#680): Regler über die ganze Breite, gut mit dem Daumen */
+  .st-radius { margin: 6px 0 10px; }
+  .st-radf { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--ink-2); }
+  .st-radf input[type="range"] { width: 100%; min-height: 44px; accent-color: var(--a); }
+  .st-radhint, .st-bed-hint { margin: 2px 0 8px; }
+  /* Kombi aus mehreren Einheiten (#677) */
+  .st-combo { background: var(--warn-soft); color: var(--warn); }
+  .st-combo-line { margin: 4px 0; color: var(--warn); }
 </style>
 

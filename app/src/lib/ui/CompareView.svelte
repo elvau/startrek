@@ -105,7 +105,7 @@
     void editTrip(h.id, tr => addPoll(tr, p));
   }
   async function removePoll() {
-    if (!vpoll || !await ask(t("poll.removeQ"))) return;
+    if (!vpoll || !await ask(t("poll.removeQ"), { ok: t("ask.delete") })) return;
     app.trip.polls = (app.trip.polls || []).filter(p => p.id !== vpoll.id);
     if (!app.trip.polls.length) delete app.trip.polls;
   }
@@ -115,7 +115,7 @@
     if (x) await editTrip(v.id, tr => { if (tr.cmp) tr.cmp.label = x.slice(0, 60); });
   }
   async function remove(v: V) {
-    if (await ask(t("cmpv.removeQ", { x: v.label }))) await editTrip(v.id, leaveCompare);
+    if (await ask(t("cmpv.removeQ", { x: v.label }), { ok: t("cmpv.remove"), danger: false })) await editTrip(v.id, leaveCompare);
   }
   /* ---------- „Was wäre wenn …“ (#430): Variante mit anderem Zeitraum, Abflughafen oder Nächten, Preise neu gesucht ---------- */
   let wi = $state<{ base: string; from: string; to: string; airport: string } | null>(null);
@@ -148,7 +148,7 @@
   let menu = $state<string | null>(null);
   // Vergleich trennen: alle wieder eigene Reisen, danach zurück zur Startseite (Effekt oben)
   async function split() {
-    if (await ask(t("cmpv.splitQ", { title, n: all.length }))) await splitCompare(id);
+    if (await ask(t("cmpv.splitQ", { title, n: all.length }), { ok: t("cmpv.split"), danger: false })) await splitCompare(id);
   }
 </script>
 

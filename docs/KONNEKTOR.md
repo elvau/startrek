@@ -19,6 +19,26 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    Vorschläge als Vergleich: `create_trip` mit `compareWith`, `compareTitle` (Titel für alle Varianten) und `variantName`;
    vorhandene Reisen mit `update_trip` (`compareWith`, `compareTitle`, `variantName`, `leaveCompare`).
    Angebote aus den Suchen merkt sich der Such-Dienst 6 Stunden je Schlüssel in Firestore (`mcpOffers`, Kennung = Prüfwert aus Schlüssel und Angebot; der Cloudflare-Zwischenspeicher gilt nur je Rechenzentrum, Chat-Apps landen oft in verschiedenen), `add_*` nimmt die Kennung. `add_flight` mit `people` (Reisende-IDs) für Zubringer nur eines Teils der Gruppe. `add_flight`/`add_stay` mit `replace` (Posten-ID) tauschen ein Angebot aus (gleiche Rückfrage wie `remove_item`); ohne `replace` warnt das Ergebnis, wenn dieselben Reisenden schon einen Flug auf der Strecke bzw. eine Unterkunft im Zeitraum haben.
+   Schlafzimmer (#674): `search_stays` mit `bedroomsMin`/`sleepsMin` sucht eine ganze Einheit für alle (ein Zimmer, `whole`); `rooms` heißt bei den
+   Anbietern getrennte Einheiten (z. B. mehrere Studios). Die Suche nennt keine Schlafzimmer: Angaben kommen aus dem Namen und für die fünf
+   günstigsten ganzen Unterkünfte von Booking.com aus dessen Auskunft (`answer_property_qa_by_ids_v2`, eine Verbindung, `app/src/lib/stays/rooms.ts`);
+   bei mehreren Wohnungstypen zählt die größte. Ohne Angabe fällt ein Angebot weg (wie beim Filter `board`), der KI-Planer nutzt dasselbe.
+   Harte Kriterien (#676), die ein Angebot nicht bestätigt: `add_stay` mit `unverified` (kurze Texte in der Sprache des Nutzers) markiert
+   den Posten „bitte prüfen“ (`check`, `checkWhy`), `get_trip` zeigt `pleaseCheck`.
+   Familien ohne Wohnort (#684): `create_trip`/`get_trip` nennen sie in `homeMissing` mit `homeNote` (Anreise und Weg zum Flughafen
+   fehlen sonst still); die KI fragt nach und setzt den Ort mit `update_travelers` (`homes`).
+   Ausstattung (#681): `search_stays` mit `amenities` (`pool`, `indoorPool`, `waterslide`, `sauna`) behält nur Angebote, deren `facts`
+   sie nennen (Hallenbad, Wasserrutsche, Sauna aus den Merkmalen von Booking.com bzw. Trivago); Pool filtern die Anbieter selbst.
+   Kombi (#677): mit `rooms` > 1 tragen die Treffer `units` und das Ergebnis `unitsNote` (getrennte Einheiten, kein Haus), `get_trip` zeigt `units`.
+   Umkreis (#680): `radiusKm` (1–20) sucht um den Mittelpunkt des Orts (Booking.com mit Koordinaten), Treffer weiter weg oder ohne Lage fallen weg.
+   In der App dieselben Felder: Regler „Umkreis“ (0 = nur Ort) und „Schlafzimmer mind.“ neben „Zimmer“; Suchlinks zu Booking.com, Airbnb und Vrbo
+   übernehmen die Schlafzimmer (`entire_place_bedroom_count` bei Booking.com nicht offiziell bestätigt, `min_bedrooms`, `minBedrooms`).
+   Nach Namen (#683): `names` (bis 5) sucht nur diese Häuser (Booking.com `hotel_names` mit dem Ort, Trivago je Name eine Namenssuche in einer
+   Verbindung); bekannte Häuser ohne freies Angebot stehen in `soldOut` (Booking.com meldet sie als Fehler `hotel_names_no_availability`).
+   Mit Pool-Filter gesucht tragen alle Treffer „Pool“ (die Anbieter filtern, Trivago nennt ihn oft nicht).
+   Gleiches Haus aus zwei Quellen: Merkmale werden zusammengeführt (z. B. Wasserrutsche aus den Merkmalen von Booking.com am günstigeren
+   Trivago-Treffer). Sortierung „Für Familien“ hebt Familienhotels laut Name (Familotel, Familienhotel, Kinderhotel) und Rutschen hervor.
+   Eine automatische Zusatzsuche nach „Familotel …“ bringt nichts: Trivago filtert freie Texte nicht nach dem Wort (getestet 11/2026).
 3. **Reisen im Konto** (`worker/src/firestore.ts`): Firestore-REST mit Dienstkonto. Das umgeht die Sicherheitsregeln,
    darum prüft der Such-Dienst selbst: lesen nur Mitglieder, ändern nur Besitzer/Bearbeiter, Mitglieder und Einladung
    bleiben unangetastet, gebuchte und bezahlte Posten auch. Speichern nur, wenn die Reise seit dem Lesen unverändert ist

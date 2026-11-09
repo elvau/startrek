@@ -57,7 +57,7 @@
   const withoutOwner = ({ owner: _o, ...d }: ReturnType<typeof campaignDoc>) => d;
 
   async function withdraw() {
-    if (!c || !await ask(t("cmp.withdrawConfirm"))) return;
+    if (!c || !await ask(t("cmp.withdrawConfirm"), { ok: t("cmp.withdraw") })) return;
     busy = true;
     try { if (c.at) await deleteCampaign(c.id); delete app.trip.campaign; edit = null; }
     catch (e) { err = netMessage(e); }

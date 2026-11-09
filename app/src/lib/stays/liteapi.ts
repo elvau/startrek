@@ -19,7 +19,7 @@ export function occupancies(q: Pick<StayQuery, "adults" | "childAges" | "rooms">
 
 /** Ausstattung, die liteAPI hier nicht prüfen kann: dann keine Treffer statt falscher */
 const UNKNOWN_MUSTS = ["pool", "kitchen", "aircon", "parking"];
-export const liteFits = (q: StayQuery) => q.type !== "whole" && !(q.must || []).some(m => UNKNOWN_MUSTS.includes(m));
+export const liteFits = (q: StayQuery) => q.type !== "whole" && !q.names?.length && !(q.must || []).some(m => UNKNOWN_MUSTS.includes(m));
 
 /** Verpflegung aus Kürzel oder Name („RO“, „BB“, „Breakfast Included“, „Half Board“ …) */
 export function boardOfLite(type?: string, name?: string): Board | undefined {
@@ -100,6 +100,7 @@ export function fromLite(hotels: any[], rates: any[], q: StayQuery, link?: strin
       ...(url ? { url } : {}),
       ...(num(h.rating) != null ? { score: num(h.rating) } : {}), ...(num(h.reviewCount) ? { reviews: num(h.reviewCount) } : {}),
       ...(num(h.stars) ? { stars: Math.round(num(h.stars)!) } : {}),
+      ...(typeof h.city === "string" && h.city ? { city: h.city } : {}),
       ...(h.address || h.city ? { place: [h.address, h.city].filter(Boolean).join(", ") } : {}),
       ...(num(h.latitude) != null && num(h.longitude) != null ? { lat: num(h.latitude), lon: num(h.longitude) } : {}),
       ...(typeof h.main_photo === "string" && /^https:\/\//.test(h.main_photo) ? { image: h.main_photo } : {}),

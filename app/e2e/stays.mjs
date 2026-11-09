@@ -3,7 +3,7 @@
  * Start: npm run test:cloud (nach flights.mjs)
  */
 import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage } from "./nav.mjs";
+import { reloadHome, myTrips, startPage, quickTrip } from "./nav.mjs";
 import { spawn } from "node:child_process";
 
 const URL = "http://127.0.0.1:4176/";
@@ -56,7 +56,7 @@ try {
   await p.route("https://tiles.openfreemap.org/**", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ version: 8, sources: {}, layers: [] }) }));
   await p.goto(URL);
   await (await startPage(p)).locator(".start .home-new").click();
-  await p.locator(".modal .newtrip .btn.primary").click();
+  await quickTrip(p);
   await p.locator("#stay .st-open").scrollIntoViewIfNeeded();
   await p.locator("#stay .st-open").click();
   const m = p.locator(".modal");
@@ -76,6 +76,34 @@ try {
   if (!(await m.locator(".st-dates .dr-btn").innerText()).includes("7 Nächte")) fail("Zeitraum im Feld: " + (await m.locator(".st-dates .dr-btn").innerText()));
   log("Zeitraum mit zwei Tipps im Kalender: 18.–25.07., 7 Nächte");
   if (!(await m.locator("p", { hasText: "7 Nächte" }).count())) fail("Nächte nicht angezeigt");
+  // Schlafzimmer (#674, #682) und Umkreis (#680): Hinweis, Suchlinks mit Schlafzimmern, Anfrage mit einem Zimmer und Umkreis
+  await m.locator(".st-bedrooms").fill("4");
+  if (!(await m.locator(".st-bed-hint").count())) fail("Hinweis zu Schlafzimmern fehlt");
+  const vr = await m.locator(".fs-direct a", { hasText: "Vrbo" }).getAttribute("href");
+  const ab = await m.locator(".fs-direct a", { hasText: "Airbnb" }).getAttribute("href");
+  if (!vr?.includes("minBedrooms=4") || !ab?.includes("min_bedrooms=4")) fail("Suchlinks ohne Schlafzimmer: " + vr + " " + ab);
+  const setRadius = v => m.locator(".st-radf input[type=range]").evaluate((el, x) => { el.value = String(x); el.dispatchEvent(new Event("input", { bubbles: true })); }, v);
+  await setRadius(12);
+  if (!(await m.locator(".st-radv").innerText()).includes("12 km")) fail("Umkreis nicht angezeigt");
+  const nBed = asked.length;
+  await m.locator(".fs-form .btn.primary").click();
+  await until(() => asked.length > nBed, "Suche mit Schlafzimmern");
+  const qBed = asked.at(-1);
+  if (qBed.bedroomsMin !== 4 || qBed.rooms !== 1 || qBed.type !== "whole" || qBed.radiusKm !== 12) fail("Anfrage mit Schlafzimmern: " + JSON.stringify(qBed));
+  // Treffer ohne Angabe zu Schlafzimmern fallen weg, Hinweis auf die Suchlinks
+  await m.locator(".st-nobeds").waitFor();
+  // „Bei anderen Anbietern suchen“ öffnet sich von selbst, Vrbo dort auch mit Schlafzimmern
+  {
+    const pd = p.locator(".modal:has(.prov)");
+    await pd.locator(".prov-empty").waitFor();
+    if (!(await pd.locator("a", { hasText: "Vrbo" }).getAttribute("href"))?.includes("minBedrooms=4")) fail("Vrbo im Anbieter-Fenster ohne Schlafzimmer");
+    await pd.locator(".x").click();
+    await pd.waitFor({ state: "detached" });
+  }
+  log("Schlafzimmer mind. 4 und Umkreis 12 km: ein Zimmer, ganze Unterkunft, Suchlinks mit Schlafzimmern (Airbnb, Vrbo), ohne Angabe kein Treffer");
+  await m.locator(".st-bedrooms").fill("");
+  await setRadius(0);
+  asked.length = nBed;
   const bk = await m.locator(".fs-direct a", { hasText: "Booking.com" }).getAttribute("href");
   const ex = await m.locator(".fs-direct a", { hasText: "Expedia" }).getAttribute("href");
   if (!/expedia\.de\/Hotel-Search\?destination=/.test(decodeURIComponent(ex || ""))) fail("Expedia-Link: " + ex);
@@ -570,7 +598,7 @@ try {
   // privat bzw. schon vorhanden (#233): neue Reise ohne Ziel, Ort und Zeitraum über den Posten, Flug- und Event-Suche nutzen ihn
   await reloadHome(p);
   await (await startPage(p)).locator(".start .home-new").click();
-  await p.locator(".modal .newtrip .btn.primary").click();
+  await quickTrip(p);
   await p.locator("#stay .priv-open").scrollIntoViewIfNeeded();
   await p.locator("#stay .priv-open").click();
   const pm = p.locator(".modal", { has: p.locator("form.priv") });

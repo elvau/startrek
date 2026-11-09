@@ -1,6 +1,7 @@
 /* Bildschirmfotos einfacher Modus und Gruppen (nur zur Sichtprüfung) */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { toWho } from "./nav.mjs";
 const OUT = process.env.OUT || ".";
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4174", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
 await new Promise(r => setTimeout(r, 2500));
@@ -24,6 +25,7 @@ try {
     if (n === "d") {
       await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(400);
       await p.locator(".top .tm-btn").first().click(); await p.locator(".tm-act", { hasText: "+ Neue Reise" }).click();
+      await toWho(p);
       await p.locator(".newtrip .who-b", { hasText: "Gruppe" }).click();
       await p.locator(".newtrip .src-b", { hasText: "Aus meinen Gruppen" }).click();
       await p.locator(".newtrip .sg-h", { hasText: "Kegeln" }).click(); await p.waitForTimeout(300);

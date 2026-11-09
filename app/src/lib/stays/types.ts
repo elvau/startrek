@@ -34,6 +34,13 @@ export interface StayQuery {
   minStars?: number;
   /** mindestens diese Gästebewertung (0–10, z. B. 8) */
   minScore?: number;
+  /** eine Einheit für alle (#674): mindestens so viele Schlafzimmer bzw. Schlafplätze; Angebote ohne Angabe fallen weg */
+  bedroomsMin?: number;
+  sleepsMin?: number;
+  /** Umkreis in km um lat/lon (1–20); Treffer weiter weg oder ohne Lage fallen weg */
+  radiusKm?: number;
+  /** nur diese Häuser, gesucht nach Namen (#683, höchstens 5); place dient zur Unterscheidung */
+  names?: string[];
   currency?: string;
   /** Land der suchenden Person (ISO-2) für Preise und Inhalte der Anbieter; fehlt: DE (#464) */
   market?: string;
@@ -63,6 +70,8 @@ export interface StayOffer {
   stars?: number;
   /** Stadtteil, Ort */
   place?: string;
+  /** Ort der Unterkunft laut Anbieter (nicht der Suchort), z. B. für den Namen des Postens */
+  city?: string;
   lat?: number;
   lon?: number;
   image?: string;
@@ -70,15 +79,22 @@ export interface StayOffer {
   facts?: string[];
   /** kostenlos stornierbar laut Anbieter (bzw. gesucht mit diesem Filter); fehlt: nicht bekannt */
   freeCancel?: boolean;
+  /** Schlafzimmer und Schlafplätze der (größten) Einheit, falls bekannt (Name, Anbieter-Auskunft) (#674) */
+  bedrooms?: number;
+  sleeps?: number;
   /** Verpflegung, falls der Anbieter sie nennt */
   board?: "self" | "breakfast" | "half" | "full" | "all";
   /** Steuern und Gebühren laut Anbieter (im Preis enthalten oder vor Ort zu zahlen), in der Währung des Angebots */
   fees?: { label: string; amount: number; included: boolean }[];
   /** direkt in der App buchbar (später) */
   bookable?: boolean;
+  /** Anbieter kennt das Haus, hat aber nichts frei (#683); fällt aus den Treffern, steht in soldOut */
+  soldOut?: boolean;
 }
 
 export interface StaySearchResult {
   offers: StayOffer[];
   sources: SourceStatus[];
+  /** Häuser ohne freies Angebot zu den Daten (#683) */
+  soldOut?: string[];
 }
