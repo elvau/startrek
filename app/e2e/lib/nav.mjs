@@ -22,14 +22,15 @@ export async function reloadHome(page, { url, set, remove } = {}) {
 /**
  * „Meine Reisen“ öffnen (#640): Die Startseite zeigt höchstens die zuletzt geöffnete Reise, alle Reisen liegen hinter der
  * Kachel. Auf der Startseite die Kachel antippen, sonst nichts tun; gibt die Seite zurück für p.locator(…).
+ * wait: wie lange auf die Kachel gewartet wird (kürzer, wo geprüft wird, dass es keine Reise gibt).
  */
-export async function myTrips(page) {
+export async function myTrips(page, { wait = 10000 } = {}) {
   // nach dem Laden (Sprache wird ggf. nachgeladen) erst Startseite oder Reise abwarten
   await page.locator(".start, header.top .tmenu").first().waitFor({ timeout: 10000 }).catch(() => {});
   if (!(await page.locator(".start").count()) || (await page.locator(".start .hm-back").count())) return page;
   // Reisen aus dem Konto kommen nach dem Laden etwas später: kurz auf die Kachel warten
   const tile = page.locator(".start .home-mine");
-  if (await tile.waitFor({ timeout: 10000 }).then(() => true, () => false)) await tile.click();
+  if (await tile.waitFor({ timeout: wait }).then(() => true, () => false)) await tile.click();
   return page;
 }
 

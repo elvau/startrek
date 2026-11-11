@@ -4,7 +4,7 @@
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
 import { mkdirSync } from "node:fs";
-import { myTrips, startPage } from "./nav.mjs";
+import { myTrips, startPage } from "./lib/nav.mjs";
 
 const out = process.argv[2];
 if (!out) throw new Error("Zielordner fehlt");

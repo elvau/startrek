@@ -1,16 +1,8 @@
 /*
  * Startseite mit geplanten, gebuchten und vergangenen Reisen; Reisebeobachtung: Preise prüfen,
  * Pfeile an den Posten, Potenzial unten, günstigere Unterkunft übernehmen. Such-Dienst nachgestellt.
- * Start: npm run test:cloud
  */
-import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage } from "./nav.mjs";
-import { spawn } from "node:child_process";
-
-const URL = "http://127.0.0.1:4179/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
-const until = async (fn, what, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
+import { test, fail, log, until, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage } from "../lib/test.mjs";
 
 const people = [{ id: "a", name: "Anna", household: "Klein" }, { id: "b", name: "Ben", household: "Klein" }];
 const base = { tiers: {}, settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 }, households: {} };
@@ -49,24 +41,18 @@ const TRIPS = [
   { id: "rom", name: "Rom 2025", place: "Rom", country: "Italien", from: "2025-04-01", to: "2025-04-05", travelers: people, ...base, items: [] }
 ];
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4179", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await ctx.addInitScript(trips => {
+test("Beobachten", async ({ open, errors }) => {
+  test.setTimeout(300_000);
+  const p = await open();
+  await p.context().addInitScript(trips => {
     if (localStorage.getItem("rk2-index")) return;
     for (const t of trips) localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
     localStorage.setItem("rk2-index", JSON.stringify(trips.map(t => ({ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: 2 }))));
     localStorage.setItem("rk2-current", trips[0].id);
   }, TRIPS);
-  const p = await ctx.newPage();
-  p.on("pageerror", e => errors.push(e.message));
   // Karten (#304): MapLibre-Worker muss laden, sonst bleiben die Kacheln weg (nur Hintergrund)
   p.on("console", m => { if (m.text().includes("Worker failed to load")) errors.push("Karte: " + m.text()); });
-  for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
-  await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
+  await publicData(p, [...PLACE_DATA, "places/"]);
   const asked = { flights: [], stays: [] };
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
   const leg = (from, to, dep, arr) => ({ from, to, dep, arr, minutes: 150, stops: 0, route: [from, to], carriers: ["Sun Air"], flights: ["SA1"] });
@@ -407,7 +393,4 @@ try {
   await ask.locator(".home-plz").fill("50667");
   await until(async () => (await ask.count()) === 0, "PLZ übernommen");
   log("Ohne Flug und Wohnort: „Unterwegs“ fragt nach der PLZ, danach verschwindet die Frage");
-
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  log("Reisebeobachtung ok");
-} finally { await browser.close(); server.kill(); }
+});

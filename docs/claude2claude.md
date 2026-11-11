@@ -357,7 +357,7 @@ pre-release pushen oder mergen.
 
 - Die volle e2e-Prüfung läuft bei jedem Pull Request auf GitHub (`pruefen.yml`) und vor jedem Release
   (`npm run test:cloud`). Einzelne e2e-Skripte mit Firebase-Emulator liefen in den Cloud-Containern der Routinen
-  bereits (z. B. `stays.mjs` am 5.10.); bei einem roten e2e-Schritt also erst lokal nachstellen.
+  bereits (z. B. `e2e/lokal/stays.spec.mjs` am 5.10.); bei einem roten e2e-Schritt also erst lokal nachstellen.
 - Fehlgeschlagene Prüfläufe neu starten dürfen die Routinen nicht (GitHub antwortet 403), und der Workflow wiederholt
   rote Schritte bewusst nicht automatisch: wacklige Tests sollen sichtbar bleiben und repariert werden. Ist ein Check
   rot, ohne dass der PR ihn verursacht: im PR vermerken und ein Issue für die Entwicklung anlegen (siehe Review). Den

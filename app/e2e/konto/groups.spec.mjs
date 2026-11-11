@@ -1,36 +1,21 @@
 /*
  * Gruppen und einfacher Modus, gegen die Firebase-Emulatoren.
- * Start: npm run test:cloud (läuft nach e2e/cloud.mjs)
  */
-import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage, autoAsk, quickTrip, toWho, finishTrip } from "./nav.mjs";
-import { spawn } from "node:child_process";
+import { test, fail, log, until, URL, reloadHome, myTrips, startPage, autoAsk, toWho, finishTrip, FS, FIRESTORE } from "../lib/konto.mjs";
 
-const URL = "http://127.0.0.1:4174/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
-
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4174", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-async function page(name) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  const p = await ctx.newPage();
-  p.on("pageerror", e => errors.push(`${name}: ${e.message}`));
+/** Gerät in eigenem Browser; Rückfragen der App bestätigt es von selbst (Textfragen mit „Kegeltruppe“) */
+async function page(open, name) {
+  const p = await open({ name });
   autoAsk(p, { text: "Kegeltruppe" });
   return p;
-}
-async function until(fn, what, ms = 15000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 250)); }
-  fail("Zeitüberschreitung: " + what);
 }
 const total = p => p.locator(".tk-top b").textContent();
 const menu = async p => { await p.evaluate(() => scrollTo(0, 0)); await p.locator(".top .tm-btn").first().click(); };
 
-try {
-  const a = await page("Anna");
+// eine zusammenhängende Geschichte auf zwei Geräten desselben Kontos: jeder Schritt baut auf dem Stand davor auf
+test("Gruppen und Personen, einfacher Modus, Platzhalter, Konto auf zwei Geräten, Angaben „Nur für dich“", async ({ open }) => {
+  test.setTimeout(300_000);
+  const a = await page(open, "Anna");
   await a.goto(URL);
   await (await startPage(a)).locator(".start .home-new").click();
   await toWho(a);
@@ -258,7 +243,7 @@ try {
   await a.locator(".login .test input").fill("Anna");
   await a.locator(".login .test button").click();
   await a.locator(".top .acct-btn").waitFor();
-  const b = await page("Anna2");
+  const b = await page(open, "Anna2");
   await b.goto(URL);
   await b.locator(".start .linkbtn", { hasText: "Konto anlegen" }).click();
   await b.locator(".login .test input").fill("Anna");
@@ -286,7 +271,7 @@ try {
   if (!sum.includes("Mönchengladbach") || !sum.includes("🔒")) fail("Übersicht der Person: " + sum);
   // im Konto (Emulator, als Verwalter gelesen), aber nicht im Browser-Speicher
   const docsIn = async () => {
-    const r = await fetch("http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/travelDocs", { headers: { Authorization: "Bearer owner" } });
+    const r = await fetch(`${FS}/travelDocs`, { headers: { Authorization: "Bearer owner" } });
     return JSON.stringify(await r.json());
   };
   await until(async () => (await docsIn()).includes("2031-04-17"), "Angaben im Konto");
@@ -312,7 +297,7 @@ try {
   const tdoc = JSON.parse(await docsIn()).documents[0];
   const old = JSON.parse(tdoc.fields.data.stringValue);
   for (const v of Object.values(old)) if (v.passExpiry === "2031-04-17") Object.assign(v, { passNo: "C01X00T47", idNo: "L01X00T47", first: "Uwe Heinrich" });
-  const pr = await fetch(`http://127.0.0.1:8080/v1/${tdoc.name}?updateMask.fieldPaths=data`, { method: "PATCH", headers: { Authorization: "Bearer owner", "Content-Type": "application/json" }, body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify(old) } } }) });
+  const pr = await fetch(`${FIRESTORE}/v1/${tdoc.name}?updateMask.fieldPaths=data`, { method: "PATCH", headers: { Authorization: "Bearer owner", "Content-Type": "application/json" }, body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify(old) } } }) });
   if (!pr.ok) fail("alte Angaben anlegen: " + pr.status);
 
   // nach dem Neuladen wieder da, erst auf Wunsch geladen
@@ -357,7 +342,6 @@ try {
   if ((await (await myTrips(b)).locator(".ht-wrap").count()) !== n0 - 1) fail("nach dem Löschen taucht eine Reise auf: " + await (await myTrips(b)).locator(".ht-wrap .home-trip b").allTextContents());
   log(`Startseite: „${victim.replace("☁ ", "")}“ mit 🗑 gelöscht (${n0} → ${n0 - 1} Reisen)`);
 
-  if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
   // Neue Gruppe beim Anlegen: Uwe hineinziehen, Monika antippen, Lea neu (Nachname aus dem Gruppennamen)
   await (await startPage(b)).locator(".start .home-new").click();
   await toWho(b);
@@ -397,9 +381,4 @@ try {
   await until(async () => (await card.innerText()).includes(bTotal), `Betrag der Reise vom anderen Gerät auf der Startseite (${bTotal})`, 10000)
     .catch(async e => { console.log("Karte:", await card.innerText()); throw e; });
   log(`Auf einem Gerät gefüllt, auf dem anderen nie geöffnet: Startseite zeigt den Betrag (840 € + Souvenirs = ${bTotal} €) ohne Öffnen`);
-
-  console.log("\nAlle Schritte erfolgreich.");
-} finally {
-  await browser.close();
-  server.kill();
-}
+});

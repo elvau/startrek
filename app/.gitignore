@@ -3,3 +3,5 @@ dist/
 dist-emu/
 firestore-debug.log
 *-debug.log
+test-results/
+playwright-report/

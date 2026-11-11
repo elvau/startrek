@@ -1,18 +1,8 @@
 /*
  * Handy-Ansicht (#530): Reise als Pager mit Reitern oben und Leiste unten (390 × 844, Touch).
- * Start: npm run test:cloud (nach den anderen)
  */
-import { chromium } from "playwright";
-import { spawn } from "node:child_process";
-import { reloadHome, myTrips, startPage, quickTrip } from "./nav.mjs";
+import { test, fail, log, until, publicData, URL, TOUCH, reloadHome, myTrips, startPage, quickTrip } from "../lib/test.mjs";
 
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
-async function until(fn, what, ms = 8000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
-  fail("Zeitüberschreitung: " + what);
-}
 const fam = (h, list) => list.map(([n, a], i) => ({ id: h + i, name: n, household: h, age: a }));
 const P = (adult, child, infant) => ({ mode: "person", currency: "EUR", adult, child, infant: infant ?? child });
 const TRIP = {
@@ -37,14 +27,10 @@ const TRIP = {
   tiers: {}, settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 }, days: {},
   detail: { flights: true, stay: true, transport: true, attractions: true, misc: true }
 };
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4183", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const p = await (await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: "de-DE" })).newPage();
-  p.on("pageerror", e => errors.push(e.message));
-  await p.goto("http://127.0.0.1:4183/");
+test("Handy", async ({ open, errors }) => {
+  test.setTimeout(300_000);
+  const p = await open(TOUCH);
+  await p.goto(URL);
   await reloadHome(p, { set: { "rk2-t:demo": TRIP, "rk2-index": [{ id: "demo", name: TRIP.name, place: TRIP.place }], "rk2-current": "demo" } });
   // Startseite (#533): Einstiege in zwei Spalten, Seite scrollt
   const acts = (await startPage(p)).locator(".home-acts .home-act");
@@ -74,6 +60,8 @@ try {
   log("Startseite: nur die zuletzt geöffnete Reise, alle Reisen hinter „Meine Reisen“ mit Rückweg");
   await (await myTrips(p)).locator(".home-trip", { hasText: "Kroatien" }).first().click();
   const on = () => p.locator(".mbar .mb.on").getAttribute("data-pg");
+  // der Pager steht genau auf der Seite k (Sprung oder Wischen ist angekommen)
+  const settled = k => p.evaluate(k => { const m = document.querySelector("main.pager"), c = m.querySelector(`:scope > [data-ch="${k}"]`); return !!c && Math.abs(m.scrollLeft - c.offsetLeft) < 2; }, k);
   await p.locator("main.pager").waitFor();
   if ((await p.locator(".mbar .mb").count()) !== 9) fail("Reiter: " + await p.locator(".mbar .mb").count());
   if (await on() !== "hero") fail("Start nicht auf der Übersicht");
@@ -96,6 +84,8 @@ try {
   await p.locator(".mb-edge.prev").click();
   await until(async () => (await on()) === "hero", "Lasche zurück zur Übersicht");
   await until(async () => (await p.evaluate(() => localStorage.getItem("sf-mob-nudged"))) === "1", "Anstupser gemerkt");
+  // solange der Anstupser läuft (1 s), landet ein Sprung 44 px neben der Seite: erst danach weiter
+  await until(() => p.evaluate(() => !document.querySelector("main.pager.nudge")), "Anstupser vorbei");
   log("Lasche am Rand zeigt die Nachbarseite und wechselt dorthin; Anstupser einmal je Gerät");
   // Fehler melden in der Reise: nicht schwebend (dort liegt die Leiste), sondern im ⋯-Menü (#662)
   if (await p.locator(".bug-fab").count()) fail("Fehler melden schwebt noch");
@@ -115,7 +105,7 @@ try {
   await until(async () => (await on()) === "stay", "Leiste Unterkunft");
   if (!(await p.locator('main.pager > [data-ch="stay"]').innerText()).includes("Ferienhaus mit Pool")) fail("Unterkunft: Posten fehlt");
   // wischen nach links: nächste Seite (erst, wenn der Sprung angekommen ist)
-  await p.waitForTimeout(900);
+  await until(() => settled("stay"), "Sprung zur Unterkunft angekommen");
   await p.evaluate(() => { const m = document.querySelector("main.pager"); m.scrollBy({ left: m.clientWidth }); });
   await until(async () => (await on()) === "transport", "wischen → Vor Ort");
   // Leiste: Tage, Abrechnung, Übersicht
@@ -228,7 +218,6 @@ try {
   if (!tall || tall[1] < 250) fail("keine Seite zum Scrollen: " + JSON.stringify(tall));
   await p.locator(`.mbar [data-pg="${tall[0]}"]`).click();
   // erst scrollen, wenn der Pager dort steht: sonst zählt sein Nachgleiten als Seitenwechsel und blendet die Knöpfe wieder ein
-  const settled = k => p.evaluate(k => { const m = document.querySelector("main.pager"), c = m.querySelector(`:scope > [data-ch="${k}"]`); return !!c && Math.abs(m.scrollLeft - c.offsetLeft) < 2; }, k);
   await until(async () => (await on()) === tall[0] && await settled(tall[0]), "lange Seite");
   const scrollHero = y => p.evaluate(([y, k]) => { document.querySelector(`main.pager > [data-ch="${k}"]`).scrollTop = y; }, [y, tall[0]]);
   await scrollHero(80); await p.waitForTimeout(150); await scrollHero(240);
@@ -262,7 +251,7 @@ try {
 
   // Geführte neue Reise (#672): Wohin (Suche), Wann (Ferien mit Regler), Wer (zwei Familien), Von wo (je Familie)
   await p.setViewportSize({ width: 390, height: 844 });
-  for (const f of ["world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+  await publicData(p, ["world.json", "packs.json"]);
   await p.route("**/holidays?cc=DE", r => r.fulfill({ json: { public: [], school: [
     { from: "2027-07-19", to: "2027-08-31", n: { de: "Sommerferien", en: "Summer holidays" }, nationwide: false, regions: ["DE-NW"] },
     { from: "2027-03-22", to: "2027-04-03", n: { de: "Osterferien", en: "Easter holidays" }, nationwide: false, regions: ["DE-BY"] }] } }));
@@ -329,7 +318,5 @@ try {
   await np.locator(".np-row", { hasText: "Sonstiges" }).click();
   await until(async () => (await on()) === "misc", "Sprung zu Sonstiges");
   log("Nächste Schritte: Fortschritt nach Bausteinen, Haken, offene Startorte, „Brauchen wir nicht“, Sprung ins Kapitel (#151)");
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
   log("Handy: Pager mit 9 Seiten, Wischen, Leiste unten mit allen Seiten und Gesamtsumme (öffnet Mehr), Kachel springt ins Kapitel, kein langes Scrollen");
-  console.log("\nHandy-Ansicht: alles in Ordnung");
-} finally { await b.close(); server.kill(); }
+});

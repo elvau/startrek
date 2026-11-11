@@ -1,7 +1,7 @@
 /* Bildschirmfotos einfacher Modus und Gruppen (nur zur Sichtprüfung) */
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
-import { toWho } from "./nav.mjs";
+import { toWho } from "./lib/nav.mjs";
 const OUT = process.env.OUT || ".";
 const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4174", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
 await new Promise(r => setTimeout(r, 2500));

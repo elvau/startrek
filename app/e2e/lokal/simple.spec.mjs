@@ -2,17 +2,8 @@
  * Einfacher Modus mit einzelnen Einträgen (Text, Betrag, wer dabei ist) und Cent bei Anteilen pro Person.
  * Beispiel aus der Beta: zu viert, Stadionführung nur Daniel und Henning, Abendessen alle.
  * Dazu Posten auf dem Handy: eingeklappt, Suche als Fenster.
- * Start: npm run test:cloud
  */
-import { chromium } from "playwright";
-import { reloadHome, myTrips, autoAsk } from "./nav.mjs";
-import { spawn } from "node:child_process";
-import { readFileSync, existsSync } from "node:fs";
-
-const URL = "http://127.0.0.1:4180/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
-const until = async (fn, what, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
+import { test, fail, log, until, seedTrips, URL, PHONE, reloadHome, myTrips, autoAsk } from "../lib/test.mjs";
 
 const TRIP = {
   id: "vier", name: "Zu viert", place: "London", country: "Vereinigtes Königreich", from: "2027-05-14", to: "2027-05-16",
@@ -24,20 +15,19 @@ const TRIP = {
   detail: { flights: false, stay: false, transport: false, attractions: false, misc: false }
 };
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4180", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await ctx.addInitScript(t => {
-    if (localStorage.getItem("rk2-index")) return;
-    localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
-    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: 4 }]));
-    localStorage.setItem("rk2-current", t.id);
-  }, TRIP);
-  const p = await ctx.newPage();
-  p.on("pageerror", e => errors.push(e.message));
+const stay = (id, place, from, to) => ({ id, cat: "stay", name: "Unterkunft " + place, status: "chosen", from, to,
+  options: [{ id: "o" + id, label: place, price: { mode: "unit", currency: "EUR", unit: 300, basis: "stay" }, query: { place, checkin: from, checkout: to, adults: 2, childAges: [], rooms: 1 } }] });
+const RT = { id: "rt", name: "Roadtrip Italien", place: "Verona", country: "Italien", from: "2027-07-12", to: "2027-07-20",
+  travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "c", name: "Tom", household: "Klein", age: 42 }],
+  detail: { transport: true, stay: true, misc: true }, households: { Klein: { plz: "40210", geo: { lat: 51.223, lon: 6.779, ort: "Düsseldorf" } } },
+  items: [stay("s1", "Verona", "2027-07-12", "2027-07-15"), stay("s2", "Venedig", "2027-07-15", "2027-07-18"), stay("s3", "Ljubljana", "2027-07-18", "2027-07-20")],
+  tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } };
+
+// Daten neben der App, die Nebenkosten, Routen und Hinweise brauchen
+const DATA = ["airports.json", "world.json", "visa.json", "packs.json", "places/"];
+
+test("Einzelne Einträge: Anteile mit Cent, Kapitelsumme, Kopfleiste am Handy, Zuschuss", async ({ open }) => {
+  const p = await open({ init: seedTrips([TRIP]) });
   await p.goto(URL);
   await (await myTrips(p)).locator(".start .home-trip", { hasText: "Zu viert" }).click();
 
@@ -128,7 +118,9 @@ try {
   if (!(await fc.locator(".fu-row").innerText()).includes("eingegangen")) fail("Status eingegangen fehlt");
   if (!(await p.locator(".aside .tk-fund").innerText()).includes("100")) fail("Summe ohne Zuschuss-Hinweis");
   log("Zuschuss: Kegelkasse 100 € für alle (eingegangen) → Eigenanteil 200 €, Klein 125 €, Hase 75 €");
+});
 
+test("Handy: Posten eingeklappt mit Zusammenfassung, Suche als Fenster, offene Seite bleibt beim Neuladen", async ({ open }) => {
   // Handy: Posten zeigen oben Name, Status und Suche, der Rest eingeklappt mit Zusammenfassung;
   // die Suche öffnet als Fenster und danach ist man wieder am Posten (Flüge und Unterkünfte gleich)
   const PH = { id: "handy", name: "Split mobil", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
@@ -139,15 +131,7 @@ try {
         legs: [{ dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T06:10", arr: "2027-07-18T08:05", stops: 0 }, { dir: "back", from: "SPU", to: "DUS", dep: "2027-07-25T18:40", arr: "2027-07-25T20:50", stops: 0 }] }] },
       { id: "s", cat: "stay", name: "Villa am Meer", status: "idea", from: "2027-07-18", to: "2027-07-25", options: [{ id: "v", label: "Villa Ana", price: { mode: "unit", currency: "EUR", unit: 210, basis: "night" } }] }
     ], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
-  const mctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
-  await mctx.addInitScript(t => {
-    if (localStorage.getItem("rk2-index")) return;
-    localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
-    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: 2 }]));
-    localStorage.setItem("rk2-current", t.id);
-  }, PH);
-  const m = await mctx.newPage();
-  m.on("pageerror", e => errors.push(e.message));
+  const m = await open({ ...PHONE, init: seedTrips([PH]) });
   await m.goto(URL);
   await (await myTrips(m)).locator(".start .home-trip", { hasText: "Split mobil" }).click();
   // kompakte Posten (#242, #531): eine Zeile mit Name und Preis; Bild und Hin/Zurück erst nach dem Antippen
@@ -167,7 +151,7 @@ try {
     await m.locator(`.mbar [data-pg="${ch}"]`).click();
     await c.click();
     await c.locator(".ic-fold").waitFor();
-    await c.locator("h3, .fc-route, .st-name").first().click().catch(() => c.click({ position: { x: 20, y: 40 } }));
+    await c.locator("h3, .fc-route, .st-name").first().click({ timeout: 3000 }).catch(() => c.click({ position: { x: 20, y: 40 } }));
     await c.locator(".editor").waitFor();
     if (!(await c.locator(`.editor ${btn}.ed-search`).isVisible())) fail(`${ch}: Suche oben im Posten fehlt`);
     if (await c.locator(".editor details[open]").count()) fail(`${ch}: Abschnitte nicht eingeklappt`);
@@ -212,16 +196,14 @@ try {
   await m.reload();
   await m.locator(".start").waitFor();
   log("Handy: Neuladen bleibt in der Reise auf derselben Seite; nach der Marke bleibt es auf der Startseite");
-  await mctx.close();
+});
 
+test("Leere Kapitel erklären, was hierher gehört", async ({ open }) => {
   // leere Kapitel (#198): je Kapitel eine Überschrift und ein Satz, was hierher gehört und welcher Knopf hilft
   const EM = { id: "leer", name: "Leere Reise", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }], detail: { flights: true, stay: true, transport: true, attractions: true, misc: true },
     items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
-  const ectx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await ectx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, EM);
-  const ep = await ectx.newPage();
-  ep.on("pageerror", e => errors.push(e.message));
+  const ep = await open({ init: seedTrips([EM]) });
   await ep.goto(URL);
   await (await myTrips(ep)).locator(".start .home-trip", { hasText: "Leere Reise" }).click();
   const ef = await ep.locator("[data-empty=flights]").innerText();
@@ -229,18 +211,16 @@ try {
   const es = await ep.locator("[data-empty=stay]").innerText();
   if (!es.includes("Noch keine Unterkunft") || !es.includes("„Unterkunft suchen“")) fail("Leeres Kapitel Unterkunft: " + es);
   for (const k of ["transport", "attractions", "misc"]) if (!(await ep.locator(`[data-empty=${k}] b`).innerText()).trim()) fail("Leeres Kapitel ohne Überschrift: " + k);
-  await ectx.close();
   log("Leere Kapitel erklären, was hierher gehört, mit den Namen der passenden Knöpfe");
+});
 
+test("Gemeinsam planen: wer wann kann, bester Zeitraum als Reisedatum, Abstimmungen", async ({ open, errors }) => {
   // gemeinsam planen (#174, #175): wer wann kann, bester Zeitraum als Reisedatum, Abstimmung mit zwei Personen
   const GP = { id: "gp", name: "Gruppe plant", place: "Split", country: "Kroatien",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 42 }, { id: "c", name: "Cleo", household: "Hase", age: 35 }],
     items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {},
     avail: { from: "2027-07-01", to: "2027-07-14", nights: 3, by: {} } };
-  const gctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await gctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, GP);
-  const gp = await gctx.newPage();
-  gp.on("pageerror", e => errors.push(e.message));
+  const gp = await open({ init: seedTrips([GP]) });
   autoAsk(gp);
   await gp.goto(URL);
   await (await myTrips(gp)).locator(".start .home-trip", { hasText: "Gruppe plant" }).click();
@@ -415,9 +395,10 @@ try {
   await until(async () => (await kro.innerText()).includes("✕ Anna (mit Familie)"), "Ohne mich mit Familie");
   await mp.locator(".poll-apply").click();
   await until(async () => gp.evaluate(() => { const t = JSON.parse(localStorage.getItem("rk2-t:gp") || "{}"); return t.travelers?.filter(x => x.active === false).map(x => x.name).join() === "Anna,Ben"; }), "Anna und Ben nicht dabei");
-  await gctx.close();
   log("Abstimmen: über die Zeiträume (eine Stimme, Cleo „ohne mich“, Ben fehlt), Ergebnis als Reisedatum; freie Abstimmung erst ab zwei Möglichkeiten, Meilen-Wahl mit 4 Meilen; „Ohne mich“ mit Fenster, Grund, Info an Anna, mit Familie, trotzdem nehmen stellt beide auf „nicht dabei“");
+});
 
+test("Nebenkosten: Kurtaxe vor Ort geschätzt, Kaution am Mietwagen, Trinkgeld weggeklickt", async ({ open }) => {
   // Nebenkosten (#169): Kurtaxe vor Ort (geschätzt) an der Unterkunft, Kaution nur Kreditkarte am Mietwagen; Trinkgeld (#517) weggeklickt
   const XC = { id: "xc", name: "Split Nebenkosten", place: "Split", country: "Kroatien", from: "2027-07-18", to: "2027-07-25",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }, { id: "c", name: "Tom", household: "Smith", age: 38 }, { id: "d", name: "Mia", household: "Smith", age: 36 }],
@@ -427,10 +408,7 @@ try {
         extras: [{ id: "x1", kind: "citytax", amount: 2.8, basis: "personNight", pay: "onsite", est: true, freeUpTo: 12, source: "Stadt Split" }], autoOff: ["auto:tips"] }] },
       { id: "car", cat: "transport", icon: "car", name: "Mietwagen", status: "idea", options: [{ id: "c", label: "Kompakt", price: { mode: "unit", currency: "EUR", unit: 245 }, deposit: { amount: 1200, how: "credit" } }] }
     ], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
-  const xctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await xctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, XC);
-  const xp = await xctx.newPage();
-  xp.on("pageerror", e => errors.push(e.message));
+  const xp = await open({ init: seedTrips([XC]) });
   await xp.goto(URL);
   await (await myTrips(xp)).locator(".start .home-trip", { hasText: "Split Nebenkosten" }).click();
   const tot = async () => (await xp.locator(".aside .tk-top b").innerText()).trim();
@@ -468,13 +446,10 @@ try {
   if (!(await dep.innerText()).includes("Nur Kreditkarte")) fail("Kaution in Wichtiges ohne Kreditkarten-Hinweis: " + await dep.innerText());
   await xp.keyboard.press("Escape");
   log("Nebenkosten: Kurtaxe 3 × 2,80 € × 7 Nächte (Kind frei) als „+ ca. 59 € vor Ort“, Gesamt inkl. Nebenkosten, wegklicken und wieder einrechnen, Endreinigung von Hand; Kaution 1.200 € nur Kreditkarte im Überblick und in Wichtiges");
-  await xctx.close();
+});
 
+test("Gepflegte Nebenkosten: Kurtaxe in Rom, Vignetten und Maut nach Kroatien", async ({ open }) => {
   // gepflegte Nebenkosten (#170): Kurtaxe in Rom automatisch (4 Sterne), wegklicken bleibt; Auto nach Kroatien: Vignetten, Maut, Trinkgeld
-  const data = async pg => pg.route(/127\.0\.0\.1:4180\/(airports\.json|world\.json|visa\.json|packs\.json|places\/.*)$/, r => {
-    const f = "../public/" + new globalThis.URL(r.request().url()).pathname.slice(1);
-    return existsSync(f) ? r.fulfill({ status: 200, contentType: "application/json", body: readFileSync(f) }) : r.fulfill({ status: 404, body: "" });
-  });
   // Trinkgeld (#517) weggeklickt: hier geht es um die Kurtaxe
   const ROM = { id: "rom", name: "Rom", place: "Rom", country: "Italien", from: "2027-07-18", to: "2027-07-25",
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }],
@@ -486,13 +461,7 @@ try {
     travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "c", name: "Tom", household: "Klein", age: 42 }],
     detail: { transport: true, misc: true }, households: { Klein: { plz: "40210", geo: { lat: 51.223, lon: 6.779, ort: "Düsseldorf" } } },
     items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } };
-  const fctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await fctx.addInitScript(([a, b]) => { if (localStorage.getItem("rk2-index")) return;
-    for (const t of [a, b]) localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
-    localStorage.setItem("rk2-index", JSON.stringify([a, b].map(t => ({ id: t.id, name: t.name, place: t.place })))); localStorage.setItem("rk2-current", a.id); }, [ROM, HR]);
-  const fp = await fctx.newPage();
-  fp.on("pageerror", e => errors.push(e.message));
-  await data(fp);
+  const fp = await open({ init: seedTrips([ROM, HR]), data: DATA });
   await fp.goto(URL);
   await (await myTrips(fp)).locator(".start .home-trip", { hasText: "Rom" }).first().click();
   const rx = fp.locator("[data-xc='h']");
@@ -537,22 +506,11 @@ try {
   const tip = await fp.locator("#misc .food-tip").innerText();
   if (!tip.includes("10 %") || !tip.includes("Strand")) fail("Trinkgeld-Hinweis Kroatien: " + tip);
   log("Gepflegte Nebenkosten: Kurtaxe Rom 4 Sterne automatisch (Kind frei, Quelle), wegklicken bleibt nach Neuladen; Auto nach Kroatien als Posten mit Sprit, Vignetten AT/SI und Maut HR als Nebenkosten, weiteres Auto möglich, Sprung zur Strecke, km-Satz einstellbar; Trinkgeld-Hinweis");
-  await fctx.close();
+});
 
+test("Roadtrip: Strecken vom Routen-Dienst", async ({ open }) => {
   // Roadtrip (#201): Düsseldorf → Verona → Venedig → Ljubljana → zurück, Strecken vom Routen-Dienst (gemockt)
-  const stay = (id, place, from, to) => ({ id, cat: "stay", name: "Unterkunft " + place, status: "chosen", from, to,
-    options: [{ id: "o" + id, label: place, price: { mode: "unit", currency: "EUR", unit: 300, basis: "stay" }, query: { place, checkin: from, checkout: to, adults: 2, childAges: [], rooms: 1 } }] });
-  const RT = { id: "rt", name: "Roadtrip Italien", place: "Verona", country: "Italien", from: "2027-07-12", to: "2027-07-20",
-    travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "c", name: "Tom", household: "Klein", age: 42 }],
-    detail: { transport: true, stay: true, misc: true }, households: { Klein: { plz: "40210", geo: { lat: 51.223, lon: 6.779, ort: "Düsseldorf" } } },
-    items: [stay("s1", "Verona", "2027-07-12", "2027-07-15"), stay("s2", "Venedig", "2027-07-15", "2027-07-18"), stay("s3", "Ljubljana", "2027-07-18", "2027-07-20")],
-    tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } };
-  const rctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await rctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
-    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, RT);
-  const rp = await rctx.newPage();
-  rp.on("pageerror", e => errors.push(e.message));
-  await data(rp);
+  const rp = await open({ init: seedTrips([RT]), data: DATA });
   const roadAsked = [];
   const hav = (a, b) => { const r = Math.PI / 180, x = Math.sin((b[0] - a[0]) * r / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin((b[1] - a[1]) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(x)); };
   await rp.route("https://flights.test/road/route", async r => {
@@ -596,17 +554,13 @@ try {
   await until(async () => (await legs.count()) === 6, "Rückfahrt geteilt");
   if (!(await rp.locator(".hero").innerText()).includes("21.")) fail("Rückkehr nicht verschoben: " + (await rp.locator(".hero").innerText()).slice(0, 120));
   log("Roadtrip: 4 Etappen vom Routen-Dienst, lange Etappe markiert, Vignetten AT/SI und Maut IT für die Runde, Auto-Posten der Runde, Fahrtag im Tagesplan; geteilt mit Zwischenstopp, Posten neu gerechnet; Zwischenstopp auf der Rückfahrt gesucht, Rückkehr einen Tag später");
-  await rctx.close();
+});
 
+test("Fähren: Rundreise nach Sardinien", async ({ open }) => {
   // Fähren (#202): Rundreise nach Sardinien, Fähre automatisch dazwischen, Verbindung wählbar, Kosten am Auto-Posten
   const SA = { ...RT, id: "sa", name: "Sardinien mit dem Auto", place: "Olbia", from: "2027-07-12", to: "2027-07-22",
     items: [stay("v1", "Verona", "2027-07-12", "2027-07-15"), stay("o1", "Olbia", "2027-07-15", "2027-07-22")] };
-  const sctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await sctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
-    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, SA);
-  const sp = await sctx.newPage();
-  sp.on("pageerror", e => errors.push(e.message));
-  await data(sp);
+  const sp = await open({ init: seedTrips([SA]), data: DATA });
   await sp.goto(URL);
   await (await myTrips(sp)).locator(".start .home-trip", { hasText: "Sardinien mit dem Auto" }).click();
   const st = sp.locator("#transport .road-trip");
@@ -630,16 +584,12 @@ try {
   const ferryDay = sp.locator(".dp-ferry", { hasText: "Genua → Olbia" });
   await ferryDay.first().waitFor();
   log("Fähren: Sardinien mit Fähre hin (Livorno → Olbia, Nachtfähre, Auto 219 €) und zurück (Olbia → Genua), Verbindung gewählt, als Nebenkosten am Auto-Posten (Fahrzeug je Überfahrt, Kabine nur auf Wunsch), Überfahrt im Tagesplan");
-  await sctx.close();
+});
 
+test("Camper: Stationen, Camper-Satz, Mietcamper", async ({ open }) => {
   // Camper (#203): Umschalter, Stationen als Campingplatz/Stellplatz, Roadtrip mit Camper-Satz, Mietcamper mit Kaution, über 3,5 t
   const CP = { ...RT, id: "cp", name: "Mit dem Camper", place: "Verona", items: [] };
-  const cctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await cctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
-    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, CP);
-  const cp = await cctx.newPage();
-  cp.on("pageerror", e => errors.push(e.message));
-  await data(cp);
+  const cp = await open({ init: seedTrips([CP]), data: DATA });
   await cp.goto(URL);
   await (await myTrips(cp)).locator(".start .home-trip", { hasText: "Mit dem Camper" }).click();
   const panel = cp.locator("#transport .camper");
@@ -681,19 +631,16 @@ try {
   await cp.locator(".modal .st-camper .linkbtn").click();
   await until(async () => !(await cp.locator(".modal .st-camper").count()), "Suche zu, weiter zu den Stationen");
   log("Camper: Kapitel Unterkunft verweist auf die Stationen, Hotelsuche nur noch mit Hinweis");
-  await cctx.close();
+});
 
+test("Zeitleiste: gleich lang in einer Zeile, eigene Zeiten einer Familie", async ({ open }) => {
   // Zeitleiste (#228): drei Familien, gleich lang → eine Zeile; Zeiten einer Familie setzen, Reise wächst mit, zurücksetzen
   const TL = { id: "tl", name: "Zeitleiste", place: "Testort", country: "Testland", from: "2027-07-10", to: "2027-07-31",
     travelers: [{ id: "a", name: "Anna", household: "Bednorz" }, { id: "c", name: "Tom", household: "Klein" }, { id: "o", name: "Inge", household: "Oma" }],
     items: [{ id: "h", cat: "stay", name: "Ferienhaus", status: "idea", from: "2027-07-10", to: "2027-07-31",
       options: [{ id: "ho", label: "Ferienhaus", price: { mode: "unit", currency: "EUR", unit: 100, basis: "night" } }] }],
     tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {}, detail: { stay: true } };
-  const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
-  await tctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
-    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, TL);
-  const tp = await tctx.newPage();
-  tp.on("pageerror", e => errors.push(e.message));
+  const tp = await open({ ...PHONE, init: seedTrips([TL]) });
   await tp.goto(URL);
   await (await myTrips(tp)).locator(".start .home-trip", { hasText: "Zeitleiste" }).click();
   const tlc = tp.locator(".tl-card");
@@ -717,12 +664,11 @@ try {
   await tlc.locator(".tl-reset").click();
   await until(async () => (await oma.innerText()).includes("ganze Reise"), "Oma zurückgesetzt");
   log("Zeitleiste: drei Familien gleich lang kompakt, Zeiten der Oma gesetzt (Reise wächst auf 23 Nächte, Aufteilung am Ferienhaus: Oma 8 von 21 Nächten), zurückgesetzt");
-  await tctx.close();
+});
 
+test("Link von einer Inhaltsseite legt die Reise mit Familien und Kosten an", async ({ open }) => {
   // Link von einer Inhaltsseite (#314, #402): neue Reise mit Ziel, Land, drei Familien und den Kosten der Reiseidee, ohne Startseite
-  const lctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
-  const lp = await lctx.newPage();
-  lp.on("pageerror", e => errors.push(e.message));
+  const lp = await open({ ...PHONE });
   await lp.goto(URL + "?ziel=Riva%20del%20Garda&land=IT&name=Gardasee%20mit%20Familien&fam=2-2,2-2,2-1&idee=gardasee-mehrere-familien-kosten");
   await until(async () => (await lp.locator("body").innerText()).includes("Gardasee mit Familien"), "Reise aus dem Link", 15000);
   if (lp.url().includes("ziel=") || lp.url().includes("idee=")) fail("Link-Angaben noch in der Adresse: " + lp.url());
@@ -743,20 +689,12 @@ try {
   if (!(await ideaHouse.innerText()).includes("3.355")) fail("Ferienhaus ohne Richtwert: " + (await ideaHouse.innerText()));
   if (!saved.kicker?.includes("3 Familien")) fail("Beispielrechnung fehlt in der Reise: " + saved.kicker);
   log("Link von Inhaltsseite: Reise „Gardasee mit Familien“ in Riva del Garda (Italien) mit 3 Familien, 6 Erw. und 5 Kindern und 7 Posten aus der Reiseidee (Richtwerte, Auto je Familie); Adresse bereinigt");
-  await lctx.close();
+});
 
+test("Haustiere: Hinweise für mitreisende Tiere, Tierbetreuung für die, die zuhause bleiben", async ({ open }) => {
   // Haustiere (#322): Familie Klein mit Hund (reist mit) → Hinweise unter „Wichtiges“ für London;
   // Familie Hase: Fische bleiben zuhause → Anfrage-Text und Posten Tierbetreuung nur für Hase
-  const pctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await pctx.addInitScript(t => {
-    if (localStorage.getItem("rk2-index")) return;
-    localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
-    localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: 4 }]));
-    localStorage.setItem("rk2-current", t.id);
-  }, TRIP);
-  const pp = await pctx.newPage();
-  await data(pp);
-  pp.on("pageerror", e => errors.push(e.message));
+  const pp = await open({ init: seedTrips([TRIP]), data: DATA });
   await pp.goto(URL);
   await (await myTrips(pp)).locator(".start .home-trip", { hasText: "Zu viert" }).click();
   // versteckt (#323): ohne bekanntes Haustier und ohne Schalter kein Bereich; einschalten an der Reise (✎)
@@ -790,9 +728,9 @@ try {
   if (!care || care.name !== "Zuhause versorgt Hase" || care.participants?.sort().join() !== "m,s" || care.options.map(o => o.price.unit).join() !== "50,30") fail("Posten Zuhause: " + JSON.stringify(care));
   if (pt.households?.Klein?.pets?.kinds?.join() !== "dog" || !pt.households?.Hase?.pets?.home || pt.households?.Hase?.care?.tasks?.join() !== "plants,mail" || !pt.homeCare) fail("Zuhause nicht gespeichert: " + JSON.stringify({ h: pt.households, on: pt.homeCare }));
   log("Zuhause während der Reise: erst eingeschaltet sichtbar; Klein mit Hund nach London (Einreise mit Haustier, Bandwurmbehandlung unter „Wichtiges“); Hase: Fische zuhause, Pflanzen und Briefkasten alle 2–3 Tage, Dankeschön 50 € und eine Kiste Bier (Anfrage, Posten nur für Hase: 50 € bzw. Sitter 30 €)");
-  await pctx.close();
+});
 
-  {
+test("Vergleich: Varianten einer Reise, Vergleichsansicht, „Was wäre wenn“", async ({ open }) => {
   // Vergleich (#429, #430): drei Varianten einer Reise, Kachel, Vergleichsansicht, „Diese nehmen“, umbenennen, herausnehmen
   const vtr = (id, label, place, country, stay, flight) => ({ id, name: "Chalet-Wochenende", place, country, from: "2027-05-05", to: "2027-05-09",
     cmp: { id: "chalet", title: "Chalet-Wochenende", label },
@@ -803,10 +741,7 @@ try {
       { id: "e", cat: "attractions", name: "Kanu", status: "idea", options: [{ id: "o", label: "Kanu", price: { mode: "person", currency: "EUR", adult: 40 } }] }
     ], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {}, detail: { transport: true, stay: true, attractions: true } });
   const VS = [vtr("v1", "Ardennen Frankreich", "Signy-l'Abbaye", "Frankreich", 1680, 214), vtr("v2", "Ardennen Belgien", "Durbuy", "Belgien", 2380, 196), vtr("v3", "Eifel", "Monschau", "Deutschland", 1890, 120)];
-  const vctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await vctx.addInitScript(ts => { if (localStorage.getItem("rk2-index")) return; for (const t of ts) localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify(ts.map(t => ({ id: t.id, name: t.name, place: t.place })))); }, VS);
-  const cp = await vctx.newPage();
-  cp.on("pageerror", e => errors.push(e.message));
+  const cp = await open({ init: seedTrips(VS, { current: false }) });
   autoAsk(cp, { text: "Eifel Monschau" });
   await cp.goto(URL);
   const tile = (await myTrips(cp)).locator(".home-cmp", { hasText: "Chalet-Wochenende" });
@@ -904,10 +839,5 @@ try {
   // Vergleich trennen: alle wieder eigene Reisen
   await cv.locator(".cv-split").click();
   await until(async () => !(await (await myTrips(cp)).locator(".home-cmp").count()) && (await (await myTrips(cp)).locator(".home-trip:not(.home-cmp)").count()) === 4, "Vergleich getrennt");
-  await vctx.close();
   log("Vergleich: Kachel mit 3 Varianten (günstigste markiert), Vergleichsansicht mit Summen wie in der Reise und Erklärung, nur Unterschiede, Abstimmung über die Varianten (Ohne mich mit Folgen an der Variante, Stand in Spalte und Kachel, Ergebnis nehmen), Diese nehmen (andere archiviert, wiederherstellbar), umbenennen, herausnehmen, „Gewählt“ in der Reise, Handy mit Kapiteln, Reise auf den Vergleich ziehen bzw. per ⇆ antippen, „Was wäre wenn“ (eine Nacht mehr), Vergleich trennen");
-  }
-
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  log("Einfacher Modus ok");
-} finally { await browser.close(); server.kill(); }
+});
