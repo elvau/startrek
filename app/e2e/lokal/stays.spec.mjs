@@ -1,21 +1,10 @@
 /*
  * Unterkunftssuche in der App: Such-Dienst nachgestellt (keine echten Anbieter), Ergebnis übernehmen.
- * Start: npm run test:cloud (nach flights.mjs)
  */
-import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage, quickTrip } from "./nav.mjs";
-import { spawn } from "node:child_process";
+import { test, fail, log, until, soon, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage, quickTrip } from "../lib/test.mjs";
 
-const URL = "http://127.0.0.1:4176/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
 /** „Weitere Optionen“ der Suche aufklappen (bleibt gemerkt) */
 const more = async m => { if (!(await m.locator(".fs-more[open]").count())) await m.locator(".fs-more > summary").click(); };
-async function until(fn, what, ms = 10000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
-  fail("Zeitüberschreitung: " + what);
-}
 const RESULT = {
   offers: [
     { id: "booking:496993", source: "booking", sourceName: "Booking.com", name: "Rooms Šećer", total: 720, currency: "EUR", url: "https://www.booking.com/hotel/hr/sobe-a-eaer.html", score: 9.4, reviews: 416, stars: 1, place: "Split Stadtzentrum, Split", facts: ["Parkplatz", "Familienzimmer"], lat: 43.515, lon: 16.47 },
@@ -29,13 +18,9 @@ const RESULT = {
   ]
 };
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4176", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
-  p.on("pageerror", e => errors.push(e.message));
+test("Unterkunftssuche", async ({ open, errors }) => {
+  test.setTimeout(300_000);
+  const p = await open();
   const asked = [];
   let emptyNext = false;
   let notWired = false;
@@ -47,9 +32,7 @@ try {
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(emptyNext ? { offers: [], sources: RESULT.sources.map(x => ({ ...x, count: 0, ...(x.id === "liteapi" && notWired ? { configured: false, ok: false } : {}) })) } : RESULT) });
   });
   // Orts- und Flughafendaten des Artefakts (liegen auf der Seite eine Ebene über der App)
-  for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
-  await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
-  await p.route("**/coast/*.json", r => r.fulfill({ path: `../public/coast/${r.request().url().split("/").pop()}` }).catch(() => r.fulfill({ status: 404 })));
+  await publicData(p, [...PLACE_DATA, "places/", "coast/"]);
   // Tageskurse (EZB) für die Anzeige in anderer Währung
   await p.route("https://flights.test/rates", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ date: "2026-10-01", rates: { EUR: 1, USD: 1.1, PLN: 4.25, GBP: 0.8 } }) }));
   // Karte: leerer Kartenstil statt der echten Kacheln (OpenFreeMap)
@@ -118,12 +101,12 @@ try {
   const gate = p.locator(".broker-gate");
   await gate.waitFor();
   if (!(await gate.innerText()).includes("kein Reiseveranstalter") || !(await gate.innerText()).includes("nur mit Booking.com")) fail("Hinweis beim Wechsel: " + (await gate.innerText()));
-  await p.waitForTimeout(300);
+  await p.waitForTimeout(300); // Zeit geben: gezählt werden darf erst beim Weitergehen
   if (clicks.length) fail("vor dem Weitergehen gezählt");
   await gate.locator("label.check input").check();
   const [tab] = await Promise.all([p.context().waitForEvent("page"), gate.locator(".broker-go").click()]);
   await tab.close();
-  for (let i = 0; i < 20 && !clicks.length; i++) await p.waitForTimeout(100);
+  await soon(() => clicks.length, 2000);
   if (clicks[0] !== JSON.stringify({ p: "booking", c: "stay" })) fail("Klickzählung: " + JSON.stringify(clicks));
   // „nicht mehr anzeigen“: der nächste Klick öffnet direkt
   const [tab2] = await Promise.all([p.context().waitForEvent("page"), m.locator(".fs-direct a", { hasText: "Booking.com" }).click()]);
@@ -381,7 +364,7 @@ try {
   if (await p.evaluate(() => document.body.classList.contains("editing"))) fail("Posten nach „Fertig“ noch offen, Plan ausgegraut");
   // nach dem Ausblenden des Postens läuft das Wiedereinblenden kurz als Übergang: auf den Endwert warten
   let op = "";
-  for (let i = 0; i < 20; i++) { op = await p.locator("#stay .plan-card").evaluate(el => getComputedStyle(el).opacity); if (op === "1") break; await p.waitForTimeout(100); }
+  await soon(async () => (op = await p.locator("#stay .plan-card").evaluate(el => getComputedStyle(el).opacity)) === "1", 2000);
   if (op !== "1") fail("Plan ausgegraut: opacity " + op);
   log("Suche aus dem Posten als Fenster, danach wieder am Posten; nach „Fertig“ ist der Plan nicht ausgegraut");
 
@@ -404,7 +387,7 @@ try {
   if (!(await m.locator(".st-near .st-ap", { hasText: "SPU" }).count())) fail("Orte am Flughafen fehlen");
   // Feld leeren: bleibt leer (früher sofort wieder mit dem Ort am Flughafen gefüllt)
   await m.locator("label.f", { hasText: "Ort" }).locator("input").fill("");
-  await p.waitForTimeout(300);
+  await p.waitForTimeout(300); // Zeit geben: das Feld darf sich nicht wieder füllen
   if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "") fail("Ort füllt sich nach dem Löschen wieder");
   log("Ort lässt sich leeren und neu eintippen");
   await m.locator(".st-near .chip", { hasText: "Trogir" }).click();
@@ -426,7 +409,7 @@ try {
   await p.locator("#misc .card[data-item]", { hasText: "Verpflegung Klein" }).waitFor();
   const before = await fr.locator("b.num").textContent();
   await p.locator("#misc .food .chip", { hasText: "Genießer" }).first().click();
-  await p.waitForTimeout(200);
+  await soon(async () => (await fr.locator("b.num").textContent()) !== before, 3000);
   if ((await fr.locator("b.num").textContent()) === before) fail("Stil ändert den Betrag nicht");
   const rl = await p.locator("#misc .fs-direct a", { hasText: "Restaurants" }).getAttribute("href");
   if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);
@@ -785,10 +768,4 @@ try {
     await p.locator("#attractions .oc-row.sel", { hasText: "Krka" }).waitFor();
     log("Flüge und Erlebnisse vergleichen: A/B, Hin und Rück, Umstiege, Gepäck, ganze Reise p. P.; Erlebnis mit Entfernung zum Hotel, wählbar");
   }
-
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  console.log("\nUnterkunftssuche: alles in Ordnung");
-} finally {
-  await browser.close();
-  server.kill();
-}
+});

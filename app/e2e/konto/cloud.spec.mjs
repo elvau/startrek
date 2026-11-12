@@ -1,51 +1,31 @@
 /*
  * Ende-zu-Ende-Test gegen die Firebase-Emulatoren: zwei Personen planen gemeinsam.
- * Start: npm run test:cloud (baut mit Emulator-Konfiguration, startet Emulatoren und Vorschau)
  */
-import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage, autoAsk, quickTrip, toWho, finishTrip } from "./nav.mjs";
-import { spawn } from "node:child_process";
+import { test, fail, log, until, URL, reloadHome, myTrips, startPage, autoAsk, toWho, login, FS } from "../lib/konto.mjs";
 
-const URL = "http://127.0.0.1:4174/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
 /** Stand in der Datenbank, am Emulator vorbei gelesen */
 let tripId = "";
 async function dbState(tag) {
-  const r = await fetch(`http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/${tripId}`, { headers: { Authorization: "Bearer owner" } });
+  const r = await fetch(`${FS}/trips/${tripId}`, { headers: { Authorization: "Bearer owner" } });
   const j = await r.json();
   const data = JSON.parse(j.fields?.data?.stringValue || "{}");
   const auto = (data.items || []).find(x => x.name?.startsWith("Mietwagen"));
   console.log(`  [db ${tag}] Mietwagen=${auto?.options?.[0]?.price?.adult} von=${j.fields?.updatedBy?.stringValue?.slice(0, 6)} zeit=${j.updateTime}`);
 }
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4174", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-async function person(name) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  const p = await ctx.newPage();
-  p.on("pageerror", e => errors.push(`${name}: ${e.message}`));
+/** Person in eigenem Browser; Meldungen des Abgleichs ([rk]) und Fehler der Konsole stehen in der Ausgabe */
+async function person(open, name) {
+  const p = await open({ name });
   p.on("console", m => { if (m.text().startsWith("[rk]") || m.type() === "error") console.log(`  (${name}) ${m.text()}`); });
   return p;
 }
 const total = p => p.locator(".tk-top b").textContent();
-async function login(p, name) {
-  await p.locator(".login .test input").fill(name);
-  await p.locator(".login .test button").click();
-  await p.locator(".acct-btn").first().waitFor({ timeout: 15000 });
-}
-async function until(fn, what, ms = 15000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 250)); }
-  fail("Zeitüberschreitung: " + what);
-}
 
-try {
+// eine zusammenhängende Geschichte (Anna, Oma, Gast Jonas, Mallory): jeder Schritt baut auf dem Stand davor auf
+test("Zwei Personen planen gemeinsam: einladen, live ändern, Kasse, Rollen, Abstimmen, Chat, Varianten, Aktionsseite", async ({ open }) => {
+  test.setTimeout(300_000);
   // Anna meldet sich an und übernimmt ihre Reise ins Konto
-  const anna = await person("Anna");
+  const anna = await person(open, "Anna");
   await anna.goto(URL);
   // erster Besuch: Anna übernimmt die Reiseidee Mallorca (Link von der Inhaltsseite, #402)
   await anna.goto(URL + "?ziel=Mallorca&land=ES&name=Gruppenreise%20Mallorca&gruppe=8&idee=gruppenreise-mallorca-kosten");
@@ -72,7 +52,7 @@ try {
   await anna.keyboard.press("Escape");
 
   // Oma öffnet den Link, meldet sich an und landet in der Reise
-  const oma = await person("Oma");
+  const oma = await person(open, "Oma");
   await oma.goto(link);
   await oma.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
   await login(oma, "Oma");
@@ -101,7 +81,7 @@ try {
   log("Link zur Reise (?reise=) öffnet die Reise");
 
   // Gast ohne Konto (#435): AGB nötig, Vorname, dann „Wer bist du?“; Hinweis „Konto anlegen“ behält alles
-  const jonas = await person("Jonas");
+  const jonas = await person(open, "Jonas");
   await jonas.goto(link);
   await jonas.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
   await jonas.locator(".login-guest input").fill("Jonas");
@@ -292,7 +272,7 @@ try {
   await anna.locator(".tm-variant").click();
   await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) !== tripId, "Variante offen");
   const varId = await anna.evaluate(() => localStorage.getItem("rk2-current"));
-  const doc = async id => (await (await fetch(`http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/${id}`, { headers: { Authorization: "Bearer owner" } })).json()).fields || {};
+  const doc = async id => (await (await fetch(`${FS}/trips/${id}`, { headers: { Authorization: "Bearer owner" } })).json()).fields || {};
   const ids = f => (f.memberIds?.arrayValue?.values || []).map(v => v.stringValue).sort().join();
   await until(async () => { const a = await doc(tripId), b = await doc(varId); return !!b.memberIds && ids(a) === ids(b) && JSON.parse(b.data.stringValue).cmp?.id === JSON.parse(a.data.stringValue).cmp?.id; }, "Variante mit denselben Mitgliedern im selben Vergleich")
     .catch(async e => { const a = await doc(tripId), b = await doc(varId); console.log("ORIG", ids(a), JSON.parse(a.data?.stringValue || "{}").cmp, "VAR", ids(b), JSON.parse(b.data?.stringValue || "{}").cmp); throw e; });
@@ -318,7 +298,7 @@ try {
   await anna.locator(".linkbtn", { hasText: "Link zurückziehen" }).click();
   await anna.locator(".modal .btn", { hasText: "Link erstellen" }).waitFor();
   await anna.keyboard.press("Escape");
-  const mal = await person("Mallory");
+  const mal = await person(open, "Mallory");
   await mal.goto(link);
   await login(mal, "Mallory");
   await until(async () => (await mal.locator(".banner.err").count()) > 0, "Mallory wird abgewiesen");
@@ -422,7 +402,7 @@ try {
   await until(async () => (await anna.locator("#split .cmp-link input").count()) > 0, "Aktionsseite veröffentlicht");
   const aktion = await anna.locator("#split .cmp-link input").inputValue();
   if (!/\?aktion=[A-Za-z0-9]{12,}/.test(aktion)) fail("Link der Aktionsseite: " + aktion);
-  const gast = await person("Gast");
+  const gast = await person(open, "Gast");
   await gast.goto(aktion);
   await gast.locator(".cmp h1").waitFor();
   const page = await gast.locator(".cmp").innerText();
@@ -445,16 +425,15 @@ try {
 
   // Regeln: ohne Konto (und als anderes Konto) lässt sich die Seite nicht ändern
   const cid = new globalThis.URL(aktion).searchParams.get("aktion");
-  const rest = `http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/campaigns/${cid}`;
+  const rest = `${FS}/campaigns/${cid}`;
   const hack = await fetch(rest + "?updateMask.fieldPaths=paypal", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ fields: { paypal: { stringValue: "Betrueger" } } }) });
   if (hack.status !== 403) fail("Aktionsseite ohne Konto änderbar: " + hack.status);
   log("Fremde können den PayPal-Namen nicht ändern (Firestore-Regeln)");
   // ohne Konto nur die eine Seite per Link, nicht die ganze Sammlung
-  const base = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
   if ((await fetch(rest)).status !== 200) fail("Aktionsseite per Link nicht lesbar");
-  const all = await fetch(`${base}/campaigns`);
+  const all = await fetch(`${FS}/campaigns`);
   if (all.status !== 403) fail("Aktionsseiten ohne Konto auflistbar: " + all.status);
-  const q = await fetch(`${base}:runQuery`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "campaigns" }] } }) });
+  const q = await fetch(`${FS}:runQuery`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "campaigns" }] } }) });
   if (q.status !== 403) fail("Aktionsseiten ohne Konto abfragbar: " + q.status);
   log("Aktionsseiten: einzeln per Link lesbar, die Sammlung ohne Konto weder auflist- noch abfragbar");
 
@@ -471,10 +450,4 @@ try {
   await myTrips(anna);
   await until(async () => /mit [^·]*Oma/.test(await anna.locator(".start").innerText()), "Mitglieder auf der Karte").catch(async e => { console.log("HOME:", (await anna.locator(".start").innerText()).replace(/\s+/g, " ").slice(0, 900)); throw e; });
   log("Startseite: geteilte Reise „☁ mit Oma“");
-
-  if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
-  console.log("\nAlle Schritte erfolgreich.");
-} finally {
-  await browser.close();
-  server.kill();
-}
+});

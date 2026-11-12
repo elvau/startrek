@@ -1,14 +1,8 @@
 /*
  * Reise zu einem Event: Such-Dienst nachgestellt, Vorschläge prüfen, einen übernehmen.
- * Start: npm run test:cloud (nach stays.mjs)
  */
-import { chromium } from "playwright";
-import { spawn } from "node:child_process";
-import { myTrips, startPage } from "./nav.mjs";
+import { test, fail, log, soon, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage } from "../lib/test.mjs";
 
-const URL = "http://127.0.0.1:4177/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
 const SOURCES = [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 2, ms: 900 }];
 const leg = (from, to, dep, arr) => ({ from, to, dep, arr, minutes: 75, stops: 0, route: [from, to], carriers: ["Test Air"], flights: ["TA1"] });
 
@@ -50,13 +44,9 @@ const EVENTS = {
   sources: [{ id: "footballdata", name: "football-data.org", configured: true, ok: true, count: 2 }]
 };
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4177", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
-  p.on("pageerror", e => errors.push(e.message));
+test("Events", async ({ open, errors }) => {
+  test.setTimeout(300_000);
+  const p = await open();
   const asked = [], stays = [];
   const cors = { "access-control-allow-origin": "*" };
   // die erste Flugsuche scheitert bei Kiwi (überlastet): die App versucht es einmal neu
@@ -95,8 +85,7 @@ try {
       { id: "viator:2", source: "viator", sourceName: "Viator", title: "Themse-Bootsfahrt", rating: 4.3, reviews: 800, minutes: 60, price: 18, currency: "EUR", url: "https://www.viator.com/t/2" }
     ], sources: [{ id: "viator", name: "Viator", configured: true, ok: true, count: 2 }] }) });
   });
-  for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
-  await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
+  await publicData(p, [...PLACE_DATA, "places/"]);
   await p.goto(URL);
 
   // Start mit „Zu einem Event“: legt die Reise an und öffnet den Planer
@@ -121,7 +110,7 @@ try {
   if (await m.locator(".ev-tmin").inputValue() !== "60" || await m.locator(".ev-tmax").inputValue() !== "180") fail("Ticketpreis nicht übernommen");
   // Stadt kommt nach dem Laden der Orte aus der Anschrift, das Ziel aus der Lage des Stadions: Flughäfen im Umkreis
   const dest = m.locator(".ev-form .lp").first().locator("input");
-  for (let i = 0; i < 40 && !(await dest.inputValue()).startsWith("Umkreis London"); i++) await p.waitForTimeout(150);
+  await soon(async () => (await dest.inputValue()).startsWith("Umkreis London"));
   if (!/^Umkreis London: .*LHR/.test(await dest.inputValue())) fail("Ziel nicht aus Stadt und Stadion: " + await dest.inputValue());
   // antippen: Flughäfen rund ums Stadion zur Auswahl
   await dest.focus();
@@ -219,7 +208,7 @@ try {
   if (!(await att.locator(".card", { hasText: "Tower of London" }).count())) fail("Tour nicht übernommen");
   await att.locator(".card", { hasText: "Tower of London" }).locator(".row-img").waitFor();
   const prices = () => p.evaluate(() => { const t = JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current"))); return t.items.filter(i => i.cat === "attractions").map(i => i.options[0].price.adult).join(); });
-  for (let i = 0; i < 20 && (await prices()) !== "60,89,42"; i++) await p.waitForTimeout(150);
+  await soon(async () => (await prices()) === "60,89,42", 3000);
   if ((await prices()) !== "60,89,42") fail("Preise der Erlebnisse: " + await prices());
   log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €, mit Foto) als Posten übernommen");
   // Kopf: Events & Aktivitäten sammelt Event und Erlebnisse, „Sonstige Kosten“ ohne die Tour
@@ -238,7 +227,7 @@ try {
   await m2.locator(".ev-find .btn").click();
   await m2.locator(".ev-hit", { hasText: "Sabah FK" }).click();
   const city2 = m2.locator(".ev-form .lp").first().locator("input");
-  for (let i = 0; i < 40 && (await city2.inputValue()) !== "Baku"; i++) await p.waitForTimeout(150);
+  await soon(async () => (await city2.inputValue()) === "Baku");
   if ((await city2.inputValue()) !== "Baku") fail("keine Stadt bei Sabah FK: " + await city2.inputValue());
   if (!(await m2.locator(".ev-guess", { hasText: "Baku" }).count())) fail("Hinweis zur angenommenen Stadt fehlt");
   await p.keyboard.press("Escape");
@@ -256,7 +245,7 @@ try {
   await bne.click();
   if (await val("Was?") !== "Olympische Sommerspiele Brisbane 2032" || await val("Datum") !== "2032-07-23") fail("Sport-Event nicht übernommen");
   const city3 = m3.locator(".ev-form .lp").first().locator("input");
-  for (let i = 0; i < 40 && !(await city3.inputValue()).includes("Brisbane"); i++) await p.waitForTimeout(150);
+  await soon(async () => (await city3.inputValue()).includes("Brisbane"));
   if (!(await city3.inputValue()).includes("Brisbane")) fail("Ziel Brisbane fehlt: " + await city3.inputValue());
   log("Sportkalender: Olympia antippen → Brisbane 2032 mit Zeitraum, Name, Datum und Ziel übernommen");
   // mehrtägig (#265): letzter Tag aus dem Kalender; eigener Zeitraum ergibt „Günstigste im Zeitraum“
@@ -293,8 +282,7 @@ try {
   log("Kein Flug: Meldung statt Karten, vorher mit zwei Umstiegen nachgesucht");
 
   // Start → „Zu einem Event“, Suche ohne Flug, Planer schließen: keine halbe Reise bleibt zurück (#546)
-  await p.evaluate(() => localStorage.clear());
-  await p.goto(URL);
+  await reloadHome(p, { url: URL, clear: true });
   await (await startPage(p)).locator(".start .home-event").click();
   const m5 = p.locator(".modal");
   await m5.locator(".ev-form").waitFor();
@@ -305,7 +293,8 @@ try {
   await m5.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
   await p.keyboard.press("Escape");
   await (await startPage(p)).locator(".start .home-title").waitFor();
-  if (await (await myTrips(p)).locator(".start .home-trip").count()) fail("Reise vom abgebrochenen Event-Planer bleibt stehen");
+  // ohne Konto kommt keine Reise nach: nicht lange auf die Kachel „Meine Reisen“ warten
+  if (await (await myTrips(p, { wait: 1000 })).locator(".start .home-trip").count()) fail("Reise vom abgebrochenen Event-Planer bleibt stehen");
   log("Event-Planer ohne übernommenen Vorschlag geschlossen: keine Reise bleibt zurück");
 
   // Fernziel (#536): am Vortag geht kein Hinflug, einen Tag früher schon; ohne Treffer führt ein Knopf in die Einzelsuche
@@ -320,8 +309,7 @@ try {
       out: leg(from, to, "2027-05-13T18:00:00", "2027-05-14T09:00:00"), back: leg(to, from, `${q.ret}T18:00:00`, `${q.ret}T19:15:00`) }] : [];
     await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers, sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: offers.length, ms: 100 }] }) });
   });
-  await p.evaluate(() => localStorage.clear());
-  await p.goto(URL);
+  await reloadHome(p, { url: URL, clear: true });
   await (await startPage(p)).locator(".start .home-event").click();
   const m6 = p.locator(".modal");
   await m6.locator(".ev-form").waitFor();
@@ -338,8 +326,7 @@ try {
 
   await p.unroute("https://flights.test/flights/search");
   await p.route("https://flights.test/flights/search", r => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0, ms: 100 }] }) }));
-  await p.evaluate(() => localStorage.clear());
-  await p.goto(URL);
+  await reloadHome(p, { url: URL, clear: true });
   await (await startPage(p)).locator(".start .home-event").click();
   const m7 = p.locator(".modal");
   await m7.locator(".ev-form").waitFor();
@@ -352,7 +339,4 @@ try {
   await p.locator(".modal", { hasText: "Flug" }).first().waitFor();
   if (await p.locator(".ev-form").count()) fail("Event-Planer nach „Flug einzeln suchen“ noch offen");
   log("Kein Flug: Knopf „Flug einzeln suchen“ öffnet die Flugsuche");
-
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  log("Event-Reise ok");
-} finally { await browser.close(); server.kill(); }
+});

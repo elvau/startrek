@@ -97,9 +97,10 @@ Einmalig einrichten (Dani), je Projekt:
   `localhost` ist in Firebase standardmäßig als Domain erlaubt.
 
 ## Tests
-- `npm run test:rules`: Sicherheitsregeln (wer darf lesen, bearbeiten, einladen, beitreten).
-- `npm run test:cloud`: zwei Personen im Browser: anmelden, Reise ins Konto, einladen, beitreten,
-  live mitbearbeiten, Rolle ändern, Einladung zurückziehen.
+- `npm run test:rules`: Sicherheitsregeln (wer darf lesen, bearbeiten, einladen, beitreten), über die Bibliothek und
+  von außen über die REST-Schnittstelle.
+- `npm run test:cloud`: Ende-zu-Ende im Browser; mit Konto unter `app/e2e/konto/` (z. B. zwei Personen: anmelden,
+  Reise ins Konto, einladen, beitreten, live mitbearbeiten, Rolle ändern, Einladung zurückziehen). Aufbau: `docs/TESTS.md`.
 
 Beide laufen bei jedem Pull Request automatisch.
 

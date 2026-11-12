@@ -163,5 +163,5 @@ nach dem Release (Such-Dienst nur von `main`). Vor dem öffentlichen Anbieten: P
 - `worker/src/mcp.test.ts`: Schlüssel, Firestore-Werte, Protokoll, Werkzeuge, Rechte, gleichzeitige Änderung, Tageslimit
 - `worker/src/home.test.ts`: Wohnort aus PLZ, Ort und Land
 - `worker/src/oauth.test.ts`: Beschreibung, Anmeldung der Chat-App, Ablauf mit PKCE, Erneuerung, Trennen, Fehlerfälle
-- `app/e2e/connector.mjs`: MCP-Kern gegen den Firestore-Emulator, App zeigt die Reise (markiert, live), Schlüssel-Dialog,
+- `app/e2e/konto/connector.spec.mjs`: MCP-Kern gegen den Firestore-Emulator, App zeigt die Reise (markiert, live), Schlüssel-Dialog,
   verbundene Chat-Apps (Trennen), Zustimmung (`?verbinden=…`)

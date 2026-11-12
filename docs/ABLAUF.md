@@ -44,7 +44,7 @@ Oberfläche oder Änderungen über mehrere Bereiche. Im Zweifel eine Frage an Da
 
 **Fertig ist ein Feature, wenn**
 - die Akzeptanzkriterien erfüllt sind,
-- Unit-Tests da sind und, wo sinnvoll, ein Schritt in `app/e2e/*.mjs`,
+- Unit-Tests da sind und, wo sinnvoll, ein Test in `app/e2e/` (`docs/TESTS.md`),
 - neue Texte in allen 7 Sprachen stehen,
 - Datenschutz (`public/datenschutz.html`) und Doku mitgezogen sind,
 - es auf der Testumgebung ausprobiert ist.

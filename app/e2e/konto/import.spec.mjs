@@ -6,18 +6,11 @@
  * aus dem Wohnort geschätzt (#475). Unterkunft importieren in die offene Reise, weiterer Fund als Rückfrage (#615).
  * Reise um Import erweitern mit Abweichungen, „Ja, hier übernehmen“ und „Andere Reise wählen“ (#616).
  * Änderungsansicht je Posten und Rückgängig (#617).
- * Start: npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/import.mjs"
  */
-import { chromium } from "playwright";
-import { spawn } from "node:child_process";
-import { reloadHome, startPage } from "./nav.mjs";
+import { test, fail, log, until, publicData, URL, reloadHome, startPage } from "../lib/konto.mjs";
 
-const URL = "http://127.0.0.1:4186/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
 // SHOTS=<Ordner>: Bildschirmfotos der Schritte zum Durchsehen
 const shot = async (loc, name) => { if (process.env.SHOTS) await loc.screenshot({ path: `${process.env.SHOTS}/${name}.png` }); };
-const until = async (fn, what, ms = 10000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
 const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" };
 // 1×1-Pixel-PNG
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
@@ -69,14 +62,10 @@ const BOOKING = {
   confidence: { place: 1, dates: 1, people: 1, price: 1, flights: 1, stay: 1 }
 };
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4186", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
-  p.on("pageerror", e => errors.push(e.message));
-  for (const f of ["world.json", "packs.json", "airports.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+test("KI-Import", async ({ open, errors }) => {
+  test.setTimeout(300_000);
+  const p = await open();
+  await publicData(p);
   const asked = [];
   await p.route("https://flights.test/import", async r => {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
@@ -458,7 +447,4 @@ try {
   await until(async () => !((await readCur())?.items?.some(i => i.name === "Hotel Rambla")), "Rückgängig");
   if ((await readCur()).items.find(i => i.cat === "flights").options[0].label.includes("Vueling")) fail("Flug nach Rückgängig noch ersetzt");
   log("Reise um Import erweitern: Änderungsansicht (ersetzt, neu), Flug ersetzt, Hotel neu, Rückgängig stellt den Stand davor her");
-
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  log("Import ok");
-} finally { await browser.close(); server.kill(); }
+});

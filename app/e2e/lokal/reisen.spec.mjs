@@ -4,16 +4,10 @@
  * keiner Ferienwohnung für 9, Touren in Hakone), Ozeanien-Rundreise (Strecke nur mit 2 Umstiegen, Reisezeitraum folgt
  * den Flügen), Kalifornien mit Mietwagen (Einwegmiete, 2 Autos) und unplausible Flugpreise; New York mit deutschem
  * und britischem Pass (Einreise und Reisehinweise je Pass, #164).
- * Start: npm run test:cloud
  */
-import { chromium } from "playwright";
+import { test, fail, log, until, seedTrips, PLACE_DATA, URL, reloadHome, myTrips } from "../lib/test.mjs";
 import { readFileSync } from "node:fs";
-import { reloadHome, myTrips } from "./nav.mjs";
-import { spawn } from "node:child_process";
 
-const URL = "http://127.0.0.1:4179/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
 /** Zeitraum im Kalender antippen: erster und letzter Tag (ohne letzten: „nur Hinflug“) */
 async function pickRange(p, btn, a, b) {
   // per Tastatur: offene Vorschlagslisten (Ziel nur eingetippt) liegen sonst über dem Feld
@@ -27,7 +21,6 @@ async function pickRange(p, btn, a, b) {
   if (!b) await s.locator(".dr-foot .btn.primary").click();
   await s.waitFor({ state: "detached" });
 }
-const until = async (fn, what, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
 
 const settings = { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 };
 const base = { tiers: {}, settings, households: {} };
@@ -60,30 +53,21 @@ const TRIPS = [
     items: [flight("n", ["an", "to"], [L("out", "FRA", "JFK", "2027-06-01T10:00", "2027-06-01T13:00", "New York"), L("back", "JFK", "FRA", "2027-06-08T18:00", "2027-06-09T08:00")])] }
 ];
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4179", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  await ctx.addInitScript(trips => {
-    if (localStorage.getItem("rk2-index")) return;
-    for (const t of trips) localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t));
-    localStorage.setItem("rk2-index", JSON.stringify(trips.map(t => ({ id: t.id, name: t.name, place: t.place, from: t.from, to: t.to, people: t.travelers.length }))));
-  }, TRIPS);
-  const p = await ctx.newPage();
-  p.on("pageerror", e => errors.push(e.message));
-  for (const f of ["airports.json", "world.json", "packs.json", "visa.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
-  await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
+/**
+ * Seite mit allen Reisen und nachgestelltem Such-Dienst. asked: Anfragen je Suche, govAsked: Abrufe der Reisehinweise
+ * anderer Regierungen, state.aaMod: Änderungsdatum beim Auswärtigen Amt (im Test umstellbar).
+ */
+async function start(open) {
+  const p = await open({ init: seedTrips(TRIPS, { current: false }), data: [...PLACE_DATA, "visa.json", "places/"] });
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
   const json = (r, body) => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
   const asked = { flights: [], stays: [], tours: [] };
   // Auswärtiges Amt: Teilreisewarnung USA, Änderungsdatum lässt sich im Test umstellen
-  let aaMod = "2026-09-01";
+  const state = { aaMod: "2026-09-01" };
   // Reisehinweise anderer Regierungen: nur das Reiseland geht hin
   const govAsked = [];
   await p.route("https://flights.test/advice/gov*", r => { govAsked.push(r.request().url()); return json(r, { cc: "US", sources: { GB: { level: "partial", url: "https://www.gov.uk/foreign-travel-advice/usa", embassy: "https://www.gov.uk/world/usa", modified: "2026-09-20" }, US: { level: null, url: "x" } } }); });
-  await p.route("https://flights.test/advice", r => json(r, { countries: { US: { id: "usa-node", name: "USA", warning: false, partial: true, situation: false, situationPart: false, modified: aaMod } } }));
+  await p.route("https://flights.test/advice", r => json(r, { countries: { US: { id: "usa-node", name: "USA", warning: false, partial: true, situation: false, situationPart: false, modified: state.aaMod } } }));
 
   // Flüge: je Tag im Fenster ein Flug; Fidschi → München nur mit 2 Umstiegen; Los Angeles → San Diego zum Fehlerpreis
   const leg = (from, to, dep, minutes) => ({ from, to, dep: `${dep}T10:00:00`, arr: `${dep}T${String(10 + Math.min(13, Math.round(minutes / 60))).padStart(2, "0")}:00:00`, minutes, stops: 1, route: [from, "XXX", to], carriers: ["Sun Air"], flights: ["SA1"] });
@@ -117,11 +101,20 @@ try {
     return json(r, { activities: [{ id: "t-" + q.place, source: "viator", sourceName: "Viator", title: `${q.place}: ${q.place === "Hakone" ? "Hakone Freepass mit Ropeway" : "Stadtführung"}`, price: 50, currency: "EUR", rating: 4.8, reviews: 100, minutes: 240, url: "https://viator.test" }], sources: [{ id: "viator", name: "Viator", configured: true, ok: true, count: 1 }] });
   });
   await p.route("https://flights.test/events/search", r => r.request().method() === "OPTIONS" ? r.fulfill({ status: 204, headers: cors }) : json(r, { events: [], sources: [] }));
+  return { p, asked, govAsked, state };
+}
 
-  const open = async name => { await reloadHome(p, { url: URL }); await (await myTrips(p)).locator(".start .home-trip", { hasText: name }).first().click(); await p.locator(".hero h1").waitFor(); };
+/** Reise von der Startseite aus öffnen */
+async function openTrip(p, name) {
+  await reloadHome(p, { url: URL });
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: name }).first().click();
+  await p.locator(".hero h1").waitFor();
+}
 
+test("Japan: wer später dazustößt, sucht mit eigenen Daten; Ausweichen auf zwei Unterkünfte; Touren in Hakone", async ({ open }) => {
+  const { p, asked } = await start(open);
   // ---- Japan: Onkel Jens kommt später – Flugsuche mit seinen Daten
-  await open("Japan Großfamilie");
+  await openTrip(p, "Japan Großfamilie");
   await p.locator("#flights .fs-open").click();
   const fm = p.locator(".modal-bg .modal");
   await fm.waitFor();
@@ -157,9 +150,11 @@ try {
   await p.locator("#stay .st-open").click();
   const sm = p.locator(".modal-bg .modal");
   await sm.waitFor();
-  const st = await sm.locator(".st-stations:not(.st-segs)").innerText().catch(() => "");
-  if ((st.match(/Tokio/g) || []).length > 1) fail("Tokio mehrfach als Station: " + st);
   const segs = await sm.locator(".st-segs").innerText();
+  // die Stationsliste gibt es nur bei mehreren Stationen: nicht darauf warten
+  const stations = sm.locator(".st-stations:not(.st-segs)");
+  const st = (await stations.count()) ? await stations.first().innerText() : "";
+  if ((st.match(/Tokio/g) || []).length > 1) fail("Tokio mehrfach als Station: " + st);
   for (const s of ["Klein (5)", "alle 8 zusammen"]) if (!segs.includes(s)) fail(`Abschnitt „${s}“ fehlt: ${segs}`);
   const ci = await sm.locator(".st-dates .dr-btn").getAttribute("data-from"), co = await sm.locator(".st-dates .dr-btn").getAttribute("data-to");
   if (ci !== "2027-04-02" || co !== "2027-04-08") fail(`Start nicht mit dem ersten Abschnitt: ${ci}–${co}`);
@@ -183,9 +178,12 @@ try {
   if (asked.tours.at(-1).place !== "Hakone") fail("Touren-Anfrage nicht für Hakone");
   await p.keyboard.press("Escape");
   log("Japan: Touren für Hakone gesucht (Hakone Freepass gefunden)");
+});
 
+test("Mannschaft: jeder Spieler eine Kasse, Trainer-Familie gemeinsam oder getrennt", async ({ open, errors }) => {
+  const { p } = await start(open);
   // ---- Mannschaft: jeder Spieler eine Kasse; Trainer-Familie gemeinsam, dann getrennt mit Kind bei Tina
-  await open("Mannschaftsfahrt");
+  await openTrip(p, "Mannschaftsfahrt");
   const ks = p.locator("#split .kasse");
   await ks.scrollIntoViewIfNeeded();
   await ks.locator(".ks-add").click();
@@ -207,9 +205,12 @@ try {
   await until(async () => { const t = (await ks.locator(".ks-moves").innerText()).replace(/\s+/g, " "); return /Tina → Ali 40/.test(t) && /\+2 → Ali · jeweils 20/.test(t); }, "getrennte Kassen mit Kind bei Tina")
     .catch(async e => { console.log("MOVES:", (await ks.innerText()).replace(/\s+/g, " ").slice(0, 900), "ERR:", errors.join(" / ")); throw e; });
   log("Mannschaft: jeder Spieler eine Kasse, Trainer-Familie gemeinsam (60 €), getrennt mit Kind bei Tina (Tina 40 €, Tom wie die Spieler 20 €)");
+});
 
+test("Ozeanien: Strecke nur mit 2 Umstiegen, Reisezeitraum folgt den Flügen", async ({ open }) => {
+  const { p, asked } = await start(open);
   // ---- Ozeanien: Fidschi → München nur mit 2 Umstiegen; danach Reisezeitraum = Flüge
-  await open("Ozeanien");
+  await openTrip(p, "Ozeanien");
   await p.locator("#flights .fs-open").click();
   const om = p.locator(".modal-bg .modal");
   await om.locator(".fs-kind .chip", { hasText: "Rundreise" }).click();
@@ -230,9 +231,12 @@ try {
   await until(async () => { const h = await p.locator(".hero").innerText(); return /Februar/.test(h) && !/7\. März/.test(h); }, "Reisezeitraum an die Flüge angepasst")
     .catch(async e => { console.log("HERO:", (await p.locator(".hero").innerText()).slice(0, 200)); throw e; });
   log("Ozeanien: Rückflug ab Fidschi erst mit 2 Umstiegen gefunden (Hinweis), Reisezeitraum folgt den Flügen");
+});
 
+test("Kalifornien: Einwegmiete mit 2 Autos, unplausibler Flugpreis fällt raus; Einreise USA unter „Wichtiges“", async ({ open }) => {
+  const { p, state } = await start(open);
   // ---- Kalifornien: Mietwagen SFO → SAN, 7 Personen = 2 Autos; unplausibler Preis LAX → SAN fällt raus
-  await open("Kalifornien");
+  await openTrip(p, "Kalifornien");
   await p.locator("#transport").scrollIntoViewIfNeeded();
   await p.locator("#transport .car-add").click();
   const car = await p.locator("#transport .card[data-item]", { hasText: "Mietwagen" }).first().innerText();
@@ -309,16 +313,19 @@ try {
   if (!/Yesim[\s\S]*Airalo/.test(await esim.innerText()) || !(await esim.innerText()).includes("Vereinigte Staaten")) fail("eSIM-Hinweis: " + (await esim.innerText()));
   log("Wichtiges: ESTA für 7 Personen im Popup der Bubble, je Person abhaken, Zähler sinkt, wieder öffnen; alte Karte entfällt; eSIM-Hinweis mit Yesim und Airalo");
   // neue Fassung beim Auswärtigen Amt: Punkt ist wieder offen
-  aaMod = "2026-10-02";
-  await open("Kalifornien");
+  state.aaMod = "2026-10-02";
+  await openTrip(p, "Kalifornien");
   await p.locator(".top .imp-btn").click();
   await p.locator(".modal .imp-card[data-key='aa:US']", { hasText: "02.10.2026" }).waitFor();
   if ((await p.locator(".top .imp-btn .imp-badge").innerText()) !== String(n0 + 1)) fail("geänderte Warnung nicht wieder offen");
   await p.keyboard.press("Escape");
   log("Wichtiges: Teilreisewarnung gelesen, nach Änderung beim Auswärtigen Amt wieder offen");
+});
 
+test("New York: Einreise und Reisehinweise je Pass", async ({ open }) => {
+  const { p, govAsked } = await start(open);
   // ---- New York: Anna (deutscher Pass) und Tom (britisch, dazu irisch): Einreise und Reisehinweise je Pass
-  await open("New York Paar");
+  await openTrip(p, "New York Paar");
   await p.locator(".top .imp-btn").click();
   const ny = p.locator(".modal .imp");
   const nyEntry = ny.locator(".imp-card[data-key='entry:US']");
@@ -334,12 +341,12 @@ try {
   log("New York: Einreise je Pass (🇩🇪 Anna, 🇬🇧 Tom mit günstigstem Pass), FCDO-Hinweis mit Botschaft für Tom, Auswärtiges Amt für Anna; an den Such-Dienst nur das Reiseland");
 
   // Reise als PDF: Reiseplan und Rückblick in einem neuen Tab (Route, Unterkünfte, Kosten, geplant gegen tatsächlich)
-  await open("Japan Großfamilie");
+  await openTrip(p, "Japan Großfamilie");
   for (const [mode, want] of [["Reiseplan", ["Wann wohin", "Kosten", "Aufteilung je Familie"]], ["Rückblick", ["Geplant und tatsächlich"]]]) {
     await p.locator(".top .tm-btn").first().click();
     await p.locator(".tm-report").click();
     await p.locator(".rep-opt", { hasText: mode }).click();
-    const [tab] = await Promise.all([ctx.waitForEvent("page"), p.locator(".rep-tab").click()]);
+    const [tab] = await Promise.all([p.context().waitForEvent("page"), p.locator(".rep-tab").click()]);
     await until(async () => (await tab.locator("h2").count()) > 0, "Bericht " + mode, 60000);
     const txt = await tab.locator("body").innerText();
     for (const w of want) if (!txt.toLowerCase().includes(w.toLowerCase())) fail(`Bericht ${mode} ohne „${w}“: ` + txt.slice(0, 300));
@@ -361,10 +368,4 @@ try {
   if (!saved.startsWith("<!doctype html>") || !saved.includes("Wann wohin") || !saved.includes("Japan Großfamilie")) fail("HTML-Datei: " + saved.slice(0, 200));
   await p.keyboard.press("Escape");
   log("Reise als PDF: Reiseplan (Route, Kosten je Familie) und Rückblick (geplant und tatsächlich) im neuen Tab; Reiseplan in der App angesehen und als HTML-Datei gespeichert");
-
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  console.log("\nGruppenreisen: alles in Ordnung");
-} finally {
-  await browser.close();
-  server.kill();
-}
+});
