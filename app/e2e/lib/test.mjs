@@ -36,6 +36,19 @@ export async function publicData(target, list = PLACE_DATA) {
   }
 }
 
+/*
+ * Die App scrollt weich (html{scroll-behavior:smooth}). Playwright scrollt vor jedem Klick zum Ziel; läuft das als
+ * Animation, kann die Seite sich zwischen Drücken und Loslassen noch bewegen und der Klick geht verloren (unter Last
+ * gesehen). In den Tests deshalb sofort scrollen; Sprünge, die die App selbst weich ausführt, bleiben weich.
+ */
+function instantScroll() {
+  addEventListener("DOMContentLoaded", () => {
+    const s = document.createElement("style");
+    s.textContent = "html{scroll-behavior:auto!important}";
+    (document.head || document.documentElement)?.append(s);
+  });
+}
+
 export const test = base.extend({
   errors: async ({}, use) => {
     const errors = [];
@@ -56,6 +69,7 @@ export const test = base.extend({
     await use(async ({ name = "", init, data = false, ignore, ...opts } = {}) => {
       const ctx = await browser.newContext(opts);
       made.push(ctx);
+      await ctx.addInitScript(instantScroll);
       if (init) await ctx.addInitScript(...[].concat(init));
       if (data) await publicData(ctx, data === true ? PLACE_DATA : data);
       const p = await ctx.newPage();

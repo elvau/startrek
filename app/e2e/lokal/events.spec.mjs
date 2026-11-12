@@ -1,7 +1,7 @@
 /*
  * Reise zu einem Event: Such-Dienst nachgestellt, Vorschläge prüfen, einen übernehmen.
  */
-import { test, fail, log, soon, publicData, PLACE_DATA, URL, myTrips, startPage } from "../lib/test.mjs";
+import { test, fail, log, soon, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage } from "../lib/test.mjs";
 
 const SOURCES = [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 2, ms: 900 }];
 const leg = (from, to, dep, arr) => ({ from, to, dep, arr, minutes: 75, stops: 0, route: [from, to], carriers: ["Test Air"], flights: ["TA1"] });
@@ -282,8 +282,7 @@ test("Events", async ({ open, errors }) => {
   log("Kein Flug: Meldung statt Karten, vorher mit zwei Umstiegen nachgesucht");
 
   // Start → „Zu einem Event“, Suche ohne Flug, Planer schließen: keine halbe Reise bleibt zurück (#546)
-  await p.evaluate(() => localStorage.clear());
-  await p.goto(URL);
+  await reloadHome(p, { url: URL, clear: true });
   await (await startPage(p)).locator(".start .home-event").click();
   const m5 = p.locator(".modal");
   await m5.locator(".ev-form").waitFor();
@@ -310,8 +309,7 @@ test("Events", async ({ open, errors }) => {
       out: leg(from, to, "2027-05-13T18:00:00", "2027-05-14T09:00:00"), back: leg(to, from, `${q.ret}T18:00:00`, `${q.ret}T19:15:00`) }] : [];
     await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers, sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: offers.length, ms: 100 }] }) });
   });
-  await p.evaluate(() => localStorage.clear());
-  await p.goto(URL);
+  await reloadHome(p, { url: URL, clear: true });
   await (await startPage(p)).locator(".start .home-event").click();
   const m6 = p.locator(".modal");
   await m6.locator(".ev-form").waitFor();
@@ -328,8 +326,7 @@ test("Events", async ({ open, errors }) => {
 
   await p.unroute("https://flights.test/flights/search");
   await p.route("https://flights.test/flights/search", r => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0, ms: 100 }] }) }));
-  await p.evaluate(() => localStorage.clear());
-  await p.goto(URL);
+  await reloadHome(p, { url: URL, clear: true });
   await (await startPage(p)).locator(".start .home-event").click();
   const m7 = p.locator(".modal");
   await m7.locator(".ev-form").waitFor();

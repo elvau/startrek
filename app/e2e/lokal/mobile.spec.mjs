@@ -84,8 +84,24 @@ test("Handy", async ({ open, errors }) => {
   await p.locator(".mb-edge.prev").click();
   await until(async () => (await on()) === "hero", "Lasche zurück zur Übersicht");
   await until(async () => (await p.evaluate(() => localStorage.getItem("sf-mob-nudged"))) === "1", "Anstupser gemerkt");
-  // solange der Anstupser läuft (1 s), landet ein Sprung 44 px neben der Seite (#691): erst danach weiter
-  await until(() => p.evaluate(() => !document.querySelector("main.pager.nudge")), "Anstupser vorbei");
+  // Seitenwechsel während des Anstupsers (#691): er endet, die Seite landet genau (vorher 44 px daneben)
+  // Anstupser starten und anhalten, sobald die Seiten verschoben stehen: so trifft der Wechsel sicher diesen Moment
+  await p.evaluate(() => new Promise((done, stop) => {
+    const m = document.querySelector("main.pager"), end = Date.now() + 3000;
+    m.classList.add("nudge");
+    const tick = () => {
+      if (new DOMMatrix(getComputedStyle(m.querySelector(":scope > .chapter")).transform).m41 <= -40) { for (const c of m.children) c.style.animationPlayState = "paused"; done(); }
+      else if (Date.now() > end) stop(new Error("Seiten rucken nicht an"));
+      else requestAnimationFrame(tick);
+    };
+    tick();
+  }));
+  await p.locator('.mbar [data-pg="trav"]').click();
+  await until(async () => (await on()) === "trav" && await settled("trav"), "Sprung während des Anstupsers landet genau");
+  if (await p.locator("main.pager.nudge").count()) fail("Anstupser läuft nach dem Seitenwechsel weiter");
+  await p.evaluate(() => { for (const c of document.querySelector("main.pager").children) c.style.animationPlayState = ""; });
+  await p.locator('.mbar [data-pg="hero"]').click();
+  await until(async () => (await on()) === "hero" && await settled("hero"), "zurück zur Übersicht");
   log("Lasche am Rand zeigt die Nachbarseite und wechselt dorthin; Anstupser einmal je Gerät");
   // Fehler melden in der Reise: nicht schwebend (dort liegt die Leiste), sondern im ⋯-Menü (#662)
   if (await p.locator(".bug-fab").count()) fail("Fehler melden schwebt noch");
