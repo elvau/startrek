@@ -60,10 +60,18 @@ jobs:
         run: npm run check
       - name: Such-Dienst prüfen
         working-directory: worker
-        run: npx tsc --noEmit && npx wrangler deploy --config ../wrangler.toml --dry-run --outdir /tmp/worker-dist && npx wrangler deploy --dry-run --outdir /tmp/worker-dist-preview
+        # Probelauf für die Produktion, die Testumgebung (startrek-test) und die zweite Konfiguration in worker/
+        run: |
+          npx tsc --noEmit
+          npx wrangler deploy --config ../wrangler.toml --env "" --dry-run --outdir /tmp/worker-dist
+          npx wrangler deploy --config ../wrangler.toml --env test --dry-run --outdir /tmp/worker-dist-test
+          npx wrangler deploy --env "" --dry-run --outdir /tmp/worker-dist-preview
       - name: App bauen
         working-directory: app
         run: npm run build
+      - name: Größen der App
+        # Tabelle in der Zusammenfassung des Laufs; über dem Richtwert nur eine Warnung
+        run: node scripts/groessen.mjs app/dist >> "$GITHUB_STEP_SUMMARY"
 
   regeln:
     name: Sicherheitsregeln (Firestore-Emulator)

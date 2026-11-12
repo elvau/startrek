@@ -5,7 +5,7 @@
 | Testumgebung | https://elvau.github.io/startrek/ | bei jedem Push auf `pre-release` (nur bauen, ohne Tests, ca. 1–2 Minuten) | GitHub Pages (`.github/workflows/pages.yml`), eigenes Firebase-Testprojekt (`app/.env.staging`, siehe docs/FIREBASE.md) |
 | Produktion | https://splitandfly.com | bei jedem Push auf `main` (Merge von `pre-release`) | Firebase Hosting (`.github/workflows/release.yml`) |
 
-Beide Umgebungen nutzen dasselbe Firebase-Projekt (Konten, geteilte Reisen) und denselben Such-Dienst.
+Die Testumgebung hat ein eigenes Firebase-Projekt und einen eigenen Such-Dienst (`startrek-test`, siehe unten).
 Die frühere Adresse `…/neu/` leitet auf die App weiter (auch Einladungslinks mit `?join=…`).
 
 ## Ablauf
@@ -31,8 +31,17 @@ Branches: **Arbeits-Branch** (je Sitzung oder Routine, z. B. `claude/…`) → *
 6. **Hotfix:** Dringendes kann von einem Arbeits-Branch auf `main` direkt per Release-PR gehen; danach `main` in
    `pre-release` mergen.
 
-**Such-Dienst (Cloudflare):** wird nur beim Push auf `main` neu veröffentlicht. Neue Such-Funktionen (neue Endpunkte) gehen deshalb
-erst mit dem Release; auf der Testumgebung antwortet bis dahin noch der alte Such-Dienst.
+**Ablauf eines Release auf GitHub (`release.yml`):** eine Kette, jede Stufe wartet auf die vorige:
+Prüfen (Unit, Typen) → Firestore-Regeln → Such-Dienst → App → Rauchtest → Tag. Scheitert eine Stufe, bleiben die
+folgenden stehen und die Seite bleibt auf dem alten Stand. Der Rauchtest (`scripts/rauchtest.mjs`) prüft, dass
+splitandfly.com und der Such-Dienst (`/health`) die Version aus `app/package.json` melden. Der wöchentliche Neubau
+veröffentlicht nur die App.
+
+**Such-Dienst (Cloudflare):** die Produktion (`startrek`) wird mit dem Release veröffentlicht, als Stufe vor der App.
+Die Testumgebung hat einen eigenen Dienst (`startrek-test`, Umgebung „test“ in `wrangler.toml`), den `pages.yml` bei
+jedem Push auf `pre-release` veröffentlicht; so lassen sich neue Endpunkte vor dem Release ausprobieren. Die
+Testumgebung benutzt ihn, sobald die Repo-Variable `TEST_DIENST` auf `an` steht (GitHub → Settings → Secrets and
+variables → Actions → Variables); sonst spricht sie mit dem Dienst der Produktion. Einrichtung: Abschnitt 5 unten.
 
 Zurück auf einen älteren Stand: In der Firebase Console unter **Hosting → Release-Verlauf** eine frühere Version „zurückrollen“,
 oder den Merge auf `main` rückgängig machen (Revert), dann läuft der Release erneut.
@@ -71,7 +80,17 @@ Firebase Console → Projekt **startrek-1b6a7** → **Hosting** → **Get starte
 Firebase Console → **Authentication → Settings → Authorized domains → Add domain**: `splitandfly.com` und `www.splitandfly.com`.
 
 ### 5. Such-Dienst
-Nichts zu tun: `splitandfly.com` steht schon in `ALLOWED_ORIGINS` (`wrangler.toml`), der Worker wird bei jedem Merge neu veröffentlicht.
+`splitandfly.com` steht schon in `ALLOWED_ORIGINS` (`wrangler.toml`). Damit GitHub den Dienst veröffentlichen kann (#697):
+1. Cloudflare-Dashboard → **Account API tokens → Create Token** → Vorlage **Edit Cloudflare Workers**, auf das eine Konto beschränken.
+2. GitHub → Repo **Settings → Secrets and variables → Actions → New repository secret**: `CLOUDFLARE_API_TOKEN` (der Token)
+   und `CLOUDFLARE_ACCOUNT_ID` (Kontokennung aus dem Dashboard).
+3. Nach dem ersten grünen Lauf: bei `startrek-test` die Schlüssel der Anbieter eintragen (**Workers & Pages → startrek-test →
+   Settings → Variables and Secrets**), dann die Repo-Variable `TEST_DIENST` auf `an` stellen.
+4. Cloudflare Workers Builds trennen (**Workers & Pages → startrek → Settings → Build → Disconnect**) und danach
+   `worker/wrangler.toml` samt dem zweiten Probelauf in `pruefen.yml` entfernen (war nur für die Vorschau-Builds von Cloudflare).
+
+Solange die Secrets fehlen, überspringen die Workflows den Such-Dienst mit einer Warnung; Cloudflare Workers Builds
+veröffentlicht ihn dann wie bisher bei jedem Push auf `main`.
 
 ### 6. Partner
 Bei Travelpayouts im Projekt die Website auf `https://splitandfly.com` ändern.

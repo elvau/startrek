@@ -153,10 +153,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Seite und Such-Dienst
-        env:
-          # hat GitHub den Such-Dienst selbst veröffentlicht, muss er die neue Version melden; sonst (Cloudflare
-          # Workers Builds, läuft unabhängig) nur ein Hinweis
-          DIENST_STAND: ${{ needs.dienst.outputs.stand }}
+        # hat GitHub den Such-Dienst selbst veröffentlicht, muss er die neue Version melden; sonst (Cloudflare
+        # Workers Builds, läuft unabhängig) nur ein Hinweis
         run: node scripts/rauchtest.mjs "$SEITE" "$DIENST" ${{ github.event_name == 'schedule' && '--nur-seite' || '' }} ${{ needs.dienst.outputs.stand != 'neu' && '--dienst-nachsichtig' || '' }}
 
   # neue Version in app/package.json → Tag vX.Y.Z und Release-Seite mit den Änderungen seit der letzten Version.
