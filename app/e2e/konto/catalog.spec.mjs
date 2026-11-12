@@ -1,40 +1,23 @@
 /*
  * Reisekatalog (#646): Kachel auf der Startseite, Liste nach Entfernung ab dem Land des Betrachters (hier Schweiz über die
  * Zeitzone, nicht ab Deutschland), Karte mit Zielland und Ziel zuerst, darunter Startpunkte und „~xy € ab …“, Filter, Detail
- * mit Kosten, „Als neue Reise übernehmen“ legt die Reise an.
- * Start: npm run build:emu && node e2e/catalog.mjs (ohne Emulator; Ortsdaten liegen neben der App und werden hier gereicht)
+ * mit Kosten, „Als neue Reise übernehmen“ legt die Reise an. Veröffentlichte Reisen liest der Katalog aus dem Emulator
+ * (hier keine); Ortsdaten liegen neben der App und werden gereicht.
  */
-import { chromium } from "playwright";
-import { spawn } from "node:child_process";
+import { test, fail, log, until, reply, URL, PHONE } from "../lib/konto.mjs";
 
-const URL = "http://127.0.0.1:4182/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
-const until = async (f, what, ms = 8000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await f()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeitüberschreitung: " + what); };
-
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4182", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "de-CH", timezoneId: "Europe/Zurich" });
-  // world.json liegt in der echten Seite neben der App (public/ im Repo), nicht im Build der App
-  await ctx.route("**/world.json", r => r.fulfill({ path: "../public/world.json" }));
-  await ctx.route("**/packs.json", r => r.fulfill({ path: "../public/packs.json" }));
-  await ctx.route("**/airports.json", r => r.fulfill({ path: "../public/airports.json" }));
+test("Liste ab dem Land des Betrachters, Filter, Detail, übernehmen mit Preisprüfung", async ({ open }) => {
+  const p = await open({ ...PHONE, locale: "de-CH", timezoneId: "Europe/Zurich", data: true });
+  const ctx = p.context();
   // Such-Dienst für die Preisprüfung nach dem Übernehmen (#652): je ein Treffer für Unterkunft und Flug
-  const H = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type" };
-  const ok = (r, body) => r.request().method() === "OPTIONS" ? r.fulfill({ status: 204, headers: H }) : r.fulfill({ status: 200, contentType: "application/json", headers: H, body: JSON.stringify(body) });
   const src = [{ id: "t", name: "Test", configured: true, ok: true, count: 1 }];
   const searched = [];
-  await ctx.route("https://flights.test/stays/search", r => { searched.push("stay"); return ok(r, { offers: [{ id: "s1", source: "t", sourceName: "Testbett", name: "Finca Sol", total: 2400, currency: "EUR", url: "https://example.com/s" }], sources: src }); });
-  await ctx.route("https://flights.test/flights/search", r => { searched.push("flight:" + JSON.parse(r.request().postData() || "{}").from); return ok(r, { offers: [{ price: 1600, currency: "EUR", sourceName: "Testflug", url: "https://example.com/f",
+  await ctx.route("https://flights.test/stays/search", r => { searched.push("stay"); return reply(r, { offers: [{ id: "s1", source: "t", sourceName: "Testbett", name: "Finca Sol", total: 2400, currency: "EUR", url: "https://example.com/s" }], sources: src }); });
+  await ctx.route("https://flights.test/flights/search", r => { searched.push("flight:" + JSON.parse(r.request().postData() || "{}").from); return reply(r, { offers: [{ price: 1600, currency: "EUR", sourceName: "Testflug", url: "https://example.com/f",
     out: { from: "ZRH", to: "PMI", dep: "2027-06-05T08:00", arr: "2027-06-05T10:00", carriers: ["TA"], stops: 0, minutes: 120, route: ["ZRH", "PMI"] },
     back: { from: "PMI", to: "ZRH", dep: "2027-06-10T18:00", arr: "2027-06-10T20:00", carriers: ["TA"], stops: 0, minutes: 120, route: ["PMI", "ZRH"] } }], sources: src }); });
-  await ctx.route("https://flights.test/activities/search", r => ok(r, { activities: [], sources: src }));
-  await ctx.route("https://flights.test/{health,rates,click}", r => ok(r, {}));
-  const p = await ctx.newPage();
-  p.on("pageerror", e => errors.push(e.message));
+  await ctx.route("https://flights.test/activities/search", r => reply(r, { activities: [], sources: src }));
+  await ctx.route("https://flights.test/{health,rates,click}", r => reply(r, {}));
   await p.goto(URL);
   await p.locator(".start .home-catalog").click();
   await p.locator(".kat-card").first().waitFor();
@@ -107,10 +90,4 @@ try {
   if (st.options.length !== 2 || st.options.find(o => o.id === st.chosen)?.label !== "Finca Sol" || !st.options.some(o => o.estimate)) fail("Unterkunft nach der Prüfung: " + JSON.stringify(st.options.map(o => o.label)));
   log(`Preise geprüft: ${pcRows.map(x => x.replace(/\s+/g, " ")).join(" | ")}; gesucht ${searched.join(", ")}`);
   log(`Übernommen: „${saved.name}“, ${saved.travelers.length} Personen, ${saved.from} bis ${saved.to}, ${fl[0].name}, ${saved.items.filter(i => !i.auto).length} Posten, ohne abgewählte Tour`);
-
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  console.log("\n✓ Reisekatalog in Ordnung");
-} finally {
-  await browser.close();
-  server.kill();
-}
+});

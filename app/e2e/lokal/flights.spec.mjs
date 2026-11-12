@@ -1,14 +1,8 @@
 /*
  * Flugsuche in der App: Such-Dienst nachgestellt (keine echten Anbieter), Ergebnis übernehmen.
- * Start: npm run test:cloud (nach cloud.mjs und groups.mjs)
  */
-import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage, quickTrip } from "./nav.mjs";
-import { spawn } from "node:child_process";
+import { test, expect, fail, log, until, soon, publicData, PLACE_DATA, reply, URL, reloadHome, myTrips, startPage, quickTrip } from "../lib/test.mjs";
 
-const URL = "http://127.0.0.1:4175/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
 /** Kofferzahl am − / + (#326) lesen und setzen; scope: Formular oder Leiste über den Treffern */
 const bagsOf = async scope => Number((await scope.locator(".fs-bagstep b").first().textContent()).match(/^\d+/)?.[0] ?? -1);
 async function setBags(scope, n) {
@@ -31,11 +25,6 @@ async function pickRange(p, btn, a, b) {
   }
   if (!b) await s.locator(".dr-foot .btn.primary").click();
   await s.waitFor({ state: "detached" });
-}
-async function until(fn, what, ms = 10000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 100)); }
-  fail("Zeitüberschreitung: " + what);
 }
 const leg = (from, to, dep, arr, min, flights, carriers, route) => ({ from, to, fromCity: from === "DUS" ? "Düsseldorf" : "Split", toCity: to === "SPU" ? "Split" : "Düsseldorf", dep, arr, minutes: min, stops: route.length - 2, route, carriers, flights });
 const RESULT = {
@@ -77,13 +66,9 @@ function oneWay(q) {
   return { offers, sources: RESULT.sources.map(s => (s.id === "kiwi" ? { ...s, count: offers.length } : s)) };
 }
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4175", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
-  p.on("pageerror", e => errors.push(e.message));
+test("Flugsuche", async ({ open, errors }) => {
+  test.setTimeout(300_000);
+  const p = await open();
   const asked = [];
   // Feiertage zuhause im Kalender (#377): Deutschland, landesweit
   await p.route("https://flights.test/holidays?**", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" },
@@ -102,8 +87,7 @@ try {
     const days = q.month === "2027-03" ? [{ out: "2027-03-02", price: 210, stops: 1 }, { out: "2027-03-04", price: 180, stops: 0 }, { out: "2027-03-09", price: 260, stops: 0 }] : [];
     await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ days, configured: true }) });
   });
-  for (const f of ["airports.json", "world.json", "packs.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
-  await p.route("**/places/*.json", r => r.fulfill({ path: `../public/places/${r.request().url().split("/").pop()}` }));
+  await publicData(p, [...PLACE_DATA, "places/"]);
   await p.goto(URL);
   await (await startPage(p)).locator(".start .home-new").click();
   await quickTrip(p);
@@ -256,7 +240,8 @@ try {
   const flLine = await p.locator(".hero .ht-fl .ht-line").first().innerText();
   if (!/→/.test(flLine) || !/€/.test(flLine)) fail("Flug-Kachel ohne Strecke und Preis: " + flLine);
   await p.locator(".hero .ht-fl").click();
-  await until(() => p.locator("#flights [data-item]").first().evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }), "zum Flug-Posten gescrollt");
+  // der Posten steht im Bild (wächst er während des Scrollens noch, kann sein oberer Rand knapp über dem Fenster liegen)
+  await until(() => p.locator("#flights [data-item]").first().evaluate(el => { const r = el.getBoundingClientRect(); return Math.min(r.bottom, innerHeight) - Math.max(r.top, 0) > 100; }), "zum Flug-Posten gescrollt");
   log("Kopf: Flug-Kachel zeigt " + flLine.replace(/\s+/g, " ") + ", Klick scrollt zum Posten");
 
   // wie im Artefakt: je Familie suchen und buchen (eigene Flughäfen, eigene Anfahrt, eigener Flug-Posten)
@@ -278,7 +263,7 @@ try {
   if (!(await m.locator(".fs-facts", { hasText: "1 Erw. · 1 Kind · Klein" }).count())) fail("Personen für Klein: " + await m.locator(".fs-facts").textContent());
   // Ziel aus der Reise: Split → Flughafen SPU; Auswahlliste bietet alle Flughäfen im Umkreis und jeden einzeln mit Entfernung
   const kDest = m.locator("label.f", { hasText: "Nach" }).locator("input");
-  for (let i = 0; i < 50 && !(await kDest.inputValue()).startsWith("SPU"); i++) await p.waitForTimeout(100);
+  await soon(async () => (await kDest.inputValue()).startsWith("SPU"));
   if (!(await kDest.inputValue()).startsWith("SPU · Split")) fail("Ziel aus der Reise: " + await kDest.inputValue());
   await m.locator(".lp:not(.fs-add) .lp-btn").click();
   await m.locator(".lp-list li").first().waitFor();
@@ -629,8 +614,9 @@ try {
   if (!xt.includes("4 Koffer dazubuchen") || !xt.includes("bei der Buchung") || !xt.includes("Ryanair") || !xt.includes("Gepäck nicht angegeben") || !xt.includes("Früh einchecken"))
     fail("Flug-Posten Nebenkosten: " + xt.slice(0, 400));
   log("Gepäck: ohne Vorliebe 3 Tage ohne, 11 Tage mit 4 Koffern; Ryanair 400 € + ca. 320 € Koffer (Kinder gratis bei den Eltern) hinter Lufthansa 560 € mit Koffern; übernommen mit Nebenkosten, „nicht angegeben“ und Check-in-Tipp");
+});
 
-  // ohne Wohnort: Abflughäfen aus dem ungefähren Ort der Verbindung (/where), sonst große Flughäfen des Landes
+test("Ohne Wohnort: Abflughäfen aus dem ungefähren Ort der Verbindung, sonst große Flughäfen des Landes", async ({ open }) => {
   const TRIP0 = { id: "wo", name: "Lissabon", place: "Lissabon", country: "Portugal", from: "2027-05-14", to: "2027-05-18",
     travelers: [{ id: "a", name: "Anna", household: "Klein" }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }, households: {} };
   // Wohnort je Land (#163): das Feld steht immer da, das Land ist aus der Verbindung vorgewählt
@@ -638,12 +624,9 @@ try {
     [{ cc: "DE", lat: 53.6, lon: 10, city: "Hamburg" }, "HAM", "in der Nähe von Hamburg", "DE"],
     [{ cc: "AT" }, "VIE", "Große Flughäfen in Österreich", "AT"]
   ]) {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-    await ctx.addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, TRIP0);
-    const q = await ctx.newPage();
-    q.on("pageerror", e => errors.push(e.message));
-    for (const f of ["airports.json", "world.json", "packs.json"]) await q.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
-    await q.route("https://flights.test/where", r => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(where) }));
+    const q = await open({ data: true });
+    await q.context().addInitScript(t => { if (localStorage.getItem("rk2-index")) return; localStorage.setItem("rk2-t:" + t.id, JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: t.id, name: t.name, place: t.place }])); localStorage.setItem("rk2-current", t.id); }, TRIP0);
+    await q.route("https://flights.test/where", r => reply(r, where));
     await q.goto(URL);
     await (await myTrips(q)).locator(".start .home-trip", { hasText: "Lissabon" }).click();
     await q.locator("#flights .fs-open").click();
@@ -651,13 +634,7 @@ try {
     await until(async () => (await qm.locator(".fs-aps .chip.on").allInnerTexts())[0] === expect, `Abflughafen ${expect} zuerst`);
     const hint = await qm.locator(".fs-nohome").innerText();
     if (!hint.includes(text) || (await qm.locator(".fs-nohome .home-cc").inputValue()) !== cc) fail("Hinweis ohne Wohnort: " + hint);
-    await ctx.close();
+    await q.context().close();
   }
   log("Ohne Wohnort: Hamburg aus der Verbindung → HAM zuerst mit Hinweis und Wohnort-Feld (Deutschland); nur Österreich bekannt → VIE, Hinweis auf große Flughäfen, Feld mit Österreich");
-
-  if (errors.length) fail("Fehler im Browser: " + errors.join(" | "));
-  console.log("\nAlle Schritte erfolgreich.");
-} finally {
-  await browser.close();
-  server.kill();
-}
+});

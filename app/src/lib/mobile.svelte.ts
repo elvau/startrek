@@ -51,6 +51,8 @@ export function goPage(p: PageKey, smooth = true) {
   if (!pager || !el) return;
   // scrollIntoView statt scrollTo: stimmt auch bei Schrift von rechts nach links (scrollLeft negativ)
   target = p;
+  // läuft gerade der Anstupser, sitzt der Rahmen der Seite verschoben: vorher beenden (#691)
+  pager.classList.remove("nudge");
   clearTimeout(targetTimer);
   // wird der Sprung unterbrochen (Wischen, anderer Sprung), danach die tatsächliche Seite übernehmen
   targetTimer = setTimeout(() => { target = null; recheck(); }, 1200);

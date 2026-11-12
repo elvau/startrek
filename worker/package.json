@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "wrangler dev --config ../wrangler.toml",
     "deploy": "wrangler deploy --config ../wrangler.toml",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test": "cd ../app && npx vitest run --project worker"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260928.1",

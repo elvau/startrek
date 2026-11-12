@@ -2,14 +2,8 @@
  * KI-Planer: ohne Anmeldung nur der Hinweis, nach der Anmeldung Wunsch schicken (Such-Dienst nachgestellt),
  * Vorschlag übernehmen. Start: npm run test:cloud (braucht den Auth-Emulator)
  */
-import { chromium } from "playwright";
-import { reloadHome, myTrips, startPage, autoAsk, quickTrip, toWho, finishTrip } from "./nav.mjs";
-import { spawn } from "node:child_process";
+import { test, fail, log, until, publicData, URL, reloadHome, myTrips, startPage, autoAsk, quickTrip, login, FS, AUTH, PROJECT } from "../lib/konto.mjs";
 
-const URL = "http://127.0.0.1:4178/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
-const until = async (fn, what, ms = 8000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 150)); } fail("Zeit abgelaufen: " + what); };
 /** ins Bild scrollen; rendert die Liste dabei neu („not attached“/„not stable“, #452), Locator neu auflösen und nochmal */
 const into = async (loc, tries = 5) => {
   for (let i = 1; ; i++) {
@@ -33,14 +27,10 @@ const RESULT = {
   ]
 };
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4178", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
-  p.on("pageerror", e => errors.push(e.message));
-  for (const f of ["world.json", "packs.json", "airports.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+test("KI-Planer", async ({ open, errors }) => {
+  test.setTimeout(300_000);
+  const p = await open();
+  await publicData(p);
   const asked = [];
   await p.route("https://flights.test/agent", async r => {
     if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" } });
@@ -121,9 +111,8 @@ try {
   log("Chat unten rechts: ohne Anmeldung nur Hinweis, Anmeldung daraus; ohne AGB-Haken gesperrt, Zustimmung mit Fassung im Konto");
   // bestehendes Konto ohne Zustimmung (z. B. vor den AGB angelegt): erst zustimmen, „Zustimmen“ erst mit Haken
   {
-    const FS = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
     const H = { Authorization: "Bearer owner", "Content-Type": "application/json" };
-    const users = await (await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/demo-reisekasse/accounts:query", { method: "POST", headers: H, body: "{}" })).json();
+    const users = await (await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:query`, { method: "POST", headers: H, body: "{}" })).json();
     const kira = (users.userInfo || users.users || []).find(u => u.displayName === "Kira")?.localId;
     let doc;
     await until(async () => { doc = await (await fetch(`${FS}/profiles/${kira}`, { headers: H })).json(); return !!doc.fields?.data?.stringValue?.includes("terms"); }, "Zustimmung im Konto gespeichert");
@@ -371,7 +360,7 @@ try {
   const variantCmp = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").cmp);
   if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Vergleichsreise mit Flug");
   await p.locator(".hero .meta", { hasText: "Brügge, Belgien" }).waitFor();
-  await p.waitForTimeout(2500);
+  await p.waitForTimeout(2500); // Zeit für den Abgleich mit dem Konto: er darf die Reise nicht zurücksetzen
   if (!(await p.locator(".hero .meta").innerText()).includes("Brügge")) fail("Vergleichsreise auf den ersten Stand zurückgesetzt");
   if ((await p.locator("#stay .card", { hasText: "Huis Brugge" }).count()) !== 1 || await p.locator("#stay .card", { hasText: "Casa Palma" }).count()) fail("Unterkunft in der Vergleichsreise nicht genau einmal ersetzt");
   await c4.locator(".ai-head .x").click();
@@ -415,7 +404,7 @@ try {
   // der übernommene Vorschlag liegt auch im Konto (nicht nur die leere Reise vom Anlegen)
   const mfId = await p.evaluate(() => localStorage.getItem("rk2-current"));
   const inDb = async () => {
-    const r = await fetch(`http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips/${mfId}`, { headers: { Authorization: "Bearer owner" } });
+    const r = await fetch(`${FS}/trips/${mfId}`, { headers: { Authorization: "Bearer owner" } });
     const f = (await r.json()).fields || {};
     const d = JSON.parse(f.data?.stringValue || "{}");
     return f.name?.stringValue === "Mannschaftsfahrt Cala Rajada" && (d.items || []).filter(i => i.cat === "flights").length === 5 && d.travelers?.length === 10;
@@ -424,12 +413,11 @@ try {
   // auch die mit „Alle übernehmen“ angelegten Reisen: keine bleibt als leere „Reise“ im Konto
   const uid = await p.evaluate(() => Object.keys(localStorage).find(k => k.startsWith("rk2-cloud-seen:")).slice("rk2-cloud-seen:".length));
   const names = async () => {
-    const r = await fetch("http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents/trips?pageSize=300", { headers: { Authorization: "Bearer owner" } });
+    const r = await fetch(`${FS}/trips?pageSize=300`, { headers: { Authorization: "Bearer owner" } });
     return ((await r.json()).documents || []).filter(d => d.fields?.owner?.stringValue === uid).map(d => d.fields?.name?.stringValue);
   };
   await until(async () => !(await names()).includes("Reise"), "alle KI-Reisen im Konto gespeichert, nicht leer");
   log("Mannschaftsfahrt: Rückfrage zur Aufteilung, 10 Personen, Flug in 5 Buchungen à 2 Plätze und 2 Unterkünfte als eigene Posten");
-
 
   // Startseite: sortieren (Preis, zuletzt bearbeitet, Land), Liste statt Kacheln, Wahl bleibt nach dem Neuladen
   await p.locator(".top .brand-btn").click();
@@ -520,8 +508,7 @@ try {
   await p.keyboard.press("Escape");
   // Vorlieben einer Gruppe, angemeldet und in einem zweiten Fenster offen: langsam tippen und auswählen,
   // nichts springt zurück (beide Fenster gleichen über das Konto ab und dürfen sich nicht gegenseitig überschreiben)
-  const w2 = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
-  for (const f of ["world.json", "packs.json", "airports.json"]) await w2.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
+  const w2 = await open({ name: "zweites Fenster", data: true });
   await w2.goto(URL);
   await w2.locator(".top .tm-btn", { hasText: "Anmelden" }).click();
   await w2.locator(".login .test input").fill("Kira");
@@ -578,7 +565,7 @@ try {
   await cw.locator(".ai-busy .ai-cancel").waitFor();
   await cw.locator(".ai-head .x").click();
   await p.locator(".ai-fab.working", { hasText: "KI arbeitet" }).waitFor();
-  await p.locator(".top .brand-btn").click().catch(() => {});
+  await p.locator(".top .brand-btn").click({ timeout: 3000 }).catch(() => {});
   await (await startPage(p)).locator(".start .home-title").waitFor();
   await p.locator(".ai-note", { hasText: "Die KI ist fertig" }).waitFor({ timeout: 12000 });
   if (!(await p.locator(".ai-fab.unread").count())) fail("Knopf zeigt das Ergebnis nicht an");
@@ -608,7 +595,4 @@ try {
   await reloadHome(p);
   await until(async () => (await myTrips(p)).locator(".start .home-trip, .start .home-row", { hasText: "Langsam-Test" }).count().then(n => n > 0), "Name im Konto angekommen", 15000);
   log("Langsames Netz: Reise während des Hochladens umbenannt, Name steht danach im Konto");
-
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  log("KI-Planer ok");
-} finally { await browser.close(); server.kill(); }
+});

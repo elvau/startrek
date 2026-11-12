@@ -1,8 +1,8 @@
 name: Prüfen (vor dem Release)
 
 # Volle Prüfung für jeden Pull Request nach main (Release) und nach pre-release (Arbeit der Routinen): Unit-Tests,
-# Typen, Such-Dienst, Sicherheitsregeln und die Ende-zu-Ende-Tests gegen den Firebase-Emulator. Nach main wird erst
-# gemergt, wenn alles grün ist (docs/RELEASE.md).
+# Typen, Such-Dienst, Sicherheitsregeln und die Ende-zu-Ende-Tests gegen den Firebase-Emulator (in vier Teilen
+# nebeneinander). Nach main wird erst gemergt, wenn alles grün ist (docs/RELEASE.md).
 on:
   pull_request:
     branches: [main, pre-release]
@@ -44,9 +44,49 @@ jobs:
         working-directory: app
         run: npm run build
 
-  cloud:
-    name: Konto und Teilen (Firebase-Emulator)
+  regeln:
+    name: Sicherheitsregeln (Firestore-Emulator)
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: emu-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
+          restore-keys: emu-${{ runner.os }}-
+      - name: Abhängigkeiten
+        working-directory: app
+        run: npm ci
+      - name: Sicherheitsregeln
+        working-directory: app
+        run: npm run test:rules
+
+  # Ende-zu-Ende-Tests in vier Teilen nebeneinander, jeder mit eigenem Emulator (app/playwright.config.mjs).
+  # Die Tests mit Konto laufen je Teil nacheinander: zweigeteilt halbiert sich ihre Kette.
+  e2e:
+    name: Ende-zu-Ende ${{ matrix.teil }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - teil: mit Konto 1/2
+            args: --project=konto --shard=1/2
+          - teil: mit Konto 2/2
+            args: --project=konto --shard=2/2
+          - teil: ohne Konto 1/2
+            args: --project=lokal --shard=1/2
+          - teil: ohne Konto 2/2
+            args: --project=lokal --shard=2/2
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -69,9 +109,25 @@ jobs:
       - name: Abhängigkeiten
         working-directory: app
         run: npm ci && npx playwright install --with-deps chromium
-      - name: Sicherheitsregeln
+      - name: Ende-zu-Ende-Tests
         working-directory: app
-        run: npm run test:rules
-      - name: Zwei Personen planen gemeinsam
-        working-directory: app
-        run: npm run test:cloud
+        run: npm run test:cloud -- ${{ matrix.args }}
+      # bei Fehlern: Spur, Bildschirmfoto und Seitenzustand je Test (npx playwright show-trace …/trace.zip)
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-spuren-${{ strategy.job-index }}
+          path: app/test-results
+          retention-days: 7
+
+  # ein Ergebnis für alles am Emulator (Name wie bisher, für Regeln zum Mergen und die Review-Routine)
+  cloud:
+    name: Konto und Teilen (Firebase-Emulator)
+    runs-on: ubuntu-latest
+    needs: [regeln, e2e]
+    if: always()
+    steps:
+      - name: Ergebnis
+        run: |
+          echo "Sicherheitsregeln: ${{ needs.regeln.result }}, Ende-zu-Ende: ${{ needs.e2e.result }}"
+          test "${{ needs.regeln.result }}" = success && test "${{ needs.e2e.result }}" = success

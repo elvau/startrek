@@ -4,48 +4,40 @@
  * „Mein Konto zurücksetzen“.
  * Such-Dienst nachgestellt. Start: npm run test:cloud
  */
-import { chromium } from "playwright";
-import { spawn } from "node:child_process";
-import { startPage } from "./nav.mjs";
-
-const URL = "http://127.0.0.1:4182/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
+import { test, fail, log, settle, reply, URL, startPage, login, adminGet, adminPut, AUTH, PROJECT } from "../lib/konto.mjs";
 
 // kleines PNG (1×1) als Bildschirmfoto
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4182", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-try {
-  const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" })).newPage();
-  p.on("pageerror", e => { if (!e.message.includes("Testfehler")) errors.push(e.message); });
+/** Kira meldet sich an (Dialog „Anmelden“ ist offen) */
+const kiraIn = p => login(p, "Kira");
+
+test("Meldung mit Bild, Umgebung und letztem Fehler; Fenster schließt nicht aus Versehen", async ({ open }) => {
+  // der Testfehler gehört zum Ablauf (liegt der Meldung bei)
+  const p = await open({ ignore: /Testfehler/ });
   const sent = [];
   await p.route("https://flights.test/bug", async r => {
-    if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" } });
+    if (r.request().method() === "OPTIONS") return reply(r);
     const buf = r.request().postDataBuffer();
     const type = r.request().headers()["content-type"];
     // Formular im Test auseinandernehmen
     const parts = await (await new Response(buf, { headers: { "content-type": type } }).formData());
     const img = parts.get("image");
     sent.push({ auth: r.request().headers()["authorization"] || "", report: JSON.parse(parts.get("report")), img: img ? { type: img.type, size: img.size, head: [...new Uint8Array(await img.arrayBuffer()).slice(0, 3)] } : null });
-    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ ok: true, number: 12, remaining: 4 }) });
+    await reply(r, { ok: true, number: 12, remaining: 4 });
   });
   await p.goto(URL);
   await (await startPage(p)).locator(".start .home-title").waitFor();
 
   // ein Fehler im Browser, der der Meldung beiliegen soll
+  const thrown = p.waitForEvent("pageerror");
   await p.evaluate(() => setTimeout(() => { throw new Error("Testfehler beim Rechnen"); }));
-  await p.waitForTimeout(200);
+  await thrown;
 
   // ohne Anmeldung: nur Hinweis, Anmelden daraus
   await p.locator(".bug-fab").click();
   await p.locator(".modal .bug .btn.primary", { hasText: "Anmelden" }).click();
-  await p.locator(".login .test input").fill("Kira");
-  await p.locator(".login .test button").click();
-  await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
+  await kiraIn(p);
   log("Ohne Anmeldung nur Hinweis, Anmeldung daraus");
 
   // Meldung mit Bild
@@ -89,16 +81,16 @@ try {
   log("Danebenklicken: mit Eingaben bleibt das Fenster offen (Hinweis), Rausziehen schließt nie, leer schließt es");
   await p.keyboard.press("Escape");
   log("Nach dem Senden ist das Formular wieder leer");
+});
 
-  // Admin: Eintrag im Kontomenü nur, wenn der Such-Dienst zustimmt; Zahlen mit Warnstufe
-  let isAdmin = false;
+/** Such-Dienst für die Admin-Ansicht nachstellen; state.admin: der Dienst gibt das Konto frei */
+async function mockUsage(p, state) {
   const days = ["2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27", "2026-09-28", "2026-09-29", "2026-09-30"];
   await p.route("https://flights.test/admin/usage**", async r => {
-    if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" } });
-    const headers = { "access-control-allow-origin": "*" };
-    if (!isAdmin) return r.fulfill({ status: 403, contentType: "application/json", headers, body: JSON.stringify({ error: "Kein Zugriff" }) });
-    if (r.request().url().includes("check")) return r.fulfill({ status: 200, contentType: "application/json", headers, body: JSON.stringify({ admin: true }) });
-    await r.fulfill({ status: 200, contentType: "application/json", headers, body: JSON.stringify({
+    if (r.request().method() === "OPTIONS") return reply(r);
+    if (!state.admin) return reply(r, { error: "Kein Zugriff" }, 403);
+    if (r.request().url().includes("check")) return reply(r, { admin: true });
+    await reply(r, {
       at: "2026-09-30T12:00:00Z", days, errors: {}, config: { agentDaily: 5, bugDaily: 5, model: "gemini-3.8-flash", fallback: "", geminiPerDay: 0, partnerLinks: true },
       worker: { requests: [10, 20, 30, 40, 50, 60, 95000], errors: [0, 0, 0, 0, 0, 0, 1], subrequests: [0, 0, 0, 0, 0, 0, 0] },
       r2: { bytes: 2048, objects: 1, classA: 3, classB: 4 },
@@ -108,18 +100,36 @@ try {
         { kind: "route", name: "flights", detail: "hit", byDay: [0, 0, 0, 0, 0, 0, 2] },
         { kind: "click", name: "viator", detail: "activity", byDay: [0, 0, 0, 0, 1, 0, 2] }
       ]
-    }) });
+    });
   });
+}
+
+/** Startseite, Kira angemeldet */
+async function signedIn(open, state) {
+  const p = await open();
+  await mockUsage(p, state);
+  await p.goto(URL);
+  await (await startPage(p)).locator(".start .home-title").waitFor();
+  await p.locator(".top .tm-btn", { hasText: "Anmelden" }).click();
+  await kiraIn(p);
+  return p;
+}
+
+test("Admin-Ansicht: Eintrag im Kontomenü nur mit Freigabe, Zahlen mit Warnstufe, Klicks und Partnerliste", async ({ open }) => {
+  const state = { admin: false };
+  const p = await signedIn(open, state);
+  // beim ersten Öffnen des Kontomenüs fragt die App die Freigabe ab: erst nach der Antwort zählt, dass der Eintrag fehlt
+  const checked = p.waitForResponse(r => r.url().includes("/admin/usage?check"));
   await p.locator(".top .acct-btn").click();
   await p.locator(".acct-pop").waitFor();
-  await p.waitForTimeout(500);
+  await (await checked).finished();
+  await settle(p);
   if (await p.locator(".acct-usage").count()) fail("Admin-Eintrag ohne Freigabe");
   // Freigabe wird je Anmeldung einmal geprüft: neu anmelden
-  isAdmin = true;
+  state.admin = true;
   await p.locator(".acct-pop .tm-act", { hasText: "Abmelden" }).click();
   await p.locator(".top .tm-btn", { hasText: "Anmelden" }).click();
-  await p.locator(".login .test input").fill("Kira");
-  await p.locator(".login .test button").click();
+  await kiraIn(p);
   await p.locator(".top .acct-btn").click();
   await p.locator(".acct-usage").click();
   await p.locator(".modal .usage .usage-card[data-id=workers].lv-high .barrel").waitFor();
@@ -131,44 +141,38 @@ try {
   if (!vi.includes("Kennung aktiv") || !vi.includes("Erlebnisse") || !vi.includes("direkt") || !/\b3\b/.test(vi)) fail("Partnerliste Viator: " + vi);
   if (!(await p.locator(".modal .pt tr[data-id=booking]").innerText()).includes("neutral")) fail("Partnerliste Booking.com nicht neutral");
   log("Admin-Ansicht: Eintrag nur mit Freigabe, Worker-Aufrufe über 90 % rot, Anbieter mit Grenze, Treffer im Zwischenspeicher, Klicks und Partnerliste");
+});
 
-  // Konto zurücksetzen: eigene Reise, geteilte Reise, Aktionsseite, Personen und travelDocs im Emulator anlegen
-  const FS = "http://127.0.0.1:8080/v1/projects/demo-reisekasse/databases/(default)/documents";
-  const H = { Authorization: "Bearer owner", "Content-Type": "application/json" };
-  const users = await (await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/demo-reisekasse/accounts:query", { method: "POST", headers: { Authorization: "Bearer owner", "Content-Type": "application/json" }, body: "{}" })).json().catch(() => ({}));
+test("Mein Konto zurücksetzen: eigene Daten gelöscht, geteilte Reise verlassen, Gerät leer", async ({ open }) => {
+  const p = await signedIn(open, { admin: true });
+  await p.locator(".top .acct-btn").click();
+  await p.locator(".acct-usage").click();
+  // eigene Reise, geteilte Reise, Aktionsseite, Personen und travelDocs im Emulator anlegen
+  const users = await (await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:query`, { method: "POST", headers: { Authorization: "Bearer owner", "Content-Type": "application/json" }, body: "{}" })).json().catch(() => ({}));
   const kira = (users.userInfo || users.users || []).find(u => u.displayName === "Kira")?.localId;
   if (!kira) fail("Konto Kira im Emulator nicht gefunden: " + JSON.stringify(users).slice(0, 200));
-  const sv = v => typeof v === "string" ? { stringValue: v } : { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sv(x)])) } };
-  const arr = a => ({ arrayValue: { values: a.map(sv) } });
-  const tj = (id, name) => sv(JSON.stringify({ id, name, place: "Split", country: "Kroatien", travelers: [{ id: "a", name: "Kira", household: "Kira" }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } }));
-  const put = (path, fields) => fetch(`${FS}/${path}`, { method: "PATCH", headers: H, body: JSON.stringify({ fields }) });
-  await put("trips/reset-own", { name: sv("Eigene"), data: tj("reset-own", "Eigene"), owner: sv(kira), memberIds: arr([kira]), members: sv({ [kira]: "owner" }), memberNames: sv({ [kira]: "Kira" }) });
-  await put("trips/reset-shared", { name: sv("Geteilt"), data: tj("reset-shared", "Geteilt"), owner: sv("jemand"), memberIds: arr(["jemand", kira]), members: sv({ jemand: "owner", [kira]: "editor" }), memberNames: sv({ jemand: "Jemand", [kira]: "Kira" }) });
-  await put("campaigns/reset-camp", { owner: sv(kira), title: sv("Aktion") });
-  await put(`profiles/${kira}`, { data: sv("{}") });
-  await put(`travelDocs/${kira}`, { data: sv("{}") });
+  const tj = (id, name) => JSON.stringify({ id, name, place: "Split", country: "Kroatien", travelers: [{ id: "a", name: "Kira", household: "Kira" }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } });
+  await adminPut("trips/reset-own", { name: "Eigene", data: tj("reset-own", "Eigene"), owner: kira, memberIds: [kira], members: { [kira]: "owner" }, memberNames: { [kira]: "Kira" } });
+  await adminPut("trips/reset-shared", { name: "Geteilt", data: tj("reset-shared", "Geteilt"), owner: "jemand", memberIds: ["jemand", kira], members: { jemand: "owner", [kira]: "editor" }, memberNames: { jemand: "Jemand", [kira]: "Kira" } });
+  await adminPut("campaigns/reset-camp", { owner: kira, title: "Aktion" });
+  await adminPut(`profiles/${kira}`, { data: "{}" });
+  await adminPut(`travelDocs/${kira}`, { data: "{}" });
   await p.evaluate(() => { localStorage.setItem("rk-theme", "dark"); localStorage.setItem("rk2-dir", "{}"); });
   const um = p.locator(".modal .usage");
   await um.locator(".adm-reset-btn").click();
   await um.locator(".adm-reset-go").click();
   await um.locator(".adm-reset-done").waitFor({ timeout: 15000 });
   const done = await um.locator(".adm-reset-done").innerText();
-  // Kira kann aus früheren Schritten (gemeinsamer Emulator) weitere eigene Reisen haben: mindestens die angelegte
-  const nDel = Number(/Reisen gelöscht: (\d+)/.exec(done)?.[1] || 0);
-  if (nDel < 1 || !done.includes("verlassen: 1, Aktionsseiten gelöscht: 1")) fail("Zurücksetzen: " + done);
-  const get = path => fetch(`${FS}/${path}`, { headers: H });
-  for (const path of ["trips/reset-own", "campaigns/reset-camp", `profiles/${kira}`, `travelDocs/${kira}`]) if ((await get(path)).status !== 404) fail("nach dem Zurücksetzen noch da: " + path);
-  const all = await (await fetch(`${FS}/trips?pageSize=300`, { headers: H })).json();
+  if (!done.includes("Reisen gelöscht: 1") || !done.includes("verlassen: 1, Aktionsseiten gelöscht: 1")) fail("Zurücksetzen: " + done);
+  for (const path of ["trips/reset-own", "campaigns/reset-camp", `profiles/${kira}`, `travelDocs/${kira}`]) if (!(await adminGet(path)).error) fail("nach dem Zurücksetzen noch da: " + path);
+  const all = await adminGet("trips?pageSize=300");
   const mine = (all.documents || []).filter(d => d.fields?.owner?.stringValue === kira || (d.fields?.memberIds?.arrayValue?.values || []).some(v => v.stringValue === kira));
   if (mine.length) fail("nach dem Zurücksetzen noch Reisen mit Kira: " + mine.map(d => d.fields?.name?.stringValue).join(", "));
-  const shared = await (await get("trips/reset-shared")).json();
+  const shared = await adminGet("trips/reset-shared");
   if (shared.fields.memberIds.arrayValue.values.some(v => v.stringValue === kira) || !shared.fields.members.mapValue.fields.jemand) fail("geteilte Reise nicht verlassen: " + JSON.stringify(shared.fields.memberIds));
   const left = await p.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith("rk")));
   if (left.length) fail("auf dem Gerät noch: " + left.join(", "));
   await um.locator(".adm-reset-reload").click();
   await p.locator(".top .acct-btn").waitFor();
   log("Konto zurücksetzen: eigene Reise, Aktionsseite, Personen und travelDocs gelöscht, geteilte Reise verlassen, Gerät leer, weiter angemeldet");
-
-  if (errors.length) fail("Fehler auf der Seite: " + errors.join(" | "));
-  log("Fehler melden ok");
-} finally { await browser.close(); server.kill(); }
+});

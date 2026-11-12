@@ -2,41 +2,16 @@
  * Konto einrichten (#160, #330) gegen die Firebase-Emulatoren: ohne Konto kein Start von selbst (erst ausprobieren),
  * von Hand über die Vorlieben; nach der Anmeldung einmal von selbst, danach über „Ersteinrichtung neu starten“; KI-Text (Such-Dienst gemockt) füllt vor, sensible Angaben direkt, gespeichert;
  * danach persönliche Hinweise (#302) unter „Wichtiges“.
- * Start: npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/setup.mjs"
  */
-import { chromium } from "playwright";
-import { spawn } from "node:child_process";
-import { myTrips } from "./nav.mjs";
+import { test, fail, log, until, publicFile, reply, URL, myTrips, login } from "../lib/konto.mjs";
 
-const URL = "http://127.0.0.1:4184/";
-const log = (...a) => console.log("•", ...a);
-const fail = m => { throw new Error(m); };
-const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" };
+/** eigener Browser; der Assistent darf von selbst starten (automatisierte Browser nur auf Wunsch) */
+const page = (open, name) => open({ name, data: true, init: () => localStorage.setItem("rk2-setup-auto", "1") });
 
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4184", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
-const errors = [];
-async function until(fn, what, ms = 15000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < ms) { if (await fn()) return; await new Promise(r => setTimeout(r, 250)); }
-  fail("Zeitüberschreitung: " + what);
-}
-async function page(name, auto) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "de-DE" });
-  // automatisierte Browser starten den Assistenten nur auf Wunsch
-  if (auto) await ctx.addInitScript(() => localStorage.setItem("rk2-setup-auto", "1"));
-  const p = await ctx.newPage();
-  p.on("pageerror", e => errors.push(`${name}: ${e.message}`));
-  for (const f of ["world.json", "packs.json", "airports.json"]) await p.route(`**/${f}`, r => r.fulfill({ path: `../public/${f}` }));
-  return p;
-}
-
-try {
-  // 1. erster Besuch ohne Konto: startet nicht von selbst; über die Vorlieben ohne KI und ohne sensible Felder
-  const a = await page("ohne Konto", true);
+test("ohne Konto: kein Start von selbst, über die Vorlieben ohne KI und ohne sensible Felder", async ({ open }) => {
+  const a = await page(open, "ohne Konto");
   await a.goto(URL);
-  await a.waitForTimeout(2500);
+  await a.waitForTimeout(2500); // Zeit, in der der Assistent von selbst starten würde
   if (await a.locator(".wz").count()) fail("Assistent startet ohne Konto von selbst");
   await a.locator(".top .prefs-btn").click();
   await a.locator(".pv-restart .linkbtn").click();
@@ -61,27 +36,26 @@ try {
   if (!onAps.includes("DUS") || (await a.locator(".wz-aps .chip").count()) < 3) fail("Vorauswahl Abflughäfen: " + onAps);
   await a.locator(".wz .x").click();
   await a.reload();
-  await a.waitForTimeout(2500);
+  await a.waitForTimeout(2500); // wie oben: er darf nicht starten
   if (await a.locator(".wz").count()) fail("Assistent startet ohne Konto von selbst");
   log("ohne Konto: kein Start von selbst, über die Vorlieben erreichbar; Abflughäfen am Wohnort vorausgewählt");
+});
 
-  // 2. angemeldet: startet nach der Anmeldung von selbst, mit KI-Text
-  const b = await page("angemeldet", true);
+test("angemeldet: Start von selbst, KI-Text füllt vor, sensible Angaben nur im Konto, danach Hinweise „Nur für dich“", async ({ open }) => {
+  const b = await page(open, "angemeldet");
   const asked = [];
   await b.route("https://flights.test/setup", async r => {
-    if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
+    if (r.request().method() === "OPTIONS") return reply(r);
     asked.push({ auth: r.request().headers()["authorization"] || "", body: JSON.parse(r.request().postData()) });
-    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({
+    await reply(r, {
       fields: { adults: 2, childAges: [6], license: "gt5", creditCard: true, car: { seats: 5, fuel: "diesel" }, styles: ["beach"], stayType: "whole",
-        board: "half", airports: ["DUS"], holidays: "NW", nightsMin: 10, nightsMax: 14, pet: true, gender: "f", name: "Alex" }, remaining: 4 }) });
+        board: "half", airports: ["DUS"], holidays: "NW", nightsMin: 10, nightsMax: 14, pet: true, gender: "f", name: "Alex" }, remaining: 4 });
   });
   await b.goto(URL);
-  await b.waitForTimeout(1500);
+  await b.waitForTimeout(1500); // vor der Anmeldung darf er nicht starten
   if (await b.locator(".wz").count()) fail("Assistent startet vor der Anmeldung");
   await b.locator(".top .acct .tm-btn", { hasText: "Anmelden" }).click();
-  await b.locator(".login .test input").fill("Alex");
-  await b.locator(".login .test button").click();
-  await b.locator(".acct-btn").first().waitFor({ timeout: 15000 });
+  await login(b, "Alex");
   await b.locator(".wz .wz-text").waitFor({ timeout: 15000 });
   await b.locator(".wz-text").fill("Wir sind zu dritt, Kind 6, ab Düsseldorf, Ferienwohnung am Strand, Halbpension, Sommerferien NRW, 10–14 Nächte, mit Hund. Diesel, 5 Sitze.");
   await b.locator(".wz-ai-go").click();
@@ -149,7 +123,7 @@ try {
   await b.waitForTimeout(2000);
   // neu laden: kein zweiter Start von selbst; „Ersteinrichtung neu starten“ von vorn, vorbefüllt aus dem Konto
   await b.reload();
-  await b.waitForTimeout(2500);
+  await b.waitForTimeout(2500); // nach der Einrichtung darf er nicht noch einmal starten
   if (await b.locator(".wz").count()) fail("Assistent startet nach der Einrichtung erneut");
   await b.locator(".top .acct-btn").click();
   await b.locator(".tm-act.acct-setup").click();
@@ -161,7 +135,7 @@ try {
 
   // 3. „Nur für dich“ (#302): divers → Hinweis zum Passeintrag „X“ für Ägypten, nur im Popup, ohne „gelesen“, nichts in der Reise
   await b.locator(".wz .x").click();
-  await b.route("**/hinweise.json", r => r.fulfill({ path: "../public/hinweise.json" }));
+  await b.route("**/hinweise.json", r => r.fulfill({ path: publicFile("hinweise.json") }));
   await b.evaluate(id => {
     const t = { id: "eg", name: "Kairo", place: "Kairo", country: "Ägypten", from: "2027-03-01", to: "2027-03-08", tiers: {}, households: {}, items: [],
       settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 }, travelers: [{ id: "a", name: "Alex", household: "Alex", personId: id }] };
@@ -182,10 +156,4 @@ try {
   const saved = await b.evaluate(() => Object.entries(localStorage).filter(([k]) => k.startsWith("rk2-")).map(([, v]) => v).join());
   if (/xAny|pers\.|divers/.test(saved)) fail("persönliche Hinweise im Browser-Speicher bzw. in der Reise");
   log("„Nur für dich“: Hinweis zum Passeintrag „X“ aus dem Konto, nur im Popup, nichts in der Reise");
-
-  if (errors.length) fail("Seitenfehler: " + errors.join(" | "));
-  console.log("\n✓ Konto einrichten in Ordnung");
-} finally {
-  await browser.close();
-  server.kill();
-}
+});
