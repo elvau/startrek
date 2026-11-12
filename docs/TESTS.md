@@ -83,5 +83,6 @@ sichtbar bleiben und repariert werden.
 
 ### GitHub
 
-`pruefen.yml` teilt die Ende-zu-Ende-Tests auf drei Läufe nebeneinander (`--shard`), jeder mit eigenem Emulator. Der
-Check „Konto und Teilen (Firebase-Emulator)“ fasst Regeln und alle drei Teile zusammen.
+`pruefen.yml` teilt die Ende-zu-Ende-Tests auf vier Läufe nebeneinander (mit und ohne Konto, je zweigeteilt über
+`--shard`), jeder mit eigenem Emulator. Der Check „Konto und Teilen (Firebase-Emulator)“ fasst Regeln und alle vier
+Teile zusammen.

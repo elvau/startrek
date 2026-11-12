@@ -1,7 +1,7 @@
 name: Prüfen (vor dem Release)
 
 # Volle Prüfung für jeden Pull Request nach main (Release) und nach pre-release (Arbeit der Routinen): Unit-Tests,
-# Typen, Such-Dienst, Sicherheitsregeln und die Ende-zu-Ende-Tests gegen den Firebase-Emulator (in drei Teilen
+# Typen, Such-Dienst, Sicherheitsregeln und die Ende-zu-Ende-Tests gegen den Firebase-Emulator (in vier Teilen
 # nebeneinander). Nach main wird erst gemergt, wenn alles grün ist (docs/RELEASE.md).
 on:
   pull_request:
@@ -70,14 +70,23 @@ jobs:
         working-directory: app
         run: npm run test:rules
 
-  # Ende-zu-Ende-Tests in drei Teilen nebeneinander, jeder mit eigenem Emulator (app/playwright.config.mjs)
+  # Ende-zu-Ende-Tests in vier Teilen nebeneinander, jeder mit eigenem Emulator (app/playwright.config.mjs).
+  # Die Tests mit Konto laufen je Teil nacheinander: zweigeteilt halbiert sich ihre Kette.
   e2e:
-    name: Ende-zu-Ende ${{ matrix.teil }}/3
+    name: Ende-zu-Ende ${{ matrix.teil }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        teil: [1, 2, 3]
+        include:
+          - teil: mit Konto 1/2
+            args: --project=konto --shard=1/2
+          - teil: mit Konto 2/2
+            args: --project=konto --shard=2/2
+          - teil: ohne Konto 1/2
+            args: --project=lokal --shard=1/2
+          - teil: ohne Konto 2/2
+            args: --project=lokal --shard=2/2
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -102,12 +111,12 @@ jobs:
         run: npm ci && npx playwright install --with-deps chromium
       - name: Ende-zu-Ende-Tests
         working-directory: app
-        run: npm run test:cloud -- --shard=${{ matrix.teil }}/3
+        run: npm run test:cloud -- ${{ matrix.args }}
       # bei Fehlern: Spur, Bildschirmfoto und Seitenzustand je Test (npx playwright show-trace …/trace.zip)
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: e2e-spuren-${{ matrix.teil }}
+          name: e2e-spuren-${{ strategy.job-index }}
           path: app/test-results
           retention-days: 7
 
