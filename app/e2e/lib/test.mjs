@@ -95,6 +95,19 @@ export function until(fn, what, ms = 15000) {
   }, { box: true });
 }
 
+/**
+ * wie until, aber ohne Fehler, wenn es nicht eintritt (liefert dann false): für Stellen, an denen die Prüfung danach
+ * den genauen Stand meldet
+ */
+export async function soon(fn, ms = 6000) {
+  const end = Date.now() + ms;
+  for (;;) {
+    if (await fn()) return true;
+    if (Date.now() > end) return false;
+    await new Promise(r => setTimeout(r, 150));
+  }
+}
+
 /** zwei Bilder abwarten: was die Seite gerade bekommen hat, steht danach in der Anzeige */
 export const settle = p => p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 

@@ -1,7 +1,7 @@
 /*
  * Unterkunftssuche in der App: Such-Dienst nachgestellt (keine echten Anbieter), Ergebnis übernehmen.
  */
-import { test, fail, log, until, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage, quickTrip } from "../lib/test.mjs";
+import { test, fail, log, until, soon, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage, quickTrip } from "../lib/test.mjs";
 
 /** „Weitere Optionen“ der Suche aufklappen (bleibt gemerkt) */
 const more = async m => { if (!(await m.locator(".fs-more[open]").count())) await m.locator(".fs-more > summary").click(); };
@@ -101,12 +101,12 @@ test("Unterkunftssuche", async ({ open, errors }) => {
   const gate = p.locator(".broker-gate");
   await gate.waitFor();
   if (!(await gate.innerText()).includes("kein Reiseveranstalter") || !(await gate.innerText()).includes("nur mit Booking.com")) fail("Hinweis beim Wechsel: " + (await gate.innerText()));
-  await p.waitForTimeout(300);
+  await p.waitForTimeout(300); // Zeit geben: gezählt werden darf erst beim Weitergehen
   if (clicks.length) fail("vor dem Weitergehen gezählt");
   await gate.locator("label.check input").check();
   const [tab] = await Promise.all([p.context().waitForEvent("page"), gate.locator(".broker-go").click()]);
   await tab.close();
-  for (let i = 0; i < 20 && !clicks.length; i++) await p.waitForTimeout(100);
+  await soon(() => clicks.length, 2000);
   if (clicks[0] !== JSON.stringify({ p: "booking", c: "stay" })) fail("Klickzählung: " + JSON.stringify(clicks));
   // „nicht mehr anzeigen“: der nächste Klick öffnet direkt
   const [tab2] = await Promise.all([p.context().waitForEvent("page"), m.locator(".fs-direct a", { hasText: "Booking.com" }).click()]);
@@ -364,7 +364,7 @@ test("Unterkunftssuche", async ({ open, errors }) => {
   if (await p.evaluate(() => document.body.classList.contains("editing"))) fail("Posten nach „Fertig“ noch offen, Plan ausgegraut");
   // nach dem Ausblenden des Postens läuft das Wiedereinblenden kurz als Übergang: auf den Endwert warten
   let op = "";
-  for (let i = 0; i < 20; i++) { op = await p.locator("#stay .plan-card").evaluate(el => getComputedStyle(el).opacity); if (op === "1") break; await p.waitForTimeout(100); }
+  await soon(async () => (op = await p.locator("#stay .plan-card").evaluate(el => getComputedStyle(el).opacity)) === "1", 2000);
   if (op !== "1") fail("Plan ausgegraut: opacity " + op);
   log("Suche aus dem Posten als Fenster, danach wieder am Posten; nach „Fertig“ ist der Plan nicht ausgegraut");
 
@@ -387,7 +387,7 @@ test("Unterkunftssuche", async ({ open, errors }) => {
   if (!(await m.locator(".st-near .st-ap", { hasText: "SPU" }).count())) fail("Orte am Flughafen fehlen");
   // Feld leeren: bleibt leer (früher sofort wieder mit dem Ort am Flughafen gefüllt)
   await m.locator("label.f", { hasText: "Ort" }).locator("input").fill("");
-  await p.waitForTimeout(300);
+  await p.waitForTimeout(300); // Zeit geben: das Feld darf sich nicht wieder füllen
   if ((await m.locator("label.f", { hasText: "Ort" }).locator("input").inputValue()) !== "") fail("Ort füllt sich nach dem Löschen wieder");
   log("Ort lässt sich leeren und neu eintippen");
   await m.locator(".st-near .chip", { hasText: "Trogir" }).click();
@@ -409,7 +409,7 @@ test("Unterkunftssuche", async ({ open, errors }) => {
   await p.locator("#misc .card[data-item]", { hasText: "Verpflegung Klein" }).waitFor();
   const before = await fr.locator("b.num").textContent();
   await p.locator("#misc .food .chip", { hasText: "Genießer" }).first().click();
-  await p.waitForTimeout(200);
+  await soon(async () => (await fr.locator("b.num").textContent()) !== before, 3000);
   if ((await fr.locator("b.num").textContent()) === before) fail("Stil ändert den Betrag nicht");
   const rl = await p.locator("#misc .fs-direct a", { hasText: "Restaurants" }).getAttribute("href");
   if (!rl.includes("google.com/maps/search/Restaurants")) fail("Restaurant-Link: " + rl);

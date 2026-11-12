@@ -1,10 +1,9 @@
 /* Bildschirmfotos einfacher Modus und Gruppen (nur zur Sichtprüfung) */
 import { chromium } from "playwright";
-import { spawn } from "node:child_process";
-import { toWho } from "./lib/nav.mjs";
+import { preview } from "../lib/preview.mjs";
+import { toWho } from "../lib/nav.mjs";
 const OUT = process.env.OUT || ".";
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4174", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
+const { stop } = await preview(4174);
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 try {
   for (const [n, vp] of [["d", { width: 1280, height: 860 }], ["m", { width: 390, height: 844 }]]) {
@@ -35,4 +34,4 @@ try {
     }
     await p.close();
   }
-} finally { await b.close(); server.kill(); }
+} finally { await b.close(); stop(); }

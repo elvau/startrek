@@ -1,7 +1,7 @@
 /*
  * Flugsuche in der App: Such-Dienst nachgestellt (keine echten Anbieter), Ergebnis übernehmen.
  */
-import { test, expect, fail, log, until, publicData, PLACE_DATA, reply, URL, reloadHome, myTrips, startPage, quickTrip } from "../lib/test.mjs";
+import { test, expect, fail, log, until, soon, publicData, PLACE_DATA, reply, URL, reloadHome, myTrips, startPage, quickTrip } from "../lib/test.mjs";
 
 /** Kofferzahl am − / + (#326) lesen und setzen; scope: Formular oder Leiste über den Treffern */
 const bagsOf = async scope => Number((await scope.locator(".fs-bagstep b").first().textContent()).match(/^\d+/)?.[0] ?? -1);
@@ -263,7 +263,7 @@ test("Flugsuche", async ({ open, errors }) => {
   if (!(await m.locator(".fs-facts", { hasText: "1 Erw. · 1 Kind · Klein" }).count())) fail("Personen für Klein: " + await m.locator(".fs-facts").textContent());
   // Ziel aus der Reise: Split → Flughafen SPU; Auswahlliste bietet alle Flughäfen im Umkreis und jeden einzeln mit Entfernung
   const kDest = m.locator("label.f", { hasText: "Nach" }).locator("input");
-  for (let i = 0; i < 50 && !(await kDest.inputValue()).startsWith("SPU"); i++) await p.waitForTimeout(100);
+  await soon(async () => (await kDest.inputValue()).startsWith("SPU"));
   if (!(await kDest.inputValue()).startsWith("SPU · Split")) fail("Ziel aus der Reise: " + await kDest.inputValue());
   await m.locator(".lp:not(.fs-add) .lp-btn").click();
   await m.locator(".lp-list li").first().waitFor();

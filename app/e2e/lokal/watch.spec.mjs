@@ -203,7 +203,7 @@ test("Beobachten", async ({ open, errors }) => {
   await p.locator(".top .brand-btn").click();
   await (await myTrips(p)).locator(".start .home-trip", { hasText: "Sonne in Palma" }).click();
   await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
-  await p.waitForTimeout(500);
+  await p.waitForTimeout(500); // Zeit geben: die Suche darf nicht wieder aufgehen
   if (await p.locator(".modal-bg .modal").count()) fail("Suche aus der anderen Reise noch offen");
   log("Reise gewechselt: aufgeklappte Flugsuche der vorigen Reise ist zu");
 

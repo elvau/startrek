@@ -360,7 +360,7 @@ test("KI-Planer", async ({ open, errors }) => {
   const variantCmp = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").cmp);
   if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Vergleichsreise mit Flug");
   await p.locator(".hero .meta", { hasText: "Brügge, Belgien" }).waitFor();
-  await p.waitForTimeout(2500);
+  await p.waitForTimeout(2500); // Zeit für den Abgleich mit dem Konto: er darf die Reise nicht zurücksetzen
   if (!(await p.locator(".hero .meta").innerText()).includes("Brügge")) fail("Vergleichsreise auf den ersten Stand zurückgesetzt");
   if ((await p.locator("#stay .card", { hasText: "Huis Brugge" }).count()) !== 1 || await p.locator("#stay .card", { hasText: "Casa Palma" }).count()) fail("Unterkunft in der Vergleichsreise nicht genau einmal ersetzt");
   await c4.locator(".ai-head .x").click();

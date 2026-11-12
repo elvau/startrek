@@ -1,7 +1,7 @@
 /*
  * Reise zu einem Event: Such-Dienst nachgestellt, Vorschläge prüfen, einen übernehmen.
  */
-import { test, fail, log, publicData, PLACE_DATA, URL, myTrips, startPage } from "../lib/test.mjs";
+import { test, fail, log, soon, publicData, PLACE_DATA, URL, myTrips, startPage } from "../lib/test.mjs";
 
 const SOURCES = [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 2, ms: 900 }];
 const leg = (from, to, dep, arr) => ({ from, to, dep, arr, minutes: 75, stops: 0, route: [from, to], carriers: ["Test Air"], flights: ["TA1"] });
@@ -110,7 +110,7 @@ test("Events", async ({ open, errors }) => {
   if (await m.locator(".ev-tmin").inputValue() !== "60" || await m.locator(".ev-tmax").inputValue() !== "180") fail("Ticketpreis nicht übernommen");
   // Stadt kommt nach dem Laden der Orte aus der Anschrift, das Ziel aus der Lage des Stadions: Flughäfen im Umkreis
   const dest = m.locator(".ev-form .lp").first().locator("input");
-  for (let i = 0; i < 40 && !(await dest.inputValue()).startsWith("Umkreis London"); i++) await p.waitForTimeout(150);
+  await soon(async () => (await dest.inputValue()).startsWith("Umkreis London"));
   if (!/^Umkreis London: .*LHR/.test(await dest.inputValue())) fail("Ziel nicht aus Stadt und Stadion: " + await dest.inputValue());
   // antippen: Flughäfen rund ums Stadion zur Auswahl
   await dest.focus();
@@ -208,7 +208,7 @@ test("Events", async ({ open, errors }) => {
   if (!(await att.locator(".card", { hasText: "Tower of London" }).count())) fail("Tour nicht übernommen");
   await att.locator(".card", { hasText: "Tower of London" }).locator(".row-img").waitFor();
   const prices = () => p.evaluate(() => { const t = JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current"))); return t.items.filter(i => i.cat === "attractions").map(i => i.options[0].price.adult).join(); });
-  for (let i = 0; i < 20 && (await prices()) !== "60,89,42"; i++) await p.waitForTimeout(150);
+  await soon(async () => (await prices()) === "60,89,42", 3000);
   if ((await prices()) !== "60,89,42") fail("Preise der Erlebnisse: " + await prices());
   log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €, mit Foto) als Posten übernommen");
   // Kopf: Events & Aktivitäten sammelt Event und Erlebnisse, „Sonstige Kosten“ ohne die Tour
@@ -227,7 +227,7 @@ test("Events", async ({ open, errors }) => {
   await m2.locator(".ev-find .btn").click();
   await m2.locator(".ev-hit", { hasText: "Sabah FK" }).click();
   const city2 = m2.locator(".ev-form .lp").first().locator("input");
-  for (let i = 0; i < 40 && (await city2.inputValue()) !== "Baku"; i++) await p.waitForTimeout(150);
+  await soon(async () => (await city2.inputValue()) === "Baku");
   if ((await city2.inputValue()) !== "Baku") fail("keine Stadt bei Sabah FK: " + await city2.inputValue());
   if (!(await m2.locator(".ev-guess", { hasText: "Baku" }).count())) fail("Hinweis zur angenommenen Stadt fehlt");
   await p.keyboard.press("Escape");
@@ -245,7 +245,7 @@ test("Events", async ({ open, errors }) => {
   await bne.click();
   if (await val("Was?") !== "Olympische Sommerspiele Brisbane 2032" || await val("Datum") !== "2032-07-23") fail("Sport-Event nicht übernommen");
   const city3 = m3.locator(".ev-form .lp").first().locator("input");
-  for (let i = 0; i < 40 && !(await city3.inputValue()).includes("Brisbane"); i++) await p.waitForTimeout(150);
+  await soon(async () => (await city3.inputValue()).includes("Brisbane"));
   if (!(await city3.inputValue()).includes("Brisbane")) fail("Ziel Brisbane fehlt: " + await city3.inputValue());
   log("Sportkalender: Olympia antippen → Brisbane 2032 mit Zeitraum, Name, Datum und Ziel übernommen");
   // mehrtägig (#265): letzter Tag aus dem Kalender; eigener Zeitraum ergibt „Günstigste im Zeitraum“

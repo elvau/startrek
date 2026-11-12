@@ -2,7 +2,7 @@
 // Aufruf (in app/): npm run build:emu && node e2e/anleitung-shots.mjs <Zielordner>
 // Ergebnis: JPEG je Ansicht plus spots.json (Lage der nummerierten Markierungen in Prozent). Nach app/src/lib/guide/shots/ legen.
 import { chromium } from "playwright";
-import { spawn } from "node:child_process";
+import { preview } from "./lib/preview.mjs";
 import { mkdirSync } from "node:fs";
 import { myTrips, startPage } from "./lib/nav.mjs";
 
@@ -34,8 +34,7 @@ const TRIP = {
   tiers: {}, settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 }, days: {},
   detail: { flights: true, stay: true, transport: true, attractions: true, misc: true }
 };
-const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", "4181", "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore" });
-await new Promise(r => setTimeout(r, 2500));
+const { stop } = await preview(4181);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
 
 /** Markierungen je Bild: Schlüssel → Suche nach Text (exakt oder RegExp), Reihenfolge = Nummer */
@@ -98,6 +97,6 @@ try {
     }, "#" + id);
     await shot(id, { x: r.x, y: r.y, width: r.w, height: Math.min(r.bottom - r.y, 1100) }, el);
   }
-} finally { await browser.close(); server.kill(); }
+} finally { await browser.close(); stop(); }
 import { writeFileSync } from "node:fs";
 writeFileSync(`${out}/spots.json`, JSON.stringify(spots, null, 1));

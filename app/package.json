@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:rules": "firebase emulators:exec --only firestore --project demo-reisekasse \"vitest run --config vitest.rules.config.ts\"",
     "build:emu": "VITE_FIREBASE_EMULATOR=1 VITE_FLIGHTS_URL=https://flights.test vite build --outDir dist-emu",
     "test:cloud": "npm run build:emu && playwright test"
@@ -19,8 +20,9 @@
     "@playwright/test": "^1.64.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
+    "@vitest/coverage-v8": "^5.0.5",
     "firebase-tools": "^15.31.0",
-    "playwright": "^1.56.1",
+    "playwright": "^1.64.1",
     "svelte": "^5.57.1",
     "svelte-check": "^4.7.6",
     "typescript": "^6.0.3",

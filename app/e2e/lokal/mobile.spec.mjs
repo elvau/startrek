@@ -84,7 +84,7 @@ test("Handy", async ({ open, errors }) => {
   await p.locator(".mb-edge.prev").click();
   await until(async () => (await on()) === "hero", "Lasche zurück zur Übersicht");
   await until(async () => (await p.evaluate(() => localStorage.getItem("sf-mob-nudged"))) === "1", "Anstupser gemerkt");
-  // solange der Anstupser läuft (1 s), landet ein Sprung 44 px neben der Seite: erst danach weiter
+  // solange der Anstupser läuft (1 s), landet ein Sprung 44 px neben der Seite (#691): erst danach weiter
   await until(() => p.evaluate(() => !document.querySelector("main.pager.nudge")), "Anstupser vorbei");
   log("Lasche am Rand zeigt die Nachbarseite und wechselt dorthin; Anstupser einmal je Gerät");
   // Fehler melden in der Reise: nicht schwebend (dort liegt die Leiste), sondern im ⋯-Menü (#662)

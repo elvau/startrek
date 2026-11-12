@@ -2,7 +2,7 @@
  * KI-Konnektor gegen den Firestore-Emulator: der MCP-Kern des Such-Dienstes legt eine Reise im Konto an und
  * ergänzt sie (Suchen nachgestellt); die App zeigt sie, markiert und live. Dazu Schlüssel im Kontomenü erzeugen.
  */
-import { test, fail, log, URL, myTrips, startPage, FS, AUTH, PROJECT, FIRESTORE } from "../lib/konto.mjs";
+import { test, fail, log, soon, URL, myTrips, startPage, FS, AUTH, PROJECT, FIRESTORE } from "../lib/konto.mjs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -174,9 +174,8 @@ test("App zeigt die Reise der KI markiert und live; verbundene Chat-Apps, Schlü
   await (await myTrips(p)).locator(".start .home-trip", { hasText: "Palma mit Claude" }).click();
   await p.locator(".hero h1", { hasText: "Palma mit Claude" }).waitFor();
   // Inhalt kommt aus dem Konto nach (erst Platzhalter): warten, bis Reisende und Daten da sind
-  const t0 = Date.now();
   let meta = "";
-  while (Date.now() - t0 < 15000) { meta = await p.locator(".hero .meta").innerText(); if (meta.includes("3 Personen") && meta.includes("3 Nächte")) break; await p.waitForTimeout(200); }
+  await soon(async () => { meta = await p.locator(".hero .meta").innerText(); return meta.includes("3 Personen") && meta.includes("3 Nächte"); }, 15000);
   if (!meta.includes("3 Personen") || !meta.includes("3 Nächte")) fail("Kopf: " + meta);
   await p.locator("#flights .card", { hasText: "Sun Air" }).locator(".aif", { hasText: "Von der KI vorgeschlagen" }).waitFor();
   log("App zeigt die Reise mit Flug (markiert), 3 Personen, 3 Nächte");

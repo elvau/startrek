@@ -11,7 +11,7 @@ const page = (open, name) => open({ name, data: true, init: () => localStorage.s
 test("ohne Konto: kein Start von selbst, über die Vorlieben ohne KI und ohne sensible Felder", async ({ open }) => {
   const a = await page(open, "ohne Konto");
   await a.goto(URL);
-  await a.waitForTimeout(2500);
+  await a.waitForTimeout(2500); // Zeit, in der der Assistent von selbst starten würde
   if (await a.locator(".wz").count()) fail("Assistent startet ohne Konto von selbst");
   await a.locator(".top .prefs-btn").click();
   await a.locator(".pv-restart .linkbtn").click();
@@ -36,7 +36,7 @@ test("ohne Konto: kein Start von selbst, über die Vorlieben ohne KI und ohne se
   if (!onAps.includes("DUS") || (await a.locator(".wz-aps .chip").count()) < 3) fail("Vorauswahl Abflughäfen: " + onAps);
   await a.locator(".wz .x").click();
   await a.reload();
-  await a.waitForTimeout(2500);
+  await a.waitForTimeout(2500); // wie oben: er darf nicht starten
   if (await a.locator(".wz").count()) fail("Assistent startet ohne Konto von selbst");
   log("ohne Konto: kein Start von selbst, über die Vorlieben erreichbar; Abflughäfen am Wohnort vorausgewählt");
 });
@@ -52,7 +52,7 @@ test("angemeldet: Start von selbst, KI-Text füllt vor, sensible Angaben nur im 
         board: "half", airports: ["DUS"], holidays: "NW", nightsMin: 10, nightsMax: 14, pet: true, gender: "f", name: "Alex" }, remaining: 4 });
   });
   await b.goto(URL);
-  await b.waitForTimeout(1500);
+  await b.waitForTimeout(1500); // vor der Anmeldung darf er nicht starten
   if (await b.locator(".wz").count()) fail("Assistent startet vor der Anmeldung");
   await b.locator(".top .acct .tm-btn", { hasText: "Anmelden" }).click();
   await login(b, "Alex");
@@ -123,7 +123,7 @@ test("angemeldet: Start von selbst, KI-Text füllt vor, sensible Angaben nur im 
   await b.waitForTimeout(2000);
   // neu laden: kein zweiter Start von selbst; „Ersteinrichtung neu starten“ von vorn, vorbefüllt aus dem Konto
   await b.reload();
-  await b.waitForTimeout(2500);
+  await b.waitForTimeout(2500); // nach der Einrichtung darf er nicht noch einmal starten
   if (await b.locator(".wz").count()) fail("Assistent startet nach der Einrichtung erneut");
   await b.locator(".top .acct-btn").click();
   await b.locator(".tm-act.acct-setup").click();
