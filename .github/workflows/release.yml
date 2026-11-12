@@ -1,50 +1,124 @@
 name: Release (splitandfly.com)
 
-# Produktion: jeder Push auf main (Merge eines Feature-Branches) landet auf splitandfly.com (Firebase Hosting).
+# Produktion: jeder Push auf main (Merge des Release-PRs) geht als eine Kette live, jede Stufe wartet auf die vorige:
+#   Prüfen (Unit, Typen) → Firestore-Regeln → Such-Dienst (Cloudflare) → App (Firebase Hosting) → Rauchtest → Tag
+# Scheitert eine Stufe, bleiben die folgenden stehen; die Seite bleibt auf dem alten Stand.
 # Feature-Branches gehen nur in die Testumgebung (pages.yml). Anleitung: docs/RELEASE.md
 on:
   push:
     branches: [main]
   workflow_dispatch:
-  # jede Woche neu bauen, damit die Flughafendaten aktuell bleiben
+  # jede Woche neu bauen, damit die Flughafendaten aktuell bleiben (nur die App, ohne Regeln, Such-Dienst und Tag)
   schedule:
     - cron: "17 3 * * 1"
 
 permissions:
-  # write: Tag und Release-Seite für die neue Version anlegen
-  contents: write
+  contents: read
 
 concurrency:
   group: release
   cancel-in-progress: false
 
+env:
+  PROJEKT: startrek-1b6a7
+  SEITE: https://splitandfly.com
+  DIENST: https://startrek.danielbednorz1990.workers.dev
+
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment:
-      name: produktion
-      url: https://splitandfly.com
+  pruefen:
+    name: Prüfen (Unit, Typen)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: app/package-lock.json
       - name: Zugang zu Firebase vorhanden?
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           if [ -z "$SA" ]; then echo "::error::Secret FIREBASE_SERVICE_ACCOUNT fehlt (siehe docs/RELEASE.md)"; exit 1; fi
-      - name: Abhängigkeiten
-        working-directory: app
-        run: npm ci
+      - uses: ./.github/actions/aufbau
       - name: Tests
         working-directory: app
         run: npm test
       - name: Typprüfung
         working-directory: app
         run: npm run check
+
+  # Regeln zuerst: die neue App darf nie auf alte Regeln treffen, die ihr etwas verbieten
+  regeln:
+    name: Firestore-Regeln
+    needs: pruefen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name != 'schedule'
+      - uses: ./.github/actions/aufbau
+        if: github.event_name != 'schedule'
+      - name: Regeln einspielen
+        if: github.event_name != 'schedule'
+        working-directory: app
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          printf '%s' "$SA" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npx firebase deploy --only firestore:rules --project "$PROJEKT" --non-interactive
+      - name: Zugang wieder löschen
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
+
+  # Such-Dienst vor der App: neue Endpunkte sind da, bevor die App sie aufruft
+  dienst:
+    name: Such-Dienst (Cloudflare)
+    needs: regeln
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      stand: ${{ steps.deploy.outputs.stand }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name != 'schedule'
+      - name: Zugang zu Cloudflare vorhanden?
+        id: zugang
+        if: github.event_name != 'schedule'
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KONTO: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$KONTO" ]; then
+            echo "::warning::Secrets CLOUDFLARE_API_TOKEN und CLOUDFLARE_ACCOUNT_ID fehlen: Such-Dienst nicht aus GitHub veröffentlicht, das übernimmt weiter Cloudflare Workers Builds (#697)"
+          else
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: ./.github/actions/aufbau
+        if: steps.zugang.outputs.ok == '1'
+        with:
+          app: false
+          worker: true
+      - name: Veröffentlichen
+        id: deploy
+        if: steps.zugang.outputs.ok == '1'
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # --env "": der Dienst der Produktion (oberste Ebene der wrangler.toml), nicht die Umgebung „test“
+          npx wrangler deploy --config ../wrangler.toml --env ""
+          echo "stand=neu" >> "$GITHUB_OUTPUT"
+
+  app:
+    name: App (splitandfly.com)
+    needs: dienst
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: produktion
+      url: https://splitandfly.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/aufbau
       - name: App bauen
         working-directory: app
         run: npm run build
@@ -69,11 +143,35 @@ jobs:
           projectId: startrek-1b6a7
           channelId: live
           entryPoint: app
-      # neue Version in app/package.json → Tag vX.Y.Z und Release-Seite mit den Änderungen seit der letzten Version.
-      # Gleiche Version wie beim letzten Mal (z. B. wöchentlicher Neubau): nichts zu tun.
-      - name: Version als Tag und Release
-        if: github.event_name != 'schedule'
+
+  # Antwortet der neue Stand? Seite und Such-Dienst müssen die Version aus app/package.json melden.
+  rauchtest:
+    name: Rauchtest
+    needs: [dienst, app]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Seite und Such-Dienst
         env:
+          # hat GitHub den Such-Dienst selbst veröffentlicht, muss er die neue Version melden; sonst (Cloudflare
+          # Workers Builds, läuft unabhängig) nur ein Hinweis
+          DIENST_STAND: ${{ needs.dienst.outputs.stand }}
+        run: node scripts/rauchtest.mjs "$SEITE" "$DIENST" ${{ github.event_name == 'schedule' && '--nur-seite' || '' }} ${{ needs.dienst.outputs.stand != 'neu' && '--dienst-nachsichtig' || '' }}
+
+  # neue Version in app/package.json → Tag vX.Y.Z und Release-Seite mit den Änderungen seit der letzten Version.
+  # Gleiche Version wie beim letzten Mal: nichts zu tun. Nicht beim wöchentlichen Neubau.
+  tag:
+    name: Version als Tag und Release
+    needs: rauchtest
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           V="v$(node -p "require('./app/package.json').version")"

@@ -9,4 +9,9 @@ describe("/health", () => {
     expect(JSON.stringify(b)).not.toMatch(/geheim/);
     expect(healthBody({}).stays).toEqual(["trivago"]);
   });
+
+  it("nennt den Stand des Dienstes, wenn er bekannt ist", () => {
+    expect(healthBody({}, "1.2.3").version).toBe("1.2.3");
+    expect("version" in healthBody({})).toBe(false);
+  });
 });
