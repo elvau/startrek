@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/aufbau
         with:
           worker: true
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/aufbau
         with:
           emulator: true
@@ -109,7 +109,7 @@ jobs:
           - teil: ohne Konto 2/2
             args: --project=lokal --shard=2/2
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/aufbau
         with:
           emulator: true
@@ -118,7 +118,7 @@ jobs:
         working-directory: app
         run: npm run test:cloud -- ${{ matrix.args }}
       # bei Fehlern: Spur, Bildschirmfoto und Seitenzustand je Test (npx playwright show-trace …/trace.zip)
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-spuren-${{ strategy.job-index }}
