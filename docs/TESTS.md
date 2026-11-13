@@ -83,6 +83,13 @@ sichtbar bleiben und repariert werden.
 
 ### GitHub
 
+Ändert ein Pull Request nur Doku (`docs/`, `*.md`), entfallen die Prüfungen (Job „Umfang“); die Checks gelten dann als
+bestanden. Der Job „Tests und Typen“ schreibt die Größen der gebauten App in die Zusammenfassung des Laufs
+(`scripts/groessen.mjs`, Richtwert für den Start-Chunk 450 kB gzip, darüber nur eine Warnung).
+
+Alle Jobs beginnen mit demselben Aufbau (`.github/actions/aufbau`: Node aus `.nvmrc`, `npm ci`, wahlweise Such-Dienst,
+Emulatoren, Browser).
+
 `pruefen.yml` teilt die Ende-zu-Ende-Tests auf vier Läufe nebeneinander (mit und ohne Konto, je zweigeteilt über
 `--shard`), jeder mit eigenem Emulator. Der Check „Konto und Teilen (Firebase-Emulator)“ fasst Regeln und alle vier
 Teile zusammen.

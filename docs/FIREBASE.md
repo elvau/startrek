@@ -73,9 +73,11 @@ eingerichtet sind (nächster Abschnitt), sonst von Hand.
 
 ## Regeln automatisch einspielen
 
-Der Workflow `.github/workflows/regeln.yml` spielt `app/firestore.rules` ein, sobald sie sich ändern: Push auf
-`pre-release` → Testprojekt, Push auf `main` (Release) → echtes Projekt. Von Hand: Actions → „Firestore-Regeln
-einspielen“ → Run workflow (Branch wählen). Fehlt ein Secret, warnt er nur; dann wie bisher von Hand.
+Testprojekt: Der Workflow `.github/workflows/regeln.yml` spielt `app/firestore.rules` ein, sobald sie sich auf
+`pre-release` ändern. Fehlt das Secret, warnt er nur; dann wie bisher von Hand.
+Echtes Projekt: mit jedem Release, als Stufe vor der App (`release.yml`); schlägt sie fehl, geht die App nicht live.
+Von Hand geht beides: Actions → „Firestore-Regeln einspielen“ → Run workflow (Branch `pre-release` = Testprojekt,
+`main` = echtes Projekt).
 
 Einmalig einrichten (Dani), je Projekt:
 1. **Google Cloud Console → IAM und Verwaltung → IAM** des Projekts.

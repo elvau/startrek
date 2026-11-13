@@ -14,10 +14,15 @@ App (GitHub Pages)  ──►  Such-Dienst (Cloudflare Worker)  ──►  Flüg
 - Der Dienst nimmt nur Anfragen von `https://elvau.github.io` (und lokal) an.
 - Gleiche Suchen kommen 10 Minuten aus dem Zwischenspeicher.
 
-## Einrichten (Cloudflare baut direkt aus GitHub)
+## Einrichten
 
-Der Worker **„startrek“** ist in Cloudflare mit dem GitHub-Repo verbunden („Workers Builds“).
-Cloudflare baut und veröffentlicht bei jedem Push auf `main` selbst, eine GitHub Action ist dafür nicht nötig.
+**Veröffentlichen aus GitHub (#696):** `release.yml` veröffentlicht den Worker **„startrek“** mit jedem Release als
+Stufe vor der App (`npx wrangler deploy --env ""`), `pages.yml` den Worker **„startrek-test“** der Testumgebung bei
+jedem Push auf `pre-release` (`--env test`). Nötig sind die Secrets `CLOUDFLARE_API_TOKEN` und `CLOUDFLARE_ACCOUNT_ID`
+im Repo (`docs/RELEASE.md`, Abschnitt 5). Schlüssel der Anbieter trägt man je Worker im Cloudflare-Dashboard ein.
+
+**Bisher (bis die Secrets da sind):** Der Worker „startrek“ ist in Cloudflare mit dem GitHub-Repo verbunden
+(„Workers Builds“). Cloudflare baut und veröffentlicht bei jedem Push auf `main` selbst.
 
 Einmalig im Cloudflare-Dashboard: **Workers & Pages → startrek → Settings → Build** (Reiter „Production“):
 

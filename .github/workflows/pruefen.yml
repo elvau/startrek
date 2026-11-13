@@ -3,6 +3,7 @@ name: Prüfen (vor dem Release)
 # Volle Prüfung für jeden Pull Request nach main (Release) und nach pre-release (Arbeit der Routinen): Unit-Tests,
 # Typen, Such-Dienst, Sicherheitsregeln und die Ende-zu-Ende-Tests gegen den Firebase-Emulator (in vier Teilen
 # nebeneinander). Nach main wird erst gemergt, wenn alles grün ist (docs/RELEASE.md).
+# Ändert ein Pull Request nur Doku (docs/, *.md), entfallen die Prüfungen; die Checks gelten dann als bestanden.
 on:
   pull_request:
     branches: [main, pre-release]
@@ -16,21 +17,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Was ändert der Pull Request? Nur Doku: nichts zu prüfen. Im Zweifel (Abfrage scheitert, Start von Hand): alles prüfen.
+  umfang:
+    name: Umfang
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.umfang.outputs.code }}
+    steps:
+      - id: umfang
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          code=true
+          if [ -n "$PR" ]; then
+            if files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename') && [ -n "$files" ]; then
+              echo "$files" | grep -qvE '^docs/|\.md$' || code=false
+            fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Code geändert: $code"
+
   build:
     name: Tests und Typen
-    runs-on: ubuntu-latest
+    needs: umfang
+    if: needs.umfang.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/aufbau
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            app/package-lock.json
-            worker/package-lock.json
-      - name: Abhängigkeiten
-        working-directory: app
-        run: npm ci
+          worker: true
       - name: Tests
         working-directory: app
         run: npm test
@@ -39,33 +60,30 @@ jobs:
         run: npm run check
       - name: Such-Dienst prüfen
         working-directory: worker
-        run: npm ci && npx tsc --noEmit && npx wrangler deploy --config ../wrangler.toml --dry-run --outdir /tmp/worker-dist && npx wrangler deploy --dry-run --outdir /tmp/worker-dist-preview
+        # Probelauf für die Produktion, die Testumgebung (startrek-test) und die zweite Konfiguration in worker/
+        run: |
+          npx tsc --noEmit
+          npx wrangler deploy --config ../wrangler.toml --env "" --dry-run --outdir /tmp/worker-dist
+          npx wrangler deploy --config ../wrangler.toml --env test --dry-run --outdir /tmp/worker-dist-test
+          npx wrangler deploy --env "" --dry-run --outdir /tmp/worker-dist-preview
       - name: App bauen
         working-directory: app
         run: npm run build
+      - name: Größen der App
+        # Tabelle in der Zusammenfassung des Laufs; über dem Richtwert nur eine Warnung
+        run: node scripts/groessen.mjs app/dist >> "$GITHUB_STEP_SUMMARY"
 
   regeln:
     name: Sicherheitsregeln (Firestore-Emulator)
-    runs-on: ubuntu-latest
+    needs: umfang
+    if: needs.umfang.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/aufbau
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: app/package-lock.json
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/firebase/emulators
-          key: emu-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
-          restore-keys: emu-${{ runner.os }}-
-      - name: Abhängigkeiten
-        working-directory: app
-        run: npm ci
+          emulator: true
       - name: Sicherheitsregeln
         working-directory: app
         run: npm run test:rules
@@ -74,7 +92,10 @@ jobs:
   # Die Tests mit Konto laufen je Teil nacheinander: zweigeteilt halbiert sich ihre Kette.
   e2e:
     name: Ende-zu-Ende ${{ matrix.teil }}
-    runs-on: ubuntu-latest
+    needs: umfang
+    if: needs.umfang.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -89,26 +110,10 @@ jobs:
             args: --project=lokal --shard=2/2
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/aufbau
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: app/package-lock.json
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      # Browser für Playwright und Firebase-Emulatoren zwischenspeichern (sonst bei jedem Lauf neu heruntergeladen)
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/ms-playwright
-            ~/.cache/firebase/emulators
-          key: e2e-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
-          restore-keys: e2e-${{ runner.os }}-
-      - name: Abhängigkeiten
-        working-directory: app
-        run: npm ci && npx playwright install --with-deps chromium
+          emulator: true
+          browser: true
       - name: Ende-zu-Ende-Tests
         working-directory: app
         run: npm run test:cloud -- ${{ matrix.args }}
@@ -123,11 +128,19 @@ jobs:
   # ein Ergebnis für alles am Emulator (Name wie bisher, für Regeln zum Mergen und die Review-Routine)
   cloud:
     name: Konto und Teilen (Firebase-Emulator)
-    runs-on: ubuntu-latest
-    needs: [regeln, e2e]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [umfang, regeln, e2e]
     if: always()
     steps:
       - name: Ergebnis
+        env:
+          CODE: ${{ needs.umfang.outputs.code }}
+          UMFANG: ${{ needs.umfang.result }}
+          REGELN: ${{ needs.regeln.result }}
+          E2E: ${{ needs.e2e.result }}
         run: |
-          echo "Sicherheitsregeln: ${{ needs.regeln.result }}, Ende-zu-Ende: ${{ needs.e2e.result }}"
-          test "${{ needs.regeln.result }}" = success && test "${{ needs.e2e.result }}" = success
+          echo "Umfang: $UMFANG (Code geändert: $CODE), Sicherheitsregeln: $REGELN, Ende-zu-Ende: $E2E"
+          test "$UMFANG" = success
+          if [ "$CODE" = false ]; then echo "Nur Doku geändert: nichts zu prüfen."; exit 0; fi
+          test "$REGELN" = success && test "$E2E" = success
