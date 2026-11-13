@@ -43,3 +43,23 @@ bucket_name = "splitandfly-bugs"
 [[analytics_engine_datasets]]
 binding = "USAGE"
 dataset = "splitandfly_usage"
+
+# Such-Dienst der Testumgebung („startrek-test“, #696): gleicher Code, eigener Worker mit eigenen Schlüsseln, eigenem
+# Bildspeicher und eigener Zählung. pages.yml veröffentlicht ihn bei jedem Push auf pre-release
+# (npx wrangler deploy --env test). Variablen und Bindungen erbt eine Umgebung nicht: sie stehen hier noch einmal,
+# bitte mit den Angaben oben gleich halten. Der tägliche Zeitplan (triggers) gilt auch hier.
+[env.test]
+name = "startrek-test"
+
+[env.test.vars]
+ALLOWED_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https://www.splitandfly.com,https://startrek-1b6a7.web.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
+TRAVELPAYOUTS_MARKER = "783080"
+FIREBASE_TEST_PROJECT_ID = "startrek-test-b792b"
+
+[[env.test.r2_buckets]]
+binding = "BUG_BUCKET"
+bucket_name = "splitandfly-bugs-test"
+
+[[env.test.analytics_engine_datasets]]
+binding = "USAGE"
+dataset = "splitandfly_usage_test"

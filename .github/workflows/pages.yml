@@ -3,7 +3,8 @@ name: Testumgebung (GitHub Pages)
 # Jeder Push auf pre-release: nur bauen und schnell auf die Testumgebung (elvau.github.io/startrek/), ohne Prüfung.
 # Arbeits-Branches landen dort erst, wenn sie in pre-release gemergt werden; die volle Prüfung (Tests, Typen,
 # Such-Dienst, Emulator) läuft bei Pull Requests (pruefen.yml). main geht nach splitandfly.com (release.yml).
-# Anleitung: docs/RELEASE.md
+# Daneben wird der Such-Dienst der Testumgebung veröffentlicht (startrek-test), sobald der Zugang zu Cloudflare
+# eingerichtet ist (#697). Anleitung: docs/RELEASE.md
 on:
   push:
     branches: [pre-release]
@@ -19,25 +20,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  # Such-Dienst der Testumgebung: läuft neben dem Bau der Seite, damit sie schnell steht.
+  dienst:
+    name: Such-Dienst (startrek-test)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Zugang zu Cloudflare vorhanden?
+        id: zugang
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KONTO: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$KONTO" ]; then
+            echo "::warning::Secrets CLOUDFLARE_API_TOKEN und CLOUDFLARE_ACCOUNT_ID fehlen: Such-Dienst der Testumgebung nicht veröffentlicht (#697)"
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: ./.github/actions/aufbau
+        if: steps.zugang.outputs.skip != '1'
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: app/package-lock.json
-      - name: Abhängigkeiten
-        working-directory: app
-        run: npm ci
+          app: false
+          worker: true
+      - name: Veröffentlichen
+        if: steps.zugang.outputs.skip != '1'
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # Bildspeicher der Testumgebung: anlegen, falls es ihn noch nicht gibt
+          npx wrangler r2 bucket create splitandfly-bugs-test >/dev/null 2>&1 || true
+          npx wrangler deploy --config ../wrangler.toml --env test
+
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/aufbau
       - name: App bauen
         working-directory: app
-        run: npm run build:test
         env:
           # Testumgebung: elvau.github.io/startrek/ (splitandfly.com kommt aus release.yml)
           BASE: /${{ github.event.repository.name }}/
           # Firebase: eigenes Testprojekt aus app/.env.staging, nie das echte (app/.env.production)
+          # Such-Dienst: der der Produktion (app/.env.staging), bis die Variable TEST_DIENST im Repo auf „an“ steht
+          # (Settings → Secrets and variables → Actions → Variables); dann der eigene der Testumgebung
+          TEST_DIENST: ${{ vars.TEST_DIENST }}
+          TEST_DIENST_URL: https://startrek-test.danielbednorz1990.workers.dev
+        run: |
+          if [ "$TEST_DIENST" = an ]; then export VITE_FLIGHTS_URL="$TEST_DIENST_URL"; echo "Such-Dienst: $TEST_DIENST_URL"; fi
+          npm run build:test
       - name: Flughafendaten aktualisieren
         # neue Daten von OurAirports; klappt das nicht, bleibt public/airports.json aus dem Projekt
         run: node scripts/airports.mjs || echo "::warning::Flughafendaten nicht aktualisiert, alte Datei bleibt"
@@ -57,7 +93,8 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     # mehrere Branches: nacheinander veröffentlichen, der zuletzt gepushte steht am Ende auf der Testumgebung
     concurrency:
       group: pages-deploy

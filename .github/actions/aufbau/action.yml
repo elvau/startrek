@@ -1,0 +1,58 @@
+name: Aufbau
+description: >
+  Gemeinsamer Aufbau aller Jobs (nach actions/checkout): Node in der Fassung aus .nvmrc, Abhängigkeiten der App,
+  wahlweise die des Such-Dienstes, Java mit den Firebase-Emulatoren und Chromium für Playwright.
+inputs:
+  app:
+    description: Abhängigkeiten der App installieren (app/)
+    default: "true"
+  worker:
+    description: Abhängigkeiten des Such-Dienstes installieren (worker/)
+    default: "false"
+  emulator:
+    description: Java und Zwischenspeicher der Firebase-Emulatoren
+    default: "false"
+  browser:
+    description: Chromium für Playwright (Zwischenspeicher, sonst laden)
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+        # Zwischenspeicher für npm nur, wenn etwas installiert wird
+        cache: ${{ (inputs.app == 'true' || inputs.worker == 'true') && 'npm' || '' }}
+        cache-dependency-path: |
+          app/package-lock.json
+          worker/package-lock.json
+    - if: inputs.app == 'true'
+      shell: bash
+      working-directory: app
+      run: npm ci --no-audit --no-fund
+    - if: inputs.worker == 'true'
+      shell: bash
+      working-directory: worker
+      run: npm ci --no-audit --no-fund
+    - if: inputs.emulator == 'true'
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 21
+    # Emulatoren und Browser zwischenspeichern (sonst bei jedem Lauf neu heruntergeladen)
+    - if: inputs.emulator == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/firebase/emulators
+        key: emu-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
+        restore-keys: emu-${{ runner.os }}-
+    - if: inputs.browser == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: pw-${{ runner.os }}-${{ hashFiles('app/package-lock.json') }}
+        restore-keys: pw-${{ runner.os }}-
+    - if: inputs.browser == 'true'
+      shell: bash
+      working-directory: app
+      run: npx playwright install --with-deps chromium
