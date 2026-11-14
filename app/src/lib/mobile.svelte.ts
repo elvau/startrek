@@ -56,6 +56,7 @@ export function goPage(p: PageKey, smooth = true) {
   target = p;
   // läuft gerade der Anstupser, sitzt der Rahmen der Seite verschoben: vorher beenden (#691)
   endNudge?.();
+  pager.classList.remove("nudge");
   clearTimeout(targetTimer);
   // wird der Sprung unterbrochen (Wischen, anderer Sprung), danach die tatsächliche Seite übernehmen
   targetTimer = setTimeout(() => { target = null; recheck(); }, 1200);
