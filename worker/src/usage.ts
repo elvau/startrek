@@ -9,6 +9,8 @@
 export interface UsageEnv {
   /** Analytics-Engine-Datensatz „splitandfly_usage“; fehlt er, wird nichts gezählt */
   USAGE?: AnalyticsEngineDataset;
+  /** Name des Datensatzes zum Lesen, wenn er anders heißt (Testumgebung: „splitandfly_usage_test“) */
+  USAGE_DATASET?: string;
   CF_ACCOUNT_ID?: string;
   CF_API_TOKEN?: string;
   /** Nutzer-IDs aus Firebase (Authentication → Benutzer-UID), kommagetrennt */
@@ -16,6 +18,8 @@ export interface UsageEnv {
 }
 
 export const DATASET = "splitandfly_usage";
+/** Datensatz, aus dem gelesen wird: der, in den diese Umgebung schreibt (nur Buchstaben, Ziffern, Unterstrich: er steht im SQL) */
+export const datasetName = (env: UsageEnv) => (/^\w+$/.test(env.USAGE_DATASET ?? "") ? env.USAGE_DATASET! : DATASET);
 const CF_API = "https://api.cloudflare.com/client/v4";
 
 /** Host und bei Gemini das Modell aus der Adresse (…/models/gemini-3.8-flash:generateContent) */
@@ -131,7 +135,7 @@ async function r2Stats(env: UsageEnv, f: typeof fetch, now: number) {
 async function ownStats(env: UsageEnv, f: typeof fetch, days: string[]): Promise<Series[]> {
   // Stichproben: _sample_interval rechnet auf die echte Anzahl hoch
   const sql = `SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, blob1 AS kind, blob2 AS name, blob3 AS detail, SUM(_sample_interval * double1) AS n
-    FROM ${DATASET} WHERE timestamp > NOW() - INTERVAL '${days.length}' DAY GROUP BY day, kind, name, detail FORMAT JSON`;
+    FROM ${datasetName(env)} WHERE timestamp > NOW() - INTERVAL '${days.length}' DAY GROUP BY day, kind, name, detail FORMAT JSON`;
   const res = await f(`${CF_API}/accounts/${env.CF_ACCOUNT_ID}/analytics_engine/sql`, {
     method: "POST", headers: { authorization: `Bearer ${env.CF_API_TOKEN}` }, body: sql
   });

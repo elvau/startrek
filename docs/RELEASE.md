@@ -33,8 +33,11 @@ Branches: **Arbeits-Branch** (je Sitzung oder Routine, z. B. `claude/…`) → *
 
 **Ablauf eines Release auf GitHub (`release.yml`):** eine Kette, jede Stufe wartet auf die vorige:
 Prüfen (Unit, Typen) → Firestore-Regeln → Such-Dienst → App → Rauchtest → Tag. Scheitert eine Stufe, bleiben die
-folgenden stehen und die Seite bleibt auf dem alten Stand. Der Rauchtest (`scripts/rauchtest.mjs`) prüft, dass
-splitandfly.com und der Such-Dienst (`/health`) die Version aus `app/package.json` melden. Der wöchentliche Neubau
+folgenden stehen. Regeln und Such-Dienst gehen mit Absicht vor der App live: scheitert danach die App, läuft die alte
+App gegen die neuen Regeln und den neuen Dienst, bis der Lauf wiederholt ist (beide müssen zur vorigen App passen).
+Der Workflow veröffentlicht nur von `main`. Der Rauchtest (`scripts/rauchtest.mjs`) prüft, dass splitandfly.com genau
+den gerade gebauten Stand ausliefert und der Such-Dienst (`/health`) die Version aus `app/package.json` meldet, dazu
+den Commit, wenn GitHub ihn veröffentlicht hat. Der wöchentliche Neubau
 veröffentlicht nur die App.
 
 **Such-Dienst (Cloudflare):** die Produktion (`startrek`) wird mit dem Release veröffentlicht, als Stufe vor der App.

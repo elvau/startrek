@@ -50,6 +50,9 @@ function instantScroll() {
 }
 
 export const test = base.extend({
+  // Startzeitpunkt für E2E_ZEIT (lap)
+  zeit: [async ({}, use, info) => { laps.set(info.testId, Date.now()); await use(); laps.delete(info.testId); }, { auto: true }],
+
   errors: async ({}, use) => {
     const errors = [];
     await use(errors);
@@ -90,7 +93,7 @@ export function log(...a) {
 const laps = new Map();
 function lap() {
   if (!process.env.E2E_ZEIT) return "";
-  const id = test.info().testId, now = Date.now(), last = laps.get(id) ?? test.info()._startWallTime ?? now;
+  const id = test.info().testId, now = Date.now(), last = laps.get(id) ?? now;
   laps.set(id, now);
   return `(+${((now - last) / 1000).toFixed(1)} s) `;
 }

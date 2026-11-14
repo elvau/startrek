@@ -1,6 +1,6 @@
 /* Läuft mit den Tests der App (cd app && npx vitest run) */
 import { describe as group, expect, it } from "vitest";
-import { describe, isAdmin, lastDays, meter, noteClick, noteRoute, usageReport } from "./usage";
+import { datasetName, describe, isAdmin, lastDays, meter, noteClick, noteRoute, usageReport } from "./usage";
 
 const dataset = () => {
   const points: { blobs?: unknown[]; doubles?: number[] }[] = [];
@@ -100,6 +100,12 @@ group("Bericht", () => {
       { kind: "api", name: "generativelanguage.googleapis.com", detail: "gemini-3.8-flash", byDay: [0, 0, 0, 0, 0, 3, 12] },
       { kind: "route", name: "flights", detail: "", byDay: [0, 0, 0, 0, 0, 0, 4] }
     ]);
+  });
+
+  it("liest aus dem Datensatz der Umgebung, nur mit unbedenklichem Namen", () => {
+    expect(datasetName({})).toBe("splitandfly_usage");
+    expect(datasetName({ USAGE_DATASET: "splitandfly_usage_test" })).toBe("splitandfly_usage_test");
+    expect(datasetName({ USAGE_DATASET: "x; DROP" })).toBe("splitandfly_usage");
   });
 
   it("fällt eine Quelle aus, kommen die anderen trotzdem", async () => {

@@ -2,11 +2,12 @@
 import { chromium } from "playwright";
 import { preview } from "../lib/preview.mjs";
 const OUT = process.env.OUT || ".";
-const { stop } = await preview(4174);
-const b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
+const { stop } = await preview(4182);
+let b;
 try {
+  b = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
   const p = await b.newPage({ viewport: { width: 1280, height: 860 }, locale: "de-DE" });
-  await p.goto("http://127.0.0.1:4174/"); await p.waitForTimeout(1200);
+  await p.goto("http://127.0.0.1:4182/"); await p.waitForTimeout(1200);
   await p.locator(".top .acct .tm-btn").click(); await p.waitForTimeout(400);
   await p.screenshot({ path: `${OUT}/e-login.png` });
   await p.locator(".login .test button").click();
@@ -20,6 +21,6 @@ try {
   await p.locator(".modal .btn", { hasText: "Link erstellen" }).click(); await p.waitForTimeout(800);
   await p.screenshot({ path: `${OUT}/e-share.png` });
   const m = await b.newPage({ viewport: { width: 390, height: 844 }, locale: "de-DE" });
-  await m.goto("http://127.0.0.1:4174/"); await m.waitForTimeout(1500);
+  await m.goto("http://127.0.0.1:4182/"); await m.waitForTimeout(1500);
   await m.screenshot({ path: `${OUT}/e-m-hero.png` });
-} finally { await b.close(); stop(); }
+} finally { await b?.close(); stop(); }
