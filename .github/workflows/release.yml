@@ -2,7 +2,10 @@ name: Release (splitandfly.com)
 
 # Produktion: jeder Push auf main (Merge des Release-PRs) geht als eine Kette live, jede Stufe wartet auf die vorige:
 #   Prüfen (Unit, Typen) → Firestore-Regeln → Such-Dienst (Cloudflare) → App (Firebase Hosting) → Rauchtest → Tag
-# Scheitert eine Stufe, bleiben die folgenden stehen; die Seite bleibt auf dem alten Stand.
+# Scheitert eine Stufe, bleiben die folgenden stehen. Regeln und Such-Dienst gehen mit Absicht vor der App live (die
+# neue App trifft nie auf alte Regeln oder einen alten Dienst): scheitert danach die App, läuft die alte App gegen die
+# neuen Regeln und den neuen Dienst, bis der Lauf wiederholt ist. Beide müssen deshalb zur vorigen App passen.
+# Nur von main: ein von Hand gestarteter Lauf auf einem anderen Branch veröffentlicht nichts.
 # Feature-Branches gehen nur in die Testumgebung (pages.yml). Anleitung: docs/RELEASE.md
 on:
   push:
@@ -27,6 +30,8 @@ env:
 jobs:
   pruefen:
     name: Prüfen (Unit, Typen)
+    # alle weiteren Stufen hängen an dieser: auf einem anderen Branch läuft keine
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -105,7 +110,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           # --env "": der Dienst der Produktion (oberste Ebene der wrangler.toml), nicht die Umgebung „test“
-          npx wrangler deploy --config ../wrangler.toml --env ""
+          # STAND: der Commit, /health meldet ihn (Rauchtest)
+          npx wrangler deploy --config ../wrangler.toml --env "" --var "STAND:$GITHUB_SHA"
           echo "stand=neu" >> "$GITHUB_OUTPUT"
 
   app:
@@ -116,12 +122,18 @@ jobs:
     environment:
       name: produktion
       url: https://splitandfly.com
+    outputs:
+      start: ${{ steps.bau.outputs.start }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/aufbau
       - name: App bauen
+        id: bau
         working-directory: app
-        run: npm run build
+        run: |
+          npm run build
+          # Start-Chunk dieses Stands: daran erkennt der Rauchtest, dass genau er ausgeliefert wird
+          echo "start=$(grep -o 'assets/main-[A-Za-z0-9_-]*\.js' dist/index.html | head -1)" >> "$GITHUB_OUTPUT"
         env:
           BASE: /
           # Firebase-Konfiguration (auch die Anmelde-Domain splitandfly.com) kommt aus app/.env.production
@@ -155,7 +167,7 @@ jobs:
       - name: Seite und Such-Dienst
         # hat GitHub den Such-Dienst selbst veröffentlicht, muss er die neue Version melden; sonst (Cloudflare
         # Workers Builds, läuft unabhängig) nur ein Hinweis
-        run: node scripts/rauchtest.mjs "$SEITE" "$DIENST" ${{ github.event_name == 'schedule' && '--nur-seite' || '' }} ${{ needs.dienst.outputs.stand != 'neu' && '--dienst-nachsichtig' || '' }}
+        run: node scripts/rauchtest.mjs "$SEITE" "$DIENST" "--start=${{ needs.app.outputs.start }}" ${{ github.event_name == 'schedule' && '--nur-seite' || '' }} ${{ needs.dienst.outputs.stand == 'neu' && format('--stand={0}', github.sha) || '--dienst-nachsichtig' }}
 
   # neue Version in app/package.json → Tag vX.Y.Z und Release-Seite mit den Änderungen seit der letzten Version.
   # Gleiche Version wie beim letzten Mal: nichts zu tun. Nicht beim wöchentlichen Neubau.

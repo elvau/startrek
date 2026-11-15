@@ -6,6 +6,8 @@ import { spawn } from "node:child_process";
 
 export async function preview(port) {
   const url = `http://127.0.0.1:${port}/`;
+  // antwortet dort schon etwas (andere Vorschau, laufende Tests), kämen die Bilder womöglich von einem alten Stand
+  if (await fetch(url).then(() => true, () => false)) throw new Error(`Port ${port} ist belegt: laufende Vorschau oder Tests erst beenden`);
   const server = spawn("npx", ["vite", "preview", "--outDir", "dist-emu", "--port", String(port), "--strictPort", "--host", "127.0.0.1"], { stdio: "ignore", detached: true });
   // npx startet vite als Kindprozess: die ganze Gruppe beenden, sonst bleibt die Vorschau liegen und belegt den Port
   const stop = () => { try { process.kill(-server.pid); } catch { /* schon beendet */ } };

@@ -53,7 +53,7 @@ jobs:
         run: |
           # Bildspeicher der Testumgebung: anlegen, falls es ihn noch nicht gibt
           npx wrangler r2 bucket create splitandfly-bugs-test >/dev/null 2>&1 || true
-          npx wrangler deploy --config ../wrangler.toml --env test
+          npx wrangler deploy --config ../wrangler.toml --env test --var "STAND:$GITHUB_SHA"
 
   build:
     runs-on: ubuntu-24.04
@@ -92,7 +92,10 @@ jobs:
           path: _site
 
   deploy:
-    needs: build
+    # baut die Seite gegen startrek-test (TEST_DIENST=an), geht sie nur mit dessen neuem Stand online: sonst liefe die
+    # neue App gegen einen alten Dienst
+    needs: [build, dienst]
+    if: ${{ !cancelled() && needs.build.result == 'success' && (vars.TEST_DIENST != 'an' || needs.dienst.result == 'success') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     # mehrere Branches: nacheinander veröffentlichen, der zuletzt gepushte steht am Ende auf der Testumgebung

@@ -20,6 +20,8 @@ ALLOWED_ORIGINS = "https://elvau.github.io,https://splitandfly.com,https://www.s
 TRAVELPAYOUTS_MARKER = "783080"
 # Firebase-Projekt der Testumgebung: Anmeldungen von dort gelten als „test:<uid>“ (docs/FIREBASE.md, Testprojekt)
 FIREBASE_TEST_PROJECT_ID = "startrek-test-b792b"
+# die Admin-Ansicht liest aus dem Datensatz, in den dieser Dienst schreibt (unten, analytics_engine_datasets)
+USAGE_DATASET = "splitandfly_usage_test"
 
 # Bildspeicher für Fehlermeldungen, wie in ../wrangler.toml
 [[r2_buckets]]

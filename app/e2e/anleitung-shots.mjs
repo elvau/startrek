@@ -35,7 +35,7 @@ const TRIP = {
   detail: { flights: true, stay: true, transport: true, attractions: true, misc: true }
 };
 const { stop } = await preview(4181);
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined }).catch(e => { stop(); throw e; });
 
 /** Markierungen je Bild: Schlüssel → Suche nach Text (exakt oder RegExp), Reihenfolge = Nummer */
 const SPOTS = {

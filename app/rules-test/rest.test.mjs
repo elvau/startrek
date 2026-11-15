@@ -4,6 +4,7 @@
  * Die Abschnitte bauen aufeinander auf (eine Reise, die sich Schritt für Schritt ändert): Reihenfolge nicht ändern.
  */
 import { afterAll, beforeAll, describe, it } from "vitest";
+import { fields, sv } from "../e2e/lib/emu.mjs";
 
 const P = "demo-reisekasse";
 const FS = `http://127.0.0.1:8080/v1/projects/${P}/databases/(default)/documents`;
@@ -15,9 +16,6 @@ const now = Math.floor(Date.now() / 1000);
 const token = uid => `${b64({ alg: "none", typ: "JWT" })}.${b64({ iss: `https://securetoken.google.com/${P}`, aud: P, sub: uid, user_id: uid, auth_time: now, iat: now, exp: now + 3600, firebase: { sign_in_provider: uid.startsWith("gast") ? "anonymous" : "password" } })}.`;
 const H = uid => ({ "content-type": "application/json", ...(uid === "admin" ? { Authorization: "Bearer owner" } : uid ? { Authorization: `Bearer ${token(uid)}` } : {}) });
 
-const sv = v => Array.isArray(v) ? { arrayValue: { values: v.map(sv) } } : typeof v === "string" ? { stringValue: v } : typeof v === "boolean" ? { booleanValue: v } : typeof v === "number" ? { integerValue: String(v) }
-  : v === null ? { nullValue: null } : { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sv(x)])) } };
-const fields = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, sv(v)]));
 const req = (uid, path, init = {}) => fetch(`${FS}${path}`, { ...init, headers: H(uid) });
 const patch = (uid, path, o, mask) => req(uid, `${path}${mask ? "?" + mask.map(m => `updateMask.fieldPaths=${encodeURIComponent(m)}`).join("&") : ""}`, { method: "PATCH", body: JSON.stringify({ fields: fields(o) }) });
 const query = (uid, coll, where) => req(uid, ":runQuery", { method: "POST", body: JSON.stringify({ structuredQuery: { from: [{ collectionId: coll }], ...(where ? { where } : {}) } }) });
