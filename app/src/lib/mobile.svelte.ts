@@ -45,6 +45,9 @@ function setPage(p: PageKey, force = false) {
   document.body.dataset.ch = p;
 }
 
+/** beendet einen laufenden Anstupser samt Listener (#706) */
+let endNudge: (() => void) | null = null;
+
 /** Seite zeigen (aus Leiste und Reitern) */
 export function goPage(p: PageKey, smooth = true) {
   const el = pager?.querySelector<HTMLElement>(`:scope > [data-ch="${p}"]`);
@@ -52,6 +55,7 @@ export function goPage(p: PageKey, smooth = true) {
   // scrollIntoView statt scrollTo: stimmt auch bei Schrift von rechts nach links (scrollLeft negativ)
   target = p;
   // läuft gerade der Anstupser, sitzt der Rahmen der Seite verschoben: vorher beenden (#691)
+  endNudge?.();
   pager.classList.remove("nudge");
   clearTimeout(targetTimer);
   // wird der Sprung unterbrochen (Wischen, anderer Sprung), danach die tatsächliche Seite übernehmen
@@ -99,12 +103,15 @@ export function attachPager(el: HTMLElement, trip = ""): () => void {
   try {
     if (!localStorage.getItem(NUDGE_KEY)) nudge = setTimeout(() => {
       el.classList.add("nudge");
-      el.addEventListener("animationend", () => el.classList.remove("nudge"), { once: true });
+      // nur das Ende der Anstupser-Animation einer Seite zählt (animationend steigt aus Kindern auf, #706)
+      const done = (e: AnimationEvent) => { if (e.animationName.startsWith("pg-nudge") && e.target instanceof Node && e.target.parentNode === el) endNudge?.(); };
+      el.addEventListener("animationend", done);
+      endNudge = () => { el.classList.remove("nudge"); el.removeEventListener("animationend", done); endNudge = null; };
       try { localStorage.setItem(NUDGE_KEY, "1"); } catch { /* egal */ }
     }, 1200);
   } catch { /* egal */ }
   return () => {
-    clearTimeout(nudge); el.removeEventListener("scroll", on); el.removeEventListener("touchstart", touch); if (pager === el) { pager = null; document.body.classList.remove("mob-pager"); } };
+    clearTimeout(nudge); endNudge?.(); el.removeEventListener("scroll", on); el.removeEventListener("touchstart", touch); if (pager === el) { pager = null; document.body.classList.remove("mob-pager"); } };
 }
 
 /** Breite beobachten: Handy-Ansicht an oder aus */

@@ -47,6 +47,8 @@ import { partnerOn } from "../../app/src/lib/partner";
 import { parseRouteQuery, routeOrs, type RoadResult } from "../../app/src/lib/road/ors";
 
 interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv, KiEnv, CatalogEnv {
+  /** Commit, aus dem GitHub den Dienst veröffentlicht hat (wrangler deploy --var), für /health */
+  STAND?: string;
   /** KI-Konnektor: Suchen pro Schlüssel und Tag (Standard 50) */
   MCP_DAILY?: string;
   /** erlaubte Herkünfte, kommagetrennt */
