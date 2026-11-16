@@ -1,0 +1,598 @@
+/*
+ * KI-Planer: ohne Anmeldung nur der Hinweis, nach der Anmeldung Wunsch schicken (Such-Dienst nachgestellt),
+ * Vorschlag übernehmen. Start: npm run test:cloud (braucht den Auth-Emulator)
+ */
+import { test, fail, log, until, publicData, URL, reloadHome, myTrips, startPage, autoAsk, quickTrip, login, FS, AUTH, PROJECT } from "../lib/konto.mjs";
+
+/** ins Bild scrollen; rendert die Liste dabei neu („not attached“/„not stable“, #452), Locator neu auflösen und nochmal */
+const into = async (loc, tries = 5) => {
+  for (let i = 1; ; i++) {
+    try { await loc.scrollIntoViewIfNeeded({ timeout: 3000 }); return; }
+    catch (e) { if (i >= tries) throw e; await new Promise(r => setTimeout(r, 300)); }
+  }
+};
+const leg = (from, to, dep, arr) => ({ from, to, fromCity: from, toCity: to, dep, arr, minutes: 150, stops: 0, route: [from, to], carriers: ["Sun Air"], flights: ["SA1"] });
+const RESULT = {
+  remaining: 4,
+  trips: [
+    { title: "Sonne in Palma", summary: "Kurzer Flug, Altstadt und Strand.", place: "Palma", country: "Spanien", from: "2027-05-07", to: "2027-05-10", total: 1080,
+      flight: { id: "kiwi:x1", source: "kiwi", sourceName: "Kiwi.com", price: 480, currency: "EUR", url: "https://kiwi.com/u/x1",
+        out: leg("DUS", "PMI", "2027-05-07T08:00:00", "2027-05-07T10:30:00"), back: leg("PMI", "DUS", "2027-05-10T18:00:00", "2027-05-10T20:30:00") },
+      stay: { id: "b:1", source: "booking", sourceName: "Booking.com", name: "Casa Palma", url: "https://booking.com/h/1", total: 600, currency: "EUR", score: 8.7, place: "Altstadt" },
+      stayQuery: { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 1, childAges: [], rooms: 1, type: "all", currency: "EUR" },
+      board: "half", transport: { label: "Mietwagen 3 Tage", eur: 120 }, extras: [{ name: "Bootstour", eur: 80 }] },
+    { title: "Lissabon", summary: "Stadt am Meer.", place: "Lissabon", from: "2027-05-14", to: "2027-05-17", total: 350,
+      flight: { id: "kiwi:x2", source: "kiwi", sourceName: "Kiwi.com", price: 350, currency: "EUR",
+        out: leg("DUS", "LIS", "2027-05-14T07:00:00", "2027-05-14T09:30:00"), back: leg("LIS", "DUS", "2027-05-17T19:00:00", "2027-05-17T23:00:00") } }
+  ]
+};
+
+test("KI-Planer", async ({ open, errors }) => {
+  test.setTimeout(300_000);
+  const p = await open();
+  await publicData(p);
+  const asked = [];
+  await p.route("https://flights.test/agent", async r => {
+    if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "content-type, authorization" } });
+    const body = JSON.parse(r.request().postData());
+    asked.push({ auth: r.request().headers()["authorization"] || "", body });
+    await new Promise(res => setTimeout(res, body.prompt?.includes("langsam") ? 6500 : 300));
+    // Strandurlaub mit Kindern: erst eine Rückfrage, nach der Antwort Vorschläge für die Familie
+    // Vorlieben im Gespräch: nur ein Vorschlag zum Speichern, keine Reisen
+    if (!body.current && body.prompt.split("Jetzt: ").at(-1).includes("einen Hund")) {
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], reply: "Gemerkt, das kann ich für euch speichern.", prefs: { pet: true, bags: false }, context: "prefs", remaining: 1 }) });
+    }
+    // offene Reise: Antwort mit Änderungen (eigene Anreise statt Flug)
+    if (body.current) {
+      const fl = body.current.items.find(i => i.cat === "flights");
+      const edit = { reply: "Ich ersetze den Flug durch die Anreise mit dem Auto.", estimates: [{ cat: "transport", name: "Anreise mit dem Auto", eur: 300, replaces: fl?.id }] };
+      // anderes Land (#416): Ziel und Unterkunft ersetzt
+      if (body.prompt.split("Jetzt: ").at(-1).includes("Belgien")) {
+        const st = body.current.items.find(i => i.cat === "stay");
+        Object.assign(edit, { reply: "In Belgien ist es günstiger.", trip: { place: "Brügge", country: "Belgien" },
+          stays: [{ offer: { id: "b:be", source: "booking", sourceName: "Booking.com", name: "Huis Brugge", total: 400, currency: "EUR", score: 8.8, place: "Brügge" },
+            q: { ...RESULT.trips[0].stayQuery, place: "Brügge", country: "Belgium" }, replaces: st?.id }] });
+      }
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], edit, remaining: 1 }) });
+    }
+    // Familien mit eigenen Zeiten (#230): Familie die ganze Woche, Oma ab dem 10.; je Familie ein Flug
+    if (body.prompt.includes("Jetzt: Familienreise mit Oma") || body.prompt.startsWith("Familienreise mit Oma")) {
+      const t = RESULT.trips[0];
+      const fam = { ...t.flight, id: "kiwi:fam", price: 1440, back: leg("PMI", "DUS", "2027-05-14T18:00:00", "2027-05-14T20:30:00") };
+      const oma = { ...t.flight, id: "kiwi:oma", price: 210, out: leg("DUS", "PMI", "2027-05-10T08:00:00", "2027-05-10T10:30:00"), back: fam.back };
+      const groups = [{ key: "G1", label: "Familie", adults: 2, childAges: [8], infants: 0, from: "2027-05-07", to: "2027-05-14" },
+        { key: "G2", label: "Oma", adults: 1, childAges: [], infants: 0, from: "2027-05-10", to: "2027-05-14" }];
+      const mk = (title, place) => ({ ...t, title, place, from: "2027-05-07", to: "2027-05-14", groups, transport: undefined, extras: undefined,
+        flight: fam, bookings: [{ offer: fam, seats: 3, travelers: 3, group: "G1" }, { offer: oma, seats: 1, travelers: 1, group: "G2" }],
+        stay: { ...t.stay, total: 1400 }, stayQuery: { ...t.stayQuery, checkout: "2027-05-14", adults: 3, childAges: [8] }, total: 3050 });
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [mk("Palma mit Oma", "Palma"), mk("Alcúdia mit Oma", "Alcúdia")], remaining: 1 }) });
+    }
+    // Mannschaftsfahrt: 10 Personen, Flüge in Buchungen zu 2 Plätzen; keine Unterkunft für alle → Rückfrage, dann zweimal dieselbe (#494)
+    if (body.prompt.includes("Mannschaftsfahrt")) {
+      if (!body.stayMode) return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [], question: "", options: [], split: true, remaining: 2 }) });
+      const t = RESULT.trips[0];
+      const half = { offer: t.stay, q: { ...t.stayQuery, adults: 5, rooms: 3 }, travelers: 5 };
+      const { stay: _s, stayQuery: _q, ...rest } = t;
+      const trip = { ...rest, title: "Mannschaftsfahrt Cala Rajada", party: { adults: 10, childAges: [], infants: 0 }, bookings: [{ offer: t.flight, seats: 2, travelers: 10 }], stays: [half, half], total: 2400 + 1200 };
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ trips: [trip], remaining: 1 }) });
+    }
+    const beach = body.prompt.includes("Strandurlaub");
+    const out = beach && !body.asked ? { trips: [], question: "Von wo fliegt ihr los und wie alt sind die Kinder?", options: ["Köln, Kinder 5 und 8", "Düsseldorf, Kinder 3 und 10"], remaining: 3 }
+      : beach ? { ...RESULT, remaining: 2, trips: RESULT.trips.map(x => ({ ...x, party: { adults: 2, childAges: [5, 8], infants: 0 } })) } : RESULT;
+    await r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(out) });
+  });
+  // Bildschirmfotos zur Sichtprüfung: SHOTS=<Ordner> node e2e/agent.mjs
+  const shot = async (name, w = 1280, h = 900) => {
+    if (!process.env.SHOTS) return;
+    await p.setViewportSize({ width: w, height: h }); await p.waitForTimeout(400);
+    await p.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+    await p.setViewportSize({ width: 1280, height: 900 });
+  };
+  await p.goto(URL);
+
+  // Startseite: KI-Knopf unten rechts; ohne Anmeldung nur der Hinweis mit Anmelde-Knopf
+  await (await startPage(p)).locator(".start .home-title").waitFor();
+  await shot("home");
+  await p.locator(".ai-fab").click();
+  const c = p.locator(".ai-chat");
+  await c.locator(".ai-login").waitFor();
+  if (await c.locator(".ai-bar").count()) fail("Eingabe ohne Anmeldung sichtbar");
+  await c.locator(".ai-login .btn").click();
+  // AGB: ohne Haken keine Anmeldung; Links zu AGB und Datenschutz
+  if (!(await p.locator('.login-terms a[href$="agb.html"]').count())) fail("Link zu den AGB fehlt im Anmeldefenster");
+  await p.locator(".login .btn.google").click();
+  await p.locator(".login .err", { hasText: "stimme zuerst den AGB zu" }).waitFor();
+  await p.locator(".login .test input").fill("Kira");
+  await p.locator(".login .test button").click();
+  await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
+  await until(() => p.evaluate(() => !!JSON.parse(localStorage.getItem("rk2-dir") || "{}").terms?.v), "AGB-Zustimmung im Konto");
+  if (await p.locator(".terms-gate").count()) fail("AGB-Fenster trotz Zustimmung beim Anmelden");
+  if (!(await p.locator('.foot-legal a[href$="agb.html"]').count())) fail("AGB fehlen im Fuß");
+  log("Chat unten rechts: ohne Anmeldung nur Hinweis, Anmeldung daraus; ohne AGB-Haken gesperrt, Zustimmung mit Fassung im Konto");
+  // bestehendes Konto ohne Zustimmung (z. B. vor den AGB angelegt): erst zustimmen, „Zustimmen“ erst mit Haken
+  {
+    const H = { Authorization: "Bearer owner", "Content-Type": "application/json" };
+    const users = await (await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:query`, { method: "POST", headers: H, body: "{}" })).json();
+    const kira = (users.userInfo || users.users || []).find(u => u.displayName === "Kira")?.localId;
+    let doc;
+    await until(async () => { doc = await (await fetch(`${FS}/profiles/${kira}`, { headers: H })).json(); return !!doc.fields?.data?.stringValue?.includes("terms"); }, "Zustimmung im Konto gespeichert");
+    const d = JSON.parse(doc.fields.data.stringValue);
+    delete d.terms;
+    await fetch(`${FS}/profiles/${kira}?updateMask.fieldPaths=data`, { method: "PATCH", headers: H, body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify(d) } } }) });
+    const tg = p.locator(".terms-gate");
+    await tg.waitFor({ timeout: 10000 });
+    if (!(await tg.locator(".terms-accept").isDisabled())) fail("Zustimmen ohne Haken möglich");
+    await tg.locator(".check input").check();
+    await tg.locator(".terms-accept").click();
+    await tg.waitFor({ state: "detached" });
+    await until(() => p.evaluate(() => !!JSON.parse(localStorage.getItem("rk2-dir") || "{}").terms?.v), "Zustimmung nach dem Fenster");
+    await until(async () => !!(await (await fetch(`${FS}/profiles/${kira}`, { headers: H })).json()).fields?.data?.stringValue?.includes("terms"), "Zustimmung wieder im Konto");
+    log("Bestehendes Konto ohne AGB-Zustimmung: Fenster „Nutzungsbedingungen“, Zustimmen erst mit Haken, danach gespeichert");
+  }
+
+  // Meine Daten (Auskunft, Art. 15 DSGVO): aus dem Kontomenü, als Seite und als Datei, Drucken über einen Rahmen
+  // das Kontomenü liegt auch bei offenem Chat darüber (#352)
+  await p.locator(".top .acct-btn").click();
+  await p.locator(".acct-data").click();
+  const md = p.locator(".mydata");
+  await md.locator(".mydata-sum").waitFor({ timeout: 15000 });
+  const [dl] = await Promise.all([p.waitForEvent("download"), md.locator(".mydata-json").click()]);
+  const dj = JSON.parse(await (await import("node:fs/promises")).readFile(await dl.path(), "utf8"));
+  if (dj.account?.email !== "kira@test.de" || !dj.profile?.terms?.v || !Array.isArray(dj.trips) || !dj.device?.some(e => e.key === "rk2-dir")) fail("JSON-Auskunft unvollständig: " + JSON.stringify(dj).slice(0, 300));
+  const [rp] = await Promise.all([p.context().waitForEvent("page"), md.locator(".mydata-tab").click()]);
+  await rp.waitForLoadState();
+  const rt = await rp.locator("body").innerText();
+  for (const x of ["Auskunft über deine gespeicherten Daten", "kira@test.de", "AGB zugestimmt", "Auf diesem Gerät gespeichert"]) if (!rt.includes(x)) fail("Auskunft ohne „" + x + "“");
+  if (process.env.SHOTS) await rp.screenshot({ path: `${process.env.SHOTS}/mydata.png`, fullPage: true });
+  await rp.close();
+  await md.locator(".mydata-print").click();
+  await p.locator("iframe.mydata-frame").waitFor({ state: "attached" });
+  await p.waitForTimeout(500); // Rahmen geladen (Druck ausgelöst), danach muss Esc das Fenster schließen
+  await p.keyboard.press("Escape");
+  await p.locator(".mydata").waitFor({ state: "detached", timeout: 5000 });
+  log("Meine Daten: Auskunft als Seite (Konto, AGB, Gerät), Datei mit Konto, Profil, Reisen und Browser-Einträgen, Drucken über Rahmen");
+
+  // Beispiel antippen schickt den Wunsch; Anfrage mit Anmelde-Nachweis und Reisenden
+  await c.locator(".ai-ex .chip").first().click();
+  await c.locator(".ai-card").first().waitFor();
+  const a = asked[0];
+  if (!a.auth.startsWith("Bearer ") || a.auth.length < 30) fail("kein Anmelde-Nachweis mitgeschickt");
+  if (!a.body.prompt.includes("Wochenende") || a.body.lang !== "de" || a.body.adults !== 1 || !a.body.origins.length || !/^\d{4}-\d{2}-\d{2}$/.test(a.body.today)) fail("Anfrage falsch: " + JSON.stringify(a.body));
+  if ((await c.locator(".ai-card").count()) !== 2) fail("nicht zwei Vorschläge");
+  if (!(await c.locator(".ai-foot", { hasText: "noch 4 Anfragen heute" }).count())) fail("verbleibende Anfragen fehlen");
+  const palma = c.locator(".ai-card", { hasText: "Sonne in Palma" }).first();
+  if (await palma.locator('a[href="https://booking.com/h/1"]', { hasText: "Casa Palma" }).count() !== 1 || await palma.locator('a[href="https://kiwi.com/u/x1"]').count() !== 1) fail("Links zu Unterkunft und Flug fehlen im Vorschlag");
+  log("Wunsch per Beispiel, Anfrage mit Anmeldung und Reisenden, zwei Vorschläge mit Links, 4 Anfragen übrig");
+
+  // nachschärfen: der frühere Wunsch geht als Zusammenhang mit
+  await c.locator(".ai-bar textarea").fill("lieber günstiger bitte");
+  await c.locator(".ai-bar textarea").press("Enter");
+  await until(() => asked.length === 2 && c.locator(".ai-msg.me").count().then(n => n === 2), "zweite Anfrage");
+  await until(() => c.locator(".ai-card").count().then(n => n === 4), "zweite Antwort");
+  const p2 = asked[1].body.prompt;
+  if (!p2.includes("Bisherige Wünsche") || !p2.includes("Wochenende") || !p2.includes("lieber günstiger")) fail("Zusammenhang fehlt: " + p2);
+  log("Nachschärfen im Chat mit Zusammenhang");
+  await shot("chat");
+  await shot("chat-m", 390, 844);
+
+  // von der Startseite übernehmen: neue Reise mit Ziel, Daten, Name, Flug und Unterkunft; Chat schließt
+  await c.locator(".ai-card", { hasText: "Sonne in Palma" }).last().locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
+  await shot("trip");
+  await shot("trip-m", 390, 844);
+  if (await p.locator(".ai-chat").count()) fail("Chat nicht geschlossen");
+  if (!(await p.locator("#transport .card", { hasText: "Mietwagen 3 Tage" }).count())) fail("Transport vor Ort nicht übernommen");
+  if (!(await p.locator("#attractions .card", { hasText: "Bootstour" }).count())) fail("Erlebnis nicht übernommen");
+  // Verpflegung an der Unterkunft: Halbpension von der KI, Verpflegung unter „Sonstiges“ folgt; auf der Karte änderbar
+  const board = p.locator("#stay .card", { hasText: "Casa Palma" }).locator(".board-fact select");
+  if ((await board.inputValue()) !== "half") fail("Halbpension nicht an der Unterkunft");
+  await p.locator("#misc .food-board", { hasText: "Halbpension" }).waitFor();
+  const before = await p.locator("#misc .ch-sum b").innerText();
+  await board.selectOption("all");
+  await p.locator("#misc .food-board", { hasText: "All-inclusive" }).waitFor();
+  await until(async () => (await p.locator("#misc .ch-sum b").innerText()) !== before, "Verpflegung günstiger bei All-inclusive");
+  if (process.env.SHOTS) {
+    for (const [sel, name] of [["#stay .card:has-text('Casa Palma')", "board-stay"], ["#misc .plan-card", "board-food"]]) {
+      await into(p.locator(sel).first()); await p.waitForTimeout(1200);
+      await p.locator(sel).first().screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+    }
+  }
+  const meta = await p.locator(".hero .meta").innerText();
+  if (!meta.includes("Palma") || !meta.includes("3 Nächte")) fail("Kopf: " + meta);
+  if (!(await p.locator("#flights .card", { hasText: "Sun Air" }).count())) fail("Flug nicht übernommen");
+  if (!(await p.locator("#stay .card", { hasText: "Casa Palma" }).count())) fail("Unterkunft nicht übernommen");
+  log("Vorschlag von der Startseite übernommen: neue Reise mit Flug und Unterkunft");
+
+  // zurück zur Startseite: die Reise steht unter „Deine Reisen“
+  await p.locator(".top .brand-btn").click();
+  await (await myTrips(p)).locator(".start .home-trip", { hasText: "Sonne in Palma" }).waitFor();
+  await shot("home-trips");
+  await shot("home-m", 390, 844);
+  log("Übersicht zeigt die neue Reise");
+
+  // Rückfrage: Strandurlaub mit Kindern ohne Abflugort und Alter → KI fragt nach, Antwort antippen, dann Vorschläge
+  await p.locator(".ai-fab").click();
+  const c2 = p.locator(".ai-chat");
+  await c2.locator(".ai-bar textarea").fill("Eine Woche Strandurlaub mit Kindern in den Sommerferien");
+  await c2.locator(".ai-bar textarea").press("Enter");
+  await c2.locator(".ai-msg.ai-q", { hasText: "Von wo fliegt ihr los" }).waitFor();
+  await shot("ai-q");
+  const q1 = asked.at(-1).body;
+  if (q1.asked || q1.travelersKnown !== false || q1.originsKnown !== false) fail("erste Anfrage: " + JSON.stringify(q1));
+  const cardsBefore = await c2.locator(".ai-card").count();
+  await c2.locator(".ai-opts .chip", { hasText: "Köln, Kinder 5 und 8" }).click();
+  await until(() => c2.locator(".ai-card").count().then(n => n === cardsBefore + 2), "Vorschläge nach der Antwort");
+  const q2 = asked.at(-1).body;
+  if (!q2.asked || !q2.prompt.includes("Rückfrage: Von wo fliegt ihr los") || !q2.prompt.includes("Köln, Kinder 5 und 8")) fail("Antwort ohne Zusammenhang: " + JSON.stringify(q2));
+  if (await c2.locator(".ai-opts").count()) fail("Antworten nach dem Antippen noch sichtbar");
+  if (!(await c2.locator(".ai-card").last().innerText()).includes("pro Person")) fail("pro Person für die Familie fehlt");
+  log("Rückfrage mit Antworten zum Antippen, Antwort mit Zusammenhang, danach keine zweite Rückfrage");
+  // kurze Antwort im Gespräch („Auto“) geht raus, nur der erste Wunsch braucht ein paar Worte
+  const nAsked = asked.length;
+  await c2.locator(".ai-bar textarea").fill("Auto");
+  await c2.locator(".ai-bar textarea").press("Enter");
+  await until(async () => asked.length > nAsked, "kurze Antwort nicht gesendet");
+  if (await c2.getByText("Bitte beschreib die Reise in ein paar Worten").count()) fail("kurze Antwort abgelehnt");
+  await until(() => c2.locator(".ai-card").count().then(n => n === cardsBefore + 4), "Vorschläge nach der kurzen Antwort");
+  log("Kurze Antwort im Gespräch („Auto“) wird gesendet");
+  await c2.locator(".ai-card", { hasText: "Sonne in Palma" }).last().locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
+  const who = await p.locator(".hero .meta").innerText();
+  if (!who.includes("4 Personen")) fail("Reisende aus der Antwort nicht angelegt: " + who);
+  log("Übernommen: neue Reise mit 2 Erwachsenen und 2 Kindern aus der Antwort");
+
+  // ganze Reise auf der Karte: Posten, Schätzungen mit ≈, Gesamtpreis; alle Vorschläge als Reisen anlegen
+  await p.locator(".top .brand-btn").click();
+  await p.locator(".ai-fab").click();
+  const card = p.locator(".ai-card", { hasText: "Sonne in Palma" }).last();
+  const ct = await card.innerText();
+  for (const x of ["Halbpension", "Mietwagen 3 Tage", "Bootstour", "Verpflegung", "ca."]) if (!ct.includes(x)) fail(`Karte ohne „${x}“: ${ct}`);
+  await into(card); await shot("ai-card");
+  await p.locator(".ai-all").last().click();
+  await (await startPage(p)).locator(".start .home-title").waitFor();
+  await until(async () => (await (await myTrips(p)).locator(".start .home-trip .ht-ai").count()) >= 3, "KI-Reisen gekennzeichnet");
+  await until(async () => (await (await myTrips(p)).locator(".start .home-trip", { hasText: "Lissabon" }).count()) > 0, "Lissabon angelegt");
+  await into((await myTrips(p)).locator(".start .home-h").first()); await shot("ai-home");
+  log("Karte als ganze Reise (Halbpension, Mietwagen, Bootstour, Verpflegung, Gesamtpreis); alle angelegt und mit &✈KI gekennzeichnet");
+
+  // Vorlieben: „Ich“ mit Wohnort, gesperrtes Land, Umstiege, Reisestil → gehen ohne Namen an den KI-Planer
+  await p.keyboard.press("Escape");
+  await p.locator(".top .grp-btn").click();
+  const gd = p.locator(".modal");
+  const pform = gd.locator("form", { hasText: "Vorname" });
+  await pform.locator("input").nth(0).fill("Dani");
+  await pform.locator("input").nth(1).fill("Klein");
+  await pform.locator("button").click();
+  await gd.locator('.pmore[aria-label="Details zu Dani"]').click();
+  await gd.locator(".pdet .home-in", { hasText: "Wohnort" }).locator(".home-plz").fill("41236");
+  await until(async () => (await gd.locator(".pdet .home-in", { hasText: "Wohnort" }).locator(".home-plz").inputValue()).includes("Mönchengladbach"), "Wohnort Dani");
+  // Vorlieben haben einen eigenen Knopf oben, nicht mehr bei Gruppen und Personen
+  if (await gd.locator(".prefs").count()) fail("Vorlieben noch im Dialog Gruppen und Personen");
+  await gd.locator(".modal-h .x").click();
+  await p.locator(".top .prefs-btn").click();
+  const pd = p.locator(".modal", { hasText: "Meine Vorlieben" });
+  const pe = pd.locator(".prefs").first();
+  await pe.locator("label", { hasText: "Ich bin" }).locator("select").selectOption({ label: "Dani Klein" });
+  await pe.locator('input[placeholder^="Land hinzufügen"]').fill("Türk");
+  await pe.locator(".sugg button", { hasText: "Türkei" }).click();
+  await pe.locator('[data-card="flights"] .pv-c', { hasText: "Direkt" }).click();
+  await pe.locator('[data-card="style"] .pv-c', { hasText: "Strand" }).click();
+  // Kurzfassung oben zeigt die Auswahl (#161)
+  await until(async () => { const t = await pe.locator(".pv-sum").innerText(); return t.includes("nur Direktflüge") && t.includes("Strand"); }, "Kurzfassung der Vorlieben");
+  await pd.locator(".modal-h .x").click();
+  const stored = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}"));
+  if (!stored.me || stored.prefs?.avoid?.join() !== "TR" || stored.prefs?.maxStops !== 0) fail("Vorlieben nicht gespeichert: " + JSON.stringify(stored.prefs));
+  await p.locator(".ai-fab").click();
+  const c3 = p.locator(".ai-chat");
+  const before3 = asked.length;
+  const cards3 = await c3.locator(".ai-card").count();
+  await c3.locator(".ai-bar textarea").fill("Ein langes Wochenende irgendwo in der Sonne");
+  await c3.locator(".ai-bar textarea").press("Enter");
+  await until(() => asked.length > before3, "Anfrage mit Vorlieben");
+  // Antwort abwarten, sonst ist die KI beim nächsten Auftrag noch beschäftigt (unter Last kommt sie später)
+  await until(() => c3.locator(".ai-card").count().then(n => n > cards3), "Antwort auf die Anfrage mit Vorlieben", 15000);
+  const q3 = asked.at(-1).body;
+  if (q3.prefs?.avoid?.join() !== "TR" || q3.prefs?.maxStops !== 0 || q3.prefs?.styles?.join() !== "beach") fail("Vorlieben fehlen in der Anfrage: " + JSON.stringify(q3.prefs));
+  if (q3.originsKnown === false || !q3.origins.includes("DUS")) fail("Wohnort von „Ich“ nicht genutzt: " + JSON.stringify({ o: q3.origins, k: q3.originsKnown }));
+  if (JSON.stringify(q3).includes("Dani") || JSON.stringify(q3).includes("Klein")) fail("Name in der KI-Anfrage");
+  log("Vorlieben: Ich = Dani (Mönchengladbach), Türkei gesperrt, 0 Umstiege, Strand → KI-Anfrage mit Vorlieben und Abflug ab DUS, ohne Namen");
+
+  // Kontexte: Chip zeigt „Neue Reise“, festgelegt „Vorlieben“ geht mit; erkannte Vorlieben erst nach „Übernehmen“ gespeichert
+  const chipSel = c3.locator(".ai-ctx select");
+  if (!(await chipSel.locator("option").first().innerText()).includes("Neue Reise")) fail("Kontext-Chip zeigt nicht „Neue Reise“");
+  if (await chipSel.locator("option", { hasText: "Diese Reise" }).count()) fail("„Diese Reise“ ohne offene Reise");
+  await chipSel.selectOption("prefs");
+  await c3.locator(".ai-bar textarea").fill("Wir haben jetzt einen Hund und reisen nur mit Handgepäck");
+  await c3.locator(".ai-bar textarea").press("Enter");
+  const pc = c3.locator(".ai-prefs").last();
+  await pc.waitFor();
+  if (asked.at(-1).body.focus !== "prefs") fail("gewählter Kontext fehlt in der Anfrage");
+  const pt = await pc.innerText();
+  if (!pt.includes("Haustier") || !pt.includes("nur Handgepäck")) fail("Vorschlag zeigt die Vorlieben nicht: " + pt);
+  if ((await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}").prefs?.pet))) fail("Vorlieben vor dem Übernehmen gespeichert");
+  await shot("ai-prefs");
+  await pc.locator(".ai-prefs-apply").click();
+  await pc.locator("small", { hasText: "gespeichert" }).waitFor();
+  const st2 = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir") || "{}").prefs || {});
+  if (st2.pet !== true || st2.bags !== false || st2.maxStops !== 0 || st2.avoid?.join() !== "TR") fail("Vorlieben nicht richtig übernommen: " + JSON.stringify(st2));
+  await chipSel.selectOption("");
+  log("Kontexte: Chip „Neue Reise“, Vorlieben gewählt → Vorschlag Haustier + Handgepäck, erst nach „Übernehmen“ gespeichert (Rest bleibt)");
+
+  // offene Reise: die KI kennt sie (ohne Namen), alle Änderungen eines Auftrags mit einer Rückfrage übernehmen
+  await c3.locator(".ai-head .x").click();
+  await (await myTrips(p)).locator(".start .home-trip:not(.home-cmp), .start .hc-var", { hasText: "Sonne in Palma" }).first().click();
+  await p.locator(".hero h1", { hasText: "Sonne in Palma" }).waitFor();
+  const tripName = (await p.locator(".hero h1").innerText()).trim();
+  await p.locator(".ai-fab").click();
+  const c4 = p.locator(".ai-chat");
+  await c4.locator(".ai-trip", { hasText: "Sonne in Palma" }).waitFor();
+  const before4 = asked.length;
+  await c4.locator(".ai-bar textarea").fill("Wir reisen selbst mit dem Auto an");
+  await c4.locator(".ai-bar textarea").press("Enter");
+  await c4.locator(".ai-edit", { hasText: "1 Sache" }).waitFor();
+  const q4 = asked[before4].body;
+  if (!q4.current?.items?.some(i => i.cat === "flights" && i.eur > 0) || q4.current.place !== "Palma") fail("Reise fehlt in der Anfrage: " + JSON.stringify(q4.current));
+  if (/Dani|Klein|Kira/.test(JSON.stringify(q4.current))) fail("Name in der Reise für die KI");
+  await shot("ai-edit");
+  await c4.locator(".ai-apply").click();
+  await p.locator("#transport .card", { hasText: "Anreise mit dem Auto" }).locator(".aif", { hasText: "Von der KI angepasst" }).waitFor();
+  if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Flug nicht ersetzt");
+  if (!(await p.locator("#stay .card", { hasText: "Casa Palma" }).locator(".aif", { hasText: "Von der KI vorgeschlagen" }).count())) fail("Unterkunft aus dem Vorschlag nicht markiert");
+  await shot("ai-applied");
+  if (process.env.SHOTS) {
+    const fc = p.locator("#transport .card", { hasText: "Anreise mit dem Auto" });
+    await into(fc); await p.waitForTimeout(1200);
+    await fc.screenshot({ path: `${process.env.SHOTS}/ai-flag.png` });
+  }
+  await c4.locator(".ai-undo").click();
+  await p.locator("#flights .card", { hasText: "Sun Air" }).waitFor();
+  if (await p.locator("#transport .card", { hasText: "Anreise mit dem Auto" }).count()) fail("Rückgängig hat nicht gewirkt");
+  log("Offene Reise: Anfrage mit Reise ohne Namen, eine Rückfrage, Übernehmen ersetzt den Flug (markiert), Rückgängig");
+
+  // als KI-Vergleichsreise in einem anderen Land: eigene Reise daneben, die bisherige bleibt (#416: Unterkunft nicht
+  // doppelt, der erste Stand aus dem Konto überschreibt die Änderung nicht)
+  await c4.locator(".ai-bar textarea").fill("Geht das mit dem Auto in Belgien günstiger?");
+  await c4.locator(".ai-bar textarea").press("Enter");
+  await until(() => c4.locator(".ai-variant").count().then(n => n === 1), "zweite Antwort zur Reise");
+  await c4.locator(".ai-variant").click();
+  // Variante im selben Vergleich (#428): Name bleibt, neue Reise in Brügge
+  await p.locator(".hero .meta", { hasText: "Brügge" }).waitFor();
+  const variantCmp = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").cmp);
+  if (await p.locator("#flights .card", { hasText: "Sun Air" }).count()) fail("Vergleichsreise mit Flug");
+  await p.locator(".hero .meta", { hasText: "Brügge, Belgien" }).waitFor();
+  await p.waitForTimeout(2500); // Zeit für den Abgleich mit dem Konto: er darf die Reise nicht zurücksetzen
+  if (!(await p.locator(".hero .meta").innerText()).includes("Brügge")) fail("Vergleichsreise auf den ersten Stand zurückgesetzt");
+  if ((await p.locator("#stay .card", { hasText: "Huis Brugge" }).count()) !== 1 || await p.locator("#stay .card", { hasText: "Casa Palma" }).count()) fail("Unterkunft in der Vergleichsreise nicht genau einmal ersetzt");
+  await c4.locator(".ai-head .x").click();
+  await p.locator(".top .brand-btn").click();
+  // Startseite (#429): eine Kachel für den Vergleich, je Variante eine Zeile
+  const cmpTile = (await myTrips(p)).locator(".start .home-cmp", { hasText: "Brügge" });
+  await cmpTile.waitFor().catch(async () => fail("keine Vergleichskachel: " + JSON.stringify(variantCmp) + " | " + (await p.locator(".start").innerText()).slice(0, 900).replace(/\n/g, " / ")));
+  // „Sonne in Palma“ kam mit „Alle übernehmen“ schon in einen Vergleich: die KI-Variante kommt dazu (3 Varianten)
+  const vars = await cmpTile.locator(".hc-var").allInnerTexts();
+  if (!(await cmpTile.innerText()).includes(`${vars.length} Varianten`) || vars.length !== 3) fail("Kachel: " + await cmpTile.innerText());
+  if (!vars.some(v => v.includes("Brügge")) || !vars.some(v => v.includes("Sonne in Palma"))) fail("Varianten: " + vars.join(" | "));
+  // die Reisen bleiben zusätzlich als eigene Kacheln, mit Hinweis auf den Vergleich
+  if (!(await (await myTrips(p)).locator(".start .home-trip:not(.home-cmp)", { hasText: "Brügge" }).locator(".ht-incmp").count())) fail("Variante nicht als eigene Kachel mit Hinweis auf den Vergleich");
+  await cmpTile.locator(".hc-var", { hasText: "Brügge" }).click();
+  await p.locator(".hero .meta", { hasText: "Brügge" }).waitFor();
+  await p.locator(".top .brand-btn").click();
+  await (await myTrips(p)).locator(".start .home-cmp").first().waitFor();
+  await cmpTile.waitFor();
+  log("Als KI-Vergleichsreise in Belgien angelegt (Unterkunft einmal, bleibt nach dem Hochladen), ursprüngliche Reise unverändert; Startseite: eine Kachel mit den Varianten (aus „Alle übernehmen“ und der KI-Variante), Zeile öffnet die Reise");
+
+  // große Gruppe: 10 Personen, Flug in 5 Buchungen à 2 Plätze, jede ein eigener Posten
+  await p.locator(".ai-fab").click();
+  const c5 = p.locator(".ai-chat");
+  await c5.locator(".ai-bar textarea").fill("Mannschaftsfahrt mit 10 Männern nach Mallorca");
+  await c5.locator(".ai-bar textarea").press("Enter");
+  // keine Unterkunft für alle: Rückfrage zur Aufteilung, Antwort schickt die Wahl mit
+  await c5.locator(".ai-msg.ai-q", { hasText: "Soll ich die Gruppe aufteilen?" }).waitFor();
+  await c5.locator(".ai-opts .chip", { hasText: "Dieselbe Unterkunft mehrfach" }).click();
+  await until(async () => asked.at(-1).body.stayMode === "same", "Aufteilung nicht mitgeschickt");
+  const gcard = c5.locator(".ai-card", { hasText: "Mannschaftsfahrt Cala Rajada" });
+  await gcard.waitFor();
+  if (!(await gcard.innerText()).includes("10 Pers. in 5 Buchungen à 2 Plätze")) fail("Buchungen nicht auf der Karte: " + await gcard.innerText());
+  if (await gcard.locator("li", { hasText: "Casa Palma" }).filter({ hasText: "5 Personen" }).count() !== 2) fail("zwei Unterkünfte für je 5 nicht auf der Karte: " + await gcard.innerText());
+  await gcard.locator(".btn", { hasText: "Übernehmen" }).click();
+  await p.locator(".hero h1", { hasText: "Mannschaftsfahrt" }).waitFor();
+  if (!(await p.locator(".hero .meta").innerText()).includes("10 Personen")) fail("nicht 10 Personen");
+  await until(() => p.locator("#flights .card").count().then(n => n === 5), "5 Flugposten");
+  if (!(await p.locator("#flights .card", { hasText: "(5/5)" }).count())) fail("Buchungen nicht nummeriert");
+  await until(() => p.locator("#stay .card", { hasText: "Casa Palma" }).count().then(n => n === 2), "2 Unterkunftsposten");
+  if (!(await p.locator("#stay .card", { hasText: "(2/2)" }).count())) fail("Unterkünfte nicht nummeriert");
+  // der übernommene Vorschlag liegt auch im Konto (nicht nur die leere Reise vom Anlegen)
+  const mfId = await p.evaluate(() => localStorage.getItem("rk2-current"));
+  const inDb = async () => {
+    const r = await fetch(`${FS}/trips/${mfId}`, { headers: { Authorization: "Bearer owner" } });
+    const f = (await r.json()).fields || {};
+    const d = JSON.parse(f.data?.stringValue || "{}");
+    return f.name?.stringValue === "Mannschaftsfahrt Cala Rajada" && (d.items || []).filter(i => i.cat === "flights").length === 5 && d.travelers?.length === 10;
+  };
+  await until(inDb, "Vorschlag im Konto gespeichert");
+  // auch die mit „Alle übernehmen“ angelegten Reisen: keine bleibt als leere „Reise“ im Konto
+  const uid = await p.evaluate(() => Object.keys(localStorage).find(k => k.startsWith("rk2-cloud-seen:")).slice("rk2-cloud-seen:".length));
+  const names = async () => {
+    const r = await fetch(`${FS}/trips?pageSize=300`, { headers: { Authorization: "Bearer owner" } });
+    return ((await r.json()).documents || []).filter(d => d.fields?.owner?.stringValue === uid).map(d => d.fields?.name?.stringValue);
+  };
+  await until(async () => !(await names()).includes("Reise"), "alle KI-Reisen im Konto gespeichert, nicht leer");
+  log("Mannschaftsfahrt: Rückfrage zur Aufteilung, 10 Personen, Flug in 5 Buchungen à 2 Plätze und 2 Unterkünfte als eigene Posten");
+
+  // Startseite: sortieren (Preis, zuletzt bearbeitet, Land), Liste statt Kacheln, Wahl bleibt nach dem Neuladen
+  await p.locator(".top .brand-btn").click();
+  // erst warten, bis die hochgeladene Mannschaftsfahrt in der Liste der Startseite steht (Kontoliste kennt sie kurz später)
+  await until(async () => (await myTrips(p)).locator(".home-trip", { hasText: "Mannschaftsfahrt" }).count().then(n => n > 0), "Mannschaftsfahrt in der Liste der Startseite");
+  await (await myTrips(p)).locator(".home-sort .chip", { hasText: "Preis" }).click();
+  const prices = await (await myTrips(p)).locator(".home-trips:not(:has(.home-cmp))").first().locator(".ht-total").allInnerTexts();
+  const num = s => Number(s.replace(/·[\s\S]*$/, "").replace(/[^\d,]/g, "").replace(",", "."));
+  if (prices.length < 2 || prices.some((x, i) => i && num(x) < num(prices[i - 1]))) fail("nicht nach Preis sortiert: " + prices);
+  await (await myTrips(p)).locator(".home-sort .chip", { hasText: "Zuletzt bearbeitet" }).click();
+  await (await myTrips(p)).locator(".home-h", { hasText: "Zuletzt bearbeitet" }).waitFor();
+  const first = await (await myTrips(p)).locator(".home-trip:not(.home-cmp)").first().innerText();
+  if (!first.includes("Mannschaftsfahrt")) {
+    console.log("Diagnose zuletzt bearbeitet:", await p.evaluate(() => localStorage.getItem("rk2-edited")), "idx", await p.evaluate(() => [...document.querySelectorAll(".home-trip:not(.home-cmp)")].map(x => x.innerText.split("\n")[0]).join(" | ")));
+    fail("zuletzt bearbeitete nicht oben: " + first);
+  }
+  await (await myTrips(p)).locator(".home-sort .chip", { hasText: "Land" }).click();
+  await (await myTrips(p)).locator(".home-h", { hasText: "Spanien" }).waitFor();
+  await (await myTrips(p)).locator(".home-view .chip", { hasText: "Liste" }).click();
+  await (await myTrips(p)).locator(".home-trips.as-list .home-row").first().waitFor();
+  await shot("home-list"); await shot("home-list-m", 390, 844);
+  await reloadHome(p);
+  await (await myTrips(p)).locator(".home-trips.as-list .home-row").first().waitFor();
+  if (!(await (await myTrips(p)).locator(".home-sort .chip.on", { hasText: "Land" }).count())) fail("Sortierung nicht gemerkt");
+  log("Startseite: nach Preis, zuletzt bearbeitet und Land sortiert, Liste statt Kacheln, gemerkt");
+
+  // Aufräumen: unberührter Entwurf verschwindet still, Reise ohne Kosten nach Rückfrage
+  await p.evaluate(() => {
+    const idx = JSON.parse(localStorage.getItem("rk2-index") || "[]");
+    const base = { country: "", travelers: [{ id: "x", name: "Reh", household: "Reh", placeholder: true }], items: [], tiers: {}, settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 } } };
+    localStorage.setItem("rk2-t:leer1", JSON.stringify({ ...base, id: "leer1", name: "", autoName: true, place: "" }));
+    localStorage.setItem("rk2-t:idee1", JSON.stringify({ ...base, id: "idee1", name: "Idee Lissabon", place: "Lissabon", from: "2027-09-01", to: "2027-09-05" }));
+    localStorage.setItem("rk2-t:leer2", JSON.stringify({ ...base, id: "leer2", name: "Irgendwas", place: "" }));
+    idx.push({ id: "leer1", name: "", place: "" }, { id: "idee1", name: "Idee Lissabon", place: "Lissabon", from: "2027-09-01", to: "2027-09-05" }, { id: "leer2", name: "Irgendwas", place: "" });
+    localStorage.setItem("rk2-index", JSON.stringify(idx));
+  });
+  await reloadHome(p);
+  await until(() => p.evaluate(() => localStorage.getItem("rk2-t:leer1") === null), "unberührter Entwurf gelöscht");
+  // nur leere Reisen (ohne Ort, Daten und Kosten) aufräumen; „Idee Lissabon“ hat Ort und Daten und bleibt
+  let asked2 = "";
+  autoAsk(p, { once: true, on: m => { asked2 = m; } });
+  await (await myTrips(p)).locator(".home-clean", { hasText: "1 Reise" }).click();
+  await until(async () => (await myTrips(p)).locator(".home-row", { hasText: "Irgendwas" }).count().then(n => n === 0), "leere Reise aufgeräumt");
+  if (!asked2.includes("Irgendwas") || asked2.includes("Idee Lissabon")) fail("Rückfrage: " + asked2);
+  if (!(await (await myTrips(p)).locator(".home-row", { hasText: "Idee Lissabon" }).count())) fail("Idee Lissabon weg");
+  if (!(await (await myTrips(p)).locator(".home-row", { hasText: "Mannschaftsfahrt" }).count())) fail("Reise mit Kosten weg");
+  log("Aufräumen: unberührter Entwurf still gelöscht; Reisen mit Ort oder Daten (auch ohne Kosten) bleiben");
+
+  // Familien mit eigenen Zeiten (#230, #226): „Alle übernehmen“ legt Familien mit Zeiten an, Preis wie in der Vorschau
+  if (await p.locator(".top .brand-btn").isVisible()) await p.locator(".top .brand-btn").click();
+  await p.locator(".start").waitFor();
+  const c6 = p.locator(".ai-chat");
+  await until(async () => { if (!(await c6.locator(".ai-bar textarea").isVisible())) await p.locator(".ai-fab").click(); return c6.locator(".ai-bar textarea").isVisible(); }, "KI-Fenster offen");
+  await c6.locator(".ai-bar textarea").fill("Familienreise mit Oma nach Mallorca, Oma kommt erst später");
+  await c6.locator(".ai-bar textarea").press("Enter");
+  const fcard = c6.locator(".ai-card", { hasText: "Palma mit Oma" });
+  await fcard.waitFor();
+  const ftxt = await fcard.innerText();
+  if (!ftxt.includes("Familie 07.05.–14.05.") || !ftxt.includes("Oma 10.05.–14.05.")) fail("Familien nicht auf der Karte: " + ftxt);
+  const shown = await fcard.locator("footer .num").innerText();
+  await c6.locator(".ai-all").last().click();
+  // „Alle übernehmen“ (#428): ein Vergleich, Zeilen nach dem Namen des Vorschlags
+  await (await myTrips(p)).locator(".home-cmp .hc-var", { hasText: "Palma mit Oma" }).first().click();
+  await p.locator(".hero h1", { hasText: "Palma mit Oma" }).waitFor();
+  if (!(await p.locator(".hero .meta").innerText()).includes("4 Personen")) fail("nicht 4 Personen: " + await p.locator(".hero .meta").innerText());
+  const ftl = p.locator(".tl-card");
+  await until(async () => (await ftl.locator(".tl-row", { hasText: "Oma" }).innerText().catch(() => "")).includes("10.05. – 14.05. · 4 Nächte"), "Oma in der Zeitleiste");
+  await until(() => p.locator("#flights .card").count().then(n => n === 2), "zwei Flugposten");
+  await until(async () => (await p.locator(".hero").innerText()).includes(shown), `Gesamtpreis wie in der Vorschau (${shown})`);
+  log(`Familien mit eigenen Zeiten: „Alle übernehmen“ mit Familie (07.–14.05.) und Oma (10.–14.05.), 4 Personen, Flug je Familie, Gesamt wie in der Vorschau (${shown})`);
+
+  // „Zu einem Event“ direkt nach dem Laden, das Konto ist noch nicht da: Kommt es danach, bleibt die neue Reise offen
+  // (früher wurde sie gegen die erste Konto-Reise getauscht und der Event-Plan landete dort)
+  let release = () => {};
+  const gate = new Promise(r => (release = r));
+  await p.route("**/assets/firebase-*.js", async r => { await gate; await r.continue(); });
+  await reloadHome(p);
+  await (await startPage(p)).locator(".start .home-event").click();
+  await p.locator(".modal[aria-label='Reise zu einem Event']").waitFor();
+  release();
+  await p.locator(".top .acct-btn").waitFor({ timeout: 15000 });
+  await p.waitForTimeout(1500);
+  const opened = await p.locator(".top .tm-name").innerText();
+  if (opened !== "Neue Reise") fail("neue Reise gegen Konto-Reise getauscht: " + opened);
+  await p.unroute("**/assets/firebase-*.js");
+  log("Zu einem Event direkt nach dem Laden: neue Reise bleibt offen, auch wenn das Konto erst danach da ist");
+
+  await p.keyboard.press("Escape");
+  // Vorlieben einer Gruppe, angemeldet und in einem zweiten Fenster offen: langsam tippen und auswählen,
+  // nichts springt zurück (beide Fenster gleichen über das Konto ab und dürfen sich nicht gegenseitig überschreiben)
+  const w2 = await open({ name: "zweites Fenster", data: true });
+  await w2.goto(URL);
+  await w2.locator(".top .tm-btn", { hasText: "Anmelden" }).click();
+  await w2.locator(".login .test input").fill("Kira");
+  await w2.locator(".login .test button").click();
+  await w2.locator(".top .acct-btn").waitFor({ timeout: 15000 });
+  await p.locator(".top .grp-btn").click();
+  const gd2 = p.locator(".modal");
+  await gd2.locator("label", { hasText: "Neue Gruppe" }).locator("input").fill("Familie Klein");
+  await gd2.locator("form", { hasText: "Neue Gruppe" }).locator("button").click();
+  await gd2.locator(".modal-h .x").click();
+  await p.locator(".top .prefs-btn").click();
+  const pd2 = p.locator(".modal", { hasText: "Meine Vorlieben" });
+  await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).click();
+  const ge = pd2.locator(".pv.group");
+  const apIn = ge.locator('input[aria-label="Bevorzugte Abflughäfen"]');
+  // Datenbank langsam wie im echten Netz: das Echo des Speicherns kommt, während schon weitergetippt wird
+  const slow = async r => { await new Promise(res => setTimeout(res, 700)); await r.continue().catch(() => {}); };
+  await p.route("**/google.firestore.v1.Firestore/**", slow);
+  await w2.route("**/google.firestore.v1.Firestore/**", slow);
+  for (const ch of "DUS, CGN") { await apIn.press(ch === " " ? "Space" : ch); await p.waitForTimeout(350); }
+  await ge.locator('[data-card="stay"] .pv-c', { hasText: "Halbpension" }).click();
+  await p.waitForTimeout(4000);
+  await p.unroute("**/google.firestore.v1.Firestore/**", slow);
+  if ((await apIn.inputValue()) !== "DUS, CGN") fail("Eingabe in den Gruppen-Vorlieben zurückgesprungen: " + await apIn.inputValue());
+  if (!(await ge.locator('[data-card="stay"] .pv-c.chg', { hasText: "Halbpension" }).count())) fail("Verpflegung zurückgesprungen");
+  const gp = await p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs);
+  if (gp?.airports?.join() !== "DUS,CGN" || gp?.board !== "half") fail("Gruppen-Vorlieben nicht gespeichert: " + JSON.stringify(gp));
+  const gp2 = await w2.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs);
+  if (gp2?.board !== "half") fail("zweites Fenster hat die Gruppen-Vorlieben nicht: " + JSON.stringify(gp2));
+  await w2.close();
+  // abweichend von meinen (#161): Zähler am Reiter und an der Karte, Halbpension zurück auf „wie meine“
+  if (!(await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).innerText()).includes("2 abweichend")) fail("Zähler am Reiter: " + await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).innerText());
+  if (!(await ge.locator('[data-card="stay"] .pv-badge').innerText()).includes("1 abweichend")) fail("Zähler an der Karte Unterkunft fehlt");
+  await ge.locator('[data-card="stay"] .pv-reset').click();
+  await until(() => p.evaluate(() => JSON.parse(localStorage.getItem("rk2-dir")).groups.find(g => g.name === "Familie Klein")?.prefs?.board === undefined), "Verpflegung wie meine");
+  if (await ge.locator('[data-card="stay"] .pv-badge').count()) fail("Zähler an der Karte nach dem Zurücksetzen");
+  if (!(await pd2.locator(".pv-tab", { hasText: "Familie Klein" }).innerText()).includes("1 abweichend")) fail("Zähler am Reiter nach dem Zurücksetzen");
+  await pd2.locator(".modal-h .x").click();
+  log("Gruppen-Vorlieben angemeldet, zweites Fenster offen: langsam getippt und Halbpension gewählt, nichts springt zurück, gespeichert; Zähler „abweichend“, Halbpension zurück auf „wie meine“");
+
+  // dauert es länger: Wartezeit läuft sichtbar mit (statt „bis zu einer Minute“)
+  if (await p.locator(".ai-fab").count()) await p.locator(".ai-fab").click();
+  const cw = p.locator(".ai-chat");
+  await cw.locator(".ai-bar textarea").fill("Bitte langsam: ein Wochenende am Meer");
+  await cw.locator(".ai-bar textarea").press("Enter");
+  await cw.locator(".ai-busy", { hasText: "ein paar Minuten" }).waitFor();
+  await cw.locator(".ai-busy .ai-wait", { hasText: /^0:0[5-9]$/ }).waitFor({ timeout: 8000 });
+  await cw.locator(".ai-busy").waitFor({ state: "detached", timeout: 10000 });
+  log("Längere Antwort: Hinweis „ein paar Minuten“, Wartezeit läuft mit");
+
+  // im Hintergrund: Fenster schließen und weiterarbeiten, der Knopf zeigt den Stand und meldet das Ergebnis
+  await cw.locator(".ai-bar textarea").fill("Bitte langsam: noch ein Wochenende");
+  await cw.locator(".ai-bar textarea").press("Enter");
+  await cw.locator(".ai-busy .ai-cancel").waitFor();
+  await cw.locator(".ai-head .x").click();
+  await p.locator(".ai-fab.working", { hasText: "KI arbeitet" }).waitFor();
+  await p.locator(".top .brand-btn").click({ timeout: 3000 }).catch(() => {});
+  await (await startPage(p)).locator(".start .home-title").waitFor();
+  await p.locator(".ai-note", { hasText: "Die KI ist fertig" }).waitFor({ timeout: 12000 });
+  if (!(await p.locator(".ai-fab.unread").count())) fail("Knopf zeigt das Ergebnis nicht an");
+  await p.locator(".ai-note").click();
+  await p.locator(".ai-chat .ai-card").last().waitFor();
+  if (await p.locator(".ai-note").count()) fail("Meldung bleibt nach dem Öffnen");
+  log("Im Hintergrund: Fenster zu, weitergearbeitet, „Die KI ist fertig“ am Knopf, Klick öffnet das Ergebnis");
+
+  // langsames Netz: neue Reise wird ins Konto hochgeladen, während man sie schon umbenennt → der Name kommt im Konto an
+  await p.keyboard.press("Escape");
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  const slow2 = async r => { await new Promise(res => setTimeout(res, 1500)); await r.continue().catch(() => {}); };
+  await p.route("**/google.firestore.v1.Firestore/**", slow2);
+  if (await p.locator(".top .brand-btn").count()) await p.locator(".top .brand-btn").click();
+  await (await startPage(p)).locator(".start .home-new").click();
+  await quickTrip(p);
+  const h1 = p.locator(".hero h1");
+  await h1.click();
+  await p.keyboard.press("ControlOrMeta+a");
+  await p.keyboard.type("Langsam-Test");
+  await p.keyboard.press("Enter");
+  await p.waitForTimeout(6000);
+  await p.unroute("**/google.firestore.v1.Firestore/**", slow2);
+  await p.waitForTimeout(2500);
+  // Kopie auf dem Gerät weg, damit nach dem Neuladen nur zählt, was im Konto steht
+  await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("rk2-t:")) localStorage.removeItem(k); });
+  await reloadHome(p);
+  await until(async () => (await myTrips(p)).locator(".start .home-trip, .start .home-row", { hasText: "Langsam-Test" }).count().then(n => n > 0), "Name im Konto angekommen", 15000);
+  log("Langsames Netz: Reise während des Hochladens umbenannt, Name steht danach im Konto");
+});

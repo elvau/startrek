@@ -1,0 +1,159 @@
+/*
+ * Konto einrichten (#160, #330) gegen die Firebase-Emulatoren: ohne Konto kein Start von selbst (erst ausprobieren),
+ * von Hand über die Vorlieben; nach der Anmeldung einmal von selbst, danach über „Ersteinrichtung neu starten“; KI-Text (Such-Dienst gemockt) füllt vor, sensible Angaben direkt, gespeichert;
+ * danach persönliche Hinweise (#302) unter „Wichtiges“.
+ */
+import { test, fail, log, until, publicFile, reply, URL, myTrips, login } from "../lib/konto.mjs";
+
+/** eigener Browser; der Assistent darf von selbst starten (automatisierte Browser nur auf Wunsch) */
+const page = (open, name) => open({ name, data: true, init: () => localStorage.setItem("rk2-setup-auto", "1") });
+
+test("ohne Konto: kein Start von selbst, über die Vorlieben ohne KI und ohne sensible Felder", async ({ open }) => {
+  const a = await page(open, "ohne Konto");
+  await a.goto(URL);
+  await a.waitForTimeout(2500); // Zeit, in der der Assistent von selbst starten würde
+  if (await a.locator(".wz").count()) fail("Assistent startet ohne Konto von selbst");
+  await a.locator(".top .prefs-btn").click();
+  await a.locator(".pv-restart .linkbtn").click();
+  await a.locator(".wz").waitFor({ timeout: 15000 });
+  if (await a.locator(".wz-ai").count()) fail("KI ohne Konto angeboten");
+  if (await a.evaluate(() => getComputedStyle(document.documentElement).overflowY) !== "hidden") fail("Hintergrund scrollt hinter dem Assistenten");
+  await a.locator(".wz-manual").click();
+  if (!(await a.locator(".wz-b", { hasText: "nur mit Konto" }).count())) fail("Hinweis auf sensible Felder nur mit Konto fehlt");
+  if (await a.locator(".wz-gender").count()) fail("Geschlecht ohne Konto abgefragt");
+  // Abflughäfen: die zwei nächsten zum Wohnort sind vorausgewählt, weitere als Vorschlag
+  // Wohnort je Land (#163): Österreich mit PLZ aus GeoNames, dann zurück nach Deutschland
+  await a.locator(".wz-home .home-cc").selectOption("AT");
+  await a.locator(".wz-home .home-plz").fill("1010");
+  await until(async () => (await a.locator(".wz-home .home-plz").inputValue()) === "1010 Wien, Innere Stadt", "Wohnort Wien zur österreichischen PLZ");
+  if (!(await a.locator(".wz-home .home-src").textContent()).includes("GeoNames")) fail("Quelle der Postleitzahlen fehlt");
+  await a.locator(".wz-home .home-cc").selectOption("DE");
+  await a.locator(".wz-home .home-plz").fill("40210");
+  await until(async () => (await a.locator(".wz-home .home-plz").inputValue()).includes("Düsseldorf"), "Wohnort zur PLZ");
+  for (let i = 0; i < 3; i++) await a.locator(".wz-next").click();
+  await until(async () => (await a.locator(".wz-aps .chip.on").count()) === 2, "zwei Abflughäfen vorausgewählt");
+  const onAps = await a.locator(".wz-aps .chip.on").allTextContents();
+  if (!onAps.includes("DUS") || (await a.locator(".wz-aps .chip").count()) < 3) fail("Vorauswahl Abflughäfen: " + onAps);
+  await a.locator(".wz .x").click();
+  await a.reload();
+  await a.waitForTimeout(2500); // wie oben: er darf nicht starten
+  if (await a.locator(".wz").count()) fail("Assistent startet ohne Konto von selbst");
+  log("ohne Konto: kein Start von selbst, über die Vorlieben erreichbar; Abflughäfen am Wohnort vorausgewählt");
+});
+
+test("angemeldet: Start von selbst, KI-Text füllt vor, sensible Angaben nur im Konto, danach Hinweise „Nur für dich“", async ({ open }) => {
+  const b = await page(open, "angemeldet");
+  const asked = [];
+  await b.route("https://flights.test/setup", async r => {
+    if (r.request().method() === "OPTIONS") return reply(r);
+    asked.push({ auth: r.request().headers()["authorization"] || "", body: JSON.parse(r.request().postData()) });
+    await reply(r, {
+      fields: { adults: 2, childAges: [6], license: "gt5", creditCard: true, car: { seats: 5, fuel: "diesel" }, styles: ["beach"], stayType: "whole",
+        board: "half", airports: ["DUS"], holidays: "NW", nightsMin: 10, nightsMax: 14, pet: true, gender: "f", name: "Alex" }, remaining: 4 });
+  });
+  await b.goto(URL);
+  await b.waitForTimeout(1500); // vor der Anmeldung darf er nicht starten
+  if (await b.locator(".wz").count()) fail("Assistent startet vor der Anmeldung");
+  await b.locator(".top .acct .tm-btn", { hasText: "Anmelden" }).click();
+  await login(b, "Alex");
+  await b.locator(".wz .wz-text").waitFor({ timeout: 15000 });
+  await b.locator(".wz-text").fill("Wir sind zu dritt, Kind 6, ab Düsseldorf, Ferienwohnung am Strand, Halbpension, Sommerferien NRW, 10–14 Nächte, mit Hund. Diesel, 5 Sitze.");
+  await b.locator(".wz-ai-go").click();
+  await b.locator(".wz-b[data-step=me]").waitFor();
+  if (asked.length !== 1 || !asked[0].auth.startsWith("Bearer ") || Object.keys(asked[0].body).join() !== "text") fail("Anfrage an den Such-Dienst falsch: " + JSON.stringify(asked));
+  if (!(await b.locator(".wz-note").textContent()).includes("vorbefüllt")) fail("Hinweis auf Vorbefüllung fehlt");
+  // Geschlecht aus der KI-Antwort wird nicht übernommen
+  if (await b.locator(".wz-gender .chip.on", { hasText: "weiblich" }).count()) fail("Geschlecht aus der KI übernommen");
+  // Benutzername (#650): Vorschlag, Hinweis „öffentlich“, prüfen und speichern
+  const un = b.locator(".wz-un .un-in");
+  if (!(await un.inputValue()).match(/^\p{L}+\d{2}$/u)) fail("Vorschlag für den Benutzernamen fehlt: " + (await un.inputValue()));
+  if (!(await b.locator(".wz-un .un-hint").innerText()).includes("öffentlich")) fail("Hinweis „öffentlich sichtbar“ fehlt");
+  await un.fill("ab");
+  await b.locator(".wz-un .un-st", { hasText: "Mindestens 3 Zeichen" }).waitFor();
+  await un.fill("Alex_Klein");
+  await b.locator(".wz-un .un-st", { hasText: "Frei" }).waitFor({ timeout: 10000 });
+  await b.locator(".wz-un .un-save").click();
+  await b.locator(".wz-un .un-st", { hasText: "Gespeichert" }).waitFor({ timeout: 10000 });
+  log("Benutzername: Vorschlag, Hinweis öffentlich, zu kurz abgelehnt, „Alex_Klein“ frei und gespeichert");
+  await b.locator(".wz label", { hasText: "Vorname" }).locator("input").fill("Alex");
+  await b.locator(".wz label", { hasText: "Nachname" }).locator("input").fill("Klein");
+  await b.locator(".wz .bd-d").selectOption("1");
+  await b.locator(".wz .bd-m").selectOption("6");
+  await b.locator(".wz .bd-y").fill("1990");
+  await b.locator(".wz-home .home-plz").fill("40210");
+  await until(async () => (await b.locator(".wz-home .home-plz").inputValue()).includes("Düsseldorf"), "Wohnort zur PLZ");
+  await b.locator(".wz-nat").selectOption("PL");
+  await b.locator(".wz-gender .chip", { hasText: "divers" }).click();
+  await b.locator(".wz-next").click();
+  if ((await b.locator(".wz-lic .chip.on").textContent()).trim() !== "über 5 Jahre") fail("Führerschein nicht aus dem Text");
+  if (!(await b.locator(".wz-fuel .chip.on").textContent()).includes("Diesel")) fail("Antrieb nicht aus dem Text");
+  await b.locator(".wz-next").click();
+  const names = b.locator(".wz-pfirst");
+  if ((await names.count()) !== 2) fail("Mitreisende aus dem Text fehlen: " + (await names.count()));
+  await names.nth(0).fill("Sam");
+  await names.nth(1).fill("Mia");
+  if ((await b.locator(".wz-group").inputValue()) !== "Familie") fail("Gruppe nicht vorbelegt");
+  await b.locator(".wz-next").click();
+  if (!(await b.locator(".wz .chip.on", { hasText: "Strand" }).count())) fail("Reisestil nicht aus dem Text");
+  // Abflughafen aus dem Text bleibt allein gewählt, ein Vorschlag in der Nähe kommt per Antippen dazu
+  if ((await b.locator(".wz-aps .chip.on").allTextContents()).join() !== "DUS") fail("Abflughafen nicht aus dem Text");
+  await b.locator(".wz-aps .chip", { hasText: "CGN" }).click();
+  await b.locator(".wz-skip").click();
+  if ((await b.locator(".wz-hol .hol-region").inputValue()) !== "DE-NW") fail("Ferien nicht aus dem Text");
+  // Ferien je Land (#163): Österreich, Wien
+  await b.locator(".wz-hol .hol-cc").selectOption("AT");
+  await b.locator(".wz-hol .hol-region").selectOption("AT-WI");
+  await b.locator(".wz-next").click();
+  if (!(await b.locator(".wz-pet").isChecked())) fail("Haustier nicht aus dem Text");
+  await b.locator(".wz-next").click();
+  const sum = await b.locator(".wz-sum").textContent();
+  for (const x of ["Alex Klein", "Polen", "40210 Düsseldorf", "über 5 Jahre", "Familie", "Sam", "Mia", "Strand", "Österreich · Wien", "Haustier"]) if (!sum.includes(x)) fail(`Zusammenfassung ohne „${x}“: ${sum}`);
+  await b.locator(".wz-done").click();
+  await until(async () => !(await b.locator(".wz").count()), "Assistent zu");
+  log("angemeldet: KI-Text vorbefüllt, sensible Angaben direkt, Zusammenfassung stimmt");
+
+  // gespeichert: Personen, Gruppe, Vorlieben im Verzeichnis; Geschlecht und Staatsangehörigkeit nicht im Browser
+  const dirJson = await b.evaluate(() => localStorage.getItem("rk2-dir") || "");
+  const d = JSON.parse(dirJson);
+  if (d.people.map(p => p.first).join() !== "Alex,Sam,Mia" || d.groups[0]?.name !== "Familie" || d.groups[0].memberIds.length !== 3) fail("Verzeichnis falsch: " + dirJson);
+  if (d.people[0].birth !== "1990-06-01") fail("Geburtsdatum falsch: " + d.people[0].birth);
+  if (!d.prefs?.styles?.includes("beach") || !d.prefs.pet || !d.setup || d.prefs.airports?.join() !== "DUS,CGN") fail("Vorlieben nicht gespeichert: " + JSON.stringify(d.prefs));
+  const store = await b.evaluate(() => JSON.stringify(Object.fromEntries(Object.entries(localStorage))));
+  if (/gender|nats|\\"PL\\"|lgbtq|divers/.test(store)) fail("sensible Angaben im Browser-Speicher");
+  await b.waitForTimeout(2000);
+  // neu laden: kein zweiter Start von selbst; „Ersteinrichtung neu starten“ von vorn, vorbefüllt aus dem Konto
+  await b.reload();
+  await b.waitForTimeout(2500); // nach der Einrichtung darf er nicht noch einmal starten
+  if (await b.locator(".wz").count()) fail("Assistent startet nach der Einrichtung erneut");
+  await b.locator(".top .acct-btn").click();
+  await b.locator(".tm-act.acct-setup").click();
+  await b.locator(".wz-manual").click();
+  await until(async () => (await b.locator(".wz-gender .chip.on").count()) === 1 && (await b.locator(".wz-gender .chip.on").textContent()).includes("divers"), "Geschlecht aus dem Konto");
+  if (!(await b.locator(".wz-b .chip.on", { hasText: "Polen" }).count())) fail("Staatsangehörigkeit nicht aus dem Konto");
+  if ((await b.locator(".wz label", { hasText: "Vorname" }).locator("input").inputValue()) !== "Alex") fail("Name nicht wieder im Entwurf");
+  log("kein zweiter Start; neu starten von vorn, Geschlecht und Staatsangehörigkeit aus dem Konto (travelDocs) wieder da");
+
+  // 3. „Nur für dich“ (#302): divers → Hinweis zum Passeintrag „X“ für Ägypten, nur im Popup, ohne „gelesen“, nichts in der Reise
+  await b.locator(".wz .x").click();
+  await b.route("**/hinweise.json", r => r.fulfill({ path: publicFile("hinweise.json") }));
+  await b.evaluate(id => {
+    const t = { id: "eg", name: "Kairo", place: "Kairo", country: "Ägypten", from: "2027-03-01", to: "2027-03-08", tiers: {}, households: {}, items: [],
+      settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 }, travelers: [{ id: "a", name: "Alex", household: "Alex", personId: id }] };
+    localStorage.setItem("rk2-t:eg", JSON.stringify(t));
+    const ix = JSON.parse(localStorage.getItem("rk2-index") || "[]");
+    localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "eg", name: t.name, place: t.place, from: t.from, to: t.to, people: 1 }]));
+  }, d.people[0].id);
+  await b.reload();
+  await (await myTrips(b)).locator(".start .home-trip", { hasText: "Kairo" }).first().click();
+  await b.locator(".hero h1").waitFor();
+  await b.locator(".top .imp-btn").click();
+  const own = b.locator(".modal .imp [data-personal]");
+  await own.locator("[data-pers=x]").waitFor({ timeout: 15000 });
+  const ownText = await own.innerText();
+  if (!ownText.includes("Ägypten") || !ownText.includes("FCDO")) fail("Hinweis „X“ ohne Land bzw. Quelle: " + ownText);
+  if (await own.locator("[data-pers=lgbt], [data-pers=women]").count()) fail("Hinweise ohne passende Angaben");
+  if (await own.locator(".imp-persons").count()) fail("persönliche Hinweise mit „gelesen“");
+  const saved = await b.evaluate(() => Object.entries(localStorage).filter(([k]) => k.startsWith("rk2-")).map(([, v]) => v).join());
+  if (/xAny|pers\.|divers/.test(saved)) fail("persönliche Hinweise im Browser-Speicher bzw. in der Reise");
+  log("„Nur für dich“: Hinweis zum Passeintrag „X“ aus dem Konto, nur im Popup, nichts in der Reise");
+});

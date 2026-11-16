@@ -47,6 +47,8 @@ import { partnerOn } from "../../app/src/lib/partner";
 import { parseRouteQuery, routeOrs, type RoadResult } from "../../app/src/lib/road/ors";
 
 interface Env extends FlightEnv, StayEnv, EventEnv, ActivityEnv, BugEnv, UsageEnv, LimitEnv, KeyEnv, StoreEnv, KiEnv, CatalogEnv {
+  /** Commit, aus dem GitHub den Dienst veröffentlicht hat (wrangler deploy --var), für /health */
+  STAND?: string;
   /** KI-Konnektor: Suchen pro Schlüssel und Tag (Standard 50) */
   MCP_DAILY?: string;
   /** erlaubte Herkünfte, kommagetrennt */
@@ -133,7 +135,7 @@ async function handle(req: Request, env: Env, ctx: ExecutionContext): Promise<Re
 
     if (url.pathname === "/" || url.pathname === "/health") {
       // partner: ob Partner-Links an sind (die App kennzeichnet sie dann und hängt die Kennung an eigene Links)
-      return json(healthBody(env), 200, h);
+      return json(healthBody(env, pkg.version), 200, h);
     }
 
     // Suchen: höchstens so viele pro IP und Minute bzw. Stunde (schützt die Kontingente der Anbieter)

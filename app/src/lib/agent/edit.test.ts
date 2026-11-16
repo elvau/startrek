@@ -156,6 +156,13 @@ describe("KI zur offenen Reise", () => {
     expect(st.every(i => i.ai?.kind === "suggested")).toBe(true);
   });
 
+  it("ungeprüfte Kriterien (#676): Unterkunft „bitte prüfen“ mit Grund", () => {
+    const t: Trip = { ...trip(), items: [] };
+    const q: StayQuery = { place: "Bodenmais", checkin: "2026-11-13", checkout: "2026-11-15", adults: 2, childAges: [8, 5], rooms: 1, type: "hotel", currency: "EUR" };
+    takeAgentTrip(t, { title: "Bayerwald", summary: "", place: "Bodenmais", from: "2026-11-13", to: "2026-11-15", total: 0, stay: stay("s1", 400), stayQuery: q, unverified: ["Wasserrutsche"] });
+    expect(t.items.find(i => i.cat === "stay")).toMatchObject({ check: true, checkWhy: ["Wasserrutsche"] });
+  });
+
   it("Änderung mit aufgeteiltem Flug: erste Buchung ersetzt den alten Flug, die weiteren direkt dahinter", () => {
     const t = trip();
     applyEdit(t, { reply: "", flights: [{ offer: flight("f1", 100), seats: 1, travelers: 2, replaces: "fl" }] });

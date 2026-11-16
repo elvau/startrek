@@ -1,0 +1,342 @@
+/*
+ * Reise zu einem Event: Such-Dienst nachgestellt, Vorschläge prüfen, einen übernehmen.
+ */
+import { test, fail, log, soon, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage } from "../lib/test.mjs";
+
+const SOURCES = [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 2, ms: 900 }];
+const leg = (from, to, dep, arr) => ({ from, to, dep, arr, minutes: 75, stops: 0, route: [from, to], carriers: ["Test Air"], flights: ["TA1"] });
+
+/** je Anfrage: ein früher Flug (passt) und ein günstigerer, der erst mittags landet (passt nur ab Vortag) */
+const plusDays = (d, n) => new Date(Date.parse(d + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+function flights(q0) {
+  // flexibel (eigener Zeitraum): hin am Tag nach dem frühesten, zurück am Tag vor dem spätesten
+  const q = q0.latest ? { ...q0, depart: plusDays(q0.depart, 1), ret: plusDays(q0.latest, -1) } : q0;
+  const from = q.fromAirports[0], to = q.toAirports[0];
+  const back = q.depart === q.ret ? ["21:30", "22:45"] : ["18:00", "19:15"];
+  return {
+    offers: [
+      { id: `early${q.depart}${q.ret}`, source: "kiwi", sourceName: "Kiwi.com", price: 400, currency: "EUR", url: "https://kiwi.com/u/early",
+        out: leg(from, to, `${q.depart}T07:00:00`, `${q.depart}T08:15:00`), back: leg(to, from, `${q.ret}T${back[0]}:00`, `${q.ret}T${back[1]}:00`) },
+      { id: `late${q.depart}${q.ret}`, source: "kiwi", sourceName: "Kiwi.com", price: 250, currency: "EUR", url: "https://kiwi.com/u/late",
+        out: leg(from, to, `${q.depart}T12:00:00`, `${q.depart}T13:15:00`), back: leg(to, from, `${q.ret}T${back[0]}:00`, `${q.ret}T${back[1]}:00`) }
+    ],
+    sources: SOURCES
+  };
+}
+const STAYS = {
+  offers: [
+    { id: "b:1", source: "booking", sourceName: "Booking.com", name: "Billig Inn", total: 90, currency: "EUR", score: 6.1 },
+    { id: "b:3", source: "booking", sourceName: "Booking.com", name: "Airport Lodge", total: 130, currency: "EUR", score: 8.9, lat: 51.47, lon: -0.45 },
+    { id: "b:2", source: "booking", sourceName: "Booking.com", name: "Highbury Rooms", total: 160, currency: "EUR", score: 8.6, place: "Islington, London", lat: 51.558, lon: -0.103 }
+  ],
+  sources: [{ id: "booking", name: "Booking.com", configured: true, ok: true, count: 2, ms: 800 }]
+};
+
+const EVENTS = {
+  events: [
+    { id: "fd:1", source: "footballdata", sourceName: "football-data.org", name: "Arsenal – Bayern", start: "2027-05-15T15:30", venue: "Emirates Stadium", cc: "GB",
+      address: "75 Drayton Park London N5 1BU", category: "UEFA Champions League", lat: 51.555, lon: -0.108, url: "https://tickets.example/ars-fcb",
+      price: { min: 60, max: 180, currency: "EUR" } },
+    { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal", start: "2027-05-22T17:30", venue: "Stamford Bridge", cc: "GB", category: "Premier League" },
+    // gleiche ID doppelt (älterer Such-Dienst): die Liste darf nicht leer bleiben
+    { id: "fd:2", source: "footballdata", sourceName: "football-data.org", name: "Chelsea – Arsenal (VIP)", start: "2027-05-23T17:30", cc: "GB" }
+  ],
+  sources: [{ id: "footballdata", name: "football-data.org", configured: true, ok: true, count: 2 }]
+};
+
+test("Events", async ({ open, errors }) => {
+  test.setTimeout(300_000);
+  const p = await open();
+  const asked = [], stays = [];
+  const cors = { "access-control-allow-origin": "*" };
+  // die erste Flugsuche scheitert bei Kiwi (überlastet): die App versucht es einmal neu
+  let kiwiDown = true;
+  await p.route("https://flights.test/flights/search", async r => {
+    const q = JSON.parse(r.request().postData());
+    asked.push(q);
+    const down = { offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: false, count: 0, ms: 8000, error: "keine Antwort nach 25 s" }] };
+    const body = kiwiDown ? down : flights(q);
+    kiwiDown = false;
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
+  });
+  await p.route("https://flights.test/stays/search", async r => {
+    stays.push(JSON.parse(r.request().postData()));
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(STAYS) });
+  });
+  const evAsked = [];
+  await p.route("https://flights.test/events/search", async r => {
+    const q = JSON.parse(r.request().postData());
+    evAsked.push(q);
+    // „Events vor Ort“: nach Stadt und Zeitraum, mit Ticketpreis
+    const body = q.city ? { events: [{ id: "tm:77", source: "ticketmaster", sourceName: "Ticketmaster", name: "Coldplay", start: "2027-05-15T20:00", venue: "Wembley Stadium", city: "London", cc: "GB", url: "https://tickets.example/coldplay", price: { min: 89, max: 250, currency: "EUR" } },
+      { id: "tm:78", source: "ticketmaster", sourceName: "Ticketmaster", name: "Westminster Abbey Führung", start: "2027-05-16T10:00", venue: "Westminster Abbey", city: "London", cc: "GB", category: "Führung" }],
+      sources: [{ id: "ticketmaster", name: "Ticketmaster", configured: true, ok: true, count: 2 }] }
+      // Champions League gegen eine Mannschaft ohne Anschrift: nur das Land ist bekannt (Fehlerbericht #14)
+      : q.q === "Sabah" ? { events: [{ id: "fd:9", source: "footballdata", sourceName: "football-data.org", name: "Sabah FK – Dortmund", start: "2027-10-20T20:45", cc: "AZ", category: "UEFA Champions League" }],
+        sources: [{ id: "footballdata", name: "football-data.org", configured: true, ok: true, count: 1 }] } : EVENTS;
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
+  });
+  await p.route("https://media-cdn.tripadvisor.com/**", r => r.fulfill({ path: "public/brand/logo-120.png" }));
+  const tourAsked = [];
+  await p.route("https://flights.test/activities/search", async r => {
+    tourAsked.push(JSON.parse(r.request().postData()));
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ activities: [
+      { id: "viator:1", source: "viator", sourceName: "Viator", title: "Tower of London: Kronjuwelen", rating: 4.7, reviews: 5210, minutes: 180, price: 42, currency: "EUR", url: "https://www.viator.com/t/1", image: "https://media-cdn.tripadvisor.com/media/tower.jpg" },
+      { id: "viator:2", source: "viator", sourceName: "Viator", title: "Themse-Bootsfahrt", rating: 4.3, reviews: 800, minutes: 60, price: 18, currency: "EUR", url: "https://www.viator.com/t/2" }
+    ], sources: [{ id: "viator", name: "Viator", configured: true, ok: true, count: 2 }] }) });
+  });
+  await publicData(p, [...PLACE_DATA, "places/"]);
+  await p.goto(URL);
+
+  // Start mit „Zu einem Event“: legt die Reise an und öffnet den Planer
+  await (await startPage(p)).locator(".start .home-event").click();
+  const m = p.locator(".modal");
+  await m.locator(".ev-form").waitFor();
+  // Event suchen und auswählen: Name, Stadt (aus der Anschrift), Stadion, Datum, Uhrzeit werden ausgefüllt
+  // auf einem kleinen Handy: die Treffer müssen sichtbar sein (die Liste wurde im Fenster auf 0 zusammengedrückt)
+  await p.setViewportSize({ width: 406, height: 761 });
+  await m.locator(".ev-find input").fill("Arsenal");
+  await m.locator(".ev-find .btn").click();
+  await m.locator(".ev-hit").first().waitFor();
+  const box = await m.locator(".ev-hits").boundingBox();
+  if (!box || box.height < 100) fail("Treffer auf dem Handy nicht sichtbar, Höhe " + box?.height);
+  await p.setViewportSize({ width: 1280, height: 900 });
+  if (evAsked[0]?.q !== "Arsenal") fail("Event-Suche: " + JSON.stringify(evAsked));
+  if ((await m.locator(".ev-hit").count()) !== 2) fail("nicht zwei Termine");
+  if (!/60.*180/.test(await m.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).locator(".ev-price").innerText())) fail("Ticketpreis im Treffer fehlt");
+  await m.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
+  const val = async label => m.locator("label.f", { hasText: label }).locator("input").inputValue();
+  if (await val("Was?") !== "Arsenal – Bayern" || await val("Wo genau?") !== "Emirates Stadium" || await val("Datum") !== "2027-05-15" || await val("Beginn") !== "15:30") fail("Felder nicht ausgefüllt");
+  if (await m.locator(".ev-tmin").inputValue() !== "60" || await m.locator(".ev-tmax").inputValue() !== "180") fail("Ticketpreis nicht übernommen");
+  // Stadt kommt nach dem Laden der Orte aus der Anschrift, das Ziel aus der Lage des Stadions: Flughäfen im Umkreis
+  const dest = m.locator(".ev-form .lp").first().locator("input");
+  await soon(async () => (await dest.inputValue()).startsWith("Umkreis London"));
+  if (!/^Umkreis London: .*LHR/.test(await dest.inputValue())) fail("Ziel nicht aus Stadt und Stadion: " + await dest.inputValue());
+  // antippen: Flughäfen rund ums Stadion zur Auswahl
+  await dest.focus();
+  if (!(await m.locator(".lp-list li", { hasText: "LCY" }).count())) fail("Flughäfen am Stadion nicht zur Auswahl");
+  await dest.press("Escape");
+  log("Event gesucht und übernommen: Name, Stadt, Stadion, Datum, Uhrzeit; Ziel aus der Lage des Stadions, Flughäfen dort zur Auswahl");
+  // Abflughäfen ohne Wohnort: ein Flughafen aus der Suche ersetzt die Vorauswahl, danach kommen weitere dazu (ohne Erklärsatz, #356)
+  const chips = m.locator(".ev-form .fs-aps .chip");
+  const first = (await chips.first().textContent()).trim();
+  await m.locator(".ev-form .fs-add input").fill("AMS");
+  await m.locator(".lp-list li", { hasText: "AMS" }).first().click();
+  const onAps = async () => (await m.locator(".ev-form .fs-aps .chip.on").allTextContents()).map(x => x.trim());
+  if ((await onAps()).join() !== "AMS") fail("Suche ersetzt die Vorauswahl nicht: " + (await onAps()));
+  if (!(await m.locator(".ev-form .fs-aps .chip.flash", { hasText: "AMS" }).count())) fail("gewählter Flughafen nicht hervorgehoben");
+  await m.locator(".ev-form .fs-add input").fill("BRU");
+  await m.locator(".lp-list li", { hasText: "BRU" }).first().click();
+  const onAps0 = await onAps();
+  // erster Treffer ist die Stadt Brüssel (BRU, CRL): kommt zu AMS dazu
+  if (!["AMS", "BRU"].every(c => onAps0.includes(c))) fail("zweiter Flughafen nicht dazu: " + onAps0);
+  await m.locator("label.f", { hasText: "Dauer" }).locator("input").fill("2");
+  await m.locator(".ev-form .btn.primary").click();
+  await m.locator(".ev-card").first().waitFor();
+
+  // drei Vorschläge: ohne Nacht, eine Nacht, ab Vortag; je eine Flug- und (mit Nacht) eine Unterkunftssuche
+  const cards = m.locator(".ev-card");
+  if ((await cards.count()) !== 3) fail("nicht drei Vorschläge: " + (await cards.count()));
+  if (asked.length !== 4) fail("gescheiterte Flugsuche nicht wiederholt: " + asked.length);
+  const dates = [...new Set(asked.map(q => `${q.depart}/${q.ret}`))].sort();
+  if (dates.join() !== "2027-05-14/2027-05-16,2027-05-15/2027-05-15,2027-05-15/2027-05-16") fail("Flugsuchen: " + dates);
+  if (!asked.every(q => q.toAirports.includes("LHR") && q.fromAirports.includes("AMS") && !q.fromAirports.includes(first) && !q.bags)) fail("Anfrage falsch: " + JSON.stringify(asked[0]));
+  if (stays.length !== 2 || !stays.every(s => s.place === "London" && s.type === "all")) fail("Unterkunftssuche: " + JSON.stringify(stays));
+  log("Drei Vorschläge aus drei Flug- und zwei Unterkunftssuchen, gescheiterte Flugsuche (Kiwi) einmal wiederholt");
+
+  // am Spieltag nur der frühe Flug (landet 08:15), ab Vortag der günstigere; Unterkunft: gut bewertet
+  const day = cards.filter({ hasText: "Tagesausflug" });
+  if (!(await day.locator(".ev-line", { hasText: "07:00" }).count())) fail("Tagesausflug: später Flug genommen");
+  if (!(await day.locator(".ev-line", { hasText: "Ohne Übernachtung" }).count())) fail("Tagesausflug mit Unterkunft");
+  const relaxed = cards.filter({ hasText: "Entspannt ab Vortag" });
+  if (!(await relaxed.locator(".ev-line", { hasText: "12:00" }).count())) fail("ab Vortag: günstigerer Flug fehlt");
+  const short = cards.filter({ hasText: "Mit einer Nacht" });
+  if (!(await short.locator(".ev-line", { hasText: "Highbury Rooms" }).count())) fail("Unterkunft nicht die nahe gut bewertete");
+  if (!(await short.locator(".ev-line", { hasText: "km zum Veranstaltungsort" }).count())) fail("Entfernung zum Stadion fehlt");
+  if (!(await m.locator("a.ev-tickets").count())) fail("Ticket-Link fehlt");
+  // Tickets: Spanne, gerechnet mit dem günstigsten für alle
+  if (!/60.*180/.test(await short.locator(".ev-tix").innerText())) fail("Tickets im Vorschlag: " + await short.locator(".ev-tix").innerText());
+  log("Passende Flüge je Vorschlag, gut bewertete Unterkunft");
+
+  // übernehmen: Reise heißt wie das Event, Daten gesetzt, Flug und Unterkunft angelegt
+  await short.locator(".btn", { hasText: "Übernehmen" }).click();
+  await m.locator(".ev-done").waitFor();
+  await m.locator(".x").first().click();
+  await p.locator(".hero h1", { hasText: "Arsenal – Bayern" }).waitFor();
+  const meta = await p.locator(".hero .meta").innerText();
+  if (!meta.includes("London") || !meta.includes("1 Nacht")) fail("Kopf: " + meta);
+  if (!(await p.locator(".hero .ev-hero", { hasText: "Emirates Stadium" }).count())) fail("Event nicht im Kopf");
+  if (!(await p.locator("#flights .card", { hasText: "Test Air" }).count())) fail("Flug nicht übernommen");
+  if (!(await p.locator("#stay .card", { hasText: "Highbury Rooms" }).count())) fail("Unterkunft nicht übernommen");
+  if (!(await p.locator("#attractions .card", { hasText: "Tickets: Arsenal – Bayern" }).count())) fail("Tickets nicht übernommen");
+  log("Vorschlag übernommen: Name, Daten, Flug, Unterkunft und Tickets");
+
+  // Erlebnisse finden: was am Reiseort im Reisezeitraum läuft, Touren; Übernehmen legt Posten an
+  // Touren & Tickets zuerst, dann Events vor Ort
+  const attBtns = await p.locator("#attractions .search-row .btn").allInnerTexts();
+  if (!attBtns[0]?.includes("Touren") || !attBtns[1]?.includes("Events")) fail("Reihenfolge Erlebnisse: " + attBtns);
+  await p.locator("#attractions .xp-open").click();
+  const x = p.locator(".modal .xp");
+  await x.locator(".xp-ev").first().waitFor();
+  const eq = evAsked[evAsked.length - 1];
+  if (eq.city !== "London" || eq.from !== "2027-05-15" || eq.to !== "2027-05-16" || eq.q !== "" || eq.lat == null) fail("Events vor Ort: " + JSON.stringify(eq));
+  if (!(await x.locator(".xp-ev", { hasText: "ab 89" }).count())) fail("Ticketpreis fehlt");
+  // Filter: Reisetage („Tag 2 · …“) und Tageszeit mit Anzahl, ohne neue Anfrage
+  const nEv = evAsked.length;
+  if (!(await x.locator(".xp-days .chip", { hasText: "Tag 2" }).count())) fail("Tageschips: " + await x.locator(".xp-days").textContent());
+  await x.locator(".xp-parts .chip", { hasText: "Vormittags" }).click();
+  if ((await x.locator(".xp-ev").count()) !== 1 || !(await x.locator(".xp-ev").textContent()).includes("Westminster")) fail("Filter vormittags");
+  await x.locator(".xp-f .linkbtn", { hasText: "Filter zurücksetzen" }).click();
+  if ((await x.locator(".xp-ev").count()) !== 2 || evAsked.length !== nEv) fail("Events-Filter zurücksetzen");
+  log("Events-Filter: Tag 1/Tag 2, „Vormittags“ → Westminster, zurückgesetzt");
+  await x.locator(".xp-ev", { hasText: "Coldplay" }).locator(".xp-take").click();
+  await x.locator(".xp-ev .xp-take", { hasText: "In der Reise" }).waitFor();
+  await x.locator(".xp-tab", { hasText: "Touren" }).click();
+  await x.locator(".xp-tour").first().waitFor();
+  if (tourAsked[0]?.place !== "London" || tourAsked[0]?.lang !== "de" || tourAsked[0]?.from !== "2027-05-15") fail("Touren-Anfrage: " + JSON.stringify(tourAsked));
+  // Touren: Dauer mit Anzahl und Preis ab, Sortierung nach Preis
+  await x.locator(".xp-lens .chip", { hasText: "Bis 2 h" }).click();
+  if ((await x.locator(".xp-tour").count()) !== 1 || !(await x.locator(".xp-tour").textContent()).includes("Themse")) fail("Filter bis 2 h");
+  await x.locator(".xp-lens .chip", { hasText: "Bis 2 h" }).click();
+  await x.locator(".xp-f .chip", { hasText: "Günstigste" }).click();
+  if (!(await x.locator(".xp-tour").first().textContent()).includes("Themse")) fail("Touren nach Preis");
+  log("Touren-Filter: „Bis 2 h“ → Themse-Bootsfahrt, nach Preis sortiert");
+  await x.locator(".xp-tour", { hasText: "Tower of London" }).locator(".xp-take").click();
+  await p.keyboard.press("Escape");
+  const att = p.locator("#attractions");
+  await att.locator(".card", { hasText: "Coldplay" }).waitFor();
+  if (!(await att.locator(".card", { hasText: "Tower of London" }).count())) fail("Tour nicht übernommen");
+  await att.locator(".card", { hasText: "Tower of London" }).locator(".row-img").waitFor();
+  const prices = () => p.evaluate(() => { const t = JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current"))); return t.items.filter(i => i.cat === "attractions").map(i => i.options[0].price.adult).join(); });
+  await soon(async () => (await prices()) === "60,89,42", 3000);
+  if ((await prices()) !== "60,89,42") fail("Preise der Erlebnisse: " + await prices());
+  log("Erlebnisse: Events vor Ort (Stadt, Zeitraum, Preis ab 89 €) und Tour (42 €, mit Foto) als Posten übernommen");
+  // Kopf: Events & Aktivitäten sammelt Event und Erlebnisse, „Sonstige Kosten“ ohne die Tour
+  await p.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+  const evTile = await p.locator(".hero .ht-ev").innerText();
+  if (!evTile.includes("Tickets: Arsenal") || !evTile.includes("191")) fail("Kachel Events & Aktivitäten: " + evTile);
+  if ((await p.locator(".hero .ht-misc").innerText()).includes("Tower of London")) fail("Tour unter Sonstige Kosten");
+
+  // nur das Land bekannt (Sabah FK, Aserbaidschan): Hauptstadt Baku angenommen, mit Hinweis zum Prüfen
+  // Event-Planer auch im Kapitel Erlebnisse, mit dem gewählten Event
+  if (!(await att.locator(".att-event", { hasText: "Emirates Stadium" }).count())) fail("Event nicht bei den Erlebnissen");
+  await att.locator(".att-ev", { hasText: "Event ändern" }).click();
+  log("Erlebnisse: gewähltes Event und „Event ändern“ öffnet den Event-Planer");
+  const m2 = p.locator(".modal");
+  await m2.locator(".ev-find input").fill("Sabah");
+  await m2.locator(".ev-find .btn").click();
+  await m2.locator(".ev-hit", { hasText: "Sabah FK" }).click();
+  const city2 = m2.locator(".ev-form .lp").first().locator("input");
+  await soon(async () => (await city2.inputValue()) === "Baku");
+  if ((await city2.inputValue()) !== "Baku") fail("keine Stadt bei Sabah FK: " + await city2.inputValue());
+  if (!(await m2.locator(".ev-guess", { hasText: "Baku" }).count())) fail("Hinweis zur angenommenen Stadt fehlt");
+  await p.keyboard.press("Escape");
+  log("Event nur mit Land (Sabah FK): Hauptstadt Baku angenommen, Hinweis zum Prüfen");
+
+  // Sportkalender: Sportart antippen (ohne Such-Dienst), Termin mit Zeitraum, übernehmen
+  await att.locator(".att-ev", { hasText: "Event ändern" }).click();
+  const m3 = p.locator(".modal");
+  const nEv3 = evAsked.length;
+  await m3.locator(".ev-sports .chip", { hasText: "Olympia" }).click();
+  const bne = m3.locator(".ev-hit", { hasText: "Brisbane 2032" });
+  await bne.waitFor();
+  if (evAsked.length !== nEv3) fail("Sportart fragt den Such-Dienst");
+  if (!(await bne.innerText()).includes("🏅 Olympia") || !(await bne.innerText()).includes("23. Juli bis 8. August")) fail("Sport-Treffer: " + await bne.innerText());
+  await bne.click();
+  if (await val("Was?") !== "Olympische Sommerspiele Brisbane 2032" || await val("Datum") !== "2032-07-23") fail("Sport-Event nicht übernommen");
+  const city3 = m3.locator(".ev-form .lp").first().locator("input");
+  await soon(async () => (await city3.inputValue()).includes("Brisbane"));
+  if (!(await city3.inputValue()).includes("Brisbane")) fail("Ziel Brisbane fehlt: " + await city3.inputValue());
+  log("Sportkalender: Olympia antippen → Brisbane 2032 mit Zeitraum, Name, Datum und Ziel übernommen");
+  // mehrtägig (#265): letzter Tag aus dem Kalender; eigener Zeitraum ergibt „Günstigste im Zeitraum“
+  if ((await m3.locator(".ev-end").inputValue()) !== "2032-08-08") fail("letzter Tag nicht übernommen: " + await m3.locator(".ev-end").inputValue());
+  await m3.locator(".ev-more summary").click();
+  await m3.locator(".ev-wfrom").fill("2032-07-15");
+  await m3.locator(".ev-wto").fill("2032-08-15");
+  const nAsk3 = asked.length;
+  await m3.locator(".ev-form .btn.primary").click();
+  await m3.locator(".ev-card").first().waitFor();
+  const kinds = (await m3.locator(".ev-card header b").allInnerTexts()).join(" | ");
+  if (!kinds.includes("Alle Event-Tage") || !kinds.includes("Günstigste im Zeitraum") || kinds.includes("Tagesausflug")) fail("Vorschläge mehrtägig: " + kinds);
+  const flex = asked.slice(nAsk3).find(q => q.latest);
+  if (!flex || flex.depart !== "2032-07-15" || flex.latest !== "2032-08-15" || flex.nightsMin !== 17) fail("Suche im Zeitraum: " + JSON.stringify(flex));
+  const win = m3.locator(".ev-card", { hasText: "Günstigste im Zeitraum" });
+  if (!(await win.innerText()).includes("16. Juli") || !(await win.locator(".ev-tag", { hasText: "Günstigste" }).count())) fail("Zeitraum-Vorschlag: " + JSON.stringify(await win.innerText()) + " / " + (await m3.locator(".ev-list").innerText()).slice(0, 900));
+  await p.keyboard.press("Escape");
+  log("Mehrtägiges Event (16 Tage): „Alle Event-Tage“ und „Günstigste im Zeitraum“ aus einer flexiblen Suche, als günstigste markiert");
+
+  // gar kein Flug (auch nicht mit zwei Umstiegen): keine Karten mit Gesamtpreis, sondern die Meldung mit nächsten Schritten
+  await p.unroute("https://flights.test/flights/search");
+  const emptyAsked = [];
+  await p.route("https://flights.test/flights/search", async r => {
+    emptyAsked.push(JSON.parse(r.request().postData()));
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0, ms: 100 }] }) });
+  });
+  await att.locator(".att-ev", { hasText: "Event ändern" }).click();
+  const m4 = p.locator(".modal");
+  await m4.locator(".ev-form .btn.primary").click();
+  await m4.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
+  if (await m4.locator(".ev-card").count()) fail("Karten ohne Flug");
+  if (!emptyAsked.some(q => q.maxStops === 2)) fail("keine Nachsuche mit zwei Umstiegen: " + emptyAsked.map(q => q.maxStops));
+  await p.keyboard.press("Escape");
+  log("Kein Flug: Meldung statt Karten, vorher mit zwei Umstiegen nachgesucht");
+
+  // Start → „Zu einem Event“, Suche ohne Flug, Planer schließen: keine halbe Reise bleibt zurück (#546)
+  await reloadHome(p, { url: URL, clear: true });
+  await (await startPage(p)).locator(".start .home-event").click();
+  const m5 = p.locator(".modal");
+  await m5.locator(".ev-form").waitFor();
+  await m5.locator(".ev-find input").fill("Arsenal");
+  await m5.locator(".ev-find .btn").click();
+  await m5.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
+  await m5.locator(".ev-form .btn.primary").click();
+  await m5.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
+  await p.keyboard.press("Escape");
+  await (await startPage(p)).locator(".start .home-title").waitFor();
+  // ohne Konto kommt keine Reise nach: nicht lange auf die Kachel „Meine Reisen“ warten
+  if (await (await myTrips(p, { wait: 1000 })).locator(".start .home-trip").count()) fail("Reise vom abgebrochenen Event-Planer bleibt stehen");
+  log("Event-Planer ohne übernommenen Vorschlag geschlossen: keine Reise bleibt zurück");
+
+  // Fernziel (#536): am Vortag geht kein Hinflug, einen Tag früher schon; ohne Treffer führt ein Knopf in die Einzelsuche
+  await p.unroute("https://flights.test/flights/search");
+  const farAsked = [];
+  await p.route("https://flights.test/flights/search", async r => {
+    const q = JSON.parse(r.request().postData());
+    farAsked.push(q);
+    const from = q.fromAirports[0], to = q.toAirports[0];
+    // am Vortag geht nichts (Langstrecke, nur wenige Abflugtage), zwei Tage vorher schon
+    const offers = q.depart === "2027-05-13" ? [{ id: `far${q.depart}${q.maxStops}`, source: "kiwi", sourceName: "Kiwi.com", price: 700, currency: "EUR", url: "https://kiwi.com/u/far",
+      out: leg(from, to, "2027-05-13T18:00:00", "2027-05-14T09:00:00"), back: leg(to, from, `${q.ret}T18:00:00`, `${q.ret}T19:15:00`) }] : [];
+    await r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers, sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: offers.length, ms: 100 }] }) });
+  });
+  await reloadHome(p, { url: URL, clear: true });
+  await (await startPage(p)).locator(".start .home-event").click();
+  const m6 = p.locator(".modal");
+  await m6.locator(".ev-form").waitFor();
+  await m6.locator(".ev-find input").fill("Arsenal");
+  await m6.locator(".ev-find .btn").click();
+  await m6.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
+  await m6.locator(".ev-form .btn.primary").click();
+  await m6.locator(".ev-card").first().waitFor();
+  if (!farAsked.some(q => q.depart === "2027-05-13" && q.ret === "2027-05-16")) fail("keine Suche mit Abflug einen Tag früher: " + farAsked.map(q => `${q.depart}/${q.maxStops}`));
+  const far = m6.locator(".ev-card", { hasText: "Entspannt" }).filter({ hasText: "18:00" });
+  if (!(await far.count())) fail("Vorschlag ab Vortag-des-Vortags fehlt: " + (await m6.locator(".ev-list").innerText()).replace(/\n+/g, " ").slice(0, 900));
+  await p.keyboard.press("Escape");
+  log("Fernziel: am Vortag kein Hinflug, Nachsuche einen Tag früher liefert den Vorschlag");
+
+  await p.unroute("https://flights.test/flights/search");
+  await p.route("https://flights.test/flights/search", r => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify({ offers: [], sources: [{ id: "kiwi", name: "Kiwi.com", configured: true, ok: true, count: 0, ms: 100 }] }) }));
+  await reloadHome(p, { url: URL, clear: true });
+  await (await startPage(p)).locator(".start .home-event").click();
+  const m7 = p.locator(".modal");
+  await m7.locator(".ev-form").waitFor();
+  await m7.locator(".ev-find input").fill("Arsenal");
+  await m7.locator(".ev-find .btn").click();
+  await m7.locator(".ev-hit", { hasText: "Arsenal – Bayern" }).click();
+  await m7.locator(".ev-form .btn.primary").click();
+  await m7.locator(".warnline", { hasText: "keinen passenden Flug" }).waitFor();
+  await m7.locator(".btn", { hasText: "Flug einzeln suchen" }).click();
+  await p.locator(".modal", { hasText: "Flug" }).first().waitFor();
+  if (await p.locator(".ev-form").count()) fail("Event-Planer nach „Flug einzeln suchen“ noch offen");
+  log("Kein Flug: Knopf „Flug einzeln suchen“ öffnet die Flugsuche");
+});

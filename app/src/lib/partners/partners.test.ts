@@ -64,7 +64,7 @@ describe("Partner-Verzeichnis", () => {
 
   it("Kategorien in der Reihenfolge des Verzeichnisses", () => {
     expect(partnersOf("activity")).toEqual(["getYourGuide", "viator", "tiqets", "klook", "expediaActivities"]);
-    expect(partnersOf("stay")).toEqual(["booking", "airbnb", "expediaHotels"]);
+    expect(partnersOf("stay")).toEqual(["booking", "airbnb", "vrbo", "expediaHotels"]);
     expect(partnersOf("car")).toEqual(["kayakCars", "check24Cars", "discoverCars", "expediaCars"]);
     expect(partnersOf("flight")).toEqual(["googleFlights", "skyscanner", "expediaFlights", "expediaPackage"]);
     expect(partnersOf("transfer")).toHaveLength(5);

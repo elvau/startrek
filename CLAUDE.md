@@ -2,7 +2,7 @@
 
 Reisekostenrechner für Gruppenreisen. App in `app/` (Svelte 5 mit Runes, TypeScript, Vite), Such-Dienst als
 Cloudflare Worker in `worker/` (Flüge, Unterkünfte, Events, KI-Planer und KI-Import mit Claude Haiku, ersatzweise Gemini, Fehlermeldungen), Daten und
-Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, PARTNER, NEBENKOSTEN, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste, IMPORT = KI-Import und Realitätscheck (Konzept),
+Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE, KI, KONNEKTOR, PARTNER, NEBENKOSTEN, SPRACHEN, BUGS, NUTZUNG, ZIELE = besondere Ziele, OFFEN = Merkliste, IMPORT = KI-Import und Realitätscheck (Konzept), TESTS = Aufbau der Tests,
 `claude2claude.md` = Einrichtung der Routinen, ABLAUF = Planung in Epics/Features, KATALOG = Reisekatalog).
 
 ## Umgebungen und Ablauf
@@ -12,9 +12,12 @@ Rechtliches in `public/`. Mehr: `README.md`, `docs/` (KONZEPT, RELEASE, FIREBASE
   den Arbeits-Branch nach den schnellen Prüfungen in `pre-release` mergen (merge commit) und pushen. Andere Branches
   landen nicht auf der Testumgebung.
 - Produktion https://splitandfly.com: jeder Push auf `main` (Firebase Hosting, `release.yml` legt Tag und Release an).
-- Worker: deployt nur von `main` (Cloudflare Workers Builds). Secrets nur in Cloudflare, nie im Code oder Chat.
-- Firestore-Regeln (`app/firestore.rules`) spielt `.github/workflows/regeln.yml` ein (Push auf `pre-release` → Testprojekt, `main` → echtes Projekt),
-  sobald die Dienstkonten eingerichtet sind (docs/FIREBASE.md); bis dahin bzw. wenn der Lauf warnt, von Hand durch Dani: nach Änderungen Bescheid sagen.
+- Release auf GitHub (`release.yml`) als Kette: Prüfen → Firestore-Regeln → Such-Dienst → App → Rauchtest → Tag.
+- Worker: Produktion (`startrek`) mit dem Release von `main`; Testumgebung (`startrek-test`) bei jedem Push auf `pre-release`
+  (`pages.yml`), benutzt wird er dort, sobald die Repo-Variable `TEST_DIENST` auf `an` steht. Solange die Secrets für Cloudflare
+  fehlen (#697), deployt wie bisher Cloudflare Workers Builds nur von `main`. Schlüssel nur in Cloudflare bzw. als GitHub-Secret, nie im Code oder Chat.
+- Firestore-Regeln (`app/firestore.rules`): Testprojekt über `.github/workflows/regeln.yml` (Push auf `pre-release`), echtes Projekt mit dem Release
+  (Stufe vor der App), sobald die Dienstkonten eingerichtet sind (docs/FIREBASE.md); wenn ein Lauf warnt, von Hand durch Dani: nach Änderungen Bescheid sagen.
 - **Nie ohne ausdrückliches „Release“ von Dani nach `main` mergen.** Release: Version auf `pre-release` anheben,
   `test:cloud`, PR `pre-release` → `main`, „Prüfen (vor dem Release)“ grün, Merge (merge commit); danach `pre-release`
   auf `main` vorspulen (`git push origin origin/main:refs/heads/pre-release`, legt ihn auch neu an, falls GitHub ihn nach dem Merge gelöscht hat; offene PRs danach wieder auf `pre-release` stellen) und den Arbeits-Branch auf `origin/main` zurücksetzen.
@@ -63,10 +66,11 @@ bei PRs nach `main` und `pre-release` (`pruefen.yml`). Vor jedem Push lokal die 
 cd app
 npx svelte-check --threshold warning
 npx vitest run
-npm run build:emu && npx firebase emulators:exec --only auth,firestore --project demo-reisekasse "node e2e/X.mjs"
+npm run test:cloud -- X        # X = Bereich, z. B. stays (Teil des Dateinamens unter e2e/)
 ```
-Vor dem Release-PR alles: `npm run test:cloud` (Firebase-Emulator + Playwright, dauert einige Minuten).
-Neue Funktionen bekommen Unit-Tests und, wo sinnvoll, einen Schritt in `app/e2e/*.mjs`.
+Vor dem Release-PR alles: `npm run test:cloud` (Playwright startet Vorschau und Firebase-Emulatoren selbst, ca. 6 Minuten).
+Neue Funktionen bekommen Unit-Tests und, wo sinnvoll, einen Test in `app/e2e/lokal/` (ohne Konto) oder `app/e2e/konto/`
+(mit Konto oder Daten im Emulator). Aufbau, Hilfen und Fehlersuche: `docs/TESTS.md`.
 
 ## Konventionen
 - Sprache in Code-Kommentaren, Commits und Antworten an Dani: Deutsch, knapp, wie der umgebende Code.

@@ -1,12 +1,13 @@
 name: Firestore-Regeln einspielen
 
 # Firestore-Regeln (app/firestore.rules) automatisch einspielen, statt sie von Hand in die Konsole zu kopieren:
-# Push auf pre-release → Testprojekt (startrek-test-b792b), Push auf main → echtes Projekt (startrek-1b6a7).
-# Nur wenn sich die Regeln geändert haben, oder von Hand (Actions → „Firestore-Regeln einspielen“ → Run workflow).
+# Push auf pre-release → Testprojekt (startrek-test-b792b), nur wenn sich die Regeln geändert haben.
+# Das echte Projekt (startrek-1b6a7) bekommt die Regeln mit dem Release, als Stufe vor der App (release.yml);
+# von Hand geht beides (Actions → „Firestore-Regeln einspielen“ → Run workflow, Branch main = echtes Projekt).
 # Fehlt das Secret des Dienstkontos, wird nur gewarnt (Regeln dann wie bisher von Hand). Einrichtung: docs/FIREBASE.md
 on:
   push:
-    branches: [main, pre-release]
+    branches: [pre-release]
     paths: [app/firestore.rules]
   workflow_dispatch:
 
@@ -19,14 +20,10 @@ concurrency:
 
 jobs:
   rules:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: app/package-lock.json
       - name: Projekt und Zugang wählen
         id: ziel
         env:
@@ -41,10 +38,8 @@ jobs:
             echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0
           fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
-      - name: Abhängigkeiten
+      - uses: ./.github/actions/aufbau
         if: steps.ziel.outputs.skip != '1'
-        working-directory: app
-        run: npm ci
       - name: Regeln einspielen (${{ steps.ziel.outputs.project }})
         if: steps.ziel.outputs.skip != '1'
         working-directory: app

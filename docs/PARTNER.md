@@ -12,7 +12,7 @@ Zwei Dinge, die oft unter „Partner“ vermischt werden:
 | | neutral | mit Provision |
 |---|---|---|
 | **Suchtreffer** (wir fragen eine Schnittstelle ab, Angebote erscheinen in unserer App) | Kiwi, Trivago, Duffel, Ticketmaster, football-data | Travelpayouts/Aviasales, liteAPI, Viator |
-| **Suchlink** (Link zur Suche beim Anbieter, gesucht wird dort) | Google Flights, Skyscanner, Booking.com (bis zur Freigabe), Airbnb, KAYAK … | Expedia, Tiqets, Klook, Kiwitaxi, Welcome Pickups, Parken und Fliegen, Yesim, Airalo |
+| **Suchlink** (Link zur Suche beim Anbieter, gesucht wird dort) | Google Flights, Skyscanner, Booking.com (bis zur Freigabe), Airbnb, Vrbo, KAYAK … | Expedia, Tiqets, Klook, Kiwitaxi, Welcome Pickups, Parken und Fliegen, Yesim, Airalo |
 
 - **Suchlink** gibt es in zwei Formen (`fill` am Link, abgeleitet aus dem Verzeichnis): **vorausgefüllt** (`search`, mit Ort,
   Datum, Personen) oder **nur Startseite** (`home`, Link über `home(…)`; in der App mit 🏠 gekennzeichnet).
@@ -88,6 +88,7 @@ keine Suchmaschinen-Werbung (SEA) mit ihren Keywords, SEO-Inhalte erlaubt; Brand
 | Booking.com | Unterkunft | CJ (beworben 10/2026) | – |
 | Expedia (Hotel, Flug, Flug + Hotel, Mietwagen, Erlebnisse) | Unterkunft, Flüge, Mietwagen, Erlebnisse | CJ | ja (Link-ID `15261175`) |
 | Airbnb | Unterkunft | – | – |
+| Vrbo | Unterkunft (Ferienhäuser, #682) | – | – |
 | GetYourGuide | Erlebnisse | CJ (beworben 10/2026; Travelpayouts abgelehnt) | – |
 | Tiqets | Erlebnisse | Travelpayouts | ja (`p=2074`, `campaign_id=89`) |
 | Klook | Erlebnisse | Travelpayouts | ja (`p=4110`, `campaign_id=137`) |

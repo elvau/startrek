@@ -1,0 +1,35 @@
+# Abhängigkeiten aktuell halten: einmal im Monat je Bereich ein gebündelter Pull Request nach pre-release
+# (dort läuft die volle Prüfung, pruefen.yml). Sicherheitsmeldungen kommen unabhängig davon sofort.
+# Mergen wie jeden Pull Request, wenn die Checks grün sind; nach main geht es mit dem nächsten Release.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /app
+    target-branch: pre-release
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      app:
+        patterns: ["*"]
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /worker
+    target-branch: pre-release
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      worker:
+        patterns: ["*"]
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    # sucht in .github/workflows; die eigene Action unter .github/actions/aufbau zusätzlich
+    directories: ["/", "/.github/actions/aufbau"]
+    target-branch: pre-release
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns: ["*"]

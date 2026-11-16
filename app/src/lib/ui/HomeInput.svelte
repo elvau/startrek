@@ -72,7 +72,7 @@
 
 <div class="home-in {cls}">
   {#if label}<span class="dlabel home-l">{label}</span>{/if}
-  <div class="home-row">
+  <div class="home-inrow">
     <select class="home-cc" aria-label={t("home.country")} value={cc} onchange={e => setCc(e.currentTarget.value)}>
       {#if !countries.length}<option value={cc}>{flagOf(cc)} {countryName(cc)}</option>{/if}
       {#each countries as c (c.k)}<option value={c.k}>{flagOf(c.k)} {c.name}</option>{/each}
@@ -91,7 +91,7 @@
 
 <style>
   .home-in { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-  .home-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .home-inrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .home-cc { flex: 0 1 11em; min-width: 0; }
   .home-q { position: relative; flex: 1 1 10em; min-width: 0; display: flex; }
   .home-plz { width: 100%; min-width: 0; }

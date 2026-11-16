@@ -65,6 +65,7 @@
     <h3>{autoName(item.name) || t("stay.new")}</h3>
     {#if !item.private && r?.option?.label && r.option.label !== autoName(item.name)}<div class="stay-opt">{r.option.label}{r.option.source?.name ? ` · ${r.option.source.name}` : ""}{item.options.length > 1 ? ` · ${tn("n.offers", item.options.length)}` : ""}</div>{/if}
     {#if item.from && item.to}<div class="muted">{t("range.fromTo", { a: dateDE(item.from), b: dateDE(item.to) })} · {tn("n.nights", nn)}{r?.stay ? ` · ${tn("stay.upTo", r.stay.maxOcc)}` : ""}</div>{/if}
+    {#if s?.units}<div class="warnline st-combo-card">🧩 {tn("st.combo", s.units)} · {t("st.comboShort")}</div>{/if}
     {#if item.private}
       <p class="muted small priv-line">📍 {[item.private.place, item.private.country].filter(Boolean).join(", ")}{#if app.trip.place === item.private.place}{` · ${t("priv.destLine")}`}{/if}
         {#if !access.readonly}<button class="linkbtn priv-edit" onclick={e => { e.stopPropagation(); openPrivStay(item.id); }}>{t("priv.edit")} ›</button>{/if}</p>
@@ -73,6 +74,7 @@
       {#if item.private}<span class="fact">🏠 {t("priv.label")}</span>{/if}
       {#if s?.stars}<span class="fact">{"★".repeat(s.stars)}</span>{/if}
       {#if s?.rating}<span class="fact">{t("stay.rating", { p: s.rating })}</span>{/if}
+      {#if s?.bedrooms}<span class="fact">🛏 {tn("st.bedroomsN", s.bedrooms)}{s.sleeps ? ` · ${tn("st.sleepsN", s.sleeps)}` : ""}</span>{/if}
       {#each s?.facts || [] as f}<span class="fact">{f}</span>{/each}
       {#if r?.option}
         <!-- Verpflegung der Unterkunft: danach richtet sich die Verpflegung unter „Sonstiges“ -->

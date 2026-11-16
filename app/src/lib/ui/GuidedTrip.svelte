@@ -198,7 +198,8 @@
     {:else if cur === "who"}
       <h3 tabindex="-1">{t("newtrip.who")}</h3>
       <WhoPicker bind:who />
-      <p class="small muted">{t("gt.whoLater")} <button type="button" class="linkbtn" onclick={ongroups}>{t("groups.manage")}</button></p>
+      <!-- bei Solo steht derselbe Hinweis schon im WhoPicker -->
+      <p class="small muted">{#if who.mode !== "solo"}{t("gt.whoLater")} {/if}<button type="button" class="linkbtn" onclick={ongroups}>{t("groups.manage")}</button></p>
 
     {:else}
       <h3 tabindex="-1">{t("gt.from")}</h3>

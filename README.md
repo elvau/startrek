@@ -22,9 +22,9 @@ Ablauf und Einrichtung: [`docs/RELEASE.md`](docs/RELEASE.md). Plan und Anwendung
 cd app
 npm install
 npm run dev      # http://localhost:5173
-npm test         # Rechenkern
+npm test         # Logik der App und des Such-Dienstes
 npm run test:rules   # Sicherheitsregeln (Firebase-Emulator, braucht Java)
-npm run test:cloud   # zwei Personen planen gemeinsam (Emulator + Browser)
+npm run test:cloud   # Ende-zu-Ende im Browser (Playwright + Emulatoren), ein Bereich: npm run test:cloud -- stays
 npm run check    # Typprüfung
 ```
 

@@ -114,6 +114,85 @@ describe("KI-Konnektor (MCP)", () => {
     expect(got.cc).toBeUndefined();
   });
 
+  it("Schlafzimmer statt Zimmer: eine ganze Unterkunft für alle (#674)", async () => {
+    let got: any;
+    const d = deps({ stays: async q => { got = q; return { offers: q.bedroomsMin ? [{ ...stay("s4", 2200), bedrooms: 5, sleeps: 10 }] : [], sources: [] }; } });
+    const r = await tool(d, "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 6, childAges: [4, 7, 10], rooms: 4, bedroomsMin: 4 });
+    expect(got).toMatchObject({ rooms: 1, type: "whole", bedroomsMin: 4 });
+    expect(r.data.offers[0]).toMatchObject({ bedrooms: 5, sleeps: 10 });
+    // ohne geprüfte Treffer: Hinweis, nichts Ungeprüftes anlegen
+    const none = await tool(deps({ stays: async () => ({ offers: [], sources: [] }) }), "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 6, sleepsMin: 9 });
+    expect(none.data.note).toContain("Do not add unverified offers");
+    expect((await tool(d, "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 6, bedroomsMin: 40 })).error).toBe(true);
+  });
+
+  it("ungeprüfte harte Kriterien: Posten „bitte prüfen“ (#676)", async () => {
+    const d = deps();
+    await tool(d, "search_stays", { place: "Palma", checkin: "2027-05-10", checkout: "2027-05-13", adults: 2 });
+    const id = (await tool(d, "create_trip", { place: "Palma", from: "2027-05-10", to: "2027-05-13", adults: 2, travelersFrom: "user" })).data.tripId;
+    const add = await tool(d, "add_stay", { tripId: id, offerId: "s1", unverified: ["4 Schlafzimmer", " Wasserrutsche ", "4 Schlafzimmer", 3] });
+    expect(add.data.markedForCheck).toEqual(["4 Schlafzimmer", "Wasserrutsche"]);
+    const trip: Trip = JSON.parse((d.store as any).docs.get(id).data);
+    expect(trip.items.find(i => i.cat === "stay")).toMatchObject({ check: true, checkWhy: ["4 Schlafzimmer", "Wasserrutsche"] });
+    const got = await tool(d, "get_trip", { tripId: id });
+    expect(got.data.items.find((i: any) => i.category === "stay").pleaseCheck).toEqual(["4 Schlafzimmer", "Wasserrutsche"]);
+    // ohne Angabe: keine Markierung
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1" })).data.markedForCheck).toBeUndefined();
+  });
+
+  it("Familie ohne Wohnort: Hinweis statt stiller Lücke in der Anreise (#684)", async () => {
+    const d = deps();
+    const made = await tool(d, "create_trip", { place: "Bodenmais", from: "2026-11-13", to: "2026-11-15", adults: 2, childAges: [8, 5], travelersFrom: "user" });
+    expect(made.data.homeMissing).toHaveLength(1);
+    expect(made.data.homeNote).toContain("update_travelers");
+    const trip: Trip = JSON.parse((d.store as any).docs.get(made.data.tripId).data);
+    const fam = made.data.homeMissing[0];
+    trip.households = { [fam]: { plz: "80331", geo: { lat: 48.14, lon: 11.57, ort: "München" } } };
+    (d.store as any).docs.set(made.data.tripId, { ...(d.store as any).docs.get(made.data.tripId), data: JSON.stringify(trip) });
+    expect((await tool(d, "get_trip", { tripId: made.data.tripId })).data.homeMissing).toBeUndefined();
+  });
+
+  it("Ausstattung: Hallenbad, Wasserrutsche, Sauna (#681)", async () => {
+    let got: any;
+    const offers = [{ ...stay("a", 500), facts: ["Pool", "Hallenbad", "Wasserrutsche"] }, { ...stay("b", 400), facts: ["Pool"] }, { ...stay("c", 450), facts: ["Sauna"] }];
+    const d = deps({ stays: async q => { got = q; return { offers, sources: [] }; } });
+    const r = await tool(d, "search_stays", { place: "Bodenmais", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, childAges: [8, 5], amenities: ["waterslide", "indoorPool"] });
+    expect(got.must).toEqual(["pool"]);
+    expect(r.data.offers.map((o: any) => o.id)).toEqual(["a"]);
+    const sauna = await tool(d, "search_stays", { place: "Bodenmais", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, amenities: ["sauna", "x"] });
+    expect(got.must).toBeUndefined();
+    expect(sauna.data.offers.map((o: any) => o.id)).toEqual(["c"]);
+  });
+
+  it("Kombi aus mehreren Einheiten wird genannt (#677)", async () => {
+    const d = deps();
+    const r = await tool(d, "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 6, childAges: [4, 7, 10], rooms: 4 });
+    expect(r.data.offers[0].units).toBe(4);
+    expect(r.data.unitsNote).toContain("4 separate units");
+    const id = (await tool(d, "create_trip", { place: "Scharnitz", from: "2027-05-07", to: "2027-05-10", adults: 6, childAges: [4, 7, 10], travelersFrom: "user" })).data.tripId;
+    await tool(d, "add_stay", { tripId: id, offerId: "s1" });
+    expect((await tool(d, "get_trip", { tripId: id })).data.items.find((i: any) => i.category === "stay").units).toBe(4);
+    const one = await tool(d, "search_stays", { place: "Scharnitz", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, rooms: 1 });
+    expect(one.data.unitsNote).toBeUndefined();
+  });
+
+  it("Umkreis 1–20 km um den Ort (#680)", async () => {
+    let got: any;
+    const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });
+    await tool(d, "search_stays", { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, radiusKm: 12 });
+    expect(got).toMatchObject({ radiusKm: 12, cc: "ES" });
+    expect((await tool(d, "search_stays", { place: "Palma", country: "Spain", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2, radiusKm: 300 })).error).toBe(true);
+  });
+
+  it("Suche nach Namen, ausgebuchte Häuser werden genannt (#683)", async () => {
+    let got: any;
+    const d = deps({ stays: async q => { got = q; return { offers: [stay("s1", 1643)], sources: [], soldOut: ["Landhaus zur Ohe"] }; } });
+    const r = await tool(d, "search_stays", { place: "Schönberg", checkin: "2027-11-13", checkout: "2027-11-15", adults: 2, childAges: [8, 5], names: ["Familotel Schreinerhof", "Landhaus zur Ohe", 7] });
+    expect(got.names).toEqual(["Familotel Schreinerhof", "Landhaus zur Ohe"]);
+    expect(r.data.soldOut).toEqual(["Landhaus zur Ohe"]);
+    expect(r.data.soldOutNote).toContain("no availability");
+  });
+
   it("findet kleine Orte und ignoriert Gemeinde oder Insel nach dem Komma (#622)", async () => {
     let got: any;
     const d = deps({ stays: async q => { got = q; return { offers: [], sources: [] }; } });
@@ -531,6 +610,14 @@ describe("KI-Konnektor (MCP)", () => {
     // ohne Flughäfen in den Vorlieben: nachfragen
     dir = { people: [], groups: [] };
     expect((await tool(d, "search_flights", { to: ["PMI"], depart: "2027-05-10", adults: 2 })).text).toContain("no home airports");
+  });
+
+  it("add_stay: Posten heißt nach dem Ort der Unterkunft, nicht nach dem Suchort (#678)", async () => {
+    const d = deps({ stays: async () => ({ offers: [{ ...stay("s1", 400), city: "Arrach" }], sources: [] }) });
+    await tool(d, "search_stays", { place: "Bodenmais", checkin: "2027-08-19", checkout: "2027-08-29", adults: 2, childAges: [] });
+    const id = (await tool(d, "create_trip", { place: "Bodenmais", adults: 2, childAges: [], travelersFrom: "user" })).data.tripId;
+    expect((await tool(d, "add_stay", { tripId: id, offerId: "s1" })).error).toBe(false);
+    expect((await tool(d, "get_trip", { tripId: id })).data.items[0].name).toBe("Unterkunft in Arrach");
   });
 
   it("Unterkünfte nach Verpflegung, Hotelname und Verpflegung in der Reise, lange Kostennamen", async () => {

@@ -1,0 +1,453 @@
+/*
+ * Ende-zu-Ende-Test gegen die Firebase-Emulatoren: zwei Personen planen gemeinsam.
+ */
+import { test, fail, log, until, URL, reloadHome, myTrips, startPage, autoAsk, toWho, login, FS } from "../lib/konto.mjs";
+
+/** Stand in der Datenbank, am Emulator vorbei gelesen */
+let tripId = "";
+async function dbState(tag) {
+  const r = await fetch(`${FS}/trips/${tripId}`, { headers: { Authorization: "Bearer owner" } });
+  const j = await r.json();
+  const data = JSON.parse(j.fields?.data?.stringValue || "{}");
+  const auto = (data.items || []).find(x => x.name?.startsWith("Mietwagen"));
+  console.log(`  [db ${tag}] Mietwagen=${auto?.options?.[0]?.price?.adult} von=${j.fields?.updatedBy?.stringValue?.slice(0, 6)} zeit=${j.updateTime}`);
+}
+
+/** Person in eigenem Browser; Meldungen des Abgleichs ([rk]) und Fehler der Konsole stehen in der Ausgabe */
+async function person(open, name) {
+  const p = await open({ name });
+  p.on("console", m => { if (m.text().startsWith("[rk]") || m.type() === "error") console.log(`  (${name}) ${m.text()}`); });
+  return p;
+}
+const total = p => p.locator(".tk-top b").textContent();
+
+// eine zusammenhängende Geschichte (Anna, Oma, Gast Jonas, Mallory): jeder Schritt baut auf dem Stand davor auf
+test("Zwei Personen planen gemeinsam: einladen, live ändern, Kasse, Rollen, Abstimmen, Chat, Varianten, Aktionsseite", async ({ open }) => {
+  test.setTimeout(300_000);
+  // Anna meldet sich an und übernimmt ihre Reise ins Konto
+  const anna = await person(open, "Anna");
+  await anna.goto(URL);
+  // erster Besuch: Anna übernimmt die Reiseidee Mallorca (Link von der Inhaltsseite, #402)
+  await anna.goto(URL + "?ziel=Mallorca&land=ES&name=Gruppenreise%20Mallorca&gruppe=8&idee=gruppenreise-mallorca-kosten");
+  await until(async () => (await anna.locator(".hero-in").textContent()).includes("Mallorca"), "Reiseidee offen");
+  if ((await anna.locator(".top .tm-btn").first().click(), await anna.locator(".tm-trip").count()) !== 1) fail("leere Reise nicht weggeräumt");
+  await anna.keyboard.press("Escape");
+  await anna.locator(".top .acct .tm-btn", { hasText: "Anmelden" }).click();
+  await login(anna, "Anna");
+  log("Anna angemeldet");
+  await anna.locator(".top .acct-btn").click();
+  await anna.locator(".tm-act", { hasText: "Ins Konto übernehmen" }).click();
+  await until(async () => (await anna.locator(".top .tm-btn").textContent()).includes("☁"), "Reise im Konto");
+  const before = await total(anna);
+  tripId = await anna.evaluate(() => localStorage.getItem("rk2-current"));
+  log("Reise im Konto, Summe", before);
+
+  // Anna erstellt einen Einladungslink
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
+  await anna.locator(".modal .btn", { hasText: "Link erstellen" }).click();
+  const link = await anna.locator(".linkbox input").inputValue();
+  if (!link.includes("?join=")) fail("kein Link: " + link);
+  log("Einladungslink erstellt");
+  await anna.keyboard.press("Escape");
+
+  // Oma öffnet den Link, meldet sich an und landet in der Reise
+  const oma = await person(open, "Oma");
+  await oma.goto(link);
+  await oma.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
+  await login(oma, "Oma");
+  await until(async () => (await oma.locator(".top .tm-btn").first().textContent()).includes("☁"), "Oma hat die Reise im Konto");
+  await until(async () => (await oma.locator(".hero-in").textContent()).includes("Mallorca"), "Oma sieht die Reise");
+  await until(async () => !(await oma.locator(".banner").count()), "Stand geladen");
+  // Summe zählt nach dem Laden hoch: warten, bis sie steht
+  await until(async () => (await total(oma)) === before, `Oma sieht ${await total(oma)} statt ${before}`);
+  log("Oma ist beigetreten und sieht dieselbe Summe");
+
+  // „Wer bist du?“ (#435): Oma wählt einen Platzhalter, er heißt danach „Oma“ (auch bei Anna)
+  const who = oma.locator(".modal", { hasText: "Wer bist du?" });
+  await who.waitFor();
+  await who.locator(".who-p").first().click();
+  await who.locator("input").fill("Oma");
+  await who.locator(".who-ok").click();
+  await who.waitFor({ state: "detached" });
+  const names = pg => pg.evaluate(() => (JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").travelers || []).map(x => x.name + (x.member ? "*" : "")));
+  await until(async () => (await names(anna)).includes("Oma*"), "Platzhalter heißt bei Anna „Oma“");
+  log("Wer bist du: Oma wählt einen Platzhalter, bei Anna heißt er danach Oma (verknüpft)");
+
+  // Link zur Reise aus dem KI-Konnektor (…/?reise=ID): öffnet die Reise statt der Startseite, Parameter verschwindet
+  await oma.goto(URL + "?reise=" + tripId);
+  await until(async () => (await oma.locator(".hero-in").count()) > 0 && (await oma.locator(".hero-in").textContent()).includes("Mallorca"), "Oma landet über ?reise= in der Reise");
+  if (oma.url().includes("reise=")) fail("?reise= bleibt in der Adresse");
+  log("Link zur Reise (?reise=) öffnet die Reise");
+
+  // Gast ohne Konto (#435): AGB nötig, Vorname, dann „Wer bist du?“; Hinweis „Konto anlegen“ behält alles
+  const jonas = await person(open, "Jonas");
+  await jonas.goto(link);
+  await jonas.locator(".modal h3", { hasText: "eingeladen" }).waitFor();
+  await jonas.locator(".login-guest input").fill("Jonas");
+  await jonas.locator(".login-guest .btn").click();
+  await jonas.locator(".login .err", { hasText: "AGB" }).waitFor();
+  await jonas.locator(".login-terms input").check();
+  await jonas.locator(".login-guest .btn").click();
+  await until(async () => (await jonas.locator(".hero-in").textContent().catch(() => "")).includes("Mallorca"), "Gast sieht die Reise");
+  const gwho = jonas.locator(".modal", { hasText: "Wer bist du?" });
+  await gwho.waitFor();
+  if ((await gwho.locator("input").inputValue()) !== "Jonas") fail("Vorname nicht vorbelegt");
+  if (await gwho.locator(".who-p", { hasText: /^.*Oma$/ }).count()) fail("schon gewählte Person noch wählbar");
+  await gwho.locator(".who-p").first().click();
+  await gwho.locator(".who-ok").click();
+  await until(async () => (await names(anna)).includes("Jonas*"), "Gast heißt bei Anna „Jonas“");
+  await jonas.locator(".guest-note").waitFor();
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
+  await until(async () => (await anna.locator(".members").innerText()).includes("= Jonas"), "Anna sieht, wer Jonas ist");
+  await anna.keyboard.press("Escape");
+  const gastTrip = await jonas.evaluate(() => localStorage.getItem("rk2-current"));
+  await jonas.locator(".guest-up").click();
+  await jonas.locator(".modal h3", { hasText: "Konto anlegen" }).waitFor();
+  await login(jonas, "Jonas");
+  await until(async () => !(await jonas.locator(".guest-note").count()), "Gast-Hinweis weg nach Konto");
+  if ((await jonas.evaluate(() => localStorage.getItem("rk2-current"))) !== gastTrip) fail("nach Konto andere Reise offen");
+  await until(async () => (await jonas.locator(".top .tm-btn").first().textContent()).includes("☁"), "Reise bleibt nach Konto im Konto");
+  log("Gast: AGB nötig, beitreten ohne Konto, sich wählen; Anna sieht „= Jonas“; Konto anlegen behält Reise und Person");
+
+  // Oma ändert den Mietwagen, Anna sieht es live
+  await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).scrollIntoViewIfNeeded();
+  await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
+  await oma.locator(".editor [data-sec=price] summary").click();
+  // Mietwagen der Reiseidee: Richtwert pro Person (Erwachsene)
+  await oma.locator(".editor label", { hasText: "Erwachsene" }).locator("input").fill("45");
+  await oma.keyboard.press("Escape");
+  // Summe zählt hoch: warten, bis sie sich geändert hat und steht
+  let omaTotal = before;
+  await until(async () => { const a = await total(oma); await new Promise(r => setTimeout(r, 600)); const b = await total(oma); omaTotal = b; return a === b && b !== before; }, "Omas Summe geändert");
+  await dbState("nach Omas Eingabe");
+  await new Promise(r => setTimeout(r, 1500));
+  await dbState("1,5 s später");
+  await until(async () => (await total(anna)) === omaTotal, `Anna sieht Omas Änderung (${omaTotal})`).catch(async e => { await dbState("Fehler"); console.log("  Anna:", await total(anna), "Oma:", await total(oma)); throw e; });
+  log("Omas Änderung ist bei Anna angekommen:", omaTotal);
+  await dbState("danach");
+
+  // Kasse: Oma reicht eine Ausgabe ein → wartet auf Bestätigung; Anna (Admin) erhebt Einspruch, entscheidet, bestätigt
+  const oks = oma.locator("#split .kasse"), aks = anna.locator("#split .kasse");
+  await oks.scrollIntoViewIfNeeded();
+  await oks.locator(".ks-add").click();
+  await oks.locator(".ks-text").fill("Eis am Strand");
+  await oks.locator(".ks-amount").fill("30");
+  await oks.locator(".ks-amt select").selectOption("EUR");
+  await oks.locator(".ks-form .btn.primary").click();
+  await until(async () => (await oks.locator(".ks-pend").count()) === 1 && !(await oks.locator(".ks-list li", { hasText: "Eis am Strand" }).locator(".ks-yes").count()), "Oma: wartet auf Bestätigung, kann selbst nicht bestätigen");
+  await aks.scrollIntoViewIfNeeded();
+  const eis = aks.locator(".ks-list li", { hasText: "Eis am Strand" });
+  await until(async () => (await eis.count()) === 1 && (await eis.innerText()).includes("wartet auf Bestätigung") && (await eis.innerText()).includes("eingereicht von Oma"), "Anna sieht Omas Ausgabe offen").catch(async e => { console.log("ANNA:", (await aks.innerText()).replace(/\s+/g, " ").slice(0, 600)); console.log("OMA:", (await oks.innerText()).replace(/\s+/g, " ").slice(0, 600)); throw e; });
+  await eis.locator(".ks-noBtn").click();
+  await eis.locator(".ks-why input").fill("war privat");
+  await eis.locator(".ks-send").click();
+  await until(async () => (await aks.locator(".ks-pend.ks-alert").count()) === 1 && (await eis.innerText()).includes("„war privat“"), "Einspruch mit Grund, Admin soll entscheiden");
+  await until(async () => (await oma.locator("#split .kasse .ks-list li", { hasText: "Eis am Strand" }).innerText()).includes("Einspruch"), "Oma sieht den Einspruch");
+  await eis.locator(".ks-reject").click();
+  await until(async () => (await oma.locator("#split .kasse .ks-list li", { hasText: "Eis am Strand" }).innerText()).includes("abgelehnt") && !(await oks.locator(".ks-pend").count()), "Oma sieht: abgelehnt");
+  await eis.locator(".ks-restore").click();
+  await eis.locator(".ks-approve").click();
+  await until(async () => !(await eis.locator(".ks-st").count()) || !(await eis.innerText()).includes("wartet"), "übernommen");
+  await until(async () => !(await oks.locator(".ks-pend").count()) && !(await oma.locator("#split .kasse .ks-list li", { hasText: "Eis am Strand" }).innerText()).includes("abgelehnt"), "bei Oma zählt die Ausgabe");
+  log("Kasse: Omas Ausgabe wartet auf Bestätigung, Anna erhebt Einspruch mit Grund, lehnt ab, stellt wieder her und übernimmt; Oma sieht jeden Schritt");
+
+  // Anna macht Oma zur Zuschauerin
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
+  await anna.locator(".members li", { hasText: "Oma" }).locator("select").selectOption("viewer");
+  await until(async () => (await oma.locator(".banner", { hasText: "nur an" }).count()) > 0, "Oma ist nur noch Zuschauerin");
+  await oma.locator("#transport .card:not(.plan-card)", { hasText: "Mietwagen" }).click({ position: { x: 40, y: 30 } });
+  if (await oma.locator(".editor").count()) fail("Zuschauerin kann bearbeiten");
+  log("Oma sieht nur noch zu und kann nichts bearbeiten");
+
+  // Abstimmen (#432): Anna legt eine Abstimmung an, wählt sich („Wer bist du?“) und stimmt; Oma stimmt als Zuschauerin
+  // mit dem eigenen Konto („✕ Ohne mich“), Anna sieht es live
+  await anna.keyboard.press("Escape");
+  await anna.locator(".modal").waitFor({ state: "detached" });
+  const atg = anna.locator("#together .tg");
+  await atg.scrollIntoViewIfNeeded();
+  await atg.locator(".poll-new").click();
+  await atg.locator(".poll-q").fill("Welcher Strand?");
+  await atg.locator(".poll-opts").fill("Es Trenc\nCala Agulla");
+  await atg.locator(".poll-add").click();
+  const apoll = atg.locator(".poll", { hasText: "Welcher Strand?" });
+  await apoll.locator(".pv-who .linkbtn").click();
+  const awho = anna.locator(".modal", { hasText: "Wer bist du?" });
+  await awho.locator(".who-p").first().click();
+  await awho.locator("input").fill("Anna");
+  await awho.locator(".who-ok").click();
+  await apoll.locator("li", { hasText: "Es Trenc" }).locator(".pv-for").click();
+  await until(async () => (await apoll.locator("li", { hasText: "Es Trenc" }).innerText()).includes("1 Stimme"), "Annas Stimme gezählt");
+  const otg = oma.locator("#together .tg");
+  await otg.scrollIntoViewIfNeeded();
+  const opoll = otg.locator(".poll", { hasText: "Welcher Strand?" });
+  await until(async () => (await opoll.locator("li", { hasText: "Es Trenc" }).innerText().catch(() => "")).includes("1 Stimme"), "Oma sieht Annas Stimme");
+  await opoll.locator("li", { hasText: "Es Trenc" }).locator(".pv-veto").click();
+  const ovd = oma.locator(".modal", { hasText: "Ohne mich bei" });
+  await ovd.locator(".veto-ok").click();
+  await ovd.waitFor({ state: "detached" });
+  await opoll.locator("li", { hasText: "Cala Agulla" }).locator(".pv-for").click();
+  await until(async () => (await apoll.locator("li", { hasText: "Es Trenc" }).innerText()).includes("✕ Oma"), "Anna sieht Omas „Ohne mich“")
+    .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); console.log("OMA:", (await opoll.innerText()).replace(/\s+/g, " ")); throw e; });
+  await until(async () => (await apoll.locator("li", { hasText: "Cala Agulla" }).innerText()).includes("1 Stimme"), "Omas Stimme bei Anna");
+  // Anna hat schon abgestimmt: Info mit neuem Preis (#439)
+  // Preise der Reiseidee sind pro Person: gleicher Preis p. P., die ganze Reise wird günstiger
+  await until(async () => (await apoll.locator(".pv-notes").innerText().catch(() => "")).includes("Oma wäre bei „Es Trenc“ nicht dabei.")
+    && /gleicher Preis p\. P\., ganze Reise .+ statt/.test(await apoll.locator("li", { hasText: "Es Trenc" }).innerText()), "Info an Anna, Folgen an der Möglichkeit")
+    .catch(async e => { console.log("ANNA:", (await apoll.innerText()).replace(/\s+/g, " ")); throw e; });
+  log("Abstimmen: Anna wählt sich und stimmt, Oma stimmt als Zuschauerin mit eigenem Konto („✕ Ohne mich“ mit Namen, Fenster), Anna sieht es live und bekommt die Info, Folgen an der Möglichkeit");
+
+  // Gruppenchat: Oma (nur ansehen) schreibt, Anna sieht den Zähler und antwortet mit Bild; löschen nur eigene
+  await oma.locator(".gc-fab").click();
+  const ogc = oma.locator(".gc");
+  await ogc.locator("textarea").fill("Hallo zusammen 🎳");
+  await ogc.locator("textarea").press("Enter");
+  await until(async () => (await anna.locator(".gc-fab .gc-badge").innerText().catch(() => "")) === "1", "Anna sieht 1 neue Nachricht");
+  await anna.locator(".gc-fab").click();
+  const agc = anna.locator(".gc");
+  await until(async () => /Oma[\s\S]*Hallo zusammen 🎳/.test(await agc.locator(".gc-msgs").innerText()), "Anna liest Omas Nachricht mit Namen");
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await agc.locator(".gc-file").setInputFiles({ name: "strand.png", mimeType: "image/png", buffer: png });
+  await agc.locator(".gc-pre img").waitFor();
+  await agc.locator("textarea").fill("Unser Strand: https://example.com/strand");
+  await agc.locator(".gc-send").click();
+  await until(async () => (await ogc.locator(".gc-img img").count()) === 1 && (await ogc.locator(".gc-msg a[href='https://example.com/strand']").count()) === 1, "Oma sieht Annas Bild und Link");
+  const src = await ogc.locator(".gc-img img").getAttribute("src");
+  if (!src?.startsWith("data:image/jpeg;base64,")) throw new Error("Bild nicht als verkleinertes JPEG: " + src?.slice(0, 40));
+  await agc.locator(".gc-file").setInputFiles({ name: "film.mp4", mimeType: "video/mp4", buffer: Buffer.from("0000") });
+  await until(async () => (await agc.locator(".gc-errline").innerText().catch(() => "")).includes("keine Videos"), "Video abgelehnt");
+  const annaMsg = ogc.locator(".gc-msg", { hasText: "Unser Strand" });
+  if (await annaMsg.locator(".gc-del").count()) throw new Error("Oma kann Annas Nachricht löschen");
+  autoAsk(oma, { once: true });
+  await ogc.locator(".gc-msg", { hasText: "Hallo zusammen" }).locator(".gc-del").click();
+  await until(async () => !(await agc.locator(".gc-msgs").innerText()).includes("Hallo zusammen"), "Omas gelöschte Nachricht ist bei Anna weg");
+  await agc.locator(".ai-head .x").click();
+  await ogc.locator(".ai-head .x").click();
+  log("Gruppenchat: Zuschauerin schreibt, Zähler bei Anna, Bild verkleinert als JPEG und Link kommen an, kein Video, löschen nur eigene");
+
+  // Teilen direkt in „Gemeinsam planen“: Anna „Teilen und Mitglieder“, Oma (sieht zu) „Mitglieder“
+  await atg.scrollIntoViewIfNeeded();
+  if (!(await atg.locator(".sb-share").innerText()).includes("Teilen und Mitglieder") || !(await otg.locator(".sb-share").innerText()).includes("Mitglieder")) fail("Teilen-Knopf in „Gemeinsam planen“ fehlt");
+  await atg.locator(".sb-share").click();
+  const sd = anna.locator(".modal", { has: anna.locator(".members") });
+  await until(async () => (await sd.innerText().catch(() => "")).includes("Oma"), "Teilen-Fenster mit Mitgliedern");
+  await anna.keyboard.press("Escape");
+  await sd.waitFor({ state: "detached" });
+  log("Teilen: Knopf direkt in „Gemeinsam planen“ öffnet das Fenster mit Link und Mitgliedern");
+
+  // Selbst eintragen (#571): Anna startet „Termin finden“; Oma (nur ansehen) trägt ihre Zeile und den Wohnort ihrer Familie selbst ein
+  await atg.scrollIntoViewIfNeeded();
+  await atg.locator(".tg-open").click();
+  await atg.locator(".tg-start").click();
+  await otg.locator(".tg-grid").waitFor();
+  await until(async () => (await otg.locator(".tg-todo").innerText().catch(() => "")).includes("Du bist Oma") && (await otg.locator(".tg-todo").innerText()).includes("Termine eintragen"), "Oma sieht, was noch fehlt");
+  const omaRow = side => side.locator(".tg-row", { has: side.locator(".tg-name", { hasText: /^Oma/ }) });
+  if (await omaRow(oma).locator(".tg-c").first().isDisabled()) fail("Oma kann ihre eigene Zeile nicht antippen");
+  if (!(await otg.locator(".tg-row", { has: oma.locator(".tg-name", { hasText: /^Jonas/ }) }).locator(".tg-c").first().isDisabled())) fail("Oma kann fremde Zeilen antippen");
+  await omaRow(oma).locator(".tg-c").first().click();
+  await until(async () => (await omaRow(anna).locator(".tg-c").first().innerText()) === "✓" && (await omaRow(anna).locator(".tg-name").innerText()).includes("🔒"), "Anna sieht Omas ✓, Zeile gesperrt");
+  if (!(await omaRow(anna).locator(".tg-c").first().isDisabled())) fail("Anna kann Omas Zeile ändern");
+  await until(async () => !(await otg.locator(".tg-todo").innerText()).includes("Termine eintragen"), "Termine bei Oma erledigt");
+  const omaHh = await oma.evaluate(() => (JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").travelers || []).find(x => x.name === "Oma")?.household);
+  await oma.locator(".hh-sum b", { hasText: new RegExp(`^${omaHh}$`) }).click();
+  const oself = oma.locator(".hh-self");
+  await oself.locator(".home-plz").fill("41236");
+  await until(async () => (await anna.locator(".hh-sum", { has: anna.locator("b", { hasText: new RegExp(`^${omaHh}$`) }) }).innerText()).includes("Mönchengladbach"), "Anna hat Omas Wohnort in der Reise");
+  await until(async () => (await anna.evaluate(h => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").households?.[h]?.geo?.ort, omaHh)) === "Mönchengladbach", "Wohnort in Annas Reise übernommen");
+  log("Selbst eintragen: Zuschauerin trägt eigene Zeile (für andere gesperrt) und Wohnort ein, Anna übernimmt beides in die Reise");
+  // Ferien-Region (#570): aus der PLZ geschätzt (41236 → Nordrhein-Westfalen), änderbar
+  await anna.locator(".hh-sum b", { hasText: new RegExp(`^${omaHh}$`) }).click();
+  const areg = anna.locator(".hh.open .hh-region");
+  await until(async () => (await areg.locator(".hol-region").inputValue().catch(() => "")) === "DE-NW" && (await areg.locator(".hh-guess").innerText()).includes("aus der PLZ geschätzt"), "Region aus der PLZ");
+  await areg.locator(".hol-region").selectOption("DE-NI");
+  await until(async () => (await anna.evaluate(h => JSON.parse(localStorage.getItem("rk2-t:" + localStorage.getItem("rk2-current")) || "{}").households?.[h]?.region, omaHh)) === "DE-NI" && !(await areg.locator(".hh-guess").count()), "Region selbst gewählt");
+  await anna.locator(".hh-sum b", { hasText: new RegExp(`^${omaHh}$`) }).click();
+  log("Ferien-Region: aus der PLZ geschätzt (NRW), selbst geändert (Niedersachsen)");
+
+  // Variante (#428): Anna kopiert die geteilte Reise als Variante; sie ist mit denselben Mitgliedern geteilt, die Startseite
+  // bündelt beide in einer Kachel
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-variant").click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) !== tripId, "Variante offen");
+  const varId = await anna.evaluate(() => localStorage.getItem("rk2-current"));
+  const doc = async id => (await (await fetch(`${FS}/trips/${id}`, { headers: { Authorization: "Bearer owner" } })).json()).fields || {};
+  const ids = f => (f.memberIds?.arrayValue?.values || []).map(v => v.stringValue).sort().join();
+  await until(async () => { const a = await doc(tripId), b = await doc(varId); return !!b.memberIds && ids(a) === ids(b) && JSON.parse(b.data.stringValue).cmp?.id === JSON.parse(a.data.stringValue).cmp?.id; }, "Variante mit denselben Mitgliedern im selben Vergleich")
+    .catch(async e => { const a = await doc(tripId), b = await doc(varId); console.log("ORIG", ids(a), JSON.parse(a.data?.stringValue || "{}").cmp, "VAR", ids(b), JSON.parse(b.data?.stringValue || "{}").cmp); throw e; });
+  // in der Reise (#431): „Variante 2 von 2“, Wechsel zur anderen Variante und zurück
+  const vbar = anna.locator(".hero .vbar");
+  await until(async () => /Variante 2 von 2/.test(await vbar.innerText().catch(() => "")), "Hinweis „Variante 2 von 2“")
+    .catch(async e => { console.log("VBAR", await anna.locator(".hero").innerText().then(x => x.slice(0, 300).replace(/\n/g, " / ")), await anna.evaluate(() => JSON.stringify(Object.keys(localStorage).filter(k => k.startsWith("rk2-t:")).map(k => [k, JSON.parse(localStorage.getItem(k)).cmp])))); throw e; });
+  await vbar.locator(".chip", { hasNotText: "Variante 2" }).click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === tripId, "Wechsel zur ersten Variante");
+  await vbar.locator(".chip", { hasText: "Variante 2" }).click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === varId, "Wechsel zurück");
+  await anna.locator(".top .brand-btn").click();
+  const vt = (await myTrips(anna)).locator(".start .home-cmp");
+  await vt.waitFor();
+  if (!(await vt.innerText()).includes("2 Varianten") || !(await vt.innerText()).includes("Variante 2")) fail("Kachel: " + await vt.innerText());
+  await vt.locator(".hc-var", { hasNotText: "Variante 2" }).click();
+  await until(async () => (await anna.evaluate(() => localStorage.getItem("rk2-current"))) === tripId, "zurück in der ursprünglichen Reise");
+  log("Variante: geteilt mit denselben Mitgliedern, im selben Vergleich, Hinweis „Variante 2 von 2“ mit Wechsel, Startseite mit einer Kachel „2 Varianten“");
+  await anna.locator(".top .tm-btn").first().click();
+  await anna.locator(".tm-act", { hasText: "Teilen und Mitglieder" }).click();
+
+  // Anna zieht den Link zurück; Mallory kommt nicht mehr hinein
+  await anna.locator(".linkbtn", { hasText: "Link zurückziehen" }).click();
+  await anna.locator(".modal .btn", { hasText: "Link erstellen" }).waitFor();
+  await anna.keyboard.press("Escape");
+  const mal = await person(open, "Mallory");
+  await mal.goto(link);
+  await login(mal, "Mallory");
+  await until(async () => (await mal.locator(".banner.err").count()) > 0, "Mallory wird abgewiesen");
+  if ((await mal.locator(".top .tm-btn").first().textContent()).includes("☁")) fail("Mallory ist in der Reise");
+  log("Zurückgezogener Link funktioniert nicht mehr");
+
+  // Mallory löscht die offene Reise: danach die Startseite, keine andere Reise und keine leere im Konto (Fehlerbericht #13)
+  autoAsk(mal);
+  await mal.locator(".top .tm-btn").first().click();
+  await mal.locator(".tm-act", { hasText: "Diese Reise löschen" }).click();
+  await (await startPage(mal)).locator(".start .home-title").waitFor();
+  if (await (await startPage(mal)).locator(".home-cont").count()) fail("nach dem Löschen eine andere Reise zum Weiterplanen");
+  await mal.locator(".top .acct-btn").click();
+  if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("Hinweis auf Gerät-Reise bleibt");
+  await mal.keyboard.press("Escape");
+  log("Offene Reise gelöscht: Startseite, keine andere Reise geöffnet, keine leere im Konto");
+
+  // Neue Reise angemeldet: solo plant man als man selbst, nicht als Tier (Fehlerbericht #16)
+  await (await startPage(mal)).locator(".start .home-new").click();
+  await toWho(mal);
+  const whoLine = mal.locator(".modal .who-d p").first();
+  if (!(await whoLine.textContent()).includes("Du planst als Mallory")) fail("Neue Reise solo: " + await whoLine.textContent());
+  await whoLine.locator(".linkbtn", { hasText: "Lieber als Tier planen" }).click();
+  if ((await whoLine.textContent()).includes("Mallory") && !(await whoLine.textContent()).includes("Als Mallory planen")) fail("als Tier: " + await whoLine.textContent());
+  await whoLine.locator(".linkbtn", { hasText: "Als Mallory planen" }).click();
+  await mal.keyboard.press("Escape");
+  log("Neue Reise angemeldet: „Du planst als Mallory“, umschaltbar auf ein Tier");
+
+  // Verzeichniseintrag ohne gespeicherte Reise (z. B. gelöschte Konto-Reise) zählt nicht als Reise auf dem Gerät
+  await mal.evaluate(() => {
+    const ix = JSON.parse(localStorage.getItem("rk2-index") || "[]");
+    localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "verwaist", name: "Alt", place: "" }]));
+  });
+  await reloadHome(mal);
+  await mal.locator(".top .acct-btn").click();
+  await mal.locator(".acct-pop").waitFor();
+  if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("verwaister Eintrag zählt als Reise auf dem Gerät");
+  await mal.keyboard.press("Escape");
+  log("Verwaiste Einträge zählen nicht als Reisen auf dem Gerät");
+
+  // Konto-Reise, die dieses Gerät kannte, wurde auf einem anderen Gerät gelöscht: Eintrag und Kopie verschwinden
+  // (sonst erschiene sie als „nur auf diesem Gerät“ und „Ins Konto übernehmen“ holte sie zurück).
+  // Vorbereiten auf einer Seite ohne App: die laufende App räumte sonst schon währenddessen auf und überschriebe die gesehene Liste
+  await mal.goto(URL + "icon.svg");
+  await mal.evaluate(() => {
+    const uid = Object.keys(localStorage).find(k => k.startsWith("rk2-cloud-seen:"))?.split(":")[1];
+    if (!uid) throw new Error("keine gesehene Konto-Liste");
+    const seen = JSON.parse(localStorage.getItem("rk2-cloud-seen:" + uid) || "[]");
+    localStorage.setItem("rk2-cloud-seen:" + uid, JSON.stringify([...seen, "woanders-weg"]));
+    const ix = JSON.parse(localStorage.getItem("rk2-index") || "[]");
+    localStorage.setItem("rk2-index", JSON.stringify([...ix, { id: "woanders-weg", name: "Rom", place: "Rom" }]));
+    localStorage.setItem("rk2-t:woanders-weg", JSON.stringify({ id: "woanders-weg", name: "Rom", place: "Rom", country: "", travelers: [{ id: "x", name: "Mal", household: "M" }],
+      items: [{ id: "i", cat: "misc", name: "Eis", status: "idea", options: [{ id: "o", label: "Eis", price: { mode: "unit", currency: "EUR", unit: 10 } }] }], tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } } }));
+  });
+  await mal.goto(URL);
+  // fertig aufgeräumt erst, wenn auch der Verzeichniseintrag weg ist (die Kopie kann vorher schon fehlen)
+  await until(async () => await mal.evaluate(() => !localStorage.getItem("rk2-t:woanders-weg") && !(localStorage.getItem("rk2-index") || "").includes("woanders-weg")), "Kopie und Eintrag der woanders gelöschten Reise weg");
+  if (await (await myTrips(mal)).locator(".home-trip", { hasText: "Rom" }).count()) fail("woanders gelöschte Reise auf der Startseite");
+  await mal.locator(".top .acct-btn").click();
+  await mal.locator(".acct-pop").waitFor();
+  if (await mal.locator(".acct-pop", { hasText: "nur auf diesem Gerät" }).count()) fail("woanders gelöschte Reise zählt als Reise auf dem Gerät");
+  await mal.keyboard.press("Escape");
+  log("Woanders gelöschte Konto-Reise: Eintrag und Kopie auf dem Gerät weggeräumt, kein „nur auf diesem Gerät“");
+
+  // Neu laden: Anna hat die Reise weiter im Konto
+  await dbState("vor Neuladen");
+  await reloadHome(anna);
+  await (await myTrips(anna)).locator(".start .home-trip").first().click();
+  await until(async () => (await anna.locator(".top .tm-btn").first().textContent()).includes("☁"), "nach Neuladen im Konto");
+  await until(async () => (await total(anna)) === omaTotal, "nach Neuladen gleiche Summe").catch(async e => {
+    console.log("Anna nach Neuladen:", await total(anna), await anna.evaluate(() => [localStorage.getItem("rk2-current"), document.querySelector(".banner")?.textContent]));
+    throw e;
+  });
+  log("Nach dem Neuladen alles da");
+
+  // Aktionsseite: Anna trägt einen Zuschuss ein und veröffentlicht eine Seite mit IBAN; ein Gast ohne Konto sieht sie
+  const fund = async (name, amount) => {
+    await anna.locator("#split .funds .fu-add").click();
+    const ed = anna.locator("#split .funds .fu-edit");
+    await ed.locator("input").first().fill(name);
+    await ed.locator(".fu-amt input").fill(String(amount));
+    await ed.locator("label.in-row input[type=checkbox]").check();
+    await ed.locator(".btn.primary").click();
+  };
+  await anna.locator("#split").scrollIntoViewIfNeeded();
+  await fund("Oma", 200);
+  await anna.locator("#split .cmp-start").click();
+  const ce = anna.locator("#split .cmp-edit");
+  if ((await ce.locator("input.cmp-iban-in").count()) || (await ce.innerText()).includes("IBAN")) fail("Aktionsseite fragt noch nach der IBAN");
+  await ce.locator(".cmp-publish").click();
+  if (!(await ce.locator(".err").textContent()).includes("PayPal.me oder")) fail("ohne Zahlweg veröffentlicht");
+  await ce.locator(".cmp-link-in").fill("https://example.com/sammeln");
+  await ce.locator(".cmp-publish").click();
+  if (!(await ce.locator(".err").textContent()).includes("Link geht nicht")) fail("fremder Link angenommen");
+  await ce.locator(".cmp-link-in").fill("gofund.me/kegeltour");
+  await ce.locator(".cmp-paypal-in").fill("paypal.me/AnnaK");
+  await ce.locator(".cmp-publish").click();
+  if (!(await ce.locator(".err").textContent()).includes("zustimmen")) fail("ohne Einwilligung veröffentlicht");
+  await ce.locator(".cmp-consent input").check();
+  await ce.locator(".cmp-publish").click();
+  await until(async () => (await anna.locator("#split .cmp-link input").count()) > 0, "Aktionsseite veröffentlicht");
+  const aktion = await anna.locator("#split .cmp-link input").inputValue();
+  if (!/\?aktion=[A-Za-z0-9]{12,}/.test(aktion)) fail("Link der Aktionsseite: " + aktion);
+  const gast = await person(open, "Gast");
+  await gast.goto(aktion);
+  await gast.locator(".cmp h1").waitFor();
+  const page = await gast.locator(".cmp").innerText();
+  if (!page.includes("PayPal.me/AnnaK") || !page.includes("GoFundMe") || !/200\s?€/.test(page)) fail("Aktionsseite: " + page.slice(0, 400));
+  if ((await gast.locator(".cmp-ext").getAttribute("href")) !== "https://gofund.me/kegeltour") fail("Link zur Sammelaktion");
+  if (page.includes("IBAN")) fail("Aktionsseite zeigt IBAN");
+  if (page.includes("Oma")) fail("Aktionsseite zeigt Namen aus der Reise");
+  if (process.env.SHOTS) {
+    await anna.locator("#split .funds").screenshot({ path: `${process.env.SHOTS}/cmp-card.png` });
+    await gast.setViewportSize({ width: 390, height: 1100 });
+    await gast.screenshot({ path: `${process.env.SHOTS}/cmp-page.png` });
+    await gast.setViewportSize({ width: 1280, height: 900 });
+  }
+  log("Aktionsseite veröffentlicht (nur mit Einwilligung), Gast ohne Konto sieht Ziel, 200 €, PayPal.me und Sammelaktion, keine IBAN, keine Namen der Reise; nur bekannte Anbieter");
+
+  // Fortschritt zieht automatisch nach
+  await fund("Sponsor", 100);
+  await until(async () => { await gast.reload(); await gast.locator(".cmp h1").waitFor(); return /300\s?€/.test(await gast.locator(".cmp-sum").innerText()); }, "Fortschritt 300 € auf der Aktionsseite", 20000);
+  log("Neuer Zuschuss: Aktionsseite zeigt 300 €");
+
+  // Regeln: ohne Konto (und als anderes Konto) lässt sich die Seite nicht ändern
+  const cid = new globalThis.URL(aktion).searchParams.get("aktion");
+  const rest = `${FS}/campaigns/${cid}`;
+  const hack = await fetch(rest + "?updateMask.fieldPaths=paypal", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ fields: { paypal: { stringValue: "Betrueger" } } }) });
+  if (hack.status !== 403) fail("Aktionsseite ohne Konto änderbar: " + hack.status);
+  log("Fremde können den PayPal-Namen nicht ändern (Firestore-Regeln)");
+  // ohne Konto nur die eine Seite per Link, nicht die ganze Sammlung
+  if ((await fetch(rest)).status !== 200) fail("Aktionsseite per Link nicht lesbar");
+  const all = await fetch(`${FS}/campaigns`);
+  if (all.status !== 403) fail("Aktionsseiten ohne Konto auflistbar: " + all.status);
+  const q = await fetch(`${FS}:runQuery`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "campaigns" }] } }) });
+  if (q.status !== 403) fail("Aktionsseiten ohne Konto abfragbar: " + q.status);
+  log("Aktionsseiten: einzeln per Link lesbar, die Sammlung ohne Konto weder auflist- noch abfragbar");
+
+  // Zurückziehen: Link zeigt „gibt es nicht mehr“
+  autoAsk(anna);
+  await anna.locator("#split .cmp-box .fu-del").click();
+  await anna.locator("#split .cmp-start").waitFor();
+  await reloadHome(gast);
+  await until(async () => (await gast.locator(".cmp").innerText()).includes("gibt es nicht"), "zurückgezogene Aktionsseite");
+  log("Aktionsseite zurückgezogen: Link zeigt „gibt es nicht (mehr)“");
+
+  // Startseite: geteilte Reise zeigt die anderen Mitglieder
+  await anna.locator(".top .brand-btn").click();
+  await myTrips(anna);
+  await until(async () => /mit [^·]*Oma/.test(await anna.locator(".start").innerText()), "Mitglieder auf der Karte").catch(async e => { console.log("HOME:", (await anna.locator(".start").innerText()).replace(/\s+/g, " ").slice(0, 900)); throw e; });
+  log("Startseite: geteilte Reise „☁ mit Oma“");
+});

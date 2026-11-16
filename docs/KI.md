@@ -50,6 +50,14 @@ Unterkunft mehrfach“ (`stayMode: same`) oder „Mehrere in der Nähe“ (`mix`
 Teilgruppe (`search_stays` mit `groupSize`) und schlägt `stays` mit `travelers` je Unterkunft vor. Beim Übernehmen wird
 jede Unterkunft ein eigener Posten mit ihren Reisenden („Unterkunft in Cala Rajada (1/3)“).
 
+## Harte Kriterien (#674, #676)
+
+Schlafzimmer, Pool, Rutsche, Sauna … gelten nur, wenn die Daten des Angebots sie bestätigen (`bedrooms`, `sleeps`, `facts`,
+`board`). Schlafzimmer sucht die KI mit `bedroomsMin` (eine ganze Unterkunft für alle, nicht `rooms`). Schlägt sie trotzdem ein
+Angebot vor, das ein Kriterium nicht bestätigt, nennt sie es in `unverified` und in der Zusammenfassung; der Posten bekommt beim
+Übernehmen „bitte prüfen“ mit Grund (`check`, `checkWhy`). Gleiches im Konnektor: `add_stay` mit `unverified`, `get_trip` zeigt
+`pleaseCheck`, die Server-Anweisungen verlangen es.
+
 ## Familien mit eigenen Zeiten (#230)
 
 Kommen und gehen Familien zu unterschiedlichen Zeiten („wir drei Wochen, die anderen ab Woche 2, Oma zehn Tage“), plant
@@ -131,7 +139,7 @@ Kosten mit Haiku: grob unter 1 Cent je Planung (0,10 $ / 0,50 $ je Mio. Token Ei
 
 - `worker/src/claude.test.ts`: Übersetzung für Claude, Denkblöcke im Verlauf, Wiederholung, Anbieterwechsel
 - `app/src/lib/agent/*.test.ts`: Ablauf mit nachgestelltem Gemini, Grenzen, Anmeldeprüfung mit eigenen Schlüsseln
-- `app/e2e/agent.mjs`: Anmeldung, Anfrage, Vorschlag übernehmen, offene Reise ändern, Rückgängig, KI-Vergleichsreise (Such-Dienst nachgestellt)
+- `app/e2e/konto/agent.spec.mjs`: Anmeldung, Anfrage, Vorschlag übernehmen, offene Reise ändern, Rückgängig, KI-Vergleichsreise (Such-Dienst nachgestellt)
 
 ## Reise per KI importieren (#457)
 

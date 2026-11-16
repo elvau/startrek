@@ -5,7 +5,7 @@ import { ageClass, presences, totals } from "../calc";
 import { FLIGHTS_URL, flyers, nearestAirports, offerToOption, passengers, takeOffer } from "../flights/app";
 import { takeStay } from "../stays/app";
 import { idToken } from "../cloud/cloud.svelte";
-import { AGE, hhKey, isActive, uid, type AiMark, type Item, type Prefs, type Traveler, type Trip } from "../model";
+import { AGE, hhKey, isActive, markUnverified, uid, type AiMark, type Item, type Prefs, type Traveler, type Trip } from "../model";
 import { syncFood } from "../food";
 import { syncSouvenir } from "../souvenir";
 import type { GeoData } from "../geo/places";
@@ -183,11 +183,13 @@ export function takeAgentTrip(trip: Trip, a: AgentTrip) {
       const it = takeStay(trip, s.offer, s.q, undefined, part.length ? part : undefined);
       if (a.stays!.length > 1) it.name = `${it.name} (${i + 1}/${a.stays!.length})`;
       it.ai = { at, kind: "suggested" };
+      markUnverified(it, a.unverified);
     });
   } else if (a.stay && a.stayQuery) {
     trip.detail.stay = true;
     const it = takeStay(trip, a.stay, a.stayQuery);
     it.ai = { at, kind: "suggested" };
+    markUnverified(it, a.unverified);
     // Verpflegung an der Unterkunft: aus der Suche, sonst laut KI; die Verpflegung unter „Sonstiges“ richtet sich danach
     const o = it.options.at(-1);
     // „ohne Verpflegung“ nur, wenn es die Unterkunft sagt: eine Vermutung der KI übernimmt die App nicht

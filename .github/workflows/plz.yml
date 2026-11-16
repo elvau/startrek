@@ -10,12 +10,13 @@ permissions:
   contents: write
 jobs:
   plz:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/aufbau
         with:
-          node-version: 22
+          app: false
       - name: GeoNames laden
         run: |
           mkdir -p /tmp/zip && cd /tmp/zip

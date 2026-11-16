@@ -191,6 +191,14 @@ describe("Unterkunftssuche in der App", () => {
     expect(opt).toMatchObject({ label: "Nennolina", price: { mode: "unit", basis: "stay", unit: 2575, capacity: 3, currency: "EUR" }, stay: { rating: 95 } });
     expect(opt.source).toMatchObject({ name: "Trivago über Airbnb", url: o.url });
   });
+  it("Posten heißt nach dem Ort der Unterkunft, nicht nach dem Suchort (#678)", () => {
+    const t = trip();
+    const [a] = fromBooking(booking);
+    expect(a.city).toBe("Split");
+    expect(takeStay(t, { ...a, city: "Arrach" }, { ...q, place: "Bodenmais" }).name).toBe("Unterkunft in Arrach");
+    expect(takeStay(t, { ...a, city: undefined }, { ...q, place: "Bodenmais", checkin: "2027-07-20" }).name).toBe("Unterkunft in Bodenmais");
+    expect(fromTrivago(trivago)[0].city).toBe("Split");
+  });
   it("Übernehmen: füllt einen leeren Posten, weitere kommen als Angebote dazu", () => {
     const t = trip();
     t.items.push({ id: "leer", cat: "stay", name: "", status: "idea", from: "2027-07-18", to: "2027-07-25", options: [{ id: "x", label: "", price: { mode: "unit", currency: "EUR" } }] });
