@@ -86,6 +86,8 @@ export interface StayOffer {
   board?: "self" | "breakfast" | "half" | "full" | "all";
   /** Steuern und Gebühren laut Anbieter (im Preis enthalten oder vor Ort zu zahlen), in der Währung des Angebots */
   fees?: { label: string; amount: number; included: boolean }[];
+  /** Art laut Anbieter: ganze Unterkunft oder Hotel; fehlt: unbekannt (dann rät `stayKind` nach Name, Sternen, Küche) */
+  kind?: "whole" | "hotel";
   /** direkt in der App buchbar (später) */
   bookable?: boolean;
   /** Anbieter kennt das Haus, hat aber nichts frei (#683); fällt aus den Treffern, steht in soldOut */

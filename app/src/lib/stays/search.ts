@@ -3,7 +3,7 @@ import type { SourceStatus } from "../flights/types";
 import { FACTS, searchBooking, searchTrivago, TRIVAGO_MCP } from "./providers";
 import { searchLite } from "./liteapi";
 import { inCurrency, type Rates } from "../fx";
-import { keepStays } from "./sort";
+import { keepKind, keepStays } from "./sort";
 import { STAY_MUSTS, type StayMust, type StayOffer, type StayQuery, type StaySearchResult } from "./types";
 import { errorText } from "../netcheck";
 import { parseLang, parseMarket } from "./market";
@@ -90,7 +90,7 @@ export async function searchStays(q: StayQuery, env: StayEnv = {}, f: typeof fet
   // ausgebucht (#683): getrennt melden, nicht als Treffer; was eine andere Quelle frei hat, gilt nicht als ausgebucht
   const free = mergeStays(lists.map(l => l.filter(o => !o.soldOut)));
   const soldOut = [...new Map(lists.flat().filter(o => o.soldOut && !free.some(x => norm(x.name) === norm(o.name))).map(o => [norm(o.name), o.name])).values()];
-  return { offers: keepStays(free, q), sources, ...(soldOut.length ? { soldOut } : {}) };
+  return { offers: keepStays(keepKind(free, q.type), q), sources, ...(soldOut.length ? { soldOut } : {}) };
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
