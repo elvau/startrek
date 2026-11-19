@@ -7,6 +7,10 @@ import { kmBetween } from "../geo/places";
 export const inRadius = (o: Pick<StayOffer, "lat" | "lon">, q: Partial<Pick<StayQuery, "radiusKm" | "lat" | "lon">>): boolean =>
   !q.radiusKm || q.lat == null || q.lon == null || (o.lat != null && o.lon != null && kmBetween({ lat: q.lat, lon: q.lon }, { lat: o.lat, lon: o.lon }) <= q.radiusKm);
 
+/** in der Urlaubsregion (#679): Treffer mit Lage höchstens areaKm vom Mittelpunkt; ohne Lage nicht prüfbar, bleiben */
+export const inArea = (o: Pick<StayOffer, "lat" | "lon">, q: Partial<Pick<StayQuery, "areaKm" | "lat" | "lon">>): boolean =>
+  !q.areaKm || q.lat == null || q.lon == null || o.lat == null || o.lon == null || kmBetween({ lat: q.lat, lon: q.lon }, { lat: o.lat, lon: o.lon }) <= q.areaKm;
+
 export type StaySort = "price" | "rating" | "center" | "family";
 
 /** „Split, 0.7 km bis Zentrum“ → 0,7; ohne Angabe undefined */
@@ -25,11 +29,24 @@ export function familyScore(o: Pick<StayOffer, "facts" | "score"> & { name?: str
   return f.reduce((s, x) => s + (pts[x] || 0), 0) + (o.score || 0) / 2 + (o.name && FAMILY_NAME.test(o.name) ? 4 : 0);
 }
 
+const HOTEL_NAME = /hotel|gasthof|gasthaus|pension|hostel|\bresort\b|\binn\b|motel|\bgarni\b|\bhof\b/i;
+const WHOLE_NAME = /ferienwohnung|ferienhaus|ferienhof|apartment|appartement|\bvilla\b|hütte|huette|chalet|cottage|bungalow|holiday (home|house)|vacation (home|rental)|\bfewo\b|\bhaus\b|\bhome\b/i;
+/** Art einer Unterkunft: Angabe des Anbieters, sonst geraten (Name, Sterne, Küche); undefined = unbekannt */
+export function stayKind(o: StayOffer): "whole" | "hotel" | undefined {
+  if (o.kind) return o.kind;
+  if (HOTEL_NAME.test(o.name)) return "hotel";
+  if (WHOLE_NAME.test(o.name) || o.facts?.includes("Küche")) return "whole";
+  return o.stars ? "hotel" : undefined;
+}
+
+/** bei gesetzter Art (ganz/Hotel) nur Angebote dieser Art; unbekannte Art fliegt raus. Im Such-Dienst (`searchStays`), nicht in der App */
+export const keepKind = (list: StayOffer[], type?: StayType): StayOffer[] => (!type || type === "all" ? list : list.filter(o => stayKind(o) === type));
+
 /** was die Anbieter trotz Filter liefern: zu wenig Sterne oder zu schwache Bewertung fliegt raus */
-export function keepStays(list: StayOffer[], q: Pick<StayQuery, "minStars" | "minScore"> & Partial<Pick<StayQuery, "bedroomsMin" | "sleepsMin" | "radiusKm" | "lat" | "lon">> & { type?: StayType }): StayOffer[] {
+export function keepStays(list: StayOffer[], q: Pick<StayQuery, "minStars" | "minScore"> & Partial<Pick<StayQuery, "bedroomsMin" | "sleepsMin" | "radiusKm" | "areaKm" | "lat" | "lon">> & { type?: StayType }): StayOffer[] {
   // Ferienwohnungen und Häuser haben keine Sterne: bei „ganze Unterkunft“ gilt der Filter nicht, bei „alles“ nur für Hotels
   const starsOk = (o: StayOffer) => !q.minStars || q.type === "whole" || (q.type === "all" && !o.stars) || (o.stars || 0) >= q.minStars;
-  return list.filter(o => starsOk(o) && (!q.minScore || o.score == null || o.score >= q.minScore) && roomsFit(o, q) && inRadius(o, q));
+  return list.filter(o => starsOk(o) && (!q.minScore || o.score == null || o.score >= q.minScore) && roomsFit(o, q) && inRadius(o, q) && inArea(o, q));
 }
 
 /** Testangebote (Sandbox, keine echten Preise) immer hinter die echten, sonst stehen sie bei „Günstigste“ oben */

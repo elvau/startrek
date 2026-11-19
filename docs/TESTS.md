@@ -68,7 +68,8 @@ test("Kurtaxe steht an der Unterkunft", async ({ open }) => {
   Personen. Fehler auf der Seite lassen den Test scheitern (`ignore: /…/` für Fehler, die zum Test gehören).
 - `until(fn, was)` wartet auf eine Bedingung; `soon(fn)` ebenso, ohne Fehler (die Prüfung danach meldet den Stand).
   Feste Wartezeiten (`waitForTimeout`) nur, wo geprüft wird, dass etwas ausbleibt, oder es kein Zeichen zum Warten gibt;
-  dann mit Kommentar, warum.
+  dann mit Kommentar, warum. Vor dem Neuladen oder Ändern von `localStorage`: `saved(p)` wartet, bis die offene Reise im
+  Browser gespeichert ist (`data-saved` an der Gesamtkalkulation; nicht für das Hochladen ins Konto).
 - `log(text)` steht in der Ausgabe und als Schritt im Bericht: zeigt, wie weit ein gescheiterter Test kam.
 - Such-Dienst nachstellen: `p.route("https://flights.test/…", r => reply(r, { … }))`.
 - Mit Konto: `test`, `login`, `adminPut`, `adminGet`, `FS` aus `../lib/konto.mjs`.

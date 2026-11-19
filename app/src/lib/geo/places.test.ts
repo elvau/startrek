@@ -3,7 +3,9 @@ import world from "../../../../public/world.json";
 import packs from "../../../../public/packs.json";
 import places from "../../../../public/places/pa.json";
 import placesPe from "../../../../public/places/pe.json";
-import { airportOf, capitalOf, ccOf, cityForAirport, findCity, placesNear, searchParts, suggestCities, type GeoData } from "./places";
+import placesDe from "../../../../public/places/p1.json";
+import plzTxt from "../../../public/plz.txt?raw";
+import { airportOf, capitalOf, ccOf, cityForAirport, findCity, kmBetween, placesNear, resolvePlace, searchParts, suggestCities, type GeoData, type PostalRow } from "./places";
 
 // echte Daten des Artefakts (public/ im Hauptordner)
 const g = { world: world.countries, packs, places } as unknown as GeoData;
@@ -64,5 +66,57 @@ describe("Orte und Flughäfen", () => {
     expect(tr[0]).toMatchObject({ name: "Trogir", cc: "HR" });
     expect(suggestCities(g, "x")).toEqual([]);
     expect(suggestCities(g, "Rio de", [], 3).some(h => h.name === "Rio de Janeiro" && h.cc === "BR")).toBe(true);
+  });
+});
+
+describe("Ort genauer auflösen (#679)", () => {
+  const gd = { world: world.countries, packs, places: { DE: placesDe.DE } } as unknown as GeoData;
+  // plz.txt wie in worker/src/home.ts gelesen
+  const postal: PostalRow[] = plzTxt.split("|").filter((x: string) => x.length > 15)
+    .map((x: string): PostalRow => [x.slice(0, 5), x.slice(15), (+x.slice(5, 10) + 47000) / 1000, (+x.slice(10, 15) + 5000) / 1000]);
+  const oberpfalz = (r: { lat?: number; lon?: number }) => kmBetween({ lat: r.lat!, lon: r.lon! }, { lat: 49.23, lon: 12.88 }) < 10;
+
+  it("Landkreis, Bundesland oder PLZ wählen unter gleichnamigen Orten (Rimbach im Landkreis Cham, nicht im Odenwald)", () => {
+    for (const q of ["Rimbach, Landkreis Cham", "Rimbach, Lkr. Cham", "Rimbach, Bayern", "Rimbach, 93485", "93485 Rimbach", "Rimbach, Landkreis Cham, Germany"]) {
+      const r = resolvePlace(gd, q, "DE", postal);
+      expect(oberpfalz(r), q).toBe(true);
+      expect(r, q).toMatchObject({ place: "Rimbach", country: "Germany", cc: "DE", pinned: true });
+      expect(r.others, q).toBeUndefined();
+    }
+    expect(oberpfalz(resolvePlace(gd, "Rimbach, Hessen", "DE", postal))).toBe(false);
+    expect(oberpfalz(resolvePlace(gd, "Rimbach, Odenwald", "DE", postal))).toBe(false);
+  });
+  it("ohne Zusatz: erster Ort, die gleichnamigen als Hinweis statt stiller Wahl", () => {
+    const r = resolvePlace(gd, "Rimbach", "DE", postal);
+    expect(r.pinned).toBe(true);
+    expect(r.others?.join(" ")).toContain("93485");
+    // ohne Land: das Land des bekannten Orts
+    expect(resolvePlace(gd, "Rimbach", null, postal).cc).toBe("DE");
+  });
+  it("eindeutige Orte wie bisher: kein Umkreis, kein Hinweis", () => {
+    const r = resolvePlace(gd, "Cham", "DE", postal);
+    expect(r).toMatchObject({ place: "Cham", cc: "DE" });
+    expect(r.pinned).toBeUndefined();
+    // bekannte Stadt mit gleichnamigem Ort: Suche über den Namen bleibt, Hinweis auf den anderen
+    const f = resolvePlace(gd, "Fürth", "DE", postal);
+    expect(f.place).toBe("Fürth");
+    expect(f.lat).toBeCloseTo(49.47, 1);
+    expect(f.pinned).toBeUndefined();
+    expect(f.others?.length).toBeGreaterThan(0);
+    const fo = resolvePlace(gd, "Fürth, Hessen", "DE", postal);
+    expect(fo.pinned).toBe(true);
+    expect(fo.lat).toBeCloseTo(49.65, 1);
+    expect(resolvePlace(g, "Trogir", "HR")).toEqual({ place: "Trogir", country: "Croatia", cc: "HR", lat: expect.any(Number), lon: expect.any(Number) });
+    expect(resolvePlace(g, "Irgendwo, Spain", "HR")).toEqual({ place: "Irgendwo", country: "Spain", cc: "ES" });
+    expect(resolvePlace(ge, "Cala Rajada, Mallorca", "ES")).toMatchObject({ place: "Cala Ratjada", country: "Spain", lat: 39.712, lon: 3.463 });
+  });
+  it("Urlaubsregion: Mittelpunkt und Umkreis, Passau und München liegen draußen", () => {
+    const r = resolvePlace(gd, "Bayerischer Wald", "DE", postal);
+    expect(r).toMatchObject({ place: "Bavarian Forest", country: "Germany", cc: "DE", areaKm: 45 });
+    expect(resolvePlace(gd, "Bayerischer Wald", null)).toMatchObject({ areaKm: 45 });
+    const c = { lat: r.lat!, lon: r.lon! };
+    expect(kmBetween(c, { lat: 48.574, lon: 13.461 })).toBeGreaterThan(r.areaKm!); // Passau
+    expect(kmBetween(c, { lat: 48.16, lon: 11.75 })).toBeGreaterThan(r.areaKm!); // Feldkirchen bei München
+    expect(kmBetween(c, { lat: 49.07, lon: 13.1 })).toBeLessThan(r.areaKm!); // Bodenmais
   });
 });

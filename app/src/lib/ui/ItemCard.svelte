@@ -16,12 +16,14 @@
   import ItemSplit from "./ItemSplit.svelte";
   import AiMark from "./AiMark.svelte";
   import PkgBand from "./PkgBand.svelte";
-  import { arrow, autoName, t, type Key } from "../i18n/index.svelte";
+  import { arrow, autoName, i18n, t, type Key } from "../i18n/index.svelte";
   import { reveal } from "./reveal";
   import { itemLoc, mapsUrl } from "../geo/maps";
   import { flashEl } from "./showItem";
   import ItemCompact from "./ItemCompact.svelte";
   import { mob } from "../mobile.svelte";
+  import { destOf, offTarget } from "../stays/fit";
+  import { geo } from "../geo/geo.svelte";
 
   let { item, icon }: { item: Item; icon: string } = $props();
   const editing = $derived(app.editing === item.id);
@@ -33,6 +35,9 @@
   const src = $derived(calc.T.items[item.id]?.option?.source);
   // Lage in Google Maps (Unterkunft, Veranstaltungsort): öffnet erst beim Antippen
   const gmap = $derived(mapsUrl(itemLoc(item, calc.T.items[item.id]?.option, app.trip)));
+  // Flug oder Unterkunft zum alten Ziel nach einem Zielwechsel (#551)
+  const off = $derived(app.trip && (item.cat === "flights" || item.cat === "stay") ? offTarget(app.trip, geo).find(o => o.id === item.id) : undefined);
+  const offText = $derived(off && app.trip ? t("fit.off", { where: off.where, km: off.km.toLocaleString(i18n.lang), dest: destOf(app.trip, geo)?.name || app.trip.place }) : "");
 
   // Auto-Posten der Runde (#243): zu Strecke, Camper und km-Satz im Kapitel Transport
   function toRoad(e: Event) {
@@ -95,4 +100,5 @@
     {#if item.check}<span class="aif-check">⚠ {t("imp.check")}{#if item.checkWhy?.length}: {item.checkWhy.join(" · ")}{/if}</span>{#if !access.readonly}<button class="linkbtn aif-ok" onclick={() => { item.check = undefined; item.checkWhy = undefined; }}>{t("imp.checked")}</button>{/if}{/if}</div>{/if}
   {#if editing}<ItemEditor {item} />{/if}
   {/if}
+  {#if offText}<p class="off-target" role="note">⚠ {offText}</p>{/if}
 </article>

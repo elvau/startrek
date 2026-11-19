@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { askRooms, roomsFit, roomsOf, withRooms } from "./rooms";
 import { bookingArgs, factsOf } from "./providers";
-import { inRadius } from "./sort";
+import { inArea, inRadius } from "./sort";
 import { comboUnits, takeStay } from "./app";
 import { airbnbLink, bookingLink, vrboLink } from "../links";
 import type { Trip } from "../model";
@@ -82,6 +82,19 @@ describe("Schlafzimmer und Schlafplätze (#674)", () => {
     expect(inRadius({ lat: 49.3, lon: 12.67 }, q)).toBe(false); // Arrach, gut 40 km
     expect(inRadius({}, q)).toBe(false);
     expect(inRadius({}, { lat: 1, lon: 1 })).toBe(true);
+  });
+  it("Urlaubsregion (#679): 1–300 km, Name bleibt Suchbegriff, Treffer mit Lage außerhalb fallen weg", () => {
+    const base = { place: "Bavarian Forest", checkin: "2027-12-30", checkout: "2028-01-03", adults: 2, lat: 49.0, lon: 13.2 };
+    expect(parseStayQuery({ ...base, areaKm: 400 })).toBe("Region: 1 bis 300 km");
+    expect(parseStayQuery({ ...base, lat: undefined, lon: undefined, areaKm: 45 })).not.toHaveProperty("areaKm");
+    const q = parseStayQuery({ ...base, areaKm: 45 }) as Exclude<ReturnType<typeof parseStayQuery>, string>;
+    expect(q).toMatchObject({ areaKm: 45 });
+    expect(bookingArgs(q)).toHaveProperty("destination");
+    expect(inArea({ lat: 49.07, lon: 13.1 }, q)).toBe(true); // Bodenmais
+    expect(inArea({ lat: 48.574, lon: 13.461 }, q)).toBe(false); // Passau
+    expect(inArea({}, q)).toBe(true);
+    const offer = (id: string, lat?: number, lon?: number) => ({ id, source: "x", sourceName: "X", name: id, total: 100, currency: "EUR", url: "", ...(lat != null ? { lat, lon } : {}) });
+    expect(keepStays([offer("Bodenmais", 49.07, 13.1), offer("München", 48.16, 11.75), offer("ohne Lage")] as any, q).map(o => o.id)).toEqual(["Bodenmais", "ohne Lage"]);
   });
   it("Suchlinks mit Schlafzimmern (#682)", () => {
     const q = { place: "Garmisch-Partenkirchen", country: "Germany", checkin: "2026-12-30", checkout: "2027-01-03", adults: 6, childAges: [4, 7, 10], rooms: 1, bedrooms: 4 };

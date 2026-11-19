@@ -113,6 +113,16 @@ export function until(fn, what, ms = 15000) {
 }
 
 /**
+ * bis die offene Reise im Browser gespeichert ist (#693): Anzeige an der Gesamtkalkulation (data-saved), statt fest zu warten.
+ * Nur für Reisen im Browser; das Hochladen ins Konto zeigt sie nicht verlässlich.
+ */
+export async function saved(page, ms = 15000) {
+  // Änderung erst durch die App laufen lassen (sie setzt „speichert …“ im nächsten Durchlauf)
+  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => r())));
+  await until(async () => (await page.locator('.aside .pp.save[data-saved="1"]').count()) > 0, "gespeichert", ms);
+}
+
+/**
  * wie until, aber ohne Fehler, wenn es nicht eintritt (liefert dann false): für Stellen, an denen die Prüfung danach
  * den genauen Stand meldet
  */

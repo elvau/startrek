@@ -39,6 +39,8 @@ export interface StayQuery {
   sleepsMin?: number;
   /** Umkreis in km um lat/lon (1–20); Treffer weiter weg oder ohne Lage fallen weg */
   radiusKm?: number;
+  /** Urlaubsregion (#679): Treffer mit Lage weiter als so viele km von lat/lon fallen weg (ohne Lage bleiben sie) */
+  areaKm?: number;
   /** nur diese Häuser, gesucht nach Namen (#683, höchstens 5); place dient zur Unterscheidung */
   names?: string[];
   currency?: string;
@@ -86,6 +88,8 @@ export interface StayOffer {
   board?: "self" | "breakfast" | "half" | "full" | "all";
   /** Steuern und Gebühren laut Anbieter (im Preis enthalten oder vor Ort zu zahlen), in der Währung des Angebots */
   fees?: { label: string; amount: number; included: boolean }[];
+  /** Art laut Anbieter: ganze Unterkunft oder Hotel; fehlt: unbekannt (dann rät `stayKind` nach Name, Sternen, Küche) */
+  kind?: "whole" | "hotel";
   /** direkt in der App buchbar (später) */
   bookable?: boolean;
   /** Anbieter kennt das Haus, hat aber nichts frei (#683); fällt aus den Treffern, steht in soldOut */

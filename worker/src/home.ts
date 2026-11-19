@@ -15,6 +15,10 @@ const flat = (s: string) => s.toLowerCase().replace(/\s/g, "");
 /** genau diese Postleitzahl (in den Daten gekürzte wie „SW1A“ oder „1012“ über den Anfang) */
 const byCode = (rows: PostalRow[], code: string) => rows.find(r => flat(r[0]) === flat(code)) || rows.find(r => flat(code).startsWith(flat(r[0])) && r[0].length >= 3);
 
+/** alle Postleitzahlen eines Landes (für gleichnamige Orte in der Unterkunftssuche, #679); null: keine Daten */
+export const postalRows = (cc: string, appUrl: string, f: typeof fetch = fetch): Promise<PostalRow[] | null> =>
+  (/^[A-Z]{2}$/.test(cc) ? load(appUrl, cc, f) : Promise.resolve(null));
+
 export interface HomeHit { plz: string; ort: string; lat: number; lon: number; cc?: string }
 
 const tables = new Map<string, Promise<PostalRow[] | null>>();

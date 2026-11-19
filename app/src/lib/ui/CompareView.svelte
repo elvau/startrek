@@ -11,7 +11,8 @@
   import { eur } from "../calc";
   import { flagOf, range } from "../format";
   import { ccOf, loadGeo } from "../geo/places";
-  import { geo } from "../geo/geo.svelte";
+  import { ensureGeo, geo } from "../geo/geo.svelte";
+  import { offTarget } from "../stays/fit";
   import { cheapestId, column, explain, rowMin, rowSpread, sameTrip, shownRows, type Col, type RowKey } from "../compareView";
   import { isArchived, leaveCompare, pickedOf, variantLabel } from "../variants";
   import { addPoll, mergedVotes, newPoll, variantPoll, variantStand } from "../together";
@@ -50,7 +51,9 @@
   const sameDates = $derived(all.every(v => v.tr.from === first?.tr.from && v.tr.to === first?.tr.to));
   const title = $derived(first?.tr.cmp?.title || "");
 
-  $effect(() => { if (all.length) loadGeo(geo, []); });
+  // Orte der Länder und Flughäfen jeder Variante: für „passt nicht zum Reiseziel“ (#551)
+  $effect(() => { if (all.length) loadGeo(geo, []); for (const v of all) ensureGeo(v.tr); });
+  const offN = (v: V) => (geo.world.length ? offTarget(v.tr, geo).length : 0);
   // aufgelöst (nur noch eine oder keine Variante): zurück zur Startseite
   $effect(() => { if (app.compare && all.length < 2 && allTrips().length) goHome(); });
 
@@ -200,6 +203,7 @@
             <b class="cv-total num">{eur(v.col.total)}</b>
             <small>{t("perPerson", { v: eur(v.col.perPerson) })}{#if v.id === low} · <span class="cv-low">{t("home.cheapest")}</span>{:else if ref} · <span class="cv-more">{signed(v.col.total - ref.total)}</span>{/if}</small>
             {#if why(v)}<small class="cv-why">{why(v)}</small>{/if}
+            {#if offN(v)}<small class="cv-off" role="note">⚠ {tn("fit.offN", offN(v))}</small>{/if}
             {#if stand?.byTrip[v.id]}<small class="cv-votes">🗳 {tn("poll.forN", stand.byTrip[v.id].for)}{stand.byTrip[v.id].veto ? ` · ✕ ${stand.byTrip[v.id].veto}` : ""}</small>{/if}
             {#if vetoFx[v.id]}{@const f = vetoFx[v.id]}<small class="cv-veto">✕ {t("cmpv.vetoFx", { names: f.names, after: eur(f.after), before: eur(f.before) })}</small>{/if}
             <span class="cv-acts">
@@ -321,6 +325,7 @@
   .cv-pop { position: absolute; z-index: 5; top: 100%; inset-inline-start: 0; display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 10px 30px -12px rgba(14, 36, 56, .4); white-space: nowrap; }
   .cv-pop .linkbtn { padding: 0; text-align: start; }
   .cv-why { color: var(--ink-2); }
+  .cv-off { color: var(--warn); font-weight: 700; }
   .cv-low, .cv-min { color: var(--good); font-weight: 700; }
   .cv-more { color: var(--warn); font-weight: 700; }
   .hidden-row { background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--warn) 10%, transparent) 8px 16px); }

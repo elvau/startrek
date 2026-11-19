@@ -8,6 +8,7 @@ import { addDays } from "../calc/travel";
 import { dayShort, time } from "../format";
 import { airportOf, ccOf, findCity, kmBetween, placesNear, stayNear, travelHours, type Airport, type GeoData, type Place } from "../geo/places";
 import { arrivals } from "./presence";
+import { farFromDest } from "./fit";
 
 export interface AirportNight {
   kind: "first" | "last";
@@ -37,7 +38,8 @@ export function airportNights(trip: Trip, g: GeoData): AirportNight[] {
     if (a.dep && a.depAp && a.dep.length >= 16) {
       const ap = airportOf(g, a.depAp);
       const dest = ap && trip.place ? findCity(g, trip.place, cc || ap.cc) : null;
-      if (ap) {
+      // Flughafen passt nicht zum Reiseziel (#551): kein Vorschlag, die Reise zeigt den Hinweis
+      if (ap && !farFromDest(dest, ap)) {
         const h = dest ? travelHours(kmBetween(dest, ap)) : null;
         const leave = mins(a.dep) - 120 - (h ?? 0) * 60;
         const from = addDays(a.p.d, -1), to = a.p.d;
@@ -50,7 +52,7 @@ export function airportNights(trip: Trip, g: GeoData): AirportNight[] {
     if (a.arr && a.arrAp && a.arr.length >= 16) {
       const ap = airportOf(g, a.arrAp);
       const dest = ap && trip.place ? findCity(g, trip.place, cc || ap.cc) : null;
-      if (ap) {
+      if (ap && !farFromDest(dest, ap)) {
         const h = dest ? travelHours(kmBetween(dest, ap)) : 0;
         const from = a.p.a, to = addDays(a.p.a, 1);
         const late = mins(a.arr) + 60 + h * 60 > 23 * 60 || mins(a.arr) >= 22 * 60;

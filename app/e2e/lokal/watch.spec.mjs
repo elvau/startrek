@@ -2,7 +2,7 @@
  * Startseite mit geplanten, gebuchten und vergangenen Reisen; Reisebeobachtung: Preise prüfen,
  * Pfeile an den Posten, Potenzial unten, günstigere Unterkunft übernehmen. Such-Dienst nachgestellt.
  */
-import { test, fail, log, until, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage } from "../lib/test.mjs";
+import { test, fail, log, until, soon, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage } from "../lib/test.mjs";
 
 const people = [{ id: "a", name: "Anna", household: "Klein" }, { id: "b", name: "Ben", household: "Klein" }];
 const base = { tiers: {}, settings: { adultAge: 12, childAge: 6, rates: { EUR: 1 }, kmCost: 0.3 }, households: {} };
@@ -308,9 +308,11 @@ test("Beobachten", async ({ open, errors }) => {
   // Gesamtanzeige bei kleinem Fenster: passt hinein, scrollt selbst; Posten einer Kategorie erst auf ▾
   await p.setViewportSize({ width: 1280, height: 480 });
   await p.locator("#stay").scrollIntoViewIfNeeded();
-  await p.waitForTimeout(600);
-  const tk = await p.evaluate(() => { const a = document.querySelector(".aside").getBoundingClientRect(), b = document.querySelector(".aside .tk-b"); return { bottom: a.bottom, h: innerHeight, scroll: b.scrollHeight > b.clientHeight, ov: getComputedStyle(b).overflowY }; });
-  if (tk.bottom > tk.h + 1 || !tk.scroll || tk.ov !== "auto") fail("Gesamtanzeige ragt aus dem Fenster oder scrollt nicht: " + JSON.stringify(tk));
+  const tkOf = () => p.evaluate(() => { const a = document.querySelector(".aside").getBoundingClientRect(), b = document.querySelector(".aside .tk-b"); return { bottom: a.bottom, h: innerHeight, scroll: b.scrollHeight > b.clientHeight, ov: getComputedStyle(b).overflowY }; });
+  const fits = x => x.bottom <= x.h + 1 && x.scroll && x.ov === "auto";
+  await soon(async () => fits(await tkOf()), 3000);
+  const tk = await tkOf();
+  if (!fits(tk)) fail("Gesamtanzeige ragt aus dem Fenster oder scrollt nicht: " + JSON.stringify(tk));
   const stayCat = p.locator(".aside .cat", { hasText: "Unterkunft" });
   if (await stayCat.locator(".cat-d").isVisible()) fail("Posten der Kategorie ohne Wunsch aufgeklappt");
   await stayCat.locator(".cat-t").click();

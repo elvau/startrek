@@ -19,6 +19,35 @@ export function personAge(p: Person, day = localToday()): number | null {
   return (p.birth ? ageAt(p.birth, day) : null) ?? p.age ?? null;
 }
 
+/* ---------- Familie einer gespeicherten Person (#578) ---------- */
+
+const homeId = (p: Person) => (p.home?.ort ? `${p.home.cc || "DE"}|${p.home.ort.trim().toLowerCase()}` : "");
+const lastOf = (p: Person) => (p.last || "").trim();
+
+/**
+ * Familie einer gespeicherten Person: der Nachname. Wohnen Personen mit demselben Nachnamen an verschiedenen Orten, sind es
+ * verschiedene Familien („Klein (Kempen)“, „Klein (Wuppertal)“); wer ohne Wohnort gespeichert ist, gehört zur Familie mit
+ * dem bloßen Nachnamen. Reisen speichern den Schlüssel (Traveler.household), ältere Reisen behalten ihren Nachnamen.
+ */
+export function familyKey(p: Person, all: Person[]): string {
+  const last = lastOf(p);
+  if (!last) return "";
+  const homes = new Set(all.filter(x => lastOf(x).toLowerCase() === last.toLowerCase()).map(homeId).filter(Boolean));
+  return homes.size > 1 && p.home?.ort ? `${last} (${p.home.ort.trim()})` : last;
+}
+
+/** gehört die Person zu dieser Familie (Schlüssel aus familyKey oder, bei älteren Reisen, nur der Nachname)? */
+export const inFamily = (p: Person, key: string, all: Person[]): boolean => {
+  const k = key.trim().toLowerCase();
+  return !!k && (familyKey(p, all).toLowerCase() === k || lastOf(p).toLowerCase() === k);
+};
+
+/** Nachname zu einem Familienschlüssel („Klein (Kempen)“ mit Wohnort Kempen → „Klein“; sonst unverändert) */
+export const lastOfKey = (key: string, ort?: string): string => {
+  const m = /^(.*\S)\s+\(([^)]+)\)$/.exec(key.trim());
+  return m && ort && m[2].trim().toLowerCase() === ort.trim().toLowerCase() ? m[1] : key.trim();
+};
+
 /** Stichtag für das Alter: Reisebeginn, sonst heute */
 const refDay = (trip: Trip, today: string) => (trip.from && /^\d{4}-\d{2}-\d{2}$/.test(trip.from) ? trip.from : today);
 
