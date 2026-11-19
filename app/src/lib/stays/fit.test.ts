@@ -12,7 +12,7 @@ const g = { world: world.countries, packs, places: { ...placesHr, ...placesEs } 
 const flight: Item = { id: "f", cat: "flights", name: "Flug", status: "idea", options: [{ id: "o", label: "EW", price: { mode: "unit", currency: "EUR", unit: 900 },
   legs: [{ dir: "out", from: "DUS", to: "SPU", dep: "2027-07-18T20:40", arr: "2027-07-18T22:40" }, { dir: "back", from: "SPU", to: "DUS", dep: "2027-07-29T06:30", arr: "2027-07-29T08:30" }] }] };
 const stay = (id: string, lat: number, lon: number, place: string): Item => ({ id, cat: "stay", name: `Hotel ${place}`, status: "idea", from: "2027-07-18", to: "2027-07-29",
-  options: [{ id: `${id}o`, label: "Hotel", price: { mode: "total", currency: "EUR", total: 1200 }, loc: { lat, lon }, query: { place, checkin: "2027-07-18", checkout: "2027-07-29", adults: 2, childAges: [], rooms: 1 } }] });
+  options: [{ id: `${id}o`, label: "Hotel", price: { mode: "unit", basis: "stay", currency: "EUR", unit: 1200 }, loc: { lat, lon }, query: { place, checkin: "2027-07-18", checkout: "2027-07-29", adults: 2, childAges: [], rooms: 1 } }] });
 const trip = (place: string, country: string, items: Item[]): Trip => ({
   id: "t", name: "Sommer", place, country, from: "2027-07-18", to: "2027-07-29",
   travelers: [{ id: "a", name: "Anna", household: "Klein", age: 40 }, { id: "b", name: "Ben", household: "Klein", age: 9 }],
