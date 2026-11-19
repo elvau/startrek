@@ -114,7 +114,7 @@
           {#if watchRun.err}<small class="err">{watchRun.err}</small>{/if}
         </div>
       {/if}
-      <div class="pp save"><span>{!app.saved || cloud.status === "saving" ? t("acct.st.saving") : isCloud(app.trip.id) ? (cloud.status === "offline" ? t("aside.offline") : cloud.status === "error" ? t("acct.st.error") : `☁ ${t("acct.st.saved")}`) : t("aside.savedLocal")}</span></div>
+      <div class="pp save" data-saved={app.saved && cloud.status !== "saving" ? "1" : "0"}><span>{!app.saved || cloud.status === "saving" ? t("acct.st.saving") : isCloud(app.trip.id) ? (cloud.status === "offline" ? t("aside.offline") : cloud.status === "error" ? t("acct.st.error") : `☁ ${t("acct.st.saved")}`) : t("aside.savedLocal")}</span></div>
     </div>
   </div>
 </aside>

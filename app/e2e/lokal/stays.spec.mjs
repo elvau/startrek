@@ -1,7 +1,7 @@
 /*
  * Unterkunftssuche in der App: Such-Dienst nachgestellt (keine echten Anbieter), Ergebnis übernehmen.
  */
-import { test, fail, log, until, soon, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage, quickTrip } from "../lib/test.mjs";
+import { test, fail, log, until, soon, saved, publicData, PLACE_DATA, URL, reloadHome, myTrips, startPage, quickTrip } from "../lib/test.mjs";
 
 /** „Weitere Optionen“ der Suche aufklappen (bleibt gemerkt) */
 const more = async m => { if (!(await m.locator(".fs-more[open]").count())) await m.locator(".fs-more > summary").click(); };
@@ -494,9 +494,9 @@ test("Unterkunftssuche", async ({ open, errors }) => {
 
   // Leiste oben bleibt beim Scrollen, die Gesamtkosten rechts bleiben darunter im Blick
   await p.evaluate(() => scrollTo({ top: 2500, behavior: "instant" }));
-  await p.waitForTimeout(500);
-  const sticky = await p.evaluate(() => ({ bar: document.querySelector(".top-in").getBoundingClientRect().bottom, aside: document.querySelector(".aside").getBoundingClientRect().top }));
-  if (sticky.bar <= 0 || sticky.bar > sticky.aside || sticky.aside > 120) fail("Leiste oder Gesamtkosten nicht im Blick: " + JSON.stringify(sticky));
+  const stuck = () => p.evaluate(() => ({ bar: document.querySelector(".top-in").getBoundingClientRect().bottom, aside: document.querySelector(".aside").getBoundingClientRect().top }));
+  const inView = s => s.bar > 0 && s.bar <= s.aside && s.aside <= 120;
+  if (!(await soon(async () => inView(await stuck()), 3000))) fail("Leiste oder Gesamtkosten nicht im Blick: " + JSON.stringify(await stuck()));
   log("Scrollen: Leiste oben sichtbar, Gesamtkosten rechts bleiben darunter stehen");
 
   // Fokusmodus nur im eigenen Kapitel: Karte bei der Unterkunft offen, weiter zu „Alles andere“ gescrollt → dort alles klar
@@ -510,9 +510,9 @@ test("Unterkunftssuche", async ({ open, errors }) => {
 
   // Unterwegs: das Fahrzeug wechselt beim Scrollen durchs Kapitel von Taxi über Bus zur Bahn
   const rides = [];
-  for (const q of [0.1, 0.5, 0.9]) {
+  for (const [q, want] of [[0.1, "taxi"], [0.5, "bus"], [0.9, "train"]]) {
     await p.locator("#transport").evaluate((el, q) => { const r = el.getBoundingClientRect(); scrollTo({ top: scrollY + r.top + r.height * q - innerHeight / 2, behavior: "instant" }); }, q);
-    await p.waitForTimeout(400);
+    await soon(async () => ((await p.locator(".veh .v.on").getAttribute("class")) || "").includes(`v-${want}`), 3000);
     rides.push(await p.locator(".veh .v.on").getAttribute("class"));
   }
   if (rides.map(c => c.match(/v-(\w+)/)[1]).join() !== "taxi,bus,train") fail("Unterwegs: " + rides.join(" | "));
@@ -535,7 +535,7 @@ test("Unterkunftssuche", async ({ open, errors }) => {
       leg("via", "LIM", "GIG", "2027-04-20T23:25", "2027-04-21T07:00"), leg("back", "GIG", "DUS", "2027-04-22T15:35", "2027-04-23T12:25")] }] }],
     tiers: {}, settings: { adultAge: 12, childAge: 2, rates: { EUR: 1 } }
   };
-  await p.waitForTimeout(600);
+  await saved(p);
   await p.evaluate(t => { localStorage.setItem("rk2-t:r1", JSON.stringify(t)); localStorage.setItem("rk2-index", JSON.stringify([{ id: "r1", name: t.name, place: "" }])); localStorage.setItem("rk2-current", "r1"); }, RT);
   await reloadHome(p);
   await (await myTrips(p)).locator(".start .home-trip").first().click();

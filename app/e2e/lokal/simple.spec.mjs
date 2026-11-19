@@ -3,7 +3,7 @@
  * Beispiel aus der Beta: zu viert, Stadionführung nur Daniel und Henning, Abendessen alle.
  * Dazu Posten auf dem Handy: eingeklappt, Suche als Fenster.
  */
-import { test, fail, log, until, seedTrips, URL, PHONE, reloadHome, myTrips, autoAsk } from "../lib/test.mjs";
+import { test, fail, log, until, soon, saved, seedTrips, URL, PHONE, reloadHome, myTrips, autoAsk } from "../lib/test.mjs";
 
 const TRIP = {
   id: "vier", name: "Zu viert", place: "London", country: "Vereinigtes Königreich", from: "2027-05-14", to: "2027-05-16",
@@ -66,9 +66,9 @@ test("Einzelne Einträge: Anteile mit Cent, Kapitelsumme, Kopfleiste am Handy, Z
   }
   // Kopfleiste am Handy (#473): bei schmalen Breiten liegen alle Symbole in der Leiste, die Reise-Auswahl gibt Platz ab
   for (const w of [320, 406]) {
-    await p.setViewportSize({ width: w, height: 800 }); await p.waitForTimeout(400);
-    const out = await p.evaluate(() => { const r = document.querySelector(".top-in").getBoundingClientRect(); return [...document.querySelectorAll(".top-in *")].filter(e => { const b = e.getBoundingClientRect(); return b.width && getComputedStyle(e).display !== "contents" && (b.right > r.right || b.left < r.left); }).map(e => e.className); });
-    if (out.length) fail(`Kopfleiste läuft bei ${w} px über: ${out.join(", ")}`);
+    await p.setViewportSize({ width: w, height: 800 });
+    const over = () => p.evaluate(() => { const r = document.querySelector(".top-in").getBoundingClientRect(); return [...document.querySelectorAll(".top-in *")].filter(e => { const b = e.getBoundingClientRect(); return b.width && getComputedStyle(e).display !== "contents" && (b.right > r.right || b.left < r.left); }).map(e => e.className); });
+    if (!(await soon(async () => !(await over()).length, 3000))) fail(`Kopfleiste läuft bei ${w} px über: ${(await over()).join(", ")}`);
   }
   await p.setViewportSize({ width: 1280, height: 900 });
   log("Einträge: Stadionführung 50 € (Daniel, Henning), Abendessen 200 € (alle), Technikmuseum 40 € (Sarah, Daniel), zusammen 290 €");
@@ -472,7 +472,7 @@ test("Gepflegte Nebenkosten: Kurtaxe in Rom, Vignetten und Maut nach Kroatien", 
   if (!(await rx.innerText()).includes("Roma Capitale")) fail("Kurtaxe ohne Quelle: " + await rx.innerText());
   await rx.locator(".xc-tg").first().click();
   await until(async () => (await fp.locator(".aside .tk-top b").innerText()).trim() === "700 €", "Kurtaxe weggeklickt");
-  await fp.waitForTimeout(800);
+  await saved(fp);
   await reloadHome(fp);
   await (await myTrips(fp)).locator(".start .home-trip", { hasText: "Rom" }).first().click();
   await fp.locator(".aside .tk-top b").waitFor();
