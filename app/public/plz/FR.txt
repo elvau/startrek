@@ -6088,7 +6088,7 @@
 14111	Louvigny	49.157	-0.394
 14112	Biéville-Beuville	49.243	-0.328
 14112	Périers-sur-le-Dan	49.258	-0.343
-14113	Cricquebœuf	49.402	0.146
+14113	Cricquebœuf	49.401	0.147
 14113	Villerville	49.401	0.128
 14114	Ver-sur-Mer	49.330	-0.531
 14117	Arromanches-les-Bains	49.338	-0.625
@@ -6697,7 +6697,7 @@
 14670	Saint-Pair	49.168	-0.185
 14670	Saint-Pierre-du-Jonquet	49.169	-0.127
 14670	Saint-Samson	49.184	-0.159
-14670	Troarn	49.178	-0.182
+14670	Troarn	49.182	-0.184
 14680	Bretteville-sur-Laize	49.045	-0.326
 14680	Cintheaux	49.055	-0.291
 14680	Fresney-le-Puceux	49.063	-0.370
@@ -26243,7 +26243,7 @@
 52200	Saint-Martin-lès-Langres	47.889	5.263
 52200	Saint-Maurice	47.845	5.410
 52200	Saint-Vallier-sur-Marne	47.836	5.396
-52200	Saints-Geosmes	47.832	5.327
+52200	Saints-Geosmes	47.833	5.329
 52200	Vauxbons	47.883	5.157
 52200	Voisines	47.860	5.184
 52201 CEDEX	Langres	47.863	5.333
@@ -30226,7 +30226,7 @@
 59241	Masnières	50.115	3.209
 59242	Cappelle-en-Pévèle	50.510	3.171
 59242	Genech	50.531	3.216
-59242	Templeuve-en-Pévèle	50.527	3.175
+59242	Templeuve-en-Pévèle	50.523	3.178
 59243	Quarouble	50.386	3.623
 59244	Cartignies	50.093	3.845
 59244	Grand-Fayt	50.113	3.805
@@ -35415,9 +35415,9 @@
 66145 CEDEX	Canet-en-Roussillon	42.700	3.017
 66150	Arles	42.456	2.635
 66150	Arles-sur-Tech	42.457	2.634
-66150	Corsavy	42.467	2.579
+66150	Corsavy	42.466	2.580
 66150	Montferrer	42.438	2.567
-66160	Le Boulou	42.524	2.833
+66160	Le Boulou	42.524	2.830
 66161 CEDEX	Le Boulou	42.524	2.833
 66162 CEDEX	Le Boulou	42.524	2.833
 66165 CEDEX	Le Boulou	42.524	2.833
@@ -39850,7 +39850,7 @@
 73410	Mognard	45.748	5.956
 73410	Saint-Germain-la-Chambotte	45.779	5.890
 73410	Saint-Girod	45.778	5.967
-73410	Saint-Ours	45.757	5.989
+73410	Saint-Ours	45.758	5.989
 73420	Drumettaz	45.661	5.922
 73420	Méry	45.641	5.936
 73420	Viviers-du-Lac	45.650	5.900

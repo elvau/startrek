@@ -3652,8 +3652,8 @@
 15100	Orti	44.894	8.710
 15100	San Giuliano Nuovo	44.906	8.761
 15100	San Giuliano Vecchio	44.889	8.761
-15100	Spinetta Marengo	44.886	8.678
 15121	Alessandria	44.909	8.610
+15122	Spinetta Marengo	44.886	8.678
 16010	Acquasanta	44.459	8.773
 16010	Carsi	44.547	9.100
 16010	Castagna	44.392	9.006
