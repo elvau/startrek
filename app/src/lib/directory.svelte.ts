@@ -5,7 +5,7 @@
 import { uid, type Directory, type Group, type Household, type Person, type Traveler } from "./model";
 import { cloud } from "./cloud/cloud.svelte";
 import { configured } from "./cloud/config";
-import { personAge } from "./people";
+import { familyKey, inFamily, lastOfKey, personAge } from "./people";
 import { newerTerms, waitForServer } from "./terms";
 
 const KEY = "rk2-dir";
@@ -185,7 +185,7 @@ const COLORS = ["#D2693C", "#2F6FDB", "#C0487A", "#1F8A70", "#D08A12", "#7A5AC8"
 export function travelersFrom(ids: string[], existing: Traveler[] = [], day?: string): Traveler[] {
   const have = new Set(existing.map(t => t.personId).filter(Boolean));
   return ids.filter(id => !have.has(id)).map(id => dir.people.find(p => p.id === id)).filter((p): p is Person => !!p)
-    .map((p, i) => ({ id: uid(), personId: p.id, name: p.first, household: p.last, age: personAge(p, day) ?? undefined, color: COLORS[(existing.length + i) % COLORS.length] }));
+    .map((p, i) => ({ id: uid(), personId: p.id, name: p.first, household: familyKey(p, dir.people) || p.last, age: personAge(p, day) ?? undefined, color: COLORS[(existing.length + i) % COLORS.length] }));
 }
 
 /** Herkunft merken (#567): Reisende aus gespeicherten Gruppen bekommen den Namen der ersten passenden Gruppe */
@@ -201,9 +201,9 @@ export function saveAsGroup(name: string, travelers: Traveler[], households: Rec
     const home = h?.geo && h.plz ? { plz: h.plz, ort: h.geo.ort, lat: h.geo.lat, lon: h.geo.lon } : undefined;
     const known = t.personId ? dir.people.find(p => p.id === t.personId) : undefined;
     if (known) { if (home && !known.home) known.home = home; return known.id; }
-    const same = dir.people.find(p => p.first === t.name.trim() && p.last === t.household.trim());
+    const same = dir.people.find(p => p.first === t.name.trim() && inFamily(p, t.household, dir.people));
     if (same && home && !same.home) same.home = home;
-    const p = same || addPerson(t.name, t.household, t.age, { home });
+    const p = same || addPerson(t.name, lastOfKey(t.household, home?.ort), t.age, { home });
     t.personId = p.id;
     return p.id;
   });

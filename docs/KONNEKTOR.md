@@ -77,7 +77,7 @@ Adresse zum Antippen. Der Service Worker lässt `go/` aus. Mit `PARTNER_LINKS=on
 
 ## Nachfragen statt raten (#595)
 
-- `get_my_travelers`: Familien aus den gespeicherten Personen (`profiles/{uid}`, Nachname = Familie) als F1, F2 … (eigene zuerst,
+- `get_my_travelers`: Familien aus den gespeicherten Personen (`profiles/{uid}`, Nachname = Familie; gleicher Nachname an verschiedenen Wohnorten = eigene Familien „Klein (Kempen)“, #578) als F1, F2 … (eigene zuerst,
   `you`), mit Familienname, Mitgliedern (Kennung, Vorname, Alter), Erwachsenen, Kinderaltern zum Stichtag (`date`, sonst heute)
   und Wohnort mit PLZ; gespeicherte Gruppen mit Name, Mitgliedern, Familien (`partOf`: nur teilweise drin) und eigenen Vorlieben;
   eigene Vorlieben (`app/src/lib/connector/people.ts`).

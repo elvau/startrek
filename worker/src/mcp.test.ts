@@ -443,6 +443,20 @@ describe("KI-Konnektor (MCP)", () => {
     expect(t.travelers.map(x => x.kind)).toEqual(["adult", "child", "child", "infant"]);
   });
 
+  it("gleicher Nachname, anderer Wohnort: zwei Familien, getrennt in der Reise (#578)", async () => {
+    const kempen = { plz: "47906", ort: "Kempen", lat: 51.36, lon: 6.42 }, wup = { plz: "42103", ort: "Wuppertal", lat: 51.26, lon: 7.15 };
+    const dir: Directory = { me: "p1", people: [
+      { id: "p1", first: "Dani", last: "Klein", age: 37, home: kempen }, { id: "p2", first: "Mia", last: "Klein", age: 9, home: kempen },
+      { id: "p3", first: "Jan", last: "Klein", age: 41, home: wup }
+    ], groups: [] };
+    const d = deps({ profile: async uid => (uid === ME.uid ? JSON.parse(JSON.stringify(dir)) : null) });
+    const view = await tool(d, "get_my_travelers", { date: "2027-08-09" });
+    expect(view.data.families.map((f: any) => [f.id, f.name, f.members.length])).toEqual([["F1", "Klein (Kempen)", 2], ["F2", "Klein (Wuppertal)", 1]]);
+    const made = await tool(d, "create_trip", { place: "Palma", from: "2027-08-09", to: "2027-08-16", families: ["F1", "F2"] });
+    const t: Trip = JSON.parse((d.store as any).docs.get(made.data.tripId).data);
+    expect(t.travelers.map(x => x.household)).toEqual(["Klein (Kempen)", "Klein (Kempen)", "Klein (Wuppertal)"]);
+  });
+
   it("Familien und Gruppen aus dem Konto: mit Namen und PLZ sehen, echte Reisende anlegen, nie raten (#595, #608)", async () => {
     const dir: Directory = {
       me: "p1",

@@ -6,7 +6,7 @@
   import { ageClass } from "../calc";
   import { isActive, isDetailed, uid, type Group } from "../model";
   import { dir, saveAsGroup, tagGroups, travelersFrom } from "../directory.svelte";
-  import { applyPeople, personAge } from "../people";
+  import { applyPeople, familyKey, personAge } from "../people";
   import { prefsFor } from "../prefs";
   import Households from "./Households.svelte";
   import GroupsDialog from "./GroupsDialog.svelte";
@@ -96,7 +96,7 @@
   function replaceWith(pid: string) {
     const p = dir.people.find(x => x.id === pid);
     if (!repl || !p) return;
-    Object.assign(repl, { name: p.first, household: p.last, personId: p.id, placeholder: undefined });
+    Object.assign(repl, { name: p.first, household: familyKey(p, dir.people) || p.last, personId: p.id, placeholder: undefined });
     // bekanntes Alter gilt, sonst bleibt die Altersklasse des Platzhalters
     const age = personAge(p, app.trip.from || undefined);
     if (age != null) { repl.age = age; repl.kind = undefined; }
