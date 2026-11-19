@@ -5,7 +5,7 @@
  * darf, übernimmt Termine und Wohnort in die Reise. Der Familienvorschlag ändert die Reise erst nach Bestätigung.
  */
 import { hhKey, isActive, uid as newId, type Directory, type Trip, type Traveler } from "./model";
-import { personAge } from "./people";
+import { familyKey, personAge } from "./people";
 import { holidayPlace } from "./holidays";
 import { travelerOf, type Claims } from "./claims";
 import type { Avail } from "./together";
@@ -203,9 +203,10 @@ export function memberState(trip: Trip, u: string, selfs: Selfs, claims: Claims,
 /** eigene Familie aus den gespeicherten Personen: gleicher Nachname wie man selbst (ohne einen selbst), Alter zum Stichtag */
 export function familyFromDir(dir: Directory, day: string): FamMember[] {
   const me = dir.people.find(p => p.id === dir.me);
-  const last = me?.last.trim().toLowerCase();
-  if (!me || !last) return [];
-  return dir.people.filter(p => p.id !== me.id && p.last.trim().toLowerCase() === last).slice(0, 12).map(p => {
+  const key = me ? familyKey(me, dir.people).toLowerCase() : "";
+  if (!me || !key) return [];
+  // gleicher Nachname an einem anderen Wohnort ist eine andere Familie (#578)
+  return dir.people.filter(p => p.id !== me.id && familyKey(p, dir.people).toLowerCase() === key).slice(0, 12).map(p => {
     const age = personAge(p, day);
     return { n: (p.first.trim() || p.last.trim()).slice(0, 40), ...(age != null ? { age } : {}) };
   });

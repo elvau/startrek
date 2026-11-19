@@ -117,6 +117,7 @@ export function parseStayQuery(b: unknown): StayQuery | string {
   if (o.bedroomsMin != null && !int(o.bedroomsMin, 1, 20)) return "Schlafzimmer: 1 bis 20";
   if (o.sleepsMin != null && !int(o.sleepsMin, 1, 50)) return "Schlafplätze: 1 bis 50";
   if (o.radiusKm != null && !int(o.radiusKm, 1, 20)) return "Umkreis: 1 bis 20 km";
+  if (o.areaKm != null && !int(o.areaKm, 1, 300)) return "Region: 1 bis 300 km";
   let names: string[] | undefined;
   if (o.names != null) {
     if (!Array.isArray(o.names) || o.names.length > 5 || !o.names.every(n => typeof n === "string" && n.trim().length >= 2 && n.trim().length <= 80)) return "Namen: bis zu 5, je 2 bis 80 Zeichen";
@@ -153,6 +154,7 @@ export function parseStayQuery(b: unknown): StayQuery | string {
     ...(o.bedroomsMin != null ? { bedroomsMin: o.bedroomsMin as number } : {}), ...(o.sleepsMin != null ? { sleepsMin: o.sleepsMin as number } : {}),
     // Umkreis nur mit Mittelpunkt, nicht bei der Suche nach Namen
     ...(o.radiusKm != null && "lat" in geo && !names ? { radiusKm: o.radiusKm as number } : {}),
+    ...(o.areaKm != null && "lat" in geo && !names ? { areaKm: o.areaKm as number } : {}),
     ...(names ? { names } : {})
   };
 }

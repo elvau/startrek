@@ -39,6 +39,8 @@ export interface StayQuery {
   sleepsMin?: number;
   /** Umkreis in km um lat/lon (1–20); Treffer weiter weg oder ohne Lage fallen weg */
   radiusKm?: number;
+  /** Urlaubsregion (#679): Treffer mit Lage weiter als so viele km von lat/lon fallen weg (ohne Lage bleiben sie) */
+  areaKm?: number;
   /** nur diese Häuser, gesucht nach Namen (#683, höchstens 5); place dient zur Unterscheidung */
   names?: string[];
   currency?: string;

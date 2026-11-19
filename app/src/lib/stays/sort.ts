@@ -7,6 +7,10 @@ import { kmBetween } from "../geo/places";
 export const inRadius = (o: Pick<StayOffer, "lat" | "lon">, q: Partial<Pick<StayQuery, "radiusKm" | "lat" | "lon">>): boolean =>
   !q.radiusKm || q.lat == null || q.lon == null || (o.lat != null && o.lon != null && kmBetween({ lat: q.lat, lon: q.lon }, { lat: o.lat, lon: o.lon }) <= q.radiusKm);
 
+/** in der Urlaubsregion (#679): Treffer mit Lage höchstens areaKm vom Mittelpunkt; ohne Lage nicht prüfbar, bleiben */
+export const inArea = (o: Pick<StayOffer, "lat" | "lon">, q: Partial<Pick<StayQuery, "areaKm" | "lat" | "lon">>): boolean =>
+  !q.areaKm || q.lat == null || q.lon == null || o.lat == null || o.lon == null || kmBetween({ lat: q.lat, lon: q.lon }, { lat: o.lat, lon: o.lon }) <= q.areaKm;
+
 export type StaySort = "price" | "rating" | "center" | "family";
 
 /** „Split, 0.7 km bis Zentrum“ → 0,7; ohne Angabe undefined */
@@ -39,10 +43,10 @@ export function stayKind(o: StayOffer): "whole" | "hotel" | undefined {
 export const keepKind = (list: StayOffer[], type?: StayType): StayOffer[] => (!type || type === "all" ? list : list.filter(o => stayKind(o) === type));
 
 /** was die Anbieter trotz Filter liefern: zu wenig Sterne oder zu schwache Bewertung fliegt raus */
-export function keepStays(list: StayOffer[], q: Pick<StayQuery, "minStars" | "minScore"> & Partial<Pick<StayQuery, "bedroomsMin" | "sleepsMin" | "radiusKm" | "lat" | "lon">> & { type?: StayType }): StayOffer[] {
+export function keepStays(list: StayOffer[], q: Pick<StayQuery, "minStars" | "minScore"> & Partial<Pick<StayQuery, "bedroomsMin" | "sleepsMin" | "radiusKm" | "areaKm" | "lat" | "lon">> & { type?: StayType }): StayOffer[] {
   // Ferienwohnungen und Häuser haben keine Sterne: bei „ganze Unterkunft“ gilt der Filter nicht, bei „alles“ nur für Hotels
   const starsOk = (o: StayOffer) => !q.minStars || q.type === "whole" || (q.type === "all" && !o.stars) || (o.stars || 0) >= q.minStars;
-  return list.filter(o => starsOk(o) && (!q.minScore || o.score == null || o.score >= q.minScore) && roomsFit(o, q) && inRadius(o, q));
+  return list.filter(o => starsOk(o) && (!q.minScore || o.score == null || o.score >= q.minScore) && roomsFit(o, q) && inRadius(o, q) && inArea(o, q));
 }
 
 /** Testangebote (Sandbox, keine echten Preise) immer hinter die echten, sonst stehen sie bei „Günstigste“ oben */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageAt, applyPeople } from "./people";
+import { ageAt, applyPeople, familyKey, inFamily, lastOfKey } from "./people";
 import { DEFAULT_SETTINGS, type Person, type Trip } from "./model";
 
 const people: Person[] = [
@@ -33,5 +33,25 @@ describe("Personen in der Reise", () => {
     t.households = { Klein: { plz: "50667", geo: { lat: 50.94, lon: 6.95, ort: "Köln" } } };
     applyPeople(t, people);
     expect(t.households.Klein.geo?.ort).toBe("Köln");
+  });
+});
+
+describe("Familie einer gespeicherten Person (#578)", () => {
+  const kempen = { plz: "47906", ort: "Kempen", lat: 51.36, lon: 6.42 }, wup = { plz: "42103", ort: "Wuppertal", lat: 51.26, lon: 7.15 };
+  const dir: Person[] = [
+    { id: "a", first: "Anna", last: "Klein", home: kempen }, { id: "b", first: "Ben", last: "Klein", home: kempen },
+    { id: "c", first: "Carla", last: "Klein", home: wup }, { id: "d", first: "Dirk", last: "Klein" },
+    { id: "e", first: "Eva", last: "Schmitz", home: kempen }, { id: "f", first: "Finn", last: "Schmitz" }
+  ];
+  it("gleicher Nachname an verschiedenen Wohnorten: getrennte Familien mit Ort; ohne Wohnort der bloße Nachname", () => {
+    expect(dir.map(p => familyKey(p, dir))).toEqual(["Klein (Kempen)", "Klein (Kempen)", "Klein (Wuppertal)", "Klein", "Schmitz", "Schmitz"]);
+    expect(familyKey({ id: "x", first: "X", last: " " }, dir)).toBe("");
+  });
+  it("Zugehörigkeit über den Schlüssel, ältere Reisen über den Nachnamen; Nachname zurück aus dem Schlüssel", () => {
+    expect(inFamily(dir[0], "Klein (Kempen)", dir)).toBe(true);
+    expect(inFamily(dir[2], "Klein (Kempen)", dir)).toBe(false);
+    expect(inFamily(dir[2], "klein", dir)).toBe(true);
+    expect(lastOfKey("Klein (Kempen)", "Kempen")).toBe("Klein");
+    expect(lastOfKey("Müller (Oma)")).toBe("Müller (Oma)");
   });
 });

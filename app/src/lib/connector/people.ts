@@ -7,7 +7,7 @@
  * Personen und Gruppen anlegen und ändern (savePeople, saveGroup) erst nach Rückfrage im Chat; löschen nur in der App.
  */
 import { uid, type Directory, type Group, type Person, type Prefs, type Traveler } from "../model";
-import { personAge } from "../people";
+import { familyKey, inFamily, lastOfKey, personAge } from "../people";
 import { today as localToday } from "../today";
 
 export interface MemberView { id: string; first: string; age?: number }
@@ -29,17 +29,17 @@ function cleanPrefs(p?: Prefs): Partial<Prefs> | undefined {
   return Object.keys(rest).length ? rest : undefined;
 }
 
-/** Familien nach Nachname, die eigene zuerst; Kennungen F1, F2 … */
+/** Familien nach Nachname (gleicher Name an verschiedenen Wohnorten getrennt, #578), die eigene zuerst; Kennungen F1, F2 … */
 export function families(d: Directory): { id: string; key: string; people: Person[] }[] {
   const byKey = new Map<string, Person[]>();
   for (const p of d.people) {
-    const k = (p.last || "").trim() || "—";
+    const k = familyKey(p, d.people) || "—";
     if (!byKey.has(k)) byKey.set(k, []);
     byKey.get(k)!.push(p);
   }
   const mine = d.me ? d.people.find(p => p.id === d.me) : undefined;
   const keys = [...byKey.keys()];
-  if (mine) { const k = (mine.last || "").trim() || "—"; keys.splice(keys.indexOf(k), 1); keys.unshift(k); }
+  if (mine) { const k = familyKey(mine, d.people) || "—"; keys.splice(keys.indexOf(k), 1); keys.unshift(k); }
   return keys.slice(0, MAX_FAMILIES).map((key, i) => ({ id: `F${i + 1}`, key, people: byKey.get(key)! }));
 }
 
@@ -115,7 +115,7 @@ export function travelersFor(d: Directory, sel: { families?: unknown; group?: un
     const age = personAge(p, day);
     // Herkunft aus der Gruppe (#567) für „Wer entscheidet mit?“
     const inGroup = group && d.groups.some(g => g.name.trim().slice(0, 60) === group && g.memberIds.includes(p.id));
-    return { id: uid(), personId: p.id, name: p.first, household: p.last, ...(age != null ? { age } : {}), color: COLORS[(start + i) % COLORS.length], ...(inGroup ? { group } : {}) };
+    return { id: uid(), personId: p.id, name: p.first, household: familyKey(p, d.people) || p.last, ...(age != null ? { age } : {}), color: COLORS[(start + i) % COLORS.length], ...(inGroup ? { group } : {}) };
   });
 }
 
@@ -143,9 +143,11 @@ export function savePeople(d: Directory, list: PersonInput[], renames: { from: s
   const saved: Person[] = [], notes: string[] = [];
   for (const r of renames) {
     const to = cleanName(r.to);
-    const hit = d.people.filter(p => same(p.last, r.from));
+    // genau diese Familie (#578: „Klein (Kempen)“), sonst alle mit dem Nachnamen
+    const exact = d.people.filter(p => same(familyKey(p, d.people), r.from));
+    const hit = exact.length ? exact : d.people.filter(p => inFamily(p, r.from, d.people));
     if (!to || !hit.length) fail(`Unknown family "${r.from}": use a family name from get_my_travelers`);
-    for (const p of hit) { p.last = to; if (!saved.includes(p)) saved.push(p); }
+    for (const p of hit) { p.last = lastOfKey(to, p.home?.ort); if (!saved.includes(p)) saved.push(p); }
   }
   if (d.people.length + list.filter(x => !x.id).length > 200) fail("Too many saved people");
   for (const x of list) {

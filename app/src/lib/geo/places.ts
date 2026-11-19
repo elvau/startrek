@@ -164,6 +164,174 @@ export function searchParts(g: GeoData, place: string, cc?: string | null): { pl
   return { place: c?.en || name, ...(land ? { country: land } : {}) };
 }
 
+/* ---------- Ort genauer auflösen (#679): gleichnamige Orte, Landkreis, Bundesland, PLZ, Urlaubsregionen ---------- */
+
+/** Postleitzahl, Ort, Breite, Länge (plz.txt bzw. plz/<LAND>.txt, wie worker/src/home.ts) */
+export type PostalRow = [string, string, number, number];
+
+/** Urlaubsregion: Mittelpunkt und Umkreis in km (grob, Treffer weiter weg gehören nicht dazu) */
+interface Area { n: string[]; en: string; cc: string; lat: number; lon: number; km: number }
+const AREAS: Area[] = [
+  { n: ["Bayerischer Wald", "Bayrischer Wald"], en: "Bavarian Forest", cc: "DE", lat: 49.0, lon: 13.2, km: 45 },
+  { n: ["Schwarzwald"], en: "Black Forest", cc: "DE", lat: 48.3, lon: 8.2, km: 70 },
+  { n: ["Allgäu", "Allgaeu"], en: "Allgäu", cc: "DE", lat: 47.7, lon: 10.3, km: 45 },
+  { n: ["Harz"], en: "Harz", cc: "DE", lat: 51.75, lon: 10.7, km: 40 },
+  { n: ["Eifel"], en: "Eifel", cc: "DE", lat: 50.35, lon: 6.7, km: 50 },
+  { n: ["Sauerland"], en: "Sauerland", cc: "DE", lat: 51.2, lon: 8.2, km: 45 },
+  { n: ["Spreewald"], en: "Spreewald", cc: "DE", lat: 51.85, lon: 14.0, km: 25 },
+  { n: ["Sächsische Schweiz", "Saechsische Schweiz"], en: "Saxon Switzerland", cc: "DE", lat: 50.92, lon: 14.15, km: 20 },
+  { n: ["Erzgebirge"], en: "Ore Mountains", cc: "DE", lat: 50.55, lon: 13.0, km: 50 },
+  { n: ["Thüringer Wald", "Thueringer Wald"], en: "Thuringian Forest", cc: "DE", lat: 50.65, lon: 10.8, km: 45 },
+  { n: ["Rhön", "Rhoen"], en: "Rhön", cc: "DE", lat: 50.45, lon: 9.95, km: 30 },
+  { n: ["Odenwald"], en: "Odenwald", cc: "DE", lat: 49.6, lon: 9.0, km: 35 },
+  { n: ["Pfälzerwald", "Pfälzer Wald"], en: "Palatinate Forest", cc: "DE", lat: 49.3, lon: 7.85, km: 35 },
+  { n: ["Fichtelgebirge"], en: "Fichtel Mountains", cc: "DE", lat: 50.03, lon: 11.85, km: 25 },
+  { n: ["Fränkische Schweiz", "Fraenkische Schweiz"], en: "Franconian Switzerland", cc: "DE", lat: 49.78, lon: 11.3, km: 25 },
+  { n: ["Berchtesgadener Land"], en: "Berchtesgaden", cc: "DE", lat: 47.65, lon: 12.95, km: 25 },
+  { n: ["Chiemgau"], en: "Chiemgau", cc: "DE", lat: 47.85, lon: 12.5, km: 30 },
+  { n: ["Bodensee"], en: "Lake Constance", cc: "DE", lat: 47.6, lon: 9.4, km: 45 },
+  { n: ["Lüneburger Heide", "Lueneburger Heide"], en: "Lüneburg Heath", cc: "DE", lat: 53.1, lon: 10.0, km: 45 },
+  { n: ["Mecklenburgische Seenplatte"], en: "Mecklenburg Lake District", cc: "DE", lat: 53.4, lon: 12.8, km: 50 },
+  { n: ["Ostfriesland"], en: "East Frisia", cc: "DE", lat: 53.4, lon: 7.5, km: 50 },
+  { n: ["Zillertal"], en: "Zillertal", cc: "AT", lat: 47.2, lon: 11.85, km: 25 },
+  { n: ["Salzkammergut"], en: "Salzkammergut", cc: "AT", lat: 47.7, lon: 13.6, km: 40 },
+  { n: ["Südtirol", "Suedtirol", "Alto Adige"], en: "South Tyrol", cc: "IT", lat: 46.65, lon: 11.4, km: 80 },
+  { n: ["Toskana", "Toscana"], en: "Tuscany", cc: "IT", lat: 43.4, lon: 11.1, km: 110 },
+  { n: ["Istrien", "Istra"], en: "Istria", cc: "HR", lat: 45.2, lon: 13.9, km: 50 },
+  { n: ["Provence"], en: "Provence", cc: "FR", lat: 43.9, lon: 5.6, km: 100 }
+];
+
+/** Bundesländer (Deutschland, Österreich) als grobe Rechtecke [Süd, West, Nord, Ost]: nur zur Wahl unter gleichnamigen Orten */
+const STATES: { n: string[]; cc: string; box: [number, number, number, number] }[] = [
+  { n: ["Baden-Württemberg", "BW"], cc: "DE", box: [47.5, 7.5, 49.8, 10.5] },
+  { n: ["Bayern", "Bavaria", "BY"], cc: "DE", box: [47.27, 8.97, 50.57, 13.84] },
+  { n: ["Berlin"], cc: "DE", box: [52.33, 13.08, 52.68, 13.77] },
+  { n: ["Brandenburg", "BB"], cc: "DE", box: [51.36, 11.27, 53.56, 14.77] },
+  { n: ["Bremen"], cc: "DE", box: [53.01, 8.48, 53.61, 8.99] },
+  { n: ["Hamburg"], cc: "DE", box: [53.39, 9.73, 53.75, 10.33] },
+  { n: ["Hessen", "Hesse", "HE"], cc: "DE", box: [49.39, 7.77, 51.66, 10.24] },
+  { n: ["Mecklenburg-Vorpommern", "MV"], cc: "DE", box: [53.11, 10.59, 54.69, 14.41] },
+  { n: ["Niedersachsen", "Lower Saxony", "NI"], cc: "DE", box: [51.29, 6.65, 53.89, 11.6] },
+  { n: ["Nordrhein-Westfalen", "North Rhine-Westphalia", "NRW"], cc: "DE", box: [50.32, 5.87, 52.53, 9.46] },
+  { n: ["Rheinland-Pfalz", "Rhineland-Palatinate", "RP", "RLP"], cc: "DE", box: [48.97, 6.11, 50.94, 8.51] },
+  { n: ["Saarland", "SL"], cc: "DE", box: [49.11, 6.36, 49.64, 7.4] },
+  { n: ["Sachsen", "Saxony", "SN"], cc: "DE", box: [50.17, 11.87, 51.69, 15.04] },
+  { n: ["Sachsen-Anhalt", "Saxony-Anhalt", "ST"], cc: "DE", box: [50.94, 10.56, 53.04, 13.19] },
+  { n: ["Schleswig-Holstein", "SH"], cc: "DE", box: [53.36, 7.87, 55.06, 11.31] },
+  { n: ["Thüringen", "Thuringia", "TH"], cc: "DE", box: [50.2, 9.88, 51.65, 12.65] },
+  { n: ["Burgenland"], cc: "AT", box: [46.83, 15.99, 48.12, 17.16] },
+  { n: ["Kärnten", "Carinthia"], cc: "AT", box: [46.37, 12.66, 47.13, 15.07] },
+  { n: ["Niederösterreich", "Lower Austria"], cc: "AT", box: [47.42, 14.45, 49.02, 17.07] },
+  { n: ["Oberösterreich", "Upper Austria"], cc: "AT", box: [47.46, 12.75, 48.77, 14.99] },
+  { n: ["Salzburg"], cc: "AT", box: [46.94, 12.08, 48.04, 13.99] },
+  { n: ["Steiermark", "Styria"], cc: "AT", box: [46.61, 13.56, 47.83, 16.17] },
+  { n: ["Tirol", "Tyrol"], cc: "AT", box: [46.65, 10.1, 47.75, 12.97] },
+  { n: ["Vorarlberg"], cc: "AT", box: [46.84, 9.53, 47.6, 10.24] },
+  { n: ["Wien", "Vienna"], cc: "AT", box: [48.12, 16.18, 48.33, 16.58] }
+];
+
+/** Zusatz wie „Landkreis Cham“, „Lkr. Cham“, „bei Cham“ → „Cham“ */
+const DISTRICT = /^(?:landkreis|land-?kreis|lkr\.?|lk|kreis|kr\.?|bezirk|gemeinde|region|kanton|provinz|county|district|municipality|near|bei|nahe|im|in|am)\s+/i;
+
+export interface Resolved {
+  /** Suchbegriff (englisch, soweit bekannt) */
+  place: string;
+  country?: string;
+  cc?: string;
+  lat?: number;
+  lon?: number;
+  /** Urlaubsregion: Treffer weiter als so viele km vom Mittelpunkt fallen weg */
+  areaKm?: number;
+  /** es gibt gleichnamige Orte: Suche um lat/lon statt über den Namen */
+  pinned?: boolean;
+  /** gleichnamige Orte, unter denen ohne Zusatz gewählt wurde (Hinweis statt stiller Wahl) */
+  others?: string[];
+}
+
+/** gleichnamige Orte im Land: Pakete, Weltdaten, kleinere Orte und Postleitzahlen; Treffer näher als 8 km zählen einmal */
+function sameName(g: GeoData, s: string, cc: string, postal: PostalRow[]): (Omit<Place, "km"> & { plz?: string })[] {
+  const out: (Omit<Place, "km"> & { plz?: string })[] = [];
+  const add = (p: Omit<Place, "km"> & { plz?: string }) => { if (!out.some(o => kmBetween(o, p) < 8)) out.push(p); };
+  g.packs[cc]?.cities.forEach(c => { if (norm(c.n) === s || norm(c.en || "") === s || (c.alias || []).some(a => norm(a) === s)) add({ name: c.n, en: c.en, lat: c.lat, lon: c.lon, cc, top: !!c.top }); });
+  g.world.find(w => w.k === cc)?.cities.forEach(c => { if (norm(c[0]) === s || norm(c[3] || "") === s) add({ name: c[0], en: c[3] || undefined, lat: c[1], lon: c[2], cc, top: true }); });
+  g.places[cc]?.forEach(c => { if (norm(c[0]) === s) add({ name: c[0], lat: c[1], lon: c[2], cc }); });
+  postal.forEach(r => { if (norm(r[1]) === s) add({ name: r[1], lat: r[2], lon: r[3], cc, plz: r[0] }); });
+  return out;
+}
+
+/**
+ * Ort für die Unterkunftssuche auflösen (#679): wie searchParts, dazu
+ * - Zusatz nach dem Komma: Land, Postleitzahl, Bundesland oder Landkreis bzw. Nachbarort („Rimbach, Landkreis Cham“),
+ * - gleichnamige Orte (auch aus den Postleitzahlen des Landes): Wahl über den Zusatz, sonst der erste und Hinweis (others),
+ * - Urlaubsregionen („Bayerischer Wald“): Mittelpunkt und Umkreis.
+ */
+export function resolvePlace(g: GeoData, place: string, cc?: string | null, postal: PostalRow[] = []): Resolved {
+  const [name, ...rest] = place.split(",").map(x => x.trim()).filter(Boolean);
+  if (!name) return { place: place.trim() };
+  let k = cc || null, code = "", state: (typeof STATES)[number] | undefined, near = "";
+  for (const r of rest) {
+    const c = /^(?:[A-Z]{1,2}-)?(\d{4,5})$/i.exec(r.replace(/\s/g, ""));
+    const st = STATES.find(x => x.n.some(n => norm(n) === norm(r)));
+    if (c) code = c[1];
+    else if (st) { state = st; k = st.cc; }
+    else if (ccOf(g, r)) k = ccOf(g, r);
+    else near = r.replace(DISTRICT, "").trim();
+  }
+  // PLZ vor dem Namen („93485 Rimbach“)
+  const lead = /^(\d{4,5})\s+(\D.+)$/.exec(name);
+  const s = norm(lead ? lead[2] : name);
+  if (lead) code = lead[1];
+  const landEn = (x?: string | null) => (x ? g.world.find(w => w.k === x)?.en : undefined);
+
+  // Urlaubsregion (nur wenn kein Ort so heißt)
+  const area = AREAS.find(a => (!k || a.cc === k) && (a.n.some(n => norm(n) === s) || norm(a.en) === s));
+  if (area && !findCity(g, name, area.cc)) return { place: area.en, country: landEn(area.cc), cc: area.cc, lat: area.lat, lon: area.lon, areaKm: area.km };
+
+  const base = (c: Omit<Place, "km"> | null, kk: string | null | undefined): Resolved => {
+    const land = landEn(c?.cc || kk);
+    return { place: c?.en || (lead ? lead[2] : name), ...(land ? { country: land } : {}), ...((c?.cc || kk) ? { cc: (c?.cc || kk)! } : {}), ...(c ? { lat: c.lat, lon: c.lon } : {}) };
+  };
+  if (!k) {
+    const f = findCity(g, lead ? lead[2] : name);
+    if (!f) return base(null, null);
+    k = f.cc;
+  }
+
+  const cands = sameName(g, s, k, postal);
+  if (!cands.length) {
+    // nicht bekannt: Postleitzahl allein gibt die Lage
+    const pc = code ? postal.find(r => r[0] === code) : undefined;
+    return pc ? { ...base(null, k), lat: pc[2], lon: pc[3], pinned: true } : base(findCity(g, name, k), k);
+  }
+  const at = (p: { lat: number; lon: number }, max: number) => cands.map(c => ({ c, km: kmBetween(c, p) })).filter(x => x.km <= max).sort((a, b) => a.km - b.km)[0]?.c;
+  let pick: (typeof cands)[number] | undefined;
+  if (code) {
+    pick = cands.find(c => c.plz === code);
+    const pc = postal.find(r => r[0] === code);
+    if (!pick && pc) pick = at({ lat: pc[2], lon: pc[3] }, 25);
+  }
+  if (!pick && state) {
+    const [s0, w0, n0, e0] = state.box, inside = cands.filter(c => c.lat >= s0 && c.lat <= n0 && c.lon >= w0 && c.lon <= e0);
+    if (inside.length === 1 || (inside.length && cands.length > 1)) pick = inside[0];
+  }
+  if (!pick && near) {
+    // Landkreis oder Nachbarort („Cham“), auch eine Urlaubsregion („Odenwald“)
+    const a = AREAS.find(x => x.cc === k && (x.n.some(n => norm(n) === norm(near)) || norm(x.en) === norm(near)));
+    const ref = a ? null : sameName(g, norm(near), k, postal)[0];
+    if (a) pick = at(a, a.km);
+    else if (ref) pick = at(ref, 60);
+  }
+  const chosen = pick || cands[0];
+  // um den Ort suchen, wenn die Suche über den Namen woanders landen könnte (gewählt nicht der erste oder kein bekannter Ort)
+  const out = { ...base(chosen, k), ...(cands.length > 1 && (chosen !== cands[0] || !chosen.top) ? { pinned: true } : {}) };
+  // ohne passenden Zusatz unter mehreren gewählt: die anderen nennen
+  if (!pick && cands.length > 1) {
+    const label = (c: (typeof cands)[number]) => `${c.name}${c.plz ? ` ${c.plz}` : ""} (${c.lat.toFixed(2)}, ${c.lon.toFixed(2)})`;
+    out.others = cands.slice(1, 6).map(label);
+  }
+  return out;
+}
+
 /** Fahrzeit grob wie im Artefakt: bis 100 km ca. 0,4 h + km/70, sonst Bahn/Auto ca. 0,6 h + km/110 */
 export const travelHours = (km: number) => (km <= 100 ? 0.4 + km / 70 : 0.6 + km / 110);
 
