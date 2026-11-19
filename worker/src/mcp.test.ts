@@ -6,6 +6,7 @@ import { mcpMessage, type McpDeps, type Saved } from "./mcp";
 import type { FlightOffer, FlightQuery } from "../../app/src/lib/flights/types";
 import type { StayOffer, StayQuery } from "../../app/src/lib/stays/types";
 import type { Directory, Trip } from "../../app/src/lib/model";
+import { kmBetween } from "../../app/src/lib/geo/places";
 
 const leg = (from: string, to: string, dep: string, arr: string) => ({ from, to, dep, arr, minutes: 150, stops: 0, route: [from, to], carriers: ["EW"], flights: ["EW1"] });
 const flight = (id: string, price: number): FlightOffer => ({ id, source: "kiwi", sourceName: "Kiwi.com", price, currency: "EUR", url: "https://kiwi.com/x", out: leg("DUS", "PMI", "2027-05-10T08:00", "2027-05-10T10:30"), back: leg("PMI", "DUS", "2027-05-13T18:00", "2027-05-13T20:30") });
@@ -112,6 +113,23 @@ describe("KI-Konnektor (MCP)", () => {
     expect(got).toMatchObject({ cc: "HR", country: "Croatia" });
     await tool(d, "search_stays", { place: "Nirgendwo-Dorf", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2 });
     expect(got.cc).toBeUndefined();
+  });
+
+  it("gleichnamige Orte und Urlaubsregionen (#679): Landkreis wählt den Ort, Region filtert, Hinweis ohne Zusatz", async () => {
+    let got: any;
+    const far = { ...stay("muc", 90), lat: 48.16, lon: 11.75 }, near = { ...stay("bod", 120), lat: 49.07, lon: 13.1 };
+    const postal: [string, string, number, number][] = [["64668", "Rimbach", 49.625, 8.763], ["93485", "Rimbach", 49.233, 12.883], ["93413", "Cham", 49.226, 12.655]];
+    const d = deps({ stays: async q => { got = q; return { offers: [far, near].filter(o => !q.areaKm || kmBetween({ lat: q.lat!, lon: q.lon! }, o as any) <= q.areaKm), sources: [] }; }, postal: async cc => (cc === "DE" ? postal : null) });
+    const r = await tool(d, "search_stays", { place: "Rimbach, Landkreis Cham", country: "Germany", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2 });
+    expect(got).toMatchObject({ place: "Rimbach", cc: "DE", radiusKm: 10 });
+    expect(kmBetween(got, { lat: 49.233, lon: 12.883 })).toBeLessThan(1);
+    expect(r.data.placeNote).toBeUndefined();
+    const amb = await tool(d, "search_stays", { place: "Rimbach", country: "Germany", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2 });
+    expect(amb.data.placeNote).toContain("93485");
+    const reg = await tool(d, "search_stays", { place: "Bayerischer Wald", country: "Germany", checkin: "2027-05-07", checkout: "2027-05-10", adults: 2 });
+    expect(got).toMatchObject({ place: "Bavarian Forest", areaKm: 45 });
+    expect(got.radiusKm).toBeUndefined();
+    expect(reg.data.area).toEqual({ name: "Bavarian Forest", radiusKm: 45 });
   });
 
   it("Schlafzimmer statt Zimmer: eine ganze Unterkunft für alle (#674)", async () => {

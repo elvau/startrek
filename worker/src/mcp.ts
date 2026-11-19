@@ -24,7 +24,7 @@ import { mergePrefs, prefsFor } from "../../app/src/lib/prefs";
 import { prefsFromAi, unverifiedOf } from "../../app/src/lib/agent/agent";
 import { STYLES, uid, type Prefs } from "../../app/src/lib/model";
 import type { KeyInfo } from "./apikey";
-import { bucket, ccOf, findCity, searchParts, type GeoData } from "../../app/src/lib/geo/places";
+import { bucket, ccOf, findCity, resolvePlace, type GeoData, type PostalRow } from "../../app/src/lib/geo/places";
 import world from "../../public/world.json";
 import packs from "../../public/packs.json";
 import p0 from "../../public/places/p0.json";
@@ -58,6 +58,8 @@ export interface McpDeps {
   saveProfile?: <R>(uid: string, change: (d: Directory) => R) => Promise<R>;
   /** Wohnort aus Text („47906 Kempen“) und Land; fehlt: nur Orte aus der Ortsliste */
   home?: (text: string, cc: string) => Promise<HomeHit | null>;
+  /** alle Postleitzahlen eines Landes (gleichnamige Orte unterscheiden, #679) */
+  postal?: (cc: string) => Promise<PostalRow[] | null>;
   /** gefundene Angebote merken (je Schlüssel, einige Stunden; alle einer Suche auf einmal) */
   offers: { put: (list: [string, Saved][]) => Promise<void>; get: (id: string) => Promise<Saved | null> };
   /** zählt eine Suche mit; Fehlermeldung, wenn das Tageslimit erreicht ist */
@@ -76,6 +78,8 @@ export type Saved = { kind: "flight"; offer: FlightOffer; seats?: number } | { k
 
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const SHOWN = 8;
+/** Umkreis in km um einen von mehreren gleichnamigen Orten (#679) */
+const PINNED_KM = 10;
 /** Länge des Namens eigener Kosten (add_cost) */
 const NAME_MAX = 120;
 /** search_stays mit bedroomsMin/sleepsMin ohne Treffer (#674): nichts Ungeprüftes anlegen, sondern nachfragen */
@@ -188,7 +192,7 @@ const SEARCH_TOOLS = [
     name: "search_stays", title: "Search accommodation",
     description: "Search real accommodation (hotels, apartments) for all travelers. Accommodation type and stars default to the user's preferences; countries to avoid are refused. Returns offers with id, total price for the whole stay, board (self, breakfast, half, full, all), bedrooms and sleeps (of the largest unit) if known and booking link.",
     inputSchema: { type: "object", properties: {
-      place: str("City or region"), country: str("Country (English)"), checkin: str("YYYY-MM-DD"), checkout: str("YYYY-MM-DD"),
+      place: str("City or region (e.g. Bavarian Forest). Same names exist in many places: add postal code, district or state after a comma, e.g. \"Rimbach, Landkreis Cham\" or \"Rimbach, 93485\""), country: str("Country (English)"), checkin: str("YYYY-MM-DD"), checkout: str("YYYY-MM-DD"),
       adults: int("Adults", 1, 20), childAges: ages, rooms: int("Rooms (default: one per two adults)", 1, 10),
       type: { type: "string", enum: ["all", "hotel", "whole"], description: "all, hotel or whole (apartment/house); default: preferences" },
       minStars: int("Minimum hotel stars (default: preferences)", 1, 5), tripId: str("Use this trip's preferences (default: the user's own)"),
@@ -447,23 +451,27 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
       const applied: Prefs = {};
       const adults = a.adults;
       const cc = ccOf(GEO, S(a.country, 60));
-      const given = S(a.place).split(",")[1]?.trim();
-      await loadPlaces((given ? ccOf(GEO, given) : null) || cc);
-      const sp = searchParts(GEO, S(a.place), cc);
-      const kcc = ccOf(GEO, sp.country) || cc;
+      // Ort auflösen (#679): erst das Land, dann mit dessen Orten und Postleitzahlen gleichnamige Orte unterscheiden
+      const given = S(a.place).split(",").slice(1).map(x => ccOf(GEO, x.trim())).find(Boolean);
+      await loadPlaces(given || cc);
+      let sp = resolvePlace(GEO, S(a.place), cc);
+      if (sp.cc && sp.cc !== (given || cc)) await loadPlaces(sp.cc);
+      if (sp.cc && !sp.areaKm) sp = resolvePlace(GEO, S(a.place), cc, (deps.postal ? await deps.postal(sp.cc).catch(() => null) : null) || []);
+      const kcc = sp.cc || cc;
       if (kcc && pf.avoid?.includes(kcc)) fail(`${kcc} is in the user's countries to avoid: suggest another destination`);
       const type = typeof a.type === "string" ? a.type : pf.stayType || "all";
       if (typeof a.type !== "string" && pf.stayType) applied.stayType = pf.stayType;
       const minStars = Number.isInteger(a.minStars) ? a.minStars : pf.minStars;
       if (!Number.isInteger(a.minStars) && pf.minStars) applied.minStars = pf.minStars;
-      const city = findCity(GEO, sp.place, kcc);
       const amen: string[] = Array.isArray(a.amenities) ? [...new Set(a.amenities.filter((x: unknown) => typeof x === "string" && x in AMENITY) as string[])] : [];
       const q = parseStayQuery({
-        place: sp.place, country: sp.country || a.country, ...(kcc ? { cc: kcc } : {}), ...(city ? { lat: city.lat, lon: city.lon } : {}), checkin: a.checkin, checkout: a.checkout, adults, childAges: kids(a.childAges),
+        place: sp.place, country: sp.country || a.country, ...(kcc ? { cc: kcc } : {}), ...(sp.lat != null ? { lat: sp.lat, lon: sp.lon } : {}), checkin: a.checkin, checkout: a.checkout, adults, childAges: kids(a.childAges),
         rooms: Number.isInteger(a.rooms) ? a.rooms : Math.max(1, Math.ceil((Number(adults) || 1) / 2)), type, ...(minStars ? { minStars } : {}), currency: "EUR",
         // eine Einheit für alle (#674): parseStayQuery setzt dann ein Zimmer und ganze Unterkunft
         ...(a.bedroomsMin != null ? { bedroomsMin: a.bedroomsMin } : {}), ...(a.sleepsMin != null ? { sleepsMin: a.sleepsMin } : {}),
-        ...(a.radiusKm != null ? { radiusKm: a.radiusKm } : {}),
+        // gleichnamige Orte: um den gewählten suchen, nicht über den Namen (der Anbieter nähme sonst den bekanntesten)
+        ...(a.radiusKm != null ? { radiusKm: a.radiusKm } : sp.pinned ? { radiusKm: PINNED_KM } : {}),
+        ...(sp.areaKm ? { areaKm: sp.areaKm } : {}),
         ...(Array.isArray(a.names) ? { names: a.names.filter((n: unknown) => typeof n === "string").slice(0, 5) } : {}),
         // Pool filtern die Anbieter selbst, den Rest prüft facts (#681)
         ...(amen.some(k => k !== "sauna") ? { must: ["pool"] } : {})
@@ -492,6 +500,8 @@ async function callTool(name: string, a: any, user: KeyInfo, deps: McpDeps): Pro
         // Kombi (#677): bei mehreren Zimmern ist jedes Angebot eine Kombination getrennter Einheiten
         ...(top.length && sq.rooms > 1 ? { unitsNote: `Each offer is a combination of ${sq.rooms} separate units (rooms or apartments, possibly different names at the provider), not one house. Say so when you present it; for one house use bedroomsMin.` } : {}),
         ...(Object.keys(applied).length ? { appliedPreferences: applied } : {}),
+        ...(sp.others?.length ? { placeNote: `Several places are called "${sp.place}"; searched around ${sp.lat?.toFixed(2)}, ${sp.lon?.toFixed(2)}. Others: ${sp.others.join("; ")}. If the user meant another one, search again with the postal code, district or state after a comma (e.g. "${sp.place}, 93485" or "${sp.place}, Landkreis Cham")` } : {}),
+        ...(sp.areaKm ? { area: { name: sp.place, radiusKm: sp.areaKm } } : {}),
         ...(top.length ? {} : { note: amen.length && res.offers.length ? `No accommodation listing ${amen.join(", ")} found: providers list only some facilities. Do not add other offers as if they had them; tell the user` : want > 0 && res.offers.length ? "No accommodation with this board found: try a lower board or without board" : sq.bedroomsMin || sq.sleepsMin ? ROOMS_NONE : "No accommodation found" })
       };
     }

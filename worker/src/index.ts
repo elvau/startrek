@@ -38,7 +38,7 @@ import { isAdmin, meter, noteClick, noteRoute, usageReport, type UsageEnv } from
 import { checkLimit, IP_LIMITS, ipKey, searchWindows, type LimitEnv } from "./ratelimit";
 import { isRevoked, issueKey, newKid, verifyKey, type KeyEnv } from "./apikey";
 import { profilePrefsSaver, profileSaver, profileStore, tripStore, type StoreEnv } from "./firestore";
-import { findHome } from "./home";
+import { findHome, postalRows } from "./home";
 import { mcpMessage, type Saved } from "./mcp";
 import { goLink, openGo } from "./go";
 import { grantStore, isOAuthPath, oauth, verifyAccess, wwwAuthenticate, type OAuthDeps } from "./oauth";
@@ -613,6 +613,7 @@ async function mcp(req: Request, env: Env, ctx: ExecutionContext): Promise<Respo
     savePrefs: profilePrefsSaver(env, net) || undefined,
     saveProfile: profileSaver(env, net) || undefined,
     home: (text, cc) => findHome(text, cc, (env.APP_URL || "https://splitandfly.com/").replace(/\/?$/, "/"), net),
+    postal: cc => postalRows(cc, appUrl, net),
     // Firestore, damit Suche und Übernahme in verschiedenen Rechenzentren laufen können; ohne Dienstkonto nur lokal
     offers: kept ? { put: list => kept.put(user.kid, list), get: id => kept.get(user.kid, id) } : {
       put: async list => { await Promise.all(list.map(([id, v]) => caches.default.put(offerKey(id), new Response(JSON.stringify(v), { headers: { "cache-control": "max-age=21600" } })))); },

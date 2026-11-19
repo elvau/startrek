@@ -31,6 +31,10 @@ MCP-Server (HTTP, JSON-RPC, eine Nachricht pro Anfrage, Antwort als JSON).
    sie nennen (Hallenbad, Wasserrutsche, Sauna aus den Merkmalen von Booking.com bzw. Trivago); Pool filtern die Anbieter selbst.
    Kombi (#677): mit `rooms` > 1 tragen die Treffer `units` und das Ergebnis `unitsNote` (getrennte Einheiten, kein Haus), `get_trip` zeigt `units`.
    Umkreis (#680): `radiusKm` (1–20) sucht um den Mittelpunkt des Orts (Booking.com mit Koordinaten), Treffer weiter weg oder ohne Lage fallen weg.
+   Ort genauer (#679, `resolvePlace` in `app/src/lib/geo/places.ts`): Zusatz nach dem Komma (PLZ, Bundesland, Landkreis oder Nachbarort, z. B.
+   „Rimbach, Landkreis Cham“) wählt unter gleichnamigen Orten (auch aus den Postleitzahlen des Landes); dann Suche mit 10 km um den Ort.
+   Ohne Zusatz bei mehreren gleichnamigen: `placeNote` mit den anderen. Urlaubsregionen („Bayerischer Wald“) mit Mittelpunkt und Umkreis:
+   `areaKm` (1–300), Treffer mit Lage außerhalb fallen weg.
    In der App dieselben Felder: Regler „Umkreis“ (0 = nur Ort) und „Schlafzimmer mind.“ neben „Zimmer“; Suchlinks zu Booking.com, Airbnb und Vrbo
    übernehmen die Schlafzimmer (`entire_place_bedroom_count` bei Booking.com nicht offiziell bestätigt, `min_bedrooms`, `minBedrooms`).
    Nach Namen (#683): `names` (bis 5) sucht nur diese Häuser (Booking.com `hotel_names` mit dem Ort, Trivago je Name eine Namenssuche in einer
